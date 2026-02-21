@@ -55,6 +55,104 @@ async function withRetry(fn, retries = 3, delay = 1000) {
 }
 
 /**
+ * RULE 4 — Payload Optimization:
+ * Compresses a base64 image to max 1024x1024px using browser Canvas API.
+ * - If already a URL (http/https), skip — server handles remote fetching.
+ * - If base64 is small (<200KB raw), skip compression to save time.
+ * - Otherwise: draw to canvas, downscale proportionally, re-encode as JPEG 85%.
+ * @param {string} img - base64 data URL or remote URL
+ * @returns {Promise<string>} - compressed data URL or original
+ */
+const compressImageToMax1024 = async (img) => {
+    // URLs are fetched server-side — skip here
+    if (!img || img.startsWith('http')) return img;
+
+    // Already small enough (<~200KB base64 ≈ ~150KB binary) — skip
+    const rawB64 = img.includes('base64,') ? img.split('base64,')[1] : img;
+    if (rawB64.length < 200_000) return img;
+
+    return new Promise((resolve) => {
+        const image = new Image();
+        image.onload = () => {
+            const MAX = 1024;
+            let { width, height } = image;
+
+            // Scale down proportionally
+            if (width > MAX || height > MAX) {
+                if (width > height) {
+                    height = Math.round((height / width) * MAX);
+                    width = MAX;
+                } else {
+                    width = Math.round((width / height) * MAX);
+                    height = MAX;
+                }
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(image, 0, 0, width, height);
+
+            // Re-encode as JPEG 85% quality
+            const compressed = canvas.toDataURL('image/jpeg', 0.85);
+            console.log(`[PAYLOAD_OPT] Compressed reference: ${Math.round(rawB64.length / 1024)}KB → ${Math.round(compressed.length / 1024)}KB (${width}×${height}px)`);
+            resolve(compressed);
+        };
+        image.onerror = () => resolve(img); // fallback: send original
+        image.src = img.startsWith('data:') ? img : `data:image/png;base64,${rawB64}`;
+    });
+};
+
+/**
+ * Builds a safe, prioritized reference image array for Consistency Mode.
+ * Rules:
+ *  1. Always include poseImage (if exists) then wardrobeImage (if exists) first.
+ *  2. Fill remaining slots with identity_kit images: anchor → angle_3 → angle_1 → angle_2 → angle_4.
+ *  3. Hard cap at MAX_REFS (4) to prevent Vertex API payload overflow.
+ *  4. Strip null/undefined with .filter(Boolean).
+ *
+ * @param {object} opts
+ * @param {object|null} opts.kit       - character.identity_kit (has .anchor, .angle_1 … .angle_4)
+ * @param {string|null} opts.anchor    - fallback single anchorImage from store
+ * @param {string|null} opts.wardrobe  - wardrobeImage from store
+ * @param {string|null} opts.pose      - poseImage from store
+ * @param {string|null} opts.product   - currentProduct.image from store (optional)
+ * @returns {string[]} - safe references array, max 4 items
+ */
+export const buildConsistencyRefs = async ({ kit, anchor, wardrobe, pose, product } = {}) => {
+    const MAX_REFS = 4;
+
+    // Priority 1: wardrobe + pose always win a slot (they define the current scene context)
+    const priority = [pose, wardrobe].filter(Boolean);
+
+    // Priority 2: identity_kit images — most informative angles first
+    const kitOrder = [
+        kit?.anchor,    // hero front shot — highest identity signal
+        kit?.angle_3,   // 3/4 angle — best for face + body
+        kit?.angle_1,   // side angle
+        kit?.angle_2,   // close-up face
+        kit?.angle_4,   // full body
+    ].filter(Boolean);
+
+    // Fallback: if no kit, use single anchor image
+    const kitRefs = kitOrder.length > 0 ? kitOrder : [anchor].filter(Boolean);
+
+    // Fill remaining slots after priority images
+    const remainingSlots = MAX_REFS - priority.length;
+    const kitSlice = kitRefs.slice(0, remainingSlots);
+
+    // Combine and enforce hard cap
+    const rawRefs = [...priority, ...kitSlice].filter(Boolean).slice(0, MAX_REFS);
+
+    // ✅ RULE 4: Compress all base64 refs to max 1024px before sending
+    const refs = await Promise.all(rawRefs.map(compressImageToMax1024));
+
+    console.log(`[CONSISTENCY_ENGINE] ${refs.length}/${MAX_REFS} refs packed | Kit: ${kitSlice.length} | Scene: ${priority.length}`);
+    return refs;
+};
+
+/**
  * Generates a character image based on prompt and references.
  * @param {string} prompt 
  * @param {string[]} references - Array of base64 image strings

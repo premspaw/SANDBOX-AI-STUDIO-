@@ -3,7 +3,7 @@ import { Handle, Position } from 'reactflow';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Film, X, Loader2, Clapperboard, ChevronRight, Clock, Package } from 'lucide-react';
 import { useAppStore } from '../store';
-import { generateCharacterImage } from '../../geminiService';
+import { generateCharacterImage, buildConsistencyRefs } from '../../geminiService';
 
 const TEMPLATES = [
     { id: 'gym_ugc', label: 'GYM UGC AD', icon: '🏋️', prompt: 'gym influencer workout ad' },
@@ -108,13 +108,19 @@ export default memo(({ id, data }) => {
 
                     // Trigger actual image generation for this scene
                     try {
-                        const characterImg = store.activeCharacter?.image || store.anchorImage;
+                        // ✅ CONSISTENCY MODE: smart reference builder (max 4, null-safe)
+                        // Product image takes the role of wardrobe/prop reference
                         const productImg = store.currentProduct?.image;
-                        const references = [characterImg, productImg].filter(Boolean);
+                        const storyboardRefs = await buildConsistencyRefs({
+                            kit: store.activeCharacter?.identity_kit || store.detailMatrix,
+                            anchor: store.activeCharacter?.image || store.anchorImage,
+                            wardrobe: productImg,   // product acts as the scene prop/wardrobe
+                            pose: null,             // no pose override for storyboard auto-scenes
+                        });
 
                         const sceneImageUrl = await generateCharacterImage(
                             scene.prompt,
-                            references,
+                            storyboardRefs,
                             '9:16',
                             '1K',
                             store.universeBible

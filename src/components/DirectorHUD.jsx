@@ -9,7 +9,7 @@ import {
     Maximize, Terminal, Music, Volume2, Mic2
 } from "lucide-react";
 import { useAppStore } from "../store";
-import { generateCharacterImage, analyzeIdentity, generateDynamicAngles } from "../../geminiService";
+import { generateCharacterImage, analyzeIdentity, generateDynamicAngles, buildConsistencyRefs } from "../../geminiService";
 import { saveStoryboardItem } from "../supabaseService";
 import { HUD_CONFIG } from "../hudConfig";
 import { useWebSocket } from "../hooks/useWebSocket";
@@ -114,7 +114,14 @@ export default function DirectorHUD() {
         const tempId = store.addNode('', `Compiling_State...`, true);
 
         try {
-            const references = [anchorImage || '', wardrobeImage || '', poseImage || ''].filter(Boolean);
+            // ✅ CONSISTENCY MODE: Smart reference builder (max 4, prioritized, null-safe)
+            const references = await buildConsistencyRefs({
+                kit: activeCharacter.identity_kit || store.detailMatrix,
+                anchor: anchorImage,
+                wardrobe: wardrobeImage,
+                pose: poseImage,
+            });
+
             const prompt = `SUBJECT: ${activeCharacter.name}. STYLE: ${activeCharacter.visualStyle}. ACTION: ${actionScript || 'Cinematic Portrait'}. OPTICS: ${camera.lens}. PHOTOMETRY: ${camera.lighting}. Highly detailed character photography. ${selectedPoseId ? `Pose Context: ${selectedPoseId}` : ''}`;
 
             // Update last generated prompt for UI visibility
@@ -155,6 +162,14 @@ export default function DirectorHUD() {
         store.setState((s) => ({ ...s, isRendering: true }));
 
         let centerNodeId = store.activeNodeId;
+
+        // ✅ CONSISTENCY MODE: build once, reuse across all 6 parallel renders
+        const matrixRefs = await buildConsistencyRefs({
+            kit: activeCharacter.identity_kit || store.detailMatrix,
+            anchor: anchorImage,
+            wardrobe: wardrobeImage,
+            pose: store.poseImage,
+        });
 
         try {
             if (!centerNodeId || !store.nodes.find(n => n.id === centerNodeId)) {
@@ -210,10 +225,11 @@ export default function DirectorHUD() {
 
                 const result = await generateCharacterImage(
                     prompt,
-                    [anchorImage || '', wardrobeImage || ''].filter(Boolean),
+                    matrixRefs,   // ✅ Smart consistency refs — same pack for all frames
                     '1:1',
                     camera.resolution
                 );
+
 
                 if (result) {
                     store.updateNodeData(id, { image: result, isOptimistic: false, label: config.label, resolution: camera.resolution });
