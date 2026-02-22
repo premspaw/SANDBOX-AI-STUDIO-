@@ -7,27 +7,41 @@ import { InfluencerStudio } from './components/InfluencerStudio'
 import { ForgeView } from './components/ForgeView'
 import { PlaygroundCanvas } from './components/PlaygroundCanvas'
 
+const FULL_HEIGHT_TABS = new Set([
+  'home',
+  'prompt',
+  'influencer',
+  'forge',
+  'playground',
+  'creator',
+  'directors-cut',
+])
+
 function App() {
   const [activeTab, setActiveTab] = useState('home')
 
+  const tabComponents = {
+    home: <Home setActiveTab={setActiveTab} />,
+    prompt: <PromptGenerator />,
+    influencer: <InfluencerStudio setActiveTab={setActiveTab} />,
+    assets: (
+      <AssetsLibrary
+        setActiveTab={setActiveTab}
+        onSelectReference={() => setActiveTab('influencer')}
+      />
+    ),
+    creator: <ForgeView onComplete={() => setActiveTab('directors-cut')} />,
+    'directors-cut': <PlaygroundCanvas />,
+    forge: <ForgeView onComplete={() => setActiveTab('directors-cut')} />,
+    playground: <PlaygroundCanvas />,
+  }
+
+  const containerClassName = FULL_HEIGHT_TABS.has(activeTab) ? 'h-full' : 'p-4'
+
   return (
     <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
-      <div className={activeTab === 'home' || activeTab === 'prompt' || activeTab === 'influencer' || activeTab === 'forge' || activeTab === 'playground' || activeTab === 'creator' || activeTab === 'directors-cut' ? "h-full" : "p-4"}>
-        {activeTab === 'home' && <Home setActiveTab={setActiveTab} />}
-        {activeTab === 'prompt' && <PromptGenerator />}
-        {activeTab === 'influencer' && <InfluencerStudio setActiveTab={setActiveTab} />}
-        {activeTab === 'assets' && (
-          <AssetsLibrary
-            setActiveTab={setActiveTab}
-            onSelectReference={(url) => {
-              setActiveTab('influencer');
-            }}
-          />
-        )}
-        {activeTab === 'creator' && <ForgeView onComplete={() => setActiveTab('directors-cut')} />}
-        {activeTab === 'directors-cut' && <PlaygroundCanvas />}
-        {activeTab === 'forge' && <ForgeView onComplete={() => setActiveTab('directors-cut')} />}
-        {activeTab === 'playground' && <PlaygroundCanvas />}
+      <div className={containerClassName}>
+        {tabComponents[activeTab] ?? null}
       </div>
     </Layout>
   )
