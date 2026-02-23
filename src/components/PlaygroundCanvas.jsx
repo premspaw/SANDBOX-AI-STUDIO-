@@ -21,6 +21,7 @@ import SFXNode from './SFXNode';
 import AmbientNode from './AmbientNode';
 import MusicNode from './MusicNode';
 import UGCPipelineNode from './UGCPipelineNode';
+import UGCEngineNode from './UGCEngineNode';
 import WardrobeNode from './WardrobeNode';
 import ProductNode from './ProductNode';
 import AutoStoryboardNode from './AutoStoryboardNode';
@@ -43,6 +44,7 @@ const nodeTypes = {
     ambient: AmbientNode,
     music: MusicNode,
     ugcPipeline: UGCPipelineNode,
+    ugcEngine: UGCEngineNode,
     wardrobe: WardrobeNode,
     product: ProductNode,
     autoStoryboard: AutoStoryboardNode,

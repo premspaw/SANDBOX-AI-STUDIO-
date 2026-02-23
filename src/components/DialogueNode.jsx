@@ -53,7 +53,7 @@ export default memo(({ id, data }) => {
         if (!data.script || isSynthesizing) return;
         setIsSynthesizing(true);
         try {
-            const response = await fetch('http://localhost:3001/api/proxy/tts', {
+            const response = await fetch('http://localhost:3002/api/proxy/tts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -100,7 +100,7 @@ export default memo(({ id, data }) => {
             }
         } catch (err) {
             console.error("Synthesis error:", err);
-            alert("Connection error: Make sure the local server is running on port 3001.");
+            alert("Connection error: Make sure the local server is running on port 3002.");
         } finally {
             setIsSynthesizing(false);
         }

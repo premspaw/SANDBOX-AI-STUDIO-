@@ -13,7 +13,7 @@ export function Layout({ children, activeTab, setActiveTab }) {
                 isCollapsed={isCollapsed}
                 toggleCollapse={() => setIsCollapsed(!isCollapsed)}
             />
-            <main className={`flex-1 relative transition-all duration-300 ${(activeTab === 'home' || activeTab === 'prompt' || activeTab === 'influencer' || activeTab === 'forge' || activeTab === 'playground' || activeTab === 'creator' || activeTab === 'directors-cut') ? 'p-0 overflow-hidden' : 'p-8 overflow-auto'}`}>
+            <main className={`flex-1 relative transition-all duration-300 ${(activeTab === 'home' || activeTab === 'prompt' || activeTab === 'influencer' || activeTab === 'forge' || activeTab === 'playground' || activeTab === 'creator' || activeTab === 'directors-cut') ? 'p-0 overflow-auto' : 'p-8 overflow-auto'}`}>
 
                 <div className="absolute inset-0 bg-black -z-10 pointer-events-none" />
                 <motion.div

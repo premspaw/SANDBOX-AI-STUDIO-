@@ -35,7 +35,7 @@ export default memo(({ id, data }) => {
         try {
             // Phase 1: Hook Script
             setPhaseStatus(p => ({ ...p, hook: 'GENERATING' }));
-            const hookRes = await fetch('http://localhost:3001/api/ugc/generate-hook', {
+            const hookRes = await fetch('http://localhost:3002/api/ugc/generate-hook', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -51,7 +51,7 @@ export default memo(({ id, data }) => {
 
             // Phase 2: Avatar Render
             setPhaseStatus(p => ({ ...p, avatar: 'GENERATING' }));
-            const avatarRes = await fetch('http://localhost:3001/api/ugc/generate-avatar', {
+            const avatarRes = await fetch('http://localhost:3002/api/ugc/generate-avatar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -73,7 +73,7 @@ export default memo(({ id, data }) => {
 
             // Phase 3: Caption Overlay
             setPhaseStatus(p => ({ ...p, caption: 'GENERATING' }));
-            const captionRes = await fetch('http://localhost:3001/api/ugc/generate-captions', {
+            const captionRes = await fetch('http://localhost:3002/api/ugc/generate-captions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -20,7 +20,7 @@ const safeUUID = () => {
     });
 };
 
-const API = 'http://localhost:3001';
+const API = 'http://localhost:3002';
 
 // ─── Visual Style Config ──────────────────────────────────────────────────────
 const VISUAL_STYLES = [

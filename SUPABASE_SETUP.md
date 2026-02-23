@@ -32,6 +32,7 @@ VITE_SUPABASE_ANON_KEY=your_anon_key
 2.  Paste and run the following SQL query to create the `assets` table and enable RLS:
 
 ```sql
+-- Table 1: Assets
 create table public.assets (
   id uuid default gen_random_uuid() primary key,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -42,23 +43,27 @@ create table public.assets (
   size text
 );
 
--- Enable Row Level Security
 alter table public.assets enable row level security;
+create policy "Allow public read access" on public.assets for select to public using ( true );
+create policy "Allow public insert access" on public.assets for insert to public with check ( true );
 
--- Create Policy to allow public read access
-create policy "Allow public read access"
-on public.assets
-for select
-to public
-using ( true );
+-- Table 2: Characters
+create table public.characters (
+  id uuid default gen_random_uuid() primary key,
+  timestamp timestamp with time zone default timezone('utc'::text, now()) not null,
+  name text,
+  visual_style text,
+  origin text,
+  image text,
+  identity_kit jsonb,
+  metadata jsonb
+);
 
--- Create Policy to allow public insert access (for demo purposes)
--- In a real production app, restrict this to authenticated users
-create policy "Allow public insert access"
-on public.assets
-for insert
-to public
-with check ( true );
+alter table public.characters enable row level security;
+create policy "Allow public read access" on public.characters for select to public using ( true );
+create policy "Allow public insert access" on public.characters for insert to public with check ( true );
+create policy "Allow public update access" on public.characters for update to public using ( true );
+create policy "Allow public delete access" on public.characters for delete to public using ( true );
 ```
 
 ## 5. Run the Server

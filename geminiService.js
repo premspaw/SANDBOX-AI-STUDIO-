@@ -1,10 +1,32 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const getAI = () => {
-    const apiKey = (typeof process !== 'undefined' ? process.env.GOOGLE_API_KEY : null) ||
+    // Priority: Runtime Store Key > Env Var
+    const storeKey = typeof window !== 'undefined' && window.__VEO_API_KEY__;
+    const apiKey = storeKey ||
+        (typeof process !== 'undefined' ? process.env.GOOGLE_API_KEY : null) ||
         (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_GOOGLE_API_KEY : null) ||
         '';
-    return new GoogleGenAI({ apiKey });
+    return new GoogleGenerativeAI(apiKey);
+};
+
+/**
+ * Checks if the local backend is alive.
+ */
+export const checkBackend = async () => {
+    if (typeof window === 'undefined') return false;
+    try {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), 1500);
+        const resp = await fetch('http://localhost:3002/api/forge/health', {
+            method: 'GET',
+            signal: controller.signal
+        });
+        clearTimeout(id);
+        return resp.ok;
+    } catch (e) {
+        return false;
+    }
 };
 
 // Neural Universe Bible Formatter
@@ -65,6 +87,9 @@ async function withRetry(fn, retries = 3, delay = 1000) {
  */
 const compressImageToMax1024 = async (img) => {
     if (!img) return img;
+    // If server-side, skip browser-only compression
+    if (typeof window === 'undefined') return img;
+
     // Already small enough (<~200KB base64 ≈ ~150KB binary) — skip
     const isData = img.startsWith('data:');
     const isUrl = img.startsWith('http') || img.startsWith('//');
@@ -190,45 +215,52 @@ RULES:
 7. Output ONLY the final prompt string.
 `;
 
-/**
- * Generates a character image based on prompt and references.
- * @param {object} params
- */
-export const generateCharacterImage = async ({
-    prompt,
-    identity_images = [],
-    product_image = null,
-    aspectRatio = '1:1',
-    resolution = '1K',
-    bible = null,
-    duration = 30,
-    visualStyle = 'Cinematic'
-}) => {
+export const generateCharacterImage = async (params) => {
     return withRetry(async () => {
         try {
-            const response = await fetch('http://localhost:3001/api/generate-image', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: 'nano-banana-pro',
-                    prompt,
-                    identity_images,
-                    product_image,
-                    aspect_ratio: aspectRatio,
-                    quality: resolution,
-                    bible,
-                    duration,
-                    visualStyle
-                })
-            });
+            // 1. Try local server first (Frontend only)
+            if (typeof window !== 'undefined') {
+                const isAlive = await checkBackend();
+                if (isAlive) {
+                    const response = await fetch('http://localhost:3002/api/forge/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(params)
+                    });
 
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.message || 'Generation failed');
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.url;
+                    }
+                }
             }
 
-            const data = await response.json();
-            return data.url;
+            // 2. Fallback: Direct SDK (Standalone Mode or Backend usage)
+            const ai = getAI();
+            const model = ai.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
+
+            const prompt = params.prompt;
+            const refs = params.identity_images || [];
+
+            const parts = [
+                { text: prompt },
+                ...refs.map(ref => {
+                    const [meta, data] = ref.split(',');
+                    return { inlineData: { data, mimeType: meta.split(':')[1]?.split(';')[0] || 'image/png' } };
+                })
+            ];
+
+            const result = await model.generateContent({
+                contents: [{ role: "user", parts }],
+                generationConfig: {
+                    responseModalities: ["image", "text"]
+                }
+            });
+
+            const candidate = result.response.candidates?.[0];
+            const imgPart = candidate?.content?.parts?.find(p => p.inlineData);
+            return imgPart ? `data:image/png;base64,${imgPart.inlineData.data}` : null;
+
         } catch (error) {
             console.error('Image Gen Error:', error);
             throw error;
@@ -239,13 +271,27 @@ export const generateCharacterImage = async ({
 export const upscaleImage = async (image, targetRes) => {
     return withRetry(async () => {
         try {
-            const apiKey = (typeof process !== 'undefined' ? process.env.VITE_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY : null) ||
-                (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_GOOGLE_API_KEY : null) ||
-                '';
+            // 1. Try local server
+            if (typeof window !== 'undefined') {
+                const isAlive = await checkBackend();
+                if (isAlive) {
+                    const response = await fetch('http://localhost:3002/api/forge/upscale', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image, targetRes })
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.image;
+                    }
+                }
+            }
 
+            // 2. Standalone Fallback
+            const ai = getAI();
+            const apiKey = ai.apiKey;
             const data = image.includes('base64,') ? image.split(',')[1] : image;
-
-            const modelName = 'gemini-3-pro-image-preview'; // Upgraded to Nano Banana Pro (Gemini 3 Pro)
+            const modelName = 'gemini-3-pro-image-preview';
             const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${apiKey}`;
 
             const response = await fetch(endpoint, {
@@ -256,11 +302,7 @@ export const upscaleImage = async (image, targetRes) => {
                         prompt: "Enhance this image, maintain exact identity, high fidelity textures, cinematic lighting.",
                         image: { bytesBase64Encoded: data, mimeType: 'image/png' }
                     }],
-                    parameters: {
-                        sampleCount: 1,
-                        aspectRatio: "1:1",
-                        outputMimeType: "image/png"
-                    }
+                    parameters: { sampleCount: 1, aspectRatio: "1:1", outputMimeType: "image/png" }
                 })
             });
 
@@ -373,10 +415,25 @@ export const generateIdentityKit = async (originImage, style = 'Realistic') => {
 export const generateSurgicalRepair = async (originalImage, maskImage, repairPrompt) => {
     return withRetry(async () => {
         try {
-            const apiKey = (typeof process !== 'undefined' ? process.env.VITE_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY : null) ||
-                (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_GOOGLE_API_KEY : null) ||
-                '';
+            // 1. Try local server first
+            if (typeof window !== 'undefined') {
+                const isAlive = await checkBackend();
+                if (isAlive) {
+                    const response = await fetch('http://localhost:3001/api/forge/repair', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: originalImage, mask: maskImage, prompt: repairPrompt })
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.image;
+                    }
+                }
+            }
 
+            // 2. Standalone Fallback
+            const ai = getAI();
+            const apiKey = ai.apiKey;
             const base64Original = originalImage.includes('base64,') ? originalImage.split(',')[1] : originalImage;
             const base64Mask = maskImage.includes('base64,') ? maskImage.split(',')[1] : maskImage;
 
@@ -388,7 +445,7 @@ export const generateSurgicalRepair = async (originalImage, maskImage, repairPro
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     instances: [{
-                        prompt: `In-paint the masked area: ${repairPrompt}. Ensure seamless blending with the surrounding ${originalImage ? 'pixels' : 'scene'}.`,
+                        prompt: `In-paint the masked area: ${repairPrompt}. Ensure seamless blending with the surrounding pixels.`,
                         image: { bytesBase64Encoded: base64Original },
                         mask: { image: { bytesBase64Encoded: base64Mask } }
                     }],
@@ -401,15 +458,12 @@ export const generateSurgicalRepair = async (originalImage, maskImage, repairPro
                 })
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.error("[SURGERY] API Error:", JSON.stringify(errorData));
-                throw new Error(errorData.error?.message || `API Error: ${response.status}`);
+            if (response.ok) {
+                const result = await response.json();
+                const base64Image = result.predictions?.[0]?.bytesBase64Encoded;
+                return base64Image ? `data:image/png;base64,${base64Image}` : null;
             }
-
-            const result = await response.json();
-            const base64Image = result.predictions?.[0]?.bytesBase64Encoded;
-            return base64Image ? `data:image/png;base64,${base64Image}` : null;
+            return null;
         } catch (err) {
             console.error("Surgical repair failed:", err);
             return null;
@@ -419,25 +473,35 @@ export const generateSurgicalRepair = async (originalImage, maskImage, repairPro
 
 export const synthesizeSpeech = async (text, voice = 'Puck') => {
     try {
-        const ai = getAI();
+        // 1. Try local server
+        if (typeof window !== 'undefined') {
+            const isAlive = await checkBackend();
+            if (isAlive) {
+                const response = await fetch('http://localhost:3002/api/ugc/speech', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, voice })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    // Server returns data URL, we need raw base64
+                    return data.audio.split(',')[1];
+                }
+            }
+        }
 
-        // Named Gemini voices (from official docs voice list)
+        // 2. Standalone Fallback
+        const ai = getAI();
         const namedVoices = ['Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede', 'Zephyr', 'Orion',
             'Leda', 'Orus', 'Perseus', 'Castor', 'Pollux', 'Cetus', 'Aquila', 'Rigel',
             'Spica', 'Algieba', 'Despina', 'Erinome', 'Algenib', 'Rasalghul'];
 
-        // For regional code-based voice IDs (e.g. ta-IN-Neural2-A), use Puck as the carrier voice
-        // The model auto-detects the input language, so we just need to write the text in the target language
         const voiceName = namedVoices.includes(voice) ? voice : 'Puck';
 
-        console.log(`[GEMINI_TTS] voice: ${voiceName} | model: gemini-2.5-pro-tts`);
-
-        // Exact structure from official docs:
-        // https://ai.google.dev/gemini-api/docs/speech-generation
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-pro-tts",
+        const model = ai.getGenerativeModel({ model: "gemini-2.5-pro-tts" });
+        const result = await model.generateContent({
             contents: [{ parts: [{ text }] }],
-            config: {
+            generationConfig: {
                 responseModalities: ['AUDIO'],
                 speechConfig: {
                     voiceConfig: {
@@ -447,11 +511,7 @@ export const synthesizeSpeech = async (text, voice = 'Puck') => {
             },
         });
 
-        // Official response path from docs
-        const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-        if (!data) {
-            console.error("[GEMINI_TTS] No audio data in response:", JSON.stringify(response?.candidates?.[0]?.content));
-        }
+        const data = result.response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
         return data || null;
     } catch (err) {
         console.error("[GEMINI_TTS] Error:", err?.message || err);
@@ -462,45 +522,79 @@ export const synthesizeSpeech = async (text, voice = 'Puck') => {
 
 export const generateLipSyncVideo = async (image, prompt, bible = null) => {
     try {
-        const ai = getAI();
-        const bibleContext = formatBibleContext(bible);
-        const finalPrompt = `${bibleContext} A hyper-realistic close-up cinematic portrait video of the person in the image. They are speaking the following script clearly: "${prompt}". Focus on perfectly natural lip movements, expressive micro-expressions, and realistic blinking. Keep background stable. Cinematic 8k photography quality.`;
+        if (typeof window !== 'undefined') {
+            const isAlive = await checkBackend();
+            if (isAlive) {
+                const response = await fetch('http://localhost:3002/api/ugc/video', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image, script: prompt, bible })
+                });
 
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.url;
+                }
+            }
+        }
+
+        // --- STANDALONE FALLBACK ---
+        console.log("[STANDALONE] Calling Veo 3.1 directly.");
+        const ai = getAI();
         const [meta, data] = image.split(',');
         const mimeType = meta.split(':')[1]?.split(';')[0] || 'image/png';
 
-        let operation = await ai.models.generateVideos({
-            model: 'veo-3.1-generate-preview',
-            prompt: finalPrompt,
-            image: {
-                imageBytes: data,
-                mimeType: mimeType,
-            },
-            config: {
-                numberOfVideos: 1,
-                resolution: '720p',
-                aspectRatio: '9:16'
-            }
+        // Note: Using the model direct API because SDK 'generateVideos' might be Node-only in some versions
+        const modelName = 'veo-3.1-generate-preview';
+        const apiKey = ai.apiKey;
+
+        const initialResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predictLongRunning?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                instances: [{
+                    prompt: prompt,
+                    image: { bytesBase64Encoded: data, mimeType }
+                }],
+                parameters: { sampleCount: 1, aspectRatio: "9:16" }
+            })
         });
 
-        while (!operation.done) {
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            operation = await ai.operations.getVideosOperation({ operation: operation });
+        const initialData = await initialResponse.json();
+        if (initialData.error) throw new Error(initialData.error.message);
+
+        const operationName = initialData.name;
+        let done = false;
+        let resultData = null;
+
+        while (!done) {
+            await new Promise(r => setTimeout(r, 5000));
+            const pollResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${apiKey}`);
+            const pollData = await pollResponse.json();
+            if (pollData.error) throw new Error(pollData.error.message);
+            if (pollData.done) {
+                resultData = pollData.response;
+                done = true;
+            }
         }
 
-        const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-        if (!downloadLink) return null;
+        // Use a generic finder or direct path since we know the structure usually includes generatedVideos
+        const videoUri = resultData?.generatedVideos?.[0]?.video?.uri || resultData?.predictions?.[0]?.uri;
+        if (!videoUri) return null;
 
-        // We assume the link needs the API key appended or header auth, but standard fetch follows.
-        // The original TS had &key=process.env.API_KEY, we keep that.
-        const videoResp = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
-        const blob = await videoResp.blob();
-        // In Node.js environment, we return base64 or buffer, not URL.createObjectURL (browser only).
-        // Converting blob/buffer to base64 data URI for frontend.
-        const arrayBuffer = await blob.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const base64 = buffer.toString('base64');
-        return `data:video/mp4;base64,${base64}`;
+        const videoResp = await fetch(`${videoUri}&key=${apiKey}`);
+
+        if (typeof window === 'undefined') {
+            const buffer = await videoResp.arrayBuffer();
+            return `data:video/mp4;base64,${Buffer.from(buffer).toString('base64')}`;
+        } else {
+            const blob = await videoResp.blob();
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+            });
+        }
 
     } catch (err) {
         console.error("Video generation failed:", err);
@@ -511,19 +605,44 @@ export const generateLipSyncVideo = async (image, prompt, bible = null) => {
 const getBase64FromUrl = async (url) => {
     const fullUrl = url.startsWith('//') ? `https:${url}` : url;
     const response = await fetch(fullUrl);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
+
+    if (typeof window === 'undefined') {
+        const buffer = await response.arrayBuffer();
+        const contentType = response.headers.get('content-type') || 'image/png';
+        return `data:${contentType};base64,${Buffer.from(buffer).toString('base64')}`;
+    } else {
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
 };
 
 export const analyzeIdentity = async (imageInput) => {
     return withRetry(async () => {
         try {
+            // 1. Try local server first (Frontend only)
+            if (typeof window !== 'undefined') {
+                const isAlive = await checkBackend();
+                if (isAlive) {
+                    const response = await fetch('http://localhost:3002/api/forge/analyze', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: imageInput })
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.analysis;
+                    }
+                }
+            }
+
+            // 2. Standalone Fallback
             const ai = getAI();
+            const model = ai.getGenerativeModel({ model: 'gemini-3-flash-preview' });
             let base64 = imageInput;
             if (!base64.startsWith('data:')) {
                 base64 = await getBase64FromUrl(base64);
@@ -532,16 +651,15 @@ export const analyzeIdentity = async (imageInput) => {
             const [meta, data] = base64.split(',');
             const mimeType = meta.split(':')[1]?.split(';')[0] || 'image/png';
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: {
+            const result = await model.generateContent({
+                contents: [{
                     parts: [
                         { inlineData: { data, mimeType } },
                         { text: "Identity extraction: Describe this person's key visual markers (facial features, hair, vibe) for consistent AI generation. Be surgical and technical. 100 words." }
                     ]
-                }
+                }]
             });
-            return response.text || "Identity extraction failed.";
+            return result.response.text() || "Identity extraction failed.";
         } catch (err) {
             console.error("Identity analysis failed:", err);
             return "Analysis unavailable.";
@@ -552,7 +670,22 @@ export const analyzeIdentity = async (imageInput) => {
 export const generateDynamicAngles = async (imageInput, name) => {
     return withRetry(async () => {
         try {
+            // 1. Try local server
+            if (typeof window !== 'undefined') {
+                const isAlive = await checkBackend();
+                if (isAlive) {
+                    const response = await fetch('http://localhost:3002/api/forge/generate-angles', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: imageInput, name })
+                    });
+                    if (response.ok) return await response.json();
+                }
+            }
+
+            // 2. Standalone Fallback
             const ai = getAI();
+            const model = ai.getGenerativeModel({ model: 'gemini-3-flash-preview' });
             let base64 = imageInput;
             if (!base64.startsWith('data:')) {
                 base64 = await getBase64FromUrl(base64);
@@ -561,45 +694,25 @@ export const generateDynamicAngles = async (imageInput, name) => {
             const mimeType = meta.split(':')[1]?.split(';')[0] || 'image/png';
 
             const prompt = `
-        You are a Cinematography Director. Analyze this image of "${name}". 
-        Identify the 6 most interesting visual aspects (e.g., a specific piece of jewelry, a scar, texture of fabric, a silhouette, a prop, facial feature). 
-        
-        Generate 6 distinct, creative camera angle prompts to highlight these specific details.
-        
-        Return a JSON array of 6 objects with this schema:
-        {
-          "label": "Short Uppercase Label (e.g. RING_MACRO)",
-          "prompt": "Detailed camera prompt describing the angle, focus, and composition."
-        }
-      `;
+                You are a Cinematography Director. Analyze this image of "${name}". 
+                Identify the 6 most interesting visual aspects (e.g., a specific piece of jewelry, a scar, texture of fabric, a silhouette, a prop, facial feature). 
+                Generate 6 distinct, creative camera angle prompts to highlight these specific details.
+                Return a JSON array of 6 objects with "label" and "prompt".
+            `;
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: {
+            const result = await model.generateContent({
+                contents: [{
                     parts: [
                         { inlineData: { data, mimeType } },
                         { text: prompt }
                     ]
-                },
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                label: { type: "STRING" },
-                                prompt: { type: "STRING" }
-                            }
-                        }
-                    }
-                }
+                }],
+                generationConfig: { responseMimeType: "application/json" }
             });
 
-            const json = JSON.parse(response.text || '[]');
-            return json;
+            return JSON.parse(result.response.text() || '[]');
         } catch (err) {
-            console.error("Dynamic angle generation failed, falling back to defaults.", err);
+            console.error("Dynamic angle generation failed:", err);
             return [
                 { label: "CLOSE_UP", prompt: "A generic close up shot." },
                 { label: "WIDE_SHOT", prompt: "A generic wide shot." },
@@ -614,12 +727,27 @@ export const generateDynamicAngles = async (imageInput, name) => {
 
 export const generateBackstory = async (analysis, name) => {
     try {
+        // 1. Try local server
+        if (typeof window !== 'undefined') {
+            const isAlive = await checkBackend();
+            if (isAlive) {
+                const response = await fetch('http://localhost:3002/api/forge/generate-backstory', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ analysis, name })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.backstory;
+                }
+            }
+        }
+
+        // 2. Standalone Fallback
         const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Generate a 100-word backstory for ${name} based on this identity analysis: ${analysis}. Be gritty, atmospheric, and professional.`,
-        });
-        return response.text || "Backstory generation failed.";
+        const model = ai.getGenerativeModel({ model: 'gemini-3-flash-preview' });
+        const result = await model.generateContent(`Generate a 100-word backstory for ${name} based on this identity analysis: ${analysis}. Be gritty, atmospheric, and professional.`);
+        return result.response.text() || "Backstory generation failed.";
     } catch (err) {
         console.error("Backstory generation failed:", err);
         return "Backstory unavailable.";
@@ -629,10 +757,25 @@ export const generateBackstory = async (analysis, name) => {
 export const generateDetailMatrix = async (name, references) => {
     return withRetry(async () => {
         try {
-            const apiKey = (typeof process !== 'undefined' ? process.env.VITE_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY : null) ||
-                (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_GOOGLE_API_KEY : null) ||
-                '';
+            // 1. Try local server
+            if (typeof window !== 'undefined') {
+                const isAlive = await checkBackend();
+                if (isAlive) {
+                    const response = await fetch('http://localhost:3002/api/forge/generate-matrix', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, references })
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.image;
+                    }
+                }
+            }
 
+            // 2. Standalone Fallback
+            const ai = getAI();
+            const apiKey = ai.apiKey;
             const instances = [{ prompt: `A 3x3 forensic detail matrix for character ${name}. Showcase diverse extreme closeups, textures, and details.` }];
 
             if (references && references.length > 0) {
@@ -664,17 +807,32 @@ export const generateDetailMatrix = async (name, references) => {
         }
     });
 };
-
 export const generateStoryboardDescriptions = async (narrative, count = 4) => {
     try {
+        // 1. Try local server
+        if (typeof window !== 'undefined') {
+            const isAlive = await checkBackend();
+            if (isAlive) {
+                const response = await fetch('http://localhost:3002/api/ugc/auto-storyboard', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ narrative, count })
+                });
+                if (response.ok) return await response.json();
+            }
+        }
+
+        // 2. Standalone Fallback
         const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Decompose this narrative arc into ${count} distinct cinematic scene descriptions for a storyboard. 
+        const model = ai.getGenerativeModel({ model: 'gemini-3-flash-preview' });
+        const prompt = `Decompose this narrative arc into ${count} distinct cinematic scene descriptions for a storyboard. 
       NARRATIVE: ${narrative}. 
       Return a JSON array of strings, where each string is a detailed visual prompt focusing on lighting, composition, and character action.
-      Example output format: ["Prompt 1", "Prompt 2", ... "Prompt N"]`,
-            config: {
+      Example output format: ["Prompt 1", "Prompt 2", ... "Prompt N"]`;
+
+        const result = await model.generateContent({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: "ARRAY",
@@ -682,23 +840,42 @@ export const generateStoryboardDescriptions = async (narrative, count = 4) => {
                 }
             }
         });
-        return JSON.parse(response.text || '[]');
+        return JSON.parse(result.response.text() || '[]');
     } catch (err) {
         console.error("Storyboard description generation failed:", err);
         return [];
     }
 };
 export const generateAmbientMusic = async (description) => {
-    console.log(`[Acoustic_Engine] Synthesizing ambient track: ${description}`);
-    await new Promise(r => setTimeout(r, 3000));
-    return "https://example.com/ambient_track.mp3";
+    try {
+        if (typeof window !== 'undefined') {
+            const isAlive = await checkBackend();
+            if (isAlive) {
+                const response = await fetch('http://localhost:3002/api/music/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: description, style: 'Cinematic', duration: 30 })
+                });
+                if (response.ok) return await response.json();
+            }
+        }
+        console.log(`[Acoustic_Engine] (Standalone Fallback) Synthesizing: ${description}`);
+        return { url: "https://example.com/ambient_track.mp3" };
+    } catch (err) {
+        console.error("Music generation failed:", err);
+        return { url: "https://example.com/ambient_track.mp3" };
+    }
 };
 
-
 export const generateAmbientSFX = async (description) => {
-    console.log(`[Acoustic_Engine] Generating SFX: ${description}`);
-    await new Promise(r => setTimeout(r, 2000));
-    return "https://example.com/sfx_track.wav";
+    try {
+        // SFX endpoint not yet distinct from music in server.js but following pattern
+        console.log(`[Acoustic_Engine] Generating SFX: ${description}`);
+        await new Promise(r => setTimeout(r, 2000));
+        return { url: "https://example.com/sfx_track.wav" };
+    } catch (err) {
+        return { url: "https://example.com/sfx_track.wav" };
+    }
 };
 
 /**
@@ -708,23 +885,28 @@ export const generateAmbientSFX = async (description) => {
 export const researchProductionContext = async (query) => {
     return withRetry(async () => {
         try {
+            if (typeof window !== 'undefined') {
+                const isAlive = await checkBackend();
+                if (isAlive) {
+                    const response = await fetch('http://localhost:3002/api/director/research', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query })
+                    });
+                    if (response.ok) return await response.json();
+                }
+            }
+
             const ai = getAI();
-            // Using 2.0-flash for real-time search capabilities
-            const model = ai.models.get("gemini-3-flash-preview");
-
-            const prompt = `You are a Production Researcher. Conduct deep research on: "${query}". 
-            Identify period-accurate details, atmospheric references (lighting/weather), 
-            and visual costume/architectural specifications. 
-            Cite your findings and provide a summary for the Cinematography Director.`;
-
-            const response = await model.generateContent({
+            const model = ai.getGenerativeModel({ model: "gemini-3-flash-preview" });
+            const prompt = `You are a Production Researcher. Conduct deep research on: "${query}".`;
+            const result = await model.generateContent({
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
-                tools: [{ googleSearch: {} }] // SDK uses camelCase for tools usually
+                tools: [{ googleSearch: {} }]
             });
-
             return {
-                research: response.text(),
-                grounding: response.candidates?.[0]?.groundingMetadata || null
+                research: result.response.text(),
+                grounding: result.response.candidates?.[0]?.groundingMetadata || null
             };
         } catch (err) {
             console.error("Research Agent failed:", err);
@@ -733,81 +915,59 @@ export const researchProductionContext = async (query) => {
     });
 };
 
-/**
- * THINKING MODE: Handles complex script decomposition using reasoning models.
- * Uses gemini-2.0-flash-thinking-exp.
- */
 export const generateThinkerSequence = async (narrative, bible = null) => {
     return withRetry(async () => {
         try {
+            if (typeof window !== 'undefined') {
+                const isAlive = await checkBackend();
+                if (isAlive) {
+                    const response = await fetch('http://localhost:3002/api/director/thinking-sequence', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ narrative, bible })
+                    });
+                    if (response.ok) return await response.json();
+                }
+            }
+
             const ai = getAI();
             const bibleContext = formatBibleContext(bible);
-            const model = ai.models.get("gemini-3-flash-thinking-preview");
-
-            const prompt = `${bibleContext} Narrative Arc: "${narrative}". 
-            You are a Master Director in 'Thinking Mode'. Reason through the complexity of this scene. 
-            Decompose this narrative into a high-fidelity cinematic sequence of production nodes. 
-            
-            Return a JSON object with:
-            {
-              "reasoning": "Explain your creative decisions and directorial choices here.",
-              "nodes": [
-                { "id": "char_1", "type": "influencer", "label": "Character Name", "description": "Visual character description" },
-                { "id": "cam_1", "type": "camera", "label": "CAMERA_ORCH", "movement": "ZOOM_IN", "connectTo": "char_1" },
-                { "id": "light_1", "type": "lighting", "label": "NEON_ATMOS", "atmosphere": "CYBERPUNK", "connectTo": "cam_1" },
-                { "id": "diag_1", "type": "dialogue", "label": "VOICE_TRACK", "script": "...", "connectTo": "light_1" },
-                { "id": "sfx_1", "type": "sfx", "label": "AUDIO_ENGINE", "description": "Soundscape details", "connectTo": "diag_1" },
-                { "id": "video_1", "type": "video", "label": "MASTER_EXPORT", "connectTo": "sfx_1" }
-              ]
-            }
-            Ensure the sequence is logically connected. Max 8 nodes. Reason deeply about the pacing and tone.`;
-
-            const response = await model.generateContent(prompt);
-            const text = response.text();
-
-            // Clean markdown if AI returns it
+            const model = ai.getGenerativeModel({ model: "gemini-3-flash-thinking-preview" });
+            const prompt = `${bibleContext} Narrative Arc: "${narrative}". Return JSON sequence of nodes. Reasoning included.`;
+            const result = await model.generateContent(prompt);
+            const text = result.response.text();
             const cleanJson = text.includes('```json') ? text.split('```json')[1].split('```')[0] : text;
             return JSON.parse(cleanJson);
         } catch (err) {
             console.error("Thinking Mode failed:", err);
-            return generateDirectorSequence(narrative, bible); // fallback
+            return generateDirectorSequence(narrative, bible);
         }
     });
 };
 
 export const generateDirectorSequence = async (narrative, bible = null) => {
     try {
+        if (typeof window !== 'undefined') {
+            const isAlive = await checkBackend();
+            if (isAlive) {
+                const response = await fetch('http://localhost:3002/api/director/thinking-sequence', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ narrative, bible, mode: 'DIRECTOR' })
+                });
+                if (response.ok) return await response.json();
+            }
+        }
+
         const ai = getAI();
         const bibleContext = formatBibleContext(bible);
-        const prompt = `${bibleContext} Narrative: "${narrative}". 
-        You are a Cinematic Director. Decompose this narrative into a cinematic sequence of production nodes for a React Flow canvas. 
-        
-        Available Node Types:
-        1. "influencer": Represents the character. Needs "label" (name) and "description".
-        2. "dialogue": Represents speech. Needs "script" (text) and "label" (VOICE_TYPE).
-        3. "camera": Represents movement. Needs "movement" (PAN_LEFT, ZOOM_IN, DOLLY, etc) and "label".
-        4. "lighting": Represents atmosphere. Needs "atmosphere" (NEON, NOIR, VOLUMETRIC) and "label".
-        5. "video": Represents final render outlet.
-        
-        Return a JSON object with:
-        {
-          "nodes": [
-            { "id": "char_1", "type": "influencer", "label": "Character Name", "description": "Visual character description" },
-            { "id": "cam_1", "type": "camera", "label": "CAMERA_ORCHESTRATOR", "movement": "ZOOM_IN", "connectTo": "char_1" },
-            { "id": "diag_1", "type": "dialogue", "label": "VOICE_TRACK", "script": "What they say...", "connectTo": "cam_1" }
-          ]
-        }
-        Create a logic chain where components are connected sequentially. Limit to 6 nodes total. Ensure labels are punchy and in ALL_CAPS.`;
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: { parts: [{ text: prompt }] },
-            config: {
-                responseMimeType: "application/json"
-            }
+        const model = ai.getGenerativeModel({ model: 'gemini-3-flash-preview' });
+        const prompt = `${bibleContext} Narrative: "${narrative}". Decompose into cinematic nodes JSON.`;
+        const result = await model.generateContent({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json" }
         });
-
-        return JSON.parse(response.text || '{"nodes":[]}');
+        return JSON.parse(result.response.text() || '{"nodes":[]}');
     } catch (err) {
         console.error("Auto-Director sequence generation failed:", err);
         return { nodes: [] };
@@ -816,40 +976,35 @@ export const generateDirectorSequence = async (narrative, bible = null) => {
 
 export const analyzeSceneMultimodal = async (imageInput, bible = null) => {
     try {
-        const ai = getAI();
-        const bibleContext = formatBibleContext(bible);
-
-        let base64 = imageInput;
-        if (!base64.startsWith('data:')) {
-            base64 = await getBase64FromUrl(base64);
+        if (typeof window !== 'undefined') {
+            const isAlive = await checkBackend();
+            if (isAlive) {
+                const response = await fetch('http://localhost:3002/api/forge/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: imageInput, bible, mode: 'SCENE_CRITIQUE' })
+                });
+                if (response.ok) return await response.json();
+            }
         }
 
+        const ai = getAI();
+        const model = ai.getGenerativeModel({ model: 'gemini-3-flash-preview' });
+        let base64 = imageInput;
+        if (!base64.startsWith('data:')) base64 = await getBase64FromUrl(base64);
         const [meta, data] = base64.split(',');
         const mimeType = meta.split(':')[1]?.split(';')[0] || 'image/png';
 
-        const prompt = `${bibleContext} Analyze this scene frame as a cinematic director. 
-        Evaluate the following markers:
-        1. Visual Consistency: Does it move the narrative forward?
-        2. Lighting & Composition: Is it professional and cinematic?
-        3. Performance/Pose: Is it evocative?
-        
-        Provide a concise critique and a Director's Score (0-100). 
-        Format as JSON: { "critique": "...", "score": 85, "recommendations": ["...", "..."] }`;
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: {
+        const result = await model.generateContent({
+            contents: [{
                 parts: [
-                    { text: prompt },
+                    { text: "Critique this cinematic scene. Format as JSON." },
                     { inlineData: { data, mimeType } }
                 ]
-            },
-            config: {
-                responseMimeType: "application/json"
-            }
+            }],
+            generationConfig: { responseMimeType: "application/json" }
         });
-
-        return JSON.parse(response.text || '{}');
+        return JSON.parse(result.response.text() || '{}');
     } catch (err) {
         console.error("Multimodal analysis failed:", err);
         return { critique: "Analysis failed.", score: 0, recommendations: [] };
@@ -858,15 +1013,28 @@ export const analyzeSceneMultimodal = async (imageInput, bible = null) => {
 
 export const expandPrompt = async (payload) => {
     try {
+        if (typeof window !== 'undefined') {
+            const isAlive = await checkBackend();
+            if (isAlive) {
+                const response = await fetch('http://localhost:3002/api/forge/expand-prompt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.expanded;
+                }
+            }
+        }
+
         const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: [
-                { text: SYSTEM_PROMPT_EXPANDER },
-                { text: JSON.stringify(payload) }
-            ],
-        });
-        return response.text || payload.userAction;
+        const model = ai.getGenerativeModel({ model: 'gemini-3-flash-preview' });
+        const result = await model.generateContent([
+            { text: SYSTEM_PROMPT_EXPANDER },
+            { text: JSON.stringify(payload) }
+        ]);
+        return result.response.text() || payload.userAction;
     } catch (err) {
         console.error("Prompt expansion failed:", err);
         return payload.userAction;
@@ -875,17 +1043,137 @@ export const expandPrompt = async (payload) => {
 
 export const enhancePrompt = async (prompt) => {
     try {
+        if (typeof window !== 'undefined') {
+            const isAlive = await checkBackend();
+            if (isAlive) {
+                const response = await fetch('http://localhost:3002/api/forge/enhance-prompt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.enhanced;
+                }
+            }
+        }
+
         const ai = getAI();
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `As a Cinematography Director, enhance this scene description into a high-fidelity cinematic prompt for an AI image generator. 
-          Focus on lighting, lens choice, textures, and atmosphere. Keep the core subject and action identical.
-          ORIGINAL: ${prompt}
-          ENHANCED VERSION (Strictly one paragraph, no intro/outro):`,
-        });
-        return response.text || prompt;
+        const model = ai.getGenerativeModel({ model: 'gemini-3-flash-preview' });
+        const result = await model.generateContent(`As a Director, enhance this prompt: ${prompt}`);
+        return result.response.text() || prompt;
     } catch (err) {
         console.error("Prompt enhancement failed:", err);
         return prompt;
     }
 };
+
+/**
+ * PHASE 9: UGC AD ENGINE
+ * Analyze dual-image context for Influencer + Product synergy.
+ */
+export async function analyzeUGCContext(characterImage, productImage, metadata = {}) {
+    try {
+        console.log(`[GEMINI] Analyzing UGC Context for synergy with metadata...`);
+        const ai = getAI();
+        const model = ai.getGenerativeModel({
+            model: 'gemini-3-flash-preview',
+            generationConfig: { responseMimeType: "application/json" }
+        });
+
+        const processImage = async (img) => {
+            if (img.startsWith('data:')) return { inlineData: { mimeType: img.split(';')[0].split(':')[1], data: img.split(',')[1] } };
+            if (img.startsWith('http')) {
+                const resp = await fetch(img);
+                const buffer = await resp.arrayBuffer();
+                return { inlineData: { mimeType: resp.headers.get('content-type') || 'image/png', data: Buffer.from(buffer).toString('base64') } };
+            }
+            return null;
+        };
+
+        const charPart = await processImage(characterImage);
+        const prodPart = await processImage(productImage);
+
+        const prompt = `Analyze these two images and the provided metadata:
+        1. UGC Creator: ${JSON.stringify(metadata.characterMetadata || "Unknown Creator")}
+        2. Product: ${JSON.stringify(metadata.productMetadata || "Unknown Product")}
+        
+        Identify the 'Synergy Point'. How can this creator authentically market this product?
+        Look for:
+        - Common aesthetic (e.g., both are minimalist, both are high-energy).
+        - Use case (e.g., creator is in a gym, product is a protein shake).
+        - Visual matching (e.g., color palette compatibility).
+        - Leverage the metadata: Use the character's 'analysis' (backstory/vibe) and product's 'description' for deeper context.
+
+        Return JSON:
+        {
+          "synergy": "One sentence summary of why they match",
+          "characterTraits": ["trait1", "trait2"],
+          "productSellingPoints": ["point1", "point2"],
+          "recommendedNiche": "e.g. fitness, tech, fashion",
+          "suggestedTone": "e.g. energetic, educational, minimalist"
+        }
+        Return ONLY valid JSON.`;
+
+        const result = await model.generateContent([prompt, charPart, prodPart]);
+        const response = await result.response;
+        const text = response.text();
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        return JSON.parse(jsonMatch[0]);
+    } catch (error) {
+        console.error('analyzeUGCContext Error:', error);
+        return { synergy: "Standard lifestyle marketing", recommendedNiche: "lifestyle", suggestedTone: "casual" };
+    }
+}
+
+/**
+ * Generate a full UGC Ad Script based on synergy analysis.
+ */
+export async function generateUGCScript(analysis, niche, tone, directive = "") {
+    try {
+        console.log(`[GEMINI] Generating UGC Script for ${niche} with directive: ${directive}`);
+        const ai = getAI();
+        const model = ai.getGenerativeModel({
+            model: 'gemini-3-flash-preview',
+            generationConfig: { responseMimeType: "application/json" }
+        });
+
+        const prompt = `You are a viral UGC Scriptwriter. Generate a 30-second ad script based on this analysis:
+        ANALYSIS: ${JSON.stringify(analysis)}
+        NICHE: ${niche}
+        TONE: ${tone}
+        ${directive ? `USER_SPECIFIC_DIRECTIVE: ${directive}` : ""}
+
+        Rules:
+        1. Start with a Pattern Interrupt hook (0-3s).
+        2. Middle section must show the creator interacting with the product points.
+        3. End with a strong CTA.
+        4. Focus on the USP: ${analysis.productSellingPoints?.join(', ')}.
+        5. CAMERA LOGIC (CRITICAL): Append high-end photography modifiers to the end of EVERY scene's 'prompt'.
+           - If niche is 'lifestyle/casual': Append "Shot on iPhone 15 Pro Max, Apple ProRAW, macro lens, natural lighting, 4k."
+           - If niche is 'luxury/high-end': Append "Cinematic lighting, ARRI Alexa, 85mm lens, movie quality, photorealistic, 8k."
+        ${directive ? `6. STICK TO THIS STYLE/HOOK: ${directive}` : "6. No generic fillers."}
+
+        Return JSON:
+        {
+          "hook": "The first 3 seconds anchor script",
+          "fullScript": "The complete 30s voiceover script",
+          "scenes": [
+            { "time": "0s-5s", "action": "Shot description", "prompt": "Visual prompt + camera logic" },
+            { "time": "5s-15s", "action": "Demonstration", "prompt": "Visual prompt + camera logic" },
+            { "time": "15s-25s", "action": "Closer interaction", "prompt": "Visual prompt + camera logic" },
+            { "time": "25s-30s", "action": "Closer to camera CTA", "prompt": "Visual prompt + camera logic" }
+          ]
+        }
+        Return ONLY valid JSON.`;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        return JSON.parse(jsonMatch[0]);
+    } catch (error) {
+        console.error('generateUGCScript Error:', error);
+        throw error;
+    }
+}

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Layout } from './components/Layout'
 import { PromptGenerator } from './components/PromptGenerator'
 import { AssetsLibrary } from './components/AssetsLibrary'
-import { Home } from './components/Home'
+import LandingPage from './components/LandingPage'
 import { InfluencerStudio } from './components/InfluencerStudio'
 import { ForgeView } from './components/ForgeView'
 import { PlaygroundCanvas } from './components/PlaygroundCanvas'
@@ -21,7 +21,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('home')
 
   const tabComponents = {
-    home: <Home setActiveTab={setActiveTab} />,
+    home: <LandingPage onEnter={() => setActiveTab('creator')} />,
     prompt: <PromptGenerator />,
     influencer: <InfluencerStudio setActiveTab={setActiveTab} />,
     assets: (

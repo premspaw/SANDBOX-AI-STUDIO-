@@ -1,4 +1,4 @@
-const API = 'http://localhost:3001';
+const API = 'http://localhost:3002';
 
 /**
  * Uploads a base64 image or file to Supabase Storage via Proxy.

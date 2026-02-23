@@ -87,7 +87,7 @@ export default memo(({ id, data }) => {
         setStatusMsg('Connecting...');
 
         try {
-            const response = await fetch('http://localhost:3001/api/ugc/veo-i2v', {
+            const response = await fetch('http://localhost:3002/api/ugc/veo-i2v', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -125,7 +125,7 @@ export default memo(({ id, data }) => {
         } catch (err) {
             console.error('Veo I2V Error:', err);
             setStatusMsg('');
-            alert('Connection error — make sure the local server is running on port 3001.');
+            alert('Connection error — make sure the local server is running on port 3002.');
         } finally {
             setIsGenerating(false);
         }

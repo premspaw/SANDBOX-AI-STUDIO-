@@ -22,7 +22,7 @@ export default memo(({ id, data }) => {
             // Auto-analyze with Vision API
             setIsAnalyzing(true);
             try {
-                const response = await fetch('http://localhost:3001/api/ugc/analyze-product', {
+                const response = await fetch('http://localhost:3002/api/ugc/analyze-product', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ image: imageData })

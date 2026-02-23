@@ -18,6 +18,7 @@ import * as storageService from './storageService.js';
 import * as workspaceService from './workspaceService.js';
 import * as visionService from './visionService.js';
 import * as vectorService from './vectorService.js';
+import * as masterExportService from './masterExportService.js';
 import { GoogleGenAI } from '@google/genai';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
@@ -32,7 +33,11 @@ if (!globalThis.File) {
 }
 
 const app = express();
-const port = 3001;
+const port = 3002;
+console.log(`[SERVER] AI Key loaded: ${process.env.GOOGLE_API_KEY ? process.env.GOOGLE_API_KEY.substring(0, 5) + '...' : 'MISSING'}`);
+
+// Storage Base URL for GCS Assets
+const storageBase = `https://storage.googleapis.com/${process.env.GCS_BUCKET_NAME || 'ai-cinemastudio-assets-569815811058'}`;
 
 // Middleware
 app.use(cors());
@@ -1122,6 +1127,26 @@ app.post('/api/proxy/save-character', async (req, res) => {
     }
 });
 
+app.delete('/api/delete-character/:id', async (req, res) => {
+    try {
+        if (!supabase) throw new Error("Supabase not configured");
+        const { id } = req.params;
+        console.log(`[SERVER] Attempting to delete character: ${id}`);
+
+        const { error } = await supabase
+            .from('characters')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+        console.log(`[SERVER] Character ${id} deleted successfully.`);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Delete Character Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/api/proxy/save-storyboard', async (req, res) => {
     try {
         if (!supabase) throw new Error("Supabase not configured");
@@ -1364,6 +1389,69 @@ Return ONLY valid JSON.`
     }
 });
 
+/**
+ * PHASE 9: UGC AD ENGINE ORCHESTRATION
+ */
+app.post('/api/ugc/ad-engine', async (req, res) => {
+    try {
+        const { characterImage, productImage, characterMetadata, productMetadata, niche, tone, directive } = req.body;
+        if (!characterImage || !productImage) throw new Error("Missing character or product image");
+
+        const taskId = `ugc-engine-${Date.now()}`;
+        broadcastProgress(taskId, 1, 4, 'Analyzing influencer + product synergy...');
+
+        // Step 1: Analyze Synergy
+        const synergy = await geminiService.analyzeUGCContext(characterImage, productImage, { characterMetadata, productMetadata });
+        broadcastProgress(taskId, 2, 4, 'Generating viral ad script...');
+
+        // Step 2: Generate Script
+        const script = await geminiService.generateUGCScript(synergy, niche || synergy.recommendedNiche, tone || synergy.suggestedTone, directive);
+        broadcastProgress(taskId, 3, 4, 'Finalizing ad structure...');
+
+        broadcastComplete(taskId);
+        res.json({
+            synergy,
+            script
+        });
+    } catch (error) {
+        console.error('UGC Ad Engine Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/ugc/compile-ad', async (req, res) => {
+    try {
+        const { script, sceneVideos, bgMusicPath, nodeId } = req.body;
+        if (!script || !sceneVideos || !sceneVideos.length) {
+            throw new Error("Missing script or scene videos for compilation");
+        }
+
+        const taskId = `ugc-export-${nodeId || Date.now()}`;
+
+        // Spawn async compilation so we don't timeout the HTTP request
+        // The frontend will track progress via WebSocket
+        masterExportService.compileUGCAd(
+            taskId,
+            script,
+            sceneVideos,
+            bgMusicPath,
+            (step, total, message) => {
+                broadcastProgress(taskId, step, total, message);
+            }
+        ).then(result => {
+            broadcastComplete(taskId, { url: result.url, filename: result.filename });
+        }).catch(err => {
+            console.error(`[SERVER] Export Task ${taskId} failed:`, err);
+            broadcastProgress(taskId, 0, 0, `Export Failed: ${err.message}`);
+        });
+
+        res.json({ success: true, taskId });
+    } catch (error) {
+        console.error('UGC Compile Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ============================================================
 // PHASE 8: UGC Studio Pipeline
 // ============================================================
@@ -1377,7 +1465,7 @@ app.post('/api/ugc/auto-storyboard', async (req, res) => {
         const sceneCount = Math.max(3, Math.round((duration || 30) / 5));
 
         const response = await ai.models.generateContent({
-            model: 'gemini-3.1-pro-preview',
+            model: 'gemini-1.5-flash',
             contents: `You are an expert AI Video Director. Combine the following Identity and Product into a photorealistic, natural language 9:16 vertical video storyboard with exactly ${sceneCount} scenes.
 
 STORY CONCEPT: "${prompt}"
@@ -1390,6 +1478,9 @@ CRITICAL INSTRUCTIONS:
 2. INTERACTION: The subject (${characterName}) must be WEARING, HOLDING, or ACTIVELY INTERACTING with the product. 
 3. NO MANNEQUINS: If the product description mentions a mannequin or display stand, REMOVE it. The character should be the one wearing it.
 4. CONSISTENCY: Ensure the character's facial features and wardrobe stay perfectly consistent across all ${sceneCount} prompts.
+5. CAMERA LOGIC (MANDATORY): Append one of these to the end of every scene 'prompt':
+   - 'Shot on iPhone 15 Pro Max, Apple ProRAW, macro lens, natural lighting, 4k.'
+   - 'Cinematic lighting, ARRI Alexa, 85mm lens, movie quality, photorealistic, 8k.'
 
 Generate JSON:
 {
@@ -1400,7 +1491,7 @@ Generate JSON:
       "shotType": "CLOSE_UP | MEDIUM | WIDE",
       "action": "Natural language description of the scene action",
       "hasProduct": true,
-      "prompt": "Full cinematic, photorealistic image generation prompt. Example: 'A stunning close-up of [Name] wearing the [Product] in a luxury setting, soft golden lighting, 8k resolution, photorealistic.'"
+      "prompt": "Full cinematic prompt + mandatory camera logic modifier."
     }
   ]
 }
@@ -1443,7 +1534,7 @@ app.post('/api/ugc/analyze-product', async (req, res) => {
         const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
 
         const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-1.5-flash',
             contents: [
                 {
                     role: 'user',
@@ -1507,6 +1598,214 @@ app.post('/api/music/generate', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+// ============================================================
+// PHASE 5: UGC AD ORCHESTRATION
+// ============================================================
+
+
+// ============================================================
+// UGC PREVIEW SCENE: 2-Step Keyframe → Veo I2V Pipeline
+// Step 1: Generate keyframe (Character + Product fused together)
+// Step 2: Animate keyframe with Veo 3.1 I2V
+// ============================================================
+app.post('/api/ugc/preview-scene', async (req, res) => {
+    const { characterImage, productImage, scene, analysis, aspectRatio = '9:16', duration = 6, nodeId } = req.body;
+    const taskId = nodeId ? `ugc-preview-${nodeId}` : 'ugc-preview';
+
+    try {
+        if (!characterImage || !productImage) {
+            return res.status(400).json({ error: 'Character and product images are required.' });
+        }
+
+        // ── STEP 1: KEYFRAME GENERATION (Direct Gemini API - avoids server circular loop) ─
+        broadcastProgress(taskId, 1, 3, 'Synthesizing scene keyframe...');
+        console.log(`[UGC-PREVIEW] STEP 1 — Keyframe generation for scene: ${scene?.time || 'N/A'}`);
+
+        const keyframePrompt = [
+            scene?.action || scene?.visuals || 'Character holding product confidently',
+            analysis?.synergy ? `Context: ${analysis.synergy}` : '',
+            analysis?.characterTraits?.length ? `Character traits: ${analysis.characterTraits.join(', ')}` : '',
+            'The subject is physically interacting with the product. Professional photography, photorealistic, editorial quality, sharp focus.'
+        ].filter(Boolean).join('. ');
+
+        // Helper: convert image string to inline part for Gemini
+        const toImagePart = async (imgStr) => {
+            if (!imgStr) return null;
+            if (imgStr.startsWith('data:')) {
+                const [meta, b64] = imgStr.split(',');
+                const mime = meta.split(':')[1]?.split(';')[0] || 'image/png';
+                return { inlineData: { data: b64, mimeType: mime } };
+            }
+            if (imgStr.startsWith('http') || imgStr.startsWith('//')) {
+                const fullUrl = imgStr.startsWith('//') ? `https:${imgStr}` : imgStr;
+                const r = await nodeFetch(fullUrl);
+                const buf = await r.arrayBuffer();
+                const b64 = Buffer.from(buf).toString('base64');
+                const mime = r.headers.get('content-type') || 'image/png';
+                return { inlineData: { data: b64, mimeType: mime } };
+            }
+            // assume raw base64
+            return { inlineData: { data: imgStr, mimeType: 'image/png' } };
+        };
+
+        const charPart = await toImagePart(characterImage);
+        const prodPart = await toImagePart(productImage);
+
+        const imageParts = [charPart, prodPart].filter(Boolean);
+
+        // Helper for retrying Gemini/Veo calls
+        const withRetry = async (fn, retries = 3, delay = 2000) => {
+            try {
+                const res = await fn();
+
+                // For fetch objects
+                if (res.status === 429 || res.status === 503 || res.status === 500) {
+                    if (retries > 0) {
+                        console.log(`[UGC-PREVIEW] API limit/error (${res.status}), retrying in ${delay}ms... (${retries} left)`);
+                        await new Promise(r => setTimeout(r, delay));
+                        return withRetry(fn, retries - 1, delay * 2);
+                    }
+                }
+
+                // For the AI SDK results which might throw or have error objects
+                if (res.error && (res.error.code === 429 || res.error.message?.includes('quota'))) {
+                    if (retries > 0) {
+                        console.log(`[UGC-PREVIEW] Logic Quota hit, retrying in ${delay}ms... (${retries} left)`);
+                        await new Promise(r => setTimeout(r, delay));
+                        return withRetry(fn, retries - 1, delay * 2);
+                    }
+                }
+
+                return res;
+            } catch (err) {
+                if (retries > 0 && (err.message?.includes('quota') || err.message?.includes('429') || err.message?.includes('limit'))) {
+                    console.log(`[UGC-PREVIEW] Exception Quota hit, retrying in ${delay}ms... (${retries} left)`);
+                    await new Promise(r => setTimeout(r, delay));
+                    return withRetry(fn, retries - 1, delay * 2);
+                }
+                throw err;
+            }
+        };
+
+        const keyframeResult = await withRetry(() => ai.models.generateContent({
+            model: 'gemini-1.5-pro', // Using stable Pro model for image generation
+            generationConfig: { responseModalities: ['image', 'text'] },
+            contents: [{
+                role: 'user',
+                parts: [
+                    { text: keyframePrompt },
+                    ...imageParts
+                ]
+            }]
+        }));
+
+        const imgPart = keyframeResult.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+        const keyframeUrl = imgPart ? `data:image/png;base64,${imgPart.inlineData.data}` : null;
+
+        if (!keyframeUrl) throw new Error('Keyframe generation failed — Gemini returned no image.');
+        console.log(`[UGC-PREVIEW] ✅ Keyframe ready (${Math.round(keyframeUrl.length / 1024)}KB base64)`);
+
+
+        // ── STEP 2: VEO 3.1 I2V ANIMATION ────────────────────────────
+        broadcastProgress(taskId, 2, 3, 'Animating keyframe with Veo 3.1...');
+        console.log(`[UGC-PREVIEW] STEP 2 — Sending keyframe to Veo I2V`);
+
+        const motionPrompt = [
+            scene?.action || 'Smooth, confident movement',
+            analysis?.suggestedTone ? `Tone: ${analysis.suggestedTone}` : '',
+            'Cinematic 8K quality. Photorealistic. Professional UGC ad production.'
+        ].filter(Boolean).join('. ');
+
+        // Fetch the keyframe and convert to base64 for Veo
+        const apiKey = process.env.GOOGLE_API_KEY;
+        let keyframeBase64 = '';
+        let keyframeMime = 'image/png';
+
+        if (keyframeUrl.startsWith('data:')) {
+            const match = keyframeUrl.match(/^data:([^;]+);base64,/);
+            if (match) keyframeMime = match[1];
+            keyframeBase64 = keyframeUrl.split(',')[1];
+        } else if (keyframeUrl.startsWith('http')) {
+            const imgResp = await nodeFetch(keyframeUrl);
+            const buffer = await imgResp.arrayBuffer();
+            keyframeBase64 = Buffer.from(buffer).toString('base64');
+            const ct = imgResp.headers.get('content-type');
+            if (ct) keyframeMime = ct;
+        } else {
+            keyframeBase64 = keyframeUrl; // raw base64
+        }
+
+        const validDuration = [4, 6, 8].includes(Number(duration)) ? Number(duration) : 6;
+        const validAspectRatio = ['16:9', '9:16', '1:1'].includes(aspectRatio) ? aspectRatio : '9:16';
+        const veoModel = 'veo-3.1-generate-preview';
+        const veoEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${veoModel}:predictLongRunning?key=${apiKey}`;
+
+        const veoBody = {
+            instances: [{
+                prompt: motionPrompt,
+                image: { bytesBase64Encoded: keyframeBase64, mimeType: keyframeMime }
+            }],
+            parameters: {
+                sampleCount: 1,
+                aspectRatio: validAspectRatio,
+                durationSeconds: validDuration
+            }
+        };
+
+        const veoInitResp = await withRetry(() => nodeFetch(veoEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(veoBody)
+        }));
+        const operation = await veoInitResp.json();
+
+        if (operation.error) {
+            console.error('[UGC-PREVIEW] Veo error:', operation.error);
+            throw new Error(operation.error.message || 'Veo I2V initiation failed');
+        }
+
+        console.log(`[UGC-PREVIEW] Veo operation started: ${operation.name}`);
+        broadcastProgress(taskId, 3, 3, 'Rendering video (this takes ~2 min)...');
+
+        // Poll until complete
+        const pollUrl = `https://generativelanguage.googleapis.com/v1beta/${operation.name}?key=${apiKey}`;
+        let attempts = 0;
+        const maxAttempts = 60;
+        while (attempts < maxAttempts) {
+            await new Promise(r => setTimeout(r, 6000));
+            attempts++;
+            const pollResp = await nodeFetch(pollUrl);
+            const opStatus = await pollResp.json();
+            if (opStatus.done) {
+                const videoData = findVideoInResponse(opStatus);
+                if (!videoData) {
+                    console.error('[UGC-PREVIEW] No video data found in response:', JSON.stringify(opStatus, null, 2));
+                    throw new Error('Veo rendered the sequence but returned no accessible video samples (Safety filtered or structure mismatch).');
+                }
+
+                let finalVideoUrl = null;
+                if (videoData.uri) {
+                    finalVideoUrl = `${videoData.uri}&key=${apiKey}`;
+                } else if (videoData.videoBytes || videoData.bytesBase64Encoded) {
+                    const b64 = videoData.videoBytes ? Buffer.from(videoData.videoBytes).toString('base64') : videoData.bytesBase64Encoded;
+                    finalVideoUrl = `data:video/mp4;base64,${b64}`;
+                }
+
+                if (!finalVideoUrl) throw new Error('Failed to assemble video URL from Veo response.');
+
+                console.log(`[UGC-PREVIEW] ✅ Video ready: ${finalVideoUrl.substring(0, 60)}...`);
+                broadcastProgress(taskId, 3, 3, 'Video rendered!');
+                return res.json({ keyframeUrl, videoUrl: finalVideoUrl });
+            }
+        }
+        throw new Error('Veo render timed out after 6 minutes.');
+    } catch (error) {
+        console.error('[UGC-PREVIEW] Pipeline Error:', error);
+        res.status(500).json({ error: error.message || 'UGC preview pipeline failed' });
+    }
+});
+
 
 // ============================================================
 // VEO 3.1 IMAGE-TO-VIDEO ENGINE

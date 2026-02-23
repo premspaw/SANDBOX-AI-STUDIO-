@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
  * Custom React hook for WebSocket connection to the studio server.
  * Provides real-time generation progress updates for the QUEUE tab.
  */
-export function useWebSocket(url = 'ws://localhost:3001') {
+export function useWebSocket(url = 'ws://localhost:3002') {
     const [isConnected, setIsConnected] = useState(false);
     const [tasks, setTasks] = useState({});
     const wsRef = useRef(null);

@@ -20,7 +20,7 @@ export default memo(({ id, data }) => {
         if (isGenerating) return;
         setIsGenerating(true);
         try {
-            const response = await fetch('http://localhost:3001/api/music/generate', {
+            const response = await fetch('http://localhost:3002/api/music/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

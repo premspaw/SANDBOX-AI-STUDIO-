@@ -63,7 +63,7 @@ export default memo(({ id, data }) => {
             const wardrobe = store.currentWardrobe || '';
             const product = store.currentProduct?.description || '';
 
-            const response = await fetch('http://localhost:3001/api/ugc/auto-storyboard', {
+            const response = await fetch('http://localhost:3002/api/ugc/auto-storyboard', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

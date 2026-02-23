@@ -40,6 +40,8 @@ export const useAppStore = create((set, get) => ({
     // React Flow State
     nodes: [],
     edges: [],
+    runtimeMode: 'SERVER', // 'SERVER' | 'STANDALONE'
+    apiKey: '',
     activeNodeId: null,
     viewMode: 'ORBIT', // ORBIT | FOCUS
     focusedNodeId: null,
@@ -67,6 +69,27 @@ export const useAppStore = create((set, get) => ({
     setRepairSession: (session) => set({ repairSession: session }),
     setCurrentWardrobe: (text) => set({ currentWardrobe: text }),
     setCurrentProduct: (data) => set({ currentProduct: data }),
+
+    // Standalone / API Actions
+    setApiKey: (key) => {
+        set({ apiKey: key });
+        if (typeof window !== 'undefined') {
+            window.__VEO_API_KEY__ = key;
+        }
+    },
+    setRuntimeMode: (mode) => set({ runtimeMode: mode }),
+    checkRuntimeMode: async () => {
+        try {
+            const resp = await fetch('http://localhost:3002/api/forge/health');
+            if (resp.ok) {
+                set({ runtimeMode: 'SERVER' });
+            } else {
+                set({ runtimeMode: 'STANDALONE' });
+            }
+        } catch (e) {
+            set({ runtimeMode: 'STANDALONE' });
+        }
+    },
 
     // Dual-Mode Actions
     setOrbitMode: () => set({ viewMode: 'ORBIT', focusedNodeId: null }),
@@ -192,6 +215,25 @@ export const useAppStore = create((set, get) => ({
             data: {
                 script: 'Enter dialogue script...',
                 label: 'VOICE_TRACK',
+                onDelete: (id) => get().deleteNode(id)
+            }
+        };
+        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
+        return id;
+    },
+
+    addUGCEngineNode: (position = { x: 500, y: 500 }) => {
+        const id = `ugc-engine-${Date.now()}`;
+        const newNode = {
+            id,
+            type: 'ugcEngine',
+            position,
+            data: {
+                label: 'UGC_AD_ENGINE',
+                status: 'IDLE',
+                synergy: null,
+                script: null,
+                scenes: [],
                 onDelete: (id) => get().deleteNode(id)
             }
         };

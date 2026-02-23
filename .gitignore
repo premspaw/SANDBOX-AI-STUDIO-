@@ -33,3 +33,10 @@ dist-ssr
 
 # Generated assets
 public/assets/generations/
+public/assets/videos/
+temp/
+
+# Internal Tooling
+.gemini/
+.env
+.env.*

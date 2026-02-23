@@ -25,12 +25,19 @@ import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store';
 
-const API = 'http://localhost:3001';
+const API = 'http://localhost:3002';
 
 // --- Character Kit Card Component ---
 function CharacterKitCard({ character, onDirectorsCut, onDelete }) {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    const resolveUrl = (url) => {
+        if (!url) return null;
+        if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:'))
+            return url;
+        return `${API}${url}`;
+    };
 
     const handleDelete = async (e) => {
         e.stopPropagation();
@@ -69,10 +76,13 @@ function CharacterKitCard({ character, onDirectorsCut, onDelete }) {
         <div className={`group relative bg-[#050505] border ${isDeleting ? 'border-red-500/30 opacity-50' : 'border-white/5'} rounded-[2rem] overflow-hidden hover:border-[#bef264]/30 transition-all duration-700 shadow-2xl flex flex-col`}>
             {/* Anchor Hero Image */}
             <div className="relative aspect-[3/4] overflow-hidden bg-black">
-                {(character.anchorImage || character.image || character.photo) ? (
+                {character.anchorImage ? (
                     <img
-                        src={character.anchorImage?.startsWith('http') || character.anchorImage?.startsWith('data:') ? character.anchorImage : `${API}${character.anchorImage}`}
+                        src={resolveUrl(character.anchorImage)}
                         alt={character.name}
+                        loading="lazy"
+                        decoding="async"
+                        onError={(e) => { e.target.style.display = 'none'; }}
                         className="w-full h-full object-cover brightness-75 group-hover:brightness-100 group-hover:scale-105 transition-all duration-1000"
                     />
                 ) : (
@@ -124,8 +134,10 @@ function CharacterKitCard({ character, onDirectorsCut, onDelete }) {
                         kitImages[slot.key] ? (
                             <div key={slot.key} className="relative aspect-square overflow-hidden rounded-md group/slot">
                                 <img
-                                    src={kitImages[slot.key]}
+                                    src={resolveUrl(kitImages[slot.key])}
                                     alt={slot.label}
+                                    loading="lazy"
+                                    decoding="async"
                                     className="w-full h-full object-cover opacity-60 hover:opacity-100 transition-opacity"
                                 />
                                 <div className="absolute inset-0 flex items-end justify-center pb-0.5 opacity-0 group-hover/slot:opacity-100 transition-opacity">
@@ -176,34 +188,44 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
     const [isNeuralSearch, setIsNeuralSearch] = useState(false);
 
     const fetchAssets = async () => {
-        console.log("AssetsLibrary: fetchAssets starting [PROXY_SERVER_MODE]...");
+        console.log("AssetsLibrary: fetchAssets starting [PARALLEL_PROXY_MODE]...");
         setLoading(true);
         try {
-            let dbImages = [];
-            let dbCharacters = [];
+            // FIX 1 — Run BOTH fetches in PARALLEL
+            const [assetResp, charResp] = await Promise.all([
+                fetch(`${API}/api/list-assets`).catch(() => null),
+                fetch(`${API}/api/list-characters`).catch(() => null),
+            ]);
 
-            // 1. Fetch Assets via Proxy
-            try {
-                const assetResp = await fetch(`${API}/api/list-assets`);
-                const assetData = await assetResp.json();
-                dbImages = assetData.images || [];
-            } catch (e) {
-                console.error("AssetsLibrary: Proxy Assets Fetch Error", e);
-            }
+            const assetData = assetResp ? await assetResp.json() : {};
+            const charData = charResp ? await charResp.json() : {};
 
-            // 2. Fetch Characters via Proxy
-            try {
-                const charResp = await fetch(`${API}/api/list-characters`);
-                const charData = await charResp.json();
-                dbCharacters = charData.characters || [];
-            } catch (e) {
-                console.error("AssetsLibrary: Proxy Characters Fetch Error", e);
-            }
+            const dbImages = assetData.images || [];
+            const rawChars = charData.characters || [];
 
+            console.log("AssetsLibrary: Found characters:", rawChars.length);
+
+            // FIX 2 — MAP character fields correctly (snake_case → camelCase)
+            const dbCharacters = rawChars.map(c => ({
+                id: c.id,
+                name: c.name || c.character_name || 'Anonymous Identity',
+                anchorImage: c.anchor_image   // ← snake_case from DB
+                    || c.anchorImage
+                    || c.image_url
+                    || c.image
+                    || c.photo
+                    || null,
+                visualStyle: c.visual_style || c.visualStyle || 'Realistic',
+                date: c.created_at || c.timestamp
+                    ? new Date(c.created_at || c.timestamp).toLocaleDateString()
+                    : 'Recently',
+                kitImages: c.identity_kit || c.identityKit || c.kitImages || c.kit_images || {},
+                rawData: c,
+            }));
 
             setAssets({
                 images: dbImages,
-                videos: [],
+                videos: assetData.videos || [],
                 characters: dbCharacters,
                 models: [
                     { id: 'm1', name: 'GPT Image 1.5', type: 'Native', size: 'N/A', date: 'Active' },
@@ -211,7 +233,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 ],
                 upscaled: []
             });
-            console.log("AssetsLibrary: State updated successfully via Proxy.");
+            console.log("AssetsLibrary: State updated successfully via Parallel Proxy.");
         } catch (e) {
             console.error("AssetsLibrary: Critical Fetch Assets Error:", e);
         } finally {

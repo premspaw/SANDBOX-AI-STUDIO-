@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { Handle, Position } from 'reactflow';
 import { useAppStore } from '../store';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Maximize2, Video, Play, Trash2, Cpu, Sparkles, MessageSquare, Star, ChevronRight, X } from 'lucide-react';
+import { Maximize2, Video, Play, Trash2, Cpu, Sparkles, MessageSquare, Star, ChevronRight, X, Cloud, Save, Check, Loader2 } from 'lucide-react';
 
 const VideoNode = ({ id, data }) => {
     const { videoUrl, label, onDelete, aspectRatio } = data;
     const { setFocusMode } = useAppStore();
     const [isCritiquing, setIsCritiquing] = useState(false);
     const [critique, setCritique] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isSaved, setIsSaved] = useState(false);
     const bible = useAppStore(state => state.universeBible);
 
     const handleCritique = async () => {
@@ -22,6 +24,38 @@ const VideoNode = ({ id, data }) => {
             console.error("Critique failed:", err);
         } finally {
             setIsCritiquing(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!videoUrl || isSaving || isSaved) return;
+        setIsSaving(true);
+        try {
+            const resp = await fetch('http://localhost:3002/api/save-asset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    imageData: videoUrl, // videoUrl is data URI
+                    fileName: `ugc_video_${Date.now()}.mp4`,
+                    type: 'video'
+                })
+            });
+
+            if (!resp.ok) throw new Error("Save failed");
+            const result = await resp.json();
+
+            // Update node URL to the permanent one if returned
+            if (result.path) {
+                useAppStore.getState().updateNodeData(id, { videoUrl: result.path });
+            }
+
+            setIsSaved(true);
+            setTimeout(() => setIsSaved(false), 3000);
+        } catch (err) {
+            console.error("Save to Assets failed:", err);
+            alert("Failed to save video to Cloud Assets.");
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -52,9 +86,23 @@ const VideoNode = ({ id, data }) => {
                         <Video className="w-3.5 h-3.5 text-[#bef264]" />
                         <span className="text-[10px] font-black uppercase tracking-widest text-white/40">{label || "VIDEO_SEQUENCE"}</span>
                     </div>
-                    <button onClick={() => onDelete(id)} className="p-1 hover:bg-red-500/20 rounded-lg transition-colors group/del">
-                        <Trash2 className="w-3.5 h-3.5 text-white/20 group-hover/del:text-red-400" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                        {videoUrl && (
+                            <button
+                                onClick={handleSave}
+                                disabled={isSaving || isSaved}
+                                className={`p-1 rounded-lg transition-all ${isSaved ? 'bg-[#bef264]/20' : 'hover:bg-white/5'}`}
+                                title="Save to Cloud Assets"
+                            >
+                                {isSaving ? <Loader2 className="w-3.5 h-3.5 text-[#bef264] animate-spin" /> :
+                                    isSaved ? <Check className="w-3.5 h-3.5 text-[#bef264]" /> :
+                                        <Cloud className="w-3.5 h-3.5 text-white/40 hover:text-[#bef264]" />}
+                            </button>
+                        )}
+                        <button onClick={() => onDelete(id)} className="p-1 hover:bg-red-500/20 rounded-lg transition-colors group/del">
+                            <Trash2 className="w-3.5 h-3.5 text-white/20 group-hover/del:text-red-400" />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Player Area */}

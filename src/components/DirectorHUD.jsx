@@ -6,9 +6,10 @@ import {
     Film, X, ChevronRight, Zap, Settings2, Sliders, Layers, CheckCircle2,
     Monitor, Sparkles, Loader2, Save, LayoutGrid, Scissors, PersonStanding,
     Armchair, Move, Sword, Lock, Check, Trash2, Clapperboard,
-    Maximize, Terminal, Music, Volume2, Mic2, Target
+    Maximize, Terminal, Music, Volume2, Mic2, Target, ChevronLeft
 } from "lucide-react";
 import { useAppStore } from "../store";
+import logo from "../assets/acs-icon.svg";
 import { generateCharacterImage, analyzeIdentity, generateDynamicAngles, buildConsistencyRefs, expandPrompt } from "../../geminiService";
 import { saveStoryboardItem, saveGeneratedAsset } from "../supabaseService";
 import { HUD_CONFIG } from "../hudConfig";
@@ -72,6 +73,7 @@ function ControlSelect({ label, icon: Icon, value, options, onChange }) {
 export default function DirectorHUD() {
     const store = useAppStore();
     const [activeTab, setActiveTab] = useState('VISUAL');
+    const [isCollapsed, setIsCollapsed] = useState(true);
     const [selectedPoseId, setSelectedPoseId] = useState(null);
     const [narrativeArc, setNarrativeArc] = useState('');
     const wardrobeRef = useRef(null);
@@ -261,15 +263,27 @@ export default function DirectorHUD() {
     return (
         <motion.div
             initial={{ x: 400, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
+            animate={{ x: isCollapsed ? 315 : 0, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 200, damping: 30 }}
-            className="fixed right-0 top-0 h-screen w-[320px] bg-[#050505]/95 backdrop-blur-3xl border-l border-white/10 shadow-[-50px_0_100px_rgba(0,0,0,0.8)] z-50 flex flex-col overflow-hidden"
+            onMouseEnter={() => setIsCollapsed(false)}
+            className="fixed right-0 top-0 h-screen w-[320px] bg-[#050505]/95 backdrop-blur-3xl border-l border-white/10 shadow-[-50px_0_100px_rgba(0,0,0,0.8)] z-50 flex flex-col overflow-visible"
         >
+            {/* COLLAPSE TOGGLE */}
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setIsCollapsed(!isCollapsed);
+                }}
+                className="absolute left-[-28px] top-1/2 -translate-y-1/2 w-7 h-20 bg-[#050505]/95 border-l border-t border-b border-white/10 rounded-l-xl flex items-center justify-center text-white/40 hover:text-[#bef264] transition-colors z-50 shadow-[-5px_0_15px_rgba(0,0,0,0.5)]"
+            >
+                {isCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+            </button>
+
 
             <div className="flex items-center justify-between p-6 border-b border-white/5">
                 <div>
                     <h2 className="text-white font-black tracking-[0.3em] text-[11px] flex items-center gap-2 italic uppercase font-bold">
-                        <Film className="text-[#bef264]" size={16} />
+                        <img src={logo} alt="ACS" className="w-5 h-5 drop-shadow-[0_0_8px_rgba(212,255,0,0.3)]" />
                         DIRECTOR_CORE_V3
                     </h2>
                     <div className="flex items-center gap-2 mt-1">
@@ -464,6 +478,13 @@ export default function DirectorHUD() {
                             >
                                 <Zap size={16} /> SPAWN_UGC_PIPELINE
                             </button>
+
+                            <button
+                                onClick={() => store.addUGCEngineNode({ x: 500, y: 300 })}
+                                className="w-full py-4 mt-3 bg-gradient-to-r from-[#bef264]/20 to-transparent hover:from-[#bef264]/40 border border-[#bef264]/30 text-[#bef264] rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95"
+                            >
+                                <Sparkles size={16} /> LAUNCH_AD_ENGINE
+                            </button>
                         </HUDSection>
                     </div>
                 )}
@@ -567,7 +588,7 @@ export default function DirectorHUD() {
             <div className="p-5 border-t border-white/5 bg-[#050505] space-y-4">
                 {activeTab === 'VISUAL' && (
                     <>
-                        {/* Node Spawn Strip */}
+                        {/* Secondary Actions */}
                         <div className="flex gap-2 flex-wrap">
                             {[
                                 { label: 'CAM', icon: Camera, fn: () => store.addCameraNode() },
@@ -586,23 +607,6 @@ export default function DirectorHUD() {
                             ))}
                         </div>
 
-                        {/* UGC Studio Nodes */}
-                        <div className="flex gap-2 flex-wrap">
-                            {[
-                                { label: 'OUTFIT', icon: Sparkles, fn: () => store.addWardrobeNode() },
-                                { label: 'PRODUCT', icon: Camera, fn: () => store.addProductNode() },
-                                { label: 'STORY', icon: Clapperboard, fn: () => store.addAutoStoryboardNode() },
-                                { label: 'VEO I2V', icon: Zap, fn: () => store.addVeoI2VNode() },
-                            ].map(btn => (
-                                <button
-                                    key={btn.label}
-                                    onClick={btn.fn}
-                                    className="flex-1 py-2 bg-violet-500/5 border border-violet-500/10 rounded-xl text-[8px] font-black text-violet-400/60 uppercase tracking-wider flex items-center justify-center gap-1.5 hover:bg-violet-500/15 hover:text-violet-300 transition-all active:scale-95"
-                                >
-                                    <btn.icon size={11} /> {btn.label}
-                                </button>
-                            ))}
-                        </div>
 
                         <button
                             onClick={handleMatrixRender}
