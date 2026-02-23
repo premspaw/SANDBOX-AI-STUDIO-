@@ -1,5 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
 import express from 'express';
 import cors from 'cors';
 import Replicate from 'replicate';
@@ -9,6 +11,7 @@ import OpenAI, { toFile } from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import nodeFetch from 'node-fetch';
 import * as geminiService from './geminiService.js';
 import * as audioService from './audioService.js';
 import * as storageService from './storageService.js';
@@ -35,6 +38,27 @@ const port = 3001;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
+/**
+ * Recursive helper to find video data anywhere in a JSON response.
+ * Look for: uri, videoBytes, or bytesBase64Encoded.
+ */
+function findVideoInResponse(obj) {
+    if (!obj || typeof obj !== 'object') return null;
+
+    // Check direct properties
+    if (obj.uri || obj.videoBytes || obj.bytesBase64Encoded) return obj;
+    if (obj.video && (obj.video.uri || obj.video.videoBytes || obj.video.bytesBase64Encoded)) return obj.video;
+
+    // Recurse through arrays or objects
+    for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            const result = findVideoInResponse(obj[key]);
+            if (result) return result;
+        }
+    }
+    return null;
+}
+
 // --- FORGE / IDENTITY PROTOCOL (PRIORITY) ---
 app.get('/api/forge/health', (req, res) => res.json({ status: 'Forge API is Live' }));
 
@@ -54,13 +78,17 @@ app.post('/api/forge/analyze', async (req, res) => {
 // Generate Character Image
 app.post('/api/forge/generate', async (req, res) => {
     try {
-        const { prompt, references, aspect_ratio, resolution } = req.body;
-        const result = await geminiService.generateCharacterImage(
+        const { prompt, references, aspect_ratio, resolution, identity_images, product_image, bible, duration, visualStyle } = req.body;
+        const result = await geminiService.generateCharacterImage({
             prompt,
-            references,
-            aspect_ratio || '1:1',
-            resolution || '1K'
-        );
+            identity_images: identity_images || references,
+            product_image,
+            aspectRatio: aspect_ratio || '1:1',
+            resolution: resolution || '1K',
+            bible,
+            duration,
+            visualStyle
+        });
         res.json({ url: result });
     } catch (error) {
         console.error('Forge Generation Error:', error);
@@ -75,9 +103,15 @@ app.post('/api/proxy/tts', async (req, res) => {
     try {
         const { text, voiceId } = req.body;
         if (!text) throw new Error('No text provided');
-        const result = await audioService.synthesizeSpeech(text, voiceId);
-        if (!result.success) throw new Error(result.error);
-        res.json({ audioContent: result.audioContent });
+
+        console.log(`[SERVER] Synthesizing speech via Gemini Engine for: ${voiceId}`);
+        const audioData = await geminiService.synthesizeSpeech(text, voiceId);
+
+        if (audioData) {
+            return res.json({ audioContent: audioData });
+        }
+
+        throw new Error('Speech synthesis engine (Gemini) failed to return audio data. Please try another voice or script.');
     } catch (error) {
         console.error('TTS Proxy Error:', error);
         res.status(500).json({ error: error.message });
@@ -192,11 +226,46 @@ const supabase = (supabaseUrl && supabaseKey && supabaseUrl.startsWith('https://
     ? createClient(supabaseUrl, supabaseKey)
     : null;
 
-if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.log("[SERVER] Supabase initialized with Service Role (Admin) access.");
+if (supabase) {
+    const isServiceKey = supabaseKey === (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+    console.log(`[SERVER] Supabase initialized. Using ${isServiceKey ? 'Service Role' : 'Anon'} key.`);
+} else {
+    console.warn("[SERVER] Supabase NOT configured. check env variables.");
 }
 
-if (!supabase) console.warn("Supabase not configured in server environment.");
+// Helper: Supabase REST GET with forced IPv4 (bypasses undici/node-fetch IPv6 hang on Node 18)
+import https from 'https';
+function supabaseRestGet(tablePath, timeoutMs = 15000) {
+    return new Promise((resolve, reject) => {
+        const apiKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+        const url = new URL(`${process.env.VITE_SUPABASE_URL}/rest/v1/${tablePath}`);
+        const opts = {
+            hostname: url.hostname,
+            path: url.pathname + url.search,
+            headers: {
+                'apikey': apiKey,
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            family: 4, // Force IPv4
+            timeout: timeoutMs
+        };
+        const req = https.get(opts, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                if (res.statusCode >= 200 && res.statusCode < 300) {
+                    try { resolve(JSON.parse(data)); }
+                    catch (e) { reject(new Error('Invalid JSON from Supabase')); }
+                } else {
+                    reject(new Error(`Supabase REST ${res.statusCode}: ${data.substring(0, 200)}`));
+                }
+            });
+        });
+        req.on('error', reject);
+        req.on('timeout', () => { req.destroy(); reject(new Error('Supabase REST timeout')); });
+    });
+}
 
 // Health Check
 app.get('/', (req, res) => {
@@ -371,6 +440,7 @@ async function handleReplicate(req, res) {
 }
 
 // Handler for Google Models (Nano Banana Native Gen & Veo Video)
+// Handler for Google Models (Nano Banana Native Gen & Veo Video)
 async function handleGoogle(req, res) {
     try {
         const { model, prompt, aspect_ratio, bible } = req.body;
@@ -387,16 +457,27 @@ async function handleGoogle(req, res) {
             let instance = { prompt: prompt };
             if (inputImage) {
                 let imageData = '';
+                let mimeType = 'image/png';
                 if (inputImage.startsWith('data:')) {
+                    const match = inputImage.match(/^data:([^;]+);base64,/);
+                    if (match) mimeType = match[1];
                     imageData = inputImage.split(',')[1];
-                } else if (inputImage.startsWith('http')) {
-                    const imgResp = await fetch(inputImage);
+                } else if (inputImage.startsWith('http') || inputImage.startsWith('//')) {
+                    const fullUrl = inputImage.startsWith('//') ? `https:${inputImage}` : inputImage;
+                    const imgResp = await fetch(fullUrl);
                     const buffer = await imgResp.arrayBuffer();
                     imageData = Buffer.from(buffer).toString('base64');
+                    const contentType = imgResp.headers.get('content-type');
+                    if (contentType) mimeType = contentType;
+                } else if (inputImage.startsWith('/assets/')) {
+                    const localPath = path.join(__dirname, 'public', inputImage);
+                    if (fs.existsSync(localPath)) {
+                        imageData = fs.readFileSync(localPath).toString('base64');
+                    }
                 } else {
                     imageData = inputImage;
                 }
-                instance.image = { bytesBase64Encoded: imageData };
+                instance.image = { bytesBase64Encoded: imageData, mimeType };
             }
 
             const initialResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predictLongRunning?key=${apiKey}`, {
@@ -444,13 +525,22 @@ async function handleGoogle(req, res) {
 
             if (!resultData) throw new Error("Video generation timed out");
 
-            const b64Data = resultData.predictions?.[0]?.bytesBase64Encoded;
-            if (!b64Data) throw new Error("No video data returned from Google");
+            const video = findVideoInResponse(resultData);
+            if (!video) throw new Error("No video data returned from Google");
 
-            return res.json({ url: `data:video/mp4;base64,${b64Data}` });
+            let videoUrl = null;
+            if (video.videoBytes || video.bytesBase64Encoded) {
+                const b64 = video.videoBytes ? Buffer.from(video.videoBytes).toString('base64') : video.bytesBase64Encoded;
+                videoUrl = `data:video/mp4;base64,${b64}`;
+            } else if (video.uri) {
+                const videoResp = await nodeFetch(`${video.uri}&key=${apiKey}`);
+                const videoBuffer = await videoResp.arrayBuffer();
+                videoUrl = `data:video/mp4;base64,${Buffer.from(videoBuffer).toString('base64')}`;
+            }
+
+            return res.json({ url: videoUrl });
         } else {
             // Image Generation uses the Native generateContent API (Nano Banana)
-            // Mapping frontend IDs to official model names
             const modelMapping = {
                 'nano-banana': 'gemini-2.5-flash-image',
                 'nano-banana-pro': 'gemini-3-pro-image-preview'
@@ -458,20 +548,17 @@ async function handleGoogle(req, res) {
 
             const modelName = modelMapping[model] || 'gemini-2.5-flash-image';
 
-            // Pro Features: 4K support and Search Grounding
-            const { google_search, quality } = req.body;
-            let resolution = "1K"; // Default
+            const { google_search, quality, identity_images = [], product_image = null } = req.body;
+            let resolution = "1K";
             if (model === 'nano-banana-pro') {
-                resolution = "2K"; // Pro Default
+                resolution = "2K";
                 if (quality === '4k') resolution = "4K";
                 else if (quality === '1k') resolution = "1K";
                 else if (quality === '2k') resolution = "2K";
             }
 
-            // Clean prompt: Remove --ar flags which confuse Gemini's native parameter logic
-            const cleanPrompt = prompt.replace(/--ar\s+\d+:\d+/g, '').trim();
+            const cleanPrompt = (prompt || '').replace(/--ar\s+\d+:\d+/g, '').trim();
 
-            // Manual Prepend for Bible Context in direct fetch (Mirror geminiService logic)
             let biblePrefix = "";
             if (bible) {
                 biblePrefix = "### NEURAL_UNIVERSE_BIBLE_CONTEXT\n";
@@ -485,23 +572,35 @@ async function handleGoogle(req, res) {
             }
 
             const { images = [], references = [] } = req.body;
-            const inputImages = [...images, ...references].filter(Boolean);
+            const combinedRefs = [...images, ...references, ...identity_images, product_image].filter(Boolean);
+            const inputImages = Array.from(new Set(combinedRefs)); // De-duplicate
 
             const contentParts = await Promise.all(inputImages.map(async (img) => {
                 try {
-                    if (img.startsWith('http')) {
-                        const imageResp = await fetch(img);
+                    let data = '';
+                    let mimeType = 'image/png';
+
+                    if (img.startsWith('data:')) {
+                        mimeType = img.split(';')[0].split(':')[1];
+                        data = img.split(',')[1];
+                    } else if (img.startsWith('http') || img.startsWith('//')) {
+                        const fullUrl = img.startsWith('//') ? `https:${img}` : img;
+                        const imageResp = await fetch(fullUrl);
                         const buffer = await imageResp.arrayBuffer();
-                        return {
-                            inlineData: {
-                                mimeType: "image/png",
-                                data: Buffer.from(buffer).toString('base64')
-                            }
-                        };
+                        data = Buffer.from(buffer).toString('base64');
+                    } else if (img.startsWith('/assets/')) {
+                        const localPath = path.join(__dirname, 'public', img);
+                        if (fs.existsSync(localPath)) {
+                            data = fs.readFileSync(localPath).toString('base64');
+                        }
                     } else {
-                        const data = img.includes('base64,') ? img.split('base64,')[1] : img;
-                        return { inlineData: { mimeType: "image/png", data: data } };
+                        // Fallback if it's already base64 but misses prefix
+                        data = img;
                     }
+
+                    if (!data) return null;
+
+                    return { inlineData: { mimeType, data } };
                 } catch (e) {
                     console.error("Failed to process image reference:", e);
                     return null;
@@ -511,12 +610,12 @@ async function handleGoogle(req, res) {
             const finalPrompt = biblePrefix + cleanPrompt;
             contentParts.push({ text: finalPrompt });
 
-            console.log(`Calling Google ${modelName} (${resolution}, Search: ${!!google_search}, Images: ${inputImages.length}):`, finalPrompt.substring(0, 100));
+            console.log(`Calling Google ${modelName} (${resolution}, Search: ${!!google_search}, Images: ${contentParts.length - 1}):`, finalPrompt.substring(0, 100));
 
             const payload = {
                 contents: [{ parts: contentParts }],
                 generationConfig: {
-                    responseModalities: ["TEXT", "IMAGE"],
+                    responseModalities: ["IMAGE"], // Force image generation
                     imageConfig: {
                         aspectRatio: aspect_ratio || "16:9",
                         imageSize: resolution
@@ -525,7 +624,7 @@ async function handleGoogle(req, res) {
             };
 
             if (google_search || model === 'nano-banana-pro') {
-                payload.tools = [{ google_search: {} }];
+                payload.tools = [{ googleSearch: {} }];
             }
 
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
@@ -547,7 +646,7 @@ async function handleGoogle(req, res) {
 
             if (!imagePart) {
                 console.error("No image part in Google response:", JSON.stringify(data, null, 2));
-                throw new Error(textPart ? `Refusal: ${textPart.text}` : "No image data returned. Ensure billing is enabled for Pro images.");
+                throw new Error(textPart ? `Refusal: ${textPart.text}` : "No image data returned. Ensure the prompt is safe and try again.");
             }
 
             const b64Data = imagePart.inlineData.data;
@@ -680,72 +779,52 @@ async function uploadToDrive(filePath, fileName) {
 // --- ASSET MANAGEMENT ---
 app.get('/api/list-assets', async (req, res) => {
     try {
+        let allImages = [];
         if (supabase) {
-            console.log("[SERVER] Fetching assets from Supabase...");
-            const { data, error } = await supabase
-                .from('assets')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(100);
+            console.log("[SERVER] Checking Supabase for assets (IPv4)...");
+            try {
+                const data = await supabaseRestGet('assets?select=*&order=created_at.desc&limit=100');
+                const dbFormatted = data.map(a => ({
+                    id: a.id,
+                    type: a.type || 'image',
+                    url: a.url || (a.path ? `${storageBase}/${a.path}` : ''),
+                    name: a.name || (a.type === 'video' ? 'AI Video' : 'AI Asset'),
+                    date: a.created_at ? new Date(a.created_at).toISOString().split('T')[0] : 'Today',
+                    size: a.size || 'N/A'
+                }));
+                allImages = [...allImages, ...dbFormatted.filter(a => a.type === 'image')];
+                const allVideos = dbFormatted.filter(a => a.type === 'video');
+                console.log(`[SERVER] ✅ Found ${dbFormatted.length} assets from Supabase.`);
 
-            if (error) {
-                console.error("[SERVER] Supabase Assets Error (non-fatal):", error.message);
-                return res.json({ images: [], videos: [], upscaled: [] });
-            }
-
-            const images = data
-                .filter(a => a.type === 'image')
-                .map(a => {
-                    let url = a.url;
-                    if (!url && a.path) {
-                        try {
-                            const { data: publicUrlData } = supabase.storage.from('identity-assets').getPublicUrl(a.path);
-                            url = publicUrlData?.publicUrl || '';
-                        } catch (e) {
-                            console.error(`Error getting public URL for ${a.path}:`, e);
-                        }
-                    }
-                    return {
-                        id: a.id,
-                        type: 'image',
-                        url: url,
-                        name: a.name || 'Unnamed Asset',
-                        date: a.created_at ? new Date(a.created_at).toISOString().split('T')[0] : 'Unknown',
-                        size: a.size || 'N/A'
-                    };
+                const unique = Array.from(new Map(allImages.map(img => [img.url, img])).values());
+                return res.json({
+                    images: unique.sort((a, b) => b.id.localeCompare(a.id)),
+                    videos: allVideos.sort((a, b) => b.id.localeCompare(a.id)),
+                    upscaled: []
                 });
-
-            // Skip storage folder scanning — all images are already registered
-            // in the 'assets' table when uploaded via /api/proxy/upload.
-            // The old code scanned every subfolder sequentially which was extremely slow.
-
-            // Ensure uniqueness by URL
-            const uniqueImages = Array.from(new Map(images.map(img => [img.url, img])).values());
-
-            return res.json({ images: uniqueImages, videos: [], upscaled: [] });
+            } catch (err) {
+                console.warn("[SERVER] Supabase Assets Fetch failed:", err.message);
+            }
         }
 
-        // Fallback to local
-        console.log("[SERVER] Supabase not active on server, checking local assets...");
-        const assetsDir = path.join(__dirname, 'public', 'assets', 'generations');
-        if (!fs.existsSync(assetsDir)) {
-            return res.json({ images: [], videos: [], upscaled: [] });
-        }
+        try {
+            const assetsDir = path.join(__dirname, 'public', 'assets', 'generations');
+            if (fs.existsSync(assetsDir)) {
+                const files = fs.readdirSync(assetsDir);
+                const local = files.filter(f => /\.(png|jpg|jpeg|webp)$/i.test(f)).map(f => ({
+                    id: `local_${f}`,
+                    type: 'image',
+                    url: `/assets/generations/${f}`,
+                    name: f,
+                    date: fs.statSync(path.join(assetsDir, f)).mtime.toISOString().split('T')[0],
+                    size: (fs.statSync(path.join(assetsDir, f)).size / (1024 * 1024)).toFixed(1) + ' MB'
+                }));
+                allImages = [...allImages, ...local];
+            }
+        } catch (e) { }
 
-        const files = fs.readdirSync(assetsDir);
-        const images = files
-            .filter(file => /\.(png|jpg|jpeg|webp)$/i.test(file))
-            .map(file => ({
-                id: file,
-                type: 'image',
-                url: `/assets/generations/${file}`,
-                name: file,
-                date: fs.statSync(path.join(assetsDir, file)).mtime.toISOString().split('T')[0],
-                size: (fs.statSync(path.join(assetsDir, file)).size / (1024 * 1024)).toFixed(1) + ' MB'
-            }))
-            .sort((a, b) => b.id.localeCompare(a.id));
-
-        res.json({ images, videos: [], upscaled: [] });
+        const unique = Array.from(new Map(allImages.map(img => [img.url, img])).values());
+        res.json({ images: unique.sort((a, b) => b.id.localeCompare(a.id)), videos: [], upscaled: [] });
     } catch (error) {
         console.error('List Assets Error:', error);
         res.status(500).json({ error: error.message });
@@ -756,22 +835,17 @@ app.get('/api/list-characters', async (req, res) => {
     try {
         if (!supabase) return res.json({ characters: [] });
 
-        console.log(`[SERVER] Fetching optimized character list...`);
-
-        const { data, error } = await supabase
-            .from('characters')
-            .select('id, name, image, identity_kit, visual_style, origin, timestamp')
-            .order('timestamp', { ascending: false })
-            .limit(50);
-
-
-
-        if (error) {
-            console.error(`[SERVER] List Characters DB Error (non-fatal):`, error.message);
-            return res.json({ characters: [] });
+        let dbData = [];
+        console.log("[SERVER] Fetching characters via REST (IPv4)...");
+        try {
+            dbData = await supabaseRestGet('characters?select=*&order=timestamp.desc');
+            if (!Array.isArray(dbData)) dbData = [];
+            console.log(`[SERVER] ✅ Found ${dbData.length} characters.`);
+        } catch (err) {
+            console.warn("[SERVER] list-characters fetch failed:", err.message);
         }
 
-
+        const data = dbData;
 
         const formattedChars = (data || []).map(c => {
             // Robust JSON Parsing
@@ -852,13 +926,15 @@ app.delete('/api/delete-character/:id', async (req, res) => {
 
 app.post('/api/save-asset', async (req, res) => {
     try {
-        const { imageData, fileName } = req.body;
-        if (!imageData) throw new Error("No image data provided");
+        const { imageData, fileName, type = 'image' } = req.body;
+        if (!imageData) throw new Error("No asset data provided");
 
-        const name = fileName || `gen_${Date.now()}.png`;
+        const extension = type === 'video' ? 'mp4' : 'png';
+        const mimeType = type === 'video' ? 'video/mp4' : 'image/png';
+        const name = fileName || `gen_${Date.now()}.${extension}`;
 
         // Strip data prefix if present
-        const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
+        const base64Data = imageData.includes('base64,') ? imageData.split(',')[1] : imageData;
         const buffer = Buffer.from(base64Data, 'base64');
         const sizeMB = (buffer.length / (1024 * 1024)).toFixed(2) + ' MB';
 
@@ -866,9 +942,9 @@ app.post('/api/save-asset', async (req, res) => {
 
         // Upload to GCS (PHASE 3)
         try {
-            const gcsUrl = await storageService.uploadToGCS(buffer, name, 'image/png');
+            const gcsUrl = await storageService.uploadToGCS(buffer, name, mimeType);
             if (gcsUrl) publicUrl = gcsUrl;
-            console.log(`[SERVER] Uploaded to GCS: ${publicUrl}`);
+            console.log(`[SERVER] Uploaded ${type} to GCS: ${publicUrl}`);
         } catch (gcsErr) {
             console.error("[SERVER] GCS Upload Error:", gcsErr);
         }
@@ -879,38 +955,60 @@ app.post('/api/save-asset', async (req, res) => {
                 .from('assets')
                 .insert([{
                     name: name,
-                    type: 'image',
+                    type: type,
                     path: name,
                     url: publicUrl || `/assets/generations/${name}`,
-                    size: sizeMB
+                    size: sizeMB,
+                    created_at: new Date().toISOString()
                 }]);
 
             if (dbError) console.error("Supabase DB Insert Error:", dbError);
         }
 
         // Always save locally as backup/cache
-        const assetsDir = path.join(__dirname, 'public', 'assets', 'generations');
+        const subDir = type === 'video' ? 'videos' : 'generations';
+        const assetsDir = path.join(__dirname, 'public', 'assets', subDir);
         if (!fs.existsSync(assetsDir)) {
             fs.mkdirSync(assetsDir, { recursive: true });
         }
         const filePath = path.join(assetsDir, name);
         fs.writeFileSync(filePath, buffer);
-        console.log(`Saved local asset: ${name}`);
-
-        // Mock Drive Sync
-        const driveId = await uploadToDrive(filePath, name);
+        console.log(`Saved local asset: ${name} (${type})`);
 
         res.json({
             success: true,
-            path: publicUrl || `/assets/generations/${name}`,
+            path: publicUrl || `/assets/${subDir}/${name}`,
             name: name,
-            driveId: driveId
+            type: type
         });
     } catch (error) {
         console.error('Save Asset Error:', error);
         res.status(500).json({ error: error.message });
     }
 });
+
+// --- AUTO-RETENTION POLICY: 15 DAYS ---
+setInterval(async () => {
+    if (!supabase) return;
+    try {
+        console.log("[SERVER] Running 15-day auto-retention cleanup...");
+        const fifteenDaysAgo = new Date();
+        fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+
+        const { data: oldAssets, error } = await supabase
+            .from('assets')
+            .delete()
+            .lt('created_at', fifteenDaysAgo.toISOString())
+            .select();
+
+        if (error) throw error;
+        if (oldAssets?.length > 0) {
+            console.log(`[SERVER] Cleaned up ${oldAssets.length} expired assets.`);
+        }
+    } catch (err) {
+        console.error("[SERVER] Retention cleanup failed:", err);
+    }
+}, 1000 * 60 * 60 * 12); // Every 12 hours
 
 // --- AI INFLUENCER ENDPOINTS ---
 
@@ -1169,7 +1267,7 @@ app.post('/api/ugc/generate-hook', async (req, res) => {
         broadcastProgress('ugc-hook', 1, 3, 'Generating viral hook script...');
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: `You are a viral UGC content strategist. Generate a hook script for a ${niche} creator named ${characterName}.
 
 HOOK STYLE: ${hookStyle}
@@ -1230,7 +1328,7 @@ app.post('/api/ugc/generate-captions', async (req, res) => {
         broadcastProgress('ugc-captions', 1, 2, 'Generating caption overlays...');
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: `You are a UGC caption designer. Break this script into caption segments for a ${style} overlay style.
 
 SCRIPT: "${script}"
@@ -1279,7 +1377,7 @@ app.post('/api/ugc/auto-storyboard', async (req, res) => {
         const sceneCount = Math.max(3, Math.round((duration || 30) / 5));
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.1-pro-preview',
             contents: `You are an expert AI Video Director. Combine the following Identity and Product into a photorealistic, natural language 9:16 vertical video storyboard with exactly ${sceneCount} scenes.
 
 STORY CONCEPT: "${prompt}"
@@ -1345,7 +1443,7 @@ app.post('/api/ugc/analyze-product', async (req, res) => {
         const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: [
                 {
                     role: 'user',
@@ -1384,104 +1482,8 @@ Return ONLY valid JSON.` }
 });
 
 // Veo Image-to-Video: Animate a keyframe image into a 5s clip
-app.post('/api/ugc/veo-i2v', async (req, res) => {
-    try {
-        const { image, motionPrompt, duration } = req.body;
-        if (!image) throw new Error('No keyframe image provided');
+// Consolidated Veo I2V Endpoint moved to UGC section below to avoid duplication.
 
-        const apiKey = process.env.GOOGLE_API_KEY;
-        const modelName = 'veo-3.1-generate-preview';
-
-        broadcastProgress('veo-i2v', 1, 3, 'Initiating video generation...');
-
-        // Image Processing: Handle both base64 and URLs
-        let imageData = '';
-        let mimeType = 'image/png';
-
-        if (image.startsWith('data:')) {
-            const base64Match = image.match(/^data:image\/(\w+);base64,(.+)$/);
-            imageData = base64Match ? base64Match[2] : image;
-            mimeType = base64Match ? `image/${base64Match[1]}` : 'image/png';
-        } else if (image.startsWith('http')) {
-            console.log(`[VEO] Fetching image from URL: ${image}`);
-            const imageResp = await fetch(image);
-            if (!imageResp.ok) throw new Error(`Failed to fetch image from URL: ${imageResp.statusText}`);
-            const buffer = await imageResp.arrayBuffer();
-            imageData = Buffer.from(buffer).toString('base64');
-            const contentType = imageResp.headers.get('content-type');
-            if (contentType) mimeType = contentType;
-        } else {
-            imageData = image; // Assume raw base64
-        }
-
-        console.log(`[VEO] Initiating predictLongRunning for ${modelName}...`);
-
-        // 1. Start the long-running operation
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predictLongRunning?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                instances: [{
-                    prompt: motionPrompt || 'Subtle natural movement, cinematic',
-                    image: { bytesBase64Encoded: imageData }
-                }],
-                parameters: {
-                    sampleCount: 1,
-                    aspectRatio: "9:16",
-                    durationSeconds: duration || 5
-                }
-            })
-        });
-
-        const initialData = await response.json();
-        if (initialData.error) {
-            console.error('[VEO] Initiation Error:', JSON.stringify(initialData.error, null, 2));
-            throw new Error(initialData.error.message || "Veo I2V Initiation Failed");
-        }
-
-        const operationName = initialData.name;
-        console.log(`[VEO] Operation started: ${operationName}`);
-        broadcastProgress('veo-i2v', 2, 3, 'Animating with Veo 3.1 (Processing)...');
-
-        // 2. Poll for completion
-        let resultData = null;
-        let attempts = 0;
-        const maxAttempts = 100;
-
-        while (attempts < maxAttempts) {
-            const pollResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${apiKey}`);
-            const pollData = await pollResponse.json();
-
-            if (pollData.error) throw new Error(pollData.error.message || "Poll Failed");
-
-            if (pollData.done) {
-                resultData = pollData.response;
-                break;
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            attempts++;
-
-            if (attempts % 5 === 0) {
-                console.log(`[VEO] Polling... (${attempts * 2}s)`);
-                broadcastProgress('veo-i2v', 2, 3, `Still processing... (${attempts * 2}s)`);
-            }
-        }
-
-        if (!resultData) throw new Error("Video generation timed out after 120s");
-
-        const videoData = resultData.predictions?.[0]?.bytesBase64Encoded;
-        if (!videoData) throw new Error("No video data returned from Veo I2V");
-
-        broadcastProgress('veo-i2v', 3, 3, 'Video animation complete!');
-        broadcastComplete('veo-i2v');
-
-        res.json({ videoUrl: `data:video/mp4;base64,${videoData}` });
-    } catch (error) {
-        console.error('Veo I2V Error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
 
 // ============================================================
 // PHASE 5: MusicFX Score Generation
@@ -1503,6 +1505,160 @@ app.post('/api/music/generate', async (req, res) => {
     } catch (error) {
         console.error('Music Generation Error:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================================
+// VEO 3.1 IMAGE-TO-VIDEO ENGINE
+// Official SDK: ai.models.generateVideos + ai.operations.getVideosOperation
+// Docs: https://ai.google.dev/gemini-api/docs/video
+// ============================================================
+app.post('/api/ugc/veo-i2v', async (req, res) => {
+    try {
+        const { image, motionPrompt, duration = 8, aspectRatio = '16:9', nodeId } = req.body;
+        if (!motionPrompt) throw new Error('No motion prompt provided');
+
+        const taskId = nodeId ? `veo-${nodeId}` : 'veo-default';
+        const validDuration = [4, 6, 8].includes(Number(duration)) ? Number(duration) : 8;
+        const validAspectRatio = ['16:9', '9:16', '1:1'].includes(aspectRatio) ? aspectRatio : '16:9';
+
+        console.log(`[VEO-I2V] Starting | taskId: ${taskId} | duration: ${validDuration}s | ratio: ${validAspectRatio} | image: ${!!image}`);
+
+        // Build the instance object (shared for both SDK and REST formats)
+        let instance = { prompt: motionPrompt };
+
+        if (image) {
+            let imageData = '';
+            let mimeType = 'image/png';
+
+            if (image.startsWith('data:')) {
+                const match = image.match(/^data:([^;]+);base64,/);
+                if (match) mimeType = match[1];
+                imageData = image.split(',')[1];
+            } else if (image.startsWith('http') || image.startsWith('//')) {
+                const fullUrl = image.startsWith('//') ? `https:${image}` : image;
+                const imgResp = await fetch(fullUrl);
+                if (!imgResp.ok) throw new Error(`Failed to fetch input image: ${imgResp.statusText}`);
+                const buffer = await imgResp.arrayBuffer();
+                imageData = Buffer.from(buffer).toString('base64');
+                const contentType = imgResp.headers.get('content-type');
+                if (contentType) mimeType = contentType;
+            } else {
+                imageData = image; // Assume raw base64
+            }
+
+            // Structure for Vertex / AI Studio Predict API
+            instance.image = {
+                bytesBase64Encoded: imageData,
+                mimeType: mimeType
+            };
+        }
+
+        console.log(`[VEO-I2V] Constructed Instance Keys:`, Object.keys(instance), instance.image ? `| image.mimeType: ${instance.image.mimeType}` : '');
+
+        broadcastProgress(taskId, 1, 3, 'Veo 3.1 engine initializing...');
+
+        const modelName = 'veo-3.1-generate-preview';
+        let operation;
+
+        // We prioritize the REST API predictLongRunning as it has been more stable for Veo 3.1 in this environment
+        const apiKey = process.env.GOOGLE_API_KEY;
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predictLongRunning?key=${apiKey}`;
+
+        console.log(`[VEO-I2V] Calling REST API: ${endpoint}`);
+        // Use nodeFetch instead of global fetch for better stability on Node 18
+        const restResponse = await nodeFetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                instances: [instance],
+                parameters: {
+                    sampleCount: 1,
+                    aspectRatio: validAspectRatio,
+                    durationSeconds: validDuration
+                }
+            })
+        });
+
+        operation = await restResponse.json();
+
+        if (operation.error) {
+            console.error(`[VEO-I2V] REST Initiation Error:`, JSON.stringify(operation.error, null, 2));
+            throw new Error(operation.error.message || "REST Initiation Failed");
+        }
+
+        console.log(`[VEO-I2V] Operation started: ${operation.name}`);
+        broadcastProgress(taskId, 2, 3, 'Animating scene (Veo 3.1 Render)...');
+
+        // Poll until done (max ~5 minutes)
+        let attempts = 0;
+        const maxAttempts = 60; // 60 × 6s = 6 minutes
+        let isDone = false;
+        let operationResult = operation;
+
+        while (!isDone && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 6000)); // 6s interval
+
+            try {
+                const pollResp = await nodeFetch(`https://generativelanguage.googleapis.com/v1beta/${operationResult.name}?key=${apiKey}`);
+                if (!pollResp.ok) throw new Error(`HTTP Error: ${pollResp.status}`);
+                operationResult = await pollResp.json();
+
+                if (operationResult.error) {
+                    console.error(`[VEO-I2V] Polling Error:`, JSON.stringify(operationResult.error, null, 2));
+                    throw new Error(operationResult.error.message || "Veo Poll Failed");
+                }
+
+                isDone = operationResult.done;
+            } catch (pollError) {
+                console.warn(`[VEO-I2V] Polling retry due to error: ${pollError.message}`);
+                // Simple retry: wait 2s and continue to next loop iteration
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                continue;
+            }
+
+            attempts++;
+
+            if (attempts % 3 === 0) {
+                const elapsed = attempts * 6;
+                console.log(`[VEO-I2V] [${taskId}] Still generating... (${elapsed}s elapsed)`);
+                broadcastProgress(taskId, 2, 3, `Rendering video... (${elapsed}s)`);
+            }
+        }
+
+        if (!isDone) throw new Error('Video generation timed out after 6 minutes.');
+
+        const video = findVideoInResponse(operationResult);
+
+        if (!video) {
+            console.error(`[VEO-I2V] No video data found. Full response:`, JSON.stringify(operationResult, null, 2));
+            throw new Error('No video returned from Veo 3.1. Structure mismatch or filtered.');
+        }
+
+        let videoUrl = null;
+        if (video.videoBytes || video.bytesBase64Encoded) {
+            const b64 = video.videoBytes ? Buffer.from(video.videoBytes).toString('base64') : video.bytesBase64Encoded;
+            videoUrl = `data:video/mp4;base64,${b64}`;
+        } else if (video.uri) {
+            console.log(`[VEO-I2V] Downloading URI: ${video.uri}`);
+            const videoResp = await nodeFetch(`${video.uri}&key=${apiKey}`);
+            if (!videoResp.ok) throw new Error(`Video download failed: ${videoResp.statusText}`);
+            const videoBuffer = await videoResp.arrayBuffer();
+            videoUrl = `data:video/mp4;base64,${Buffer.from(videoBuffer).toString('base64')}`;
+        }
+
+        if (!videoUrl) throw new Error('Failed to assemble video URL.');
+
+        broadcastProgress(taskId, 3, 3, 'Sequence ready!');
+        broadcastComplete(taskId);
+        console.log(`[VEO-I2V] ✅ [${taskId}] Success`);
+
+        res.json({ videoUrl });
+    } catch (error) {
+        console.error('[VEO-I2V] Error:', error);
+        const taskId = req.body.nodeId ? `veo-${req.body.nodeId}` : 'veo-default';
+        broadcastProgress(taskId, 0, 0, `Error: ${error.message}`);
+        res.status(500).json({ error: error.message || 'Video generation failed' });
     }
 });
 

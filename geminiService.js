@@ -64,20 +64,23 @@ async function withRetry(fn, retries = 3, delay = 1000) {
  * @returns {Promise<string>} - compressed data URL or original
  */
 const compressImageToMax1024 = async (img) => {
-    // URLs are fetched server-side — skip here
-    if (!img || img.startsWith('http')) return img;
-
+    if (!img) return img;
     // Already small enough (<~200KB base64 ≈ ~150KB binary) — skip
-    const rawB64 = img.includes('base64,') ? img.split('base64,')[1] : img;
-    if (rawB64.length < 200_000) return img;
+    const isData = img.startsWith('data:');
+    const isUrl = img.startsWith('http') || img.startsWith('//');
+    const rawB64 = (!isData && !isUrl) ? img : (img.includes('base64,') ? img.split('base64,')[1] : null);
+
+    // If it's base64 and small, skip
+    if (rawB64 && rawB64.length < 200_000) return img;
 
     return new Promise((resolve) => {
         const image = new Image();
+        if (isUrl) image.crossOrigin = "anonymous"; // Needed for canvas if URL
+
         image.onload = () => {
             const MAX = 1024;
             let { width, height } = image;
 
-            // Scale down proportionally
             if (width > MAX || height > MAX) {
                 if (width > height) {
                     height = Math.round((height / width) * MAX);
@@ -94,13 +97,19 @@ const compressImageToMax1024 = async (img) => {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(image, 0, 0, width, height);
 
-            // Re-encode as JPEG 85% quality
             const compressed = canvas.toDataURL('image/jpeg', 0.85);
-            console.log(`[PAYLOAD_OPT] Compressed reference: ${Math.round(rawB64.length / 1024)}KB → ${Math.round(compressed.length / 1024)}KB (${width}×${height}px)`);
+            console.log(`[PAYLOAD_OPT] Compressed image: ${isUrl ? 'URL' : Math.round(rawB64.length / 1024) + 'KB'} → ${Math.round(compressed.length / 1024)}KB (${width}×${height}px)`);
             resolve(compressed);
         };
-        image.onerror = () => resolve(img); // fallback: send original
-        image.src = img.startsWith('data:') ? img : `data:image/png;base64,${rawB64}`;
+        image.onerror = () => resolve(img);
+
+        if (isData) {
+            image.src = img;
+        } else if (isUrl) {
+            image.src = img.startsWith('//') ? `https:${img}` : img;
+        } else {
+            image.src = `data:image/png;base64,${img}`;
+        }
     });
 };
 
@@ -152,20 +161,49 @@ export const buildConsistencyRefs = async ({ kit, anchor, wardrobe, pose, produc
     return refs;
 };
 
+const SYSTEM_PROMPT_EXPANDER = `
+You are an expert AI prompt engineer for high-end, multi-modal image generation pipelines (ControlNet/IP-Adapter). 
+Take the provided JSON payload and rewrite it into a single, flawless, highly descriptive natural language prompt.
+
+CRITICAL ARCHITECTURE RULE: 
+The final image generator will receive actual photos of the 'subject' and the 'productDetails' alongside this text prompt. 
+THEREFORE: 
+1. DO NOT describe physical appearance, clothing, or exact colors/logos. Let the provided image files do the heavy lifting. 
+2. ANTI-LEAKAGE RULE: NEVER use the subject's actual name (e.g., 'Kajol') in the final output prompt. Image generators often have celebrity weights tied to names. 
+3. Use generic identifiers instead: 'the subject', 'the person', 'the woman', or 'the man' based on the 'subjectDescription' context.
+
+RULES:
+1. Fix all typos and bad grammar from the 'userAction'.
+2. Describe HOW the subject is physically interacting with the 'productDetails' based on the 'userAction'.
+3. Place the action in the exact environment requested by the 'userAction', completely ignoring the original product scan background.
+4. CATEGORY STYLING:
+   - "FOOD REVIEW" / "TECH UNBOX": Bright studio lighting, vlog-style, subject looking at camera.
+   - "SKINCARE" / "FASHION": Soft flattering beauty lighting, glowing editorial aesthetic.
+   - "GYM UGC AD": Energetic, high-contrast, fitness environment.
+5. DYNAMIC LENS & FRAMING: Use 'duration' to determine the shot distance:
+   - "15s": Extremely tight, macro close-up shot. Use "100mm macro lens, shallow depth of field."
+   - "30s": Standard portrait/medium shot. Use "50mm or 85mm portrait lens."
+   - "60s": Wide environmental/lifestyle shot. Use "24mm or 35mm wide-angle lens, deep background context."
+6. CAMERA EQUIPMENT OVERRIDE: Look at 'visualStyle': 
+   - If "UGC_Photo": Append "Shot on iPhone 15 Pro Max, Apple ProRAW, computational photography, casual, candid, unedited everyday look."
+   - If "Cinematic": Append "Shot on ARRI Alexa 65, anamorphic lens, cinematic color grading, dramatic volumetric lighting, 8k resolution, cinematic masterpiece."
+7. Output ONLY the final prompt string.
+`;
+
 /**
  * Generates a character image based on prompt and references.
- * @param {string} prompt 
- * @param {string[]} references - Array of base64 image strings
- * @param {'1:1'|'3:4'|'4:3'|'9:16'|'16:9'} aspectRatio 
- * @param {'1K'|'2K'|'4K'} resolution 
+ * @param {object} params
  */
-export const generateCharacterImage = async (
+export const generateCharacterImage = async ({
     prompt,
-    references = [],
+    identity_images = [],
+    product_image = null,
     aspectRatio = '1:1',
     resolution = '1K',
-    bible = null
-) => {
+    bible = null,
+    duration = 30,
+    visualStyle = 'Cinematic'
+}) => {
     return withRetry(async () => {
         try {
             const response = await fetch('http://localhost:3001/api/generate-image', {
@@ -174,10 +212,13 @@ export const generateCharacterImage = async (
                 body: JSON.stringify({
                     model: 'nano-banana-pro',
                     prompt,
-                    references,
+                    identity_images,
+                    product_image,
                     aspect_ratio: aspectRatio,
                     quality: resolution,
-                    bible
+                    bible,
+                    duration,
+                    visualStyle
                 })
             });
 
@@ -204,7 +245,7 @@ export const upscaleImage = async (image, targetRes) => {
 
             const data = image.includes('base64,') ? image.split(',')[1] : image;
 
-            const modelName = 'imagen-4.0-generate-001'; // Using Imagen 4.0 across the stack
+            const modelName = 'gemini-3-pro-image-preview'; // Upgraded to Nano Banana Pro (Gemini 3 Pro)
             const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${apiKey}`;
 
             const response = await fetch(endpoint, {
@@ -213,7 +254,7 @@ export const upscaleImage = async (image, targetRes) => {
                 body: JSON.stringify({
                     instances: [{
                         prompt: "Enhance this image, maintain exact identity, high fidelity textures, cinematic lighting.",
-                        image: { bytesBase64Encoded: data }
+                        image: { bytesBase64Encoded: data, mimeType: 'image/png' }
                     }],
                     parameters: {
                         sampleCount: 1,
@@ -311,12 +352,12 @@ export const generateIdentityKit = async (originImage, style = 'Realistic') => {
 
     // Generate both individual shots and the spatial grid
     const [anchor, profile, expression, halfBody, fullBody, spatialKit] = await Promise.all([
-        generateCharacterImage(prompts.anchor, [originImage], '1:1').catch(() => null),
-        generateCharacterImage(prompts.profile, [originImage], '1:1').catch(() => null),
-        generateCharacterImage(prompts.expression, [originImage], '1:1').catch(() => null),
-        generateCharacterImage(prompts.halfBody, [originImage], '3:4').catch(() => null),
-        generateCharacterImage(prompts.fullBody, [originImage], '9:16').catch(() => null),
-        generateCharacterImage(prompts.spatialKit, [originImage], '1:1', '2K').catch(() => null)
+        generateCharacterImage({ prompt: prompts.anchor, identity_images: [originImage], aspectRatio: '1:1' }).catch(() => null),
+        generateCharacterImage({ prompt: prompts.profile, identity_images: [originImage], aspectRatio: '1:1' }).catch(() => null),
+        generateCharacterImage({ prompt: prompts.expression, identity_images: [originImage], aspectRatio: '1:1' }).catch(() => null),
+        generateCharacterImage({ prompt: prompts.halfBody, identity_images: [originImage], aspectRatio: '3:4' }).catch(() => null),
+        generateCharacterImage({ prompt: prompts.fullBody, identity_images: [originImage], aspectRatio: '9:16' }).catch(() => null),
+        generateCharacterImage({ prompt: prompts.spatialKit, identity_images: [originImage], aspectRatio: '1:1', resolution: '2K' }).catch(() => null)
     ]);
 
     return {
@@ -339,7 +380,7 @@ export const generateSurgicalRepair = async (originalImage, maskImage, repairPro
             const base64Original = originalImage.includes('base64,') ? originalImage.split(',')[1] : originalImage;
             const base64Mask = maskImage.includes('base64,') ? maskImage.split(',')[1] : maskImage;
 
-            const modelName = 'imagen-4.0-generate-001';
+            const modelName = 'gemini-3-pro-image-preview';
             const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${apiKey}`;
 
             const response = await fetch(endpoint, {
@@ -347,19 +388,24 @@ export const generateSurgicalRepair = async (originalImage, maskImage, repairPro
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     instances: [{
-                        prompt: `Repair this image inside the masked area: ${repairPrompt}. Maintain absolute identity and background consistency.`,
-                        image: { bytesBase64Encoded: base64Original }
-                        // Note: Some Imagen endpoints use a separate mask parameter, 
-                        // but for standard repair/edit we often combine instructions or use specific models.
-                        // Defaulting to prompt-based edit for now as it's most compatible.
+                        prompt: `In-paint the masked area: ${repairPrompt}. Ensure seamless blending with the surrounding ${originalImage ? 'pixels' : 'scene'}.`,
+                        image: { bytesBase64Encoded: base64Original },
+                        mask: { image: { bytesBase64Encoded: base64Mask } }
                     }],
                     parameters: {
                         sampleCount: 1,
-                        aspectRatio: "1:1",
+                        editMode: "INPAINT_INSERTING",
+                        maskMode: "MASK_MODE_USER_PROVIDED",
                         outputMimeType: "image/png"
                     }
                 })
             });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("[SURGERY] API Error:", JSON.stringify(errorData));
+                throw new Error(errorData.error?.message || `API Error: ${response.status}`);
+            }
 
             const result = await response.json();
             const base64Image = result.predictions?.[0]?.bytesBase64Encoded;
@@ -371,29 +417,48 @@ export const generateSurgicalRepair = async (originalImage, maskImage, repairPro
     });
 };
 
-export const synthesizeSpeech = async (text, voice = 'Zephyr') => {
+export const synthesizeSpeech = async (text, voice = 'Puck') => {
     try {
         const ai = getAI();
-        // Note: 'gemini-2.5-flash-preview-tts' is hypothetical or specific to a preview. 
-        // Ensuring use of a valid model text if needed, but keeping original logic.
+
+        // Named Gemini voices (from official docs voice list)
+        const namedVoices = ['Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede', 'Zephyr', 'Orion',
+            'Leda', 'Orus', 'Perseus', 'Castor', 'Pollux', 'Cetus', 'Aquila', 'Rigel',
+            'Spica', 'Algieba', 'Despina', 'Erinome', 'Algenib', 'Rasalghul'];
+
+        // For regional code-based voice IDs (e.g. ta-IN-Neural2-A), use Puck as the carrier voice
+        // The model auto-detects the input language, so we just need to write the text in the target language
+        const voiceName = namedVoices.includes(voice) ? voice : 'Puck';
+
+        console.log(`[GEMINI_TTS] voice: ${voiceName} | model: gemini-2.5-pro-tts`);
+
+        // Exact structure from official docs:
+        // https://ai.google.dev/gemini-api/docs/speech-generation
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-2.5-pro-tts",
             contents: [{ parts: [{ text }] }],
             config: {
-                responseModalities: ["AUDIO"],
+                responseModalities: ['AUDIO'],
                 speechConfig: {
                     voiceConfig: {
-                        prebuiltVoiceConfig: { voiceName: voice },
+                        prebuiltVoiceConfig: { voiceName },
                     },
                 },
             },
         });
-        return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
+
+        // Official response path from docs
+        const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        if (!data) {
+            console.error("[GEMINI_TTS] No audio data in response:", JSON.stringify(response?.candidates?.[0]?.content));
+        }
+        return data || null;
     } catch (err) {
-        console.error("Speech synthesis failed:", err);
+        console.error("[GEMINI_TTS] Error:", err?.message || err);
         return null;
     }
 };
+
 
 export const generateLipSyncVideo = async (image, prompt, bible = null) => {
     try {
@@ -405,7 +470,7 @@ export const generateLipSyncVideo = async (image, prompt, bible = null) => {
         const mimeType = meta.split(':')[1]?.split(';')[0] || 'image/png';
 
         let operation = await ai.models.generateVideos({
-            model: 'veo-3.1-fast-generate-preview',
+            model: 'veo-3.1-generate-preview',
             prompt: finalPrompt,
             image: {
                 imageBytes: data,
@@ -443,15 +508,32 @@ export const generateLipSyncVideo = async (image, prompt, bible = null) => {
     }
 };
 
-export const analyzeIdentity = async (base64) => {
+const getBase64FromUrl = async (url) => {
+    const fullUrl = url.startsWith('//') ? `https:${url}` : url;
+    const response = await fetch(fullUrl);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+};
+
+export const analyzeIdentity = async (imageInput) => {
     return withRetry(async () => {
         try {
             const ai = getAI();
+            let base64 = imageInput;
+            if (!base64.startsWith('data:')) {
+                base64 = await getBase64FromUrl(base64);
+            }
+
             const [meta, data] = base64.split(',');
             const mimeType = meta.split(':')[1]?.split(';')[0] || 'image/png';
 
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: 'gemini-3-flash-preview',
                 contents: {
                     parts: [
                         { inlineData: { data, mimeType } },
@@ -467,10 +549,14 @@ export const analyzeIdentity = async (base64) => {
     });
 };
 
-export const generateDynamicAngles = async (base64, name) => {
+export const generateDynamicAngles = async (imageInput, name) => {
     return withRetry(async () => {
         try {
             const ai = getAI();
+            let base64 = imageInput;
+            if (!base64.startsWith('data:')) {
+                base64 = await getBase64FromUrl(base64);
+            }
             const [meta, data] = base64.split(',');
             const mimeType = meta.split(':')[1]?.split(';')[0] || 'image/png';
 
@@ -488,7 +574,7 @@ export const generateDynamicAngles = async (base64, name) => {
       `;
 
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: 'gemini-3-flash-preview',
                 contents: {
                     parts: [
                         { inlineData: { data, mimeType } },
@@ -530,7 +616,7 @@ export const generateBackstory = async (analysis, name) => {
     try {
         const ai = getAI();
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: `Generate a 100-word backstory for ${name} based on this identity analysis: ${analysis}. Be gritty, atmospheric, and professional.`,
         });
         return response.text || "Backstory generation failed.";
@@ -552,11 +638,12 @@ export const generateDetailMatrix = async (name, references) => {
             if (references && references.length > 0) {
                 const ref = references[0];
                 if (ref && ref.includes('base64,')) {
-                    instances[0].image = { bytesBase64Encoded: ref.split(',')[1] };
+                    const mime = ref.split(';')[0].split(':')[1] || 'image/png';
+                    instances[0].image = { bytesBase64Encoded: ref.split(',')[1], mimeType: mime };
                 }
             }
 
-            const modelName = 'imagen-4.0-generate-001';
+            const modelName = 'gemini-3-pro-image-preview';
             const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${apiKey}`;
 
             const response = await fetch(endpoint, {
@@ -582,7 +669,7 @@ export const generateStoryboardDescriptions = async (narrative, count = 4) => {
     try {
         const ai = getAI();
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: `Decompose this narrative arc into ${count} distinct cinematic scene descriptions for a storyboard. 
       NARRATIVE: ${narrative}. 
       Return a JSON array of strings, where each string is a detailed visual prompt focusing on lighting, composition, and character action.
@@ -623,7 +710,7 @@ export const researchProductionContext = async (query) => {
         try {
             const ai = getAI();
             // Using 2.0-flash for real-time search capabilities
-            const model = ai.models.get("gemini-2.0-flash");
+            const model = ai.models.get("gemini-3-flash-preview");
 
             const prompt = `You are a Production Researcher. Conduct deep research on: "${query}". 
             Identify period-accurate details, atmospheric references (lighting/weather), 
@@ -655,7 +742,7 @@ export const generateThinkerSequence = async (narrative, bible = null) => {
         try {
             const ai = getAI();
             const bibleContext = formatBibleContext(bible);
-            const model = ai.models.get("gemini-2.0-flash-thinking-exp");
+            const model = ai.models.get("gemini-3-flash-thinking-preview");
 
             const prompt = `${bibleContext} Narrative Arc: "${narrative}". 
             You are a Master Director in 'Thinking Mode'. Reason through the complexity of this scene. 
@@ -713,7 +800,7 @@ export const generateDirectorSequence = async (narrative, bible = null) => {
         Create a logic chain where components are connected sequentially. Limit to 6 nodes total. Ensure labels are punchy and in ALL_CAPS.`;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: { parts: [{ text: prompt }] },
             config: {
                 responseMimeType: "application/json"
@@ -727,12 +814,17 @@ export const generateDirectorSequence = async (narrative, bible = null) => {
     }
 };
 
-export const analyzeSceneMultimodal = async (image, bible = null) => {
+export const analyzeSceneMultimodal = async (imageInput, bible = null) => {
     try {
         const ai = getAI();
-        const model = 'gemini-2.5-flash';
+        const bibleContext = formatBibleContext(bible);
 
-        const [meta, data] = image.split(',');
+        let base64 = imageInput;
+        if (!base64.startsWith('data:')) {
+            base64 = await getBase64FromUrl(base64);
+        }
+
+        const [meta, data] = base64.split(',');
         const mimeType = meta.split(':')[1]?.split(';')[0] || 'image/png';
 
         const prompt = `${bibleContext} Analyze this scene frame as a cinematic director. 
@@ -745,7 +837,7 @@ export const analyzeSceneMultimodal = async (image, bible = null) => {
         Format as JSON: { "critique": "...", "score": 85, "recommendations": ["...", "..."] }`;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: {
                 parts: [
                     { text: prompt },
@@ -760,7 +852,24 @@ export const analyzeSceneMultimodal = async (image, bible = null) => {
         return JSON.parse(response.text || '{}');
     } catch (err) {
         console.error("Multimodal analysis failed:", err);
-        return { critique: "Neural vision link unstable. Manual review required.", score: 0, recommendations: [] };
+        return { critique: "Analysis failed.", score: 0, recommendations: [] };
+    }
+};
+
+export const expandPrompt = async (payload) => {
+    try {
+        const ai = getAI();
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: [
+                { text: SYSTEM_PROMPT_EXPANDER },
+                { text: JSON.stringify(payload) }
+            ],
+        });
+        return response.text || payload.userAction;
+    } catch (err) {
+        console.error("Prompt expansion failed:", err);
+        return payload.userAction;
     }
 };
 
@@ -768,7 +877,7 @@ export const enhancePrompt = async (prompt) => {
     try {
         const ai = getAI();
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: `As a Cinematography Director, enhance this scene description into a high-fidelity cinematic prompt for an AI image generator. 
           Focus on lighting, lens choice, textures, and atmosphere. Keep the core subject and action identical.
           ORIGINAL: ${prompt}

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Maximize2, Video, Play, Trash2, Cpu, Sparkles, MessageSquare, Star, ChevronRight, X } from 'lucide-react';
 
 const VideoNode = ({ id, data }) => {
-    const { videoUrl, label, onDelete } = data;
+    const { videoUrl, label, onDelete, aspectRatio } = data;
     const { setFocusMode } = useAppStore();
     const [isCritiquing, setIsCritiquing] = useState(false);
     const [critique, setCritique] = useState(null);
@@ -25,9 +25,27 @@ const VideoNode = ({ id, data }) => {
         }
     };
 
+    const nodeWidth = 320;
+    const defaultHeight = 192;
+
+    // Parse ratio strings like "16:9" or "9:16"
+    const getRatio = (r) => {
+        if (!r || typeof r !== 'string' || !r.includes(':')) return 16 / 9;
+        const [w, h] = r.split(':').map(Number);
+        return w / h;
+    };
+
+    const ratioValue = getRatio(aspectRatio);
+    const calculatedHeight = nodeWidth / ratioValue;
+
     return (
-        <div className="relative group">
-            <div className="w-80 h-48 rounded-3xl bg-black/40 backdrop-blur-3xl border border-white/10 overflow-hidden flex flex-col shadow-2xl">
+        <motion.div
+            whileHover={{ scale: 1.25 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+            className="relative group"
+            style={{ width: `${nodeWidth}px`, height: `${calculatedHeight}px` }}
+        >
+            <div className="w-full h-full rounded-3xl bg-black/40 backdrop-blur-3xl border border-white/10 overflow-hidden flex flex-col shadow-2xl">
                 {/* Header */}
                 <div className="px-4 py-2 border-b border-white/5 flex items-center justify-between bg-black/20">
                     <div className="flex items-center gap-2">
@@ -118,7 +136,7 @@ const VideoNode = ({ id, data }) => {
 
             <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-[#bef264] !border-none" />
             <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-[#bef264] !border-none" />
-        </div>
+        </motion.div>
     );
 };
 

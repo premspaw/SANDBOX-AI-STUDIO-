@@ -34,6 +34,7 @@ export default memo(({ id, data }) => {
         <motion.div
             initial={{ opacity: 0, scale: 0.85, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
+            whileHover={{ scale: 1.25 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
             className="group relative px-5 py-4 bg-[#0a0a0a]/90 backdrop-blur-2xl border-2 border-rose-500/20 rounded-2xl min-w-[240px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-rose-500/50 transition-all"
         >

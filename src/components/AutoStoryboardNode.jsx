@@ -3,7 +3,7 @@ import { Handle, Position } from 'reactflow';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Film, X, Loader2, Clapperboard, ChevronRight, Clock, Package } from 'lucide-react';
 import { useAppStore } from '../store';
-import { generateCharacterImage, buildConsistencyRefs } from '../../geminiService';
+import { generateCharacterImage, buildConsistencyRefs, expandPrompt } from '../../geminiService';
 
 const TEMPLATES = [
     { id: 'gym_ugc', label: 'GYM UGC AD', icon: '🏋️', prompt: 'gym influencer workout ad' },
@@ -24,13 +24,21 @@ export default memo(({ id, data }) => {
 
     // Auto-Sync Concept based on connected data
     React.useEffect(() => {
-        if (!userPrompt || userPrompt.includes('cyberpunk gym')) {
-            const charName = store.activeCharacter?.name;
-            const prodName = store.currentProduct?.description?.split(',')[0] || 'the product';
+        if (!userPrompt || userPrompt === 'Awaiting neural assembly...') {
+            const charName = store.activeCharacter?.name || 'the influencer';
+            const product = store.currentProduct;
+            const prodName = product?.description?.split(',')[0] || 'the product';
 
-            if (charName && store.currentProduct?.description) {
-                setUserPrompt(`A high-fashion luxury showcase of ${charName} gracefully wearing and presenting ${prodName}.`);
-            } else if (charName) {
+            // Check if wearable
+            const labels = (product?.labels || []).map(l => l.toLowerCase());
+            const isWearable = labels.some(l =>
+                ['clothing', 'shirt', 'dress', 'hat', 'shoes', 'jewelry', 'garment', 'apparel', 'outfit'].includes(l)
+            );
+
+            if (store.activeCharacter && product?.description) {
+                const verb = isWearable ? 'gracefully wearing and presenting' : 'confidently holding and featuring';
+                setUserPrompt(`A high-fashion luxury showcase of ${charName} ${verb} ${prodName}.`);
+            } else if (store.activeCharacter) {
                 setUserPrompt(`A professional social media video featuring ${charName} in a high-end cinematic setting.`);
             }
         }
@@ -108,27 +116,43 @@ export default memo(({ id, data }) => {
 
                     // Trigger actual image generation for this scene
                     try {
-                        // ✅ CONSISTENCY MODE: smart reference builder (max 4, null-safe)
-                        // Product image takes the role of wardrobe/prop reference
+                        const characterName = store.activeCharacter?.name || 'the influencer';
+                        const characterDesc = store.activeCharacter?.metadata?.imageAnalysis?.description || store.activeCharacter?.personality || 'the subject';
+                        const product = store.currentProduct?.description || 'the product';
                         const productImg = store.currentProduct?.image;
-                        const storyboardRefs = await buildConsistencyRefs({
-                            kit: store.activeCharacter?.identity_kit || store.detailMatrix,
-                            anchor: store.activeCharacter?.image || store.anchorImage,
-                            wardrobe: productImg,   // product acts as the scene prop/wardrobe
-                            pose: null,             // no pose override for storyboard auto-scenes
+
+                        // 1. Expand prompt using the new multi-modal aware logic
+                        const expandedPrompt = await expandPrompt({
+                            subject: characterName,
+                            subjectDescription: characterDesc,
+                            productDetails: product,
+                            userAction: scene.action,
+                            visualStyle: 'Cinematic', // Default or from node data
+                            duration: sceneDuration
                         });
 
-                        const sceneImageUrl = await generateCharacterImage(
-                            scene.prompt,
-                            storyboardRefs,
-                            '9:16',
-                            '1K',
-                            store.universeBible
-                        );
+                        // 2. Prepare identity images (2) and product image (1)
+                        const identityImages = [
+                            store.activeCharacter?.image,
+                            store.activeCharacter?.identity_kit?.anchor
+                        ].filter(Boolean).slice(0, 2);
+
+                        const sceneImageUrl = await generateCharacterImage({
+                            prompt: expandedPrompt,
+                            identity_images: identityImages,
+                            product_image: productImg,
+                            aspectRatio: '9:16',
+                            resolution: '1K',
+                            bible: store.universeBible,
+                            duration: sceneDuration,
+                            visualStyle: 'Cinematic'
+                        });
+
                         if (sceneImageUrl) {
                             store.updateNodeData(sceneNodeId, {
                                 image: sceneImageUrl,
-                                isOptimistic: false
+                                isOptimistic: false,
+                                expandedPrompt: expandedPrompt
                             });
                         }
                     } catch (err) {
@@ -151,6 +175,7 @@ export default memo(({ id, data }) => {
         <motion.div
             initial={{ opacity: 0, scale: 0.85, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
+            whileHover={{ scale: 1.25 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
             className="group relative px-5 py-4 bg-[#0a0a0a]/90 backdrop-blur-2xl border-2 border-violet-500/20 rounded-2xl min-w-[300px] max-w-[320px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-violet-500/50 transition-all"
         >
@@ -212,10 +237,13 @@ export default memo(({ id, data }) => {
                 ))}
             </div>
 
-            {/* Prompt Input */}
             <textarea
                 value={userPrompt}
-                onChange={(e) => setUserPrompt(e.target.value)}
+                onChange={(e) => {
+                    const val = e.target.value;
+                    setUserPrompt(val);
+                    updateNodeData(id, { userPrompt: val, storyboardPrompt: val });
+                }}
                 placeholder="Describe your video vision (e.g. Kajol wearing jewelry in a palace)..."
                 className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-[11px] text-white/80 font-mono resize-none focus:outline-none focus:border-violet-500/40 transition-colors"
                 rows={3}

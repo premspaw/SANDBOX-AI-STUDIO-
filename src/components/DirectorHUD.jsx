@@ -6,11 +6,11 @@ import {
     Film, X, ChevronRight, Zap, Settings2, Sliders, Layers, CheckCircle2,
     Monitor, Sparkles, Loader2, Save, LayoutGrid, Scissors, PersonStanding,
     Armchair, Move, Sword, Lock, Check, Trash2, Clapperboard,
-    Maximize, Terminal, Music, Volume2, Mic2
+    Maximize, Terminal, Music, Volume2, Mic2, Target
 } from "lucide-react";
 import { useAppStore } from "../store";
-import { generateCharacterImage, analyzeIdentity, generateDynamicAngles, buildConsistencyRefs } from "../../geminiService";
-import { saveStoryboardItem } from "../supabaseService";
+import { generateCharacterImage, analyzeIdentity, generateDynamicAngles, buildConsistencyRefs, expandPrompt } from "../../geminiService";
+import { saveStoryboardItem, saveGeneratedAsset } from "../supabaseService";
 import { HUD_CONFIG } from "../hudConfig";
 import { useWebSocket } from "../hooks/useWebSocket";
 
@@ -122,17 +122,26 @@ export default function DirectorHUD() {
                 pose: poseImage,
             });
 
-            const prompt = `SUBJECT: ${activeCharacter.name}. STYLE: ${activeCharacter.visualStyle}. ACTION: ${actionScript || 'Cinematic Portrait'}. OPTICS: ${camera.lens}. PHOTOMETRY: ${camera.lighting}. Highly detailed character photography. ${selectedPoseId ? `Pose Context: ${selectedPoseId}` : ''}`;
+            // 1. Expand prompt for the specific action (strips names)
+            const expandedPrompt = await expandPrompt({
+                subject: activeCharacter.name,
+                subjectDescription: activeCharacter.metadata?.imageAnalysis?.description || activeCharacter.personality || 'the subject',
+                productDetails: store.currentProduct?.description || 'the scene context',
+                userAction: actionScript || 'Cinematic Portrait',
+                visualStyle: activeCharacter.visualStyle,
+                duration: 30
+            });
 
             // Update last generated prompt for UI visibility
-            store.setState(s => ({ ...s, lastGeneratedPrompt: prompt }));
+            store.setState(s => ({ ...s, lastGeneratedPrompt: expandedPrompt }));
 
-            const result = await generateCharacterImage(
-                prompt,
-                references,
-                camera.ratio,
-                camera.resolution
-            );
+            const result = await generateCharacterImage({
+                prompt: expandedPrompt,
+                identity_images: references,
+                product_image: store.currentProduct?.image,
+                aspectRatio: camera.ratio,
+                resolution: camera.resolution
+            });
 
             if (result) {
                 store.updateNodeData(tempId, {
@@ -142,6 +151,7 @@ export default function DirectorHUD() {
                     resolution: camera.resolution
                 });
                 saveStoryboardItem(activeCharacter.id, result, store.nodes.length);
+                saveGeneratedAsset(result, 'image', `materialize_${Date.now()}.png`);
                 store.syncCurrentSession();
             } else {
                 store.deleteNode(tempId);
@@ -210,30 +220,29 @@ export default function DirectorHUD() {
             const renderTasks = ghostNodeIds.map(async (id, i) => {
                 const config = dynamicAngles[i];
 
-                const prompt = `
-          TASK: ${config.label}.
-          DIRECTOR_NOTE: ${config.prompt}
-          
-          SUBJECT IDENTITY: ${activeCharacter.name}.
-          STYLE: ${activeCharacter.visualStyle}
-          
-          CONTEXT_LOCK:
-          - Location: ${activeCharacter.origin} (STRICT LOCATION CONSISTENCY)
-          - Action: ${actionScript || 'Natural interaction with environment'}
-          - Lighting: ${camera.lighting}
-        `;
+                // 1. Expand prompt per angle (strips names)
+                const expandedPrompt = await expandPrompt({
+                    subject: activeCharacter.name,
+                    subjectDescription: activeCharacter.metadata?.imageAnalysis?.description || activeCharacter.personality || 'the subject',
+                    productDetails: store.currentProduct?.description || 'the scene context',
+                    userAction: config.prompt,
+                    visualStyle: activeCharacter.visualStyle,
+                    duration: 30
+                });
 
-                const result = await generateCharacterImage(
-                    prompt,
-                    matrixRefs,   // ✅ Smart consistency refs — same pack for all frames
-                    '1:1',
-                    camera.resolution
-                );
+                const result = await generateCharacterImage({
+                    prompt: expandedPrompt,
+                    identity_images: matrixRefs,
+                    product_image: store.currentProduct?.image,
+                    aspectRatio: '1:1',
+                    resolution: camera.resolution
+                });
 
 
                 if (result) {
                     store.updateNodeData(id, { image: result, isOptimistic: false, label: config.label, resolution: camera.resolution });
                     saveStoryboardItem(activeCharacter.id, result, store.nodes.length + i);
+                    saveGeneratedAsset(result, 'image', `matrix_${config.label}_${Date.now()}.png`);
                 } else {
                     store.deleteNode(id);
                 }
@@ -254,7 +263,7 @@ export default function DirectorHUD() {
             initial={{ x: 400, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 200, damping: 30 }}
-            className="fixed right-0 top-0 h-screen w-[380px] bg-[#050505]/95 backdrop-blur-3xl border-l border-white/10 shadow-[-50px_0_100px_rgba(0,0,0,0.8)] z-50 flex flex-col overflow-hidden"
+            className="fixed right-0 top-0 h-screen w-[320px] bg-[#050505]/95 backdrop-blur-3xl border-l border-white/10 shadow-[-50px_0_100px_rgba(0,0,0,0.8)] z-50 flex flex-col overflow-hidden"
         >
 
             <div className="flex items-center justify-between p-6 border-b border-white/5">
@@ -282,25 +291,25 @@ export default function DirectorHUD() {
             </div>
 
             <div className="flex bg-black/40 border-b border-white/5">
-                {['VISUAL', 'STORYBOARD', 'UGC', 'QUEUE'].map((tab) => (
+                {['VISUAL', 'STORY', 'UGC', 'TRACE'].map((tab) => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`flex-1 py-4 text-[9px] font-black uppercase tracking-[0.2em] transition-all border-b-2 ${activeTab === tab ? (tab === 'QUEUE' ? 'border-cyan-400 text-cyan-400' : tab === 'UGC' ? 'border-orange-400 text-orange-400' : 'border-[#bef264] text-[#bef264]') : 'border-transparent text-white/20 hover:text-white'}`}
+                        className={`flex-1 py-4 text-[9px] font-black uppercase tracking-[0.2em] transition-all border-b-2 ${activeTab === tab ? (tab === 'TRACE' ? 'border-[#bef264] text-[#bef264] bg-[#bef264]/5' : tab === 'UGC' ? 'border-orange-400 text-orange-400' : 'border-[#bef264] text-[#bef264]') : 'border-transparent text-white/20 hover:text-white'}`}
                     >
-                        {tab === 'VISUAL' ? 'Visual' : tab === 'STORYBOARD' ? 'Story' : tab === 'UGC' ? 'UGC' : `Queue (${Object.keys(tasks).length})`}
+                        {tab === 'VISUAL' ? 'Visual' : tab === 'STORY' ? 'Story' : tab === 'UGC' ? 'UGC' : 'Trace'}
                     </button>
                 ))}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-7 space-y-10 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-5 space-y-8 custom-scrollbar">
 
                 {activeTab === 'VISUAL' && (
                     <>
                         <HUDSection title="01 // IDENTITY_ANCHOR" icon={User}>
                             <div className="group relative bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4 transition-all">
                                 <div className="relative shrink-0">
-                                    <img src={store.anchorImage || store.activeCharacter.image} className="w-14 h-14 rounded-xl object-cover border border-[#bef264]/30 grayscale group-hover:grayscale-0 transition-all duration-700" />
+                                    <img src={store.anchorImage || store.activeCharacter.image} className="w-12 h-12 rounded-xl object-cover border border-[#bef264]/30 hover:scale-110 transition-all duration-500" />
                                     <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#bef264] rounded-full flex items-center justify-center border-2 border-black">
                                         <CheckCircle2 size={10} className="text-black" />
                                     </div>
@@ -386,7 +395,7 @@ export default function DirectorHUD() {
                         </HUDSection>
 
                         <HUDSection title="05 // NEURAL_OPTICS" icon={Camera}>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-3">
                                 <ControlSelect label="LENS" icon={Aperture} value={store.camera.lens} options={HUD_CONFIG.lenses} onChange={(v) => updateCamera('lens', v)} />
                                 <ControlSelect label="LIGHT" icon={Sun} value={store.camera.lighting} options={HUD_CONFIG.lighting} onChange={(v) => updateCamera('lighting', v)} />
                                 <ControlSelect label="ANGLE" icon={MapPin} value={store.camera.angle} options={HUD_CONFIG.angles} onChange={(v) => updateCamera('angle', v)} />
@@ -411,7 +420,7 @@ export default function DirectorHUD() {
                     </>
                 )}
 
-                {activeTab === 'STORYBOARD' && (
+                {activeTab === 'STORY' && (
                     <div className="space-y-8">
                         <HUDSection title="NARRATIVE_ARC_SEQUENCER" icon={Clapperboard}>
                             <textarea
@@ -459,42 +468,103 @@ export default function DirectorHUD() {
                     </div>
                 )}
 
-                {activeTab === 'QUEUE' && (
+                {activeTab === 'TRACE' && (
                     <div className="space-y-6">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-red-500'} animate-pulse`} />
-                            <span className="text-[9px] font-mono text-white/30 uppercase tracking-widest">{isConnected ? 'WS_CONNECTED' : 'WS_DISCONNECTED'}</span>
-                        </div>
+                        <HUDSection title="NEURAL_PIPELINE_TRACE" icon={Terminal}>
+                            <p className="text-[9px] text-white/30 italic">Live decomposition of the payload being prepared for the Gemini Neural Bridge.</p>
 
-                        {Object.keys(tasks).length === 0 ? (
-                            <div className="text-center py-16">
-                                <div className="text-white/10 text-[40px] mb-4">⚡</div>
-                                <p className="text-[10px] text-white/20 font-mono uppercase tracking-widest">No active generation tasks</p>
-                                <p className="text-[8px] text-white/10 font-mono mt-1">Tasks will appear here in real-time</p>
-                            </div>
-                        ) : (
-                            Object.entries(tasks).map(([taskId, task]) => (
-                                <div key={taskId} className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest">{taskId}</span>
-                                        <span className="text-[8px] text-white/30 font-mono">{task.step}/{task.total}</span>
-                                    </div>
-                                    <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-gradient-to-r from-cyan-400 to-[#bef264] rounded-full transition-all duration-500"
-                                            style={{ width: `${(task.step / task.total) * 100}%` }}
-                                        />
-                                    </div>
-                                    <p className="text-[8px] text-white/40 font-mono italic">{task.message}</p>
+                            {/* ACTIVE_NODE_CONTEXT */}
+                            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[8px] font-black text-[#bef264] uppercase tracking-widest">Target_Focus</span>
+                                    <span className="text-[8px] text-white/20 font-mono">{store.activeNodeId || 'NONE_SELECTED'}</span>
                                 </div>
-                            ))
-                        )}
+                                {store.activeNodeId ? (
+                                    <div className="flex items-center gap-3 p-2 bg-black/40 rounded-xl">
+                                        <div className="w-8 h-8 rounded-lg bg-[#bef264]/10 flex items-center justify-center text-[#bef264]">
+                                            <Target size={14} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[9px] font-black text-white/80 uppercase">Node_Analysis_Ready</p>
+                                            <p className="text-[7px] text-white/20 uppercase tracking-tighter">Scanning downstream connections...</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="p-3 bg-red-500/5 border border-red-500/20 rounded-xl flex items-center gap-2">
+                                        <X size={12} className="text-red-500" />
+                                        <span className="text-[8px] text-red-400 font-bold uppercase">NO_ACTIVE_SELECTION</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* DETECTED_IDENTITY_REFS */}
+                            <div className="space-y-2">
+                                <h4 className="text-[8px] font-black text-white/40 uppercase tracking-widest ml-1">Identity_Package_Trace (MAX_4)</h4>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {[
+                                        { id: 'AN', img: store.anchorImage || store.activeCharacter?.image, label: 'ANCHOR' },
+                                        { id: 'WD', img: store.wardrobeImage, label: 'WARDROBE' },
+                                        { id: 'PS', img: store.poseImage, label: 'POSE' },
+                                        { id: 'IK', img: store.activeCharacter?.identity_kit?.profile || store.activeCharacter?.identity_kit?.halfBody, label: 'KIT_TRACE' },
+                                    ].map((ref, idx) => (
+                                        <div key={idx} className={`aspect-square rounded-lg border flex flex-col items-center justify-center overflow-hidden transition-all ${ref.img ? 'border-[#bef264]/50 bg-[#bef264]/5' : 'border-white/5 bg-black/20 grayscale'}`}>
+                                            {ref.img ? (
+                                                <img src={ref.img} className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
+                                            ) : (
+                                                <X size={10} className="text-white/10" />
+                                            )}
+                                            <div className="absolute inset-x-0 bottom-0 bg-black/80 py-0.5 text-[5px] text-center font-black uppercase text-white/40">{ref.label}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {(!store.anchorImage && !store.activeCharacter?.image) && (
+                                    <p className="text-[8px] text-orange-400 font-bold uppercase mt-1">⚠️ CRITICAL_MISSING: Primary Identity Anchor</p>
+                                )}
+                            </div>
+
+                            {/* PARAMETER_OVERRIDE_TRACE */}
+                            <div className="space-y-2">
+                                <h4 className="text-[8px] font-black text-white/40 uppercase tracking-widest ml-1">Directive_Override_Stack</h4>
+                                <div className="space-y-1.5 font-mono">
+                                    <div className="flex justify-between p-2 bg-white/5 rounded-lg border border-white/5">
+                                        <span className="text-[8px] text-white/40 uppercase">Optical_Lens</span>
+                                        <span className="text-[8px] text-[#bef264]">{store.camera.lens}</span>
+                                    </div>
+                                    <div className="flex justify-between p-2 bg-white/5 rounded-lg border border-white/5">
+                                        <span className="text-[8px] text-white/40 uppercase">Light_Env</span>
+                                        <span className="text-[8px] text-[#bef264]">{store.camera.lighting}</span>
+                                    </div>
+                                    <div className="flex justify-between p-2 bg-white/5 rounded-lg border border-white/5">
+                                        <span className="text-[8px] text-white/40 uppercase">Aspect_Ratio</span>
+                                        <span className="text-[8px] text-cyan-400">{store.camera.ratio}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* PROMPT_STREAM_TRACE */}
+                            <div className="space-y-2">
+                                <h4 className="text-[8px] font-black text-white/40 uppercase tracking-widest ml-1">Compiled_Prompt_String</h4>
+                                <div className="p-3 bg-black border border-white/10 rounded-xl text-[8px] text-white/60 font-mono leading-relaxed italic h-32 overflow-y-auto custom-scrollbar">
+                                    <span className="text-[7px] text-[#bef264] block mb-1 font-black">PROMPT_HEAD_V3:</span>
+                                    {`SUBJECT: ${store.activeCharacter?.name}. STYLE: ${store.activeCharacter?.visualStyle}. ACTION: ${store.actionScript || '[WAITING_FOR_INPUT]'}. OPTICS: ${store.camera.lens} | ${store.camera.lighting}.`}
+                                </div>
+                            </div>
+
+                            {/* DEBUG_LOG_HISTORY */}
+                            <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-ping" />
+                                    <span className="text-[7px] text-emerald-400 font-black uppercase tracking-widest">Telemetry_OK</span>
+                                </div>
+                                <p className="text-[7px] text-emerald-400/60 leading-tight">Neural Bridge established. Payload within 4MB constraint. Reference images optimized (1024px).</p>
+                            </div>
+                        </HUDSection>
                     </div>
                 )}
 
             </div>
 
-            <div className="p-7 border-t border-white/5 bg-[#050505] space-y-4">
+            <div className="p-5 border-t border-white/5 bg-[#050505] space-y-4">
                 {activeTab === 'VISUAL' && (
                     <>
                         {/* Node Spawn Strip */}
@@ -563,9 +633,9 @@ export default function DirectorHUD() {
                         <button
                             onClick={handleMaterialize}
                             disabled={store.isRendering}
-                            className="w-full group relative py-5 bg-[#bef264] text-black font-black uppercase text-[11px] tracking-[0.3em] rounded-[2.5rem] shadow-2xl shadow-[#bef264]/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                            className="w-full group relative py-4 bg-[#bef264] text-black font-black uppercase text-[10px] tracking-[0.3em] rounded-[2rem] shadow-2xl shadow-[#bef264]/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                         >
-                            {store.isRendering ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} />}
+                            {store.isRendering ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
                             MATERIALIZE_CONSTRUCT
                         </button>
                     </>

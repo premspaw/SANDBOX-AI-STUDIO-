@@ -1,9 +1,14 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
+import { motion } from 'framer-motion';
 import { User, Activity, X, ShieldCheck } from 'lucide-react';
 
 export default memo(({ id, data }) => (
-    <div className="group relative p-1 bg-gradient-to-br from-[#bef264]/40 via-white/5 to-[#bef264]/40 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all hover:scale-105 active:scale-95">
+    <motion.div
+        whileHover={{ scale: 1.25 }}
+        transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+        className="group relative p-1 bg-gradient-to-br from-[#bef264]/40 via-white/5 to-[#bef264]/40 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all"
+    >
         <Handle type="target" position={Position.Top} className="!bg-[#bef264] !border-2 !border-black" />
 
         <button
@@ -46,5 +51,5 @@ export default memo(({ id, data }) => (
         </div>
 
         <Handle type="source" position={Position.Bottom} className="!bg-[#bef264] !border-2 !border-black" />
-    </div>
+    </motion.div>
 ));

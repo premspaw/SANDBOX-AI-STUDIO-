@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { AssetsLibrary } from './AssetsLibrary'
+import { useAppStore } from '../store'
 
 // ─────────────────────────────────────────────
 // CONSTANTS
@@ -368,7 +369,16 @@ const buildNanoBananaProPrompt = (selections) => {
     else if (ap < 80) fstopLabel = 'f/8.0'
     else fstopLabel = 'f/16'
 
-    const subject = selections.subject?.trim() || '[describe your subject here]'
+    const store = useAppStore.getState()
+    const activeChar = store.activeCharacter
+    const charDesc = activeChar?.metadata?.imageAnalysis?.description || activeChar?.personality || ''
+
+    let subject = selections.subject?.trim() || '[describe your subject here]'
+
+    // ANTI-LEAKAGE: If subject is name, swap for description
+    if (activeChar && (subject.toLowerCase() === activeChar.name.toLowerCase() || subject === '[describe your subject here]')) {
+        subject = charDesc || subject
+    }
     const lightingLabel = selections.lighting === 'none' ? 'natural, balanced lighting' : (lighting?.label || 'cinematic lighting')
     const isStyleNone = selections.style === 'none'
     const styleLabel = isStyleNone ? null : (artStyle?.narrative || 'photorealistic')
@@ -452,7 +462,16 @@ const buildNanoBananaPrompt = (selections) => {
     else if (ap < 80) fstopDesc = FSTOP_NARRATIVES['8.0']
     else fstopDesc = FSTOP_NARRATIVES['16']
 
-    const subject = selections.subject?.trim() || 'the subject'
+    const store = useAppStore.getState()
+    const activeChar = store.activeCharacter
+    const charDesc = activeChar?.metadata?.imageAnalysis?.description || activeChar?.personality || ''
+
+    let subject = selections.subject?.trim() || 'the subject'
+
+    // ANTI-LEAKAGE: Swap name for descriptor
+    if (activeChar && (subject.toLowerCase() === activeChar.name.toLowerCase() || subject === 'the subject')) {
+        subject = charDesc || subject
+    }
     const isStyleNone = selections.style === 'none'
 
     // EDITING TEMPLATE (Multi-modal)
@@ -515,7 +534,16 @@ const buildStandardPrompt = (selections, getFStop) => {
     const angle = CAMERA_ANGLES.find(a => a.id === selections.angle)?.label || ''
     const lighting = LIGHTING_STYLES.find(l => l.id === selections.lighting)?.label || ''
     const artStyle = ART_STYLES.find(s => s.id === selections.style)?.label || ''
-    const subject = selections.subject?.trim() || 'the main subject'
+    const store = useAppStore.getState()
+    const activeChar = store.activeCharacter
+    const charDesc = activeChar?.metadata?.imageAnalysis?.description || activeChar?.personality || ''
+
+    let subject = selections.subject?.trim() || 'the main subject'
+
+    // ANTI-LEAKAGE
+    if (activeChar && (subject.toLowerCase() === activeChar.name.toLowerCase() || subject === 'the main subject')) {
+        subject = charDesc || subject
+    }
     const refContext = selections.referenceImage
         ? 'Following the composition and style of the attached reference image, '
         : ''
@@ -720,18 +748,18 @@ export function PromptGenerator({ onUpscale }) {
         document.body.removeChild(link)
     }
 
-    const saveToProject = async (url, slot) => {
+    const saveToProject = async (url, slot, type = 'image') => {
         try {
-            const fileName = `flare_${slot}_${Date.now()}.png`
+            const extension = type === 'video' ? 'mp4' : 'png'
+            const fileName = `flare_${slot}_${Date.now()}.${extension}`
             const resp = await fetch('http://localhost:3001/api/save-asset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ imageData: url, fileName })
+                body: JSON.stringify({ imageData: url, fileName, type })
             })
             const data = await resp.json()
             return data.path
         } catch (e) {
-            console.error('Save Asset Error:', e)
             return null
         }
     }
@@ -749,28 +777,44 @@ export function PromptGenerator({ onUpscale }) {
         setIsLoading(true)
 
         try {
-            const response = await fetch('http://localhost:3001/api/generate-image', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            const endpoint = mode === 'video' ? 'http://localhost:3001/api/ugc/video' : 'http://localhost:3001/api/generate-image';
+
+            // For video, we need an anchor image. If no ref, use character anchor.
+            let videoRef = selections.referenceImage;
+            if (mode === 'video' && !videoRef) {
+                const store = useAppStore.getState();
+                videoRef = store.activeCharacter?.image || store.activeCharacter?.identity_kit?.anchor;
+            }
+
+            const body = mode === 'video'
+                ? { image: videoRef, script: generatedPrompt }
+                : {
                     model: selectedModel,
                     prompt: generatedPrompt,
                     aspect_ratio: selections.aspectRatio,
                     image: selections.referenceImage,
+                    identity_images: selections.identity_images || [],
+                    product_image: selections.product_image || null,
                     quality: selections.quality,
                     google_search: selections.searchGrounding,
                     duration: selections.duration
-                })
+                };
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
             })
 
             const data = await response.json()
             if (!response.ok) throw new Error(data.message || data.error || 'Generation failed')
 
-            if (data.url) {
-                const assetPath = await saveToProject(data.url, slot)
+            const url = data.url || data.videoUrl;
+            if (url) {
+                const assetPath = await saveToProject(url, slot, mode === 'video' ? 'video' : 'image')
                 setOutputs(prev => ({
                     ...prev,
-                    [slot]: { url: data.url, assetPath, model: selectedModel, prompt: generatedPrompt, loading: false }
+                    [slot]: { url, assetPath, model: selectedModel, prompt: generatedPrompt, loading: false }
                 }))
             }
         } catch (error) {

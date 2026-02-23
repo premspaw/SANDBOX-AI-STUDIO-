@@ -13,7 +13,8 @@ const NODE_CONFIG = {
     video: { icon: Film, color: 'cyan', label: 'VIDEO', fields: ['label'] },
     ugcPipeline: { icon: Layers, color: 'orange', label: 'UGC', fields: ['hookScript', 'niche', 'hookStyle'] },
     wardrobe: { icon: Camera, color: 'rose', label: 'WARDROBE', fields: ['outfitDescription'] },
-    product: { icon: Layers, color: 'amber', label: 'PRODUCT_SCAN', fields: ['productDescription'] },
+    identity: { icon: Camera, color: 'emerald', label: 'IDENTITY', fields: ['label'] },
+    product: { icon: Layers, color: 'amber', label: 'PRODUCT_SCAN', fields: ['productDescription', 'productLabels'] },
     autoStoryboard: { icon: Film, color: 'purple', label: 'STORYBOARD', fields: ['storyboardPrompt'] },
     veoI2V: { icon: Zap, color: 'cyan', label: 'VEO_I2V', fields: ['motionPrompt'] },
 };
@@ -39,6 +40,9 @@ export default function PromptBuilder() {
     const currentProduct = useAppStore(s => s.currentProduct);
     const [isVisible, setIsVisible] = React.useState(true);
 
+    // Find the active node itself
+    const activeNode = useMemo(() => nodes.find(n => n.id === activeNodeId), [nodes, activeNodeId]);
+
     // Find all nodes connected to the active node (via edges)
     const connectedNodes = useMemo(() => {
         if (!activeNodeId) return [];
@@ -55,18 +59,19 @@ export default function PromptBuilder() {
 
     // Build the assembled prompt from connected nodes
     const assembledPrompt = useMemo(() => {
-        if (!activeCharacter) return null;
-
         const sections = [];
 
-        sections.push({
-            type: 'identity',
-            color: 'emerald',
-            label: 'IDENTITY',
-            content: `SUBJECT: ${activeCharacter.name} | STYLE: ${activeCharacter.visualStyle || 'Cinematic'}`
-        });
+        // 1. Identity (Active Character or Connected Identity Node)
+        if (activeCharacter) {
+            sections.push({
+                type: 'identity',
+                color: 'emerald',
+                label: 'IDENTITY',
+                content: `SUBJECT: ${activeCharacter.name} | STYLE: ${activeCharacter.visualStyle || 'Cinematic'}`
+            });
+        }
 
-        // Inject global wardrobe if set
+        // 2. Global State Injectors
         if (currentWardrobe) {
             sections.push({
                 type: 'wardrobe-global',
@@ -76,18 +81,19 @@ export default function PromptBuilder() {
             });
         }
 
-        // Inject global product if set
         if (currentProduct?.description) {
             sections.push({
                 type: 'product-global',
                 color: 'amber',
                 label: 'PRODUCT (LOCKED)',
-                content: `PRODUCT: ${currentProduct.description}${currentProduct.labels?.length ? ' | TAGS: ' + currentProduct.labels.join(', ') : ''}`
+                content: `PRODUCT: ${currentProduct.description}${currentProduct.labels?.length ? ' | TAGS: ' + currentProduct.labels.slice(0, 3).join(', ') : ''}`
             });
         }
 
+        // 3. Connected Nodes
         connectedNodes.forEach(node => {
-            // Deduplicate: If this node is the source of global state, don't repeat it
+            // Deduplicate
+            if (node.id === activeNodeId && node.type === 'autoStoryboard') return; // Handled as narrative override
             if (node.type === 'product' && currentProduct?.description) return;
             if (node.type === 'influencer' && activeCharacter) return;
             if (node.type === 'identity' && activeCharacter) return;
@@ -99,15 +105,19 @@ export default function PromptBuilder() {
             config.fields.forEach(field => {
                 const val = node.data?.[field];
                 if (val && val !== '') {
-                    // Cleaner labels for the UI
                     const fieldLabel = field.replace('product', '').replace('Description', '').replace('Prompt', '').toUpperCase() || 'DATA';
-                    parts.push(`${fieldLabel}: ${val}`);
+                    if (Array.isArray(val)) {
+                        if (val.length > 0) parts.push(`${fieldLabel}: ${val.slice(0, 3).join(', ')}`);
+                    } else {
+                        parts.push(`${fieldLabel}: ${val}`);
+                    }
                 }
             });
 
             if (parts.length > 0) {
                 sections.push({
                     type: node.type,
+                    id: node.id,
                     color: config.color,
                     label: config.label,
                     content: parts.join(' | ')
@@ -116,7 +126,7 @@ export default function PromptBuilder() {
         });
 
         return sections;
-    }, [connectedNodes, activeCharacter]);
+    }, [connectedNodes, activeCharacter, currentWardrobe, currentProduct, activeNodeId]);
 
     if (!activeCharacter || connectedNodes.length === 0) return null;
 
@@ -172,21 +182,32 @@ export default function PromptBuilder() {
                             })}
                         </div>
 
-                        {/* Full Prompt Preview (Natural Language) */}
                         <div className="px-4 py-3 border-t border-white/5 bg-black/20">
                             <span className="text-[7px] font-black text-white/20 uppercase tracking-widest block mb-1">BRAIN_TRANSLATION_PREVIEW</span>
                             <p className="text-[10px] text-[#bef264]/90 font-mono leading-relaxed italic">
-                                "{assembledPrompt.length > 0 ? (
-                                    (() => {
-                                        const char = activeCharacter?.name || 'The subject';
-                                        const prodNode = connectedNodes.find(n => n.type === 'product');
-                                        const productDesc = currentProduct?.description || prodNode?.data?.productDescription || '';
-                                        const cleanProd = productDesc.split(',')[0].replace(/showcased on a teal mannequin/i, '').trim();
-                                        const style = activeCharacter?.visualStyle || 'Cinematic';
+                                "{(() => {
+                                    // 1. Check for manual override from active node (Storyboard)
+                                    const override = activeNode?.data?.userPrompt || activeNode?.data?.storyboardPrompt;
+                                    if (override) return override;
 
-                                        return `${style} shot of ${char} gracefully wearing ${cleanProd || 'the item'}.`;
-                                    })()
-                                ) : 'Awaiting neural assembly...'}"
+                                    // 2. Assemble from connected data
+                                    const char = activeCharacter?.name || 'The subject';
+                                    const prodNode = connectedNodes.find(n => n.type === 'product');
+                                    const productDesc = currentProduct?.description || prodNode?.data?.productDescription || '';
+                                    const cleanProd = productDesc.split(',')[0].replace(/showcased on a teal mannequin/i, '').trim();
+                                    const style = activeCharacter?.visualStyle || 'Cinematic';
+
+                                    // Dynamic interaction logic
+                                    const labels = (currentProduct?.labels || prodNode?.data?.productLabels || []).map(l => l.toLowerCase());
+                                    const isWearable = labels.some(l =>
+                                        ['clothing', 'shirt', 'dress', 'hat', 'shoes', 'jewelry', 'garment', 'apparel', 'outfit'].includes(l)
+                                    );
+
+                                    const verb = isWearable ? 'gracefully wearing' : 'presenting';
+                                    const subjectAction = cleanProd ? `${verb} ${cleanProd}` : 'in a professional showcase';
+
+                                    return `${style} shot of ${char} ${subjectAction}.`;
+                                })()}"
                             </p>
                         </div>
                     </motion.div>

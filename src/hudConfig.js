@@ -6,7 +6,8 @@ export const HUD_CONFIG = {
         "50mm Prime",
         "85mm Portrait",
         "100mm Macro",
-        "200mm Telephoto"
+        "200mm Telephoto",
+        "iPhone (Ultra Realistic)"
     ],
     lighting: [
         "Natural Sunlight",

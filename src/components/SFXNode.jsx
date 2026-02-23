@@ -19,6 +19,7 @@ export default memo(({ id, data }) => {
         <motion.div
             initial={{ opacity: 0, scale: 0.85, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
+            whileHover={{ scale: 1.25 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
             className="group relative px-5 py-4 bg-[#0a0a0a]/90 backdrop-blur-2xl border-2 border-yellow-500/20 rounded-2xl min-w-[220px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-yellow-500/50 transition-all">
             <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-yellow-500 !border-2 !border-black" />

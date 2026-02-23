@@ -43,7 +43,14 @@ export default memo(({ id, data }) => {
                 }
             } catch (err) {
                 console.error('Product analysis error:', err);
-                updateNodeData(id, { productDescription: 'Analysis pending — upload succeeded' });
+                const fallback = 'Product scan complete (Analysis failed — click to retry)';
+                updateNodeData(id, { productDescription: fallback });
+                setCurrentProduct({
+                    image: imageData,
+                    description: fallback,
+                    labels: ['product'],
+                    colors: ['#888888']
+                });
             } finally {
                 setIsAnalyzing(false);
             }
@@ -67,6 +74,7 @@ export default memo(({ id, data }) => {
         <motion.div
             initial={{ opacity: 0, scale: 0.85, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
+            whileHover={{ scale: 1.25 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
             className="group relative px-5 py-4 bg-[#0a0a0a]/90 backdrop-blur-2xl border-2 border-amber-500/20 rounded-2xl min-w-[250px] max-w-[280px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-amber-500/50 transition-all"
         >

@@ -8,7 +8,11 @@ import { useAppStore } from '../store';
 export default memo(({ id, data }) => {
     const { setFocusMode } = useAppStore();
     return (
-        <div className="relative group">
+        <motion.div
+            whileHover={{ scale: 1.25 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+            className="relative group"
+        >
             <Handle type="target" position={Position.Top} className="opacity-0 group-hover:opacity-100 transition-opacity" />
 
             {/* Delete button */}
@@ -23,11 +27,11 @@ export default memo(({ id, data }) => {
 
             <motion.div
                 layoutId={`node-frame-${id}`}
-                className={`w-56 h-72 bg-[#0a0a0a] backdrop-blur-3xl border rounded-[2rem] overflow-hidden shadow-2xl transition-all duration-500 ${data.isOptimistic
-                    ? 'border-cyan-400/30 shadow-[0_0_30px_rgba(34,211,238,0.15)]'
+                className={`w-48 h-60 bg-[#0a0a0a] backdrop-blur-3xl border rounded-[1.5rem] overflow-hidden shadow-2xl transition-all duration-500 ${data.isOptimistic
+                    ? 'border-cyan-400/30 shadow-[0_0_25px_rgba(34,211,238,0.12)]'
                     : data.analysisData
-                        ? 'border-[#bef264]/50 shadow-[0_0_30px_rgba(190,242,100,0.2)]'
-                        : 'border-white/10 group-hover:border-[#bef264]/40 shadow-black/80 shadow-2xl'
+                        ? 'border-[#bef264]/40 shadow-[0_0_25px_rgba(190,242,100,0.15)]'
+                        : 'border-white/10 group-hover:border-[#bef264]/30 shadow-black/80 shadow-2xl'
                     }`}
             >
                 {data.isOptimistic ? (
@@ -56,10 +60,10 @@ export default memo(({ id, data }) => {
                         </div>
                         <div className="absolute inset-0 bg-[#bef264]/5 z-10" />
 
-                        <div className="relative z-20 p-5 flex flex-col h-full">
-                            <div className="flex items-center gap-2 mb-3 pb-3 border-b border-[#bef264]/20">
-                                <ScanLine size={14} className="text-[#bef264]" />
-                                <span className="text-[9px] font-black uppercase tracking-widest text-[#bef264]">IDENTITY_KERNEL</span>
+                        <div className="relative z-20 p-4 flex flex-col h-full">
+                            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-[#bef264]/20">
+                                <ScanLine size={12} className="text-[#bef264]" />
+                                <span className="text-[8px] font-black uppercase tracking-widest text-[#bef264]">IDENTITY_KERNEL</span>
                             </div>
                             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
                                 <p className="text-[7px] font-mono text-[#bef264]/80 leading-relaxed whitespace-pre-wrap">
@@ -78,7 +82,7 @@ export default memo(({ id, data }) => {
                             layoutId={`media-${id}`}
                             src={data.image}
                             alt={data.label}
-                            className="w-full h-full object-cover grayscale brightness-[0.4] group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-1000 ease-out"
+                            className="w-full h-full object-cover group-hover:scale-110 transition-all duration-500 ease-out"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
 
@@ -122,12 +126,12 @@ export default memo(({ id, data }) => {
                             </button>
                         </div>
 
-                        <div className="absolute bottom-6 left-6 right-6">
-                            <div className="flex items-center justify-between mb-1">
-                                <span className="text-[8px] font-black uppercase tracking-[0.3em] text-[#bef264] italic">Active_Construct</span>
-                                <Zap size={10} className="text-[#bef264]/40" />
+                        <div className="absolute bottom-4 left-4 right-4">
+                            <div className="flex items-center justify-between mb-0.5">
+                                <span className="text-[7px] font-black uppercase tracking-[0.2em] text-[#bef264] italic">Active_Construct</span>
+                                <Zap size={8} className="text-[#bef264]/40" />
                             </div>
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 block border-t border-white/5 pt-1">{data.label}</span>
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-white/40 block border-t border-white/5 pt-1 truncate">{data.label}</span>
                         </div>
                     </div>
                 )}
@@ -144,6 +148,6 @@ export default memo(({ id, data }) => {
                 position={Position.Bottom}
                 className="!w-4 !h-4 !bg-[#bef264] !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(190,242,100,0.5)] hover:!scale-125 transition-all"
             />
-        </div>
+        </motion.div>
     );
 });

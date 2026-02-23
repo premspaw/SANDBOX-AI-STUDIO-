@@ -216,7 +216,7 @@ export const useAppStore = create((set, get) => ({
         return id;
     },
 
-    addVideoNode: (videoUrl, label, position = { x: 300, y: 300 }) => {
+    addVideoNode: (videoUrl, label, aspectRatio, position = { x: 300, y: 300 }) => {
         const id = `video-${Date.now()}`;
         const newNode = {
             id,
@@ -225,6 +225,7 @@ export const useAppStore = create((set, get) => ({
             data: {
                 videoUrl,
                 label,
+                aspectRatio,
                 onDelete: (id) => get().deleteNode(id)
             }
         };

@@ -39,7 +39,7 @@ function KitCard({ label, image, loading, aspect = "square" }) {
                 </div>
             ) : image ? (
                 <>
-                    <img src={image} alt={label} className="w-full h-full object-cover grayscale brightness-75 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-700" />
+                    <img src={image} alt={label} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500" />
                     <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <CheckCircle2 size={16} className="text-[#bef264]" />
                     </div>
@@ -212,10 +212,10 @@ export function ForgeView({ onComplete }) {
     };
 
     return (
-        <div className="w-full h-full bg-[#050505] p-6 lg:p-12 flex flex-col items-center overflow-hidden">
+        <div className="w-full h-full bg-[#050505] p-4 lg:p-10 flex flex-col items-center overflow-hidden">
 
-            <div className="text-center mb-10 space-y-2">
-                <h1 className="text-5xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-[#bef264] to-emerald-400 tracking-tighter uppercase">
+            <div className="text-center mb-6 space-y-1">
+                <h1 className="text-3xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-[#bef264] to-emerald-400 tracking-tighter uppercase">
                     Identity Forge
                 </h1>
                 <div className="flex items-center justify-center gap-3 opacity-40">
@@ -224,53 +224,54 @@ export function ForgeView({ onComplete }) {
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-8 w-full max-w-7xl h-[75vh]">
+            <div className="flex flex-col lg:flex-row gap-6 w-full max-w-6xl h-[70vh]">
 
                 <div className="lg:w-1/3 flex flex-col gap-6 h-full">
                     <div
                         onClick={() => fileRef.current?.click()}
-                        className="flex-1 bg-[#0a0a0a] border-2 border-dashed border-white/10 rounded-[2.5rem] flex flex-col items-center justify-center relative overflow-hidden group hover:border-[#bef264]/40 transition-all cursor-pointer"
+                        className="flex-1 bg-[#0a0a0a] border-2 border-dashed border-white/10 rounded-[2rem] flex flex-col items-center justify-center relative overflow-hidden group hover:border-[#bef264]/40 transition-all cursor-pointer"
                     >
                         {origin ? (
                             <>
                                 <img src={origin} alt="Origin" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80" />
-                                <div className="absolute bottom-6 left-0 right-0 text-center">
-                                    <p className="text-[#bef264] text-[10px] font-black uppercase tracking-[0.3em]">Origin Signal Locked</p>
+                                <div className="absolute bottom-4 left-0 right-0 text-center">
+                                    <p className="text-[#bef264] text-[8px] font-black uppercase tracking-[0.3em]">Origin Signal Locked</p>
                                 </div>
                             </>
                         ) : (
-                            <div className="flex flex-col items-center gap-4 opacity-40 group-hover:opacity-100 transition-opacity">
-                                <div className="p-6 bg-white/5 rounded-full border border-white/10 group-hover:scale-110 transition-transform">
-                                    <Upload size={32} className="text-[#bef264]" />
+                            <div className="flex flex-col items-center gap-3 opacity-40 group-hover:opacity-100 transition-opacity">
+                                <div className="p-4 bg-white/5 rounded-full border border-white/10 group-hover:scale-110 transition-transform">
+                                    <Upload size={24} className="text-[#bef264]" />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Inject Biological Anchor</span>
+                                <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white text-center px-4 leading-tight">Inject Biological Anchor</span>
                             </div>
                         )}
                         <input type="file" ref={fileRef} className="hidden" onChange={handleFileUpload} accept="image/*" />
                     </div>
 
-                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 space-y-4">
-                        <div className="space-y-2">
-                            <label className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Construct Designation</label>
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
+                        <div className="space-y-1">
+                            <label className="text-[8px] font-bold text-white/30 uppercase tracking-widest">Construct Designation</label>
                             <input
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm font-black text-white uppercase tracking-wider focus:border-[#bef264] outline-none transition-colors"
+                                className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs font-black text-white uppercase tracking-wider focus:border-[#bef264] outline-none transition-colors"
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Visual Matrix</label>
+                        <div className="space-y-1">
+                            <label className="text-[8px] font-bold text-white/30 uppercase tracking-widest">Visual Matrix</label>
                             <div className="relative">
                                 <select
                                     value={style}
                                     onChange={(e) => setStyle(e.target.value)}
-                                    className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm font-black text-white uppercase tracking-wider focus:border-[#bef264] outline-none transition-colors appearance-none cursor-pointer hover:bg-black/60"
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs font-black text-white uppercase tracking-wider focus:border-[#bef264] outline-none transition-colors appearance-none cursor-pointer hover:bg-black/60"
                                 >
                                     <option value="Realistic">Realistic</option>
                                     <option value="Ultra Realistic">Ultra Realistic (Raw)</option>
+                                    <option value="iPhone">iPhone (Shot on iPhone)</option>
                                     <option value="Cinematic">Cinematic</option>
                                     <option value="Anime">Anime</option>
                                     <option value="Cartoon">Cartoon</option>
@@ -287,9 +288,9 @@ export function ForgeView({ onComplete }) {
                     <button
                         onClick={handleForge}
                         disabled={!origin || isForging}
-                        className="bg-[#bef264] text-black font-black text-xs uppercase tracking-[0.3em] py-6 rounded-[2rem] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-20 disabled:scale-100 shadow-[0_0_40px_rgba(190,242,100,0.2)] flex items-center justify-center gap-3"
+                        className="bg-[#bef264] text-black font-black text-[10px] uppercase tracking-[0.3em] py-5 rounded-[1.5rem] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-20 disabled:scale-100 shadow-[0_0_30px_rgba(190,242,100,0.15)] flex items-center justify-center gap-3"
                     >
-                        {isForging ? <RefreshCw className="animate-spin" size={16} /> : <Zap size={16} fill="currentColor" />}
+                        {isForging ? <RefreshCw className="animate-spin" size={14} /> : <Zap size={14} fill="currentColor" />}
                         {isForging ? "Synthesizing DNA..." : "Initialize Construct"}
                     </button>
                 </div>

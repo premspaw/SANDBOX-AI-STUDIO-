@@ -71,7 +71,7 @@ function CharacterKitCard({ character, onDirectorsCut, onDelete }) {
             <div className="relative aspect-[3/4] overflow-hidden bg-black">
                 {(character.anchorImage || character.image || character.photo) ? (
                     <img
-                        src={character.anchorImage || character.image || character.photo}
+                        src={character.anchorImage?.startsWith('http') || character.anchorImage?.startsWith('data:') ? character.anchorImage : `${API}${character.anchorImage}`}
                         alt={character.name}
                         className="w-full h-full object-cover brightness-75 group-hover:brightness-100 group-hover:scale-105 transition-all duration-1000"
                     />
@@ -445,33 +445,49 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
                         {assets[activeTab].map(item => (
                             <div key={item.id} className="group relative surface-glass rounded-[2.5rem] border border-white/5 overflow-hidden hover:border-[#bef264]/40 transition-all duration-700 shadow-2xl">
-                                <div className="aspect-[4/5] bg-[#050505] relative overflow-hidden">
-                                    <img
-                                        src={item.url}
-                                        alt={item.name}
-                                        className="w-full h-full object-cover transition-all duration-1000 brightness-75 group-hover:brightness-110 group-hover:scale-110"
-                                    />
-
-                                    {/* Action Overlay */}
-                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-700 flex items-center justify-center gap-4">
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); onSelectReference?.(item.url); }}
-                                            className="w-14 h-14 bg-[#bef264] hover:scale-110 active:scale-95 rounded-full text-black flex items-center justify-center shadow-[0_0_40px_rgba(190,242,100,0.6)] transition-all"
-                                            title="Set as Neural Anchor"
-                                        >
-                                            <ImagePlus className="w-7 h-7" />
-                                        </button>
-                                        <button className="w-14 h-14 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md flex items-center justify-center transition-all border border-white/10" title="Archive">
-                                            <Download className="w-7 h-7" />
-                                        </button>
-                                    </div>
-
-                                    {item.isCharacter && (
-                                        <div className="absolute top-6 left-6 bg-[#bef264] text-black text-[9px] font-black px-4 py-1.5 rounded-full uppercase shadow-lg tracking-widest">
-                                            IDENTITY
+                                {item.type === 'video' ? (
+                                    <div className="aspect-[4/5] bg-black relative flex items-center justify-center group/video">
+                                        <video
+                                            src={item.url?.startsWith('http') || item.url?.startsWith('data:') ? item.url : `${API}${item.url}`}
+                                            className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
+                                            muted
+                                            loop
+                                            onMouseEnter={(e) => e.target.play()}
+                                            onMouseLeave={(e) => e.target.pause()}
+                                        />
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity">
+                                            <Film className="w-12 h-12 text-white/20" />
                                         </div>
-                                    )}
+                                    </div>
+                                ) : (
+                                    <div className="aspect-[4/5] bg-[#050505] relative overflow-hidden">
+                                        <img
+                                            src={item.url?.startsWith('http') || item.url?.startsWith('data:') ? item.url : `${API}${item.url}`}
+                                            alt={item.name}
+                                            className="w-full h-full object-cover transition-all duration-1000 brightness-75 group-hover:brightness-110 group-hover:scale-110"
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Action Overlay */}
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-700 flex items-center justify-center gap-4">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onSelectReference?.(item.url); }}
+                                        className="w-14 h-14 bg-[#bef264] hover:scale-110 active:scale-95 rounded-full text-black flex items-center justify-center shadow-[0_0_40px_rgba(190,242,100,0.6)] transition-all"
+                                        title="Set as Neural Anchor"
+                                    >
+                                        <ImagePlus className="w-7 h-7" />
+                                    </button>
+                                    <button className="w-14 h-14 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md flex items-center justify-center transition-all border border-white/10" title="Archive">
+                                        <Download className="w-7 h-7" />
+                                    </button>
                                 </div>
+
+                                {item.isCharacter && (
+                                    <div className="absolute top-6 left-6 bg-[#bef264] text-black text-[9px] font-black px-4 py-1.5 rounded-full uppercase shadow-lg tracking-widest">
+                                        IDENTITY
+                                    </div>
+                                )}
 
                                 <div className="p-8">
                                     <div className="text-xs font-black uppercase tracking-widest text-white/90 group-hover:text-[#bef264] transition-colors truncate">{item.name}</div>
@@ -485,6 +501,6 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }

@@ -52,3 +52,25 @@ export const saveStoryboardItem = async (characterId, imageUrl, orderIndex) => {
         console.error("Proxy save storyboard failed:", err);
     }
 };
+
+/**
+ * Saves a generated image or video asset to the library.
+ */
+export const saveGeneratedAsset = async (data, type = 'image', name = null) => {
+    try {
+        const response = await fetch(`${API}/api/save-asset`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                imageData: data, // Could be image or video dataUrl
+                fileName: name,
+                type: type
+            })
+        });
+        const result = await response.json();
+        return result.path || null;
+    } catch (err) {
+        console.error("Save asset failed:", err);
+        return null;
+    }
+};

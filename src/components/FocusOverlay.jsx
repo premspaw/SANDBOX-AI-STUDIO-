@@ -68,7 +68,19 @@ export const FocusOverlay = () => {
             store.updateNodeData(focusedNodeId, { isOptimistic: true, label: 'REMAPPING_IDENTITY...' });
 
             try {
-                const { generateCharacterImage, buildConsistencyRefs } = await import('../../geminiService');
+                const { generateCharacterImage, buildConsistencyRefs, expandPrompt } = await import('../../geminiService');
+
+                // 1. Expand prompt for the variation
+                const expandedPrompt = await expandPrompt({
+                    subject: store.activeCharacter.name,
+                    subjectDescription: store.activeCharacter.metadata?.imageAnalysis?.description || store.activeCharacter.personality || 'the subject',
+                    productDetails: store.currentProduct?.description || 'the scene context',
+                    userAction: store.actionScript || 'A different cinematic angle and expression of the subject',
+                    visualStyle: 'Cinematic',
+                    duration: 30
+                });
+
+                // 2. Build references
                 const references = await buildConsistencyRefs({
                     kit: store.activeCharacter.identity_kit || store.detailMatrix,
                     anchor: store.anchorImage,
@@ -76,21 +88,25 @@ export const FocusOverlay = () => {
                     pose: store.poseImage,
                 });
 
-                const prompt = `SUBJECT: ${store.activeCharacter.name}. VARIATION: Alternative angle/expression. STYLE: ${store.activeCharacter.visualStyle}. ${store.actionScript || 'Cinematic Portrait'}.`;
-
-                const result = await generateCharacterImage(
-                    prompt,
-                    references,
-                    store.camera.ratio,
-                    store.camera.resolution
-                );
+                const result = await generateCharacterImage({
+                    prompt: expandedPrompt,
+                    identity_images: references,
+                    product_image: store.currentProduct?.image,
+                    aspectRatio: store.camera.ratio,
+                    resolution: store.camera.resolution,
+                    bible: store.universeBible
+                });
 
                 if (result) {
                     store.updateNodeData(focusedNodeId, {
                         image: result,
                         isOptimistic: false,
-                        label: 'REMAPPED_OUTPUT'
+                        label: 'REMAPPED_OUTPUT',
+                        expandedPrompt: expandedPrompt
                     });
+
+                    const { saveGeneratedAsset } = await import('../supabaseService');
+                    saveGeneratedAsset(result, 'image', `remap_${focusedNodeId}_${Date.now()}.png`);
                 } else {
                     store.updateNodeData(focusedNodeId, { isOptimistic: false });
                 }
@@ -120,6 +136,9 @@ export const FocusOverlay = () => {
                     isOptimistic: false,
                     label: 'SURGERY_SUCCESS'
                 });
+
+                const { saveGeneratedAsset } = await import('../supabaseService');
+                saveGeneratedAsset(result, 'image', `surgery_${focusedNodeId}_${Date.now()}.png`);
                 setIsSurgeryMode(false);
             } else {
                 store.updateNodeData(focusedNodeId, { isOptimistic: false });

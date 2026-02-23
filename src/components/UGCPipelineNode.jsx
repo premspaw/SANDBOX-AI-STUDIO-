@@ -63,6 +63,12 @@ export default memo(({ id, data }) => {
             });
             const avatarData = await avatarRes.json();
             setResults(r => ({ ...r, avatar: avatarData }));
+
+            if (avatarData.image) {
+                const { saveGeneratedAsset } = await import('../supabaseService');
+                saveGeneratedAsset(avatarData.image, 'image', `ugc_avatar_${id}_${Date.now()}.png`);
+            }
+
             setPhaseStatus(p => ({ ...p, avatar: avatarData.error ? 'ERROR' : 'COMPLETE' }));
 
             // Phase 3: Caption Overlay
@@ -99,6 +105,7 @@ export default memo(({ id, data }) => {
         <motion.div
             initial={{ opacity: 0, scale: 0.8, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
+            whileHover={{ scale: 1.25 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
             className="group relative bg-[#0a0a0a]/95 backdrop-blur-2xl border-2 border-orange-500/20 rounded-2xl min-w-[300px] shadow-[0_20px_60px_rgba(0,0,0,0.5)] hover:border-orange-500/50 transition-all overflow-hidden"
         >
