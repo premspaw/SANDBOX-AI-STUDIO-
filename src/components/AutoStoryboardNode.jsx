@@ -375,8 +375,11 @@ export default memo(({ id, data }) => {
                 </div>
             </div>
 
-            <Handle type="source" position={Position.Right}
-                className="!w-4 !h-4 !bg-violet-500 !border-4 !border-[#050505] !shadow-lg hover:!scale-125 transition-all handle-story font-black"
+            <MagneticHandle
+                type="source"
+                position={Position.Right}
+                color="#8b5cf6"
+                className="handle-story"
             />
         </motion.div>
     );

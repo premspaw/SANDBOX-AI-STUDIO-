@@ -15,7 +15,7 @@ export default memo(({ id, data }) => {
             style={{ zIndex: 1 }}
             className="relative group"
         >
-            <Handle type="target" position={Position.Left} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+            <MagneticHandle type="target" position={Position.Left} color="#bef264" className="opacity-0 group-hover:opacity-100 transition-opacity" />
 
             {/* Delete button */}
             <div className="absolute -top-4 -left-4 z-[50] opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100">
