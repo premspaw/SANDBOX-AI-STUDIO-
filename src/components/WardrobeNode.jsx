@@ -22,10 +22,13 @@ const CATEGORIES = [
 export default memo(({ id, data }) => {
     const updateNodeData = useAppStore(s => s.updateNodeData);
     const setCurrentWardrobe = useAppStore(s => s.setCurrentWardrobe);
+    const edges = useAppStore(s => s.edges);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState('eyewear');
     const fileInputRef = useRef(null);
 
+    const isTargetConnected = edges.some(e => e.target === id);
+    const isSourceConnected = edges.some(e => e.source === id);
     const items = data.items || [];
 
     const onFileChange = async (e) => {
@@ -93,7 +96,7 @@ export default memo(({ id, data }) => {
         >
             <MagneticHandle type="target" position={Position.Left}
                 color="#f43f5e"
-                className={`handle-wardrobe ${useAppStore.getState().edges.some(e => e.target === id) ? 'neural-engaged' : ''}`}
+                className={`handle-wardrobe ${isTargetConnected ? 'neural-engaged' : ''}`}
             />
 
             <button onClick={() => data.onDelete(id)}
@@ -238,7 +241,7 @@ export default memo(({ id, data }) => {
 
             <MagneticHandle type="source" position={Position.Right}
                 color="#f43f5e"
-                className={`handle-wardrobe ${useAppStore.getState().edges.some(e => e.source === id) ? 'neural-engaged' : ''}`}
+                className={`handle-wardrobe ${isSourceConnected ? 'neural-engaged' : ''}`}
             />
         </motion.div>
     );

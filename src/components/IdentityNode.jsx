@@ -8,6 +8,9 @@ import { useAppStore } from '../store';
 
 export default memo(({ id, data }) => {
     const { setFocusMode } = useAppStore();
+    const edges = useAppStore(s => s.edges);
+    const isTargetConnected = edges.some(e => e.target === id);
+    const isSourceConnected = edges.some(e => e.source === id);
     return (
         <motion.div
             whileHover={{ scale: 1.25 }}
@@ -145,13 +148,13 @@ export default memo(({ id, data }) => {
                 type="target"
                 position={Position.Left}
                 color="#bef264"
-                className={`handle-character ${useAppStore.getState().edges.some(e => e.target === id) ? 'neural-engaged' : ''}`}
+                className={`handle-character ${isTargetConnected ? 'neural-engaged' : ''}`}
             />
             <MagneticHandle
                 type="source"
                 position={Position.Right}
                 color="#bef264"
-                className={`handle-character ${useAppStore.getState().edges.some(e => e.source === id) ? 'neural-engaged' : ''}`}
+                className={`handle-character ${isSourceConnected ? 'neural-engaged' : ''}`}
             />
         </motion.div>
     );

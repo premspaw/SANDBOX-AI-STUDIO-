@@ -2,13 +2,18 @@ import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { motion } from 'framer-motion';
 import { X, ShieldCheck, Activity } from 'lucide-react';
+import { useAppStore } from '../store';
 
 export default memo(({ id, data }) => {
+    const edges = useAppStore(s => s.edges);
     const kit = data.kit || {};
     const anchorImg = kit.anchor || data.image || '';
     const profileImg = kit.profile || kit.angle_1 || '';
     const fullBodyImg = kit.fullBody || kit.full_body || '';
     const lockedCount = [anchorImg, profileImg, fullBodyImg].filter(Boolean).length;
+
+    const isTargetConnected = edges.some(e => e.target === id);
+    const isSourceConnected = edges.some(e => e.source === id);
 
     return (
         <motion.div
@@ -20,7 +25,7 @@ export default memo(({ id, data }) => {
             className="group relative px-4 py-3 bg-[#0a0a0a]/90 border-2 border-[#bef264]/20 rounded-2xl min-w-[200px] max-w-[220px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-[#bef264]/50 transition-all"
         >
             <Handle type="target" position={Position.Left}
-                className={`!w-4 !h-4 !bg-[#bef264] !border-4 !border-[#050505] !shadow-lg hover:!scale-125 transition-all handle-character ${useAppStore.getState().edges.some(e => e.target === id) ? 'neural-engaged' : ''}`}
+                className={`!w-4 !h-4 !bg-[#bef264] !border-4 !border-[#050505] !shadow-lg hover:!scale-125 transition-all handle-character ${isTargetConnected ? 'neural-engaged' : ''}`}
             />
 
             <button
@@ -89,7 +94,7 @@ export default memo(({ id, data }) => {
             </div>
 
             <Handle type="source" position={Position.Right}
-                className={`!w-4 !h-4 !bg-[#bef264] !border-4 !border-[#050505] !shadow-lg hover:!scale-125 transition-all handle-character ${useAppStore.getState().edges.some(e => e.source === id) ? 'neural-engaged' : ''}`}
+                className={`!w-4 !h-4 !bg-[#bef264] !border-4 !border-[#050505] !shadow-lg hover:!scale-125 transition-all handle-character ${isSourceConnected ? 'neural-engaged' : ''}`}
             />
         </motion.div>
     );

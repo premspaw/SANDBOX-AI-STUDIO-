@@ -9,8 +9,12 @@ import { getApiUrl } from '../config/apiConfig';
 export default memo(({ id, data }) => {
     const updateNodeData = useAppStore(s => s.updateNodeData);
     const setCurrentProduct = useAppStore(s => s.setCurrentProduct);
+    const edges = useAppStore(s => s.edges);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [dragOver, setDragOver] = useState(false);
+
+    const isTargetConnected = edges.some(e => e.target === id);
+    const isSourceConnected = edges.some(e => e.source === id);
 
     const handleImageUpload = useCallback(async (file) => {
         if (!file || !file.type.startsWith('image/')) return;
@@ -85,7 +89,7 @@ export default memo(({ id, data }) => {
                 type="target"
                 position={Position.Left}
                 color="#f59e0b"
-                className={`handle-product ${useAppStore.getState().edges.some(e => e.target === id) ? 'neural-engaged' : ''}`}
+                className={`handle-product ${isTargetConnected ? 'neural-engaged' : ''}`}
             />
 
             <button
@@ -193,7 +197,7 @@ export default memo(({ id, data }) => {
                 type="source"
                 position={Position.Right}
                 color="#f59e0b"
-                className={`handle-product ${useAppStore.getState().edges.some(e => e.source === id) ? 'neural-engaged' : ''}`}
+                className={`handle-product ${isSourceConnected ? 'neural-engaged' : ''}`}
             />
         </motion.div>
     );

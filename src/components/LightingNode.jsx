@@ -23,6 +23,9 @@ const FlareIcon = ({ size, className }) => (
 
 export default memo(({ id, data }) => {
     const updateNodeData = useAppStore(s => s.updateNodeData);
+    const edges = useAppStore(s => s.edges);
+    const isTargetConnected = edges.some(e => e.target === id);
+    const isSourceConnected = edges.some(e => e.source === id);
 
     const atmospheres = [
         'NEURAL_GLOW',
@@ -43,7 +46,7 @@ export default memo(({ id, data }) => {
             style={{ zIndex: 1 }}
             className="group relative px-5 py-4 bg-[#0a0a0a]/90 border-2 border-orange-500/20 rounded-2xl min-w-[220px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-orange-500/50 transition-all"
         >
-            <Handle type="target" position={Position.Left} className={`!w-4 !h-4 !bg-orange-500 !border-4 !border-[#050505] !shadow-lg hover:!scale-125 transition-all handle-location ${useAppStore.getState().edges.some(e => e.target === id) ? 'neural-engaged' : ''}`} />
+            <Handle type="target" position={Position.Left} className={`!w-4 !h-4 !bg-orange-500 !border-4 !border-[#050505] !shadow-lg hover:!scale-125 transition-all handle-location ${isTargetConnected ? 'neural-engaged' : ''}`} />
 
             <button
                 onClick={() => data.onDelete(id)}
@@ -79,7 +82,7 @@ export default memo(({ id, data }) => {
                 </div>
             </div>
 
-            <Handle type="source" position={Position.Right} className={`!w-4 !h-4 !bg-orange-500 !border-4 !border-[#050505] !shadow-lg hover:!scale-125 transition-all handle-location ${useAppStore.getState().edges.some(e => e.source === id) ? 'neural-engaged' : ''}`} />
+            <Handle type="source" position={Position.Right} className={`!w-4 !h-4 !bg-orange-500 !border-4 !border-[#050505] !shadow-lg hover:!scale-125 transition-all handle-location ${isSourceConnected ? 'neural-engaged' : ''}`} />
         </motion.div >
     );
 });
