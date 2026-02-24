@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Handle, Position } from 'reactflow';
 import { useAppStore } from '../store';
+import { getApiUrl } from '../config/apiConfig';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Maximize2, Video, Play, Trash2, Cpu, Sparkles, MessageSquare, Star, ChevronRight, X, Cloud, Save, Check, Loader2 } from 'lucide-react';
 
@@ -31,7 +32,7 @@ const VideoNode = ({ id, data }) => {
         if (!videoUrl || isSaving || isSaved) return;
         setIsSaving(true);
         try {
-            const resp = await fetch('http://localhost:3002/api/save-asset', {
+            const resp = await fetch(getApiUrl('/api/save-asset'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

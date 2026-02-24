@@ -47,7 +47,7 @@ export default memo(({ id, data }) => {
                 className={`absolute inset-0 bg-gradient-to-br ${movementGradients[data.movement] || movementGradients.PHASE_SHIFT} pointer-events-none`}
             />
 
-            <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-black" />
+            <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-black" />
 
             <button
                 onClick={() => data.onDelete(id)}
@@ -147,7 +147,7 @@ export default memo(({ id, data }) => {
                 </div>
             </div>
 
-            <Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-black" />
+            <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-black" />
         </motion.div>
     );
 });

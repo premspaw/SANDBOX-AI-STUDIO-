@@ -321,16 +321,30 @@ export default function DirectorHUD() {
                 {activeTab === 'VISUAL' && (
                     <>
                         <HUDSection title="01 // IDENTITY_ANCHOR" icon={User}>
-                            <div className="group relative bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4 transition-all">
+                            <div className="group relative bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4 transition-all hover:bg-white/10">
                                 <div className="relative shrink-0">
-                                    <img src={store.anchorImage || store.activeCharacter.image} className="w-12 h-12 rounded-xl object-cover border border-[#bef264]/30 hover:scale-110 transition-all duration-500" />
+                                    {(store.anchorImage || store.activeCharacter?.image || store.activeCharacter?.identity_kit?.anchor) ? (
+                                        <img
+                                            src={store.anchorImage || store.activeCharacter?.image || store.activeCharacter?.identity_kit?.anchor}
+                                            className="w-12 h-12 rounded-xl object-cover border border-[#bef264]/30 hover:scale-110 transition-all duration-500 shadow-[0_0_15px_rgba(190,242,100,0.2)]"
+                                        />
+                                    ) : (
+                                        <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20">
+                                            <User size={20} />
+                                        </div>
+                                    )}
                                     <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#bef264] rounded-full flex items-center justify-center border-2 border-black">
                                         <CheckCircle2 size={10} className="text-black" />
                                     </div>
                                 </div>
-                                <div className="overflow-hidden">
+                                <div className="overflow-hidden flex-1">
                                     <h4 className="text-xs font-black uppercase tracking-widest text-white/80 truncate italic">{store.activeCharacter.name}</h4>
-                                    <p className="text-[9px] text-white/20 font-bold uppercase tracking-widest mt-0.5">{store.activeCharacter.visualStyle} ARCHETYPE</p>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <div className="px-1.5 py-0.5 bg-[#bef264]/10 rounded-sm border border-[#bef264]/20">
+                                            <span className="text-[7px] text-[#bef264] font-black uppercase tracking-widest">STABLE_DIFF</span>
+                                        </div>
+                                        <p className="text-[8px] text-white/20 font-bold uppercase tracking-widest truncate">{store.activeCharacter.visualStyle || 'Realistic'}</p>
+                                    </div>
                                 </div>
                             </div>
                         </HUDSection>

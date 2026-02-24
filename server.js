@@ -19,9 +19,10 @@ import * as workspaceService from './workspaceService.js';
 import * as visionService from './visionService.js';
 import * as vectorService from './vectorService.js';
 import * as masterExportService from './masterExportService.js';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import https from 'https';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -239,7 +240,6 @@ if (supabase) {
 }
 
 // Helper: Supabase REST GET with forced IPv4 (bypasses undici/node-fetch IPv6 hang on Node 18)
-import https from 'https';
 function supabaseRestGet(tablePath, timeoutMs = 15000) {
     return new Promise((resolve, reject) => {
         const apiKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
@@ -1392,9 +1392,31 @@ Return ONLY valid JSON.`
 /**
  * PHASE 9: UGC AD ENGINE ORCHESTRATION
  */
+app.post('/api/ugc/generate-hooks-batch', async (req, res) => {
+    try {
+        const { synergy, niche, tone, directive } = req.body;
+        console.log(`[SERVER] Generating batch hooks for re-ranking...`);
+        const hooks = await geminiService.generateCandidateHooks(synergy, niche, tone, directive);
+        res.json({ hooks });
+    } catch (error) {
+        console.error('Batch Hooks Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/api/ugc/ad-engine', async (req, res) => {
     try {
-        const { characterImage, productImage, characterMetadata, productMetadata, niche, tone, directive } = req.body;
+        const {
+            characterImage,
+            productImage,
+            characterMetadata,
+            productMetadata,
+            niche,
+            tone,
+            directive,
+            trainingContext // Now accepting training context from frontend
+        } = req.body;
+
         if (!characterImage || !productImage) throw new Error("Missing character or product image");
 
         const taskId = `ugc-engine-${Date.now()}`;
@@ -1404,8 +1426,8 @@ app.post('/api/ugc/ad-engine', async (req, res) => {
         const synergy = await geminiService.analyzeUGCContext(characterImage, productImage, { characterMetadata, productMetadata });
         broadcastProgress(taskId, 2, 4, 'Generating viral ad script...');
 
-        // Step 2: Generate Script
-        const script = await geminiService.generateUGCScript(synergy, niche || synergy.recommendedNiche, tone || synergy.suggestedTone, directive);
+        // Step 2: Generate Script (passing trainingContext)
+        const script = await geminiService.generateUGCScript(synergy, niche || synergy.recommendedNiche, tone || synergy.suggestedTone, directive, trainingContext);
         broadcastProgress(taskId, 3, 4, 'Finalizing ad structure...');
 
         broadcastComplete(taskId);
@@ -1457,91 +1479,201 @@ app.post('/api/ugc/compile-ad', async (req, res) => {
 // ============================================================
 
 // Auto-Storyboard: Gemini breaks user prompt into 5-6 scenes
+// --- Cinematography Style Dictionary ---
+const NICHE_STYLES = {
+    "FASHION": {
+        vibe: "High-end editorial, Vogue aesthetic, elegant and sophisticated.",
+        lighting: "Soft cinematic lighting, rim lights, dramatic shadows, glowing skin.",
+        camera: "Slow-motion tracking shots, low-angle hero shots, 50mm and 85mm portrait lenses.",
+        pacing: "Smooth, deliberate, graceful transitions."
+    },
+    "GYM UGC AD": {
+        vibe: "High energy, sweaty, motivational, fast-paced fitness aesthetic.",
+        lighting: "High-contrast gym lighting, neon accents, hard directional light.",
+        camera: "Handheld shaky-cam, dynamic push-ins, wide 24mm action angles, POV shots.",
+        pacing: "Rapid cuts, energetic, matching an upbeat tempo."
+    },
+    "SKINCARE": {
+        vibe: "Clean, pure, organic, glowing, morning routine aesthetic.",
+        lighting: "Soft, diffused natural window light, bright and airy, pastel tones.",
+        camera: "Extreme macro close-ups on product textures, soft focus backgrounds, 100mm macro lens.",
+        pacing: "Calm, soothing, slow reveals."
+    },
+    "FOOD REVIEW": {
+        vibe: "Appetizing, mouth-watering, casual vlog style.",
+        lighting: "Bright, warm ring-lighting or sunny cafe lighting to make food look fresh.",
+        camera: "Over-the-head top-down shots, extreme close-ups on textures, subject looking directly into the lens.",
+        pacing: "Punchy, reactive, engaging."
+    },
+    "TECH UNBOX": {
+        vibe: "Sleek, futuristic, premium, detail-oriented.",
+        lighting: "Moody studio lighting, RGB background accents, sharp reflections on the product.",
+        camera: "Smooth motorized slider shots, precise macro focus pulls, sleek pans.",
+        pacing: "Methodical, focused on product details."
+    },
+    "CUSTOM": {
+        vibe: "Professional cinematic video.",
+        lighting: "Balanced cinematic lighting.",
+        camera: "Standard varied focal lengths.",
+        pacing: "Moderate rhythm."
+    },
+    "RAW iPHONE UGC": {
+        vibe: "Ultra-realistic, raw, unedited, authentic everyday life, candid vlog style.",
+        lighting: "Natural ambient lighting, daylight, true-to-life shadows, zero artificial studio lighting.",
+        camera: "Shot on iPhone 15 Pro Max, Apple ProRAW. Handheld camera feel. For close-ups: hyper-detailed, visible skin pores, peach fuzz, micro-textures, perfectly natural human skin.",
+        pacing: "Casual, fast-paced TikTok style, natural organic movement."
+    },
+    "DOCUMENTARY REALISM": {
+        vibe: "Grounded, highly authentic, fly-on-the-wall realism, cinematic but unpolished.",
+        lighting: "Available practical lighting, natural contrast, moody, high dynamic range.",
+        camera: "Handheld 35mm lens, natural film grain, slight motion blur, imperfect framing, photorealistic.",
+        pacing: "Reactive, observant, natural human rhythm."
+    }
+};
+
 app.post('/api/ugc/auto-storyboard', async (req, res) => {
     try {
-        const { prompt, characterName, wardrobe, product, duration } = req.body;
-        if (!prompt) throw new Error('No prompt provided');
+        const { duration, inputs, prompt, characterName, wardrobe, product, selectedNiche } = req.body;
 
-        const sceneCount = Math.max(3, Math.round((duration || 30) / 5));
+        // ── Support both old and new payload formats ──
+        const durationStr = String(duration || '30s').replace('s', '');
+        const durationNum = parseInt(durationStr, 10) || 30;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash',
-            contents: `You are an expert AI Video Director. Combine the following Identity and Product into a photorealistic, natural language 9:16 vertical video storyboard with exactly ${sceneCount} scenes.
+        // ── Dynamic Shot Calculation ──
+        let shotCount = 6; // default
+        if (durationNum <= 10) shotCount = 4;
+        else if (durationNum <= 15) shotCount = 6;
+        else if (durationNum <= 30) shotCount = 8;
+        else if (durationNum <= 45) shotCount = 10;
+        else shotCount = 12;
 
-STORY CONCEPT: "${prompt}"
-IDENTITY: ${characterName || 'the influencer'}
-${wardrobe ? `WARDROBE: ${wardrobe}` : ''}
-${product ? `PRODUCT: ${product}` : ''}
+        // ── Resolve 4 Pillars ──
+        const character = inputs?.character || characterName || 'the subject';
+        const productDesc = inputs?.product || product || '';
+        const wardrobeDesc = inputs?.wardrobe || wardrobe || '';
+        const location = inputs?.location || 'a cinematic environment';
 
-CRITICAL INSTRUCTIONS:
-1. PROMPT TRANSLATION: Do NOT use UI tags like "SUBJECT:", "PRODUCT:", arrows "→", or pipes "|". Write in fluid, descriptive natural language sentences.
-2. INTERACTION: The subject (${characterName}) must be WEARING, HOLDING, or ACTIVELY INTERACTING with the product. 
-3. NO MANNEQUINS: If the product description mentions a mannequin or display stand, REMOVE it. The character should be the one wearing it.
-4. CONSISTENCY: Ensure the character's facial features and wardrobe stay perfectly consistent across all ${sceneCount} prompts.
-5. CAMERA LOGIC (MANDATORY): Append one of these to the end of every scene 'prompt':
-   - 'Shot on iPhone 15 Pro Max, Apple ProRAW, macro lens, natural lighting, 4k.'
-   - 'Cinematic lighting, ARRI Alexa, 85mm lens, movie quality, photorealistic, 8k.'
+        // ── Camera Angle Rotation List ──
+        const ANGLES = [
+            'Wide Angle Establishing Shot',
+            'Medium Tracking Shot',
+            'Extreme Close-Up',
+            'Over-the-Shoulder',
+            'Low Angle Hero Shot',
+            'High Angle Bird\'s Eye',
+            'Rack Focus Close-Up',
+            'Dutch Angle',
+            'Dolly Zoom',
+            'POV First-Person Shot',
+            'Cowboy Shot (mid-thigh)',
+            'Two-Shot Wide'
+        ];
 
-Generate JSON:
+        const activeStyle = NICHE_STYLES[selectedNiche] || NICHE_STYLES["CUSTOM"];
+
+        const systemPrompt = `You are a master Cinematographer generating a professional Shot List.
+You must generate EXACTLY ${shotCount} chronological scenes.
+
+CRITICAL CONSISTENCY RULES:
+Subject: ${character}
+Wardrobe: ${wardrobeDesc || 'their outfit'}
+Product: ${productDesc || 'the product'}
+Environment: ${location}
+
+🎬 DIRECTOR'S STYLE OVERRIDE (${selectedNiche || 'CUSTOM'}):
+You MUST strictly adhere to these stylistic rules for EVERY generated shot:
+- Vibe: ${activeStyle.vibe}
+- Lighting: ${activeStyle.lighting}
+- Camera Angles/Lenses: ${activeStyle.camera}
+- Pacing/Action: ${activeStyle.pacing}
+
+Ensure the 'prompt' field for each scene explicitly includes the lighting and camera lens instructions mentioned above so the Image Generator renders it perfectly in this specific niche style.
+
+CINEMATOGRAPHY RULES:
+Use a completely DIFFERENT camera framing and angle for each consecutive shot to create dynamic editing.
+Required angle progression for ${shotCount} shots: ${ANGLES.slice(0, shotCount).join(' → ')}.
+
+You must output EXACTLY ${shotCount} shots. No more, no less.
+
+Output this JSON format and NOTHING else:
 {
-  "scenes": [
+  "shotList": [
     {
-      "index": 0,
-      "timeRange": "0s-5s",
-      "shotType": "CLOSE_UP | MEDIUM | WIDE",
-      "action": "Natural language description of the scene action",
+      "shotNumber": 1,
+      "framing": "Wide Angle Establishing Shot",
+      "action": "Brief description of the scene movement",
       "hasProduct": true,
-      "prompt": "Full cinematic prompt + mandatory camera logic modifier."
+      "prompt": "The exact image generation prompt combining ${character}, ${wardrobeDesc || 'their outfit'}, ${location}, ${productDesc || 'the product'}, the specific camera framing, and the stylistic lighting/lens details from the Director Style Override."
     }
   ]
-}
+}`;
 
-Return ONLY valid JSON.`
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: systemPrompt
         });
+
         const text = response.text;
-        let storyboardData;
+        let result;
         try {
             const jsonMatch = text.match(/\{[\s\S]*\}/);
-            storyboardData = JSON.parse(jsonMatch[0]);
-        } catch {
-            storyboardData = {
-                scenes: Array.from({ length: sceneCount }, (_, i) => ({
+            const parsed = JSON.parse(jsonMatch[0]);
+            // Normalize: support both shotList and scenes keys
+            const shots = parsed.shotList || parsed.scenes || [];
+            result = {
+                scenes: shots.map((s, i) => ({
                     index: i,
-                    timeRange: `${i * 5}s-${(i + 1) * 5}s`,
-                    shotType: i === 0 ? 'CLOSE_UP' : i === sceneCount - 1 ? 'CLOSE_UP' : 'MEDIUM',
-                    action: `Scene ${i + 1}`,
-                    hasProduct: i === 1 || i === sceneCount - 2,
-                    prompt: `${characterName || 'Influencer'} in scene ${i + 1}. ${wardrobe || ''}`
+                    shotNumber: s.shotNumber || (i + 1),
+                    timeRange: `${Math.round(i * durationNum / shotCount)}s-${Math.round((i + 1) * durationNum / shotCount)}s`,
+                    shotType: s.framing || s.shotType || ANGLES[i % ANGLES.length],
+                    action: s.action || '',
+                    hasProduct: s.hasProduct ?? true,
+                    prompt: s.prompt || ''
+                }))
+            };
+        } catch {
+            // Fallback: generate placeholder shots
+            result = {
+                scenes: Array.from({ length: shotCount }, (_, i) => ({
+                    index: i,
+                    shotNumber: i + 1,
+                    timeRange: `${Math.round(i * durationNum / shotCount)}s-${Math.round((i + 1) * durationNum / shotCount)}s`,
+                    shotType: ANGLES[i % ANGLES.length],
+                    action: `${character} in scene ${i + 1}`,
+                    hasProduct: true,
+                    prompt: `${character} wearing ${wardrobeDesc} in ${location}, featuring ${productDesc}. ${ANGLES[i % ANGLES.length]}. Cinematic lighting, photorealistic, 8k.`
                 }))
             };
         }
 
-        broadcastProgress('ugc-storyboard', 1, 1, `Generated ${storyboardData.scenes.length} scenes!`);
+        broadcastProgress('ugc-storyboard', 1, 1, `Generated ${result.scenes.length} shots!`);
         broadcastComplete('ugc-storyboard');
-        res.json(storyboardData);
+        res.json(result);
     } catch (error) {
         console.error('Auto-Storyboard Error:', error);
         res.status(500).json({ error: error.message });
     }
 });
-
-// Product Analysis: Google Vision-style analysis via Gemini
+// Product Analysis: Google Vision-style analysis via Gemini REST API
 app.post('/api/ugc/analyze-product', async (req, res) => {
     try {
         const { image } = req.body;
         if (!image) throw new Error('No image provided');
 
+        const mimeMatch = image.match(/^data:(image\/\w+);base64,/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
         const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash',
-            contents: [
-                {
-                    role: 'user',
-                    parts: [
-                        { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
-                        {
-                            text: `Analyze this product image. Return JSON:
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-latest' });
+        const result = await model.generateContent([
+            {
+                inlineData: {
+                    mimeType,
+                    data: base64Data
+                }
+            },
+            {
+                text: `Analyze this product image. Return JSON only, no markdown:
 {
   "labels": ["label1", "label2", "label3", "label4", "label5"],
   "description": "One sentence describing the product, its brand, and key visual features",
@@ -1549,14 +1681,13 @@ app.post('/api/ugc/analyze-product', async (req, res) => {
 }
 
 Labels should include: product type, brand name if visible, material, category, any text on the product.
-Colors should be the 3 dominant colors as hex codes.
-Return ONLY valid JSON.` }
-                    ]
-                }
-            ]
-        });
+Colors should be the 3 dominant colors as hex codes.`
+            }
+        ]);
 
-        const text = response.text;
+        const response = await result.response;
+        const text = response.text();
+
         let productData;
         try {
             const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -1572,8 +1703,106 @@ Return ONLY valid JSON.` }
     }
 });
 
+// Get Landing Page Assets Configuration (Supabase + Local Fallback)
+app.get('/api/get-landing-assets', async (req, res) => {
+    try {
+        // 1. Try Supabase first
+        if (supabase) {
+            const { data, error } = await supabase
+                .from('app_settings')
+                .select('setting_value')
+                .eq('setting_key', 'landing_assets')
+                .single();
+
+            if (!error && data?.setting_value) {
+                console.log("[SERVER] Fetched landing assets from Supabase.");
+                return res.json(data.setting_value);
+            }
+            if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows found"
+                console.warn("[SERVER] Supabase app_settings fetch error:", error.message);
+            }
+        }
+
+        // 2. Fallback to local landingAssets.js
+        console.log("[SERVER] Falling back to local landingAssets.js");
+        const filePath = path.join(__dirname, 'src', 'config', 'landingAssets.js');
+        if (fs.existsSync(filePath)) {
+            try {
+                const content = fs.readFileSync(filePath, 'utf8');
+                // Simple regex extract to avoid complex ESM import outside of async
+                const jsonMatch = content.match(/export const LANDING_ASSETS = (\{[\s\S]*\});/);
+                if (jsonMatch) {
+                    console.log("[SERVER] Extracted landing assets from local file.");
+                    return res.json(JSON.parse(jsonMatch[1]));
+                }
+            } catch (e) {
+                console.warn("[SERVER] Local fallback parsing failed:", e.message);
+            }
+        }
+
+        const defaultAssets = {
+            heroBackground: "",
+            backgroundMusic: "",
+            pipelineDemo: "",
+            gallery: []
+        };
+        res.json(defaultAssets);
+    } catch (error) {
+        console.error('Get Landing Assets Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Update Landing Page Assets Configuration
+app.post('/api/update-landing-assets', async (req, res) => {
+    try {
+        const { assets } = req.body;
+        if (!assets) throw new Error("No assets provided");
+
+        // 1. Update Supabase (Primary)
+        if (supabase) {
+            const { error: dbError } = await supabase
+                .from('app_settings')
+                .upsert({
+                    setting_key: 'landing_assets',
+                    setting_value: assets,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'setting_key' });
+
+            if (dbError) {
+                console.error("[SERVER] Supabase Update Error:", dbError.message);
+                throw new Error(`Supabase update failed: ${dbError.message}`);
+            }
+            console.log("[SERVER] Updated landing assets in Supabase.");
+        }
+
+        // 2. Also update local file (Secondary/Cache/Legacy)
+        const filePath = path.join(__dirname, 'src', 'config', 'landingAssets.js');
+        const content = `/**
+ * LANDING PAGE ASSET CONFIGURATION
+ * 
+ * Auto-generated via Asset Manager UI.
+ */
+
+export const LANDING_ASSETS = ${JSON.stringify(assets, null, 4)};
+`;
+
+        try {
+            fs.writeFileSync(filePath, content, 'utf8');
+            console.log(`[SERVER] Updated local fallback at: ${filePath}`);
+        } catch (fsErr) {
+            console.warn("[SERVER] Local file update failed (likely read-only FS):", fsErr.message);
+            // Don't throw if Supabase succeeded, as this is just a fallback
+        }
+
+        res.json({ success: true, message: 'Landing assets updated successfully (Supabase + Local)' });
+    } catch (error) {
+        console.error('Update Landing Assets Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Veo Image-to-Video: Animate a keyframe image into a 5s clip
-// Consolidated Veo I2V Endpoint moved to UGC section below to avoid duplication.
 
 
 // ============================================================

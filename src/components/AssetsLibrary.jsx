@@ -24,8 +24,9 @@ import {
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store';
+import { getApiUrl, API_BASE_URL } from '../config/apiConfig';
 
-const API = 'http://localhost:3002';
+const API = API_BASE_URL;
 
 // --- Character Kit Card Component ---
 function CharacterKitCard({ character, onDirectorsCut, onDelete }) {

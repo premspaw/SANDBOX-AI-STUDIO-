@@ -26,6 +26,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
         { id: 'influencer', label: 'AI Influencer', icon: Users },
         { id: 'directors-cut', label: "Director's Cut", icon: Clapperboard },
         { id: 'assets', label: 'Assets Library', icon: FolderOpen },
+        { id: 'admin', label: 'Admin', icon: Shield },
     ]
 
     return (

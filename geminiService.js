@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getApiUrl } from "./src/config/apiConfig.js";
 
 const getAI = () => {
     // Priority: Runtime Store Key > Env Var
@@ -18,7 +19,7 @@ export const checkBackend = async () => {
     try {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), 1500);
-        const resp = await fetch('http://localhost:3002/api/forge/health', {
+        const resp = await fetch(getApiUrl('/api/forge/health'), {
             method: 'GET',
             signal: controller.signal
         });
@@ -222,7 +223,7 @@ export const generateCharacterImage = async (params) => {
             if (typeof window !== 'undefined') {
                 const isAlive = await checkBackend();
                 if (isAlive) {
-                    const response = await fetch('http://localhost:3002/api/forge/generate', {
+                    const response = await fetch(getApiUrl('/api/forge/generate'), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(params)
@@ -242,18 +243,66 @@ export const generateCharacterImage = async (params) => {
             const prompt = params.prompt;
             const refs = params.identity_images || [];
 
+            // ── Step 2a: Resolve Identity Image Parts ──
+            const contentParts = await Promise.all(refs.map(async (ref) => {
+                try {
+                    if (ref.startsWith('data:')) {
+                        const [meta, data] = ref.split(',');
+                        const mimeType = meta.split(':')[1]?.split(';')[0] || 'image/png';
+                        return { inlineData: { data, mimeType } };
+                    }
+                    if (ref.startsWith('http') || ref.startsWith('//')) {
+                        const fullUrl = ref.startsWith('//') ? `https:${ref}` : ref;
+                        console.log(`[geminiService] Fetching remote reference: ${fullUrl}`);
+                        const r = await fetch(fullUrl);
+                        const buf = await r.arrayBuffer();
+                        const b64 = btoa(new Uint8Array(buf).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+                        const mime = r.headers.get('content-type') || 'image/png';
+                        return { inlineData: { data: b64, mimeType: mime } };
+                    }
+                    return null;
+                } catch (e) {
+                    console.error("[geminiService] Failed to process reference image:", e);
+                    return null;
+                }
+            }));
+
+            // ── Step 2b: Resolve Product Image Part ──
+            let productPart = null;
+            if (params.product_image) {
+                try {
+                    const pImg = params.product_image;
+                    if (pImg.startsWith('data:')) {
+                        const [meta, data] = pImg.split(',');
+                        const mimeType = meta.split(':')[1]?.split(';')[0] || 'image/png';
+                        productPart = { inlineData: { data, mimeType } };
+                    } else if (pImg.startsWith('http') || pImg.startsWith('//')) {
+                        const fullUrl = pImg.startsWith('//') ? `https:${pImg}` : pImg;
+                        console.log(`[geminiService] Fetching product reference: ${fullUrl}`);
+                        const r = await fetch(fullUrl);
+                        const buf = await r.arrayBuffer();
+                        const b64 = btoa(new Uint8Array(buf).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+                        const mime = r.headers.get('content-type') || 'image/png';
+                        productPart = { inlineData: { data: b64, mimeType: mime } };
+                    }
+                } catch (pe) {
+                    console.error("[geminiService] Failed to process product image:", pe);
+                }
+            }
+
             const parts = [
                 { text: prompt },
-                ...refs.map(ref => {
-                    const [meta, data] = ref.split(',');
-                    return { inlineData: { data, mimeType: meta.split(':')[1]?.split(';')[0] || 'image/png' } };
-                })
-            ];
+                ...contentParts.filter(Boolean),
+                productPart
+            ].filter(Boolean);
 
             const result = await model.generateContent({
                 contents: [{ role: "user", parts }],
                 generationConfig: {
-                    responseModalities: ["image", "text"]
+                    responseModalities: ["image", "text"],
+                    imageConfig: {
+                        aspectRatio: params.aspectRatio || "1:1"
+                    }
                 }
             });
 
@@ -1077,7 +1126,7 @@ export async function analyzeUGCContext(characterImage, productImage, metadata =
         console.log(`[GEMINI] Analyzing UGC Context for synergy with metadata...`);
         const ai = getAI();
         const model = ai.getGenerativeModel({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-2.5-flash-latest',
             generationConfig: { responseMimeType: "application/json" }
         });
 
@@ -1127,36 +1176,74 @@ export async function analyzeUGCContext(characterImage, productImage, metadata =
 }
 
 /**
+ * Generate a batch of 5 candidate hooks for re-ranking.
+ */
+export async function generateCandidateHooks(analysis, niche, tone, directive = "", count = 5) {
+    try {
+        console.log(`[GEMINI] Generating ${count} candidate hooks for re-ranking...`);
+        const ai = getAI();
+        const model = ai.getGenerativeModel({
+            model: 'gemini-2.5-flash-latest',
+            generationConfig: { responseMimeType: "application/json" }
+        });
+
+        const prompt = `You are a viral UGC Scriptwriter. Generate exactly ${count} different potential "Hooks" (first 3 seconds) for an ad.
+        ANALYSIS: ${JSON.stringify(analysis)}
+        NICHE: ${niche}
+        TONE: ${tone}
+        ${directive ? `USER_DIRECTION: ${directive}` : ""}
+
+        A great hook is a Pattern Interrupt, a provocative question, or a shocking statement.
+        
+        Return JSON format:
+        {
+          "hooks": ["Hook suggestion 1", "Hook suggestion 2", "Hook suggestion 3", "Hook suggestion 4", "Hook suggestion 5"]
+        }
+        Return ONLY valid JSON.`;
+
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        const data = JSON.parse(jsonMatch[0]);
+        return data.hooks || [];
+    } catch (error) {
+        console.error('generateCandidateHooks Error:', error);
+        return ["Hey, you need to see this product!", "This changed my life.", "Stop scrolling if you want to see the future."];
+    }
+}
+
+/**
  * Generate a full UGC Ad Script based on synergy analysis.
  */
-export async function generateUGCScript(analysis, niche, tone, directive = "") {
+export async function generateUGCScript(analysis, niche, tone, directive = "", trainingContext = "") {
     try {
         console.log(`[GEMINI] Generating UGC Script for ${niche} with directive: ${directive}`);
         const ai = getAI();
         const model = ai.getGenerativeModel({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-2.5-flash-latest',
             generationConfig: { responseMimeType: "application/json" }
         });
 
-        const prompt = `You are a viral UGC Scriptwriter. Generate a 30-second ad script based on this analysis:
+        const prompt = `You are a viral UGC Scriptwriter. Generate a 30-second ad script based on this analysis.
+        ${trainingContext ? `\n### IMPORTANT STYLE GUIDELINE: ${trainingContext}\n` : ""}
+        
         ANALYSIS: ${JSON.stringify(analysis)}
         NICHE: ${niche}
         TONE: ${tone}
         ${directive ? `USER_SPECIFIC_DIRECTIVE: ${directive}` : ""}
 
         Rules:
-        1. Start with a Pattern Interrupt hook (0-3s).
+        1. Start with the following Hook: ${directive || "Generate a viral hook if directive is empty"}.
         2. Middle section must show the creator interacting with the product points.
         3. End with a strong CTA.
         4. Focus on the USP: ${analysis.productSellingPoints?.join(', ')}.
         5. CAMERA LOGIC (CRITICAL): Append high-end photography modifiers to the end of EVERY scene's 'prompt'.
            - If niche is 'lifestyle/casual': Append "Shot on iPhone 15 Pro Max, Apple ProRAW, macro lens, natural lighting, 4k."
            - If niche is 'luxury/high-end': Append "Cinematic lighting, ARRI Alexa, 85mm lens, movie quality, photorealistic, 8k."
-        ${directive ? `6. STICK TO THIS STYLE/HOOK: ${directive}` : "6. No generic fillers."}
-
+        
         Return JSON:
         {
-          "hook": "The first 3 seconds anchor script",
+          "hook": "The script of the chosen hook",
           "fullScript": "The complete 30s voiceover script",
           "scenes": [
             { "time": "0s-5s", "action": "Shot description", "prompt": "Visual prompt + camera logic" },

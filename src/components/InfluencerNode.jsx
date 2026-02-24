@@ -1,55 +1,95 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { motion } from 'framer-motion';
-import { User, Activity, X, ShieldCheck } from 'lucide-react';
+import { X, ShieldCheck, Activity } from 'lucide-react';
 
-export default memo(({ id, data }) => (
-    <motion.div
-        whileHover={{ scale: 1.25 }}
-        transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-        className="group relative p-1 bg-gradient-to-br from-[#bef264]/40 via-white/5 to-[#bef264]/40 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all"
-    >
-        <Handle type="target" position={Position.Top} className="!bg-[#bef264] !border-2 !border-black" />
+export default memo(({ id, data }) => {
+    const kit = data.kit || {};
+    const anchorImg = kit.anchor || data.image || '';
+    const profileImg = kit.profile || kit.angle_1 || '';
+    const fullBodyImg = kit.fullBody || kit.full_body || '';
+    const lockedCount = [anchorImg, profileImg, fullBodyImg].filter(Boolean).length;
 
-        <button
-            onClick={() => data.onDelete(id)}
-            className="absolute -top-2 -right-2 p-1.5 bg-red-500 rounded-full text-white scale-0 group-hover:scale-100 transition-transform shadow-lg z-50"
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.85, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            whileHover={{ scale: 1.25 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+            className="group relative px-4 py-3 bg-[#0a0a0a]/90 backdrop-blur-2xl border-2 border-[#bef264]/20 rounded-2xl min-w-[200px] max-w-[220px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-[#bef264]/50 transition-all"
         >
-            <X size={10} />
-        </button>
+            <Handle type="target" position={Position.Left}
+                className="!w-4 !h-4 !bg-[#bef264] !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(190,242,100,0.5)] hover:!scale-125 transition-all"
+            />
 
-        <div className="bg-[#0a0a0a] rounded-[2.4rem] p-3 pl-3 pr-6 flex items-center gap-4 border border-white/5">
-            <div className="relative w-12 h-12 rounded-full bg-zinc-800 border-2 border-[#bef264]/20 overflow-hidden shrink-0 shadow-inner">
-                {data.image ? (
-                    <img src={data.image} alt="Avatar" className="w-full h-full object-cover" />
+            <button
+                onClick={() => data.onDelete(id)}
+                className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full text-white scale-0 group-hover:scale-100 transition-transform shadow-lg z-50"
+            >
+                <X size={10} />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-[#bef264]/15 rounded-lg">
+                        <ShieldCheck size={13} className="text-[#bef264]" />
+                    </div>
+                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">CONSISTENCY</span>
+                </div>
+                <div className="flex items-center gap-1">
+                    <Activity size={7} className="text-[#bef264] animate-pulse" />
+                    <span className={`text-[7px] font-bold ${lockedCount === 3 ? 'text-[#bef264]' : 'text-yellow-400'}`}>
+                        {lockedCount}/3
+                    </span>
+                </div>
+            </div>
+
+            {/* Anchor image — only visible image */}
+            <div className="relative w-full h-28 rounded-xl overflow-hidden mb-2 bg-black/40 border border-white/5">
+                {anchorImg ? (
+                    <img src={anchorImg} alt="Anchor" className="w-full h-full object-cover" />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-white/20">
-                        <User size={24} />
+                    <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-[8px] text-white/20 font-mono">NO ANCHOR</span>
                     </div>
                 )}
-                {/* CONSISTENCY_BADGE */}
-                <div className="absolute top-0 right-0 p-0.5 bg-[#bef264] rounded-full border border-black shadow-lg">
-                    <ShieldCheck size={8} className="text-black" />
+                <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 rounded-md">
+                    <span className="text-[6px] text-[#bef264] font-mono">ANCHOR</span>
                 </div>
             </div>
 
-            <div className="flex flex-col gap-0.5">
-                <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-black text-white uppercase tracking-tighter">{data.label || 'AGENT_CORE'}</span>
-                    <div className="px-1.5 py-0.5 bg-[#bef264]/10 rounded border border-[#bef264]/20">
-                        <span className="text-[7px] font-black text-[#bef264]">PRO</span>
+            {/* Character name */}
+            <p className="text-[10px] font-black text-white/70 uppercase tracking-tight truncate mb-2">
+                {data.label || 'AGENT_CORE'}
+            </p>
+
+            {/* 3-slot kit bar */}
+            <div className="flex gap-1.5">
+                {[['ANCHOR', anchorImg], ['PROFILE', profileImg], ['FULL BODY', fullBodyImg]].map(([label, img]) => (
+                    <div key={label} className="flex-1 flex flex-col gap-0.5 items-center">
+                        <div className={`w-full h-1 rounded-full transition-all duration-500
+                            ${img ? 'bg-[#bef264] shadow-[0_0_6px_rgba(190,242,100,0.5)]' : 'bg-white/10'}`} />
+                        <span className={`text-[5px] font-bold uppercase tracking-wide
+                            ${img ? 'text-[#bef264]/50' : 'text-white/15'}`}>
+                            {label}
+                        </span>
                     </div>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <div className="relative">
-                        <Activity size={10} className="text-[#bef264] animate-pulse" />
-                        <div className="absolute inset-0 bg-[#bef264] blur-sm animate-pulse opacity-40" />
-                    </div>
-                    <span className="text-[8px] font-bold text-[#bef264]/60 uppercase tracking-[0.2em]">Neural_Link_Stable</span>
+                ))}
+            </div>
+
+            {/* Footer */}
+            <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-2">
+                <span className="text-[6px] font-bold text-white/10 uppercase tracking-[0.4em]">IDENTITY_LOC</span>
+                <div className="flex items-center gap-1.5 text-[8px] font-bold text-[#bef264]">
+                    <div className={`w-1.5 h-1.5 rounded-full ${anchorImg ? 'bg-[#bef264]' : 'border border-[#bef264]/40'}`} />
+                    {anchorImg ? 'KIT_LOCKED' : 'UPLOAD_REQ'}
                 </div>
             </div>
-        </div>
 
-        <Handle type="source" position={Position.Bottom} className="!bg-[#bef264] !border-2 !border-black" />
-    </motion.div>
-));
+            <Handle type="source" position={Position.Right}
+                className="!w-4 !h-4 !bg-[#bef264] !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(190,242,100,0.5)] hover:!scale-125 transition-all"
+            />
+        </motion.div>
+    );
+});

@@ -1,8 +1,10 @@
 import React, { memo, useState } from 'react';
 import { Handle, Position } from 'reactflow';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Play, Loader2, X, Film, User, Type, CheckCircle2, Circle } from 'lucide-react';
+import { Zap, Play, Loader2, X, Film, User, Type, CheckCircle2, Circle, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useAppStore } from '../store';
+import { savePreference } from '../services/narrativeTrainer';
+import { getApiUrl } from '../config/apiConfig';
 
 const PHASES = [
     { id: 'hook', label: 'HOOK_SCRIPT', icon: Zap, color: 'orange' },
@@ -35,7 +37,7 @@ export default memo(({ id, data }) => {
         try {
             // Phase 1: Hook Script
             setPhaseStatus(p => ({ ...p, hook: 'GENERATING' }));
-            const hookRes = await fetch('http://localhost:3002/api/ugc/generate-hook', {
+            const hookRes = await fetch(getApiUrl('/api/ugc/generate-hook'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -51,7 +53,7 @@ export default memo(({ id, data }) => {
 
             // Phase 2: Avatar Render
             setPhaseStatus(p => ({ ...p, avatar: 'GENERATING' }));
-            const avatarRes = await fetch('http://localhost:3002/api/ugc/generate-avatar', {
+            const avatarRes = await fetch(getApiUrl('/api/ugc/generate-avatar'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -73,7 +75,7 @@ export default memo(({ id, data }) => {
 
             // Phase 3: Caption Overlay
             setPhaseStatus(p => ({ ...p, caption: 'GENERATING' }));
-            const captionRes = await fetch('http://localhost:3002/api/ugc/generate-captions', {
+            const captionRes = await fetch(getApiUrl('/api/ugc/generate-captions'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -111,7 +113,7 @@ export default memo(({ id, data }) => {
         >
             <Handle
                 type="target"
-                position={Position.Top}
+                position={Position.Left}
                 className="!w-4 !h-4 !bg-orange-500 !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(249,115,22,0.5)] hover:!scale-125 transition-all"
             />
 
@@ -186,6 +188,37 @@ export default memo(({ id, data }) => {
                     className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-[10px] text-white/80 font-mono italic resize-none focus:outline-none focus:border-orange-500/40 transition-colors"
                     rows={2}
                 />
+
+                {/* Narrative Training Feedback */}
+                <AnimatePresence>
+                    {phaseStatus.hook === 'COMPLETE' && results.hook && !results.hook.error && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex items-center gap-3 mt-2 px-1 py-1.5 border-t border-white/5"
+                        >
+                            <span className="text-[7px] text-white/30 uppercase font-black tracking-widest">Training Feedback:</span>
+                            <div className="flex items-center gap-1 ml-auto">
+                                <button
+                                    onClick={() => savePreference(results.hook.hookScript || data.hookScript, true)}
+                                    className="p-1 px-2 flex items-center gap-1.5 hover:bg-emerald-500/20 rounded-md transition-all text-emerald-400/40 hover:text-emerald-400 group"
+                                    title="Like this hook (Trains the AI)"
+                                >
+                                    <ThumbsUp size={10} className="group-hover:scale-110 transition-transform" />
+                                    <span className="text-[8px] font-bold">POS</span>
+                                </button>
+                                <button
+                                    onClick={() => savePreference(results.hook.hookScript || data.hookScript, false)}
+                                    className="p-1 px-2 flex items-center gap-1.5 hover:bg-red-500/20 rounded-md transition-all text-red-400/40 hover:text-red-400 group"
+                                    title="Dislike this hook"
+                                >
+                                    <ThumbsDown size={10} className="group-hover:scale-110 transition-transform" />
+                                    <span className="text-[8px] font-bold">NEG</span>
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* Execute Button */}
@@ -213,7 +246,7 @@ export default memo(({ id, data }) => {
 
             <Handle
                 type="source"
-                position={Position.Bottom}
+                position={Position.Right}
                 className="!w-4 !h-4 !bg-orange-500 !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(249,115,22,0.5)] hover:!scale-125 transition-all"
             />
         </motion.div>

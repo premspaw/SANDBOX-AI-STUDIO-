@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { applyNodeChanges, applyEdgeChanges, addEdge } from 'reactflow';
+import { getApiUrl } from './config/apiConfig';
 
 export const useAppStore = create((set, get) => ({
     // Character Info
@@ -80,7 +81,7 @@ export const useAppStore = create((set, get) => ({
     setRuntimeMode: (mode) => set({ runtimeMode: mode }),
     checkRuntimeMode: async () => {
         try {
-            const resp = await fetch('http://localhost:3002/api/forge/health');
+            const resp = await fetch(getApiUrl('/api/forge/health'));
             if (resp.ok) {
                 set({ runtimeMode: 'SERVER' });
             } else {
@@ -244,13 +245,21 @@ export const useAppStore = create((set, get) => ({
     addInfluencerNode: (position = { x: 200, y: 200 }) => {
         const id = `influencer-${Date.now()}`;
         const { activeCharacter, anchorImage } = get();
+        // Build a merged kit from all available sources
+        const kit = activeCharacter?.identity_kit || activeCharacter?.identityKit || {};
+        const kitImages = activeCharacter?.kitImages || activeCharacter?.kit_images || {};
+        const merged = { ...kitImages, ...kit }; // identity_kit takes priority
         const newNode = {
             id,
             type: 'influencer',
             position,
             data: {
                 label: activeCharacter?.name || 'AGENT_CORE',
-                image: anchorImage,
+                image: anchorImage || activeCharacter?.image || activeCharacter?.photo || merged.anchor,
+                kit: merged,
+                origin: activeCharacter?.origin || '',
+                visualStyle: activeCharacter?.visual_style || activeCharacter?.visualStyle || '',
+                rawData: activeCharacter || {},
                 onDelete: (id) => get().deleteNode(id)
             }
         };
@@ -276,7 +285,7 @@ export const useAppStore = create((set, get) => ({
     },
 
     setActiveCharacter: (character) => {
-        const anchorImage = character.identity_kit?.anchor || character.image || character.photo || null;
+        const anchorImage = character.anchor_image || character.anchorImage || character.image || character.photo || character.identity_kit?.anchor || null;
         set({
             name: character.name || 'UNNAMED_CONSTRUCT',
             origin: character.origin || '',

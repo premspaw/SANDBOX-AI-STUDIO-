@@ -7,6 +7,8 @@ import { InfluencerStudio } from './components/InfluencerStudio'
 import { ForgeView } from './components/ForgeView'
 import { PlaygroundCanvas } from './components/PlaygroundCanvas'
 
+import { AssetManager } from './components/AssetManager'
+
 const FULL_HEIGHT_TABS = new Set([
   'home',
   'prompt',
@@ -15,6 +17,7 @@ const FULL_HEIGHT_TABS = new Set([
   'playground',
   'creator',
   'directors-cut',
+  'admin',
 ])
 
 function App() {
@@ -34,6 +37,7 @@ function App() {
     'directors-cut': <PlaygroundCanvas />,
     forge: <ForgeView onComplete={() => setActiveTab('directors-cut')} />,
     playground: <PlaygroundCanvas />,
+    admin: <AssetManager />,
   }
 
   const containerClassName = FULL_HEIGHT_TABS.has(activeTab) ? 'h-full' : 'p-4'

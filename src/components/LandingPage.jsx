@@ -5,7 +5,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
-import { LANDING_ASSETS } from '../config/landingAssets';
+import { LANDING_ASSETS as INITIAL_ASSETS } from '../config/landingAssets';
+import { getApiUrl } from '../config/apiConfig';
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────
 const T = {
@@ -79,7 +80,7 @@ const MODES = [
   },
 ];
 
-const VCELLS = LANDING_ASSETS.gallery;
+
 
 // ═══════════════════════════════════════════════════════════════
 //  TINY REUSABLE PIECES
@@ -250,7 +251,7 @@ function VCell({ cell, style = {} }) {
           <video
             autoPlay muted loop playsInline
             src={cell.src}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 1 }}
           />
         ) : (
           <>
@@ -292,10 +293,9 @@ function VCell({ cell, style = {} }) {
         )}
       </div>
 
-      {/* Overlay */}
+      {/* Overlay: Removed gradient as per user request */}
       <div style={{
         position: 'absolute', inset: 0,
-        background: 'linear-gradient(to top,rgba(5,5,5,0.92) 0%,transparent 55%)',
         display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 28
       }}>
         <span style={{
@@ -487,7 +487,36 @@ function Marquee({ reverse }) {
 //  MAIN LANDING PAGE COMPONENT
 // ═══════════════════════════════════════════════════════════════
 export default function LandingPage({ onEnter }) {
+  const [assets, setAssets] = useState(INITIAL_ASSETS);
   const [hoveredMode, setHoveredMode] = useState(null);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    const fetchAssets = async () => {
+      try {
+        const response = await fetch(getApiUrl('/api/get-landing-assets'));
+        const data = await response.json();
+        if (data && Object.keys(data).length > 0) {
+          setAssets(data);
+        }
+      } catch (err) {
+        console.warn("[LandingPage] Failed to fetch dynamic assets, using initial config.");
+      }
+    };
+    fetchAssets();
+  }, []);
+
+  const VCELLS = assets.gallery || INITIAL_ASSETS.gallery || [];
+
+  const toggleMute = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    const next = !isMuted;
+    video.muted = next;   // true = muted, false = unmuted
+    if (!next) video.volume = 1;
+    setIsMuted(next);
+  };
 
   useEffect(() => {
     const id = 'ag-fonts';
@@ -509,6 +538,39 @@ export default function LandingPage({ onEnter }) {
 
   return (
     <div style={s.page}>
+      {/* Audio Toggle Badge */}
+      <motion.button
+        onClick={toggleMute}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        style={{
+          position: 'fixed', bottom: 40, right: 40, zIndex: 1000,
+          background: isMuted ? 'rgba(5,5,5,0.8)' : T.lime,
+          border: `1px solid ${isMuted ? 'rgba(240,237,232,0.1)' : 'transparent'}`,
+          borderRadius: 4, padding: '10px 16px',
+          display: 'flex', alignItems: 'center', gap: 10,
+          cursor: 'pointer', backdropFilter: 'blur(10px)',
+          color: isMuted ? 'rgba(240,237,232,0.5)' : '#000',
+          fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em',
+          textTransform: 'uppercase',
+          boxShadow: isMuted ? 'none' : `0 0 20px ${T.lime}33`
+        }}
+      >
+        <div style={{
+          width: 8, height: 8, borderRadius: '50%',
+          background: isMuted ? 'rgba(240,237,232,0.2)' : '#000',
+          position: 'relative'
+        }}>
+          {!isMuted && (
+            <motion.div
+              animate={{ scale: [1, 2], opacity: [0.5, 0] }}
+              transition={{ duration: 1, repeat: Infinity }}
+              style={{ position: 'absolute', inset: 0, background: '#000', borderRadius: '50%' }}
+            />
+          )}
+        </div>
+        {isMuted ? 'AUDIO OFF' : 'AUDIO ON'}
+      </motion.button>
 
       {/* ══════ HERO ══════ */}
       <section style={{
@@ -519,29 +581,18 @@ export default function LandingPage({ onEnter }) {
 
         {/* ── LAYER 1: BG VIDEO ── */}
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden', background: '#050505' }}>
-          {LANDING_ASSETS.heroBackground && (
+          {assets.heroBackground && (
             <video
+              ref={videoRef}
               autoPlay muted loop playsInline
-              src={LANDING_ASSETS.heroBackground}
+              src={assets.heroBackground}
               style={{
                 width: '100%', height: '100%', objectFit: 'cover',
-                opacity: 0.7, filter: 'saturate(0.8) brightness(0.9)'
+                opacity: 1
               }}
             />
           )}
-          {/* Strong vignette */}
-          <div style={{
-            position: 'absolute', inset: 0, background:
-              'linear-gradient(to right, rgba(5,5,5,0.85) 0%, rgba(5,5,5,0.4) 45%, rgba(5,5,5,0.1) 100%),' +
-              'linear-gradient(to bottom, rgba(5,5,5,0.4) 0%, rgba(5,5,5,0.0) 35%, rgba(5,5,5,0.8) 75%, rgba(5,5,5,1) 100%)',
-            zIndex: 1
-          }} />
-          {/* Scanlines */}
-          <div style={{
-            position: 'absolute', inset: 0,
-            backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px)',
-            pointerEvents: 'none'
-          }} />
+          {/* Overlays and Vignettes removed for maximum clarity */}
         </div>
 
         {/* Ambient lime glow top-left */}
@@ -554,7 +605,7 @@ export default function LandingPage({ onEnter }) {
           }} />
 
         {/* ── LAYER 3: FOREGROUND SUBJECT ── */}
-        {LANDING_ASSETS.foregroundSubject && (
+        {assets.foregroundSubject && (
           <div style={{
             position: 'absolute',
             right: '2%',
@@ -565,21 +616,15 @@ export default function LandingPage({ onEnter }) {
             display: 'flex', alignItems: 'flex-end',
           }}>
             <video autoPlay muted loop playsInline
-              src={LANDING_ASSETS.foregroundSubject}
+              src={assets.foregroundSubject}
               style={{
                 height: '100%', width: 'auto', objectFit: 'contain',
                 objectPosition: 'bottom',
                 mixBlendMode: 'screen',
-                opacity: 0.7,
-                filter: 'saturate(0.5) contrast(1.1)',
+                opacity: 1,
               }}
             />
-            {/* Fade feet into page bottom */}
-            <div style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0, height: '30%',
-              background: 'linear-gradient(to top, rgba(5,5,5,1) 0%, transparent 100%)',
-              pointerEvents: 'none', zIndex: 5
-            }} />
+            {/* Fade removed for maximum clarity */}
           </div>
         )}
 
@@ -792,7 +837,7 @@ export default function LandingPage({ onEnter }) {
                   fontFamily: "'DM Mono',monospace", fontSize: 10,
                   letterSpacing: '0.3em', color: 'rgba(240,237,232,0.15)', textTransform: 'uppercase'
                 }}>
-                  {LANDING_ASSETS.pipelineDemo ? 'PIPELINE DEMO ACTIVE' : 'DEMO VIDEO · SWAP SRC WHEN READY'}
+                  {assets.pipelineDemo ? 'PIPELINE DEMO ACTIVE' : 'DEMO VIDEO · SWAP SRC WHEN READY'}
                 </span>
               </div>
             </div>

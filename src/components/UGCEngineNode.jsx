@@ -17,7 +17,8 @@ import {
     Loader2
 } from 'lucide-react';
 import { useAppStore } from '../store';
-import { useWebSocket } from '../hooks/useWebSocket';
+import { rankHooks, getTrainingContext } from '../services/narrativeTrainer';
+import { getApiUrl } from '../config/apiConfig';
 
 const UGCEngineNode = ({ id, data }) => {
     const [directive, setDirective] = useState('');
@@ -70,11 +71,13 @@ const UGCEngineNode = ({ id, data }) => {
             return;
         }
 
-        setStatus('ANALYZING');
-        setProgress(25);
-
         try {
-            const resp = await fetch('http://localhost:3002/api/ugc/ad-engine', {
+            // STEP 1: Analyze Synergy & Generate Hooks Batch
+            setStatus('ANALYZING');
+            setProgress(30);
+
+            // Get initial synergy
+            const synergyResp = await fetch(getApiUrl('/api/ugc/ad-engine'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -84,18 +87,67 @@ const UGCEngineNode = ({ id, data }) => {
                     productMetadata,
                     directive: directive,
                     niche: 'lifestyle',
-                    tone: 'energetic'
+                    tone: 'energetic',
+                    trainingContext: "" // Don't send context yet for synergy
                 })
             });
 
-            if (!resp.ok) throw new Error("Backend orchestration failed");
+            if (!synergyResp.ok) throw new Error("Synergy analysis failed");
+            const synergyResult = await synergyResp.json();
+            const synergy = synergyResult.synergy;
 
-            const result = await resp.json();
+            // STEP 2: Generate 5 hooks for ranking
+            setStatus('GENERATING_HOOKS');
+            setProgress(50);
+
+            const hooksResp = await fetch(getApiUrl('/api/ugc/generate-hooks-batch'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    synergy,
+                    niche: 'lifestyle',
+                    tone: 'energetic',
+                    directive: directive
+                })
+            });
+
+            if (!hooksResp.ok) throw new Error("Hook batch generation failed");
+            const { hooks } = await hooksResp.json();
+
+            // STEP 3: Local Ranking via Narrative Trainer
+            console.log(`[UGC_ENGINE] Ranking ${hooks.length} hooks locally...`);
+            const rankedHooks = await rankHooks(hooks);
+            const bestHook = rankedHooks[0].hook;
+            const trainingContext = getTrainingContext();
+
+            console.log(`[UGC_ENGINE] Selected #1 Hook: "${bestHook}" | Training Context Active: ${!!trainingContext}`);
+
+            // STEP 4: Finalize Script with best hook + training context
+            setStatus('FINALIZING_SCRIPT');
+            setProgress(80);
+
+            const finalResp = await fetch(getApiUrl('/api/ugc/ad-engine'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    characterImage,
+                    productImage,
+                    characterMetadata,
+                    productMetadata,
+                    directive: bestHook, // Use best hook as directive
+                    niche: 'lifestyle',
+                    tone: 'energetic',
+                    trainingContext: trainingContext // Inject user preference style
+                })
+            });
+
+            if (!finalResp.ok) throw new Error("Script finalization failed");
+            const finalResult = await finalResp.json();
 
             setResults({
-                synergy: result.synergy,
-                script: result.script,
-                scenes: result.script.scenes
+                synergy: finalResult.synergy,
+                script: finalResult.script, // This script is now built around the top-ranked hook
+                scenes: finalResult.script.scenes
             });
 
             setProgress(100);
@@ -122,7 +174,7 @@ const UGCEngineNode = ({ id, data }) => {
         setVideoStatus(`Rendering Scene ${sceneIndex + 1}...`);
 
         try {
-            const resp = await fetch('http://localhost:3002/api/ugc/preview-scene', {
+            const resp = await fetch(getApiUrl('/api/ugc/preview-scene'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -193,7 +245,7 @@ const UGCEngineNode = ({ id, data }) => {
         setIsCompiling(true);
         setFinalAdUrl(null);
         try {
-            const resp = await fetch('http://localhost:3002/api/ugc/compile-ad', {
+            const resp = await fetch(getApiUrl('/api/ugc/compile-ad'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -247,8 +299,9 @@ const UGCEngineNode = ({ id, data }) => {
     const StatusBadge = ({ currentStatus }) => {
         const config = {
             IDLE: { icon: Play, color: 'text-zinc-400', label: 'READY' },
-            ANALYZING: { icon: Cpu, color: 'text-blue-400 animate-pulse', label: 'ANALYZING' },
-            GENERATING: { icon: Sparkles, color: 'text-purple-400 animate-pulse', label: 'GENERATING' },
+            ANALYZING: { icon: Cpu, color: 'text-blue-400 animate-pulse', label: 'SYNERGY' },
+            GENERATING_HOOKS: { icon: Zap, color: 'text-orange-400 animate-pulse', label: 'RANKING' },
+            FINALIZING_SCRIPT: { icon: Sparkles, color: 'text-purple-400 animate-pulse', label: 'SCRIPTING' },
             COMPLETE: { icon: CheckCircle2, color: 'text-[#bef264]', label: 'COMPLETE' },
             ERROR: { icon: AlertCircle, color: 'text-red-400', label: 'ERROR' }
         };

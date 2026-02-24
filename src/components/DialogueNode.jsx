@@ -3,6 +3,7 @@ import { Handle, Position } from 'reactflow';
 import { motion } from 'framer-motion';
 import { MessageSquare, X, Mic2, Play, Loader2, Music2 } from 'lucide-react';
 import { useAppStore } from '../store';
+import { getApiUrl } from '../config/apiConfig';
 
 export default memo(({ id, data }) => {
     const updateNodeData = useAppStore(s => s.updateNodeData);
@@ -53,7 +54,7 @@ export default memo(({ id, data }) => {
         if (!data.script || isSynthesizing) return;
         setIsSynthesizing(true);
         try {
-            const response = await fetch('http://localhost:3002/api/proxy/tts', {
+            const response = await fetch(getApiUrl('/api/proxy/tts'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -122,7 +123,7 @@ export default memo(({ id, data }) => {
             className="group relative px-5 py-4 bg-[#0a0a0a]/90 backdrop-blur-2xl border-2 border-[#bef264]/20 rounded-2xl min-w-[250px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-[#bef264]/50 transition-all">
             <Handle
                 type="target"
-                position={Position.Top}
+                position={Position.Left}
                 className="!w-4 !h-4 !bg-purple-500 !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(168,85,247,0.5)] hover:!scale-125 transition-all"
             />
 
@@ -192,7 +193,7 @@ export default memo(({ id, data }) => {
 
             <Handle
                 type="source"
-                position={Position.Bottom}
+                position={Position.Right}
                 className="!w-4 !h-4 !bg-purple-500 !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(168,85,247,0.5)] hover:!scale-125 transition-all"
             />
         </motion.div>

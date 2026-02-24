@@ -3,6 +3,7 @@ import { Handle, Position } from 'reactflow';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Music, X, Activity, Loader2, Clock, Sparkles } from 'lucide-react';
 import { useAppStore } from '../store';
+import { getApiUrl } from '../config/apiConfig';
 
 export default memo(({ id, data }) => {
     const updateNodeData = useAppStore(s => s.updateNodeData);
@@ -20,7 +21,7 @@ export default memo(({ id, data }) => {
         if (isGenerating) return;
         setIsGenerating(true);
         try {
-            const response = await fetch('http://localhost:3002/api/music/generate', {
+            const response = await fetch(getApiUrl('/api/music/generate'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -49,7 +50,7 @@ export default memo(({ id, data }) => {
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
             className="group relative px-5 py-4 bg-[#0a0a0a]/90 backdrop-blur-2xl border-2 border-pink-500/20 rounded-2xl min-w-[250px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-pink-500/50 transition-all"
         >
-            <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-pink-500 !border-2 !border-black" />
+            <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-pink-500 !border-2 !border-black" />
 
             <button
                 onClick={() => data.onDelete(id)}
@@ -165,7 +166,7 @@ export default memo(({ id, data }) => {
                 </div>
             </div>
 
-            <Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-pink-500 !border-2 !border-black" />
+            <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-pink-500 !border-2 !border-black" />
         </motion.div>
     );
 });

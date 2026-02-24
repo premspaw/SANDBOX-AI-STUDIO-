@@ -9,6 +9,7 @@ import {
 import { cn } from '../lib/utils'
 import { AssetsLibrary } from './AssetsLibrary'
 import { useAppStore } from '../store'
+import { getApiUrl } from '../config/apiConfig'
 
 // ─────────────────────────────────────────────
 // CONSTANTS
@@ -752,7 +753,7 @@ export function PromptGenerator({ onUpscale }) {
         try {
             const extension = type === 'video' ? 'mp4' : 'png'
             const fileName = `flare_${slot}_${Date.now()}.${extension}`
-            const resp = await fetch('http://localhost:3002/api/save-asset', {
+            const resp = await fetch(getApiUrl('/api/save-asset'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ imageData: url, fileName, type })
@@ -777,7 +778,7 @@ export function PromptGenerator({ onUpscale }) {
         setIsLoading(true)
 
         try {
-            const endpoint = mode === 'video' ? 'http://localhost:3002/api/ugc/video' : 'http://localhost:3002/api/generate-image';
+            const endpoint = mode === 'video' ? getApiUrl('/api/ugc/video') : getApiUrl('/api/generate-image');
 
             // For video, we need an anchor image. If no ref, use character anchor.
             let videoRef = selections.referenceImage;

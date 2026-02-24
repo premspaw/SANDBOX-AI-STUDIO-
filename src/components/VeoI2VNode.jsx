@@ -3,6 +3,7 @@ import { Handle, Position } from 'reactflow';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Video, X, Loader2, Play, ImageIcon, Zap, MessageSquare, AlignLeft, Maximize2, Film } from 'lucide-react';
 import { useAppStore } from '../store';
+import { getApiUrl } from '../config/apiConfig';
 import { useWebSocket } from '../hooks/useWebSocket';
 
 const ASPECT_RATIOS = [
@@ -87,7 +88,7 @@ export default memo(({ id, data }) => {
         setStatusMsg('Connecting...');
 
         try {
-            const response = await fetch('http://localhost:3002/api/ugc/veo-i2v', {
+            const response = await fetch(getApiUrl('/api/ugc/veo-i2v'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

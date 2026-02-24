@@ -9,6 +9,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store';
 import { uploadAsset, saveCharacterToDb } from '../supabaseService';
+import { getApiUrl, API_BASE_URL } from '../config/apiConfig';
 
 const safeUUID = () => {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -20,7 +21,7 @@ const safeUUID = () => {
     });
 };
 
-const API = 'http://localhost:3002';
+const API = API_BASE_URL;
 
 // ─── Visual Style Config ──────────────────────────────────────────────────────
 const VISUAL_STYLES = [

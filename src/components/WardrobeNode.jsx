@@ -40,7 +40,7 @@ export default memo(({ id, data }) => {
         >
             <Handle
                 type="target"
-                position={Position.Top}
+                position={Position.Left}
                 className="!w-4 !h-4 !bg-rose-500 !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(244,63,94,0.5)] hover:!scale-125 transition-all"
             />
 
@@ -115,7 +115,7 @@ export default memo(({ id, data }) => {
 
             <Handle
                 type="source"
-                position={Position.Bottom}
+                position={Position.Right}
                 className="!w-4 !h-4 !bg-rose-500 !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(244,63,94,0.5)] hover:!scale-125 transition-all"
             />
         </motion.div>

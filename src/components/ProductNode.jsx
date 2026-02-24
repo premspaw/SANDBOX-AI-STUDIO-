@@ -3,6 +3,7 @@ import { Handle, Position } from 'reactflow';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, X, Upload, Eye, Loader2, Tag } from 'lucide-react';
 import { useAppStore } from '../store';
+import { getApiUrl } from '../config/apiConfig';
 
 export default memo(({ id, data }) => {
     const updateNodeData = useAppStore(s => s.updateNodeData);
@@ -22,7 +23,7 @@ export default memo(({ id, data }) => {
             // Auto-analyze with Vision API
             setIsAnalyzing(true);
             try {
-                const response = await fetch('http://localhost:3002/api/ugc/analyze-product', {
+                const response = await fetch(getApiUrl('/api/ugc/analyze-product'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ image: imageData })
@@ -80,7 +81,7 @@ export default memo(({ id, data }) => {
         >
             <Handle
                 type="target"
-                position={Position.Top}
+                position={Position.Left}
                 className="!w-4 !h-4 !bg-amber-500 !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(245,158,11,0.5)] hover:!scale-125 transition-all"
             />
 
@@ -187,7 +188,7 @@ export default memo(({ id, data }) => {
 
             <Handle
                 type="source"
-                position={Position.Bottom}
+                position={Position.Right}
                 className="!w-4 !h-4 !bg-amber-500 !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(245,158,11,0.5)] hover:!scale-125 transition-all"
             />
         </motion.div>

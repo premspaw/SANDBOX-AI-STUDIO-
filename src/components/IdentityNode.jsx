@@ -13,7 +13,7 @@ export default memo(({ id, data }) => {
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
             className="relative group"
         >
-            <Handle type="target" position={Position.Top} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+            <Handle type="target" position={Position.Left} className="opacity-0 group-hover:opacity-100 transition-opacity" />
 
             {/* Delete button */}
             <div className="absolute -top-4 -left-4 z-[50] opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100">
@@ -140,12 +140,12 @@ export default memo(({ id, data }) => {
             {/* Neural Handles */}
             <Handle
                 type="target"
-                position={Position.Top}
+                position={Position.Left}
                 className="!w-4 !h-4 !bg-[#bef264] !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(190,242,100,0.5)] hover:!scale-125 transition-all"
             />
             <Handle
                 type="source"
-                position={Position.Bottom}
+                position={Position.Right}
                 className="!w-4 !h-4 !bg-[#bef264] !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(190,242,100,0.5)] hover:!scale-125 transition-all"
             />
         </motion.div>

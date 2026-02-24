@@ -15,8 +15,9 @@ import {
 import { useAppStore } from '../store';
 import { getIdentityPrompts } from '../utils/identityPrompts';
 import { uploadAsset, saveCharacterToDb } from '../supabaseService';
+import { getApiUrl, API_BASE_URL } from '../config/apiConfig';
 
-const API = 'http://localhost:3002';
+const API = API_BASE_URL;
 
 function KitCard({ label, image, loading, aspect = "square" }) {
     const aspectClass = aspect === 'wide' ? 'aspect-[2/1] w-full h-full' : aspect === 'portrait' ? 'aspect-[3/4] w-full h-full' : 'aspect-square w-full h-full';

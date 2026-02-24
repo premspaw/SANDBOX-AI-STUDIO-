@@ -1,11 +1,11 @@
-const API = 'http://localhost:3002';
+import { getApiUrl } from './config/apiConfig';
 
 /**
  * Uploads a base64 image or file to Supabase Storage via Proxy.
  */
 export const uploadAsset = async (base64, characterId, slot) => {
     try {
-        const response = await fetch(`${API}/api/proxy/upload`, {
+        const response = await fetch(getApiUrl('/api/proxy/upload'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ base64, characterId, slot })
@@ -23,7 +23,7 @@ export const uploadAsset = async (base64, characterId, slot) => {
  */
 export const saveCharacterToDb = async (character) => {
     try {
-        const response = await fetch(`${API}/api/proxy/save-character`, {
+        const response = await fetch(getApiUrl('/api/proxy/save-character'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ character })
@@ -41,7 +41,7 @@ export const saveCharacterToDb = async (character) => {
  */
 export const saveStoryboardItem = async (characterId, imageUrl, orderIndex) => {
     try {
-        const response = await fetch(`${API}/api/proxy/save-storyboard`, {
+        const response = await fetch(getApiUrl('/api/proxy/save-storyboard'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ characterId, imageUrl, orderIndex })
@@ -58,7 +58,7 @@ export const saveStoryboardItem = async (characterId, imageUrl, orderIndex) => {
  */
 export const saveGeneratedAsset = async (data, type = 'image', name = null) => {
     try {
-        const response = await fetch(`${API}/api/save-asset`, {
+        const response = await fetch(getApiUrl('/api/save-asset'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
