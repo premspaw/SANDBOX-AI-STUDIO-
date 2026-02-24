@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { getApiUrl } from "./src/config/apiConfig.js";
 
 const getAI = () => {
@@ -219,8 +220,10 @@ RULES:
 export const generateCharacterImage = async (params) => {
     return withRetry(async () => {
         try {
-            // 1. Try local server first (Frontend only)
-            if (typeof window !== 'undefined') {
+            const engine = params.modelEngine || 'imagen-3.0-generate-001';
+
+            // 1. Try local server first (Only if using standard Imagen or default)
+            if (typeof window !== 'undefined' && engine === 'imagen-3.0-generate-001') {
                 const isAlive = await checkBackend();
                 if (isAlive) {
                     const response = await fetch(getApiUrl('/api/forge/generate'), {
@@ -236,7 +239,50 @@ export const generateCharacterImage = async (params) => {
                 }
             }
 
-            // 2. Fallback: Direct SDK (Standalone Mode or Backend usage)
+            // ROUTE 1: Google Models (Imagen 3 / Nano Banana)
+            if (engine.includes('imagen') || engine.includes('nano-banana')) {
+                // Get API Key using our existing logic
+                const storeKey = typeof window !== 'undefined' && window.__VEO_API_KEY__;
+                const apiKey = storeKey ||
+                    (typeof process !== 'undefined' ? process.env.GOOGLE_API_KEY : null) ||
+                    (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_GOOGLE_API_KEY : '') ||
+                    '';
+
+                const ai = new GoogleGenAI({ apiKey });
+
+                const response = await ai.models.generateImages({
+                    model: engine,
+                    prompt: params.prompt,
+                    config: {
+                        numberOfImages: 1,
+                        aspectRatio: params.aspectRatio || '9:16',
+                        outputMimeType: "image/jpeg"
+                    }
+                });
+
+                if (response.generatedImages?.[0]) {
+                    return `data:image/jpeg;base64,${response.generatedImages[0].image.imageBytes}`;
+                }
+
+                throw new Error("Imagen generation returned no images");
+            }
+
+            // ROUTE 2: Replicate Models (Flux 1.1)
+            else if (engine.includes('flux')) {
+                const response = await fetch(getApiUrl('/api/ugc/replicate-flux'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: params.prompt,
+                        aspectRatio: params.aspectRatio,
+                        identity_images: params.identity_images
+                    })
+                });
+                const data = await response.json();
+                return data.imageUrl || data.url;
+            }
+
+            // Default Fallback: Old gemini-3-pro-image-preview logic
             const ai = getAI();
             const model = ai.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
 
@@ -1126,7 +1172,7 @@ export async function analyzeUGCContext(characterImage, productImage, metadata =
         console.log(`[GEMINI] Analyzing UGC Context for synergy with metadata...`);
         const ai = getAI();
         const model = ai.getGenerativeModel({
-            model: 'gemini-2.5-flash-latest',
+            model: 'gemini-2.5-flash',
             generationConfig: { responseMimeType: "application/json" }
         });
 
@@ -1183,7 +1229,7 @@ export async function generateCandidateHooks(analysis, niche, tone, directive = 
         console.log(`[GEMINI] Generating ${count} candidate hooks for re-ranking...`);
         const ai = getAI();
         const model = ai.getGenerativeModel({
-            model: 'gemini-2.5-flash-latest',
+            model: 'gemini-2.5-flash',
             generationConfig: { responseMimeType: "application/json" }
         });
 
@@ -1220,7 +1266,7 @@ export async function generateUGCScript(analysis, niche, tone, directive = "", t
         console.log(`[GEMINI] Generating UGC Script for ${niche} with directive: ${directive}`);
         const ai = getAI();
         const model = ai.getGenerativeModel({
-            model: 'gemini-2.5-flash-latest',
+            model: 'gemini-2.5-flash',
             generationConfig: { responseMimeType: "application/json" }
         });
 

@@ -120,7 +120,8 @@ export default memo(({ id, data }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             whileHover={{ scale: 1.25 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-            className="group relative px-5 py-4 bg-[#0a0a0a]/90 backdrop-blur-2xl border-2 border-[#bef264]/20 rounded-2xl min-w-[250px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-[#bef264]/50 transition-all">
+            style={{ zIndex: 1 }}
+            className="group relative px-5 py-4 bg-[#0a0a0a]/90 border-2 border-[#bef264]/20 rounded-2xl min-w-[250px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-[#bef264]/50 transition-all">
             <Handle
                 type="target"
                 position={Position.Left}

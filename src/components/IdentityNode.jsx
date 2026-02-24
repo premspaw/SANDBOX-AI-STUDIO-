@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Position } from 'reactflow';
 import { motion } from 'framer-motion';
+import MagneticHandle from './edges/MagneticHandle';
 import { Maximize2, Loader2, Search, X, Zap, ScanLine } from 'lucide-react';
 
 import { useAppStore } from '../store';
@@ -11,6 +12,7 @@ export default memo(({ id, data }) => {
         <motion.div
             whileHover={{ scale: 1.25 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+            style={{ zIndex: 1 }}
             className="relative group"
         >
             <Handle type="target" position={Position.Left} className="opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -27,7 +29,8 @@ export default memo(({ id, data }) => {
 
             <motion.div
                 layoutId={`node-frame-${id}`}
-                className={`w-48 h-60 bg-[#0a0a0a] backdrop-blur-3xl border rounded-[1.5rem] overflow-hidden shadow-2xl transition-all duration-500 ${data.isOptimistic
+                style={{ zIndex: 1 }}
+                className={`w-48 h-60 bg-[#0a0a0a] border rounded-[1.5rem] overflow-hidden shadow-2xl transition-all duration-500 ${data.isOptimistic
                     ? 'border-cyan-400/30 shadow-[0_0_25px_rgba(34,211,238,0.12)]'
                     : data.analysisData
                         ? 'border-[#bef264]/40 shadow-[0_0_25px_rgba(190,242,100,0.15)]'
@@ -137,16 +140,18 @@ export default memo(({ id, data }) => {
                 )}
             </motion.div>
 
-            {/* Neural Handles */}
-            <Handle
+            {/* Neural Magnetic Handles */}
+            <MagneticHandle
                 type="target"
                 position={Position.Left}
-                className="!w-4 !h-4 !bg-[#bef264] !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(190,242,100,0.5)] hover:!scale-125 transition-all"
+                color="#bef264"
+                className={`handle-character ${useAppStore.getState().edges.some(e => e.target === id) ? 'neural-engaged' : ''}`}
             />
-            <Handle
+            <MagneticHandle
                 type="source"
                 position={Position.Right}
-                className="!w-4 !h-4 !bg-[#bef264] !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(190,242,100,0.5)] hover:!scale-125 transition-all"
+                color="#bef264"
+                className={`handle-character ${useAppStore.getState().edges.some(e => e.source === id) ? 'neural-engaged' : ''}`}
             />
         </motion.div>
     );

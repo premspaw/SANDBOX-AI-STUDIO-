@@ -48,9 +48,10 @@ export default memo(({ id, data }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             whileHover={{ scale: 1.25 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-            className="group relative px-5 py-4 bg-[#0a0a0a]/90 backdrop-blur-2xl border-2 border-pink-500/20 rounded-2xl min-w-[250px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-pink-500/50 transition-all"
+            style={{ zIndex: 1 }}
+            className="group relative px-5 py-4 bg-[#0a0a0a]/90 border-2 border-pink-500/20 rounded-2xl min-w-[250px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-pink-500/50 transition-all"
         >
-            <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-pink-500 !border-2 !border-black" />
+            <Handle type="target" position={Position.Left} className={`!w-4 !h-4 !bg-pink-500 !border-4 !border-[#050505] !shadow-lg hover:!scale-125 transition-all handle-story ${useAppStore.getState().edges.some(e => e.target === id) ? 'neural-engaged' : ''}`} />
 
             <button
                 onClick={() => data.onDelete(id)}
@@ -166,7 +167,7 @@ export default memo(({ id, data }) => {
                 </div>
             </div>
 
-            <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-pink-500 !border-2 !border-black" />
+            <Handle type="source" position={Position.Right} className={`!w-4 !h-4 !bg-pink-500 !border-4 !border-[#050505] !shadow-lg hover:!scale-125 transition-all handle-story ${useAppStore.getState().edges.some(e => e.source === id) ? 'neural-engaged' : ''}`} />
         </motion.div>
     );
 });

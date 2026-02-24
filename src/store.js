@@ -37,6 +37,7 @@ export const useAppStore = create((set, get) => ({
     // UGC Studio State
     currentWardrobe: '',
     currentProduct: { image: null, description: '', labels: [], colors: [] },
+    currentLocation: null,
 
     // React Flow State
     nodes: [],
@@ -70,6 +71,8 @@ export const useAppStore = create((set, get) => ({
     setRepairSession: (session) => set({ repairSession: session }),
     setCurrentWardrobe: (text) => set({ currentWardrobe: text }),
     setCurrentProduct: (data) => set({ currentProduct: data }),
+    setCurrentLocation: (location) => set({ currentLocation: location }),
+    clearCurrentLocation: () => set({ currentLocation: null }),
 
     // Standalone / API Actions
     setApiKey: (key) => {
@@ -456,6 +459,25 @@ export const useAppStore = create((set, get) => ({
         return id;
     },
 
+    addLocationNode: (position = { x: 400, y: 400 }) => {
+        const id = `location-${Date.now()}`;
+        const newNode = {
+            id,
+            type: 'location',
+            position,
+            data: {
+                label: 'LOCATION_SCAN',
+                locationImage: null,
+                locationName: '',
+                establishingPrompt: '',
+                backgroundPrompt: '',
+                onDelete: (id) => get().deleteNode(id)
+            }
+        };
+        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
+        return id;
+    },
+
     addAutoStoryboardNode: (position = { x: 400, y: 200 }) => {
         const id = `storyboard-${Date.now()}`;
         const newNode = {
@@ -492,7 +514,7 @@ export const useAppStore = create((set, get) => ({
     },
 
     spawnSequence: (sequenceNodes) => {
-        const { addDialogueNode, addInfluencerNode, addVideoNode, addCameraNode, addLightingNode, addSFXNode, addAmbientNode, addMusicNode, addUGCPipelineNode, addWardrobeNode, addProductNode, addAutoStoryboardNode, addVeoI2VNode, edges } = get();
+        const { addDialogueNode, addInfluencerNode, addVideoNode, addCameraNode, addLightingNode, addSFXNode, addAmbientNode, addMusicNode, addUGCPipelineNode, addWardrobeNode, addProductNode, addAutoStoryboardNode, addVeoI2VNode, addLocationNode, edges } = get();
         const basePos = { x: 100, y: 100 };
         const newEdges = [...edges];
         const createdMap = {};
@@ -563,6 +585,8 @@ export const useAppStore = create((set, get) => ({
                     hookScript: nodeDef.hookScript || '',
                     niche: nodeDef.niche
                 });
+            } else if (nodeDef.type === 'location') {
+                newNodeId = addLocationNode(position);
             }
 
             if (newNodeId) {

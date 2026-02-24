@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { Mic2, Music, Volume2, Zap, ChevronUp, ChevronDown, Sparkles, UserCheck, Loader2, Wand2, Users, Cloud, Camera, Clapperboard } from 'lucide-react';
+import { Mic2, Music, Volume2, Zap, ChevronUp, ChevronDown, Sparkles, UserCheck, Loader2, Wand2, Users, Cloud, Camera, Clapperboard, MapPin } from 'lucide-react';
 import { useAppStore } from '../store';
 
 function DockItem({ tool, mouseX }) {
@@ -84,6 +84,7 @@ export const SonicDock = () => {
         { id: 'sfx', icon: Volume2, label: 'SFX', desc: 'Atmosphere', color: 'text-amber-400', bgColor: 'bg-amber-400/10', action: () => store.addSFXNode() },
         { id: 'outfit', icon: Sparkles, label: 'OUTFIT', desc: 'Wardrobe', color: 'text-violet-400', bgColor: 'bg-violet-400/10', action: () => store.addWardrobeNode() },
         { id: 'product', icon: Camera, label: 'PRODUCT', desc: 'Asset', color: 'text-emerald-400', bgColor: 'bg-emerald-400/10', action: () => store.addProductNode() },
+        { id: 'location', icon: MapPin, label: 'LOCATION', desc: 'Environment', color: 'text-cyan-400', bgColor: 'bg-cyan-400/10', action: () => store.addLocationNode() },
         { id: 'story', icon: Clapperboard, label: 'STORY', desc: 'Storyboard', color: 'text-blue-400', bgColor: 'bg-blue-400/10', action: () => store.addAutoStoryboardNode() },
         { id: 'veo', icon: Zap, label: 'VEO I2V', desc: 'Video Gen', color: 'text-orange-400', bgColor: 'bg-orange-400/10', action: () => store.addVeoI2VNode() },
     ];

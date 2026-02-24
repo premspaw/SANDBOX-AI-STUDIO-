@@ -16,10 +16,11 @@ export default memo(({ id, data }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             whileHover={{ scale: 1.25 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-            className="group relative px-4 py-3 bg-[#0a0a0a]/90 backdrop-blur-2xl border-2 border-[#bef264]/20 rounded-2xl min-w-[200px] max-w-[220px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-[#bef264]/50 transition-all"
+            style={{ zIndex: 1 }}
+            className="group relative px-4 py-3 bg-[#0a0a0a]/90 border-2 border-[#bef264]/20 rounded-2xl min-w-[200px] max-w-[220px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-[#bef264]/50 transition-all"
         >
             <Handle type="target" position={Position.Left}
-                className="!w-4 !h-4 !bg-[#bef264] !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(190,242,100,0.5)] hover:!scale-125 transition-all"
+                className={`!w-4 !h-4 !bg-[#bef264] !border-4 !border-[#050505] !shadow-lg hover:!scale-125 transition-all handle-character ${useAppStore.getState().edges.some(e => e.target === id) ? 'neural-engaged' : ''}`}
             />
 
             <button
@@ -88,7 +89,7 @@ export default memo(({ id, data }) => {
             </div>
 
             <Handle type="source" position={Position.Right}
-                className="!w-4 !h-4 !bg-[#bef264] !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(190,242,100,0.5)] hover:!scale-125 transition-all"
+                className={`!w-4 !h-4 !bg-[#bef264] !border-4 !border-[#050505] !shadow-lg hover:!scale-125 transition-all handle-character ${useAppStore.getState().edges.some(e => e.source === id) ? 'neural-engaged' : ''}`}
             />
         </motion.div>
     );

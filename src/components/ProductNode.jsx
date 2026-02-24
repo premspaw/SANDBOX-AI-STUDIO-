@@ -1,5 +1,6 @@
 import React, { memo, useState, useCallback } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Position } from 'reactflow';
+import MagneticHandle from './edges/MagneticHandle';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, X, Upload, Eye, Loader2, Tag } from 'lucide-react';
 import { useAppStore } from '../store';
@@ -77,12 +78,14 @@ export default memo(({ id, data }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             whileHover={{ scale: 1.25 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-            className="group relative px-5 py-4 bg-[#0a0a0a]/90 backdrop-blur-2xl border-2 border-amber-500/20 rounded-2xl min-w-[250px] max-w-[280px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-amber-500/50 transition-all"
+            style={{ zIndex: 1 }}
+            className="group relative px-5 py-4 bg-[#0a0a0a]/90 border-2 border-amber-500/20 rounded-2xl min-w-[250px] max-w-[280px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-amber-500/50 transition-all"
         >
-            <Handle
+            <MagneticHandle
                 type="target"
                 position={Position.Left}
-                className="!w-4 !h-4 !bg-amber-500 !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(245,158,11,0.5)] hover:!scale-125 transition-all"
+                color="#f59e0b"
+                className={`handle-product ${useAppStore.getState().edges.some(e => e.target === id) ? 'neural-engaged' : ''}`}
             />
 
             <button
@@ -186,10 +189,11 @@ export default memo(({ id, data }) => {
                 </div>
             </div>
 
-            <Handle
+            <MagneticHandle
                 type="source"
                 position={Position.Right}
-                className="!w-4 !h-4 !bg-amber-500 !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(245,158,11,0.5)] hover:!scale-125 transition-all"
+                color="#f59e0b"
+                className={`handle-product ${useAppStore.getState().edges.some(e => e.source === id) ? 'neural-engaged' : ''}`}
             />
         </motion.div>
     );

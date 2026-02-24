@@ -1,11 +1,12 @@
 import React, { memo, useState } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Position } from 'reactflow';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Film, X, Loader2, Clapperboard, Clock, Camera, Maximize2 } from 'lucide-react';
+import { Film, X, Loader2, Clapperboard, Clock, Camera, Maximize2, Cpu } from 'lucide-react';
 import { useAppStore } from '../store';
 import { generateCharacterImage, buildConsistencyRefs, expandPrompt } from '../../geminiService';
 import { NICHE_STYLES } from '../storyboardConfig';
 import { getApiUrl } from '../config/apiConfig';
+import MagneticHandle from './edges/MagneticHandle';
 
 // Duration → label and shot count map (mirrors server logic)
 const DURATIONS = [
@@ -52,6 +53,7 @@ export default memo(({ id, data }) => {
     const [selectedNiche, setSelectedNiche] = useState('CUSTOM');
     const [aspectRatio, setAspectRatio] = useState('9:16');
     const [userPrompt, setUserPrompt] = useState('');
+    const [selectedModel, setSelectedModel] = useState('imagen-3.0-generate-001'); // Default
 
     // --- Graph-Aware Extraction ---
     const getConnectedInputs = () => {
@@ -62,28 +64,45 @@ export default memo(({ id, data }) => {
         const inputs = {
             character: store.activeCharacter?.name || '',
             wardrobe: store.currentWardrobe || '',
+            wardrobeDetails: [],
             product: store.currentProduct?.description || '',
             productImage: store.currentProduct?.image || null,
             location: '',
+            locationDetails: null,
             kit: store.activeCharacter?.identity_kit || {}
         };
 
         // Prioritize data from connected nodes
-        sourceNodes.forEach(node => {
-            if (node.type === 'influencer' || node.type === 'identity') {
+        connectedEdges.forEach(edge => {
+            const node = sourceNodes.find(n => n.id === edge.source);
+            if (!node) return;
+
+            const handleId = edge.targetHandle;
+
+            // Route data based on handle ID first, then fallback to node type
+            if (handleId === 'character' || node.type === 'influencer' || node.type === 'identity') {
                 inputs.character = node.data.label || node.data.name || inputs.character;
-                // ✅ CRITICAL: Extract identity kit for face consistency
-                if (node.data.kit) {
-                    inputs.kit = node.data.kit;
-                }
-            } else if (node.type === 'wardrobe') {
+                if (node.data.kit) inputs.kit = node.data.kit;
+            }
+
+            if (handleId === 'wardrobe' || node.type === 'wardrobe') {
                 inputs.wardrobe = node.data.outfitDescription || inputs.wardrobe;
-            } else if (node.type === 'product') {
+                inputs.wardrobeDetails = node.data.items || [];
+            }
+
+            if (handleId === 'product' || node.type === 'product') {
                 inputs.product = node.data.productDescription || node.data.description || inputs.product;
                 inputs.productImage = node.data.productImage || inputs.productImage;
-            } else if (node.type === 'ambient' || node.type === 'lighting') {
-                const locVal = node.data.atmosphere || node.data.lighting || '';
-                inputs.location = inputs.location ? `${inputs.location}, ${locVal}` : locVal;
+            }
+
+            if (handleId === 'location' || node.type === 'location' || node.type === 'ambient' || node.type === 'lighting') {
+                if (node.type === 'location') {
+                    inputs.location = node.data.locationName || inputs.location;
+                    inputs.locationDetails = node.data;
+                } else {
+                    const locVal = node.data.atmosphere || node.data.lighting || '';
+                    inputs.location = inputs.location ? `${inputs.location}, ${locVal}` : locVal;
+                }
             }
         });
 
@@ -91,101 +110,56 @@ export default memo(({ id, data }) => {
     };
 
     const activeInputs = getConnectedInputs();
-    const activeStyle = NICHE_STYLES[selectedNiche] || NICHE_STYLES.CUSTOM;
-
-    // Dynamic Summary Text
-    const dynamicSummary = `${activeStyle.vibe.split(',')[0]} featuring ${activeInputs.character || 'a subject'}, characterized by ${activeStyle.camera.split(',')[0]} and ${activeStyle.lighting.split(',')[0]}.`;
-
     const durConfig = DURATIONS.find(d => d.value === sceneDuration);
-
-    // Auto-populate prompt from connected nodes
-    React.useEffect(() => {
-        const charName = activeInputs.character;
-        const prodDesc = activeInputs.product?.split(',')[0] || '';
-        if (charName && prodDesc) {
-            setUserPrompt(`${charName} showcasing ${prodDesc}`);
-        } else if (charName) {
-            setUserPrompt(`${charName} in a cinematic brand scene`);
-        }
-    }, [activeInputs.character, activeInputs.product]);
+    const dynamicSummary = `${selectedNiche} Style | ${sceneDuration}s Narrative | ${aspectRatio} Composition`;
 
     const handleGenerateStoryboard = async () => {
-        if (isGenerating) return;
         setIsGenerating(true);
-
         try {
-            // ── Build 4-pillar payload ──
-            const payload = {
-                duration: sceneDuration,
-                inputs: activeInputs,
-                selectedNiche,
-                aspectRatio,
-                // Legacy fields for backward compat
-                prompt: userPrompt || `${activeInputs.character} showcasing ${activeInputs.product}`,
-                characterName: activeInputs.character,
-            };
-
-            const response = await fetch(getApiUrl('/api/ugc/auto-storyboard'), {
+            const response = await fetch(getApiUrl('/api/ugc/generate-storyboard'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    prompt: userPrompt,
+                    duration: sceneDuration,
+                    niche: selectedNiche,
+                    inputs: activeInputs
+                })
             });
             const result = await response.json();
+            if (result.scenes) {
+                updateNodeData(id, { scenes: result.scenes, script: result.fullScript });
 
-            if (result.scenes?.length > 0) {
-                updateNodeData(id, { scenes: result.scenes });
-
-                // Auto-spawn scene nodes + generate images
-                const baseX = store.nodes.find(n => n.id === id)?.position?.x || 400;
-                const baseY = (store.nodes.find(n => n.id === id)?.position?.y || 300) + 220;
-
+                // Spawn sequence nodes
+                const sequencePos = { x: store.nodes.find(n => n.id === id).position.x + 400, y: store.nodes.find(n => n.id === id).position.y };
                 result.scenes.forEach(async (scene, i) => {
-                    const sceneNodeId = store.addNode(
-                        '',
-                        `SHOT_${scene.shotNumber || i + 1}: ${scene.shotType}`,
-                        true,
-                        { x: baseX + (i * 260), y: baseY }
-                    );
-                    store.updateNodeData(sceneNodeId, {
-                        sceneIndex: i,
-                        timeRange: scene.timeRange,
-                        shotType: scene.shotType,
-                        action: scene.action,
-                        hasProduct: scene.hasProduct,
-                        prompt: scene.prompt,
-                        label: `SHOT_${scene.shotNumber || i + 1}`
+                    const sceneNodeId = store.addVideoNode('', `Rendering Shot ${i + 1}...`, {
+                        x: sequencePos.x,
+                        y: sequencePos.y + (i * 150)
                     });
-                    store.setState(s => ({
-                        ...s,
-                        edges: [...s.edges, {
-                            id: `edge-story-${id}-${sceneNodeId}`,
-                            source: id,
-                            target: sceneNodeId,
-                            animated: true,
-                            style: { stroke: '#8b5cf6', opacity: 0.3 }
-                        }]
-                    }));
 
-                    // Generate scene image with 3-image consistency refs
+                    // Trigger visual generation for this shot immediately
                     try {
-                        const kit = activeInputs.kit || {};
-                        const identityImages = [
-                            kit.anchor || activeInputs.image, // fallback to main image
-                            kit.profile || kit.angle_1,
-                            kit.fullBody || kit.full_body
-                        ].filter(Boolean).slice(0, 3);
+                        const finalPrompt = scene.visualPrompt;
+                        const modelEngine = selectedModel;
 
-                        const sceneImageUrl = await generateCharacterImage({
-                            prompt: scene.prompt,
-                            identity_images: identityImages,
-                            product_image: activeInputs.productImage || store.currentProduct?.image,
-                            aspectRatio: aspectRatio,
-                            resolution: '1K',
-                            bible: store.universeBible,
-                        });
+                        const imageUrl = await generateCharacterImage(
+                            finalPrompt,
+                            activeInputs.kit,
+                            activeInputs.productImage,
+                            {
+                                aspectRatio: aspectRatio.replace(':', '_'),
+                                modelEngine
+                            }
+                        );
 
-                        if (sceneImageUrl) {
-                            store.updateNodeData(sceneNodeId, { image: sceneImageUrl, isOptimistic: false });
+                        if (imageUrl) {
+                            store.updateNodeData(sceneNodeId, {
+                                videoUrl: imageUrl, // Reusing for placeholder
+                                moviePoster: imageUrl,
+                                isOptimistic: false,
+                                label: `Shot ${i + 1}: ${scene.shotType}`
+                            });
                         }
                     } catch (err) {
                         console.error(`Image gen failed for shot ${i + 1}:`, err);
@@ -206,12 +180,36 @@ export default memo(({ id, data }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             whileHover={{ scale: 1.04 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-            className="group relative px-4 py-3.5 bg-[#0a0a0a]/90 backdrop-blur-2xl border-2 border-violet-500/20 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-violet-500/50 transition-all"
-            style={{ minWidth: 280, maxWidth: 300 }}
+            style={{ minWidth: 280, maxWidth: 300, zIndex: 1 }}
+            className="group relative px-4 py-3.5 bg-[#0a0a0a]/95 border-2 border-violet-500/20 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.6)] hover:border-violet-500/50 transition-all"
         >
-            <Handle type="target" position={Position.Left}
-                className="!w-4 !h-4 !bg-violet-500 !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(139,92,246,0.5)] hover:!scale-125 transition-all"
-            />
+            {/* Semantic Input Handles with Magnetic Snap + Neural Feedback */}
+            {[
+                { id: 'character', label: 'CHAR', color: '#bef264', cssClass: 'handle-character', top: '22%' },
+                { id: 'wardrobe', label: 'WARB', color: '#f43f5e', cssClass: 'handle-wardrobe', top: '42%' },
+                { id: 'product', label: 'PROD', color: '#f59e0b', cssClass: 'handle-product', top: '62%' },
+                { id: 'location', label: 'LOC', color: '#22d3ee', cssClass: 'handle-location', top: '82%' }
+            ].map((handle) => {
+                const isConnected = store.edges.some(e => e.target === id && e.targetHandle === handle.id);
+                return (
+                    <div key={handle.id} className="group/handle">
+                        <MagneticHandle
+                            type="target"
+                            position={Position.Left}
+                            id={handle.id}
+                            color={handle.color}
+                            className={`!absolute !-left-2 z-50 ${handle.cssClass} ${isConnected ? 'neural-engaged' : ''}`}
+                            style={{ top: handle.top, position: 'absolute' }}
+                        />
+                        <span
+                            className="absolute pointer-events-none text-[7px] font-black text-white/20 uppercase tracking-tighter group-hover/handle:text-white/60 transition-colors z-40 w-12 text-right -left-[3.2rem]"
+                            style={{ top: `calc(${handle.top} - 4px)` }}
+                        >
+                            {handle.label}
+                        </span>
+                    </div>
+                );
+            })}
 
             <button onClick={() => data.onDelete(id)}
                 className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full text-white scale-0 group-hover:scale-100 transition-transform shadow-lg z-50">
@@ -262,6 +260,23 @@ export default memo(({ id, data }) => {
                     <option value="9:16">9:16 (Vertical)</option>
                     <option value="16:9">16:9 (Cinema)</option>
                     <option value="1:1">1:1 (Square)</option>
+                </select>
+            </div>
+
+            {/* AI Engine Selector */}
+            <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-1.5">
+                    <Cpu size={10} className="text-violet-400" />
+                    <span className="text-[7px] font-black text-white/40 uppercase">AI ENGINE</span>
+                </div>
+                <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className="flex-1 bg-black/40 border border-white/5 rounded-lg py-1 px-2 text-[8px] text-violet-300 font-mono focus:outline-none focus:border-violet-500/40 appearance-none text-center font-black"
+                >
+                    <option value="imagen-3.0-generate-001">Imagen 3 (Default)</option>
+                    <option value="nano-banana-pro">Nano Banana Pro (Exp)</option>
+                    <option value="flux-1.1-pro">Flux 1.1 Pro (Replicate)</option>
                 </select>
             </div>
 
@@ -361,7 +376,7 @@ export default memo(({ id, data }) => {
             </div>
 
             <Handle type="source" position={Position.Right}
-                className="!w-4 !h-4 !bg-violet-500 !border-4 !border-[#050505] !shadow-[0_0_15px_rgba(139,92,246,0.5)] hover:!scale-125 transition-all"
+                className="!w-4 !h-4 !bg-violet-500 !border-4 !border-[#050505] !shadow-lg hover:!scale-125 transition-all handle-story font-black"
             />
         </motion.div>
     );

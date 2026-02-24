@@ -78,9 +78,9 @@ const VideoNode = ({ id, data }) => {
             whileHover={{ scale: 1.25 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
             className="relative group"
-            style={{ width: `${nodeWidth}px`, height: `${calculatedHeight}px` }}
+            style={{ width: `${nodeWidth}px`, height: `${calculatedHeight}px`, zIndex: 1 }}
         >
-            <div className="w-full h-full rounded-3xl bg-black/40 backdrop-blur-3xl border border-white/10 overflow-hidden flex flex-col shadow-2xl">
+            <div className="w-full h-full rounded-3xl bg-black/40 border border-white/10 overflow-hidden flex flex-col shadow-2xl">
                 {/* Header */}
                 <div className="px-4 py-2 border-b border-white/5 flex items-center justify-between bg-black/20">
                     <div className="flex items-center gap-2">

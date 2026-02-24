@@ -1,12 +1,10 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useState } from 'react';
 import ReactFlow, {
     Background,
     Controls,
-    MiniMap,
-    addEdge,
-    useNodesState,
-    useEdgesState,
     Panel,
+    addEdge,
+    useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { AnimatePresence } from 'framer-motion';
@@ -26,7 +24,8 @@ import WardrobeNode from './WardrobeNode';
 import ProductNode from './ProductNode';
 import AutoStoryboardNode from './AutoStoryboardNode';
 import VeoI2VNode from './VeoI2VNode';
-import { WaveformEdge } from './WaveformEdge';
+import LocationNode from './LocationNode';
+import NeuralEdge from './edges/NeuralEdge';
 import DirectorHUD from './DirectorHUD';
 import PromptBuilder from './PromptBuilder';
 import { SonicDock } from './SonicDock';
@@ -49,16 +48,17 @@ const nodeTypes = {
     product: ProductNode,
     autoStoryboard: AutoStoryboardNode,
     veoI2V: VeoI2VNode,
+    location: LocationNode,
 };
 
 const edgeTypes = {
-    waveform: WaveformEdge,
+    neural: NeuralEdge,
+    waveform: NeuralEdge, // Keep alias so existing edges still render
 };
 
 const defaultEdgeOptions = {
-    type: 'waveform',
-    animated: true,
-    style: { strokeWidth: 3, stroke: '#bef264' },
+    type: 'neural',
+    animated: false, // We handle animation in NeuralEdge ourselves
 };
 
 export const PlaygroundCanvas = () => {
@@ -76,6 +76,17 @@ export const PlaygroundCanvas = () => {
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
                 defaultEdgeOptions={defaultEdgeOptions}
+                /* ── Magnetic snap ── */
+                snapToGrid={true}
+                snapGrid={[15, 15]}
+                connectionRadius={60}
+                connectionMode="loose"
+                connectOnClick={true}
+                /* ── Edge elevation so they always render above nodes ── */
+                elevateEdgesOnSelect={true}
+                elevateNodesOnSelect={false}
+                /* ── Built-in keyboard delete for selected edges/nodes ── */
+                deleteKeyCode={['Delete', 'Backspace']}
                 fitView
                 panOnScroll
                 selectionOnDrag
@@ -107,9 +118,9 @@ export const PlaygroundCanvas = () => {
             <DirectorHUD />
 
             {/* NEURAL STATUS OVERLAY */}
-            <div className="absolute top-6 left-6 p-4 bg-black/40 border border-white/5 backdrop-blur-xl rounded-2xl flex items-center gap-3 pointer-events-none">
+            <div className="absolute top-6 left-6 p-4 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 pointer-events-none">
                 <div className="w-2 h-2 rounded-full bg-[#bef264] animate-pulse" />
-                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">Neural_Canvas_Lock_v3</span>
+                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">Neural_Canvas_Lock_v4</span>
             </div>
         </div>
     );

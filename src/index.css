@@ -157,3 +157,46 @@ select, option { background-color: #050505 !important; color: white !important; 
         animation: spin-slow 6s linear infinite;
     }
 }
+
+/* React Flow Visual Layering Fixes */
+.react-flow__edges {
+    z-index: 1000 !important;
+}
+
+.react-flow__edge {
+    z-index: 1000 !important;
+    pointer-events: all;
+}
+
+.react-flow__edge-path {
+    stroke-width: 3;
+}
+
+/* Ensure nodes don't trap edges in a lower stacking context */
+.react-flow__node {
+    z-index: 1 !important;
+}
+
+/* Neural Handle Glow Animations */
+@keyframes glow-character { from { box-shadow: 0 0 4px rgba(190, 242, 100, 0.4); } to { box-shadow: 0 0 16px rgba(190, 242, 100, 0.8); } }
+@keyframes glow-wardrobe { from { box-shadow: 0 0 4px rgba(244, 63, 94, 0.4); } to { box-shadow: 0 0 16px rgba(244, 63, 94, 0.8); } }
+@keyframes glow-product { from { box-shadow: 0 0 4px rgba(245, 158, 11, 0.4); } to { box-shadow: 0 0 16px rgba(245, 158, 11, 0.8); } }
+@keyframes glow-location { from { box-shadow: 0 0 4px rgba(34, 211, 238, 0.4); } to { box-shadow: 0 0 16px rgba(34, 211, 238, 0.8); } }
+@keyframes glow-story { from { box-shadow: 0 0 4px rgba(139, 92, 246, 0.4); } to { box-shadow: 0 0 16px rgba(139, 92, 246, 0.8); } }
+
+.handle-character { animation: glow-character 2s infinite alternate; }
+.handle-wardrobe { animation: glow-wardrobe 2s infinite alternate; }
+.handle-product { animation: glow-product 2s infinite alternate; }
+.handle-location { animation: glow-location 2s infinite alternate; }
+.handle-story { animation: glow-story 2s infinite alternate; }
+
+.neural-engaged {
+    filter: brightness(1.5) contrast(1.2);
+    box-shadow: 0 0 25px currentColor !important;
+}
+
+.neural-engaged.handle-character { animation: glow-character 0.8s infinite alternate; }
+.neural-engaged.handle-wardrobe { animation: glow-wardrobe 0.8s infinite alternate; }
+.neural-engaged.handle-product { animation: glow-product 0.8s infinite alternate; }
+.neural-engaged.handle-location { animation: glow-location 0.8s infinite alternate; }
+.neural-engaged.handle-story { animation: glow-story 0.8s infinite alternate; }

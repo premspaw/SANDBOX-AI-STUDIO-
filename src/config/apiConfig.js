@@ -3,20 +3,16 @@
  * Centralizes the backend URL for production and development.
  */
 
-// Isomorphic check for Environment Variables
-const getEnvVar = (key) => {
-    // Check Vite/Browser environment
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
-        return import.meta.env[key];
-    }
-    // Check Node.js environment
-    if (typeof process !== 'undefined' && process.env && process.env[key]) {
-        return process.env[key];
-    }
-    return null;
-};
+// Safe environment variable retrieval
+const VITE_API_URL =
+    (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) ||
+    (typeof process !== 'undefined' && process.env && process.env.VITE_API_URL) ||
+    'http://localhost:3002';
 
-const VITE_API_URL = getEnvVar('VITE_API_URL') || 'http://localhost:3002';
+const VITE_WS_URL =
+    (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_WS_URL) ||
+    (typeof process !== 'undefined' && process.env && process.env.VITE_WS_URL) ||
+    null;
 
 // Ensure base URL doesn't have a trailing slash
 export const API_BASE_URL = VITE_API_URL.endsWith('/') ? VITE_API_URL.slice(0, -1) : VITE_API_URL;
@@ -36,8 +32,7 @@ export const getApiUrl = (endpoint) => {
  * @returns {string} - The full WebSocket URL
  */
 export const getWsUrl = () => {
-    const ws_env = getEnvVar('VITE_WS_URL');
-    if (ws_env) return ws_env;
+    if (VITE_WS_URL) return VITE_WS_URL;
     const base = API_BASE_URL.replace('http://', 'ws://').replace('https://', 'wss://');
     return base;
 };

@@ -21,6 +21,8 @@ import * as vectorService from './vectorService.js';
 import * as masterExportService from './masterExportService.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import https from 'https';
+import { analyzeWardrobeRoute, wardrobeUploadMiddleware } from './wardrobeAnalyzerService.js';
+import { analyzeLocationRoute, locationUploadMiddleware } from './locationAnalyzerService.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
@@ -43,6 +45,7 @@ const storageBase = `https://storage.googleapis.com/${process.env.GCS_BUCKET_NAM
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 /**
  * Recursive helper to find video data anywhere in a JSON response.
@@ -418,11 +421,11 @@ async function handleOpenAI(req, res) {
 // Handler for Replicate (existing Flux model)
 async function handleReplicate(req, res) {
     try {
-        const { prompt, aspect_ratio, image } = req.body;
+        const { prompt, aspect_ratio, aspectRatio, image } = req.body;
 
         const input = {
             prompt: prompt,
-            aspect_ratio: aspect_ratio || "16:9",
+            aspect_ratio: aspect_ratio || aspectRatio || "16:9",
             output_format: "webp",
             output_quality: 80,
         };
@@ -443,6 +446,9 @@ async function handleReplicate(req, res) {
         res.status(500).json({ error: error.message });
     }
 }
+
+// Added for model router support
+app.post('/api/ugc/replicate-flux', handleReplicate);
 
 // Handler for Google Models (Nano Banana Native Gen & Veo Video)
 // Handler for Google Models (Nano Banana Native Gen & Veo Video)
@@ -1551,6 +1557,7 @@ app.post('/api/ugc/auto-storyboard', async (req, res) => {
         const character = inputs?.character || characterName || 'the subject';
         const productDesc = inputs?.product || product || '';
         const wardrobeDesc = inputs?.wardrobe || wardrobe || '';
+        const wardrobeDetails = inputs?.wardrobeDetails || [];
         const location = inputs?.location || 'a cinematic environment';
 
         // ── Camera Angle Rotation List ──
@@ -1571,6 +1578,15 @@ app.post('/api/ugc/auto-storyboard', async (req, res) => {
 
         const activeStyle = NICHE_STYLES[selectedNiche] || NICHE_STYLES["CUSTOM"];
 
+        const wardrobeCloseUpInfo = wardrobeDetails.length > 0
+            ? `\nSPECIAL WARDROBE CLOSE-UP ASSETS:\n` + wardrobeDetails.map(item => `- ITEM: ${item.name}, CLOSE-UP PROMPT: ${item.closeUpPrompt}`).join('\n')
+            : "";
+
+        const locationDetails = inputs?.locationDetails;
+        const locationPromptRules = locationDetails?.establishingPrompt
+            ? `\nLOCATION CONTEXT (REQUIRED):\n- For Wide/Establishing shots, use this EXACT phrase for the environment: "${locationDetails.establishingPrompt}"\n- For Close-up/Medium/Portrait shots, use this EXACT phrase for the blurred background: "${locationDetails.backgroundPrompt}"\n`
+            : "";
+
         const systemPrompt = `You are a master Cinematographer generating a professional Shot List.
 You must generate EXACTLY ${shotCount} chronological scenes.
 
@@ -1579,6 +1595,8 @@ Subject: ${character}
 Wardrobe: ${wardrobeDesc || 'their outfit'}
 Product: ${productDesc || 'the product'}
 Environment: ${location}
+${locationPromptRules}
+${wardrobeCloseUpInfo}
 
 🎬 DIRECTOR'S STYLE OVERRIDE (${selectedNiche || 'CUSTOM'}):
 You MUST strictly adhere to these stylistic rules for EVERY generated shot:
@@ -1586,6 +1604,9 @@ You MUST strictly adhere to these stylistic rules for EVERY generated shot:
 - Lighting: ${activeStyle.lighting}
 - Camera Angles/Lenses: ${activeStyle.camera}
 - Pacing/Action: ${activeStyle.pacing}
+
+WARDROBE CLOSE-UP INJECTION (CRITICAL):
+${wardrobeDetails.length > 0 ? `If wardrobe close-up assets are provided above, you MUST replace EXACTLY ONE of the ${shotCount} shots (randomly, but ideally late in the sequence) with one of the specific wardrobe macro-shots. The 'prompt' for that shot must be copied exactly from the 'CLOSE-UP PROMPT' listed above.` : "Maintain standard shot progression."}
 
 Ensure the 'prompt' field for each scene explicitly includes the lighting and camera lens instructions mentioned above so the Image Generator renders it perfectly in this specific niche style.
 
@@ -1664,7 +1685,7 @@ app.post('/api/ugc/analyze-product', async (req, res) => {
         const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
         const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-latest' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
         const result = await model.generateContent([
             {
                 inlineData: {
@@ -1702,6 +1723,12 @@ Colors should be the 3 dominant colors as hex codes.`
         res.status(500).json({ error: error.message });
     }
 });
+
+// Wardrobe Analysis: Multimodal analysis for items WORN on body
+app.post('/api/wardrobe/analyze', wardrobeUploadMiddleware, analyzeWardrobeRoute);
+
+// Location Analysis: Multimodal analysis for environments
+app.post('/api/analyze-location', locationUploadMiddleware, analyzeLocationRoute);
 
 // Get Landing Page Assets Configuration (Supabase + Local Fallback)
 app.get('/api/get-landing-assets', async (req, res) => {
