@@ -34,7 +34,12 @@ export default function MagneticHandle({
             : `0 0 10px ${color}55`,
         transition: 'all 0.15s ease',
         cursor: 'crosshair',
-        zIndex: 9999,
+        zIndex: 99999,
+        // Pull to exact edge
+        marginRight: position === 'right' ? -7 : 0,
+        marginLeft: position === 'left' ? -7 : 0,
+        marginTop: position === 'top' ? -7 : 0,
+        marginBottom: position === 'bottom' ? -7 : 0,
         ...style,
     };
 

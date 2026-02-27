@@ -1,0 +1,33 @@
+config:
+  target: "http://localhost:3002"
+  phases:
+    - duration: 60
+      arrivalRate: 1
+      rampTo: 5
+      name: Warm up phase
+    - duration: 60
+      arrivalRate: 5
+      name: Sustained load
+  defaults:
+    headers:
+      Content-Type: "application/json"
+
+scenarios:
+  - name: "Health check and static routes"
+    flow:
+      - get:
+          url: "/"
+      - get:
+          url: "/api/forge/health"
+      - get:
+          url: "/api/debug/env"
+
+  - name: "Basic Analysis Flow (Mocked Identity)"
+    flow:
+      - post:
+          url: "/api/forge/analyze"
+          json:
+            image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==" # 1x1 pixel
+          capture:
+            - json: "$.analysis"
+              as: "analysisResult"

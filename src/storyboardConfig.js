@@ -5,46 +5,82 @@ export const NICHE_STYLES = {
         camera: "Slow-motion tracking shots, low-angle hero shots, 50mm and 85mm portrait lenses.",
         pacing: "Smooth, deliberate, graceful transitions."
     },
-    "GYM UGC AD": {
-        vibe: "High energy, sweaty, motivational, fast-paced fitness aesthetic.",
-        lighting: "High-contrast gym lighting, neon accents, hard directional light.",
-        camera: "Handheld shaky-cam, dynamic push-ins, wide 24mm action angles, POV shots.",
-        pacing: "Rapid cuts, energetic, matching an upbeat tempo."
+    "PRODUCT HERO": {
+        vibe: "Clean studio product showcase, sharp and professional.",
+        lighting: "Soft diffused lighting, commercial photography precision.",
+        camera: "Macro close-ups, 360-degree rotations, high-speed detail captures.",
+        pacing: "Focused, steady, revealing."
     },
-    "SKINCARE": {
-        vibe: "Clean, pure, organic, glowing, morning routine aesthetic.",
-        lighting: "Soft, diffused natural window light, bright and airy, pastel tones.",
-        camera: "Extreme macro close-ups on product textures, soft focus backgrounds, 100mm macro lens.",
-        pacing: "Calm, soothing, slow reveals."
+    "LUXURY WATCH": {
+        vibe: "Macro jewelry photography, dramatic premium feel.",
+        lighting: "Dramatic rim lighting, dark backgrounds, high contrast.",
+        camera: "Extreme macro, shallow depth of field, slow focus pulls.",
+        pacing: "Elegant, slow, detailed."
     },
-    "FOOD REVIEW": {
-        vibe: "Appetizing, mouth-watering, casual vlog style.",
-        lighting: "Bright, warm ring-lighting or sunny cafe lighting to make food look fresh.",
-        camera: "Over-the-head top-down shots, extreme close-ups on textures, subject looking directly into the lens.",
-        pacing: "Punchy, reactive, engaging."
+    "TECH LAUNCH": {
+        vibe: "Futuristic tech showcase, LED accents, minimal premium feel.",
+        lighting: "RGB rim lighting, dark gradient backgrounds.",
+        camera: "Motorized slider shots, sharp pans, clean perspective.",
+        pacing: "Dynamic, precise, innovative."
     },
-    "TECH UNBOX": {
-        vibe: "Sleek, futuristic, premium, detail-oriented.",
-        lighting: "Moody studio lighting, RGB background accents, sharp reflections on the product.",
-        camera: "Smooth motorized slider shots, precise macro focus pulls, sleek pans.",
-        pacing: "Methodical, focused on product details."
+    "FOOD & BEVERAGE": {
+        vibe: "Appetizing food photography, fresh and vibrant.",
+        lighting: "Natural diffused light, bright airy tones.",
+        camera: "Top-down overheads, extreme texture close-ups.",
+        pacing: "Organic, inviting, fresh."
+    },
+    "CINEMATIC": {
+        vibe: "Anamorphic movie trailer look, atmospheric mood.",
+        lighting: "Dramatic volumetric lighting, cinematic color grading.",
+        camera: "Anamorphic lenses, film grain, wide establishing shots.",
+        pacing: "Rhythmic, powerful, grand."
+    },
+    "TRAVEL REEL": {
+        vibe: "Adventure documentary style, atmospheric wanderlust.",
+        lighting: "Natural golden hour lighting, atmospheric haze.",
+        camera: "Wide landscapes, handheld tracking, POV adventure.",
+        pacing: "Fast-paced, vibrant, continuous motion."
+    },
+    "FITNESS ENERGY": {
+        vibe: "High-energy sports photography, bold contrast.",
+        lighting: "Hard directional light, high-contrast shadows.",
+        camera: "Dynamic motion tracking, low-angle power shots.",
+        pacing: "Rapid, intense, motivational."
+    },
+    "BEAUTY GLOW": {
+        vibe: "Soft beauty magazine quality, glowing skin.",
+        lighting: "Soft ring-lighting, flattering shadows, airy feel.",
+        camera: "Macro face close-ups, 85mm portrait focus.",
+        pacing: "Graceful, slow, radiant."
+    },
+    "MINIMALIST BRAND": {
+        vibe: "Clean minimalist aesthetic, Scandinavian simplicity.",
+        lighting: "Soft natural shadows, high-key lighting.",
+        camera: "Negative space framing, rule of thirds, static wide shots.",
+        pacing: "Calm, steady, spacious."
+    },
+    "STREETWEAR HYPE": {
+        vibe: "Urban street photography, gritty textures.",
+        lighting: "Street level night lighting, neon highlights.",
+        camera: "Handheld dutch tilts, wide-angle 24mm gritty lenses.",
+        pacing: "Punchy, urban, energetic."
+    },
+    "LIFESTYLE VLOG": {
+        vibe: "Casual lifestyle photography, authentic moments.",
+        lighting: "Natural window light, warm inviting tones.",
+        camera: "Handheld candid feel, eye-level conversational shots.",
+        pacing: "Relaxed, friendly, authentic."
+    },
+    "UGC AD": {
+        vibe: "Authentic social realism, raw and relatable.",
+        lighting: "Ambient room lighting, natural window light.",
+        camera: "Smartphone vertical handheld, shaky-cam authenticity.",
+        pacing: "Hook-driven, fast, engaging."
     },
     "CUSTOM": {
-        vibe: "Professional cinematic video.",
+        vibe: "Professional commercial video.",
         lighting: "Balanced cinematic lighting.",
         camera: "Standard varied focal lengths.",
         pacing: "Moderate rhythm."
-    },
-    "RAW iPHONE UGC": {
-        vibe: "Ultra-realistic, raw, unedited, authentic everyday life, candid vlog style.",
-        lighting: "Natural ambient lighting, daylight, true-to-life shadows, zero artificial studio lighting.",
-        camera: "Shot on iPhone 15 Pro Max, Apple ProRAW. Handheld camera feel. For close-ups: hyper-detailed, visible skin pores, peach fuzz, micro-textures, perfectly natural human skin.",
-        pacing: "Casual, fast-paced TikTok style, natural organic movement."
-    },
-    "DOCUMENTARY REALISM": {
-        vibe: "Grounded, highly authentic, fly-on-the-wall realism, cinematic but unpolished.",
-        lighting: "Available practical lighting, natural contrast, moody, high dynamic range.",
-        camera: "Handheld 35mm lens, natural film grain, slight motion blur, imperfect framing, photorealistic.",
-        pacing: "Reactive, observant, natural human rhythm."
     }
 };

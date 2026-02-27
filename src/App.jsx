@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { Layout } from './components/Layout'
-import { PromptGenerator } from './components/PromptGenerator'
-import { AssetsLibrary } from './components/AssetsLibrary'
-import LandingPage from './components/LandingPage'
-import { InfluencerStudio } from './components/InfluencerStudio'
-import { ForgeView } from './components/ForgeView'
-import { PlaygroundCanvas } from './components/PlaygroundCanvas'
+import { Layout } from './components/pages/Layout'
+import { PromptGenerator } from './components/panels/PromptGenerator'
+import { AssetsLibrary } from './components/panels/AssetsLibrary'
+import LandingPage from './components/pages/LandingPage'
+import DirectorStudio from './components/pages/DirectorStudio'
+import UGC from './components/pages/UGC'
+import { InfluencerStudio } from './components/panels/InfluencerStudio'
+import { ForgeView } from './components/panels/ForgeView'
+import { PlaygroundCanvas } from './components/canvas/PlaygroundCanvas'
 
-import { AssetManager } from './components/AssetManager'
+import { AssetManager } from './components/panels/AssetManager'
 
 const FULL_HEIGHT_TABS = new Set([
   'home',
@@ -17,6 +19,8 @@ const FULL_HEIGHT_TABS = new Set([
   'playground',
   'creator',
   'directors-cut',
+  'director-studio',
+  'ugc',
   'admin',
 ])
 
@@ -35,6 +39,8 @@ function App() {
     ),
     creator: <ForgeView onComplete={() => setActiveTab('directors-cut')} />,
     'directors-cut': <PlaygroundCanvas />,
+    'director-studio': <DirectorStudio />,
+    ugc: <UGC />,
     forge: <ForgeView onComplete={() => setActiveTab('directors-cut')} />,
     playground: <PlaygroundCanvas />,
     admin: <AssetManager />,

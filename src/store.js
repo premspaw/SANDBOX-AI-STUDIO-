@@ -53,14 +53,28 @@ export const useAppStore = create((set, get) => ({
         characters: {}, // Map of characterId -> full profile
         locations: {},  // Map of locationId -> descriptions
         rules: [],      // Global narrative/visual constraints
-        history: []     // Recent generation chronological log
+        history: [],    // Recent generation chronological log
+        cachedContentName: null // The active Google Gemini Context Cache ID
     },
 
     // Actions
-    updateUniverseBible: (update) => {
+    updateUniverseBible: async (update) => {
         set((state) => ({
             universeBible: { ...state.universeBible, ...update }
         }));
+
+        // Background task: Whenever the Universe Bible updates, rebuild the Neural Vault cache
+        try {
+            const { cacheUniverseBible } = await import('./services/geminiService.js');
+            const cacheName = await cacheUniverseBible(get().universeBible);
+            if (cacheName) {
+                set((state) => ({
+                    universeBible: { ...state.universeBible, cachedContentName: cacheName }
+                }));
+            }
+        } catch (e) {
+            console.error("Failed to auto-cache Universe Bible", e);
+        }
     },
     setAnchorImage: (img) => set({ anchorImage: img }),
     setImageAnalysis: (analysis) => set({ imageAnalysis: analysis }),
@@ -141,6 +155,19 @@ export const useAppStore = create((set, get) => ({
         return id;
     },
 
+    addEdge: (data) => {
+        const id = `edge-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+        const newEdge = {
+            id,
+            transparent: true,
+            style: { stroke: '#8b5cf6', strokeWidth: 2, opacity: 0.6 },
+            animated: true,
+            ...data
+        };
+        set({ edges: [...get().edges, newEdge] });
+        return id;
+    },
+
     updateNodeData: (id, data) => {
         set({
             nodes: get().nodes.map(node =>
@@ -155,7 +182,7 @@ export const useAppStore = create((set, get) => ({
         get().updateNodeData(id, { isOptimistic: true, label: `UPSCaling to ${targetRes}...` });
 
         try {
-            const { upscaleImage } = await import('../geminiService');
+            const { upscaleImage } = await import('./services/geminiService');
             const highResImage = await upscaleImage(node.data.image, targetRes);
             if (highResImage) {
                 get().updateNodeData(id, {
@@ -248,18 +275,33 @@ export const useAppStore = create((set, get) => ({
     addInfluencerNode: (position = { x: 200, y: 200 }) => {
         const id = `influencer-${Date.now()}`;
         const { activeCharacter, anchorImage } = get();
-        // Build a merged kit from all available sources
         const kit = activeCharacter?.identity_kit || activeCharacter?.identityKit || {};
         const kitImages = activeCharacter?.kitImages || activeCharacter?.kit_images || {};
-        const merged = { ...kitImages, ...kit }; // identity_kit takes priority
+        const merged = { ...kitImages, ...kit };
+
         const newNode = {
             id,
             type: 'influencer',
             position,
             data: {
-                label: activeCharacter?.name || 'AGENT_CORE',
+                label: activeCharacter?.name || 'Model_01',
                 image: anchorImage || activeCharacter?.image || activeCharacter?.photo || merged.anchor,
-                kit: merged,
+                identityProfile: {
+                    identityLock: !!(anchorImage || merged.anchor),
+                    anchors: {
+                        side: merged.profile || merged.angle_1 || anchorImage || activeCharacter?.image || '',
+                        full: merged.fullBody || merged.full_body || ''
+                    },
+                    poses: activeCharacter?.poses || [
+                        'editorial full body',
+                        'side profile',
+                        'walking motion',
+                        'over shoulder',
+                        'hero stance',
+                        'relaxed pose'
+                    ],
+                    defaultExpression: activeCharacter?.defaultExpression || 'confident'
+                },
                 origin: activeCharacter?.origin || '',
                 visualStyle: activeCharacter?.visual_style || activeCharacter?.visualStyle || '',
                 rawData: activeCharacter || {},
@@ -431,8 +473,8 @@ export const useAppStore = create((set, get) => ({
             position,
             data: {
                 label: 'WARDROBE_LOCK',
-                outfitDescription: '',
-                primaryColor: null,
+                wardrobeProfile: null,
+                status: 'IDLE',
                 onDelete: (id) => get().deleteNode(id)
             }
         };
@@ -448,10 +490,8 @@ export const useAppStore = create((set, get) => ({
             position,
             data: {
                 label: 'PRODUCT_SCAN',
-                productImage: null,
-                productLabels: [],
-                productDescription: '',
-                productColors: [],
+                productProfile: null,
+                status: 'IDLE',
                 onDelete: (id) => get().deleteNode(id)
             }
         };
@@ -467,10 +507,8 @@ export const useAppStore = create((set, get) => ({
             position,
             data: {
                 label: 'LOCATION_SCAN',
-                locationImage: null,
-                locationName: '',
-                establishingPrompt: '',
-                backgroundPrompt: '',
+                locationProfile: null,
+                status: 'IDLE',
                 onDelete: (id) => get().deleteNode(id)
             }
         };

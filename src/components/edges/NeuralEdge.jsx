@@ -100,6 +100,10 @@ export default function NeuralEdge({
                 </animateMotion>
             </circle>
 
+            {/* Stationary Anchor Dots */}
+            <circle cx={sourceX} cy={sourceY} r={4.5} fill={edgeColor} style={{ pointerEvents: 'none' }} />
+            <circle cx={targetX} cy={targetY} r={4.5} fill={edgeColor} style={{ pointerEvents: 'none' }} />
+
             {/* Secondary lagged dot */}
             <circle r={2} fill={edgeColor} opacity={showDelete ? 0 : 0.4}>
                 <animateMotion
