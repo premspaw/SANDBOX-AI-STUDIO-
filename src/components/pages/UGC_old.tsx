@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, User, Box, FileText, Camera, Play, Wand2, Loader2, Volume2, Sparkles, Video, X, Scissors, Plus, Trash2, Save, ChevronRight, ChevronLeft, ChevronDown, Layout, AlertCircle, HelpCircle, Settings, SidebarClose, SidebarOpen, Download, ZoomIn, ZoomOut, GripVertical, Check, CheckCircle, BrainCircuit, Zap, ShieldCheck, Shield, MessageSquare } from 'lucide-react';
+import { Upload, User, Box, FileText, Camera, Play, Wand2, Loader2, Volume2, Sparkles, Video, X, Scissors, Plus, Trash2, Save, ChevronRight, ChevronLeft, ChevronDown, Layout, AlertCircle, HelpCircle, Settings, SidebarClose, SidebarOpen, Download, ZoomIn, ZoomOut, GripVertical, Check, CheckCircle, BrainCircuit, Zap, ShieldCheck, Shield } from 'lucide-react';
 import { GoogleGenAI, Modality, Type } from '@google/genai';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
@@ -28,7 +28,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 // Set worker source for pdfjs
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
-const getAI = () => {
+const getAI = (useVertex = false) => {
   const env = (import.meta as any).env || {};
 
   // Prioritize the injected API_KEY from the selection dialog
@@ -38,7 +38,12 @@ const getAI = () => {
     env.VITE_GEMINI_API_KEY ||
     (typeof window !== 'undefined' && (window as any).process?.env?.GEMINI_API_KEY);
 
-  return new GoogleGenAI({ apiKey: apiKey || "" });
+  let config: any = { apiKey: apiKey || "" };
+  if (useVertex) {
+    config = { vertexai: { project: env.VITE_GOOGLE_PROJECT_ID || '569815811058', location: 'us-central1' } };
+  }
+
+  return new GoogleGenAI(config);
 };
 
 const fileToGenerativePart = async (file: File) => {
@@ -344,6 +349,7 @@ export default function UGC() {
   const [productTags, setProductTags] = useState<string[]>([]);
   const [productDetails, setProductDetails] = useState('');
   const [userPrompt, setUserPrompt] = useState('');
+  const [scriptName, setScriptName] = useState('');
   const [script, setScript] = useState('');
   const [videoPrompt, setVideoPrompt] = useState('');
   const [scenes, setScenes] = useState<{ id: string, prompt: string, isApproved: boolean }[]>([
@@ -357,14 +363,12 @@ export default function UGC() {
   const [voice, setVoice] = useState('Kore');
   const [imageStyle, setImageStyle] = useState<'studio' | 'ultra-realistic' | 'iphone' | 'short' | 'normal' | 'cinematic'>('ultra-realistic');
   const [aspectRatio, setAspectRatio] = useState<'9:16' | '16:9' | '1:1'>('9:16');
-  const [durationSeconds, setDurationSeconds] = useState<string>('8');
-  const [pacingStyle, setPacingStyle] = useState<'fast' | 'natural' | 'action'>('natural');
+  const [durationSeconds, setDurationSeconds] = useState<'4' | '6' | '8'>('6');
   const [videoResolution, setVideoResolution] = useState<'720p' | '1080p'>('720p');
 
   const [renderMode, setRenderMode] = useState<'image' | 'video'>('image');
   const [generatedImg, setGeneratedImg] = useState('');
   const [imageEditPrompt, setImageEditPrompt] = useState('');
-  const [isRefinePopupOpen, setIsRefinePopupOpen] = useState(false);
   const [imageSuggestions, setImageSuggestions] = useState<string[]>([]);
   const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
   const [isRegeneratingImage, setIsRegeneratingImage] = useState(false);
@@ -586,7 +590,7 @@ export default function UGC() {
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        const historyGallery = data.map((item: any) => ({
+        const historyGallery = data.map(item => ({
           id: item.id,
           type: item.asset_type as 'image' | 'video',
           url: item.public_url,
@@ -595,7 +599,7 @@ export default function UGC() {
 
         // Use functional state update to avoid overwriting session-generated assets
         setGallery(prev => {
-          const newItems = historyGallery.filter((hist: any) => !prev.some(p => p.url === hist.url));
+          const newItems = historyGallery.filter(hist => !prev.some(p => p.url === hist.url));
           return [...prev, ...newItems];
         });
       }
@@ -612,12 +616,13 @@ export default function UGC() {
     if (!script) return;
     const newEntry = {
       id: Date.now().toString(),
-      title: script.split('\n')[0].substring(0, 30) + '...',
+      title: scriptName || (script.split('\n')[0].substring(0, 30) + '...'),
       script,
       videoPrompt,
       date: new Date().toLocaleString()
     };
     setScriptLibrary([newEntry, ...scriptLibrary]);
+    setScriptName('');
   };
 
   const renameEntry = (id: string, newTitle: string) => {
@@ -1014,11 +1019,7 @@ export default function UGC() {
         contents.push({ inlineData: { mimeType: uploadedAudioFile.type, data: base64Audio } });
       }
 
-      const prompt = `You are an expert UGC director. Analyze this ENTIRE script line-by-line and break it down into logical cinematic scenes. 
-      The total targeted video duration is ${durationSeconds} seconds.
-      The intended pacing for this video is ${pacingStyle === 'fast' ? 'FAST PACED (with frequent cuts, high energy, and dynamic transitions to keep the viewer engaged)' : pacingStyle === 'action' ? 'ACTION FOCUSED (with longer, stable shots that clearly demonstrate the product in use, prioritizing movement and demonstration over rapid cuts)' : 'NATURAL (with a balanced flow, providing a conversational and authentic feel to the delivery)'}.
-      For each segment of the script, provide a detailed visual prompt for an AI video generator. 
-      CRITICAL: Ensure that NO part of the script is skipped. Create as many scenes as necessary (ideally 3-6, but more if needed) so that the entire script is visually represented within the ${durationSeconds} second timeframe.
+      const prompt = `You are an expert UGC director. Analyze this script and break it down into exactly 3 cinematic scenes. 
       ${uploadedAudioFile ? "I have provided the audio file of this script. Listen to the tone, pacing, and emotional delivery to inform the visual prompts." : ""}
       For each scene, provide a detailed visual prompt for an AI video generator.
       
@@ -1090,10 +1091,10 @@ export default function UGC() {
       ${userPrompt ? `Additional User Instructions: ${userPrompt}` : ''}
       The spoken script MUST be written in ${language}.
       
-      VIRAL STRUCTURE (MANDATORY for a ${durationSeconds} second video):
-      1. HOOK (First 20% of duration): A high-energy, attention-grabbing opening that stops the scroll.
-      2. MIDDLE/PAYOFF (Next 60% of duration): The core value, demonstration, or "wow" moment of the product.
-      3. CTA (Final 20% of duration): A clear, punchy call to action (e.g., "Link in bio", "Shop now").
+      VIRAL STRUCTURE (MANDATORY):
+      1. HOOK (0s to 4s): A high-energy, attention-grabbing opening that stops the scroll.
+      2. MIDDLE/PAYOFF (4s to 8s): The core value, demonstration, or "wow" moment of the product.
+      3. CTA (8s to 12s+): A clear, punchy call to action (e.g., "Link in bio", "Shop now").
       
       SCENE ORGANIZATION: Organize the script into explicitly timestamped blocks (e.g., [0:00 - 0:04], [0:04 - 0:08]) to help the user understand the timing and edit easily.
       The script MUST include visual cues enclosed in square brackets right after the timestamp (e.g., [0:00 - 0:04] [Scene 1: Creator points to camera] ... [0:04 - 0:08] [Scene 2: Close-up]).
@@ -1172,7 +1173,7 @@ export default function UGC() {
         contents.push(await fileToGenerativePart(characterImg.file));
       }
 
-      let basePrompt = `You are an expert AI video prompt engineer. Write a concise, 50-word cinematic prompt for Scene ${index + 1} of a UGC ad story arc.`;
+      let basePrompt = `You are an expert AI video prompt engineer. Write a concise, 50-word cinematic prompt for Scene ${index + 1} of a 3-scene UGC ad story arc.`;
 
       if (index > 0) {
         basePrompt += ` Previous scene context: ${scenes[index - 1].prompt}. Ensure a smooth narrative transition.`;
@@ -1211,8 +1212,8 @@ export default function UGC() {
     setScenes(prev => {
       const newScenes = prev.map((s, i) => i === index ? { ...s, isApproved: !s.isApproved } : s);
 
-      // If we just approved the last scene, add a new one automatically
-      if (newScenes[index].isApproved && index === newScenes.length - 1) {
+      // If we just approved the last scene and it's not scene 3, add a new one
+      if (newScenes[index].isApproved && index === newScenes.length - 1 && newScenes.length < 3) {
         newScenes.push({ id: (newScenes.length + 1).toString(), prompt: '', isApproved: false });
       }
 
@@ -1309,7 +1310,7 @@ export default function UGC() {
 
       let stylePrompt = '';
       if (imageStyle === 'ultra-realistic') {
-        stylePrompt = 'Hyper-realistic masterpiece, 8k professional commercial photography. Shot on Sony A7R IV, 85mm f/1.8 G-Master lens. Authentic human skin with subsurface scattering, hyper-detailed pores, natural blemishes, and fine facial hair. Natural daylight with soft rim lighting. RAW unfiltered format, cinematic color science, Kodak Portra 400 aesthetic, extremely high-fidelity, photorealistic, sharp focus on eyes, shallow depth of field, bokeh background.';
+        stylePrompt = 'Ultra-realistic portrait photograph shot on iPhone 15 Pro in natural daylight, RAW unfiltered image, zero makeup, authentic skin texture with visible pores and fine lines, natural skin imperfections, real human features, soft window lighting from the side, shallow depth of field, bokeh background, candid expression, direct eye contact with camera, natural skin tones, no retouching, no airbrushing, photojournalistic style, genuine human appearance, 8K resolution, professional portrait photography';
       } else if (imageStyle === 'iphone') {
         stylePrompt = 'POV selfie shot on iPhone 15 front-facing camera. The person is visibly holding the phone with one extended hand, showing their arm reaching towards the camera lens. Casual, spontaneous social media aesthetic, slightly imperfect natural lighting, authentic unedited vlog style, slight lens distortion typical of a front-facing smartphone camera, relatable and genuine.';
       } else if (imageStyle === 'short') {
@@ -1320,9 +1321,9 @@ export default function UGC() {
         stylePrompt = 'Ultra-realistic studio lighting, high contrast, moody, cinematic, shot on 35mm lens, polished commercial look, authentic skin textures, professional UGC aesthetic, 8K resolution, highly detailed.';
       }
 
-      const promptText = `${stylePrompt}. A professional UGC creator showcasing this product: ${productDetails}. The creator is looking directly at the camera with a natural expression.`.trim();
-
-      console.log("[IMAGE_GEN_PROMPT]", promptText);
+      const promptText = `A UGC style photo of a creator holding and showcasing this product: ${productDetails}. 
+      The creator looks directly at the camera, engaging the viewer. 
+      Style instructions: ${stylePrompt}`;
 
       // Assemble content parts to shape the final image
       if (characterImg) {
@@ -1338,7 +1339,7 @@ export default function UGC() {
       });
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
+        model: 'imagen-3.0-generate-001',
         contents: contents,
         config: {
           imageConfig: {
@@ -1416,7 +1417,7 @@ export default function UGC() {
       };
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
+        model: 'imagen-3.0-generate-001',
         contents: [
           imagePart,
           { text: `Edit this image based on this request: ${imageEditPrompt}. Maintain the same person and product if they are present.` }
@@ -1472,7 +1473,7 @@ export default function UGC() {
     setVideoError('');
     setVideoProgressMsg('Initializing Veo Engine...');
     try {
-      const ai = getAI();
+      const ai = getAI(true);
 
       const promptText = videoPrompt || `A creator showcasing a product: ${productDetails}. Cinematic lighting, high quality, 35mm lens.`;
 
@@ -1874,35 +1875,22 @@ export default function UGC() {
                     </div>
 
                     <div>
-                      <div className="flex justify-between items-end mb-1.5">
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[#999] font-sans font-bold text-[10px] tracking-wide block uppercase">Target Duration</label>
-                          <Dropdown
-                            value={`${durationSeconds}s`}
-                            options={['8s', '16s', '24s', '36s']}
-                            onChange={(val: string) => setDurationSeconds(val.replace('s', ''))}
-                            className="w-24"
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label className="text-[#999] font-sans font-bold text-[10px] tracking-wide block uppercase">Script Protocol</label>
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            value={scriptName}
+                            onChange={(e) => setScriptName(e.target.value)}
+                            placeholder="Script Name (Optional)"
+                            className="bg-black/40 border border-white/5 rounded-lg px-3 py-1.5 font-sans text-[10px] text-white focus:outline-none focus:border-[#D4FF00] transition-colors w-32"
                           />
-                        </div>
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[#999] font-sans font-bold text-[10px] tracking-wide block uppercase">Video Pacing</label>
-                          <Dropdown
-                            value={pacingStyle}
-                            options={[
-                              { label: 'Fast Paced', value: 'fast' },
-                              { label: 'Natural', value: 'natural' },
-                              { label: 'Action Focused', value: 'action' }
-                            ]}
-                            onChange={setPacingStyle}
-                            className="w-32"
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={generateScript} disabled={isGeneratingScript} className="h-[38px] text-[10px] font-sans font-bold tracking-wider px-4 py-1.5 rounded-lg bg-[#D4FF00]/10 border border-[#D4FF00]/20 text-[#D4FF00] hover:bg-[#D4FF00] hover:text-black transition-all">
+                          <button onClick={saveToLibrary} disabled={!script} className="text-[10px] font-sans font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg border border-white/5 text-[#777] hover:text-white hover:border-white/20 transition-all disabled:opacity-30">Archive</button>
+                          <button onClick={generateScript} disabled={isGeneratingScript} className="text-[10px] font-sans font-bold tracking-wider px-3 py-1.5 rounded-lg bg-[#D4FF00]/10 border border-[#D4FF00]/20 text-[#D4FF00] hover:bg-[#D4FF00] hover:text-black transition-all">
                             {isGeneratingScript ? 'Writing...' : 'Generate Script'}
                           </button>
-                          <button onClick={analyzeScenes} disabled={isAnalyzingScenes || !script} className="h-[38px] text-[10px] font-sans font-bold tracking-wider px-4 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all disabled:opacity-30">
-                            {isAnalyzingScenes ? 'Analyze Scenes' : 'Analyze Scenes'}
+                          <button onClick={analyzeScenes} disabled={isAnalyzingScenes || !script} className="text-[10px] font-sans font-bold tracking-wider px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all disabled:opacity-30">
+                            {isAnalyzingScenes ? 'Analyzing...' : 'Analyze Scenes'}
                           </button>
                         </div>
                       </div>
@@ -2016,278 +2004,268 @@ export default function UGC() {
               {/* Column 3: Studio Monitor (Right | 4 cols) */}
               <div className="xl:col-span-4 sticky top-1">
                 <Card title="Studio Monitor" icon={Video} contentClassName="p-0" className="h-[calc(100vh-45px)] min-h-[555px]">
-                  <div className="w-full h-full flex flex-col group">
-                    <div className="relative flex-1 w-full bg-[#050505] overflow-hidden group">
-                      {renderMode === 'image' ? (
-                        <>
-                          {/* Full Background Preview */}
-                          <div className="absolute inset-0 bg-black">
-                            {isGeneratingImage && <UGCProcessingOverlay type="image" />}
-                            {isRegeneratingImage && <UGCProcessingOverlay type="image" />}
-                            {generatedImg ? (
-                              <>
-                                <img src={generatedImg} className="w-full h-full object-cover transition-transform duration-700" alt="Generated" />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none" />
-                                <div className="absolute top-4 left-4 z-20">
-                                  <label className="shadow-xl py-1.5 px-3 bg-black/50 backdrop-blur-md border border-white/10 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-white/20 transition-all flex items-center gap-1.5 cursor-pointer">
-                                    <Upload size={10} /> Direct Upload
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      className="hidden"
-                                      onChange={(e) => handleImageUpload(e, 'generated')}
-                                    />
-                                  </label>
-                                </div>
-                                <div className="absolute top-4 right-4 flex gap-2 z-20">
-                                  <button
-                                    onClick={async () => {
-                                      try {
-                                        const response = await fetch(generatedImg);
-                                        const blob = await response.blob();
-                                        const downloadUrl = window.URL.createObjectURL(blob);
-                                        const a = document.createElement('a');
-                                        a.href = downloadUrl;
-                                        a.download = `lunar_flare_image_${Date.now()}.png`;
-                                        document.body.appendChild(a);
-                                        a.click();
-                                        document.body.removeChild(a);
-                                        window.URL.revokeObjectURL(downloadUrl);
-                                      } catch (err) {
-                                        console.error("Error downloading file", err);
-                                        const a = document.createElement('a');
-                                        a.href = generatedImg;
-                                        a.download = `lunar_flare_image_${Date.now()}.png`;
-                                        document.body.appendChild(a);
-                                        a.click();
-                                        document.body.removeChild(a);
-                                      }
-                                    }}
-                                    className="shadow-xl py-1.5 px-3 bg-black/50 backdrop-blur-md border border-white/10 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-white/20 transition-all flex items-center gap-1.5"
-                                  >
-                                    <Download size={10} /> Download Image
-                                  </button>
-                                  <button onClick={() => window.open(generatedImg)} className="shadow-xl py-1.5 px-3 bg-black/50 backdrop-blur-md border border-white/10 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-white/20 transition-all">Expand</button>
-                                </div>
-                              </>
-                            ) : (
-                              <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 opacity-60">
-                                <div className="relative group">
-                                  <div className="absolute inset-0 bg-[#D4FF00]/10 rounded-full blur-xl animate-pulse"></div>
-                                  <div className="w-16 h-16 rounded-full border border-white/5 bg-black/50 backdrop-blur-lg flex items-center justify-center relative z-10">
-                                    <Camera size={24} className="text-[#D4FF00] opacity-50" />
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      className="absolute inset-0 opacity-0 cursor-pointer"
-                                      onChange={(e) => handleImageUpload(e, 'generated')}
-                                    />
-                                  </div>
-                                </div>
-                                <div className="text-center space-y-2">
-                                  <p className="font-black text-white text-[10px] uppercase tracking-[0.2em]">Lens Offline</p>
-                                  <p className="text-[8px] font-mono text-gray-500 uppercase tracking-widest leading-relaxed max-w-[200px]">Define parameters to capture synthetic frame.</p>
-                                </div>
+                  <div className="w-full h-full relative group">
+                    {renderMode === 'image' ? (
+                      <>
+                        {/* Full Background Preview */}
+                        <div className="absolute inset-0">
+                          {isGeneratingImage && <UGCProcessingOverlay type="image" />}
+                          {isRegeneratingImage && <UGCProcessingOverlay type="image" />}
+                          {generatedImg ? (
+                            <>
+                              <img src={generatedImg} className="w-full h-full object-cover transition-transform duration-700" alt="Generated" />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none" />
+                              <div className="absolute top-4 left-4 z-20">
+                                <label className="shadow-xl py-1.5 px-3 bg-black/50 backdrop-blur-md border border-white/10 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-white/20 transition-all flex items-center gap-1.5 cursor-pointer">
+                                  <Upload size={10} /> Direct Upload
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => handleImageUpload(e, 'generated')}
+                                  />
+                                </label>
                               </div>
-                            )}
-                          </div>
-
-                          {/* Controls Overlay */}
-                          <div className="absolute bottom-0 inset-x-0 px-5 pb-1.5 pt-20 bg-gradient-to-t from-[#020202] via-[#020202]/90 to-transparent flex flex-col space-y-4 z-10 pointer-events-none">
-                            <div className="flex bg-black/60 backdrop-blur-md p-1 rounded-lg border border-white/5 pointer-events-auto">
-                              {(['image', 'video'] as const).map((mode) => (
-                                <button
-                                  key={mode}
-                                  onClick={() => setRenderMode(mode)}
-                                  className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${renderMode === mode ? 'bg-[#D4FF00] text-black shadow-lg shadow-[#D4FF00]/10' : 'text-gray-500 hover:text-white'}`}
-                                >
-                                  {mode}
-                                </button>
-                              ))}
-                            </div>
-
-                            <div className="grid grid-cols-[1fr_1fr_auto] gap-2 pointer-events-auto items-center">
-                              <Dropdown
-                                label="Aesthetic Style"
-                                value={imageStyle}
-                                options={['ultra-realistic', 'studio', 'iphone', 'short', 'normal', 'cinematic']}
-                                onChange={setImageStyle}
-                                direction="up"
-                                icon={Sparkles}
-                              />
-                              <Dropdown
-                                label="Aspect Ratio"
-                                value={aspectRatio}
-                                options={['9:16', '16:9', '1:1']}
-                                onChange={setAspectRatio}
-                                direction="up"
-                                icon={Layout}
-                              />
-                              <button
-                                onClick={() => setIsRefinePopupOpen(!isRefinePopupOpen)}
-                                className={`w-[52px] h-[52px] bg-black/40 border border-white/5 rounded-lg flex items-center justify-center transition-all ${isRefinePopupOpen ? 'border-[#D4FF00] text-[#D4FF00] bg-[#D4FF00]/10' : 'text-gray-400 hover:text-white hover:border-white/20'}`}
-                                disabled={!generatedImg}
-                                title="Refine Frame"
-                              >
-                                <MessageSquare size={16} />
-                              </button>
-                            </div>
-
-                            <Button onClick={generateImage} disabled={isGeneratingImage || !productDetails} loading={isGeneratingImage} className="w-full py-4 pointer-events-auto">Execute Frame Gen</Button>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          {/* Full Background Preview */}
-                          <div className="absolute inset-0 bg-[#050505]">
-                            {videoError && (
-                              <div className="absolute inset-x-0 top-10 p-4 text-center z-20 bg-black/80 backdrop-blur-sm"><AlertCircle size={24} className="text-red-500 mb-2 mx-auto" /><p className="text-[8px] text-red-400 font-mono uppercase tracking-widest leading-relaxed">{videoError}</p></div>
-                            )}
-                            {generatedVideo ? (
-                              <div className="relative w-full h-full">
-                                <video src={generatedVideo} controls className="w-full h-full object-cover" />
+                              <div className="absolute top-4 right-4 flex gap-2 z-20">
                                 <button
                                   onClick={async () => {
                                     try {
-                                      const response = await fetch(generatedVideo);
+                                      const response = await fetch(generatedImg);
                                       const blob = await response.blob();
                                       const downloadUrl = window.URL.createObjectURL(blob);
                                       const a = document.createElement('a');
                                       a.href = downloadUrl;
-                                      a.download = `lunar_flare_video_${Date.now()}.mp4`;
+                                      a.download = `lunar_flare_image_${Date.now()}.png`;
                                       document.body.appendChild(a);
                                       a.click();
                                       document.body.removeChild(a);
                                       window.URL.revokeObjectURL(downloadUrl);
                                     } catch (err) {
                                       console.error("Error downloading file", err);
-                                      // Fallback for direct download
                                       const a = document.createElement('a');
-                                      a.href = generatedVideo;
-                                      a.download = `lunar_flare_video_${Date.now()}.mp4`;
+                                      a.href = generatedImg;
+                                      a.download = `lunar_flare_image_${Date.now()}.png`;
                                       document.body.appendChild(a);
                                       a.click();
                                       document.body.removeChild(a);
                                     }
                                   }}
-                                  className="absolute top-4 shadow-xl right-4 py-1.5 px-3 bg-black/50 backdrop-blur-md border border-white/10 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-white/20 transition-all z-20 flex items-center gap-1.5"
+                                  className="shadow-xl py-1.5 px-3 bg-black/50 backdrop-blur-md border border-white/10 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-white/20 transition-all flex items-center gap-1.5"
                                 >
-                                  <Download size={10} /> Download Video
+                                  <Download size={10} /> Download Image
                                 </button>
-                                <div className="absolute inset-x-0 bottom-[140px] p-4 flex justify-center z-20 pointer-events-none">
-                                  <button onClick={() => addToTimeline({ id: Date.now().toString(), type: 'video', url: generatedVideo })} className="px-6 py-2 bg-[#D4FF00] text-black font-black text-[9px] uppercase tracking-widest rounded-lg hover:scale-105 transition-all shadow-[0_0_20px_rgba(212,255,0,0.3)] pointer-events-auto">Deploy to Timeline</button>
+                                <button onClick={() => window.open(generatedImg)} className="shadow-xl py-1.5 px-3 bg-black/50 backdrop-blur-md border border-white/10 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-white/20 transition-all">Expand</button>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 opacity-60">
+                              <div className="relative group">
+                                <div className="absolute inset-0 bg-[#D4FF00]/10 rounded-full blur-xl animate-pulse"></div>
+                                <div className="w-16 h-16 rounded-full border border-white/5 bg-black/50 backdrop-blur-lg flex items-center justify-center relative z-10">
+                                  <Camera size={24} className="text-[#D4FF00] opacity-50" />
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                    onChange={(e) => handleImageUpload(e, 'generated')}
+                                  />
                                 </div>
                               </div>
-                            ) : isGeneratingVideo ? (
-                              <UGCProcessingOverlay type="video" message={videoProgressMsg} />
-                            ) : (
-                              <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 opacity-60">
-                                {generatedImg && (
-                                  <img src={generatedImg} className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none" alt="" />
-                                )}
-                                <div className="relative group">
-                                  <div className="absolute inset-0 border border-[#D4FF00] rounded-full animate-ping opacity-20"></div>
-                                  <div className="absolute inset-0 bg-[#D4FF00]/10 rounded-full blur-xl animate-pulse"></div>
-                                  <div className="w-16 h-16 rounded-full border border-white/5 bg-black/50 backdrop-blur-lg flex items-center justify-center relative z-10 overflow-hidden">
-                                    <div className="absolute inset-0 border-t border-[#D4FF00] rounded-full animate-spin opacity-30" style={{ animationDuration: '3s' }}></div>
-                                    <Video size={24} className="text-[#D4FF00] opacity-80" />
-                                  </div>
-                                </div>
-                                <div className="text-center space-y-2">
-                                  <p className="font-black text-white text-[10px] uppercase tracking-[0.2em] relative inline-block">
-                                    <span className="absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-[#D4FF00] animate-pulse"></span>
-                                    Engine Idle
-                                  </p>
-                                  <p className="text-[8px] font-mono text-gray-500 uppercase tracking-widest leading-relaxed max-w-[220px]">
-                                    Prepare creator reference and scene script to synthesize UGC ad.
-                                  </p>
-                                </div>
+                              <div className="text-center space-y-2">
+                                <p className="font-black text-white text-[10px] uppercase tracking-[0.2em]">Lens Offline</p>
+                                <p className="text-[8px] font-mono text-gray-500 uppercase tracking-widest leading-relaxed max-w-[200px]">Define parameters to capture synthetic frame.</p>
                               </div>
-                            )}
-                          </div>
-
-                          {/* Controls Overlay */}
-                          <div className="absolute bottom-0 inset-x-0 px-5 pb-1.5 pt-32 bg-gradient-to-t from-[#020202] via-[#020202]/95 to-transparent flex flex-col space-y-4 z-10 pointer-events-none">
-                            <div className="flex bg-black/60 backdrop-blur-md p-1 rounded-lg border border-white/5 pointer-events-auto">
-                              {(['image', 'video'] as const).map((mode) => (
-                                <button
-                                  key={mode}
-                                  onClick={() => setRenderMode(mode)}
-                                  className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${renderMode === mode ? 'bg-[#D4FF00] text-black shadow-lg shadow-[#D4FF00]/10' : 'text-gray-500 hover:text-white'}`}
-                                >
-                                  {mode}
-                                </button>
-                              ))}
                             </div>
-
-                            {!hasPaidKey ? (
-                              <div className="p-4 border border-[#D4FF00]/20 bg-[#D4FF00]/10 backdrop-blur-md rounded-xl flex flex-col gap-3 pointer-events-auto">
-                                <div className="flex items-center gap-2 text-[#D4FF00] font-black italic text-[9px] uppercase tracking-widest"><Sparkles size={14} /><span>Veo-3 Required</span></div>
-                                <Button onClick={handleSelectKey} className="w-full py-2.5 text-[9px]">Authorize Vertex Key</Button>
-                              </div>
-                            ) : (
-                              <div className="grid grid-cols-3 gap-1.5 pointer-events-auto">
-                                <button
-                                  onClick={handleResetKey}
-                                  className="flex flex-col gap-1.5 group"
-                                >
-                                  <span className="text-gray-500 font-mono text-[8px] uppercase tracking-widest pl-1 text-left">Engine</span>
-                                  <div className="w-full h-[31px] border border-white/10 bg-black/40 backdrop-blur-md rounded-lg text-gray-400 font-mono text-[8px] uppercase tracking-widest hover:text-white hover:border-white/30 transition-colors flex justify-center items-center gap-1.5 px-2">
-                                    <Sparkles size={10} className="text-[#D4FF00]" />
-                                    <span className="truncate">Vertex</span>
-                                  </div>
-                                </button>
-                                <Dropdown
-                                  label="Ratio"
-                                  value={aspectRatio}
-                                  options={['9:16', '16:9', '1:1']}
-                                  onChange={setAspectRatio}
-                                  direction="up"
-                                  icon={Layout}
-                                />
-                                <Dropdown
-                                  label="Res"
-                                  value={videoResolution}
-                                  options={['720p', '1080p']}
-                                  onChange={setVideoResolution}
-                                  direction="up"
-                                  icon={Zap}
-                                />
-                              </div>
-                            )}
-
-                            <Button onClick={generateVideo} disabled={isGeneratingVideo} loading={isGeneratingVideo} className="w-full py-4 pointer-events-auto">Produce Video</Button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    {/* BOTTOM PROMPT PANEL (only shown if an image is generated) */}
-                    {renderMode === 'image' && generatedImg && isRefinePopupOpen && (
-                      <div className="absolute top-[40%] left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] p-5 bg-[#0a0a0a] border border-[#333] shrink-0 z-50 pointer-events-auto shadow-[0_10px_40px_rgba(0,0,0,0.9)] rounded-xl">
-                        <div className="flex justify-between items-center mb-4">
-                          <label className="text-[10px] font-black text-[#D4FF00] uppercase tracking-widest block flex items-center gap-1.5"><MessageSquare size={14} /> Refine Frame Chat</label>
-                          <button onClick={() => setIsRefinePopupOpen(false)} className="text-gray-500 hover:text-white p-1 hover:bg-white/10 rounded"><X size={16} /></button>
+                          )}
                         </div>
-                        <textarea
-                          value={imageEditPrompt}
-                          onChange={(e) => setImageEditPrompt(e.target.value)}
-                          placeholder="e.g., Change location to a sunny park, make her smile more..."
-                          className="w-full bg-black/60 border border-[#333] rounded-lg px-3 py-3 font-sans text-xs text-white focus:outline-none focus:border-[#D4FF00] transition-colors resize-none h-24 block mb-4"
-                        />
-                        <Button
-                          onClick={() => {
-                            regenerateImage();
-                            setIsRefinePopupOpen(false);
-                          }}
-                          disabled={isRegeneratingImage || !imageEditPrompt}
-                          loading={isRegeneratingImage}
-                          variant="ghost"
-                          className="w-full text-[10px] border-[#D4FF00]/50 text-[#D4FF00] hover:bg-[#D4FF00]/20 py-2.5"
-                        >
-                          Apply Changes & Regenerate
-                        </Button>
-                      </div>
+
+                        {/* Controls Overlay */}
+                        <div className="absolute bottom-0 inset-x-0 px-5 pb-1.5 pt-20 bg-gradient-to-t from-[#020202] via-[#020202]/90 to-transparent flex flex-col space-y-4 z-10">
+                          <div className="flex bg-black/60 backdrop-blur-md p-1 rounded-lg border border-white/5">
+                            {(['image', 'video'] as const).map((mode) => (
+                              <button
+                                key={mode}
+                                onClick={() => setRenderMode(mode)}
+                                className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${renderMode === mode ? 'bg-[#D4FF00] text-black shadow-lg shadow-[#D4FF00]/10' : 'text-gray-500 hover:text-white'}`}
+                              >
+                                {mode}
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <Dropdown
+                              label="Aesthetic Style"
+                              value={imageStyle}
+                              options={['ultra-realistic', 'studio', 'iphone', 'short', 'normal', 'cinematic']}
+                              onChange={setImageStyle}
+                              direction="up"
+                              icon={Sparkles}
+                            />
+                            <Dropdown
+                              label="Aspect Ratio"
+                              value={aspectRatio}
+                              options={['9:16', '16:9', '1:1']}
+                              onChange={setAspectRatio}
+                              direction="up"
+                              icon={Layout}
+                            />
+                          </div>
+
+                          <Button onClick={generateImage} disabled={isGeneratingImage || !productDetails} loading={isGeneratingImage} className="w-full py-4">Execute Frame Gen</Button>
+
+                          {generatedImg && (
+                            <div className="mt-4 space-y-3 p-3 bg-white/5 rounded-xl border border-white/10 pointer-events-auto">
+                              <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Refine Frame</label>
+                              <textarea
+                                value={imageEditPrompt}
+                                onChange={(e) => setImageEditPrompt(e.target.value)}
+                                placeholder="e.g., Change location to a sunny park, make her smile more..."
+                                className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 font-sans text-[10px] text-white focus:outline-none focus:border-[#D4FF00] transition-colors resize-none h-16"
+                              />
+                              <Button
+                                onClick={regenerateImage}
+                                disabled={isRegeneratingImage || !imageEditPrompt}
+                                loading={isRegeneratingImage}
+                                variant="ghost"
+                                className="w-full text-[9px] border-[#D4FF00]/30 text-[#D4FF00] hover:bg-[#D4FF00]/10"
+                              >
+                                Apply Changes & Regenerate
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* Full Background Preview */}
+                        <div className="absolute inset-0 bg-[#050505]">
+                          {videoError && (
+                            <div className="absolute inset-x-0 top-10 p-4 text-center z-20 bg-black/80 backdrop-blur-sm"><AlertCircle size={24} className="text-red-500 mb-2 mx-auto" /><p className="text-[8px] text-red-400 font-mono uppercase tracking-widest leading-relaxed">{videoError}</p></div>
+                          )}
+                          {generatedVideo ? (
+                            <div className="relative w-full h-full">
+                              <video src={generatedVideo} controls className="w-full h-full object-cover" />
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const response = await fetch(generatedVideo);
+                                    const blob = await response.blob();
+                                    const downloadUrl = window.URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = downloadUrl;
+                                    a.download = `lunar_flare_video_${Date.now()}.mp4`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    window.URL.revokeObjectURL(downloadUrl);
+                                  } catch (err) {
+                                    console.error("Error downloading file", err);
+                                    // Fallback for direct download
+                                    const a = document.createElement('a');
+                                    a.href = generatedVideo;
+                                    a.download = `lunar_flare_video_${Date.now()}.mp4`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                  }
+                                }}
+                                className="absolute top-4 shadow-xl right-4 py-1.5 px-3 bg-black/50 backdrop-blur-md border border-white/10 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-white/20 transition-all z-20 flex items-center gap-1.5"
+                              >
+                                <Download size={10} /> Download Video
+                              </button>
+                              <div className="absolute inset-x-0 bottom-[140px] p-4 flex justify-center z-20 pointer-events-none">
+                                <button onClick={() => addToTimeline({ id: Date.now().toString(), type: 'video', url: generatedVideo })} className="px-6 py-2 bg-[#D4FF00] text-black font-black text-[9px] uppercase tracking-widest rounded-lg hover:scale-105 transition-all shadow-[0_0_20px_rgba(212,255,0,0.3)] pointer-events-auto">Deploy to Timeline</button>
+                              </div>
+                            </div>
+                          ) : isGeneratingVideo ? (
+                            <UGCProcessingOverlay type="video" message={videoProgressMsg} />
+                          ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 opacity-60">
+                              {generatedImg && (
+                                <img src={generatedImg} className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none" alt="" />
+                              )}
+                              <div className="relative group">
+                                <div className="absolute inset-0 border border-[#D4FF00] rounded-full animate-ping opacity-20"></div>
+                                <div className="absolute inset-0 bg-[#D4FF00]/10 rounded-full blur-xl animate-pulse"></div>
+                                <div className="w-16 h-16 rounded-full border border-white/5 bg-black/50 backdrop-blur-lg flex items-center justify-center relative z-10 overflow-hidden">
+                                  <div className="absolute inset-0 border-t border-[#D4FF00] rounded-full animate-spin opacity-30" style={{ animationDuration: '3s' }}></div>
+                                  <Video size={24} className="text-[#D4FF00] opacity-80" />
+                                </div>
+                              </div>
+                              <div className="text-center space-y-2">
+                                <p className="font-black text-white text-[10px] uppercase tracking-[0.2em] relative inline-block">
+                                  <span className="absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-[#D4FF00] animate-pulse"></span>
+                                  Engine Idle
+                                </p>
+                                <p className="text-[8px] font-mono text-gray-500 uppercase tracking-widest leading-relaxed max-w-[220px]">
+                                  Prepare creator reference and scene script to synthesize UGC ad.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Controls Overlay */}
+                        <div className="absolute bottom-0 inset-x-0 px-5 pb-1.5 pt-32 bg-gradient-to-t from-[#020202] via-[#020202]/95 to-transparent flex flex-col space-y-4 z-10 pointer-events-none">
+                          <div className="flex bg-black/60 backdrop-blur-md p-1 rounded-lg border border-white/5 pointer-events-auto">
+                            {(['image', 'video'] as const).map((mode) => (
+                              <button
+                                key={mode}
+                                onClick={() => setRenderMode(mode)}
+                                className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${renderMode === mode ? 'bg-[#D4FF00] text-black shadow-lg shadow-[#D4FF00]/10' : 'text-gray-500 hover:text-white'}`}
+                              >
+                                {mode}
+                              </button>
+                            ))}
+                          </div>
+
+                          {!hasPaidKey ? (
+                            <div className="p-4 border border-[#D4FF00]/20 bg-[#D4FF00]/10 backdrop-blur-md rounded-xl flex flex-col gap-3 pointer-events-auto">
+                              <div className="flex items-center gap-2 text-[#D4FF00] font-black italic text-[9px] uppercase tracking-widest"><Sparkles size={14} /><span>Veo-3 Required</span></div>
+                              <Button onClick={handleSelectKey} className="w-full py-2.5 text-[9px]">Authorize Vertex Key</Button>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-4 gap-1.5 pointer-events-auto">
+                              <button
+                                onClick={handleResetKey}
+                                className="flex flex-col gap-1.5 group"
+                              >
+                                <span className="text-gray-500 font-mono text-[8px] uppercase tracking-widest pl-1 text-left">Engine</span>
+                                <div className="w-full h-[31px] border border-white/10 bg-black/40 backdrop-blur-md rounded-lg text-gray-400 font-mono text-[8px] uppercase tracking-widest hover:text-white hover:border-white/30 transition-colors flex justify-center items-center gap-1.5 px-2">
+                                  <Sparkles size={10} className="text-[#D4FF00]" />
+                                  <span className="truncate">Vertex</span>
+                                </div>
+                              </button>
+                              <Dropdown
+                                label="Duration"
+                                value={`${durationSeconds}s`}
+                                options={['4s', '6s', '8s']}
+                                onChange={(val: string) => setDurationSeconds(val.replace('s', '') as any)}
+                                direction="up"
+                              />
+                              <Dropdown
+                                label="Ratio"
+                                value={aspectRatio}
+                                options={['9:16', '16:9', '1:1']}
+                                onChange={setAspectRatio}
+                                direction="up"
+                                icon={Layout}
+                              />
+                              <Dropdown
+                                label="Res"
+                                value={videoResolution}
+                                options={['720p', '1080p']}
+                                onChange={setVideoResolution}
+                                direction="up"
+                                icon={Zap}
+                              />
+                            </div>
+                          )}
+
+                          <Button onClick={generateVideo} disabled={isGeneratingVideo} loading={isGeneratingVideo} className="w-full py-4 pointer-events-auto">Produce Video</Button>
+                        </div>
+                      </>
                     )}
                   </div>
                 </Card>
