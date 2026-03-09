@@ -1,0 +1,297 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+#root {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+@layer base {
+  body {
+    @apply bg-terminal-background text-terminal-primary font-terminal overflow-x-hidden;
+    margin: 0;
+    padding: 0;
+    background-image:
+      linear-gradient(rgba(0, 255, 65, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 255, 65, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+}
+
+.scanline {
+  width: 100%;
+  height: 2px;
+  background: rgba(0, 255, 65, 0.1);
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  pointer-events: none;
+  animation: scan 8s linear infinite;
+}
+
+.crt-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.04), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.04));
+  z-index: 10000;
+  background-size: 100% 3px, 3px 100%;
+  pointer-events: none;
+}
+
+.terminal-border {
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  box-shadow: inset 0 0 15px rgba(0, 255, 65, 0.05), 0 0 10px rgba(0, 255, 65, 0.1);
+}
+
+.glow-text {
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.5);
+}
+
+.purple-glow {
+  text-shadow: 0 0 8px rgba(188, 19, 254, 0.5);
+}
+
+@layer utilities {
+  .text-metallic {
+    @apply bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-400;
+  }
+
+  .surface-glass {
+    @apply bg-white/5 backdrop-blur-md border border-white/10;
+  }
+
+  .glow-border {
+    @apply border-[#D4FF00] shadow-[0_0_10px_rgba(212,255,0,0.3)];
+  }
+
+  .glow-text-lime {
+    @apply text-[#D4FF00] drop-shadow-[0_0_8px_rgba(212,255,0,0.5)];
+  }
+}
+
+.data-grid-pattern {
+  background-image: radial-gradient(circle, rgba(212, 255, 0, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+}
+
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+select,
+option {
+  background-color: #050505 !important;
+  color: white !important;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes scan {
+  0% {
+    transform: translateY(-100vh);
+  }
+
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@layer utilities {
+  .animate-spin-slow {
+    animation: spin-slow 6s linear infinite;
+  }
+}
+
+/* React Flow Visual Layering Fixes */
+.react-flow__edges {
+  z-index: 1000 !important;
+}
+
+.react-flow__edge {
+  z-index: 1000 !important;
+  pointer-events: all;
+}
+
+.react-flow__edge-path {
+  stroke-width: 3;
+}
+
+/* Ensure nodes don't trap edges in a lower stacking context */
+.react-flow__node {
+  z-index: 1 !important;
+}
+
+/* Neural Handle Glow Animations */
+@keyframes glow-character {
+  from {
+    box-shadow: 0 0 4px rgba(190, 242, 100, 0.4);
+  }
+
+  to {
+    box-shadow: 0 0 16px rgba(190, 242, 100, 0.8);
+  }
+}
+
+@keyframes glow-wardrobe {
+  from {
+    box-shadow: 0 0 4px rgba(244, 63, 94, 0.4);
+  }
+
+  to {
+    box-shadow: 0 0 16px rgba(244, 63, 94, 0.8);
+  }
+}
+
+@keyframes glow-product {
+  from {
+    box-shadow: 0 0 4px rgba(245, 158, 11, 0.4);
+  }
+
+  to {
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.8);
+  }
+}
+
+@keyframes glow-location {
+  from {
+    box-shadow: 0 0 4px rgba(34, 211, 238, 0.4);
+  }
+
+  to {
+    box-shadow: 0 0 16px rgba(34, 211, 238, 0.8);
+  }
+}
+
+@keyframes glow-story {
+  from {
+    box-shadow: 0 0 4px rgba(139, 92, 246, 0.4);
+  }
+
+  to {
+    box-shadow: 0 0 16px rgba(139, 92, 246, 0.8);
+  }
+}
+
+.handle-character {
+  animation: glow-character 2s infinite alternate;
+}
+
+.handle-wardrobe {
+  animation: glow-wardrobe 2s infinite alternate;
+}
+
+.handle-product {
+  animation: glow-product 2s infinite alternate;
+}
+
+.handle-location {
+  animation: glow-location 2s infinite alternate;
+}
+
+.handle-story {
+  animation: glow-story 2s infinite alternate;
+}
+
+.neural-engaged {
+  filter: brightness(1.5) contrast(1.2);
+  box-shadow: 0 0 25px currentColor !important;
+}
+
+.neural-engaged.handle-character {
+  animation: glow-character 0.8s infinite alternate;
+}
+
+.neural-engaged.handle-wardrobe {
+  animation: glow-wardrobe 0.8s infinite alternate;
+}
+
+.neural-engaged.handle-product {
+  animation: glow-product 0.8s infinite alternate;
+}
+
+.neural-engaged.handle-location {
+  animation: glow-location 0.8s infinite alternate;
+}
+
+.neural-engaged.handle-story {
+  animation: glow-story 0.8s infinite alternate;
+}

@@ -1,0 +1,65 @@
+import { Position, useUpdateNodeInternals } from 'reactflow';
+import React, { memo, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Wind, X, Waves } from 'lucide-react';
+import { useAppStore } from '../../store';
+import MagneticHandle from '../edges/MagneticHandle';
+
+export default memo(({ id, data }) => {
+    const updateNodeInternals = useUpdateNodeInternals();
+    const updateNodeData = useAppStore(s => s.updateNodeData);
+
+    useEffect(() => {
+        updateNodeInternals(id);
+    }, [id, updateNodeInternals]);
+
+    const atmospheres = [
+        'CYBERPUNK_CITY',
+        'DEEP_SPACE_VOID',
+        'RAINSTORM_REVERIE',
+        'NEURAL_LAB_HUM',
+        'ANCIENT_FOREST'
+    ];
+
+    return (
+        <div className="relative group" style={{ zIndex: 1 }}>
+            <motion.div
+                initial={{ opacity: 0, scale: 0.85, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                className="group relative px-5 py-4 bg-[#0a0a0a]/90 backdrop-blur-2xl border-2 border-emerald-500/20 rounded-2xl min-w-[220px] shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:border-emerald-500/50 transition-all font-sans"
+            >
+
+                <button
+                    onClick={() => data.onDelete(id)}
+                    className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full text-white scale-0 group-hover:scale-100 transition-transform shadow-lg z-50"
+                >
+                    <X size={10} />
+                </button>
+
+                <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-emerald-500/20 rounded-lg">
+                            <Wind size={14} className="text-emerald-400" />
+                        </div>
+                        <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">{data.label || 'AMBIENT_LAYER'}</span>
+                    </div>
+                </div>
+
+                <select
+                    value={data.atmosphere || 'CYBERPUNK_CITY'}
+                    onChange={(e) => updateNodeData(id, { atmosphere: e.target.value })}
+                    className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-[11px] text-white/80 font-mono focus:outline-none focus:border-emerald-500/40 transition-colors appearance-none"
+                >
+                    {atmospheres.map(atm => (
+                        <option key={atm} value={atm}>{atm}</option>
+                    ))}
+                </select>
+            </motion.div>
+
+            <MagneticHandle type="target" position={Position.Left} color="#10b981" className={`handle-character`} />
+            <MagneticHandle type="source" position={Position.Right} color="#10b981" className={`handle-character`} />
+        </div>
+    );
+});
