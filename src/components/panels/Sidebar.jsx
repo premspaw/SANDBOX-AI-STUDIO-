@@ -6,6 +6,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useAppStore } from '../../store'
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
+import { useShorts } from '../../hooks/useShorts'
 
 function SidebarNavItem({ item, activeTab, setActiveTab, isCollapsed, mouseY }) {
     const ref = useRef(null);
@@ -95,13 +96,16 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
         { id: 'admin', label: 'Admin', icon: Shield, color: 'text-red-500', bgColor: 'bg-red-500', hoverColor: 'group-hover/navitem:text-red-500', glow: 'shadow-[0_0_15px_rgba(248,113,113,0.1)]' },
     ]
 
-    const userShorts = useAppStore(state => state.userShorts)
+    const { shorts, refresh } = useShorts()
     const fetchUserProfile = useAppStore(state => state.fetchUserProfile)
 
     useEffect(() => {
         const checkUser = async () => {
             const { data: { user } } = await supabase.auth.getUser()
-            if (user) fetchUserProfile(user.id)
+            if (user) {
+                await fetchUserProfile(user.id)
+                refresh()
+            }
         }
         checkUser()
     }, [])
@@ -163,14 +167,24 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
 
                 <div className="px-3 py-2 space-y-2">
                     <div className={cn(
-                        "flex items-center gap-2 px-3 py-2 bg-[#bef264]/10 border border-[#bef264]/20 rounded-xl transition-all",
+                        "flex items-center gap-2 px-3 py-2 bg-[#D4FF00]/10 border border-[#D4FF00]/30 rounded-xl transition-all",
                         isCollapsed ? "justify-center px-0" : ""
                     )}>
-                        <Coins className="w-4 h-4 text-[#bef264] shrink-0" />
-                        {!isCollapsed && (
-                            <div className="flex-1 min-w-0">
-                                <p className="text-[8px] text-[#bef264]/60 font-black uppercase tracking-widest leading-none">Shorts</p>
-                                <p className="text-[11px] font-black text-[#bef264] mt-0.5 truncate">{userShorts}</p>
+                        {isCollapsed ? (
+                            <span className="text-sm">🎞</span>
+                        ) : (
+                            <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-sm">🎞</span>
+                                    <span className="text-[13px] font-black text-[#D4FF00]">{shorts}</span>
+                                    <span className="text-[9px] text-[#555] font-bold tracking-widest leading-none mt-0.5">SHORTS</span>
+                                </div>
+                                <button
+                                    onClick={() => {/* navigate to top up */ }}
+                                    className="text-[8px] font-bold text-[#D4FF00] hover:text-white bg-transparent border-none cursor-pointer tracking-wider"
+                                >
+                                    + TOP UP
+                                </button>
                             </div>
                         )}
                     </div>

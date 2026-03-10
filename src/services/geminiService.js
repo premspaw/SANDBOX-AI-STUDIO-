@@ -305,8 +305,8 @@ const resolveModelId = (id) => {
         'nano-banana-pro': 'gemini-3-pro-image-preview',
         'gemini-3-pro-image-preview': 'gemini-3-pro-image-preview',
         // Flash (video/flash aliases map to 3.1)
-        'gemini-2.0-flash-preview-image-generation': 'gemini-3.1-flash-image-preview',
-        'gemini-3.1-flash-image-preview': 'gemini-3.1-flash-image-preview',
+        'gemini-2.0-flash-preview-image-generation': 'gemini-2.0-flash-exp-image-generation',
+        'gemini-3.1-flash-image-preview': 'gemini-2.0-flash-exp-image-generation',
         // Flux
         'flux-1.1-pro': 'flux-1.1-pro'
     };
@@ -316,12 +316,12 @@ const resolveModelId = (id) => {
 export const generateCharacterImage = async (params) => {
     return withRetry(async () => {
         try {
-            const requestedEngine = params.modelEngine || 'gemini-2.5-flash-image';
+            const requestedEngine = params.modelEngine || 'gemini-2.0-flash-exp-image-generation';
             const engine = resolveModelId(requestedEngine);
             const isPro = engine.includes('pro');
 
             // 1. Try local server first (Only if using standard image models)
-            const standardImageModels = ['gemini-2.5-flash-image', 'gemini-3-pro-image-preview', 'nano-banana', 'nano-banana-pro'];
+            const standardImageModels = ['gemini-2.0-flash-exp-image-generation', 'gemini-3-pro-image-preview', 'nano-banana', 'nano-banana-pro'];
             if (typeof window !== 'undefined' && standardImageModels.some(m => engine.includes(m))) {
                 const isAlive = await checkBackend();
                 if (isAlive) {

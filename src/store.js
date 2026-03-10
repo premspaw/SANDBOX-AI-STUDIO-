@@ -448,6 +448,59 @@ export const useAppStore = create((set, get) => ({
         }
     },
 
+    spendShorts: async (userId, amount, reason) => {
+        const current = get().userShorts;
+        if (current < amount) return { success: false, reason: 'insufficient' };
+
+        // Optimistic update
+        set({ userShorts: current - amount });
+
+        try {
+            // Deduct via RPC or direct update if permitted
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({ shorts_balance: current - amount })
+                .eq('id', userId);
+
+            if (updateError) throw updateError;
+
+            await supabase.from('shorts_transactions').insert({
+                user_id: userId,
+                amount: -amount,
+                reason,
+                created_at: new Date().toISOString()
+            });
+            return { success: true };
+        } catch (err) {
+            // Revert on failure
+            console.error('Store: Spend failed', err);
+            set({ userShorts: current });
+            return { success: false, reason: 'transaction_failed' };
+        }
+    },
+
+    refundShorts: async (userId, amount, reason) => {
+        const current = get().userShorts;
+        set({ userShorts: current + amount });
+
+        try {
+            await supabase
+                .from('profiles')
+                .update({ shorts_balance: current + amount })
+                .eq('id', userId);
+
+            await supabase.from('shorts_transactions').insert({
+                user_id: userId,
+                amount,
+                reason: `refund_${reason}`,
+                created_at: new Date().toISOString()
+            });
+        } catch (err) {
+            console.error('Store: Refund failed', err);
+            set({ userShorts: current });
+        }
+    },
+
 
     updateNodeData: (nodeId, newData) => {
         set((state) => ({
