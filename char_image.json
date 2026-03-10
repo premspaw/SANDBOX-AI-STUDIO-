@@ -1,0 +1,77 @@
+[
+  {
+    "id": "aadf22f8-3531-4dfb-9699-27a859951d84",
+    "name": "kajol",
+    "image": "https://rwkefswqopnxbekeqsel.supabase.co/storage/v1/object/public/assets/influencers/aadf22f8-3531-4dfb-9699-27a859951d84/anchor_1771593302885.png"
+  },
+  {
+    "id": "5a35ca06-5461-42b0-bdd7-b84eea8d0ca6",
+    "name": "REYA",
+    "image": "https://rwkefswqopnxbekeqsel.supabase.co/storage/v1/object/public/assets/influencers/5a35ca06-5461-42b0-bdd7-b84eea8d0ca6/anchor_1771675015891.png"
+  },
+  {
+    "id": "48972932-0aa4-4a1d-a40a-e9172104bb83",
+    "name": "tej",
+    "image": null
+  },
+  {
+    "id": "51798cac-39de-441d-b9e3-9baf82e48a8d",
+    "name": "PRIYA",
+    "image": "https://rwkefswqopnxbekeqsel.supabase.co/storage/v1/object/public/assets/influencers/51798cac-39de-441d-b9e3-9baf82e48a8d/anchor_1771681386637.png"
+  },
+  {
+    "id": "ffa38772-b2bf-4a73-8107-56052a75d149",
+    "name": "priya",
+    "image": ""
+  },
+  {
+    "id": "16f8b3ca-5f6a-4821-bbc3-5c23eecd558c",
+    "name": "sofia",
+    "image": ""
+  },
+  {
+    "id": "1c5afd24-3f1b-402e-9634-c83ce6262ae3",
+    "name": "CORE_ALPHA_690",
+    "image": ""
+  },
+  {
+    "id": "cc7d149c-290d-4968-899e-40fd79f68266",
+    "name": "CORE_MAX_800",
+    "image": ""
+  },
+  {
+    "id": "4de66411-5763-4313-989d-14aad0ca6234",
+    "name": "PRIME_ALPHA_652",
+    "image": ""
+  },
+  {
+    "id": "d2447ac0-f19e-49a0-a916-70d3c45d50e8",
+    "name": "NOVA_ULTRA_712",
+    "image": "http://localhost:3002/assets/characters/anchor_d2447ac0_f19e_49a0_a916_70d3c45d50e8_1772822283134.png"
+  },
+  {
+    "id": "9318e159-b219-4b8c-9232-2c8aae50eb43",
+    "name": "CORE_Z-1_292",
+    "image": "http://localhost:3002/assets/characters/anchor_9318e159_b219_4b8c_9232_2c8aae50eb43_1772823410295.jpeg"
+  },
+  {
+    "id": "f1c097c6-e6ae-488a-8eed-f0d6b1a7af3c",
+    "name": "NANO_O-9_502",
+    "image": "http://localhost:3002/assets/characters/anchor_f1c097c6_e6ae_488a_8eed_f0d6b1a7af3c_1772823969036.jpeg"
+  },
+  {
+    "id": "68bcb7c4-377a-4070-b1fd-b2c5109ef002",
+    "name": "XEN_ALPHA_559",
+    "image": "http://localhost:3002/assets/characters/anchor_68bcb7c4_377a_4070_b1fd_b2c5109ef002_1772824135740.jpeg"
+  },
+  {
+    "id": "f30674dd-ae81-4392-b86d-c4680120ff6e",
+    "name": "UNNAMED_CONSTRUCT",
+    "image": "http://localhost:3002/assets/characters/anchor_f30674dd_ae81_4392_b86d_c4680120ff6e_1772824708633.jpeg"
+  },
+  {
+    "id": "fc600e4a-e967-4112-a135-376989e74fc4",
+    "name": "NANO_ALPHA_221",
+    "image": "http://localhost:3002/assets/characters/anchor_fc600e4a_e967_4112_a135_376989e74fc4_1772825898402.jpeg"
+  }
+]
