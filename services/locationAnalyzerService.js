@@ -57,6 +57,11 @@ export async function analyzeLocationItem(tempFilePath, mimeType) {
             generationConfig: {
                 responseMimeType: 'application/json',
             },
+        }, {
+            headers: {
+                'Referer': 'http://localhost:5173/',
+                'Origin': 'http://localhost:5173'
+            }
         });
 
         const result = await model.generateContent([

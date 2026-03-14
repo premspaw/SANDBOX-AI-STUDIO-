@@ -18,6 +18,7 @@ import { useShorts } from '../../hooks/useShorts'
 import { StoryboardView } from './StoryboardView'
 import { MultiShotView } from './MultiShotView'
 import { SHORTS_COST } from '../../config/shortsConfig'
+import { refineNarrative } from '../../services/geminiService'
 
 // ─────────────────────────────────────────────
 // CONSTANTS
@@ -249,7 +250,7 @@ const ART_STYLES = [
     {
         id: 'realistic', label: 'Hyper Realistic',
         narrative: 'photorealistic',
-        quality: 'ultra-detailed, photorealistic rendering, 8K resolution, true-to-life textures'
+        quality: 'ultra-detailed, photorealistic rendering, ultra high-definition details, true-to-life textures'
     },
     {
         id: 'anime', label: 'Celestial Anime',
@@ -259,7 +260,7 @@ const ART_STYLES = [
     {
         id: 'hyper_realistic', label: 'Hyper Realistic',
         narrative: 'in a hyper-realistic cinematic style',
-        quality: '8K resolution, hyper-detailed textures, photorealistic materials, flawless lighting'
+        quality: 'ultra high-definition rendering, hyper-detailed textures, photorealistic materials, flawless lighting'
     },
     {
         id: '3d', label: '3D CGI Render',
@@ -426,21 +427,21 @@ const PRO_FOCUS_CONTROLS = [
 const AI_MODELS = [
     {
         id: 'nano-banana', name: 'Nano Banana', provider: 'Google', type: 'image',
-        description: 'Gemini 2.0 Flash Image — blazing fast native generation',
+        description: 'Gemini 3.1 Flash Image — blazing fast native generation',
         credits: 1, available: true, icon: Zap,
-        modelId: 'gemini-2.0-flash-exp-image-generation'
+        modelId: 'gemini-3.1-flash-image-preview'
     },
     {
         id: 'nano-banana-2', name: 'Nano Banana 2', provider: 'Google', type: 'image',
-        description: 'Gemini 2.0 Flash Image — high quality refinement',
+        description: 'Gemini 3.1 Flash Image — high quality refinement',
         credits: 2, available: true, icon: Sparkles,
-        modelId: 'gemini-2.0-flash-exp-image-generation'
+        modelId: 'gemini-3.1-flash-image-preview'
     },
     {
         id: 'nano-banana-pro', name: 'Nano Banana Pro', provider: 'Google', type: 'image',
-        description: 'Gemini 2.0 Flash Image — elite resolution & detail',
+        description: 'Gemini 3 Pro Image — elite resolution & detail',
         credits: 5, available: true, icon: Sparkles,
-        modelId: 'gemini-2.0-flash-exp-image-generation'
+        modelId: 'gemini-3-pro-image-preview'
     },
     {
         id: 'veo', name: 'Google Veo 3.1', provider: 'Google', type: 'video',
@@ -455,9 +456,16 @@ const AI_MODELS = [
         modelId: 'veo-3.1-fast-generate-preview'
     },
     {
-        id: 'kling', name: 'Kling AI', provider: 'Kling', type: 'video',
-        description: 'Advanced video generation platform (Coming Soon)',
-        credits: 5, available: false, icon: Video
+        id: 'kling-2.6', name: 'Google Kling 2.6', provider: 'Kling', type: 'video',
+        description: 'V2.6 High-Performance Video Model',
+        credits: 8, available: true, icon: Zap,
+        modelId: 'kling-2.6/video'
+    },
+    {
+        id: 'kling', name: 'Google Kling 3.0', provider: 'Kling', type: 'video',
+        description: 'V3.0 Ultra-High Fidelity Model',
+        credits: 10, available: true, icon: Sparkles,
+        modelId: 'kling-3.0/video'
     },
     {
         id: 'runway', name: 'Runway Gen-3', provider: 'Runway', type: 'video',
@@ -541,12 +549,6 @@ const VIDEO_CONTROLS = [
         key: "audio", label: "AUDIO",
         options: ["On", "Off"],
         default: "On",
-        toggle: true
-    },
-    {
-        key: "loop", label: "LOOP",
-        options: ["Off", "On"],
-        default: "Off",
         toggle: true
     },
 ]
@@ -860,21 +862,26 @@ const buildVideoPrompt = (selections, selectedModel) => {
     const audioActive = selections.audioActive || {}
     const audioPrompts = selections.audioPrompts || {}
 
-    if (audioActive.dialogue && audioPrompts.dialogue)
-        audioLines.push(`A voice says, "${audioPrompts.dialogue}".`)
-    else if (selections.dialogue && selections.dialogue !== 'Off')
-        audioLines.push(`Dialogue: ${selections.dialogue}.`)
+    // Only build audio lines if the main audio toggle is ON
+    if (selections.audio === 'On') {
+        if (audioActive.dialogue) {
+            if (audioPrompts.dialogue) audioLines.push(`A voice says, "${audioPrompts.dialogue}".`)
+            else if (selections.dialogue && selections.dialogue !== 'Off') audioLines.push(`Dialogue: ${selections.dialogue}.`)
+        }
 
-    if (audioActive.sfx && audioPrompts.sfx)
-        audioLines.push(`SFX: ${audioPrompts.sfx}.`)
+        if (audioActive.sfx && audioPrompts.sfx) {
+            audioLines.push(`SFX: ${audioPrompts.sfx}.`)
+        }
 
-    if (audioActive.ambient && audioPrompts.ambient)
-        audioLines.push(`Ambient noise: ${audioPrompts.ambient}.`)
-    else
-        audioLines.push('Ambient noise: natural, immersive soundscape.')
+        if (audioActive.ambient) {
+            if (audioPrompts.ambient) audioLines.push(`Ambient noise: ${audioPrompts.ambient}.`)
+            else audioLines.push('Ambient noise: natural, immersive soundscape.')
+        }
 
-    if (audioActive.music && audioPrompts.music)
-        audioLines.push(`Music: ${audioPrompts.music}.`)
+        if (audioActive.music && audioPrompts.music) {
+            audioLines.push(`Music: ${audioPrompts.music}.`)
+        }
+    }
 
     // ── FRAME REFERENCE ──────────────────────────────────────────────────
     const frameRef = []
@@ -897,8 +904,17 @@ const buildVideoPrompt = (selections, selectedModel) => {
     // Formula: [Cinematography], [Subject], [Action], [Context]. [Style & Ambiance]. [Audio]. [Frame refs].
     const core = `${cameraClause}, ${subject}${actionClause}${contextClause}.`
     const style = ` ${styleNarrative} aesthetic, ${lightingNarrative}, ${speedNarrative}.`
-    const camera = ` Recorded on ${cam.label} for maximum cinematic realism.`
-    const audio = (audioLines.length > 0 && selectedModel !== 'veo-fast') ? ' ' + audioLines.join(' ') : ''
+    
+    // Remove "Recorded on..." for I2V/Interpolation as the source image already defines the visual baseline
+    // The user explicitly requested to remove this when images are used.
+    const camera = (selections.firstFrame || selections.lastFrame || selections.referenceImage) 
+        ? '' 
+        : ` Recorded on ${cam.label} for maximum cinematic realism.`
+        
+    // Audio directions are only appended if the main Audio toggle is set to "On"
+    const audio = (audioLines.length > 0 && selectedModel !== 'veo-fast' && selections.audio === 'On') 
+        ? ' ' + audioLines.join(' ') 
+        : ''
 
     // ── Pro Lighting Transforms (Legacy) ───────────────────────────────
     const transform = PRO_LIGHTING_TRANSFORMS.find(t => t.id === selections.lightingTransform)
@@ -910,6 +926,414 @@ const buildVideoPrompt = (selections, selectedModel) => {
 // ─────────────────────────────────────────────
 // COMPONENT
 // ─────────────────────────────────────────────
+
+// ── SUB-COMPONENTS (Defined outside to prevent unmount on render) ──
+const KlingShotBuilder = ({ selections, setSelections }) => (
+    <div className="w-1/3 shrink-0 h-full">
+        <div className="h-full bg-blue-500/5 border border-blue-500/20 rounded-xl p-2 flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between mb-2">
+                <label className="text-[10px] font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                    <Zap className="w-3.5 h-3.5" /> Kling Shot Builder
+                </label>
+                <button 
+                    onClick={() => setSelections(p => ({ 
+                        ...p, 
+                        timestampSegments: [...(p.timestampSegments || []), { id: Date.now(), start: 0, end: 2, description: '' }] 
+                    }))}
+                    className="px-1.5 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded text-blue-400 text-[8px] font-black uppercase transition-all"
+                >
+                    + Add Segment
+                </button>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar min-h-[40px]">
+                {(selections.timestampSegments || []).map((seg, idx) => (
+                    <div key={seg.id || idx} className="bg-black/40 border border-blue-500/5 rounded-lg p-1.5 space-y-1 group/seg">
+                        <div className="flex items-center gap-1.5 justify-between">
+                            <div className="flex items-center gap-1 text-[8px] font-bold text-white/40">
+                                <input 
+                                    type="text" 
+                                    value={seg.start} 
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSelections(p => ({
+                                            ...p,
+                                            timestampSegments: p.timestampSegments.map((s, i) => i === idx ? { ...s, start: val } : s)
+                                        }));
+                                    }}
+                                    className="w-6 bg-white/5 border-none p-0 px-0.5 focus:outline-none rounded text-center text-blue-400"
+                                />
+                                <span>-</span>
+                                <input 
+                                    type="text" 
+                                    value={seg.end} 
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSelections(p => ({
+                                            ...p,
+                                            timestampSegments: p.timestampSegments.map((s, i) => i === idx ? { ...s, end: val } : s)
+                                        }));
+                                    }}
+                                    className="w-6 bg-white/5 border-none p-0 px-0.5 focus:outline-none rounded text-center text-blue-400"
+                                />
+                                <span className="uppercase ml-1">sec</span>
+                            </div>
+                            <button 
+                                onClick={() => setSelections(p => ({ 
+                                    ...p, 
+                                    timestampSegments: p.timestampSegments.filter((_, i) => i !== idx) 
+                                }))}
+                                className="opacity-0 group-hover/seg:opacity-100 p-0.5 hover:bg-red-500/20 rounded text-red-500 transition-all"
+                            >
+                                <X className="w-2.5 h-2.5" />
+                            </button>
+                        </div>
+                        <textarea
+                            value={seg.description}
+                            onChange={(e) => setSelections(p => ({
+                                ...p,
+                                timestampSegments: p.timestampSegments.map((s, i) => i === idx ? { ...s, description: e.target.value } : s)
+                            }))}
+                            placeholder="Kling segment prompt..."
+                            className="w-full bg-white/5 border border-white/5 rounded p-1 text-[10px] text-white/80 placeholder:text-white/10 focus:outline-none resize-none h-8 custom-scrollbar"
+                        />
+                    </div>
+                ))}
+                {(selections.timestampSegments || []).length === 0 && (
+                    <div className="h-full flex flex-col items-center justify-center opacity-20 py-4">
+                        <Zap className="w-6 h-6 mb-1 text-blue-400" />
+                        <span className="text-[7px] font-bold uppercase text-blue-400">Add sequence mapping</span>
+                    </div>
+                )}
+            </div>
+        </div>
+    </div>
+);
+
+const KlingCharacterLayer = ({ selections, handleTextChange, setShowRefBoard, mentionSearch, setMentionSearch, allRefItems, selectMention }) => (
+    <div className="flex-1 bg-purple-500/5 border border-purple-500/20 rounded-xl p-2 flex flex-col">
+        <div className="flex items-center justify-between mb-2">
+            <label className="text-[10px] font-bold text-purple-400 uppercase tracking-widest flex items-center gap-2">
+                <Zap className="w-3.5 h-3.5" /> Kling Character Layer
+            </label>
+            <div className="flex items-center gap-2">
+                <span className="text-gray-600 font-normal normal-case tracking-normal text-[9px] hidden sm:block">Type @ to tag</span>
+                <button onClick={() => setShowRefBoard(true)} className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 rounded text-purple-400 transition-all">
+                    <span className="text-[10px] font-black">@</span>
+                </button>
+            </div>
+        </div>
+        <div className="relative flex-1 flex flex-col min-h-[40px]">
+            <textarea
+                value={selections.subjectDescription}
+                onChange={(e) => handleTextChange('subjectDescription', e)}
+                placeholder="Describe character or @ tag reference..."
+                className="w-full bg-black/40 border border-purple-500/10 rounded-lg p-2 text-xs text-white placeholder:text-gray-600 focus:outline-none resize-none flex-1 custom-scrollbar"
+            />
+            {mentionSearch !== null && (
+                <div className="absolute bottom-full left-0 mb-3 w-72 z-[500] animation-slide-up">
+                    <div className="bg-[#050505] border-2 border-[#D4FF00] rounded-2xl shadow-[0_-10px_50px_rgba(212,255,0,0.3)] overflow-hidden flex flex-col max-h-[300px]">
+                        <div className="p-3 border-b border-white/10 bg-[#D4FF00]/10 flex items-center justify-between">
+                            <span className="text-[10px] font-black text-[#D4FF00] uppercase tracking-widest flex items-center gap-2">
+                                <Users className="w-3.5 h-3.5" /> Select Character
+                            </span>
+                            <button onClick={() => setMentionSearch(null)} className="text-[#D4FF00]/40 hover:text-[#D4FF00] p-1"><X size={14} /></button>
+                        </div>
+                        <div className="overflow-y-auto custom-scrollbar bg-black/80 backdrop-blur-xl flex-1">
+                            {allRefItems
+                                .filter(item => item.name.toLowerCase().includes(mentionSearch.toLowerCase()))
+                                .length > 0 ? (
+                                allRefItems
+                                    .filter(item => item.name.toLowerCase().includes(mentionSearch.toLowerCase()))
+                                    .map((item, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => selectMention(item)}
+                                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[#D4FF00]/20 transition-colors group border-b border-white/[0.05] last:border-0"
+                                        >
+                                            <div className="w-12 h-12 rounded-lg overflow-hidden border border-white/10 relative shrink-0">
+                                                <img src={item.imageUrl} className="w-full h-full object-cover" />
+                                            </div>
+                                            <div className="text-left flex-1 min-w-0">
+                                                <p className="text-[11px] font-black text-white group-hover:text-[#D4FF00] transition-colors truncate">@{item.name?.replace(/\s+/g, '')}</p>
+                                                <p className="text-[9px] text-white/30 uppercase tracking-widest mt-0.5">{item.category}</p>
+                                            </div>
+                                        </button>
+                                    ))
+                            ) : (
+                                <div className="p-8 text-center bg-black/90">
+                                    <p className="text-[11px] text-white/50 mb-4 font-bold">No characters found for "{mentionSearch}"</p>
+                                    <button
+                                        onClick={() => { setShowRefBoard(true); setMentionSearch(null); }}
+                                        className="inline-flex items-center gap-2 px-5 py-3 bg-[#D4FF00] text-black text-[10px] rounded-xl font-black transition-all hover:bg-white uppercase tracking-widest shadow-lg"
+                                    >
+                                        <ImagePlus className="w-4 h-4" /> Add Character
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    </div>
+)
+
+const KlingAudioMode = () => (
+    <div className="flex-1 min-w-[140px]">
+         <div className="h-full bg-yellow-400/5 border border-yellow-400/20 rounded-lg p-2 flex items-center gap-2 opacity-60">
+            <Sun className="w-3.5 h-3.5 text-yellow-500" />
+            <span className="text-[9px] font-black text-yellow-500 uppercase">Kling Audio Mode</span>
+        </div>
+    </div>
+)
+
+const TimestampMultiShot = ({ selections, setSelections }) => (
+    <div className="w-1/3 shrink-0 h-full">
+        <div className="h-full bg-white/5 border border-white/10 rounded-xl p-2 flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between mb-2">
+                <label className="text-[10px] font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5" /> Timestamp Multi-Shot
+                </label>
+                <button 
+                    onClick={() => setSelections(p => ({ 
+                        ...p, 
+                        timestampSegments: [...(p.timestampSegments || []), { id: Date.now(), start: 0, end: 2, description: '' }] 
+                    }))}
+                    className="px-1.5 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded text-blue-400 text-[8px] font-black uppercase transition-all"
+                >
+                    + Add Segment
+                </button>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar min-h-[40px]">
+                {(selections.timestampSegments || []).map((seg, idx) => (
+                    <div key={seg.id || idx} className="bg-black/40 border border-white/5 rounded-lg p-1.5 space-y-1 group/seg">
+                        <div className="flex items-center gap-1.5 justify-between">
+                            <div className="flex items-center gap-1 text-[8px] font-bold text-white/40">
+                                <input 
+                                    type="text" 
+                                    value={seg.start} 
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSelections(p => ({
+                                            ...p,
+                                            timestampSegments: p.timestampSegments.map((s, i) => i === idx ? { ...s, start: val } : s)
+                                        }));
+                                    }}
+                                    className="w-6 bg-white/5 border-none p-0 px-0.5 focus:outline-none rounded text-center text-blue-400"
+                                />
+                                <span>-</span>
+                                <input 
+                                    type="text" 
+                                    value={seg.end} 
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSelections(p => ({
+                                            ...p,
+                                            timestampSegments: p.timestampSegments.map((s, i) => i === idx ? { ...s, end: val } : s)
+                                        }));
+                                    }}
+                                    className="w-6 bg-white/5 border-none p-0 px-0.5 focus:outline-none rounded text-center text-blue-400"
+                                />
+                                <span className="uppercase ml-1">sec</span>
+                            </div>
+                            <button 
+                                onClick={() => setSelections(p => ({ 
+                                    ...p, 
+                                    timestampSegments: p.timestampSegments.filter((_, i) => i !== idx) 
+                                }))}
+                                className="opacity-0 group-hover/seg:opacity-100 p-0.5 hover:bg-red-500/20 rounded text-red-500 transition-all"
+                            >
+                                <X className="w-2.5 h-2.5" />
+                            </button>
+                        </div>
+                        <textarea
+                            value={seg.description}
+                            onChange={(e) => setSelections(p => ({
+                                ...p,
+                                timestampSegments: p.timestampSegments.map((s, i) => i === idx ? { ...s, description: e.target.value } : s)
+                            }))}
+                            placeholder="Segment description..."
+                            className="w-full bg-white/5 border border-white/5 rounded p-1 text-[10px] text-white/80 placeholder:text-white/10 focus:outline-none resize-none h-8 custom-scrollbar"
+                        />
+                    </div>
+                ))}
+                {(selections.timestampSegments || []).length === 0 && (
+                    <div className="h-full flex flex-col items-center justify-center opacity-20 py-4">
+                        <Clock className="w-6 h-6 mb-1" />
+                        <span className="text-[7px] font-bold uppercase">No segments added</span>
+                    </div>
+                )}
+            </div>
+        </div>
+    </div>
+)
+
+const VideoNarrativeComponents = ({ mode, isNanoBanana, allRefItems, setShowRefBoard, selections, handleTextChange, mentionSearch, setMentionSearch, mentionField, selectMention, textareaRef, handleRefinePrompt, isPolishing }) => (
+    <div className={cn("h-full", mode === 'video' ? "w-2/3" : "flex-1")}>
+        <div className="bg-white/5 border border-white/10 rounded-xl p-2 h-full flex-1 flex flex-col">
+            <label className="w-full text-[10px] font-bold text-[#D4FF00] uppercase tracking-widest flex items-center mb-2">
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRefinePrompt(); }}
+                        disabled={isPolishing}
+                        className={cn("p-1 hover:bg-[#D4FF00]/10 rounded-md transition-all group/pen cursor-pointer", isPolishing && "opacity-50 cursor-wait")}
+                        title="AI Refine Prompt/Narrative"
+                    >
+                        <PenTool className={cn("w-3.5 h-3.5 text-[#D4FF00] group-hover/pen:scale-110 transition-transform", isPolishing && "animate-pulse")} />
+                    </button>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {mode === 'video' ? 'Video Narrative Components' : isNanoBanana ? 'Scene Narrative' : 'Vision Input'}
+                </div>
+                <div className="ml-auto flex items-center gap-2">
+                    <span className="text-gray-600 font-normal normal-case tracking-normal text-[9px] hidden sm:block">Type @ to tag a character</span>
+                    <button onClick={() => setShowRefBoard(true)} className="flex items-center gap-1 px-2 py-1 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 rounded-lg text-purple-400 transition-all font-sans normal-case tracking-normal">
+                        <span className="text-[11px] font-black">@</span><span className="text-[9px] font-bold hidden sm:block">Refs</span>
+                        {allRefItems.length > 0 && <span className="w-3.5 h-3.5 rounded-full bg-purple-500 text-white text-[7px] font-black flex items-center justify-center">{allRefItems.length}</span>}
+                    </button>
+                </div>
+            </label>
+            <div className="relative flex-1 flex flex-col min-h-[40px]">
+                {mode === 'video' ? (
+                    <div className="grid grid-cols-3 gap-2 h-full">
+                        <div className="flex flex-col h-full">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-[8px] font-bold text-white/30 uppercase">Subject</span>
+                                <button 
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRefinePrompt('subjectDescription'); }}
+                                    className="p-1 hover:bg-[#D4FF00]/10 rounded transition-all group/pen cursor-pointer"
+                                    title="AI Refine Subject"
+                                >
+                                    <PenTool className="w-2.5 h-2.5 text-[#D4FF00]/40 group-hover/pen:text-[#D4FF00]" />
+                                </button>
+                            </div>
+                            <textarea
+                                value={selections.subjectDescription}
+                                onChange={(e) => handleTextChange('subjectDescription', e)}
+                                placeholder="Who or what..."
+                                className="w-full bg-black/40 border border-white/5 rounded-lg p-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none resize-none flex-1 custom-scrollbar"
+                            />
+                        </div>
+                        <div className="flex flex-col h-full">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-[8px] font-bold text-white/30 uppercase">Action</span>
+                                <button 
+                                    onClick={(e) => { e.preventDefault(); handleRefinePrompt('actionDescription'); }}
+                                    className="p-1 hover:bg-[#D4FF00]/10 rounded transition-all group/pen"
+                                    title="AI Refine Action"
+                                >
+                                    <PenTool className="w-2.5 h-2.5 text-[#D4FF00]/40 group-hover/pen:text-[#D4FF00]" />
+                                </button>
+                            </div>
+                            <textarea
+                                value={selections.actionDescription}
+                                onChange={(e) => handleTextChange('actionDescription', e)}
+                                placeholder="What is happening..."
+                                className="w-full bg-black/40 border border-white/5 rounded-lg p-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none resize-none flex-1 custom-scrollbar"
+                            />
+                        </div>
+                        <div className="flex flex-col h-full">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-[8px] font-bold text-white/30 uppercase">Context</span>
+                                <button 
+                                    onClick={(e) => { e.preventDefault(); handleRefinePrompt('contextDescription'); }}
+                                    className="p-1 hover:bg-[#D4FF00]/10 rounded transition-all group/pen"
+                                    title="AI Refine Context"
+                                >
+                                    <PenTool className="w-2.5 h-2.5 text-[#D4FF00]/40 group-hover/pen:text-[#D4FF00]" />
+                                </button>
+                            </div>
+                            <textarea
+                                value={selections.contextDescription}
+                                onChange={(e) => handleTextChange('contextDescription', e)}
+                                placeholder="Environment/Lighting..."
+                                className="w-full bg-black/40 border border-white/5 rounded-lg p-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none resize-none flex-1 custom-scrollbar"
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <textarea
+                        ref={textareaRef}
+                        value={selections.subject}
+                        onChange={(e) => handleTextChange('subject', e)}
+                        placeholder={isNanoBanana ? "Describe your scene..." : "Describe your cinematic vision..."}
+                        className="w-full bg-black/40 border border-purple-500/10 rounded-lg p-2 text-sm text-white placeholder:text-gray-600 focus:outline-none resize-none flex-1 custom-scrollbar"
+                    />
+                )}
+                
+                {mentionSearch !== null && (
+                    <div className={cn(
+                        "absolute bottom-full mb-3 w-80 z-[500] animation-slide-up",
+                        mentionField === 'actionDescription' ? "left-1/3" : mentionField === 'contextDescription' ? "right-0" : "left-0"
+                    )}>
+                        <div className="bg-[#050505] border-2 border-[#D4FF00] rounded-2xl shadow-[0_-15px_60px_rgba(212,255,0,0.4)] overflow-hidden flex flex-col max-h-[300px]">
+                            <div className="p-3.5 border-b border-white/10 bg-[#D4FF00]/10 flex items-center justify-between">
+                                <span className="text-[11px] font-black text-[#D4FF00] uppercase tracking-widest flex items-center gap-2">
+                                    <Users className="w-4 h-4" /> Tagged character
+                                </span>
+                                <button onClick={() => setMentionSearch(null)} className="text-[#D4FF00]/40 hover:text-[#D4FF00] p-1"><X size={16} /></button>
+                            </div>
+                            <div className="overflow-y-auto custom-scrollbar bg-black/90 backdrop-blur-2xl flex-1">
+                                {allRefItems
+                                    .filter(item => item.name.toLowerCase().includes(mentionSearch.toLowerCase()))
+                                    .length > 0 ? (
+                                    allRefItems
+                                        .filter(item => item.name.toLowerCase().includes(mentionSearch.toLowerCase()))
+                                        .map((item, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => selectMention(item)}
+                                                className="w-full px-4 py-3.5 flex items-center gap-4 hover:bg-[#D4FF00]/20 transition-colors group border-b border-white/[0.05] last:border-0"
+                                            >
+                                                <div className="w-14 h-14 rounded-lg overflow-hidden border border-white/20 relative shrink-0 shadow-lg">
+                                                    <img src={item.imageUrl} className="w-full h-full object-cover" />
+                                                    {item.isMatrix && (
+                                                        <div className="absolute inset-0 bg-[#D4FF00]/20 flex items-center justify-center">
+                                                            <Zap size={16} className="text-[#D4FF00]" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="text-left flex-1 min-w-0">
+                                                    <p className="text-xs font-black text-white group-hover:text-[#D4FF00] transition-colors truncate">@{item.name?.replace(/\s+/g, '')}</p>
+                                                    <p className="text-[9px] text-white/40 uppercase tracking-widest mt-1 font-bold">{item.category}</p>
+                                                </div>
+                                            </button>
+                                        ))
+                                ) : (
+                                    <div className="p-10 text-center bg-black/95">
+                                        <p className="text-xs text-white/60 mb-6 font-bold uppercase tracking-wider">No matching characters</p>
+                                        <button
+                                            onClick={() => { setShowRefBoard(true); setMentionSearch(null); }}
+                                            className="w-full px-6 py-4 bg-[#D4FF00] text-black text-[11px] rounded-2xl font-black transition-all hover:bg-white uppercase tracking-widest shadow-xl flex items-center justify-center gap-3"
+                                        >
+                                            <ImagePlus className="w-4 h-4" /> Load from Ref Board
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    </div>
+)
+
+const ProLighting = ({ selections, setSelections }) => (
+    <div className="flex-1 min-w-[140px]">
+        <label className="text-[10px] font-bold text-yellow-500 mb-1 block uppercase tracking-wider flex items-center gap-1.5">
+            <Sun className="w-3 h-3" /> Pro Lighting
+        </label>
+        <select
+            value={selections.lightingTransform}
+            onChange={e => setSelections(p => ({ ...p, lightingTransform: e.target.value }))}
+            className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white"
+        >
+            {PRO_LIGHTING_TRANSFORMS.map(t => (
+                <option key={t.id} value={t.id} className="bg-[#111]">{t.label}</option>
+            ))}
+        </select>
+    </div>
+)
 
 export function PromptGenerator({ onUpscale }) {
     const [mode, setMode] = useState('image')
@@ -927,15 +1351,16 @@ export function PromptGenerator({ onUpscale }) {
         speedRamp: 'Cinematic', dialogue: 'Off', fps: '24fps — Cinematic',
         loop: 'Off', audio: 'On', cinematographyDescription: '',
         subjectDescription: '', actionDescription: '', contextDescription: '',
-        audioActive: { dialogue: false, sfx: false, ambient: true, music: false },
+        audioActive: { dialogue: false, sfx: false, ambient: false, music: false },
         audioPrompts: { dialogue: '', sfx: '', ambient: '', music: '' },
         duration: "4 Seconds", resolution: "1080p",
         searchGrounding: false, lightingTransform: 'none', focusPoint: 'none',
-        multishotMode: 'single',
+        multishotMode: 'single', quality: '2k',
     })
 
     const [frames, setFrames] = useState([])
     const [activeFrameId, setActiveFrameId] = useState(null)
+    const [queueStatus, setQueueStatus] = useState("Initializing...")
 
     // ─────────────────────────────────────────────
     // PERSISTENCE STATE for Storyboard / Multi Shot
@@ -959,15 +1384,35 @@ export function PromptGenerator({ onUpscale }) {
     const [renderTarget, setRenderTarget] = useState('center')
     const MAX_FRAMES = 50
 
-    const removeFrame = (frameId) => {
-        setFrames(prev => prev.filter(f => f.id !== frameId))
-        if (activeFrameId === frameId) setActiveFrameId(null)
-        if (leftPreviewId === frameId) setLeftPreviewId(null)
-        if (rightPreviewId === frameId) setRightPreviewId(null)
+    const removeFrame = async (id) => {
+        setFrames(prev => {
+            const frameToDelete = prev.find(f => f.id === id)
+            if (!frameToDelete) return prev
+
+            // Save to "hidden" list in localStorage so it persists after refresh without deleting from DB
+            try {
+                const hidden = JSON.parse(localStorage.getItem('hidden_filmstrip_frames') || '[]')
+                if (!hidden.includes(id)) {
+                    hidden.push(id)
+                    localStorage.setItem('hidden_filmstrip_frames', JSON.stringify(hidden))
+                }
+            } catch (e) { console.error("Failed to update hidden frames:", e) }
+
+            const updated = prev.filter(f => f.id !== id)
+            if (id === activeFrameId) {
+                if (updated.length > 0) setActiveFrameId(updated[0].id)
+                else setActiveFrameId(null)
+            }
+            if (leftPreviewId === id) setLeftPreviewId(null)
+            if (rightPreviewId === id) setRightPreviewId(null)
+            
+            return updated
+        })
     }
 
     const gridImgRef = useRef(null)
     const [showGallery, setShowGallery] = useState(false)
+    const [galleryTab, setGalleryTab] = useState('recent') // recent | library
     const [isLoading, setIsLoading] = useState(false)
     const [showAnglesModal, setShowAnglesModal] = useState(false)
 
@@ -993,6 +1438,28 @@ export function PromptGenerator({ onUpscale }) {
     const [activeRefUploadCategory, setActiveRefUploadCategory] = useState(null)
     const [showSpeedPanel, setShowSpeedPanel] = useState(false)
     const [zoomState, setZoomState] = useState({ url: null, isOpen: false, slot: null, isEditing: false })
+    const [isPolishing, setIsPolishing] = useState(false)
+
+    const handleRefinePrompt = async (specificField = null) => {
+        setIsPolishing(true)
+        try {
+            const fieldsToRefine = specificField ? [specificField] : (mode === 'video' 
+                ? ['subjectDescription', 'actionDescription', 'contextDescription']
+                : ['subject'])
+            
+            for (const field of fieldsToRefine) {
+                const currentText = selections[field]
+                if (currentText && currentText.trim().length > 3) {
+                    const refined = await refineNarrative(currentText, field)
+                    setSelections(p => ({ ...p, [field]: refined }))
+                }
+            }
+        } catch (err) {
+            console.error("Refinement failed:", err)
+        } finally {
+            setIsPolishing(false)
+        }
+    }
 
     // Flat list of all refBoard items for @mention autocomplete
     const allRefItems = [
@@ -1115,6 +1582,47 @@ export function PromptGenerator({ onUpscale }) {
         else if (selectedModel === 'gemini-2.5-flash-image') setSelections(p => ({ ...p, quality: '1k' }))
     }, [selectedModel])
 
+    // Removed automatic reference board population to follow "Session Only" rule.
+
+    // ── Load Recent Generations from DB ──
+    const loadRecentFrames = async () => {
+        try {
+            const { data: assets } = await supabase.from('assets')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(50)
+            if (assets) {
+                // Get list of frames user has hidden from the strip
+                let hiddenIds = []
+                try {
+                    hiddenIds = JSON.parse(localStorage.getItem('hidden_filmstrip_frames') || '[]')
+                } catch (e) { console.warn("Hidden frames parse error:", e) }
+
+                const recentFrames = assets
+                    .filter(a => !hiddenIds.includes(a.id)) // Surgical curation: filter out hidden ones
+                    .map(a => ({
+                        id: a.id,
+                        assetId: a.id,
+                        url: a.url,
+                        assetPath: a.url,
+                        type: a.type || 'image',
+                        model: a.model || 'Historical',
+                        loading: false
+                    }))
+                
+                setFrames(prev => {
+                    const sessionIds = new Set(prev.map(f => f.id));
+                    const newHistorical = recentFrames.filter(f => !sessionIds.has(f.id));
+                    return [...prev, ...newHistorical];
+                });
+                if (recentFrames.length > 0 && !activeFrameId) setActiveFrameId(recentFrames[0].id)
+            }
+        } catch (err) {
+            console.warn('Failed to load recent frames:', err)
+        }
+    }
+    useEffect(() => { loadRecentFrames() }, [userProfile?.id])
+
     const getFStop = (ap) => {
         if (selections.camera === 'iphone' || selections.camera === 'gopro') return 'Auto Aperture'
         if (ap < 20) return 'f/1.4 (Blurry BG)'; if (ap < 40) return 'f/2.8 (Soft Focus)'
@@ -1123,6 +1631,8 @@ export function PromptGenerator({ onUpscale }) {
     }
 
     const isNanoBanana = selectedModel === 'nano-banana' || selectedModel.includes('gemini') || selectedModel === 'nano-banana-2'
+    const isKling = ['kling', 'kling-2.6', 'kling-3.0', 'kling-2.1'].includes(selectedModel)
+
 
     const handleTextChange = (field, e) => {
         const val = e.target.value
@@ -1209,8 +1719,12 @@ export function PromptGenerator({ onUpscale }) {
             const fileName = `flare_${slot}_${Date.now()}.${ext}`
             const { data: { user } } = await supabase.auth.getUser()
             const res = await fetch(getApiUrl('/api/save-asset'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageData: url, fileName, type, userId: user?.id }) })
-            return (await res.json()).path
-        } catch { return null }
+            const data = await res.json()
+            return { path: data.path, id: data.id }
+        } catch (err) { 
+            console.error('[SAVE_ASSET] Error:', err)
+            return null 
+        }
     }
 
     const updateVideoSetting = (key, val) => {
@@ -1222,6 +1736,56 @@ export function PromptGenerator({ onUpscale }) {
         return (<svg width="80" height="62" viewBox="0 0 80 62" className="mx-auto"><path d={pts} fill="none" stroke={active ? '#84CC16' : '#333'} strokeWidth={active ? 2 : 1} strokeLinecap="round" strokeLinejoin="round" /></svg>)
     }
 
+    const pollJobStatus = async (jobId, frameId, costKey) => {
+        try {
+            let attempt = 0;
+            const maxAttempts = 120; // 4 minutes max
+            while (attempt < maxAttempts) {
+                const res = await fetch(getApiUrl(`/api/job-status/${jobId}`));
+                if (!res.ok) throw new Error('Failed to fetch job status');
+                const data = await res.json();
+                
+                if (data.status === 'completed') {
+                    const resultUrl = data.url || data.videoUrl;
+                    if (resultUrl) {
+                        // Show video/image IMMEDIATELY, save to DB in background
+                        setFrames(prev => prev.map(f => f.id === frameId ? { ...f, url: resultUrl, loading: false } : f));
+                        if (renderTarget === 'left') setLeftPreviewId(frameId);
+                        else if (renderTarget === 'right') setRightPreviewId(frameId);
+                        setRenderTarget('center');
+                        // Non-blocking asset save
+                        saveAsset(resultUrl, frameId, mode === 'video' ? 'video' : 'image').then(assetData => {
+                            if (assetData) setFrames(prev => prev.map(f => f.id === frameId ? { ...f, assetPath: assetData.path, assetId: assetData.id } : f));
+                        }).catch(e => console.warn('[SAVE_ASSET_BG]', e));
+                    }
+                    return;
+                } else if (data.status === 'failed') {
+                    throw new Error(data.error || 'Generation failed in queue');
+                } else if (data.status === 'queued') {
+                    setQueueStatus(`Waiting in line (Position: ${data.position || '?'})`);
+                } else if (data.status === 'processing') {
+                    setQueueStatus(`Processing ${data.progress || 0}%`);
+                }
+                
+                attempt++;
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            throw new Error('Generation timed out in queue');
+        } catch (err) {
+            await refund(costKey);
+            console.error('Polling error:', err);
+            let msg = err.message;
+            if (msg.toLowerCase().includes('safety system')) msg = "Creative Block: The AI's safety filters flagged this prompt.";
+            alert(`AI Engine Status: ${msg}`);
+            setFrames(prev => prev.map(f => f.id === frameId ? { ...f, loading: false, error: true } : f));
+        } finally {
+            setIsLoading(false);
+            setQueueStatus("Initializing...");
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user?.id) fetchBalance(user.id);
+        }
+    };
+
     const generateImage = async () => {
         const modelInfo = AI_MODELS.find(m => m.id === selectedModel)
         if (!modelInfo?.available) { alert(`${modelInfo?.name || 'This model'} is coming soon!`); return }
@@ -1229,7 +1793,8 @@ export function PromptGenerator({ onUpscale }) {
 
         let costKey = 'image_nano_banana';
         if (mode === 'video') {
-            costKey = selectedModel === 'veo-fast' ? 'veo_fast' : 'veo_full';
+            if (isKling) costKey = 'kling';
+            else costKey = selectedModel === 'veo-fast' ? 'veo_fast' : 'veo_full';
         } else if (mode === 'multishot' && selections.multishotMode === 'multiple') {
             costKey = 'image_grid_multishot';
         } else {
@@ -1238,7 +1803,7 @@ export function PromptGenerator({ onUpscale }) {
             if (selectedModel === 'gemini-3-pro-image-preview' || selectedModel === 'nano-banana-pro' || selectedModel.includes('3.0-pro')) costKey = 'image_nano_banana_pro';
         }
 
-        if (selectedModel === 'veo' || selectedModel === 'veo-fast' || selectedModel.includes('3.0-pro') || selectedModel.includes('3.1-flash')) {
+        if (selectedModel === 'veo' || selectedModel === 'veo-fast' || selectedModel === 'kling' || selectedModel.includes('3.0-pro') || selectedModel.includes('3.1-flash')) {
             if (!canAfford(costKey)) {
                 alert('Not enough Shorts! 🎞 Top up to continue.');
                 return;
@@ -1251,7 +1816,9 @@ export function PromptGenerator({ onUpscale }) {
         setIsLoading(true)
 
         try {
-            const endpoint = getApiUrl(mode === 'video' && !(selectedModel === 'veo' || selectedModel === 'veo-fast') ? '/api/ugc/video' : '/api/generate-image')
+            const isGoogleVideo = selectedModel === 'veo' || selectedModel === 'veo-fast' || selectedModel.startsWith('veo-3.1');
+            const isKlingVideo = isKling || selectedModel === 'veo-kling';
+            const endpoint = getApiUrl((mode === 'video' && !(isGoogleVideo || isKlingVideo)) ? '/api/ugc/video' : '/api/generate-image')
             let refImage = selections.firstFrame || selections.lastFrame || selections.referenceImage
             if (mode === 'video' && !refImage) {
                 const store = useAppStore.getState()
@@ -1286,19 +1853,31 @@ export function PromptGenerator({ onUpscale }) {
                 finalPrompt += ', generated as a 3x3 cinematic grid image showing 9 different creative variations of the exact same subject/scene. Each cell separated by thin black borders. Consistent subject identity across all 9 panels but with varying artistic interpretations.'
             }
 
+            const validRatio = (selections.aspectRatio || '16:9').split('—')[0].trim().split(' ')[0].trim();
+
             const payload = mode === 'video' ? {
                 prompt: finalPrompt,
                 userId,
-                model: selectedModel,
-                duration: parseInt(selections.duration) || 5,
-                resolution: selections.resolution,
-                aspect_ratio: (selections.aspectRatio || '16:9').split('—')[0].trim().split(' ')[0].trim(),
-                firstImage: selections.firstFrame,
-                lastImage: selections.lastFrame,
-                image: selections.firstFrame || selections.referenceImage,
-                script: finalPrompt
+                model: AI_MODELS.find(m => m.id === selectedModel)?.modelId || selectedModel,
+                duration: (() => {
+                    const taggedRefs = getTaggedRefItems(finalPrompt).flatMap(i => [i.imageUrl]).filter(Boolean);
+                    const mustBe8 = selections.lastFrame || taggedRefs.length > 0 
+                        || ['1080p', '4K', '4k'].includes(selections.resolution);
+                    return mustBe8 ? 8 : (parseInt(selections.duration.split(' ')[0]) || 4);
+                })(),
+                resolution: (() => {
+                    const raw = selections.resolution || '720p';
+                    return raw === '4K' ? '4k' : raw.toLowerCase();
+                })(),
+                aspect_ratio: validRatio,
+                firstFrame: selections.firstFrame,
+                lastFrame: selections.lastFrame,
+                referenceImages: getTaggedRefItems(finalPrompt)
+                    .flatMap(i => [i.imageUrl])
+                    .filter(Boolean)
+                    .slice(0, 3)
             } : {
-                model: selectedModel, prompt: finalPrompt, aspect_ratio: selections.aspectRatio,
+                model: selectedModel, prompt: finalPrompt, aspect_ratio: validRatio,
                 image: selections.referenceImage,
                 identity_images: [
                     ...(selections.identity_images || []),
@@ -1315,20 +1894,28 @@ export function PromptGenerator({ onUpscale }) {
             const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
             const data = await response.json()
 
-            // Sync credits after generation
-            if (userId) fetchBalance(userId);
-
             if (!response.ok) throw new Error(data.message || data.error || 'Generation failed')
-            const resultUrl = data.url || data.videoUrl
-            if (resultUrl) {
-                const assetPath = await saveAsset(resultUrl, newFrameId, mode === 'video' ? 'video' : 'image')
-                setFrames(prev => prev.map(f => f.id === newFrameId ? { ...f, url: resultUrl, assetPath, loading: false } : f))
-                // Auto-pin to the selected render target panel
-                if (renderTarget === 'left') setLeftPreviewId(newFrameId)
-                else if (renderTarget === 'right') setRightPreviewId(newFrameId)
-                // Center is always updated via activeFrameId (set at start)
-                // Default back to center for the next generation sequence
-                setRenderTarget('center')
+
+            if (data.jobId) {
+                setQueueStatus("Sending to AI Engine...")
+                // We do NOT block the thread or call setIsLoading(false) yet.
+                pollJobStatus(data.jobId, newFrameId, costKey)
+            } else {
+                // Synchronous fallback
+                if (userId) fetchBalance(userId);
+                const resultUrl = data.url || data.videoUrl
+                if (resultUrl) {
+                    // Show video/image IMMEDIATELY, save to DB in background
+                    setFrames(prev => prev.map(f => f.id === newFrameId ? { ...f, url: resultUrl, loading: false } : f))
+                    if (renderTarget === 'left') setLeftPreviewId(newFrameId)
+                    else if (renderTarget === 'right') setRightPreviewId(newFrameId)
+                    setRenderTarget('center')
+                    // Non-blocking asset save - never block playback
+                    saveAsset(resultUrl, newFrameId, mode === 'video' ? 'video' : 'image').then(assetData => {
+                        if (assetData) setFrames(prev => prev.map(f => f.id === newFrameId ? { ...f, assetPath: assetData.path, assetId: assetData.id } : f))
+                    }).catch(e => console.warn('[SAVE_ASSET_BG]', e))
+                }
+                setIsLoading(false)
             }
         } catch (err) {
             await refund(costKey)
@@ -1337,7 +1924,8 @@ export function PromptGenerator({ onUpscale }) {
             if (msg.toLowerCase().includes('safety system')) msg = "Creative Block: The AI's safety filters flagged this prompt. Try refining your subject."
             alert(`AI Engine Status: ${msg}`)
             setFrames(prev => prev.map(f => f.id === newFrameId ? { ...f, loading: false, error: true } : f))
-        } finally { setIsLoading(false) }
+            setIsLoading(false)
+        }
     }
 
     const upscaleImage = async (frameId) => {
@@ -1359,8 +1947,11 @@ export function PromptGenerator({ onUpscale }) {
 
         try {
             const prompt = frame.prompt || generatedPrompt || 'Cinematic High Fidelity Masterwork'
+            const currentModel = AI_MODELS.find(m => m.id === selectedModel)
+            const modelToUse = currentModel?.modelId || 'gemini-3.1-flash-image-preview'
+            
             const payload = {
-                model: 'gemini-2.0-flash-exp-image-generation',
+                model: modelToUse,
                 prompt,
                 aspect_ratio: frame.aspectRatio || '16:9',
                 quality: '4k',
@@ -1381,8 +1972,16 @@ export function PromptGenerator({ onUpscale }) {
             if (!res.ok) throw new Error(data.message || data.error || 'Upscale failed')
 
             if (data.url) {
-                const assetPath = await saveAsset(data.url, frameId, 'image')
-                setFrames(prev => prev.map(f => f.id === frameId ? { ...f, url: data.url, assetPath, model: 'gemini-3-pro-image-preview', loading: false } : f))
+                const assetData = await saveAsset(data.url, frameId, 'image')
+                const currentModel = AI_MODELS.find(m => m.id === selectedModel)
+                setFrames(prev => prev.map(f => f.id === frameId ? { 
+                    ...f, 
+                    url: data.url, 
+                    assetPath: assetData?.path, 
+                    assetId: assetData?.id, 
+                    model: currentModel?.modelId || 'gemini-3.1-flash-image-preview', 
+                    loading: false 
+                } : f))
                 console.log('[4K_UPSCALE] Success! New URL applied.');
             } else {
                 throw new Error('Server returned success but URL was missing.');
@@ -1434,8 +2033,11 @@ export function PromptGenerator({ onUpscale }) {
             const basePrompt = customPrompt || activeFrame?.prompt || generatedPrompt || 'Cinematic character focal point'
             const prompt = `${basePrompt} - 4K isolate, cinematic texture, high-detail finish`
 
+            const currentModel = AI_MODELS.find(m => m.id === selectedModel)
+            const modelToUse = currentModel?.modelId || 'gemini-3.1-flash-image-preview'
+
             const payload = {
-                model: 'gemini-2.0-flash-exp-image-generation',
+                model: modelToUse,
                 prompt,
                 aspect_ratio: '16:9',
                 quality: '4k',
@@ -1459,14 +2061,15 @@ export function PromptGenerator({ onUpscale }) {
             if (data.url) {
                 const newId = `frame-${Date.now()}`
                 console.log(`[CROP_UPSCALE] Creating new asset: ${newId}`);
-                const assetPath = await saveAsset(data.url, newId, 'image')
+                const assetData = await saveAsset(data.url, newId, 'image')
 
                 setFrames(prev => [...prev, {
                     id: newId,
                     url: data.url,
-                    assetPath,
+                    assetPath: assetData?.path,
+                    assetId: assetData?.id,
                     type: 'image',
-                    model: 'gemini-3-pro-image-preview',
+                    model: currentModel?.modelId || 'gemini-3.1-flash-image-preview',
                     prompt,
                     aspectRatio: '16:9',
                     loading: false
@@ -1627,8 +2230,8 @@ export function PromptGenerator({ onUpscale }) {
                                 return (
                                     <div className="flex flex-col items-center gap-2 opacity-20">
                                         <ImageIcon className="w-8 h-8 text-white" />
-                                        <p className="text-[9px] font-bold text-white uppercase">Preview Left</p>
-                                        <p className="text-[7px] text-white/60">Click "L" on a frame</p>
+                                        <p className="text-[9px] font-bold text-white uppercase">Scene Left</p>
+                                        <p className="text-[7px] text-white/60">Click "L" on a scene</p>
                                     </div>
                                 )
                             })()}
@@ -1644,7 +2247,7 @@ export function PromptGenerator({ onUpscale }) {
                                         <div className="flex flex-col items-center gap-3">
                                             <Sparkles className="w-8 h-8 text-[#D4FF00] animate-spin" />
                                             <p className="text-[10px] font-bold text-white uppercase animate-pulse">
-                                                {mode === 'video' ? 'Your Scene is Generating' : 'Your Image is Generating'}
+                                                {queueStatus}
                                             </p>
                                         </div>
                                     ) : activeFrame.error ? (
@@ -1687,8 +2290,8 @@ export function PromptGenerator({ onUpscale }) {
                                                 )}
                                                 {(activeFrame.type === 'image' || activeFrame.type === 'multishot') && (
                                                     <>
-                                                        <button onClick={() => { setSelections(p => ({ ...p, firstFrame: activeFrame.url })); setMode('video') }} className="px-2 py-2 bg-[#D4FF00] hover:bg-white rounded-lg text-black text-[9px] font-black uppercase flex items-center gap-1 pointer-events-auto"><Film className="w-3 h-3" /> First</button>
-                                                        <button onClick={() => { setSelections(p => ({ ...p, lastFrame: activeFrame.url })); setMode('video') }} className="px-2 py-2 bg-purple-500 hover:bg-purple-400 rounded-lg text-white text-[9px] font-black uppercase flex items-center gap-1 pointer-events-auto"><FastForward className="w-3 h-3" /> Last</button>
+                                                        <button onClick={() => { setSelections(p => ({ ...p, firstFrame: activeFrame.assetPath || activeFrame.url })); setMode('video') }} className="px-2 py-2 bg-[#D4FF00] hover:bg-white rounded-lg text-black text-[9px] font-black uppercase flex items-center gap-1 pointer-events-auto"><Film className="w-3 h-3" /> First</button>
+                                                        <button onClick={() => { setSelections(p => ({ ...p, lastFrame: activeFrame.assetPath || activeFrame.url })); setMode('video') }} className="px-2 py-2 bg-purple-500 hover:bg-purple-400 rounded-lg text-white text-[9px] font-black uppercase flex items-center gap-1 pointer-events-auto"><FastForward className="w-3 h-3" /> Last</button>
                                                     </>
                                                 )}
                                             </div>
@@ -1700,7 +2303,7 @@ export function PromptGenerator({ onUpscale }) {
                             ) : (
                                 <div className="flex flex-col items-center gap-3 opacity-20">
                                     <Sparkles className="w-12 h-12 text-white" />
-                                    <p className="text-sm font-bold text-white uppercase">Generate your first frame</p>
+                                    <p className="text-sm font-bold text-white uppercase">Generate your first scene</p>
                                     <p className="text-[10px] text-white/60">Configure settings below and hit Render</p>
                                 </div>
                             )}
@@ -1732,294 +2335,159 @@ export function PromptGenerator({ onUpscale }) {
                                 return (
                                     <div className="flex flex-col items-center gap-2 opacity-20">
                                         <ImageIcon className="w-8 h-8 text-white" />
-                                        <p className="text-[9px] font-bold text-white uppercase">Preview Right</p>
-                                        <p className="text-[7px] text-white/60">Click "R" on a frame</p>
+                                        <p className="text-[9px] font-bold text-white uppercase">Scene Right</p>
+                                        <p className="text-[7px] text-white/60">Click "R" on a scene</p>
                                     </div>
                                 )
                             })()}
                         </div>
-
                     </div>
 
-                {/* ── FILM ROLL STRIP (Full Width) ─────────────────────── */}
-                <div className="shrink-0 h-16 surface-glass rounded-xl p-1 flex gap-1 overflow-x-auto custom-scrollbar">
-                    {/* VIDEO MODE: START/END SLOTS & DIVIDER */}
-
-                    {frames.some(f => !f.url && !f.loading) && (
-                        <button onClick={() => setFrames(prev => prev.filter(f => f.url || f.loading))}
-                            className="shrink-0 w-10 h-full rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 flex flex-col items-center justify-center gap-0.5 transition-all group"
-                            title="Clear all failed frames">
-                            <RefreshCw className="w-3 h-3 text-red-500/40 group-hover:text-red-500 transition-colors" />
-                            <span className="text-[5px] font-black text-red-500/40 uppercase group-hover:text-red-500">Clear</span>
-                        </button>
-                    )}
-                    {frames.filter(frame => {
-                            const isImageLike = mode === 'image' || mode === 'multishot';
-                            return isImageLike ? (frame.type === 'image' || frame.type === 'multishot') : frame.type === mode;
-                        }).map(frame => (
-                            <div key={frame.id} className={cn("shrink-0 w-20 h-full rounded-lg overflow-hidden cursor-pointer transition-all border-2 relative group/strip", activeFrameId === frame.id ? "border-[#D4FF00] shadow-[0_0_10px_#D4FF00]" : "border-transparent hover:border-white/20")}>
-                                <div onClick={() => setActiveFrameId(frame.id)} className="w-full h-full">
-                                    {frame.loading ? <div className="w-full h-full bg-black/40 flex items-center justify-center"><Sparkles className="w-3 h-3 text-[#D4FF00] animate-spin" /></div>
-                                        : frame.url ? (frame.type === 'video' ? <video src={frame.url} muted className="w-full h-full object-cover" /> : <img src={frame.url} className="w-full h-full object-cover" />)
-                                            : <div className="w-full h-full bg-black/40 flex items-center justify-center"><X className="w-3 h-3 text-red-500/50" /></div>}
+                    {/* ── FILM ROLL STRIP (Full Width) ─────────────────────── */}
+                    <div className="shrink-0 h-16 surface-glass rounded-xl p-1 flex gap-1 overflow-x-auto custom-scrollbar">
+                        {/* VIDEO MODE: START/END SLOTS & CONTROLS (AT START) */}
+                        {mode === 'video' && (
+                            <>
+                                {/* START FRAME SLOT */}
+                                <div className={cn("shrink-0 w-24 h-full rounded-lg border-2 border-dashed flex flex-col items-center justify-center relative overflow-hidden group/frame transition-all",
+                                    selections.firstFrame ? "bg-[#D4FF00]/10 border-[#D4FF00]/40 shadow-[0_0_10px_rgba(212,255,0,0.2)]" : "bg-lime-500/5 border-lime-500/20 hover:border-lime-500/40")}>
+                                    {selections.firstFrame ? (
+                                        <>
+                                            <img src={selections.firstFrame} className="absolute inset-0 w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/frame:opacity-100 flex items-center justify-center transition-all">
+                                                <button onClick={(e) => { e.stopPropagation(); setSelections(p => ({ ...p, firstFrame: null })) }} className="p-1 px-1.5 bg-red-500 rounded text-white text-[10px] font-black uppercase shadow-lg">X</button>
+                                            </div>
+                                            <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-[#D4FF00] text-black text-[6px] font-black uppercase rounded shadow-sm">Start</div>
+                                        </>
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-0.5 opacity-30 group-hover/frame:opacity-60 transition-opacity">
+                                            <ImageIcon className="w-3.5 h-3.5 text-lime-400" />
+                                            <span className="text-[6px] font-black text-lime-400 uppercase tracking-tighter">Start Slot</span>
+                                        </div>
+                                    )}
                                 </div>
 
-                                <button onClick={(e) => { e.stopPropagation(); removeFrame(frame.id) }}
-                                    className="absolute top-1 right-1 p-0.5 bg-red-500/80 rounded-md text-white opacity-0 group-hover/strip:opacity-100 transition-opacity z-10"
-                                    title="Remove Frame">
-                                    <X className="w-2 h-2" />
-                                </button>
-
-                                {frame.url && !frame.loading && (
-                                    <div className="absolute bottom-0 inset-x-0 flex opacity-0 group-hover/strip:opacity-100 transition-opacity">
-                                        <button onClick={(e) => { e.stopPropagation(); setLeftPreviewId(frame.id) }} className="flex-1 bg-[#D4FF00]/80 text-black text-[6px] font-black py-0.5 hover:bg-[#D4FF00]" title="Pin to Left Preview">L</button>
-                                        <button onClick={(e) => { e.stopPropagation(); setRightPreviewId(frame.id) }} className="flex-1 bg-purple-500/80 text-white text-[6px] font-black py-0.5 hover:bg-purple-500" title="Pin to Right Preview">R</button>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-
-                    {/* VIDEO MODE: START/END SLOTS & DIVIDER (RELOCATED) */}
-                    {mode === 'video' && (
-                        <>
-                            {/* VERTICAL DIVIDER */}
-                            <div className="shrink-0 w-px h-10 bg-white/10 mx-2 self-center" />
-
-                            {/* START FRAME SLOT */}
-                            <div className={cn("shrink-0 w-24 h-full rounded-lg border-2 border-dashed flex flex-col items-center justify-center relative overflow-hidden group/frame transition-all",
-                                selections.firstFrame ? "bg-[#D4FF00]/10 border-[#D4FF00]/40 shadow-[0_0_10px_rgba(212,255,0,0.2)]" : "bg-lime-500/5 border-lime-500/20 hover:border-lime-500/40")}>
-                                {selections.firstFrame ? (
-                                    <>
-                                        <img src={selections.firstFrame} className="absolute inset-0 w-full h-full object-cover" />
-                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/frame:opacity-100 flex items-center justify-center transition-all">
-                                            <button onClick={(e) => { e.stopPropagation(); setSelections(p => ({ ...p, firstFrame: null })) }} className="p-1 px-1.5 bg-red-500 rounded text-white text-[10px] font-black uppercase shadow-lg">X</button>
+                                {/* END FRAME SLOT */}
+                                <div className={cn("shrink-0 w-24 h-full rounded-lg border-2 border-dashed flex flex-col items-center justify-center relative overflow-hidden group/frame transition-all",
+                                    selections.lastFrame ? "bg-purple-500/10 border-purple-500/40 shadow-[0_0_10px_rgba(168,85,247,0.2)]" : "bg-purple-500/5 border-purple-500/20 hover:border-purple-500/40")}>
+                                    {selections.lastFrame ? (
+                                        <>
+                                            <img src={selections.lastFrame} className="absolute inset-0 w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/frame:opacity-100 flex items-center justify-center transition-all">
+                                                <button onClick={(e) => { e.stopPropagation(); setSelections(p => ({ ...p, lastFrame: null })) }} className="p-1 px-1.5 bg-red-500 rounded text-white text-[10px] font-black uppercase shadow-lg">X</button>
+                                            </div>
+                                            <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-purple-500 text-white text-[6px] font-black uppercase rounded shadow-sm">End</div>
+                                        </>
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-0.5 opacity-30 group-hover/frame:opacity-60 transition-opacity">
+                                            <ImageIcon className="w-3.5 h-3.5 text-purple-400" />
+                                            <span className="text-[6px] font-black text-purple-400 uppercase tracking-tighter">End Slot</span>
                                         </div>
-                                        <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-[#D4FF00] text-black text-[6px] font-black uppercase rounded shadow-sm">Start</div>
-                                    </>
-                                ) : (
-                                    <div className="flex flex-col items-center gap-0.5 opacity-30 group-hover/frame:opacity-60 transition-opacity">
-                                        <ImageIcon className="w-3.5 h-3.5 text-lime-400" />
-                                        <span className="text-[6px] font-black text-lime-400 uppercase tracking-tighter">Start Slot</span>
+                                    )}
+                                </div>
+                                
+                                {/* VERTICAL DIVIDER & NEW SCENE */}
+                                <div className="shrink-0 w-px h-10 bg-white/10 mx-2 self-center" />
+                                
+                                <div 
+                                    onClick={() => {
+                                        setSelections(p => ({
+                                            ...p,
+                                            subjectDescription: '',
+                                            actionDescription: '',
+                                            contextDescription: '',
+                                            firstFrame: null,
+                                            lastFrame: null,
+                                            timestampSegments: [{ id: Date.now(), start: 0, end: 2, description: '' }]
+                                        }));
+                                    }}
+                                    className="shrink-0 w-20 h-full rounded-lg border-2 border-dashed border-white/10 hover:border-[#D4FF00]/40 flex items-center justify-center cursor-pointer transition-all group"
+                                >
+                                    <div className="flex flex-col items-center gap-0.5">
+                                        <ArrowRight className="w-3 h-3 text-white/20 group-hover:text-[#D4FF00] transition-colors" />
+                                        <span className="text-[6px] font-bold text-white/20 uppercase group-hover:text-[#D4FF00]">New Scene</span>
                                     </div>
-                                )}
-                            </div>
+                                </div>
+                            </>
+                        )}
 
-                            {/* END FRAME SLOT */}
-                            <div className={cn("shrink-0 w-24 h-full rounded-lg border-2 border-dashed flex flex-col items-center justify-center relative overflow-hidden group/frame transition-all",
-                                selections.lastFrame ? "bg-purple-500/10 border-purple-500/40 shadow-[0_0_10px_rgba(168,85,247,0.2)]" : "bg-purple-500/5 border-purple-500/20 hover:border-purple-500/40")}>
-                                {selections.lastFrame ? (
-                                    <>
-                                        <img src={selections.lastFrame} className="absolute inset-0 w-full h-full object-cover" />
-                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/frame:opacity-100 flex items-center justify-center transition-all">
-                                            <button onClick={(e) => { e.stopPropagation(); setSelections(p => ({ ...p, lastFrame: null })) }} className="p-1 px-1.5 bg-red-500 rounded text-white text-[10px] font-black uppercase shadow-lg">X</button>
-                                        </div>
-                                        <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-purple-500 text-white text-[6px] font-black uppercase rounded shadow-sm">End</div>
-                                    </>
-                                ) : (
-                                    <div className="flex flex-col items-center gap-0.5 opacity-30 group-hover/frame:opacity-60 transition-opacity">
-                                        <ImageIcon className="w-3.5 h-3.5 text-purple-400" />
-                                        <span className="text-[6px] font-black text-purple-400 uppercase tracking-tighter">End Slot</span>
+                        {frames.some(f => !f.url && !f.loading) && (
+                            <button onClick={() => setFrames(prev => prev.filter(f => f.url || f.loading))}
+                                className="shrink-0 w-10 h-full rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 flex flex-col items-center justify-center gap-0.5 transition-all group"
+                                title="Clear all failed frames">
+                                <RefreshCw className="w-3 h-3 text-red-500/40 group-hover:text-red-500 transition-colors" />
+                                <span className="text-[5px] font-black text-red-500/40 uppercase group-hover:text-red-500">Clear</span>
+                            </button>
+                        )}
+                        {frames.filter(frame => {
+                                const isImageLike = mode === 'image' || mode === 'multishot';
+                                return isImageLike ? (frame.type === 'image' || frame.type === 'multishot') : frame.type === mode;
+                            }).map(frame => (
+                                <div key={frame.id} className={cn("shrink-0 w-20 h-full rounded-lg overflow-hidden cursor-pointer transition-all border-2 relative group/strip", activeFrameId === frame.id ? "border-[#D4FF00] shadow-[0_0_10px_#D4FF00]" : "border-transparent hover:border-white/20")}>
+                                    <div onClick={() => setActiveFrameId(frame.id)} className="w-full h-full">
+                                        {frame.loading ? <div className="w-full h-full bg-black/40 flex items-center justify-center"><Sparkles className="w-3 h-3 text-[#D4FF00] animate-spin" /></div>
+                                            : frame.url ? (frame.type === 'video' ? <video src={frame.url} muted preload="metadata" className="w-full h-full object-cover" /> : <img src={frame.url} loading="lazy" className="w-full h-full object-cover" />)
+                                                : <div className="w-full h-full bg-black/40 flex items-center justify-center"><X className="w-3 h-3 text-red-500/50" /></div>}
                                     </div>
-                                )}
-                            </div>
-                        </>
-                    )}
-                    <div className="shrink-0 w-20 h-full rounded-lg border-2 border-dashed border-white/10 hover:border-[#D4FF00]/40 flex items-center justify-center cursor-pointer transition-all group">
-                        <div className="flex flex-col items-center gap-0.5"><Sparkles className="w-3 h-3 text-white/20 group-hover:text-[#D4FF00] transition-colors" /><span className="text-[6px] font-bold text-white/20 uppercase group-hover:text-[#D4FF00]">New</span></div>
+
+                                    <button onClick={(e) => { e.stopPropagation(); removeFrame(frame.id) }}
+                                        className="absolute top-1 right-1 p-0.5 bg-red-500/80 rounded-md text-white opacity-0 group-hover/strip:opacity-100 transition-opacity z-10"
+                                        title="Remove Frame">
+                                        <X className="w-2 h-2" />
+                                    </button>
+
+                                    {frame.url && !frame.loading && (
+                                        <div className="absolute bottom-0 inset-x-0 flex opacity-0 group-hover/strip:opacity-100 transition-opacity">
+                                            <button onClick={(e) => { e.stopPropagation(); setLeftPreviewId(frame.id) }} className="flex-1 bg-[#D4FF00]/80 text-black text-[6px] font-black py-0.5 hover:bg-[#D4FF00]" title="Pin to Left Preview">L</button>
+                                            <button onClick={(e) => { e.stopPropagation(); setRightPreviewId(frame.id) }} className="flex-1 bg-purple-500/80 text-white text-[6px] font-black py-0.5 hover:bg-purple-500" title="Pin to Right Preview">R</button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
                     </div>
                 </div>
-            </div>
-        )}
+            )}
 
 
 
             {/* ─── SETTINGS PANEL ──────────────────────────────────────── */}
             {(mode === 'image' || mode === 'video') && (
-                <div className="shrink-0 surface-glass rounded-2xl p-2 md:pb-4" style={{ maxHeight: '40vh' }}>
-                    <div className="overflow-y-auto pr-2 pb-16 space-y-2 custom-scrollbar" style={{ maxHeight: 'calc(40vh - 16px)' }}>
-                        <div className="flex gap-2 items-stretch min-h-[84px]">
-                            {mode === 'video' && (
-                                <div className="w-1/3 shrink-0 h-full">
-                                    <div className="h-full bg-white/5 border border-white/10 rounded-xl p-2 flex flex-col overflow-hidden">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <label className="text-[10px] font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                                                <Clock className="w-3.5 h-3.5" /> Timestamp Multi-Shot
-                                            </label>
-                                            <button 
-                                                onClick={() => setSelections(p => ({ 
-                                                    ...p, 
-                                                    timestampSegments: [...(p.timestampSegments || []), { id: Date.now(), start: 0, end: 2, description: '' }] 
-                                                }))}
-                                                className="px-1.5 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded text-blue-400 text-[8px] font-black uppercase transition-all"
-                                            >
-                                                + Add Segment
-                                            </button>
-                                        </div>
-                                        <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar min-h-[40px]">
-                                            {(selections.timestampSegments || []).map((seg, idx) => (
-                                                <div key={seg.id || idx} className="bg-black/40 border border-white/5 rounded-lg p-1.5 space-y-1 group/seg">
-                                                    <div className="flex items-center gap-1.5 justify-between">
-                                                        <div className="flex items-center gap-1 text-[8px] font-bold text-white/40">
-                                                            <input 
-                                                                type="text" 
-                                                                value={seg.start} 
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value;
-                                                                    setSelections(p => ({
-                                                                        ...p,
-                                                                        timestampSegments: p.timestampSegments.map((s, i) => i === idx ? { ...s, start: val } : s)
-                                                                    }));
-                                                                }}
-                                                                className="w-6 bg-white/5 border-none p-0 px-0.5 focus:outline-none rounded text-center text-blue-400"
-                                                            />
-                                                            <span>-</span>
-                                                            <input 
-                                                                type="text" 
-                                                                value={seg.end} 
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value;
-                                                                    setSelections(p => ({
-                                                                        ...p,
-                                                                        timestampSegments: p.timestampSegments.map((s, i) => i === idx ? { ...s, end: val } : s)
-                                                                    }));
-                                                                }}
-                                                                className="w-6 bg-white/5 border-none p-0 px-0.5 focus:outline-none rounded text-center text-blue-400"
-                                                            />
-                                                            <span className="uppercase ml-1">sec</span>
-                                                        </div>
-                                                        <button 
-                                                            onClick={() => setSelections(p => ({ 
-                                                                ...p, 
-                                                                timestampSegments: p.timestampSegments.filter((_, i) => i !== idx) 
-                                                            }))}
-                                                            className="opacity-0 group-hover/seg:opacity-100 p-0.5 hover:bg-red-500/20 rounded text-red-500 transition-all"
-                                                        >
-                                                            <X className="w-2.5 h-2.5" />
-                                                        </button>
-                                                    </div>
-                                                    <textarea
-                                                        value={seg.description}
-                                                        onChange={(e) => setSelections(p => ({
-                                                            ...p,
-                                                            timestampSegments: p.timestampSegments.map((s, i) => i === idx ? { ...s, description: e.target.value } : s)
-                                                        }))}
-                                                        placeholder="Segment description..."
-                                                        className="w-full bg-white/5 border border-white/5 rounded p-1 text-[10px] text-white/80 placeholder:text-white/10 focus:outline-none resize-none h-8 custom-scrollbar"
-                                                    />
-                                                </div>
-                                            ))}
-                                            {(selections.timestampSegments || []).length === 0 && (
-                                                <div className="h-full flex flex-col items-center justify-center opacity-20 py-4">
-                                                    <Clock className="w-6 h-6 mb-1" />
-                                                    <span className="text-[7px] font-bold uppercase">No segments added</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            <div className={cn("h-full", mode === 'video' ? "w-2/3" : "flex-1")}>
-                                <div className="bg-white/5 border border-white/10 rounded-xl p-2 h-full flex flex-col overflow-hidden">
-                                    <label className="w-full text-[10px] font-bold text-[#D4FF00] uppercase tracking-widest flex items-center mb-2">
-                                        <div className="flex items-center gap-2"><Sparkles className="w-3.5 h-3.5" />{mode === 'video' ? 'Video Narrative Components' : isNanoBanana ? 'Scene Narrative' : 'Vision Input'}</div>
-                                        <div className="ml-auto flex items-center gap-2">
-                                            <span className="text-gray-600 font-normal normal-case tracking-normal text-[9px] hidden sm:block">Type @ to tag a character</span>
-                                            <button onClick={() => setShowRefBoard(true)} className="flex items-center gap-1 px-2 py-1 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 rounded-lg text-purple-400 transition-all font-sans normal-case tracking-normal">
-                                                <span className="text-[11px] font-black">@</span><span className="text-[9px] font-bold hidden sm:block">Refs</span>
-                                                {allRefItems.length > 0 && <span className="w-3.5 h-3.5 rounded-full bg-purple-500 text-white text-[7px] font-black flex items-center justify-center">{allRefItems.length}</span>}
-                                            </button>
-                                        </div>
-                                    </label>
-                                    <div className="relative flex-1 flex flex-col min-h-[40px] overflow-hidden">
-                                        {mode === 'video' ? (
-                                            <div className="grid grid-cols-3 gap-2 h-full">
-                                                <div className="flex flex-col h-full">
-                                                    <span className="text-[8px] font-bold text-white/30 uppercase mb-1">Subject</span>
-                                                    <textarea
-                                                        value={selections.subjectDescription}
-                                                        onChange={(e) => handleTextChange('subjectDescription', e)}
-                                                        placeholder="Who or what..."
-                                                        className="w-full bg-black/40 border border-white/5 rounded-lg p-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none resize-none flex-1 custom-scrollbar"
-                                                    />
-                                                </div>
-                                                <div className="flex flex-col h-full">
-                                                    <span className="text-[8px] font-bold text-white/30 uppercase mb-1">Action</span>
-                                                    <textarea
-                                                        value={selections.actionDescription}
-                                                        onChange={(e) => handleTextChange('actionDescription', e)}
-                                                        placeholder="What is happening..."
-                                                        className="w-full bg-black/40 border border-white/5 rounded-lg p-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none resize-none flex-1 custom-scrollbar"
-                                                    />
-                                                </div>
-                                                <div className="flex flex-col h-full">
-                                                    <span className="text-[8px] font-bold text-white/30 uppercase mb-1">Context</span>
-                                                    <textarea
-                                                        value={selections.contextDescription}
-                                                        onChange={(e) => handleTextChange('contextDescription', e)}
-                                                        placeholder="Environment/Lighting..."
-                                                        className="w-full bg-black/40 border border-white/5 rounded-lg p-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none resize-none flex-1 custom-scrollbar"
-                                                    />
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <textarea
-                                                ref={textareaRef}
-                                                value={selections.subject}
-                                                onChange={(e) => handleTextChange('subject', e)}
-                                                placeholder={isNanoBanana ? "Describe your scene..." : "Describe your cinematic vision..."}
-                                                className="w-full bg-black/40 border border-purple-500/10 rounded-lg p-2 text-sm text-white placeholder:text-gray-600 focus:outline-none resize-none flex-1 custom-scrollbar"
-                                            />
-                                        )}
+                <div className={cn("shrink-0 surface-glass rounded-2xl p-2 md:pb-4 relative z-30 transition-shadow", mentionSearch !== null && "shadow-[0_0_50px_rgba(0,0,0,0.5)]")} style={{ maxHeight: '40vh' }}>
+                    <div className={cn(
+                        "pr-2 pb-16 space-y-2 custom-scrollbar overflow-x-visible",
+                        mentionSearch !== null ? "overflow-y-visible" : "overflow-y-auto max-h-[calc(40vh-16px)]"
+                    )}>
+                        <div className="flex gap-2 items-stretch min-h-[84px] relative">
+                            {mode === 'video' && (isKling ? <KlingShotBuilder selections={selections} setSelections={setSelections} /> : <TimestampMultiShot selections={selections} setSelections={setSelections} />)}
 
-                                        {mentionSearch !== null && (
-                                            <div className="absolute bottom-full left-0 mb-4 w-64 max-h-48 overflow-y-auto bg-[#0a0a0a] border border-white/10 rounded-xl shadow-2xl z-[150] custom-scrollbar overflow-hidden animation-slide-up">
-                                                <div className="p-2 border-b border-white/5 bg-white/5 flex items-center justify-between">
-                                                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Tag Reference</span>
-                                                    <button onClick={() => setMentionSearch(null)} className="text-white/20 hover:text-white"><X size={10} /></button>
-                                                </div>
-                                                <div className="py-1">
-                                                    {allRefItems
-                                                        .filter(item => item.name.toLowerCase().includes(mentionSearch))
-                                                        .length > 0 ? (
-                                                        allRefItems
-                                                            .filter(item => item.name.toLowerCase().includes(mentionSearch))
-                                                            .map((item, idx) => (
-                                                                <button
-                                                                    key={idx}
-                                                                    onClick={() => selectMention(item)}
-                                                                    className="w-full px-3 py-2 flex items-center gap-3 hover:bg-purple-500/20 transition-colors group"
-                                                                >
-                                                                    <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/10 relative">
-                                                                        <img src={item.imageUrl} className="w-full h-full object-cover" />
-                                                                        {item.isMatrix && (
-                                                                            <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
-                                                                                <Zap size={10} className="text-purple-400" />
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                    <div className="text-left">
-                                                                        <p className="text-[11px] font-bold text-white group-hover:text-purple-400 transition-colors">@{item.name?.replace(/\s+/g, '')}</p>
-                                                                        <p className="text-[8px] text-white/20 uppercase tracking-tighter">{item.category}</p>
-                                                                    </div>
-                                                                </button>
-                                                            ))
-                                                    ) : (
-                                                        <div className="p-4 text-center">
-                                                            <p className="text-[10px] text-white/20 italic">No reference images found...</p>
-                                                            <button
-                                                                onClick={() => { setShowRefBoard(true); setMentionSearch(null); }}
-                                                                className="mt-2 text-[9px] text-purple-400 hover:underline font-bold"
-                                                            >
-                                                                + ADD TO REF BOARD
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
-                                </div>
-                            </div>
-                        </div>
+                            {isKling ? (
+                                <KlingCharacterLayer 
+                                    selections={selections} 
+                                    handleTextChange={handleTextChange} 
+                                    setShowRefBoard={setShowRefBoard} 
+                                    mentionSearch={mentionSearch} 
+                                    setMentionSearch={setMentionSearch} 
+                                    allRefItems={allRefItems} 
+                                    selectMention={selectMention} 
+                                />
+                            ) : (
+                                <VideoNarrativeComponents 
+                                    mode={mode} 
+                                    isNanoBanana={isNanoBanana} 
+                                    allRefItems={allRefItems} 
+                                    setShowRefBoard={setShowRefBoard} 
+                                    selections={selections} 
+                                    handleTextChange={handleTextChange} 
+                                    mentionSearch={mentionSearch} 
+                                    setMentionSearch={setMentionSearch} 
+                                    mentionField={mentionField}
+                                    selectMention={selectMention} 
+                                    textareaRef={textareaRef}
+                                    handleRefinePrompt={handleRefinePrompt}
+                                    isPolishing={isPolishing}
+                                />
+                            )}
+
                         <button onClick={generateImage} disabled={isLoading}
                                 className={cn("w-48 shrink-0 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all shadow-2xl active:scale-95 h-full",
                                     isLoading ? "bg-white/5 cursor-not-allowed" : "bg-[#D4FF00] hover:bg-white hover:shadow-[0_0_30px_rgba(212,255,0,0.3)]")}>
@@ -2074,25 +2542,13 @@ export function PromptGenerator({ onUpscale }) {
                                         <div key={ctrl.key} className="flex-1 min-w-[110px]">
                                             <label className="text-[10px] font-bold text-gray-500 mb-1 block uppercase tracking-wider">{ctrl.label}</label>
                                             <select value={val} onChange={e => updateVideoSetting(ctrl.key, e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white">
-                                                {ctrl.options.map(o => <option key={o} value={o} className="bg-[#111]">{o}</option>)}
+                                                {(ctrl.key === 'duration' && selectedModel === 'kling' ? ['5 Seconds', '10 Seconds'] : ctrl.options).map(o => <option key={o} value={o} className="bg-[#111]">{o}</option>)}
                                             </select>
                                         </div>
                                     )
                                 })}
+                                {isKling ? <KlingAudioMode /> : <ProLighting selections={selections} setSelections={setSelections} />}
 
-                                {/* Pro Lighting Transform for Video */}
-                                <div className="flex-1 min-w-[140px]">
-                                    <label className="text-[10px] font-bold text-yellow-500 mb-1 block uppercase tracking-wider flex items-center gap-1.5">
-                                        <Sun className="w-3 h-3" /> Pro Lighting
-                                    </label>
-                                    <select
-                                        value={selections.lightingTransform}
-                                        onChange={e => setSelections(p => ({ ...p, lightingTransform: e.target.value }))}
-                                        className="w-full bg-yellow-400/5 border border-yellow-400/20 rounded-lg p-2 text-xs text-white outline-none"
-                                    >
-                                        {PRO_LIGHTING_TRANSFORMS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                                    </select>
-                                </div>
                             </div>
 
                             {/* EXCLUSIVE AUDIO DIRECTIONS PANEL for Video */}
@@ -2212,7 +2668,7 @@ export function PromptGenerator({ onUpscale }) {
                                     </button>
                                 </div>
                                 <div className="flex flex-col justify-end">
-                                    <button onClick={() => setSelections(p => ({ ...p, quality: p.quality === '4k' ? 'low' : '4k' }))} className={cn("w-full py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-2 transition-all border", selections.quality === '4k' ? "bg-yellow-400 text-black border-yellow-400" : "bg-white/5 border-white/10 text-gray-500")}>
+                                    <button onClick={() => setSelections(p => ({ ...p, quality: p.quality === '4k' ? '2k' : '4k' }))} className={cn("w-full py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-2 transition-all border", selections.quality === '4k' ? "bg-yellow-400 text-black border-yellow-400" : "bg-white/5 border-white/10 text-gray-500")}>
                                         <Maximize2 className="w-3 h-3" /> 4K Master
                                     </button>
                                 </div>
@@ -2374,9 +2830,16 @@ export function PromptGenerator({ onUpscale }) {
                                             <button onClick={() => setShowLibPicker(false)} className="p-1 hover:bg-white/10 rounded-full transition-colors"><X className="w-4 h-4 text-gray-400" /></button>
                                         </div>
                                         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                                            <AssetsLibrary onSelectReference={(url, name, category, matrixUrl) => {
-                                                const finalCategory = libPickerTarget?.replace(/s$/, '') || category;
-                                                addRefItem({ id: crypto.randomUUID(), name, category: finalCategory, imageUrl: url, isMatrix: !!matrixUrl });
+                                            <AssetsLibrary onSelectReference={(url, item) => {
+                                                const name = (item.name || 'Reference').replace(/\s+/g, '');
+                                                const category = libPickerTarget?.replace(/s$/, '') || item.category || (item.isCharacter ? 'character' : 'mood');
+                                                addRefItem({
+                                                    id: crypto.randomUUID(),
+                                                    name,
+                                                    category,
+                                                    imageUrl: url,
+                                                    isMatrix: !!(item.isMatrix || item.identity_kit?.matrix)
+                                                });
                                                 setShowLibPicker(false);
                                             }} />
                                         </div>
@@ -2395,39 +2858,79 @@ export function PromptGenerator({ onUpscale }) {
                         <div onClick={() => setShowGallery(false)} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
                         <div className="relative z-10 flex-1 flex flex-col p-4 overflow-hidden">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                                    <LayoutGrid className="w-4 h-4 text-[#D4FF00]" /> Gallery — {frames.filter(f => f.url).length} Frames
-                                </h3>
+                                <div className="flex items-center gap-6">
+                                    <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+                                        <LayoutGrid className="w-4 h-4 text-[#D4FF00]" /> Studio Gallery
+                                    </h3>
+                                    <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+                                        <button onClick={() => setGalleryTab('recent')} 
+                                            className={cn("px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all", 
+                                                galleryTab === 'recent' ? "bg-[#D4FF00] text-black" : "text-gray-400 hover:text-white")}>
+                                            Recent ({frames.filter(f => f.url).length})
+                                        </button>
+                                        <button onClick={() => setGalleryTab('library')} 
+                                            className={cn("px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all", 
+                                                galleryTab === 'library' ? "bg-[#D4FF00] text-black" : "text-gray-400 hover:text-white")}>
+                                            Asset Library
+                                        </button>
+                                    </div>
+                                </div>
                                 <button onClick={() => setShowGallery(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors"><X className="w-5 h-5 text-white" /></button>
                             </div>
+
                             <div className="flex-1 overflow-y-auto custom-scrollbar">
-                                <div className="grid grid-cols-4 gap-3">
-                                    {frames.filter(f => f.url && !f.loading).map(frame => (
-                                        <div key={frame.id} onClick={() => { setActiveFrameId(frame.id); setShowGallery(false) }}
-                                            className={cn("relative aspect-video rounded-xl overflow-hidden cursor-pointer group border-2 transition-all",
-                                                activeFrameId === frame.id ? "border-[#D4FF00] shadow-[0_0_15px_rgba(212,255,0,0.3)]" : "border-white/5 hover:border-white/20")}>
-                                            {frame.type === 'video' ? (
-                                                <video src={frame.url} muted className="w-full h-full object-cover" />
-                                            ) : (
-                                                <img src={frame.url} className="w-full h-full object-cover" />
-                                            )}
-                                            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <p className="text-[8px] font-bold text-white/80 truncate">{frame.model}</p>
-                                                <div className="flex gap-1 mt-1">
-                                                    <button onClick={(e) => { e.stopPropagation(); downloadImage(frame.url) }} className="px-1.5 py-0.5 bg-white/10 hover:bg-white/20 rounded text-[7px] text-white font-bold">DL</button>
-                                                    <button onClick={(e) => { e.stopPropagation(); setSelections(p => ({ ...p, referenceImage: frame.assetPath || frame.url })) }} className="px-1.5 py-0.5 bg-purple-500/50 hover:bg-purple-500 rounded text-[7px] text-white font-bold">REF</button>
-                                                    <button onClick={(e) => { e.stopPropagation(); setLeftPreviewId(frame.id); setShowGallery(false) }} className="px-1.5 py-0.5 bg-[#D4FF00]/50 hover:bg-[#D4FF00] rounded text-[7px] text-black font-bold">L</button>
-                                                    <button onClick={(e) => { e.stopPropagation(); setRightPreviewId(frame.id); setShowGallery(false) }} className="px-1.5 py-0.5 bg-purple-500/50 hover:bg-purple-500 rounded text-[7px] text-white font-bold">R</button>
+                                {galleryTab === 'recent' ? (
+                                    <div className="grid grid-cols-4 gap-3">
+                                        {frames.filter(f => f.url && !f.loading).map(frame => (
+                                            <div key={frame.id} onClick={() => { setActiveFrameId(frame.id); setShowGallery(false) }}
+                                                className={cn("relative aspect-video rounded-xl overflow-hidden cursor-pointer group border-2 transition-all",
+                                                    activeFrameId === frame.id ? "border-[#D4FF00] shadow-[0_0_15px_rgba(212,255,0,0.3)]" : "border-white/5 hover:border-white/20")}>
+                                                {frame.type === 'video' ? (
+                                                    <video src={frame.url} muted preload="metadata" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <img src={frame.url} loading="lazy" className="w-full h-full object-cover" />
+                                                )}
+                                                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <p className="text-[8px] font-bold text-white/80 truncate">{frame.model}</p>
+                                                    <div className="flex gap-1 mt-1">
+                                                        <button onClick={(e) => { e.stopPropagation(); downloadImage(frame.url) }} className="px-1.5 py-0.5 bg-white/10 hover:bg-white/20 rounded text-[7px] text-white font-bold">DL</button>
+                                                        <button onClick={(e) => { 
+                                                            e.stopPropagation(); 
+                                                            const url = frame.assetPath || frame.url;
+                                                            setSelections(p => ({ ...p, referenceImage: url }));
+                                                            addRefItem({ id: crypto.randomUUID(), name: `Ref_${frame.id.slice(-4)}`, category: 'mood', imageUrl: url });
+                                                        }} className="px-1.5 py-0.5 bg-purple-500/50 hover:bg-purple-500 rounded text-[7px] text-white font-bold">ADD TO REF</button>
+                                                        <button onClick={(e) => { e.stopPropagation(); setLeftPreviewId(frame.id); setShowGallery(false) }} className="px-1.5 py-0.5 bg-[#D4FF00]/50 hover:bg-[#D4FF00] rounded text-[7px] text-black font-bold">L</button>
+                                                        <button onClick={(e) => { e.stopPropagation(); setRightPreviewId(frame.id); setShowGallery(false) }} className="px-1.5 py-0.5 bg-purple-500/50 hover:bg-purple-500 rounded text-[7px] text-white font-bold">R</button>
+                                                    </div>
                                                 </div>
+                                                <button onClick={(e) => { e.stopPropagation(); removeFrame(frame.id) }}
+                                                    className="absolute top-2 right-2 p-1.5 bg-red-500/80 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                                                    title="Delete Frame">
+                                                    <X className="w-3 h-3" />
+                                                </button>
                                             </div>
-                                            <button onClick={(e) => { e.stopPropagation(); removeFrame(frame.id) }}
-                                                className="absolute top-2 right-2 p-1.5 bg-red-500/80 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-opacity z-20"
-                                                title="Delete Frame">
-                                                <X className="w-3 h-3" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="h-full bg-white/5 rounded-3xl overflow-hidden border border-white/10">
+                                        <AssetsLibrary onSelectReference={(url, item) => {
+                                            const name = (item.name || 'Reference').replace(/\s+/g, '');
+                                            const category = item.category || (item.isCharacter ? 'character' : 'mood');
+                                            addRefItem({
+                                                id: crypto.randomUUID(),
+                                                name,
+                                                category,
+                                                imageUrl: url,
+                                                isMatrix: !!(item.isMatrix || item.identity_kit?.matrix)
+                                            });
+                                            // Optionally keep gallery open but switch back to recent? 
+                                            // Or just close gallery and select the ref?
+                                            setSelections(p => ({ ...p, referenceImage: url }));
+                                            setShowGallery(false);
+                                        }} />
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

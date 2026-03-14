@@ -224,10 +224,9 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         setLoading(true);
         try {
             // 1. Fetch images from assets table
-            const { data: dbImages, error: imgError } = await supabase
+            const { data: dbAssets, error: imgError } = await supabase
                 .from("assets")
                 .select("*")
-                .eq("type", "image")
                 .order("created_at", { ascending: false });
 
             if (imgError) console.error("Images error:", imgError.message);
@@ -295,9 +294,12 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 }
             });
 
+            const dbImages = (dbAssets || []).filter(a => a.type === 'image' || !a.type);
+            const dbVideos = (dbAssets || []).filter(a => a.type === 'video');
+
             const newAssets = {
-                images: dbImages || [],
-                videos: [], // Will be populated by generic assets if needed
+                images: dbImages,
+                videos: dbVideos,
                 models: [
                     { id: 'm1', name: 'GPT Image 1.5', type: 'Native', size: 'N/A', date: 'Active' },
                     { id: 'm2', name: 'Flux Pro', type: 'Replicate', size: 'N/A', date: 'Active' },
@@ -352,6 +354,32 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
             console.error("Semantic search failed:", e);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeleteAsset = async (id, tab) => {
+        if (!window.confirm("Permanently delete this asset from the database?")) return;
+        
+        try {
+            const { error } = await supabase.from('assets').delete().eq('id', id);
+            if (error) throw error;
+
+            // Update local state
+            setAssets(prev => ({
+                ...prev,
+                [tab]: prev[tab].filter(a => a.id !== id)
+            }));
+            
+            // Update cache
+            if (cachedAssets) {
+                setCachedAssets({
+                    ...cachedAssets,
+                    [tab]: cachedAssets[tab].filter(a => a.id !== id)
+                });
+            }
+        } catch (err) {
+            console.error("Delete asset failed:", err);
+            alert("Failed to delete asset. Please try again.");
         }
     };
 
@@ -622,8 +650,12 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                                     >
                                         <ImagePlus className={activeTab === 'images' ? 'w-4 h-4' : 'w-7 h-7'} />
                                     </button>
-                                    <button className={`${activeTab === 'images' ? 'w-8 h-8' : 'w-14 h-14'} bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md flex items-center justify-center transition-all border border-white/10`} title="Archive">
-                                        <Download className={activeTab === 'images' ? 'w-4 h-4' : 'w-7 h-7'} />
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteAsset(item.id, activeTab); }}
+                                        className={`${activeTab === 'images' ? 'w-8 h-8' : 'w-14 h-14'} bg-red-500/80 hover:bg-red-500 hover:scale-110 active:scale-95 rounded-full text-white backdrop-blur-md flex items-center justify-center transition-all border border-red-400/50`}
+                                        title="Delete Permanently"
+                                    >
+                                        <Trash2 className={activeTab === 'images' ? 'w-3.5 h-3.5' : 'w-6 h-6'} />
                                     </button>
                                 </div>
 

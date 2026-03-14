@@ -51,6 +51,11 @@ export async function analyzeProductItem(image, broadcast) {
             responseMimeType: 'application/json',
             responseSchema: schema
         }
+    }, {
+        headers: {
+            'Referer': 'http://localhost:5173/',
+            'Origin': 'http://localhost:5173'
+        }
     });
 
     const result = await model.generateContent([

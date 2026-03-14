@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import fetch from 'node-fetch';
+const fetch = globalThis.fetch;
 dotenv.config();
 
 const API_KEY = process.env.GOOGLE_API_KEY || process.env.API_KEY;

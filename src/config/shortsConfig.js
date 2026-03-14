@@ -19,6 +19,7 @@ export const SHORTS_COST = {
     // Video (Veo)
     veo_fast: 10,
     veo_full: 20,
+    kling: 10,
 
     // Storyboard
     storyboard_gen: 5,

@@ -25,10 +25,14 @@ RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 COPY package*.json ./
 RUN npm install --omit=dev
 
-# Copy the built dist folder and server files
+# Copy the built dist folder, server.js, services, and necessary src files
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/server ./server
+COPY --from=builder /app/server.js ./server.js
+COPY --from=builder /app/services ./services
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/src/services ./src/services
+COPY --from=builder /app/src/config ./src/config
+COPY --from=builder /app/*.json ./
 
 # Set Environment Variables
 ENV NODE_ENV=production
@@ -39,4 +43,4 @@ EXPOSE 8080
 
 # Start the server
 # Note: Ensure server.js serves the 'dist' folder static files in production mode
-CMD ["node", "server/server.js"]
+CMD ["node", "server.js"]

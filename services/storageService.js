@@ -31,12 +31,18 @@ export const uploadToGCS = async (data, fileName, contentType = 'image/png') => 
         }
 
         // Upload using JSON API (Simple Upload)
-        const response = await fetch(`https://storage.googleapis.com/upload/storage/v1/b/${BUCKET_NAME}/o?uploadType=media&name=${encodeURIComponent(fileName)}&key=${API_KEY}`, {
+        const isToken = API_KEY.startsWith('AQ.') || API_KEY.startsWith('ya29.');
+        const url = `https://storage.googleapis.com/upload/storage/v1/b/${BUCKET_NAME}/o?uploadType=media&name=${encodeURIComponent(fileName)}${isToken ? '' : `&key=${API_KEY}`}`;
+        
+        const headers = {
+            'Content-Type': contentType,
+            'Content-Length': buffer.length
+        };
+        if (isToken) headers['Authorization'] = `Bearer ${API_KEY}`;
+
+        const response = await fetch(url, {
             method: 'POST',
-            headers: {
-                'Content-Type': contentType,
-                'Content-Length': buffer.length
-            },
+            headers: headers,
             body: buffer
         });
 
@@ -67,7 +73,13 @@ export const getPublicUrl = (fileName) => {
  */
 export const listAssetsGCS = async (prefix = '') => {
     try {
-        const response = await fetch(`https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o?prefix=${encodeURIComponent(prefix)}&key=${API_KEY}`);
+        const isToken = API_KEY.startsWith('AQ.') || API_KEY.startsWith('ya29.');
+        const url = `https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o?prefix=${encodeURIComponent(prefix)}${isToken ? '' : `&key=${API_KEY}`}`;
+        
+        const headers = {};
+        if (isToken) headers['Authorization'] = `Bearer ${API_KEY}`;
+
+        const response = await fetch(url, { headers });
         const data = await response.json();
 
         if (data.error) throw new Error(data.error.message);

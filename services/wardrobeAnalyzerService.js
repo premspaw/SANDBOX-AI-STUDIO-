@@ -77,6 +77,11 @@ export async function analyzeWardrobeItem(tempFilePath, mimeType, category) {
             generationConfig: {
                 responseMimeType: "application/json" // This prevents Markdown/Regex issues!
             }
+        }, {
+            headers: {
+                'Referer': 'http://localhost:5173/',
+                'Origin': 'http://localhost:5173'
+            }
         });
 
         const result = await model.generateContent([

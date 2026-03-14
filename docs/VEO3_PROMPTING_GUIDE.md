@@ -113,14 +113,40 @@ Located in `src/components/panels/PromptGenerator.jsx`.
 
 ---
 
-## First & Last Frame Workflow (Transitions)
+## The 3 Types of Veo 3.1 Generations
 
-1. **Capture Frames:** 
-   - Generate start/end images with **Nano Banana** (Gemini 2.0).
-   - In **Video tab**, use the **▷ First** and **▷ Last** buttons on your generated clips/images to capture them.
-2. **Auto-Parameter Mapping:**
-   - The system now automatically passes these as `first_frame_image` and `last_frame_image` to the Veo 3.1 API.
-3. **Transition Prompting:**
-   - Enter a prompt describing the *action between* the frames (e.g., "The camera pans smoothly from the front view to the side view").
-   - The builder will automatically append `[Frame refs: starting from... and transitioning to...]` to ensure model adherence.
-4. **Render:** Click **Render** to generate a high-quality transition.
+### 1. Image-to-Video (I2V)
+Animate a single source image using a text prompt.
+*   **Input:** `selections.firstFrame || selections.referenceImage`
+*   **REST Location:** `instances[0].image` (as `inlineData` object)
+
+### 2. Reference Images (Subject Consistency)
+Preserve a person, character, or product's appearance using up to 3 reference images.
+*   **Input:** `selections.identity_images` (sliced to 3)
+*   **REST Location:** `instances[0].referenceImages[]` with `referenceType: "asset"`
+
+### 3. First & Last Frame (Interpolation / Transitions)
+Create seamless transitions between two specific images.
+*   **Input:** `selections.firstFrame` (Start) and `selections.lastFrame` (End)
+*   **REST Location:** 
+    *   **Start Frame:** `instances[0].image`
+    *   **End Frame:** `instances[0].lastFrame` (sibling to Start Frame)
+
+---
+
+## Technical Assembly Rules (server.js)
+1.  **Format:** Use **camelCase** for `lastFrame` and `referenceImages`.
+2.  **Container:** All images go in the **`instances`** block, not `parameters`.
+3.  **Data Type:** All images must use the **`inlineData`** structure:
+    ```json
+    { "inlineData": { "mimeType": "image/png", "data": "BASE64..." } }
+    ```
+4.  **Duration & Ratio:** Stored in the `parameters` block.
+
+---
+
+## capturing Frames in UI
+- In the **Video Tab**, use the **▷ First** and **▷ Last** buttons on any generated asset to pin it to the Start/End slots. 
+- The system automatically detects these slots and switches to **Interpolation Mode**.
+
+*Last Updated for Gemini 2.0 / Veo 3.1 Integration — 2026-03-11*
