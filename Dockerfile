@@ -10,6 +10,20 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# Accept build-time env vars from Railway (VITE_* must be baked in at build time)
+ARG VITE_API_URL
+ARG VITE_WS_URL
+ARG VITE_GOOGLE_API_KEY
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+
+# Make them available as environment variables during the Vite build
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_WS_URL=$VITE_WS_URL
+ENV VITE_GOOGLE_API_KEY=$VITE_GOOGLE_API_KEY
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+
 # Build the frontend (React + Vite)
 RUN npm run build
 
