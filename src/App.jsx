@@ -80,6 +80,25 @@ function App() {
     setActiveTab('creator')
   }
 
+  // Protected tabs — require login
+  const protectedTabs = new Set([
+    'prompt', 'influencer', 'assets', 'creator',
+    'directors-cut', 'director-studio', 'ugc',
+    'forge', 'playground', 'admin', 'settings'
+  ])
+
+  // If trying to access protected tab without login → redirect to auth
+  if (!authChecked) return null // wait for session check
+
+  if (protectedTabs.has(activeTab) && !user) {
+    return (
+      <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+        <AuthPage onAuthSuccess={handleAuthSuccess} />
+        <Toast />
+      </Layout>
+    )
+  }
+
   const tabComponents = {
     home: <LandingPage onEnter={handleEnterStudio} onPricing={() => setActiveTab('pricing')} />,
     auth: <AuthPage onAuthSuccess={handleAuthSuccess} />,
