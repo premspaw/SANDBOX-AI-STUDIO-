@@ -77,24 +77,38 @@ import * as productService from './services/productService.js';
 import * as cacheService from './services/cacheService.js';
 import { GoogleAuth } from 'google-auth-library';
 
-const client = new GoogleGenAI({
-    apiKey: process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY,
-    headers: {
-        'Referer': 'http://localhost:5173/',
-        'Origin': 'http://localhost:5173'
-    },
-    fetchOptions: {
-        headers: {
-            'Referer': 'http://localhost:5173/',
-            'Origin': 'http://localhost:5173'
+let _geminiClient = null;
+const getGeminiClient = () => {
+    if (!_geminiClient) {
+        const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+        if (!apiKey) {
+            throw new Error('GOOGLE_API_KEY environment variable is not set. Please add it in your Railway service variables.');
         }
-    },
-    requestOptions: {
-        headers: {
-            'Referer': 'http://localhost:5173/',
-            'Origin': 'http://localhost:5173'
-        }
+        _geminiClient = new GoogleGenAI({
+            apiKey,
+            headers: {
+                'Referer': 'http://localhost:5173/',
+                'Origin': 'http://localhost:5173'
+            },
+            fetchOptions: {
+                headers: {
+                    'Referer': 'http://localhost:5173/',
+                    'Origin': 'http://localhost:5173'
+                }
+            },
+            requestOptions: {
+                headers: {
+                    'Referer': 'http://localhost:5173/',
+                    'Origin': 'http://localhost:5173'
+                }
+            }
+        });
     }
+    return _geminiClient;
+};
+// Alias for backward compatibility — existing code that uses `client` will still work
+const client = new Proxy({}, {
+    get: (_, prop) => getGeminiClient()[prop]
 });
 
 if (!globalThis.File) {
