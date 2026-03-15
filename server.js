@@ -139,14 +139,19 @@ let getJobStatus = async (jobId) => inMemoryJobStatus.get(jobId) || null;
 
 // TCP probe - fast, no ioredis retry spam
 const isRedisAvailable = () => new Promise((resolve) => {
-    const urlParts = REDIS_URL.replace('redis://', '').replace('redis://:', ':').split(':');
-    const host = urlParts[0] || '127.0.0.1';
-    const port = parseInt(urlParts[1]) || 6379;
-    const s = net.createConnection({ host, port: port });
-    s.setTimeout(1500);
-    s.on('connect', () => { s.destroy(); resolve(true); });
-    s.on('error', () => { s.destroy(); resolve(false); });
-    s.on('timeout', () => { s.destroy(); resolve(false); });
+    try {
+        const url = new URL(REDIS_URL);
+        const host = url.hostname || '127.0.0.1';
+        const port = parseInt(url.port) || 6379;
+        const s = net.createConnection({ host, port: port });
+        s.setTimeout(5000); // 5s timeout
+        s.on('connect', () => { s.destroy(); resolve(true); });
+        s.on('error', () => { s.destroy(); resolve(false); });
+        s.on('timeout', () => { s.destroy(); resolve(false); });
+    } catch (e) {
+        console.warn('[REDIS] Invalid URL:', REDIS_URL);
+        resolve(false);
+    }
 });
 
 if (await isRedisAvailable()) {
