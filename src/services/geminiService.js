@@ -15,9 +15,14 @@ const getAIConfig = () => {
     return { apiKey, isToken, projectId, location };
 };
 
+let _aiInstance = null;
 const getAI = () => {
+    if (_aiInstance) return _aiInstance;
     const { apiKey } = getAIConfig();
-    return new GoogleGenAI({ 
+    if (!apiKey) {
+        throw new Error('[geminiService] GOOGLE_API_KEY is not set. Add it to your Railway service variables.');
+    }
+    _aiInstance = new GoogleGenAI({ 
         apiKey,
         headers: {
             'Referer': 'http://localhost:5173/',
@@ -36,6 +41,7 @@ const getAI = () => {
             }
         }
     });
+    return _aiInstance;
 };
 
 /**
