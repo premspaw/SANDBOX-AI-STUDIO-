@@ -1586,17 +1586,32 @@ export function PromptGenerator({ onUpscale }) {
 
     // ── Load Recent Generations from DB ──
     const loadRecentFrames = async () => {
+        if (!supabase) return;
         try {
-            const { data: assets } = await supabase.from('assets')
-                .select('*')
+            console.log('[PromptGenerator] Loading recent frames from DB...');
+            let query = supabase.from('assets').select('*');
+            
+            // If we have a user, only show their assets. Otherwise show all (historical/public)
+            if (userProfile?.id) {
+                query = query.eq('user_id', userProfile.id);
+            }
+            
+            const { data: assets, error } = await query
                 .order('created_at', { ascending: false })
-                .limit(50)
-            if (assets) {
+                .limit(50);
+
+            if (error) {
+                console.error('[PromptGenerator] Supabase error loading assets:', error.message);
+                return;
+            }
+
+            if (assets && assets.length > 0) {
+                console.log(`[PromptGenerator] Found ${assets.length} historical frames.`);
                 // Get list of frames user has hidden from the strip
                 let hiddenIds = []
                 try {
                     hiddenIds = JSON.parse(localStorage.getItem('hidden_filmstrip_frames') || '[]')
-                } catch (e) { console.warn("Hidden frames parse error:", e) }
+                } catch (e) { console.warn("[PromptGenerator] Hidden frames parse error:", e) }
 
                 const recentFrames = assets
                     .filter(a => !hiddenIds.includes(a.id)) // Surgical curation: filter out hidden ones
@@ -1613,12 +1628,21 @@ export function PromptGenerator({ onUpscale }) {
                 setFrames(prev => {
                     const sessionIds = new Set(prev.map(f => f.id));
                     const newHistorical = recentFrames.filter(f => !sessionIds.has(f.id));
+                    if (newHistorical.length === 0) return prev;
                     return [...prev, ...newHistorical];
                 });
-                if (recentFrames.length > 0 && !activeFrameId) setActiveFrameId(recentFrames[0].id)
+
+                setFrames(prev => {
+                    if (prev.length > 0 && !activeFrameId) {
+                        setActiveFrameId(prev[0].id);
+                    }
+                    return prev;
+                });
+            } else {
+                console.log('[PromptGenerator] No historical frames found in DB.');
             }
         } catch (err) {
-            console.warn('Failed to load recent frames:', err)
+            console.error('[PromptGenerator] Failed to load recent frames logic:', err);
         }
     }
     useEffect(() => { loadRecentFrames() }, [userProfile?.id])

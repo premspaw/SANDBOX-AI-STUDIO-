@@ -425,12 +425,12 @@ const uploadToSupabase = async (blob: Blob, type: 'image' | 'video', promptText:
 
     if (user) {
       await supabase
-        .from('generated_assets')
+        .from('assets')
         .insert({
           user_id: user.id,
-          asset_type: type,
-          storage_path: fileName,
-          public_url: publicUrlData.publicUrl,
+          type: type,
+          path: fileName,
+          url: publicUrlData.publicUrl,
           prompt: promptText
         });
     }
@@ -1078,7 +1078,7 @@ export default function UGC() {
       if (!user) return;
 
       const { data, error } = await supabase
-        .from('generated_assets')
+        .from('assets')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
@@ -1086,8 +1086,8 @@ export default function UGC() {
       if (!error && data) {
         const historyGallery: GalleryItem[] = data.map(item => ({
           id: item.id,
-          type: item.asset_type as 'image' | 'video',
-          url: item.public_url,
+          type: item.type as 'image' | 'video',
+          url: item.url,
           prompt: item.prompt
         }));
 
