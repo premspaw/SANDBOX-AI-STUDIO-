@@ -212,6 +212,7 @@ if (await isRedisAvailable()) {
 }
 
 const app = express();
+app.set('trust proxy', 1);
 
 app.get('/api/health-check', (req, res) => {
     res.json({ status: 'ready', version: '1.0.9', timestamp: new Date().toISOString() });
@@ -851,7 +852,7 @@ app.use((req, res, next) => {
     if (req.path.startsWith('/api')) return next();
     // If it's a file request (has extension), let static middleware handle it or 404
     if (req.path.includes('.')) return next();
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 // Debug Env
