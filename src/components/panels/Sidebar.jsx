@@ -1,4 +1,4 @@
-import { Bot, Clapperboard, Settings, ChevronLeft, ChevronRight, Camera, FolderOpen, Users, Shield, Video, Sparkles, Coins, CreditCard, LayoutDashboard } from 'lucide-react'
+import { Bot, Clapperboard, Settings, ChevronLeft, ChevronRight, Camera, FolderOpen, Users, Shield, Video, Sparkles, Coins, CreditCard, LayoutDashboard, Image, Megaphone } from 'lucide-react'
 import logo from '../../assets/acs-icon.svg'
 import BrandLogo from '../common/BrandLogo'
 import { cn } from '../../lib/utils'
@@ -86,12 +86,12 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
     }, [activeTab, isCollapsed, toggleCollapse]);
 
     const navItems = [
-        { id: 'prompt', label: 'Prompt Builder', icon: Bot, color: 'text-purple-400', bgColor: 'bg-purple-400', hoverColor: 'group-hover/navitem:text-purple-400', glow: 'shadow-[0_0_15px_rgba(168,85,247,0.1)]' },
+        { id: 'prompt', label: 'Prompt Builder', icon: Image, color: 'text-purple-400', bgColor: 'bg-purple-400', hoverColor: 'group-hover/navitem:text-purple-400', glow: 'shadow-[0_0_15px_rgba(168,85,247,0.1)]' },
         { id: 'creator', label: 'Creator', icon: Camera, color: 'text-emerald-400', bgColor: 'bg-emerald-400', hoverColor: 'group-hover/navitem:text-emerald-400', glow: 'shadow-[0_0_15px_rgba(52,211,153,0.1)]' },
         { id: 'influencer', label: 'AI Influencer', icon: Users, color: 'text-[#bef264]', bgColor: 'bg-[#bef264]', hoverColor: 'group-hover/navitem:text-[#bef264]', glow: 'shadow-[0_0_15px_rgba(190,242,100,0.1)]' },
         { id: 'directors-cut', label: "Director's Cut", icon: Clapperboard, color: 'text-cyan-400', bgColor: 'bg-cyan-400', hoverColor: 'group-hover/navitem:text-cyan-400', glow: 'shadow-[0_0_15px_rgba(34,211,238,0.1)]' },
         { id: 'director-studio', label: "Director Studio", icon: Video, color: 'text-orange-400', bgColor: 'bg-orange-400', hoverColor: 'group-hover/navitem:text-orange-400', glow: 'shadow-[0_0_15px_rgba(251,146,60,0.1)]' },
-        { id: 'ugc', label: 'UGC Engine', icon: Sparkles, color: 'text-amber-400', bgColor: 'bg-amber-400', hoverColor: 'group-hover/navitem:text-amber-400', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.1)]' },
+        { id: 'ugc', label: 'UGC Engine', icon: Megaphone, color: 'text-amber-400', bgColor: 'bg-amber-400', hoverColor: 'group-hover/navitem:text-amber-400', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.1)]' },
         { id: 'assets', label: 'Assets Library', icon: FolderOpen, color: 'text-blue-400', bgColor: 'bg-blue-400', hoverColor: 'group-hover/navitem:text-blue-400', glow: 'shadow-[0_0_15px_rgba(96,165,250,0.1)]' },
         { id: 'settings', label: 'Settings', icon: Settings, color: 'text-neutral-300', bgColor: 'bg-neutral-300', hoverColor: 'group-hover/navitem:text-neutral-300', glow: 'shadow-[0_0_15px_rgba(163,163,163,0.4)]' },
         ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: Shield, color: 'text-red-500', bgColor: 'bg-red-500', hoverColor: 'group-hover/navitem:text-red-500', glow: 'shadow-[0_0_15px_rgba(248,113,113,0.1)]' }] : []),
@@ -140,7 +140,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                 )}
             </div>
 
-            <nav className="flex-1 px-2.5 space-y-1 relative" onMouseLeave={() => mouseY.set(Infinity)}>
+            <nav className="flex-1 px-2.5 space-y-2 relative" onMouseLeave={() => mouseY.set(Infinity)}>
                 {navItems.map((item) => (
                     <SidebarNavItem
                         key={item.id}
