@@ -355,7 +355,7 @@ function VCell({ cell, style = {} }) {
 // ═══════════════════════════════════════════════════════════════
 //  PIPELINE SECTION
 // ═══════════════════════════════════════════════════════════════
-function PipelineSection() {
+function PipelineSection({ isMobile }) {
   const [active, setActive] = useState(0);
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: '-100px' });
@@ -1050,7 +1050,7 @@ export default function LandingPage({ onEnter, onPricing }) {
       </Reveal>
 
       {/* ══════ PIPELINE ══════ */}
-      <PipelineSection />
+      <PipelineSection isMobile={isMobile} />
 
       {/* ══════ FEATURES ══════ */}
       <div style={{
