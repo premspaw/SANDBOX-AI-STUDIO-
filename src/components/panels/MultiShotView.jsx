@@ -60,8 +60,12 @@ export const MultiShotView = ({
 
         const res = await spend('image_grid_multishot');
 
-        if (!res || (!res.success && res.reason !== 'unauthenticated')) {
-            alert("Not enough shorts or " + (res?.reason || "error"));
+        if (!res || !res.success) {
+            if (res?.reason === 'unauthenticated') {
+                useAppStore.getState().setShowingAuthModal(true);
+            } else {
+                alert("Not enough shorts or " + (res?.reason || "error"));
+            }
             return;
         }
 
@@ -189,7 +193,7 @@ export const MultiShotView = ({
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
 
             <div className="w-full lg:w-1/3 min-w-[300px] flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-1">
-                <div className="surface-glass rounded-2xl p-4 flex flex-col gap-4 border border-white/5">
+                <div className="surface-glass rounded-2xl p-4 flex flex-col gap-4 border border-white/5 flex-1">
                     <h3 className="text-xs font-black text-white uppercase flex items-center gap-2">
                         <Grid className="w-4 h-4 text-[#D4FF00]" />
                         Multi-Angle Setup

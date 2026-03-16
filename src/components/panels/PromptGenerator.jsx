@@ -1850,8 +1850,12 @@ export function PromptGenerator({ onUpscale }) {
 
         // Deduct shorts before starting
         const res = await spend(costKey);
-        if (!res || (!res.success && res.reason !== 'unauthenticated')) {
-            alert("Not enough shorts or " + (res?.reason || "error"));
+        if (!res || !res.success) {
+            if (res?.reason === 'unauthenticated') {
+                useAppStore.getState().setShowingAuthModal(true);
+            } else {
+                alert("Not enough shorts or " + (res?.reason || "error"));
+            }
             return;
         }
 
@@ -1989,8 +1993,12 @@ export function PromptGenerator({ onUpscale }) {
 
         // Cost check BEFORE upscaling
         const res = await spend('image_upscale_4k');
-        if (!res || (!res.success && res.reason !== 'unauthenticated')) {
-            alert("Not enough shorts or " + (res?.reason || "error"));
+        if (!res || !res.success) {
+            if (res?.reason === 'unauthenticated') {
+                useAppStore.getState().setShowingAuthModal(true);
+            } else {
+                alert("Not enough shorts or " + (res?.reason || "error"));
+            }
             return;
         }
 

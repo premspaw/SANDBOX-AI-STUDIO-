@@ -72,7 +72,7 @@ function StarField() {
     return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, zIndex: 0, opacity: 0.6 }} />;
 }
 
-export default function AuthPage({ onAuthSuccess }) {
+export default function AuthPage({ onAuthSuccess, isModal = false }) {
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -189,8 +189,8 @@ export default function AuthPage({ onAuthSuccess }) {
 
     return (
         <div style={{
-            height: '100vh',
-            background: T.bg,
+            height: isModal ? 'auto' : '100vh',
+            background: isModal ? 'transparent' : T.bg,
             color: T.white,
             fontFamily: "'Syne',sans-serif",
             display: 'flex',
@@ -200,12 +200,12 @@ export default function AuthPage({ onAuthSuccess }) {
             overflow: 'hidden',
         }}>
             {/* ── Background Layer ── */}
-            <StarField />
+            {!isModal && <StarField />}
 
             {/* Ambient Nebula Glows */}
             <div style={{
                 position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
-                background: 'radial-gradient(circle at 20% 30%, rgba(200,241,53,0.06) 0%, transparent 60%), radial-gradient(circle at 80% 70%, rgba(0,255,224,0.04) 0%, transparent 60%)',
+                background: isModal ? 'transparent' : 'radial-gradient(circle at 20% 30%, rgba(200,241,53,0.06) 0%, transparent 60%), radial-gradient(circle at 80% 70%, rgba(0,255,224,0.04) 0%, transparent 60%)',
             }} />
 
             {/* ── Main Layout Container ── */}
@@ -213,12 +213,12 @@ export default function AuthPage({ onAuthSuccess }) {
                 position: 'relative',
                 zIndex: 10,
                 width: '100%',
-                height: '100vh',
+                height: isModal ? 'auto' : '100vh',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '20px',
+                padding: isModal ? '0px' : '20px',
             }}>
 
                 {/* Branding Section */}

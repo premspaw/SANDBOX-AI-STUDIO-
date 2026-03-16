@@ -16,6 +16,7 @@ import { supabase } from './lib/supabase'
 import { initFaviconAnimation } from './utils/favicon'
 import { Toast } from './components/common/Toast'
 import { useAppStore } from './store'
+import { X } from 'lucide-react'
 
 const FULL_HEIGHT_TABS = new Set([
   'home',
@@ -95,24 +96,10 @@ function App() {
     setActiveTab('creator')
   }
 
-  // Protected tabs — require login
-  const protectedTabs = new Set([
-    'prompt', 'influencer', 'assets', 'creator',
-    'directors-cut', 'director-studio', 'ugc',
-    'forge', 'playground', 'settings'
-  ])
+  if (!authChecked) return null; // wait for session check
 
-  // If trying to access protected tab without login → redirect to auth
-  if (!authChecked) return null // wait for session check
-
-  if (protectedTabs.has(activeTab) && !user) {
-    return (
-      <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
-        <AuthPage onAuthSuccess={handleAuthSuccess} />
-        <Toast />
-      </Layout>
-    )
-  }
+  const isShowingAuthModal = useAppStore(state => state.isShowingAuthModal);
+  const setShowingAuthModal = useAppStore(state => state.setShowingAuthModal);
 
   const tabComponents = {
     home: <LandingPage onEnter={handleEnterStudio} onPricing={() => setActiveTab('pricing')} />,
@@ -181,6 +168,25 @@ function App() {
             >
                Skip for now
             </button>
+          </div>
+        </div>
+      )}
+
+      {isShowingAuthModal && !user && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-[99999]">
+          <div className="relative bg-zinc-950 border border-white/5 rounded-3xl w-full max-w-lg aspect-auto shadow-2xl p-2 flex flex-col items-center">
+            
+            <button 
+              onClick={() => setShowingAuthModal(false)}
+              className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors z-[100]"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-full flex-1 overflow-y-auto max-h-[85vh]">
+              <AuthPage onAuthSuccess={(u) => { setShowingAuthModal(false); setUser(u); }} isModal={true} />
+            </div>
+
           </div>
         </div>
       )}

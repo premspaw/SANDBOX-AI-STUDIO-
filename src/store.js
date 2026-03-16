@@ -22,6 +22,9 @@ export const useAppStore = create((set, get) => ({
     cachedAssets: null,
     cachedAssetsUserId: null,
     isAssetsLoading: false,
+    isShowingAuthModal: false,
+
+    setShowingAuthModal: (val) => set({ isShowingAuthModal: val }),
 
     clearSession: () => {
         set({
@@ -527,7 +530,6 @@ export const useAppStore = create((set, get) => ({
 
     spendShorts: async (userId, amount, reason) => {
         const current = get().userShorts;
-        if (current < amount) return { success: false, reason: 'insufficient' };
 
         // Optimistic update
         set({ userShorts: current - amount });

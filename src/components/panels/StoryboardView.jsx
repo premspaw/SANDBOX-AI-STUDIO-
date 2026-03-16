@@ -78,11 +78,13 @@ export const StoryboardView = ({
         // Cost check BEFORE generation
         const res = await spend('storyboard_gen');
 
-        if (!res || (!res.success && res.reason !== 'unauthenticated')) {
-            alert("Not enough shorts or " + (res?.reason || "error"));
+        if (!res || !res.success) {
+            if (res?.reason === 'unauthenticated') {
+                useAppStore.getState().setShowingAuthModal(true);
+            } else {
+                alert("Not enough shorts or " + (res?.reason || "error"));
+            }
             return;
-        } else if (res && !res.success && res.reason === 'unauthenticated') {
-            console.warn("Generating in unauthenticated local mode without deducting Shorts.");
         }
 
         setIsGenerating(true);
@@ -228,7 +230,7 @@ export const StoryboardView = ({
             {/* ── LEFT COLUMN: Setup & Brief ── */}
             <div className="w-full lg:w-1/3 min-w-[300px] flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-1">
 
-                <div className="surface-glass rounded-2xl p-4 md:p-5 flex flex-col gap-4 border border-white/5">
+                <div className="surface-glass rounded-2xl p-4 md:p-5 flex flex-col gap-4 border border-white/5 flex-1">
                     <h3 className="text-sm md:text-xs font-black text-white uppercase flex items-center gap-2">
                         <Layers className="w-5 h-5 md:w-4 md:h-4 text-[#D4FF00]" />
                         Concept & Refs
