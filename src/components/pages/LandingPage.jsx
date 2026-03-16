@@ -861,7 +861,7 @@ export default function LandingPage({ onEnter, onPricing }) {
             color: T.lime, textTransform: 'uppercase', marginBottom: 20, position: 'relative', zIndex: 10
           }}
         >
-          <BrandLogo size={12} className="opacity-80" />
+          <BrandLogo size={20} className="opacity-80" />
           ZEROLENS
         </motion.div>
 

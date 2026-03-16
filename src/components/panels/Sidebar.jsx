@@ -123,7 +123,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                 {!isCollapsed && (
                     <div>
                         <button onClick={() => setActiveTab('home')} className="flex items-center gap-3 hover:opacity-80 transition-opacity focus:outline-none group">
-                            <BrandLogo className="w-8 h-8 drop-shadow-[0_0_8px_rgba(212,255,0,0.3)]" />
+                            <BrandLogo size={40} className="w-10 h-10 drop-shadow-[0_0_8px_rgba(212,255,0,0.3)]" />
                             <div className="flex flex-col items-start mt-1">
                                 <h1 className="text-[20px] font-black text-metallic transition-all tracking-tighter uppercase italic leading-none">
                                     ZEROLENS
@@ -135,7 +135,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                 )}
                 {isCollapsed && (
                     <button onClick={() => setActiveTab('home')} className="w-full flex justify-center hover:opacity-80 transition-opacity focus:outline-none cursor-pointer">
-                        <BrandLogo className="w-8 h-8 drop-shadow-[0_0_8px_rgba(212,255,0,0.3)]" />
+                        <BrandLogo size={40} className="w-10 h-10 drop-shadow-[0_0_8px_rgba(212,255,0,0.3)]" />
                     </button>
                 )}
             </div>
