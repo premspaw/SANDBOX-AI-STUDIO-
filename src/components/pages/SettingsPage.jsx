@@ -55,11 +55,17 @@ export default function SettingsPage() {
                 updated_at: new Date().toISOString()
             };
 
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('profiles')
-                .upsert(payload, { onConflict: 'id' });
+                .upsert(payload, { onConflict: 'id' })
+                .select('*')
+                .single();
 
             if (error) throw error;
+            if (data) {
+                setUserProfile(data);
+                setFullName(data.full_name || '');
+            }
             setMessage({ type: 'success', text: 'Settings updated successfully!' });
             await fetchUserProfile(user.id);
         } catch (err) {

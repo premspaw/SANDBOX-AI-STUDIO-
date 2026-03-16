@@ -26,6 +26,7 @@ import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store';
 import { getApiUrl, API_BASE_URL } from '../../config/apiConfig';
+import { LANDING_ASSETS } from '../../config/landingAssets';
 
 const API = API_BASE_URL;
 
@@ -307,9 +308,32 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
             const dbImages = (dbAssets || []).filter(a => a.type === 'image' || !a.type);
             const dbVideos = (dbAssets || []).filter(a => a.type === 'video');
 
+            const sharedGallery = Array.isArray(LANDING_ASSETS?.gallery) ? LANDING_ASSETS.gallery : [];
+            const sharedVideos = [LANDING_ASSETS?.heroBackground, LANDING_ASSETS?.pipelineDemo]
+                .filter(Boolean)
+                .map((url, idx) => ({
+                    id: `shared-video-${idx}`,
+                    type: 'video',
+                    url,
+                    name: idx === 0 ? 'Landing Hero Video' : 'Pipeline Demo Video',
+                    created_at: new Date(0).toISOString(),
+                    isShared: true,
+                }));
+            const sharedImages = sharedGallery
+                .filter(item => item?.type !== 'video')
+                .map((item, idx) => ({
+                    id: item.id || `shared-image-${idx}`,
+                    type: 'image',
+                    url: item.url,
+                    image: item.url,
+                    name: item.title || `Landing Gallery ${idx + 1}`,
+                    created_at: new Date(0).toISOString(),
+                    isShared: true,
+                }));
+
             const newAssets = {
-                images: dbImages,
-                videos: dbVideos,
+                images: [...sharedImages, ...dbImages],
+                videos: [...sharedVideos, ...dbVideos],
                 models: [
                     { id: 'm1', name: 'GPT Image 1.5', type: 'Native', size: 'N/A', date: 'Active' },
                     { id: 'm2', name: 'Flux Pro', type: 'Replicate', size: 'N/A', date: 'Active' },

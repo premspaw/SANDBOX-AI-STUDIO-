@@ -23,7 +23,7 @@ export function MobileNav({ activeTab, setActiveTab }) {
         { id: 'director-studio', label: "Director Studio", icon: Video },
         { id: 'ugc', label: 'UGC Engine', icon: Sparkles },
         { id: 'settings', label: 'Settings', icon: Settings },
-        { id: 'admin', label: 'Admin', icon: Shield, color: 'text-red-500' },
+        ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: Shield, color: 'text-red-500' }] : []),
     ];
 
     return (

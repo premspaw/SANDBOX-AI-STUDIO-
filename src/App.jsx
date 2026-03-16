@@ -94,7 +94,7 @@ function App() {
   const protectedTabs = new Set([
     'prompt', 'influencer', 'assets', 'creator',
     'directors-cut', 'director-studio', 'ugc',
-    'forge', 'playground', 'admin', 'settings'
+    'forge', 'playground', 'settings'
   ])
 
   // If trying to access protected tab without login → redirect to auth

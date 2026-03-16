@@ -1210,6 +1210,44 @@ async function uploadVideoToSupabase(videoBuffer, userId) {
 }
 
 /**
+ * Uploads an image buffer to Supabase Storage and returns the public URL.
+ */
+async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg') {
+    const ext = mimeType.split('/')[1] || 'jpg';
+    const name = `gen_${userId || 'anon'}_${Date.now()}.${ext}`;
+    const subPath = `generated/${name}`;
+    
+    if (supabase) {
+        try {
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('assets')
+                .upload(subPath, imageBuffer, { contentType: mimeType, upsert: true });
+            
+            if (!uploadError) {
+                const { data } = supabase.storage.from('assets').getPublicUrl(subPath);
+                if (data?.publicUrl) {
+                    console.log(`[IMAGE-PROD] Image uploaded to Supabase: ${data.publicUrl}`);
+                    // Also save metadata to DB
+                    const insertData = {
+                        name, type: 'image', path: subPath,
+                        url: data.publicUrl,
+                        size: (imageBuffer.length / 1024).toFixed(2) + ' KB',
+                        created_at: new Date().toISOString()
+                    };
+                    if (userId) insertData.user_id = userId;
+                    await supabase.from('assets').insert([insertData]);
+                    return data.publicUrl;
+                }
+            }
+        } catch (e) {
+            console.warn('[IMAGE-PROD] Supabase upload exception:', e.message);
+        }
+    }
+    // Fallback
+    return `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
+}
+
+/**
  * Resolves a frame image (base64 or URL) and uploads it to Google AI Files API
  * if necessary, returning a { fileUri, mimeType } object for Veo.
  */
@@ -1733,7 +1771,11 @@ async function handleGoogle(req, res) {
                 throw new Error(safetyFeedback ? "Content safety block triggered." : "AI engine returned an empty frame.");
             }
 
-            const finalUrl = `data:${outputPart.inlineData.mimeType};base64,${outputPart.inlineData.data}`;
+            const finalUrl = await uploadImageToSupabase(
+                Buffer.from(outputPart.inlineData.data, 'base64'),
+                userId,
+                outputPart.inlineData.mimeType
+            );
             return res.json({ url: finalUrl });
         }
     } catch (error) {
