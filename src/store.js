@@ -268,9 +268,11 @@ export const useAppStore = create((set, get) => ({
             metadata: character.metadata || character
         };
 
-        // --- LOCAL PERSISTENCE MIRROR (Emergency Fallback) ---
+        // --- LOCAL PERSISTENCE MIRROR (Emergency Fallback, per-user scoped) ---
         try {
-            const raw = localStorage.getItem('local_vault');
+            const { data: { user } } = await supabase.auth.getUser();
+            const vaultKey = `local_vault:${user?.id || 'anonymous'}`;
+            const raw = localStorage.getItem(vaultKey);
             let vault = raw ? JSON.parse(raw) : [];
 
             // Check if already exists to prevent duplicates
@@ -282,7 +284,7 @@ export const useAppStore = create((set, get) => ({
             }
 
             // Keep only last 20 characters locally to prevent localStorage bloat
-            localStorage.setItem('local_vault', JSON.stringify(vault.slice(0, 20)));
+            localStorage.setItem(vaultKey, JSON.stringify(vault.slice(0, 20)));
             console.log("[STORE] Character mirrored to localStorage.");
         } catch (e) {
             console.error("[STORE] Local vault sync failed:", e);

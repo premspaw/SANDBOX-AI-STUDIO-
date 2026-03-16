@@ -357,8 +357,14 @@ export function InfluencerStudio({ setActiveTab }) {
             console.log("InfluencerStudio: Fetching characters via Proxy...");
             setLoading(true);
 
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                setCharacters([]);
+                return;
+            }
+
             // 1. Try Proxy Fetch
-            const charResp = await fetch(`${API}/api/list-characters`).catch(() => null);
+            const charResp = await fetch(`${API}/api/list-characters?userId=${encodeURIComponent(user.id)}`).catch(() => null);
             if (charResp && charResp.ok) {
                 const charData = await charResp.json();
                 const proxyChars = charData.characters || [];
@@ -387,7 +393,7 @@ export function InfluencerStudio({ setActiveTab }) {
             if (supabase) {
                 console.log("InfluencerStudio: Proxy failed or returned empty, trying direct fallback...");
                 try {
-                    const { data, error } = await supabase.from('characters').select('*').limit(5);
+                    const { data, error } = await supabase.from('characters').select('*').eq('user_id', user.id).limit(5);
                     if (!error && data) {
                         const formatted = data.map(c => ({
                             id: c.id,
@@ -884,6 +890,14 @@ export function InfluencerStudio({ setActiveTab }) {
                 {showCreateModal && (
                     <CreateCharacterModal
                         onClose={() => setShowCreateModal(false)}
+                        onCreate={handleCreateChar}
+                    />
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+() => setShowCreateModal(false)}
                         onCreate={handleCreateChar}
                     />
                 )}

@@ -1589,12 +1589,13 @@ export function PromptGenerator({ onUpscale }) {
         if (!supabase) return;
         try {
             console.log('[PromptGenerator] Loading recent frames from DB...');
-            let query = supabase.from('assets').select('*');
-            
-            // If we have a user, only show their assets. Otherwise show all (historical/public)
-            if (userProfile?.id) {
-                query = query.eq('user_id', userProfile.id);
+            if (!userProfile?.id) {
+                setFrames([]);
+                console.log('[PromptGenerator] No user profile found; skipping historical frames load.');
+                return;
             }
+
+            let query = supabase.from('assets').select('*').eq('user_id', userProfile.id);
             
             const { data: assets, error } = await query
                 .order('created_at', { ascending: false })

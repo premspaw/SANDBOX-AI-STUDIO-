@@ -1834,14 +1834,13 @@ app.get('/api/list-assets', async (req, res) => {
     try {
         const { userId } = req.query;
         let allImages = [];
+        if (!userId || userId === 'null' || userId === 'undefined' || userId === '') {
+            return res.json({ images: [], videos: [], upscaled: [] });
+        }
         if (supabase) {
             console.log("[SERVER] Checking Supabase for assets (IPv4)...");
             try {
-                // If the user_id exists, filter by it so the history is per-user
-                let query = 'assets?select=*&order=created_at.desc&limit=100';
-                if (userId) {
-                    query = `assets?user_id=eq.${userId}&select=*&order=created_at.desc&limit=100`;
-                }
+                const query = `assets?user_id=eq.${userId}&select=*&order=created_at.desc&limit=100`;
                 const data = await supabaseRestGet(query);
                 const dbFormatted = data.map(a => ({
                     id: a.id,
@@ -1906,13 +1905,14 @@ app.get('/api/list-characters', async (req, res) => {
         const { userId } = req.query;
         if (!supabase) return res.json({ characters: [] });
 
+        if (!userId || userId === 'null' || userId === 'undefined' || userId === '') {
+            return res.json({ characters: [] });
+        }
+
         let dbData = [];
         console.log("[SERVER] Fetching characters via REST (IPv4)...");
         try {
-            let q = 'characters?select=*&order=timestamp.desc&limit=50';
-            if (userId && userId !== 'null' && userId !== 'undefined' && userId !== '') {
-                q = `characters?or=(user_id.eq.${userId},user_id.is.null)&select=*&order=timestamp.desc&limit=50`;
-            }
+            const q = `characters?user_id=eq.${userId}&select=*&order=timestamp.desc&limit=50`;
 
             // Add AbortController for timeout
             const controller = new AbortController();
@@ -3670,4 +3670,6 @@ app.get('/api/kling/status/:requestId', async (req, res) => {
 httpServer.listen(port, '0.0.0.0', () => {
     console.log(`Server running at http://localhost:${port}`);
     console.log(`WebSocket server active on ws://localhost:${port}`);
+});
+;
 });

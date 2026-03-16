@@ -223,18 +223,27 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         console.log("AssetsLibrary: fetchAssets starting [PARALLEL_PROXY_MODE]...");
         setLoading(true);
         try {
-            // 1. Fetch images from assets table
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                setAssets({ images: [], videos: [], characters: [] });
+                setLoading(false);
+                return;
+            }
+
+            // 1. Fetch images from assets table for current user only
             const { data: dbAssets, error: imgError } = await supabase
                 .from("assets")
                 .select("*")
+                .eq("user_id", user.id)
                 .order("created_at", { ascending: false });
 
             if (imgError) console.error("Images error:", imgError.message);
 
-            // 2. Fetch characters from CHARACTERS table ← key fix
+            // 2. Fetch characters from CHARACTERS table for current user only
             const { data: dbCharacters, error: charError } = await supabase
                 .from("characters")
                 .select("*")
+                .eq("user_id", user.id)
                 .order("timestamp", { ascending: false });
 
             if (charError) console.error("Characters error:", charError.message);
@@ -259,10 +268,11 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 };
             });
 
-            // --- LOCAL MIRROR MERGE (Emergency Fallback) ---
+            // --- LOCAL MIRROR MERGE (Emergency Fallback, per-user scoped) ---
             let localCharacters = [];
             try {
-                const raw = localStorage.getItem('local_vault');
+                const vaultKey = `local_vault:${user.id}`;
+                const raw = localStorage.getItem(vaultKey);
                 if (raw) {
                     const parsed = JSON.parse(raw);
                     localCharacters = parsed.map(c => {
