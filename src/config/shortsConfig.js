@@ -23,4 +23,8 @@ export const SHORTS_COST = {
 
     // Storyboard
     storyboard_gen: 5,
+
+    // Identity & Forge
+    identity_kit: 15,
+    movie_matrix: 10,
 };

@@ -1355,7 +1355,7 @@ export function PromptGenerator({ onUpscale }) {
         audioPrompts: { dialogue: '', sfx: '', ambient: '', music: '' },
         duration: "4 Seconds", resolution: "1080p",
         searchGrounding: false, lightingTransform: 'none', focusPoint: 'none',
-        multishotMode: 'single', quality: '2k',
+        multishotMode: 'single',
     })
 
     const [frames, setFrames] = useState([])
@@ -1827,11 +1827,11 @@ export function PromptGenerator({ onUpscale }) {
             if (selectedModel === 'gemini-3-pro-image-preview' || selectedModel === 'nano-banana-pro' || selectedModel.includes('3.0-pro')) costKey = 'image_nano_banana_pro';
         }
 
-        if (selectedModel === 'veo' || selectedModel === 'veo-fast' || selectedModel === 'kling' || selectedModel.includes('3.0-pro') || selectedModel.includes('3.1-flash')) {
-            if (!canAfford(costKey)) {
-                alert('Not enough Shorts! 🎞 Top up to continue.');
-                return;
-            }
+        // Deduct shorts before starting
+        const res = await spend(costKey);
+        if (!res || (!res.success && res.reason !== 'unauthenticated')) {
+            alert("Not enough shorts or " + (res?.reason || "error"));
+            return;
         }
 
         const newFrameId = `frame-${Date.now()}`
@@ -1966,6 +1966,13 @@ export function PromptGenerator({ onUpscale }) {
             userId: user?.id || 'anonymous'
         });
 
+        // Cost check BEFORE upscaling
+        const res = await spend('image_upscale_4k');
+        if (!res || (!res.success && res.reason !== 'unauthenticated')) {
+            alert("Not enough shorts or " + (res?.reason || "error"));
+            return;
+        }
+
         setIsLoading(true)
         setFrames(prev => prev.map(f => f.id === frameId ? { ...f, loading: true } : f))
 
@@ -2043,6 +2050,13 @@ export function PromptGenerator({ onUpscale }) {
             console.error('[CROP_UPSCALE] No image found to upscale.');
             alert('Upscale Error: Please select an image.');
             return
+        }
+
+        // Cost check BEFORE upscaling
+        const res = await spend('image_upscale_4k');
+        if (!res || (!res.success && res.reason !== 'unauthenticated')) {
+            alert("Not enough shorts or " + (res?.reason || "error"));
+            return;
         }
 
         console.log('[CROP_UPSCALE] Initiating 4K refinement...');

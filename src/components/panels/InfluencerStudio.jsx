@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store';
 import { uploadAsset, saveCharacterToDb } from '../../services/supabaseService';
 import { getApiUrl, API_BASE_URL } from '../../config/apiConfig';
+import { useShorts } from '../../hooks/useShorts';
 
 const safeUUID = () => {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -319,6 +320,7 @@ export function InfluencerStudio({ setActiveTab }) {
     const [characters, setCharacters] = useState([]);
     const [selectedChar, setSelectedChar] = useState(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const { spend } = useShorts();
 
     const handleCreateNew = () => {
         if (setActiveTab) {
@@ -466,6 +468,15 @@ export function InfluencerStudio({ setActiveTab }) {
 
     const handleGenerate = async () => {
         if (!selectedChar) return;
+        
+        // Deduction check before generation
+        const costKey = mode === 'video' ? 'ugc_video_scene' : 'image_nano_banana_2';
+        const res = await spend(costKey);
+        if (!res || (!res.success && res.reason !== 'unauthenticated')) {
+            alert("Not enough shorts or " + (res?.reason || "error"));
+            return;
+        }
+
         setLoading(true);
         const bible = useAppStore.getState().universeBible;
 
@@ -535,6 +546,14 @@ export function InfluencerStudio({ setActiveTab }) {
             window.toast('This character has no reference photo. Create a new character with a photo to generate an Identity Kit.');
             return;
         }
+
+        // Deduction check
+        const res = await spend('identity_kit');
+        if (!res || (!res.success && res.reason !== 'unauthenticated')) {
+            alert("Not enough shorts or " + (res?.reason || "error"));
+            return;
+        }
+
         setKitLoading(true);
         setKit({ anchor: null, profile: null, closeUp: null, expression: null, halfBody: null, fullBody: null, spatialKit: null });
 

@@ -18,6 +18,7 @@ import { getIdentityPrompts } from '../../utils/identityPrompts';
 import { uploadAsset, saveCharacterToDb } from '../../services/supabaseService';
 import { getApiUrl, API_BASE_URL } from '../../config/apiConfig';
 import { supabase } from '../../lib/supabase';
+import { useShorts } from '../../hooks/useShorts';
 
 const API = API_BASE_URL;
 
@@ -128,6 +129,7 @@ const safeUUID = () => {
 
 export function ForgeView({ onComplete }) {
     const store = useAppStore();
+    const { spend } = useShorts();
     const [origin, setOrigin] = useState(null);
     const [faceAnchor, setFaceAnchor] = useState(null);
     const [costumeRef, setCostumeRef] = useState(null);
@@ -173,6 +175,14 @@ export function ForgeView({ onComplete }) {
 
     const handleForge = async () => {
         if (!origin) return;
+
+        // Deduction check before forging
+        const res = await spend('identity_kit');
+        if (!res || (!res.success && res.reason !== 'unauthenticated')) {
+            alert("Not enough shorts or " + (res?.reason || "error"));
+            return;
+        }
+
         setIsForging(true);
         setKit({ anchor: '', profile: '', expression: '', halfBody: '', fullBody: '', closeUp: '' });
 
@@ -227,6 +237,14 @@ export function ForgeView({ onComplete }) {
 
     const handleForgeMatrix = async () => {
         if (!faceAnchor && !costumeRef && !origin) return;
+
+        // Deduction check before matrix forging
+        const res = await spend('movie_matrix');
+        if (!res || (!res.success && res.reason !== 'unauthenticated')) {
+            alert("Not enough shorts or " + (res?.reason || "error"));
+            return;
+        }
+
         setIsForgingMatrix(true);
         setMatrixUrl('');
 

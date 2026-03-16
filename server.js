@@ -219,8 +219,8 @@ app.get('/api/health-check', (req, res) => {
 });
 const httpServer = http.createServer(app);
 const port = process.env.PORT || 3002;
-console.log(`[SERVER] AI Key loaded: ${process.env.GOOGLE_API_KEY ? process.env.GOOGLE_API_KEY.substring(0, 5) + '...' : 'MISSING'}`);
-console.log(`[SERVER] Kling Key loaded: ${process.env.KLING_API_KEY ? 'YES (***' + process.env.KLING_API_KEY.slice(-4) + ')' : 'MISSING'}`);
+console.log(`[SERVER] Google API key configured: ${process.env.GOOGLE_API_KEY ? 'YES' : 'NO'}`);
+console.log(`[SERVER] Kling API key configured: ${process.env.KLING_API_KEY ? 'YES' : 'NO'}`);
 
 // Storage Base URL for GCS Assets
 const storageBase = `https://storage.googleapis.com/${process.env.GCS_BUCKET_NAME || 'ai-cinemastudio-assets-569815811058'}`;
@@ -855,16 +855,18 @@ app.use((req, res, next) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-// Debug Env
-app.get('/api/debug/env', (req, res) => {
-    res.json({
-        node_env: process.env.NODE_ENV,
-        has_google_key: !!process.env.GOOGLE_API_KEY,
-        google_key_prefix: process.env.GOOGLE_API_KEY ? process.env.GOOGLE_API_KEY.substring(0, 5) : 'MISSING',
-        port: port,
-        time: new Date().toISOString()
+// Debug Env (development only)
+if (process.env.NODE_ENV !== 'production') {
+    app.get('/api/debug/env', (req, res) => {
+        res.json({
+            node_env: process.env.NODE_ENV || 'development',
+            has_google_key: !!process.env.GOOGLE_API_KEY,
+            has_kling_key: !!process.env.KLING_API_KEY,
+            port: port,
+            time: new Date().toISOString()
+        });
     });
-});
+}
 
 // --- Queue Status Polling Endpoints ---
 app.get('/api/job-status/:jobId', async (req, res) => {
