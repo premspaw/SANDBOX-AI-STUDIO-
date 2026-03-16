@@ -3107,6 +3107,35 @@ app.get('/api/get-landing-assets', async (req, res) => {
 });
 
 // Update Landing Page Assets Configuration
+app.get('/api/proxy/asset', async (req, res) => {
+    try {
+        const { url } = req.query;
+        if (!url) return res.status(400).send('URL is required');
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Failed to fetch asset: ${response.statusText}`);
+
+        res.set('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
+        res.set('Content-Length', response.headers.get('content-length'));
+        res.set('Accept-Ranges', 'bytes'); // Support video streaming/seeking
+
+        response.body.pipe(res);
+
+        // Handle mid-stream crashes
+        response.body.on('error', (err) => {
+             console.error('[PROXY-STREAM-ERR]', err.message);
+             if (!res.headersSent) {
+                 res.status(500).send('Stream crashed');
+             } else {
+                 res.end();
+             }
+        });
+    } catch (error) {
+        console.error('[PROXY-ERR]', error.message);
+        res.status(500).send('Proxy failure');
+    }
+});
+
 app.post('/api/update-landing-assets', async (req, res) => {
     try {
         const { assets } = req.body;
