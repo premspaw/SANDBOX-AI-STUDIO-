@@ -604,7 +604,12 @@ async function resolveImageForGemini(imageUrl, gcsUri) {
     }
 
     try {
-        const resp = await fetch(imageUrl);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 seconds safety timeout
+        
+        const resp = await fetch(imageUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const buffer = await resp.buffer();
         const mimeType = resp.headers.get('content-type') || 'image/jpeg';
@@ -614,7 +619,7 @@ async function resolveImageForGemini(imageUrl, gcsUri) {
             data: buffer.toString('base64')
         };
     } catch (err) {
-        console.error('[resolveImageForGemini] Fetch failed:', err.message);
+        console.error('[resolveImageForGemini] Fetch failed or timed out:', err.message);
         return null;
     }
 }
