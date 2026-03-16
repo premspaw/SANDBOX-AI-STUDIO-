@@ -31,7 +31,7 @@ const SCENE_TYPES = [
     verbs: ["leans toward", "stares down", "turns away from", "steps closer to", "whispers to", "faces across"],
   },
   {
-    type: "CHASE / MOVEMENT", icon: "🏃", color: "#84CC16",
+    type: "CHASE / MOVEMENT", icon: "🏃", color: "#D4FF00",
     formula: "@A  sprints [direction] through [location],  @B [distance] behind,  [time]",
     bad: "@Vikram running away",
     good: "@Vikram sprints through a narrow rain-soaked alley in Chennai, @Arjun 20 feet behind, neon signs blurring past, midnight, both breathing hard",
@@ -69,15 +69,15 @@ const SCENE_TYPES = [
 ];
 
 const RULES = [
-  { num: "01", title: "START WITH @CHARACTER", desc: "Always begin with @CharacterName — this pulls their locked face and costume from your library automatically.", color: "#84CC16" },
+  { num: "01", title: "START WITH @CHARACTER", desc: "Always begin with @CharacterName — this pulls their locked face and costume from your library automatically.", color: "#D4FF00" },
   { num: "02", title: "VERB IS EVERYTHING", desc: "Don't say 'fight' — say 'grabs collar', 'throws punch', 'slams against wall'. Specific action = better image.", color: "#D4AF37" },
-  { num: "03", title: "ADD A LOCATION", desc: "Not just 'street' — 'rain-soaked narrow alley, Mumbai, night'. Location = light + texture + atmosphere.", color: "#84CC16" },
+  { num: "03", title: "ADD A LOCATION", desc: "Not just 'street' — 'rain-soaked narrow alley, Mumbai, night'. Location = light + texture + atmosphere.", color: "#D4FF00" },
   { num: "04", title: "TIME / LIGHT CONDITION", desc: "Golden hour · Midnight · Overcast · Harsh noon. Light is the single biggest factor in cinematic quality.", color: "#D4AF37" },
-  { num: "05", title: "ONE EMOTION WORD", desc: "End with: desperate · menacing · exhausted · triumphant. Sets the tone of the entire generated image.", color: "#84CC16" },
+  { num: "05", title: "ONE EMOTION WORD", desc: "End with: desperate · menacing · exhausted · triumphant. Sets the tone of the entire generated image.", color: "#D4FF00" },
 ];
 
 const FORMULA = [
-  { label: "YOU WRITE", content: "Scene description with @characters", color: "#84CC16" },
+  { label: "YOU WRITE", content: "Scene description with @characters", color: "#D4FF00" },
   { label: "AUTO — CAMERA", content: "Shot on ARRI Alexa 35", color: "#D4AF37" },
   { label: "AUTO — ANGLE", content: "Low Angle shot", color: "#D4AF37" },
   { label: "AUTO — LENS", content: "18mm lens, f/8", color: "#D4AF37" },
@@ -89,7 +89,7 @@ const COMPOSITIONS = [
   {
     name: "RULE OF THIRDS",
     icon: "⊞",
-    color: "#84CC16",
+    color: "#D4FF00",
     tag: "UNIVERSAL · SAFE · ALWAYS WORKS",
     what: "Divide frame into 9 equal parts. Place subject at one of the 4 intersection points — never dead center.",
     bestFor: ["Portraits", "Landscapes", "Dialogue scenes", "Product shots", "Any scene when unsure"],
@@ -206,7 +206,7 @@ const COMPOSITIONS = [
   {
     name: "TWO-POINT",
     icon: "◉◉",
-    color: "#84CC16",
+    color: "#D4FF00",
     tag: "DIALOGUE · BALANCE · CONNECTION",
     what: "Two subjects placed at opposite third points of the frame, facing each other or looking in the same direction. Shows relationship and balance.",
     bestFor: ["Dialogue scenes", "Two-character confrontations", "Partnership/team shots", "Before and after reveals", "Relationship dynamics"],
@@ -218,7 +218,15 @@ const COMPOSITIONS = [
   },
 ];
 
-const C = { bg:"#080808", surface:"#0f0f0f", lime:"#84CC16", limeDark:"#3D6B0A", gold:"#D4AF37", text:"#888", border:"#1a1a1a" };
+const C = { 
+  bg: "#050505", 
+  surface: "#111111", 
+  lime: "#D4FF00", 
+  limeDark: "#3A4500", 
+  gold: "#D4FF00", 
+  text: "#A1A1AA", 
+  border: "rgba(255,255,255,0.08)" 
+};
 
 export default function CameraGuide() {
   const [open, setOpen] = useState(false);
@@ -230,22 +238,23 @@ export default function CameraGuide() {
   return (
     <>
       <style>{`
-        @keyframes fadeIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
-        @keyframes pulse{0%,100%{box-shadow:0 0 0 0 #84CC1644}50%{box-shadow:0 0 0 8px #84CC1600}}
-        .sb:hover{background:#84CC1611!important;color:#84CC16!important}
-        .xb:hover{background:#1a1a1a!important}
+        @keyframes fadeIn{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:scale(1)}}
+        @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(212,255,0,0.3)}50%{box-shadow:0 0 0 8px rgba(212,255,0,0)}}
+        .sb:hover{background:rgba(212,255,0,0.08)!important;color:#D4FF00!important}
+        .xb:hover{background:rgba(255,255,255,0.08)!important;color:white!important}
         ::-webkit-scrollbar{width:3px}
-        ::-webkit-scrollbar-track{background:#080808}
-        ::-webkit-scrollbar-thumb{background:#84CC16;border-radius:2px}
+        ::-webkit-scrollbar-track{background:#050505}
+        ::-webkit-scrollbar-thumb{background:#D4FF00;border-radius:2px}
       `}</style>
 
       {/* Corner button */}
       <div style={{position:"fixed",bottom:24,right:24,zIndex:9999}}>
         <button onClick={()=>setOpen(true)} style={{
-          width:48,height:48,borderRadius:"50%",background:"#0d2a03",
-          border:"1px solid #84CC16",color:"#84CC16",fontSize:20,cursor:"pointer",
-          display:"flex",alignItems:"center",justifyContent:"center",
-          animation:"pulse 2s ease-in-out infinite",boxShadow:"0 4px 20px #84CC1633"
+          width:52,height:52,borderRadius:"16px",background:"rgba(212,255,0,0.1)",
+          border:"1px solid rgba(212,255,0,0.4)",color:"#D4FF00",fontSize:22,cursor:"pointer",
+          display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(12px)",
+          animation:"pulse 2s ease-in-out infinite",boxShadow:"0 4px 24px rgba(212,255,0,0.15)",
+          transition:"all 0.2s"
         }}>🎥</button>
       </div>
 
@@ -259,7 +268,7 @@ export default function CameraGuide() {
             background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,
             width:"100%",maxWidth:860,maxHeight:window.innerWidth < 768 ? "98vh" : "92vh",overflow:"hidden",
             display:"flex",flexDirection:"column",animation:"fadeIn 0.2s ease",
-            boxShadow:"0 0 80px #84CC1611"
+            boxShadow:"0 0 80px #D4FF0011"
           }}>
 
             {/* Header */}
@@ -274,22 +283,22 @@ export default function CameraGuide() {
               gap: 12
             }}>
               <div style={{display:"flex",flexDirection: window.innerWidth < 768 ? "column" : "row", alignItems: window.innerWidth < 768 ? "flex-start" : "center", gap: window.innerWidth < 768 ? 12 : 16, width: "100%"}}>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:18}}>🎥</span>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:22}}>🎥</span>
                   <div>
-                    <div style={{fontFamily:"monospace",fontSize:11,fontWeight:700,color:C.gold,letterSpacing:3}}>STUDIO GUIDE</div>
-                    <div style={{fontFamily:"monospace",fontSize:8,color:"#444",letterSpacing:2}}>ZER∞LENS · AI CINEMA REFERENCE</div>
+                    <div style={{fontFamily:"sans-serif",fontSize:13,fontWeight:800,color:"#FFF",letterSpacing:2}}>STUDIO GUIDE</div>
+                    <div style={{fontFamily:"monospace",fontSize:9,color:"#71717A",letterSpacing:1.5}}>AI CINEMA REFERENCE</div>
                   </div>
                 </div>
-                <div style={{display:"flex",gap:4, overflowX: "auto", maxWidth: "100%", paddingBottom: 4, noScrollbar: true}}>
+                <div style={{display:"flex",gap:6, overflowX: "auto", maxWidth: "100%", paddingBottom: 4, noScrollbar: true}}>
                   {["CAMERA","SCENE WRITING","COMPOSITION"].map(t=>(
                     <button key={t} onClick={()=>setTab(t)} style={{
-                      padding:"5px 10px",borderRadius:999,fontFamily:"monospace",fontSize:8,
+                      padding:"6px 12px",borderRadius:999,fontFamily:"monospace",fontSize:10,
                       letterSpacing:1,fontWeight:700,cursor:"pointer",
                       whiteSpace: "nowrap",
-                      background:tab===t?C.lime:"transparent",
-                      color:tab===t?C.bg:"#555",
-                      border:`1px solid ${tab===t?C.lime:"#222"}`,transition:"all 0.15s"
+                      background:tab===t?C.lime:"rgba(255,255,255,0.03)",
+                      color:tab===t? "#000" : "#A1A1AA",
+                      border:`1px solid ${tab===t?C.lime:"rgba(255,255,255,0.08)"}`,transition:"all 0.15s"
                     }}>{t}</button>
                   ))}
                 </div>
@@ -297,9 +306,10 @@ export default function CameraGuide() {
               <button className="xb" onClick={()=>setOpen(false)} style={{
                 position: window.innerWidth < 768 ? "absolute" : "static",
                 top: 10, right: 10,
-                background:"transparent",border:`1px solid #222`,color:"#555",
-                width:30,height:30,borderRadius:8,cursor:"pointer",fontSize:16,
-                display:"flex",alignItems:"center",justifyContent:"center"
+                background:"rgba(255,255,255,0.05)",border:`1px solid rgba(255,255,255,0.1)`,color:"#FFF",
+                width:32,height:32,borderRadius:8,cursor:"pointer",fontSize:16,
+                display:"flex",alignItems:"center",justifyContent:"center",
+                transition:"all 0.15s"
               }}>×</button>
             </div>
 
@@ -321,7 +331,7 @@ export default function CameraGuide() {
                       width: window.innerWidth < 768 ? "auto" : "100%",
                       padding: window.innerWidth < 768 ? "6px 10px" : "10px 14px",
                       textAlign:"left",border:"none",
-                      background:cam===i?"#84CC1611":"transparent",
+                      background:cam===i?"#D4FF0011":"transparent",
                       borderLeft: window.innerWidth < 768 ? "none" : `2px solid ${cam===i?C.lime:"transparent"}`,
                       borderBottom: window.innerWidth < 768 ? `2px solid ${cam===i?C.lime:"transparent"}` : "none",
                       cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"all 0.15s",
@@ -330,7 +340,7 @@ export default function CameraGuide() {
                       <span style={{fontSize:14}}>{c.icon}</span>
                       <div>
                         <div style={{fontFamily:"monospace",fontSize:10,fontWeight:700,color:cam===i?C.lime:"#888"}}>{c.name.split(" ").slice(0,2).join(" ")}</div>
-                        <div style={{fontFamily:"monospace",fontSize:9,color:cam===i?"#84CC1688":"#333",marginTop:1}}>{c.name.split(" ").slice(2).join(" ")}</div>
+                        <div style={{fontFamily:"monospace",fontSize:9,color:cam===i?"#D4FF0088":"#333",marginTop:1}}>{c.name.split(" ").slice(2).join(" ")}</div>
                       </div>
                     </button>
                   ))}
@@ -354,7 +364,7 @@ export default function CameraGuide() {
                         <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:8}}>BEST FOR</div>
                         <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                           {c.bestFor.map((b,j)=>(
-                            <span key={j} style={{background:"#84CC1611",border:`1px solid ${C.limeDark}`,color:C.lime,borderRadius:999,padding:"4px 12px",fontFamily:"monospace",fontSize:10}}>{b}</span>
+                            <span key={j} style={{background:"#D4FF0011",border:`1px solid ${C.limeDark}`,color:C.lime,borderRadius:999,padding:"4px 12px",fontFamily:"monospace",fontSize:10}}>{b}</span>
                           ))}
                         </div>
                       </div>
@@ -391,7 +401,7 @@ export default function CameraGuide() {
                     {FORMULA.map((f,i)=>(
                       <div key={i} style={{marginBottom:6}}>
                         <div style={{fontFamily:"monospace",fontSize:7,color:f.color,letterSpacing:2,marginBottom:2}}>{f.label}</div>
-                        <div style={{background:f.color==="#84CC16"?"#84CC1611":"#0f0f0f",border:`1px solid ${f.color}22`,borderRadius:4,padding:"4px 8px",fontFamily:"monospace",fontSize:8,color:f.color==="#84CC16"?C.lime:"#666",lineHeight:1.4}}>{f.content}</div>
+                        <div style={{background:f.color==="#D4FF00"?"#D4FF0011":"#0f0f0f",border:`1px solid ${f.color}22`,borderRadius:4,padding:"4px 8px",fontFamily:"monospace",fontSize:8,color:f.color==="#D4FF00"?C.lime:"#666",lineHeight:1.4}}>{f.content}</div>
                       </div>
                     ))}
                   </div>
@@ -401,7 +411,7 @@ export default function CameraGuide() {
                     {SCENE_TYPES.map((s,i)=>(
                       <button key={i} className="sb" onClick={()=>setScene(i)} style={{
                         width:"100%",padding:"10px 14px",textAlign:"left",border:"none",
-                        background:scene===i?"#84CC1611":"transparent",
+                        background:scene===i?"#D4FF0011":"transparent",
                         borderLeft:`2px solid ${scene===i?s.color:"transparent"}`,
                         cursor:"pointer",transition:"all 0.15s",display:"flex",alignItems:"center",gap:8
                       }}>
@@ -496,7 +506,7 @@ export default function CameraGuide() {
                       width: window.innerWidth < 768 ? "auto" : "100%",
                       padding: window.innerWidth < 768 ? "6px 10px" : "10px 14px",
                       textAlign:"left",border:"none",
-                      background:comp===i?"#84CC1611":"transparent",
+                      background:comp===i?"#D4FF0011":"transparent",
                       borderLeft: window.innerWidth < 768 ? "none" : `2px solid ${comp===i?co.color:"transparent"}`,
                       borderBottom: window.innerWidth < 768 ? `2px solid ${comp===i?co.color:"transparent"}` : "none",
                       cursor:"pointer",transition:"all 0.15s",display:"flex",alignItems:"center",gap:10,
@@ -581,9 +591,9 @@ export default function CameraGuide() {
             )}
 
             {/* Footer */}
-            <div style={{padding:"10px 20px",borderTop:`1px solid ${C.border}`,background:C.bg,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontFamily:"monospace",fontSize:9,color:"#2a2a2a",letterSpacing:3}}>ZER∞LENS · STUDIO GUIDE</span>
-              <span style={{fontFamily:"monospace",fontSize:9,color:C.lime,letterSpacing:2}}>
+            <div style={{padding:"12px 20px",borderTop:`1px solid ${C.border}`,background:C.bg,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontFamily:"monospace",fontSize:9,color:"#3F3F46",letterSpacing:3}}>STUDIO GUIDE · REFERENCE</span>
+              <span style={{fontFamily:"monospace",fontSize:10,fontWeight:700,color:C.lime,letterSpacing:2}}>
                 {tab==="CAMERA"?`${cam+1} / ${CAMERAS.length} CAMERAS`:tab==="SCENE WRITING"?`${scene+1} / ${SCENE_TYPES.length} SCENE TYPES`:`${comp+1} / ${COMPOSITIONS.length} COMPOSITIONS`}
               </span>
             </div>

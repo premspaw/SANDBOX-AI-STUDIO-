@@ -70,16 +70,13 @@ export const StoryboardView = ({
     };
 
     const generateStoryboard = async () => {
-        alert("DEBUG: generateStoryboard clicked!");
         if (!sceneSettings.productImage && !sceneBrief) {
             alert("Please provide at least a Hero/Product image or a brief description.");
             return;
         }
 
-        alert("DEBUG: spending shorts next...");
         // Cost check BEFORE generation
         const res = await spend('storyboard_gen');
-        alert("DEBUG: spend returned: " + JSON.stringify(res));
 
         if (!res || (!res.success && res.reason !== 'unauthenticated')) {
             alert("Not enough shorts or " + (res?.reason || "error"));
@@ -94,7 +91,6 @@ export const StoryboardView = ({
         setStoryboardSlots(slots => slots.map(s => ({ ...s, loading: true, url: null })));
 
         try {
-            alert("DEBUG: reaching try block, payload assembly next...");
             // NOTE: In a real app, you'd send `sceneSettings` and `sceneBrief` to your backend
             // which would return 4 (or N) distinct images and prompts.
             // For now, we simulate calling the standard image generator 4 times (or using a dedicated SB endpoint).
