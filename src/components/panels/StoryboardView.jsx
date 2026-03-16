@@ -221,20 +221,20 @@ export const StoryboardView = ({
     // RENDER
     // ─────────────────────────────────────────────
     return (
-        <div className="flex-1 flex flex-col lg:flex-row gap-2 h-full overflow-hidden">
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 h-full overflow-hidden p-2 md:p-0">
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
 
             {/* ── LEFT COLUMN: Setup & Brief ── */}
             <div className="w-full lg:w-1/3 min-w-[300px] flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-1">
 
-                <div className="surface-glass rounded-2xl p-4 flex flex-col gap-4 border border-white/5">
-                    <h3 className="text-xs font-black text-white uppercase flex items-center gap-2">
-                        <Layers className="w-4 h-4 text-[#D4FF00]" />
+                <div className="surface-glass rounded-2xl p-4 md:p-5 flex flex-col gap-4 border border-white/5">
+                    <h3 className="text-sm md:text-xs font-black text-white uppercase flex items-center gap-2">
+                        <Layers className="w-5 h-5 md:w-4 md:h-4 text-[#D4FF00]" />
                         Concept & Refs
                     </h3>
 
                     {/* Reference Slots */}
-                    <div className="grid grid-cols-3 gap-1.5">
+                    <div className="grid grid-cols-3 gap-2 md:gap-1.5">
                         {[
                             { id: 'productImage', label: 'HERO', icon: Package },
                             { id: 'characterRef', label: 'CHAR', icon: Users },
@@ -306,11 +306,11 @@ export const StoryboardView = ({
                     style={{ borderColor: activeSlot?.url ? '#D4FF00' : 'rgba(255,255,255,0.05)' }}>
 
                     <div className="absolute top-4 left-4 z-10 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2">
-                        <span className="text-[10px] font-black text-[#D4FF00] uppercase tracking-wider">
+                        <span className="text-[11px] md:text-[10px] font-black text-[#D4FF00] uppercase tracking-wider">
                             {activeSlot?.isGrid ? '3x3 Master Grid' : `Shot ${storyboardSlots.indexOf(activeSlot)}`}
                         </span>
                         <div className="w-1 h-1 rounded-full bg-white/20" />
-                        <span className="text-[9px] text-white/50">{activeSlot?.duration || '1.0s'}</span>
+                        <span className="text-[10px] md:text-[9px] text-white/50">{activeSlot?.duration || '1.0s'}</span>
                     </div>
 
                     {activeSlot?.url ? (
@@ -327,8 +327,8 @@ export const StoryboardView = ({
                                                     className="cursor-pointer border border-white/5 transition-all flex items-center justify-center group/cell hover:bg-white/[0.15]"
                                                     onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.15)'}
                                                     onMouseLeave={e => e.target.style.background = 'transparent'}>
-                                                    <span className="text-[8px] font-black text-white/0 group-hover/cell:text-[#D4FF00]/80 uppercase tracking-widest px-2 py-1 rounded group-hover/cell:scale-110 transition-transform">
-                                                        Extract Shot {i + 1}
+                                                    <span className="text-[9px] md:text-[8px] font-black text-white/0 group-hover/cell:text-[#D4FF00] uppercase tracking-widest px-2 py-1 rounded group-hover/cell:scale-110 transition-transform text-center">
+                                                        Extract <br className="md:hidden" /> Shot {i + 1}
                                                     </span>
                                                 </div>
                                             ))}

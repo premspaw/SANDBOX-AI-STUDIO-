@@ -265,11 +265,9 @@ export const MultiShotView = ({
                                         <div className="w-full h-full grid grid-cols-3 grid-rows-3" style={{ pointerEvents: 'auto' }}>
                                             {[...Array(9)].map((_, i) => (
                                                 <div key={i} onClick={() => handleCellClick(Math.floor(i / 3), i % 3)}
-                                                    className="cursor-pointer border border-white/5 transition-all flex items-center justify-center group/cell hover:bg-white/[0.15]"
-                                                    onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.15)'}
-                                                    onMouseLeave={e => e.target.style.background = 'transparent'}>
-                                                    <span className="text-[8px] font-black text-white/0 group-hover/cell:text-[#D4FF00]/80 uppercase tracking-widest px-2 py-1 rounded group-hover/cell:scale-110 transition-transform">
-                                                        Extract Angle {i + 1}
+                                                    className="cursor-pointer border border-white/5 transition-all flex items-center justify-center group/cell hover:bg-white/[0.15] active:bg-[#D4FF00]/20">
+                                                    <span className="text-[8px] font-black text-[#D4FF00]/60 md:text-white/0 md:group-hover/cell:text-[#D4FF00]/80 uppercase tracking-widest px-1 py-0.5 rounded group-hover/cell:scale-110 transition-transform">
+                                                        {i + 1}
                                                     </span>
                                                 </div>
                                             ))}
@@ -281,8 +279,8 @@ export const MultiShotView = ({
                             <div className="absolute right-4 top-4 flex flex-col gap-2 z-20">
                                 {!activeSlot.isGrid && (
                                     <button onClick={() => sendToVideo(activeSlot)} className="p-3 bg-[#D4FF00]/90 hover:bg-[#D4FF00] rounded-xl text-black shadow-xl group flex items-center gap-2 transition-all">
-                                        <Film className="w-4 h-4" />
-                                        <span className="text-[10px] font-black uppercase w-0 overflow-hidden group-hover:w-auto transition-all whitespace-nowrap">Send to Video</span>
+                                        <Film className="w-4 h-4 md:w-5 md:h-5" />
+                                        <span className="text-[10px] font-black uppercase md:w-0 overflow-hidden md:group-hover:w-auto transition-all whitespace-nowrap">Send to Video</span>
                                     </button>
                                 )}
                                 <button onClick={() => downloadImage(activeSlot.url)} className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl text-white transition-all">
@@ -307,7 +305,7 @@ export const MultiShotView = ({
                     )}
                 </div>
 
-                <div className="h-40 shrink-0 surface-glass rounded-2xl border border-white/5 p-3 flex flex-col">
+                <div className="h-32 md:h-40 shrink-0 surface-glass rounded-2xl border border-white/5 p-2 md:p-3 flex flex-col">
                     <div className="flex items-center justify-between mb-2 px-1">
                         <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Angle Collection</span>
                     </div>

@@ -137,7 +137,7 @@ export default function PromptBuilder() {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="absolute bottom-6 left-6 z-40 max-w-[420px]"
+            className="absolute bottom-24 left-4 md:bottom-6 md:left-6 z-40 w-[calc(100vw-32px)] md:max-w-[420px]"
         >
             {/* Toggle */}
             <button

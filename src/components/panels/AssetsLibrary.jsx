@@ -410,24 +410,24 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         <div className="h-full flex flex-col bg-[#020202] text-white font-mono">
             {/* Header */}
             {!compact && (
-                <div className="p-8 border-b border-white/5 flex items-center justify-between backdrop-blur-3xl bg-black/40 relative overflow-hidden shrink-0">
+                <div className="p-4 md:p-8 border-b border-white/5 flex flex-col md:flex-row items-center justify-between backdrop-blur-3xl bg-black/40 relative overflow-hidden shrink-0 gap-6">
                     <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#bef264]/20 to-transparent" />
-                    <div className="relative z-10 flex items-center gap-6">
-                        <div className="p-3 bg-[#bef264]/10 rounded-2xl border border-[#bef264]/20 shadow-[0_0_30px_rgba(190,242,100,0.1)]">
-                            <FolderOpen className="w-8 h-8 text-[#bef264]" />
+                    <div className="relative z-10 flex items-center gap-4 md:gap-6">
+                        <div className="p-2 md:p-3 bg-[#bef264]/10 rounded-2xl border border-[#bef264]/20 shadow-[0_0_30px_rgba(190,242,100,0.1)]">
+                            <FolderOpen className="w-6 h-6 md:w-8 md:h-8 text-[#bef264]" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-black italic uppercase tracking-tighter text-metallic">
+                            <h1 className="text-xl md:text-3xl font-black italic uppercase tracking-tighter text-metallic">
                                 Creative <span className="text-[#bef264]">Vault</span>
                             </h1>
-                            <p className="text-[10px] text-white/30 uppercase tracking-[0.3em] mt-1 font-bold">Secure_Neural_Asset_Management</p>
+                            <p className="text-[8px] md:text-[10px] text-white/30 uppercase tracking-[0.3em] mt-1 font-bold">Secure_Neural_Asset_Management</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-6 relative z-10">
-                        <div className={`flex items-center gap-3 px-5 py-2.5 rounded-full border backdrop-blur-md ${isConnectedToDrive ? 'bg-[#bef264]/10 border-[#bef264]/20 text-[#bef264]' : 'bg-white/5 border-white/10 text-white/30'}`}>
-                            <Cloud className="w-4 h-4" />
-                            <span className="text-[9px] font-black uppercase tracking-widest">
+                    <div className="flex items-center gap-4 md:gap-6 relative z-10 w-full md:w-auto overflow-x-auto no-scrollbar pb-2 md:pb-0">
+                        <div className={`flex items-center gap-3 px-4 md:px-5 py-2 md:py-2.5 rounded-full border backdrop-blur-md whitespace-nowrap ${isConnectedToDrive ? 'bg-[#bef264]/10 border-[#bef264]/20 text-[#bef264]' : 'bg-white/5 border-white/10 text-white/30'}`}>
+                            <Cloud className="w-3.5 h-3.5" />
+                            <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest">
                                 {isConnectedToDrive ? 'SYNC_ACTIVE' : 'LOCAL_ONLY'}
                             </span>
                         </div>
@@ -435,26 +435,26 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                         {!isConnectedToDrive && (
                             <button
                                 onClick={handleConnectDrive}
-                                className="bg-white/5 hover:bg-white/10 text-white px-6 py-2.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/10 transition-all flex items-center gap-3"
+                                className="bg-white/5 hover:bg-white/10 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest border border-white/10 transition-all flex items-center gap-3 whitespace-nowrap"
                             >
-                                <HardDrive className="w-4 h-4" />
+                                <HardDrive className="w-3.5 h-3.5 md:w-4 md:h-4" />
                                 CONNECT_DRIVE
                             </button>
                         )}
 
                         <button
                             onClick={() => fetchAssets(true)}
-                            className="p-3 hover:bg-[#bef264] hover:text-black rounded-full text-white/40 border border-white/5 transition-all shadow-xl"
+                            className="p-2.5 md:p-3 hover:bg-[#bef264] hover:text-black rounded-full text-white/40 border border-white/5 transition-all shadow-xl flex-shrink-0"
                             title="Force Refresh Archive"
                         >
-                            <RefreshCw className={cn("w-5 h-5", loading && "animate-spin")} />
+                            <RefreshCw className={cn("w-4 h-4 md:w-5 md:h-5", loading && "animate-spin")} />
                         </button>
                     </div>
                 </div>
             )}
 
-            <div className={cn("px-8 pt-4 border-b border-white/5 flex items-center justify-between bg-black/20 shrink-0 relative", compact && "pt-2 px-4 border-none")}>
-                <div className="flex gap-8">
+            <div className={cn("px-4 md:px-8 pt-4 border-b border-white/5 flex flex-col md:flex-row items-center justify-between bg-black/20 shrink-0 relative gap-4", compact && "pt-2 px-4 border-none")}>
+                <div className="flex gap-4 md:gap-8 overflow-x-auto w-full md:w-auto no-scrollbar">
                     {[
                         { id: 'images', label: 'Images', icon: ImageIcon },
                         { id: 'characters', label: 'Characters', icon: User },
@@ -474,11 +474,11 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`pb-4 px-2 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all flex items-center gap-3 ${activeTab === tab.id ? 'border-[#bef264] text-[#bef264] drop-shadow-[0_0_10px_rgba(190,242,100,0.4)]' : 'border-transparent text-white/30 hover:text-white'}`}
+                                className={`pb-4 px-2 text-[9px] md:text-[10px] font-black uppercase tracking-widest border-b-2 transition-all flex items-center gap-2 md:gap-3 whitespace-nowrap ${activeTab === tab.id ? 'border-[#bef264] text-[#bef264] drop-shadow-[0_0_10px_rgba(190,242,100,0.4)]' : 'border-transparent text-white/30 hover:text-white'}`}
                             >
-                                <tab.icon className="w-4 h-4" />
+                                <tab.icon className="w-3.5 h-3.5 md:w-4 md:h-4" />
                                 {tab.label}
-                                <span className={`px-2 py-0.5 rounded-full text-[8px] ${activeTab === tab.id ? 'bg-[#bef264] text-black' : 'bg-white/5 text-white/20'}`}>
+                                <span className={`px-2 py-0.5 rounded-full text-[7px] md:text-[8px] ${activeTab === tab.id ? 'bg-[#bef264] text-black' : 'bg-white/5 text-white/20'}`}>
                                     {count}
                                 </span>
                             </button>
@@ -487,15 +487,15 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 </div>
 
                 {/* Neural Search Input + Compact Refresh */}
-                <div className="flex items-center gap-3 pb-4">
-                    <div className="relative group/search">
+                <div className="flex items-center gap-3 pb-4 w-full md:w-auto">
+                    <div className="relative group/search flex-1 md:flex-none">
                         <input
                             type="text"
-                            placeholder={isNeuralSearch ? "Search by vibe (e.g. 'Cyberpunk with neon glitch')..." : "Search assets..."}
+                            placeholder={isNeuralSearch ? "Search by vibe..." : "Search assets..."}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && (isNeuralSearch ? handleSemanticSearch() : null)}
-                            className="bg-white/5 border border-white/10 rounded-full px-5 py-2 text-[10px] font-bold w-64 md:w-80 focus:outline-none focus:border-[#bef264]/40 transition-all text-white placeholder-white/20"
+                            className="bg-white/5 border border-white/10 rounded-full px-4 md:px-5 py-2 text-[10px] font-bold w-full md:w-64 lg:w-80 focus:outline-none focus:border-[#bef264]/40 transition-all text-white placeholder-white/20"
                         />
                         <button
                             onClick={() => isNeuralSearch ? handleSemanticSearch() : null}
@@ -517,7 +517,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
 
                     <button
                         onClick={() => setIsNeuralSearch(!isNeuralSearch)}
-                        className={`px-4 py-2 rounded-full border text-[9px] font-black transition-all flex items-center gap-2 ${isNeuralSearch ? 'bg-[#bef264]/10 border-[#bef264]/40 text-[#bef264]' : 'bg-white/5 border-white/10 text-white/30'}`}
+                        className={`px-3 md:px-4 py-2 rounded-full border text-[8px] md:text-[9px] font-black transition-all flex items-center gap-2 whitespace-nowrap ${isNeuralSearch ? 'bg-[#bef264]/10 border-[#bef264]/40 text-[#bef264]' : 'bg-white/5 border-white/10 text-white/30'}`}
                     >
                         <Bot className="w-3.5 h-3.5" />
                         {isNeuralSearch ? 'NEURAL_ON' : 'NEURAL_OFF'}
@@ -526,11 +526,11 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-black/10">
+            <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar bg-black/10">
                 {loading ? (
                     <div className="h-full flex flex-col items-center justify-center gap-6">
-                        <RefreshCw className="w-12 h-12 text-[#bef264] animate-spin opacity-50" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-[#bef264] animate-pulse">Scanning_Biological_Archive...</span>
+                        <RefreshCw className="w-10 h-10 md:w-12 md:h-12 text-[#bef264] animate-spin opacity-50" />
+                        <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.4em] text-[#bef264] animate-pulse">Scanning_Biological_Archive...</span>
                     </div>
                 ) : activeTab === 'models' ? (
                     <div className="surface-glass rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl">
@@ -621,8 +621,8 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     </div>
                 ) : (
                     <div className={activeTab === 'images'
-                        ? "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-1.5"
-                        : "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8"
+                        ? "grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-0.5 md:gap-1.5"
+                        : "grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-8"
                     }>
                         {assets[activeTab].map(item => (
                             <div key={item.id} className={`group relative surface-glass border border-white/5 overflow-hidden transition-all duration-700 shadow-2xl ${activeTab === 'images' ? 'rounded-md hover:border-[#bef264]/60' : 'rounded-[2.5rem] hover:border-[#bef264]/40'}`}>

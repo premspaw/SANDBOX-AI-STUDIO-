@@ -755,12 +755,12 @@ export default function DirectorStudio() {
     return (
         <div className="h-full bg-[#0a0a0a] text-white flex flex-col font-sans overflow-hidden">
             {/* Header */}
-            <header className="h-16 border-b border-white/10 flex items-center justify-between px-6 shrink-0 bg-[#0a0a0a] z-10">
+            <header className="h-16 border-b border-white/10 flex items-center justify-between px-4 md:px-6 shrink-0 bg-[#0a0a0a] z-50">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
                         <Film className="w-5 h-5 text-white" />
                     </div>
-                    <h1 className="text-lg font-black tracking-tighter uppercase italic text-metallic">AI Director Studio</h1>
+                    <h1 className="text-sm md:text-lg font-black tracking-tighter uppercase italic text-metallic truncate">AI Director Studio</h1>
                 </div>
 
                 {/* Mode Switcher */}
@@ -791,12 +791,12 @@ export default function DirectorStudio() {
             </header>
 
             {/* Main Content Split */}
-            <div className="flex-1 flex overflow-hidden bg-[#050505]">
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-[#050505]">
                 {/* Left Panel - Controls */}
                 <motion.div
                     initial={{ x: -20, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
-                    className="w-[380px] border-r border-white/5 bg-[#080808]/80 backdrop-blur-xl overflow-y-auto custom-scrollbar flex flex-col shrink-0"
+                    className="w-full md:w-[380px] h-1/2 md:h-full border-b md:border-b-0 md:border-r border-white/5 bg-[#080808]/80 backdrop-blur-xl overflow-y-auto custom-scrollbar flex flex-col shrink-0"
                 >
                     <div className="p-6 space-y-8">
                         {activeMode === 'director' ? (

@@ -102,7 +102,7 @@ const PricingPage = () => {
             <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] -z-10" />
             <div className="absolute bottom-0 -right-24 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] -z-10" />
 
-            <div className="max-w-6xl mx-auto space-y-12">
+            <div className="max-w-6xl mx-auto space-y-8 md:space-y-12">
                 {/* Header */}
                 <div className="text-center space-y-4">
                     <motion.div
@@ -118,7 +118,7 @@ const PricingPage = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="text-5xl md:text-6xl font-black italic tracking-tighter uppercase leading-[0.9] text-metallic"
+                        className="text-3xl md:text-6xl font-black italic tracking-tighter uppercase leading-[0.9] text-metallic"
                     >
                         Elevate Your Production
                     </motion.h1>
@@ -135,22 +135,22 @@ const PricingPage = () => {
                 </div>
 
                 {/* Toggle */}
-                <div className="flex justify-center items-center gap-4 py-4">
-                    <span className={cn("text-xs font-black uppercase tracking-widest transition-colors", !isYearly ? "text-white" : "text-white/20")}>Monthly</span>
-                    <button
-                        onClick={() => setIsYearly(!isYearly)}
-                        className="relative w-14 h-7 bg-white/5 rounded-full border border-white/10 p-1 flex items-center transition-all hover:border-[#D4FF00]/40 shadow-inner"
-                    >
-                        <motion.div
-                            animate={{ x: isYearly ? 28 : 0 }}
-                            className="w-5 h-5 bg-[#D4FF00] rounded-full shadow-[0_0_15px_rgba(212,255,0,0.6)]"
-                        />
-                    </button>
-                    <div className="flex items-center gap-2">
+                <div className="flex flex-col md:flex-row justify-center items-center gap-4 py-4">
+                    <div className="flex items-center gap-4">
+                        <span className={cn("text-xs font-black uppercase tracking-widest transition-colors", !isYearly ? "text-white" : "text-white/20")}>Monthly</span>
+                        <button
+                            onClick={() => setIsYearly(!isYearly)}
+                            className="relative w-14 h-7 bg-white/5 rounded-full border border-white/10 p-1 flex items-center transition-all hover:border-[#D4FF00]/40 shadow-inner"
+                        >
+                            <motion.div
+                                animate={{ x: isYearly ? 28 : 0 }}
+                                className="w-5 h-5 bg-[#D4FF00] rounded-full shadow-[0_0_15px_rgba(212,255,0,0.6)]"
+                            />
+                        </button>
                         <span className={cn("text-xs font-black uppercase tracking-widest transition-colors", isYearly ? "text-white" : "text-white/20")}>Yearly</span>
-                        <div className="px-2 py-0.5 bg-[#D4FF00]/10 border border-[#D4FF00]/20 rounded-lg">
-                            <span className="text-[9px] font-black text-[#D4FF00] uppercase">Save 20%</span>
-                        </div>
+                    </div>
+                    <div className="px-2 py-0.5 bg-[#D4FF00]/10 border border-[#D4FF00]/20 rounded-lg">
+                        <span className="text-[9px] font-black text-[#D4FF00] uppercase">Save 20%</span>
                     </div>
                 </div>
 

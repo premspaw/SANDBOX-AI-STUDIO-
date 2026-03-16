@@ -98,7 +98,7 @@ export const SonicDock = () => {
                         initial={{ opacity: 0, y: 20, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                        className="p-5 rounded-[2rem] bg-black/40 backdrop-blur-3xl border border-white/10 shadow-2xl flex flex-col gap-5 w-[500px]"
+                        className="p-4 md:p-5 rounded-[2rem] bg-black/40 backdrop-blur-3xl border border-white/10 shadow-2xl flex flex-col gap-5 w-[calc(100vw-32px)] md:w-[500px]"
                     >
                         <textarea
                             value={narrative}
@@ -130,9 +130,9 @@ export const SonicDock = () => {
                     gap: isRetracted ? '8px' : '16px',
                     opacity: isRetracted ? 0.4 : 1
                 }}
-                className="bg-[#050505]/80 backdrop-blur-3xl border border-white/10 flex items-center shadow-2xl overflow-hidden transition-all duration-300"
+                className="max-w-[calc(100vw-32px)] bg-[#050505]/80 backdrop-blur-3xl border border-white/10 flex items-center shadow-2xl overflow-hidden transition-all duration-300"
             >
-                <div className="flex gap-2 items-center h-full">
+                <div className="flex gap-2 items-center h-full overflow-x-auto no-scrollbar px-2">
                     {tools.map((tool) => (
                         <DockItem key={tool.id} tool={tool} mouseX={mouseX} />
                     ))}

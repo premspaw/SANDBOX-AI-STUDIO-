@@ -253,30 +253,40 @@ export default function CameraGuide() {
         <div onClick={e=>e.target===e.currentTarget&&setOpen(false)} style={{
           position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,0.88)",
           backdropFilter:"blur(8px)",display:"flex",alignItems:"center",
-          justifyContent:"center",padding:16
+          justifyContent:"center",padding:window.innerWidth < 768 ? 8 : 16
         }}>
           <div style={{
             background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,
-            width:"100%",maxWidth:860,maxHeight:"92vh",overflow:"hidden",
+            width:"100%",maxWidth:860,maxHeight:window.innerWidth < 768 ? "98vh" : "92vh",overflow:"hidden",
             display:"flex",flexDirection:"column",animation:"fadeIn 0.2s ease",
             boxShadow:"0 0 80px #84CC1611"
           }}>
 
             {/* Header */}
-            <div style={{padding:"14px 20px",borderBottom:`1px solid ${C.border}`,background:C.bg,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div style={{display:"flex",alignItems:"center",gap:16}}>
+            <div style={{
+              padding:window.innerWidth < 768 ? "10px 12px" : "14px 20px",
+              borderBottom:`1px solid ${C.border}`,
+              background:C.bg,
+              display:"flex",
+              flexDirection: window.innerWidth < 768 ? "column" : "row",
+              alignItems: window.innerWidth < 768 ? "flex-start" : "center",
+              justifyContent:"space-between",
+              gap: 12
+            }}>
+              <div style={{display:"flex",flexDirection: window.innerWidth < 768 ? "column" : "row", alignItems: window.innerWidth < 768 ? "flex-start" : "center", gap: window.innerWidth < 768 ? 12 : 16, width: "100%"}}>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   <span style={{fontSize:18}}>🎥</span>
                   <div>
-                    <div style={{fontFamily:"monospace",fontSize:13,fontWeight:700,color:C.gold,letterSpacing:3}}>STUDIO GUIDE</div>
-                    <div style={{fontFamily:"monospace",fontSize:9,color:"#444",letterSpacing:2}}>ZER∞LENS · AI CINEMA REFERENCE</div>
+                    <div style={{fontFamily:"monospace",fontSize:11,fontWeight:700,color:C.gold,letterSpacing:3}}>STUDIO GUIDE</div>
+                    <div style={{fontFamily:"monospace",fontSize:8,color:"#444",letterSpacing:2}}>ZER∞LENS · AI CINEMA REFERENCE</div>
                   </div>
                 </div>
-                <div style={{display:"flex",gap:4,marginLeft:12}}>
+                <div style={{display:"flex",gap:4, overflowX: "auto", maxWidth: "100%", paddingBottom: 4, noScrollbar: true}}>
                   {["CAMERA","SCENE WRITING","COMPOSITION"].map(t=>(
                     <button key={t} onClick={()=>setTab(t)} style={{
-                      padding:"6px 14px",borderRadius:999,fontFamily:"monospace",fontSize:10,
-                      letterSpacing:2,fontWeight:700,cursor:"pointer",
+                      padding:"5px 10px",borderRadius:999,fontFamily:"monospace",fontSize:8,
+                      letterSpacing:1,fontWeight:700,cursor:"pointer",
+                      whiteSpace: "nowrap",
                       background:tab===t?C.lime:"transparent",
                       color:tab===t?C.bg:"#555",
                       border:`1px solid ${tab===t?C.lime:"#222"}`,transition:"all 0.15s"
@@ -285,6 +295,8 @@ export default function CameraGuide() {
                 </div>
               </div>
               <button className="xb" onClick={()=>setOpen(false)} style={{
+                position: window.innerWidth < 768 ? "absolute" : "static",
+                top: 10, right: 10,
                 background:"transparent",border:`1px solid #222`,color:"#555",
                 width:30,height:30,borderRadius:8,cursor:"pointer",fontSize:16,
                 display:"flex",alignItems:"center",justifyContent:"center"
@@ -293,14 +305,27 @@ export default function CameraGuide() {
 
             {/* CAMERA TAB */}
             {tab==="CAMERA" && (
-              <div style={{display:"flex",flex:1,overflow:"hidden"}}>
-                <div style={{width:190,borderRight:`1px solid ${C.border}`,overflowY:"auto",background:C.bg,flexShrink:0,padding:"8px 0"}}>
+              <div style={{display:"flex",flexDirection: window.innerWidth < 768 ? "column" : "row", flex:1,overflow:"hidden"}}>
+                <div style={{
+                  width: window.innerWidth < 768 ? "100%" : 190,
+                  height: window.innerWidth < 768 ? 80 : "auto",
+                  borderRight: window.innerWidth < 768 ? "none" : `1px solid ${C.border}`,
+                  borderBottom: window.innerWidth < 768 ? `1px solid ${C.border}` : "none",
+                  overflowX: window.innerWidth < 768 ? "auto" : "hidden",
+                  overflowY: window.innerWidth < 768 ? "hidden" : "auto",
+                  background:C.bg,flexShrink:0,padding: window.innerWidth < 768 ? "4px" : "8px 0",
+                  display: window.innerWidth < 768 ? "flex" : "block"
+                }}>
                   {CAMERAS.map((c,i)=>(
                     <button key={i} className="sb" onClick={()=>setCam(i)} style={{
-                      width:"100%",padding:"10px 14px",textAlign:"left",border:"none",
+                      width: window.innerWidth < 768 ? "auto" : "100%",
+                      padding: window.innerWidth < 768 ? "6px 10px" : "10px 14px",
+                      textAlign:"left",border:"none",
                       background:cam===i?"#84CC1611":"transparent",
-                      borderLeft:`2px solid ${cam===i?C.lime:"transparent"}`,
-                      cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"all 0.15s"
+                      borderLeft: window.innerWidth < 768 ? "none" : `2px solid ${cam===i?C.lime:"transparent"}`,
+                      borderBottom: window.innerWidth < 768 ? `2px solid ${cam===i?C.lime:"transparent"}` : "none",
+                      cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"all 0.15s",
+                      flexShrink: 0
                     }}>
                       <span style={{fontSize:14}}>{c.icon}</span>
                       <div>
@@ -349,10 +374,17 @@ export default function CameraGuide() {
 
             {/* SCENE WRITING TAB */}
             {tab==="SCENE WRITING" && (
-              <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+              <div style={{display:"flex",flexDirection: window.innerWidth < 768 ? "column" : "row", flex:1,overflow:"hidden"}}>
 
                 {/* Left sidebar */}
-                <div style={{width:200,borderRight:`1px solid ${C.border}`,overflowY:"auto",background:C.bg,flexShrink:0}}>
+                <div style={{
+                  width: window.innerWidth < 768 ? "100%" : 200,
+                  height: window.innerWidth < 768 ? 140 : "auto",
+                  borderRight: window.innerWidth < 768 ? "none" : `1px solid ${C.border}`,
+                  borderBottom: window.innerWidth < 768 ? `1px solid ${C.border}` : "none",
+                  overflowY: window.innerWidth < 768 ? "auto" : "auto",
+                  background:C.bg,flexShrink:0
+                }}>
                   {/* Formula strip */}
                   <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.border}`}}>
                     <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:10}}>PROMPT FORMULA</div>
@@ -397,11 +429,11 @@ export default function CameraGuide() {
                       {/* Formula */}
                       <div style={{marginBottom:14}}>
                         <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:8}}>FORMULA</div>
-                        <div style={{background:C.bg,border:`1px solid ${s.color}44`,borderRadius:8,padding:"12px 16px",fontFamily:"monospace",fontSize:11,color:s.color,lineHeight:1.9}}>{s.formula}</div>
+                        <div style={{background:C.bg,border:`1px solid ${s.color}44`,borderRadius:8,padding:"10px 12px",fontFamily:"monospace",fontSize:10,color:s.color,lineHeight:1.6}}>{s.formula}</div>
                       </div>
 
                       {/* Bad vs Good */}
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+                      <div style={{display:"grid",gridTemplateColumns: window.innerWidth < 768 ? "1fr" : "1fr 1fr",gap:10,marginBottom:14}}>
                         <div style={{background:"#140000",border:"1px solid #3a1a1a",borderRadius:8,padding:14}}>
                           <div style={{fontFamily:"monospace",fontSize:9,color:"#CC4444",letterSpacing:3,marginBottom:8}}>❌ WRONG</div>
                           <div style={{fontFamily:"monospace",fontSize:10,color:"#CC4444",lineHeight:1.6,marginBottom:8,fontStyle:"italic"}}>"{s.bad}"</div>
@@ -446,16 +478,29 @@ export default function CameraGuide() {
 
             {/* COMPOSITION TAB */}
             {tab==="COMPOSITION" && (
-              <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+              <div style={{display:"flex",flexDirection: window.innerWidth < 768 ? "column" : "row", flex:1,overflow:"hidden"}}>
                 {/* Left list */}
-                <div style={{width:200,borderRight:`1px solid ${C.border}`,overflowY:"auto",background:C.bg,flexShrink:0,padding:"8px 0"}}>
-                  <div style={{padding:"10px 14px 6px",fontFamily:"monospace",fontSize:9,color:"#444",letterSpacing:3}}>SELECT COMPOSITION</div>
+                <div style={{
+                  width: window.innerWidth < 768 ? "100%" : 200,
+                  height: window.innerWidth < 768 ? 80 : "auto",
+                  borderRight: window.innerWidth < 768 ? "none" : `1px solid ${C.border}`,
+                  borderBottom: window.innerWidth < 768 ? `1px solid ${C.border}` : "none",
+                  overflowX: window.innerWidth < 768 ? "auto" : "hidden",
+                  overflowY: window.innerWidth < 768 ? "hidden" : "auto",
+                  background:C.bg,flexShrink:0,padding: window.innerWidth < 768 ? "4px" : "8px 0",
+                  display: window.innerWidth < 768 ? "flex" : "block"
+                }}>
+                  <div style={{display: window.innerWidth < 768 ? "none" : "block", padding:"10px 14px 6px",fontFamily:"monospace",fontSize:9,color:"#444",letterSpacing:3}}>SELECT COMPOSITION</div>
                   {COMPOSITIONS.map((co,i)=>(
                     <button key={i} className="sb" onClick={()=>setComp(i)} style={{
-                      width:"100%",padding:"10px 14px",textAlign:"left",border:"none",
+                      width: window.innerWidth < 768 ? "auto" : "100%",
+                      padding: window.innerWidth < 768 ? "6px 10px" : "10px 14px",
+                      textAlign:"left",border:"none",
                       background:comp===i?"#84CC1611":"transparent",
-                      borderLeft:`2px solid ${comp===i?co.color:"transparent"}`,
-                      cursor:"pointer",transition:"all 0.15s",display:"flex",alignItems:"center",gap:10
+                      borderLeft: window.innerWidth < 768 ? "none" : `2px solid ${comp===i?co.color:"transparent"}`,
+                      borderBottom: window.innerWidth < 768 ? `2px solid ${comp===i?co.color:"transparent"}` : "none",
+                      cursor:"pointer",transition:"all 0.15s",display:"flex",alignItems:"center",gap:10,
+                      flexShrink: 0
                     }}>
                       <span style={{fontSize:16,color:comp===i?co.color:"#444",fontWeight:700,minWidth:20}}>{co.icon}</span>
                       <div>
@@ -487,21 +532,21 @@ export default function CameraGuide() {
                       </div>
 
                       {/* Best for + Avoid row */}
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-                        <div style={{background:"#0a1400",border:`1px solid ${C.limeDark}`,borderRadius:8,padding:14}}>
+                      <div style={{display:"grid",gridTemplateColumns: window.innerWidth < 768 ? "1fr" : "1fr 1fr",gap:12,marginBottom:14}}>
+                        <div style={{background:"#0a1400",border:`1px solid ${C.limeDark}`,borderRadius:8,padding:12}}>
                           <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:10}}>✅ BEST FOR</div>
                           <div style={{display:"flex",flexDirection:"column",gap:5}}>
                             {co.bestFor.map((b,i)=>(
                               <div key={i} style={{display:"flex",alignItems:"center",gap:6}}>
                                 <div style={{width:4,height:4,borderRadius:"50%",background:C.lime,flexShrink:0}}/>
-                                <span style={{fontFamily:"monospace",fontSize:10,color:"#aaa"}}>{b}</span>
+                                <span style={{fontFamily:"monospace",fontSize:9,color:"#aaa"}}>{b}</span>
                               </div>
                             ))}
                           </div>
                         </div>
-                        <div style={{background:"#140000",border:"1px solid #3a1a1a",borderRadius:8,padding:14}}>
+                        <div style={{background:"#140000",border:"1px solid #3a1a1a",borderRadius:8,padding:12}}>
                           <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:10}}>❌ AVOID</div>
-                          <div style={{fontFamily:"monospace",fontSize:10,color:"#CC4444",lineHeight:1.7}}>{co.avoid}</div>
+                          <div style={{fontFamily:"monospace",fontSize:9,color:"#CC4444",lineHeight:1.5}}>{co.avoid}</div>
                         </div>
                       </div>
 

@@ -46,13 +46,13 @@ const OUTFITS = ['Casual', 'Cyberpunk', 'Avant-Garde', 'Streetwear', 'Formal', '
 
 // ─── Identity Kit Panel Layout ────────────────────────────────────────────────
 const KIT_SLOTS = [
-    { key: 'anchor', label: 'ANCHOR', desc: 'Identity Truth', span: 'col-span-1 row-span-2' },
+    { key: 'anchor', label: 'ANCHOR', desc: 'Identity Truth', span: 'col-span-2 md:col-span-1 row-span-2' },
     { key: 'profile', label: 'PROFILE', desc: 'Side Structure', span: 'col-span-1 row-span-1' },
     { key: 'closeUp', label: 'CLOSE-UP', desc: 'Macro Detail', span: 'col-span-1 row-span-1' },
     { key: 'expression', label: 'EXPR', desc: 'Elasticity', span: 'col-span-1 row-span-1' },
     { key: 'halfBody', label: 'HALF-BODY', desc: 'Torso', span: 'col-span-1 row-span-1' },
     { key: 'fullBody', label: 'FULL-BODY', desc: 'Physics', span: 'col-span-1 row-span-1' },
-    { key: 'spatialKit', label: 'SPATIAL KIT', desc: 'Neural Sprite Sheet', span: 'col-span-2 row-span-2' },
+    { key: 'spatialKit', label: 'SPATIAL KIT', desc: 'Neural Sprite Sheet', span: 'col-span-2 row-span-2 md:col-span-2' },
 ];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -314,6 +314,7 @@ function CreateCharacterModal({ onClose, onCreate }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 import { supabase } from '../../lib/supabase';
+import { PlaygroundCanvas } from '../canvas/PlaygroundCanvas';
 
 export function InfluencerStudio({ setActiveTab }) {
     const [studioTab, setStudioTab] = useState('creation');
@@ -627,23 +628,23 @@ export function InfluencerStudio({ setActiveTab }) {
     return (
         <div className="h-full flex flex-col bg-[#050505] text-white overflow-hidden">
             {/* ── Header ───────────────────────────────────────────────────── */}
-            <div className="p-6 border-b border-white/10 flex items-center justify-between bg-black/40 backdrop-blur-xl flex-shrink-0">
-                <div>
-                    <h1 className="text-2xl font-black italic tracking-tighter flex items-center gap-3">
-                        <Users className="w-7 h-7 text-[#D4FF00]" />
+            <div className="p-4 md:p-6 border-b border-white/10 flex flex-col md:flex-row items-center justify-between bg-black/40 backdrop-blur-xl flex-shrink-0 gap-4">
+                <div className="w-full md:w-auto text-center md:text-left">
+                    <h1 className="text-xl md:text-2xl font-black italic tracking-tighter flex items-center justify-center md:justify-start gap-3">
+                        <Users className="w-6 h-6 md:w-7 md:h-7 text-[#D4FF00]" />
                         <span className="text-metallic">AI_INFLUENCER_STUDIO</span>
                     </h1>
-                    <p className="text-gray-500 text-[10px] mt-0.5 font-mono tracking-widest uppercase">
+                    <p className="text-gray-500 text-[8px] md:text-[10px] mt-0.5 font-mono tracking-widest uppercase">
                         Cinema AI Studio · Identity Consistency Protocol V3.1
                     </p>
                 </div>
 
-                <div className="flex bg-white/5 rounded-full p-1 border border-white/10">
+                <div className="flex bg-white/5 rounded-full p-1 border border-white/10 overflow-x-auto max-w-full no-scrollbar">
                     {['creation', 'kit', 'library'].map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setStudioTab(tab)}
-                            className={`px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${studioTab === tab
+                            className={`px-3 md:px-5 py-1.5 md:py-2 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${studioTab === tab
                                 ? 'bg-[#D4FF00] text-black shadow-[0_0_20px_rgba(212,255,0,0.3)]'
                                 : 'hover:bg-white/5 text-gray-500'
                                 }`}
@@ -656,7 +657,7 @@ export function InfluencerStudio({ setActiveTab }) {
 
             <div className="flex-1 flex overflow-hidden">
                 {/* ── Sidebar ───────────────────────────────────────────────── */}
-                <aside className="w-72 border-r border-white/10 bg-black/20 flex flex-col flex-shrink-0">
+                <aside className="hidden md:flex w-72 border-r border-white/10 bg-black/20 flex-col flex-shrink-0">
                     {/* New Sidebar Controls: Create & Playground */}
                     <div className="p-4 border-b border-white/5 space-y-3">
                         <button
@@ -740,6 +741,25 @@ export function InfluencerStudio({ setActiveTab }) {
 
                 {/* ── Main Area ──────────────────────────────────────────────── */}
                 <main className="flex-1 overflow-y-auto custom-scrollbar">
+                    {/* Mobile character selector */}
+                    <div className="md:hidden flex overflow-x-auto p-4 gap-3 bg-black/40 backdrop-blur-md border-b border-white/10 no-scrollbar sticky top-0 z-50">
+                        {characters.map((char) => (
+                            <button
+                                key={char.id}
+                                onClick={() => handleSelectChar(char)}
+                                className={`flex-shrink-0 w-12 h-12 rounded-xl border-2 transition-all overflow-hidden ${selectedChar?.id === char.id ? 'border-[#D4FF00] scale-105 shadow-[0_0_15px_rgba(212,255,0,0.3)]' : 'border-white/10'}`}
+                            >
+                                <img src={char.photo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${char.name}`} alt={char.name} className="w-full h-full object-cover" />
+                            </button>
+                        ))}
+                        <button 
+                            onClick={handleCreateNew}
+                            className="flex-shrink-0 w-12 h-12 rounded-xl border-2 border-dashed border-white/10 flex items-center justify-center bg-white/5 hover:border-[#D4FF00]/50 transition-colors"
+                        >
+                            <Plus className="w-5 h-5 text-gray-600" />
+                        </button>
+                    </div>
+
                     <AnimatePresence mode="wait">
                         {!selectedChar ? (
                             /* Empty State */
@@ -769,16 +789,16 @@ export function InfluencerStudio({ setActiveTab }) {
                             <motion.div key="creation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                                 className="w-full h-full flex flex-col relative">
 
-                                {/* Overlay Character Header */}
-                                <div className="absolute top-6 left-6 z-50 flex items-center gap-4 p-4 bg-black/40 backdrop-blur-3xl border border-white/10 rounded-2xl pointer-events-none">
-                                    <div className="w-12 h-12 rounded-xl overflow-hidden border border-[#bef264]/20">
+                                 {/* Overlay Character Header */}
+                                <div className="absolute top-4 left-4 md:top-6 md:left-6 z-50 flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-black/40 backdrop-blur-3xl border border-white/10 rounded-2xl pointer-events-none max-w-[calc(100%-2rem)]">
+                                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl overflow-hidden border border-[#bef264]/20 flex-shrink-0">
                                         <img src={selectedChar.photo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedChar.name}`} alt={selectedChar.name} className="w-full h-full object-cover" />
                                     </div>
-                                    <div>
-                                        <h2 className="text-xl font-black italic tracking-tighter uppercase">{selectedChar.name}</h2>
+                                    <div className="min-w-0">
+                                        <h2 className="text-sm md:text-xl font-black italic tracking-tighter uppercase truncate">{selectedChar.name}</h2>
                                         <div className="flex items-center gap-2">
                                             <div className="w-1.5 h-1.5 rounded-full bg-[#bef264] animate-pulse" />
-                                            <span className="text-[8px] font-bold text-[#bef264]/60 uppercase tracking-[0.2em]">DIRECTOR_PLAYGROUND_ACTIVE</span>
+                                            <span className="text-[7px] md:text-[8px] font-bold text-[#bef264]/60 uppercase tracking-[0.2em]">DIRECTOR_PLAYGROUND_ACTIVE</span>
                                         </div>
                                     </div>
                                 </div>
@@ -835,7 +855,7 @@ export function InfluencerStudio({ setActiveTab }) {
                                     )}
 
                                     {/* 6-Slot Kit Grid */}
-                                    <div className="grid grid-cols-4 grid-rows-2 gap-3" style={{ height: '520px' }}>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:grid-rows-2" style={{ minHeight: '520px' }}>
                                         {KIT_SLOTS.map((slot) => (
                                             <KitSlotCard
                                                 key={slot.key}
@@ -847,7 +867,7 @@ export function InfluencerStudio({ setActiveTab }) {
                                     </div>
 
                                     {/* Info cards */}
-                                    <div className="mt-6 grid grid-cols-5 gap-3">
+                                    <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
                                         {KIT_SLOTS.map((slot, i) => (
                                             <div key={slot.key} className="p-3 bg-white/3 border border-white/5 rounded-xl">
                                                 <div className="text-[8px] font-black text-[#D4FF00] uppercase tracking-widest mb-1">{slot.label}</div>

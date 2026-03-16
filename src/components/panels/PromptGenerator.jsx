@@ -2240,12 +2240,12 @@ export function PromptGenerator({ onUpscale }) {
             {/* ─── MAIN CONTENT ─ 3-PANEL LAYOUT ──────────────────────── */}
             {(mode === 'image' || mode === 'video') && (
                 <div className="flex-1 min-h-0 flex flex-col gap-2">
-                    {/* ── 3 Equal Preview Panels Row ──────────────────────── */}
-                    <div className="flex-1 min-h-0 flex gap-2">
+                    {/* ── PREVIEW PANELS ─────────────────────────── */}
+                    <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-2 overflow-y-auto md:overflow-hidden p-1 md:p-0">
 
                         {/* ── LEFT PREVIEW ──────────────────────────────────── */}
                         <div onClick={() => setRenderTarget('left')}
-                            className={cn("flex-1 min-w-0 rounded-2xl surface-glass overflow-hidden relative flex items-center justify-center border-2 transition-all cursor-pointer",
+                            className={cn("shrink-0 md:flex-1 h-32 md:h-full min-w-0 rounded-2xl surface-glass overflow-hidden relative flex items-center justify-center border-2 transition-all cursor-pointer",
                                 renderTarget === 'left' ? "border-[#D4FF00] shadow-[0_0_20px_rgba(212,255,0,0.4)]" : "border-transparent hover:border-white/10")}>
                             {(() => {
                                 const isImageLike = mode === 'image' || mode === 'multishot';
@@ -2278,7 +2278,7 @@ export function PromptGenerator({ onUpscale }) {
 
                         {/* ── CENTER PREVIEW (Main) ─────────────────────────── */}
                         <div onClick={() => setRenderTarget('center')}
-                            className={cn("flex-1 min-w-0 rounded-2xl surface-glass overflow-hidden relative flex items-center justify-center border-2 transition-all cursor-pointer",
+                            className={cn("flex-[2] md:flex-1 min-h-[300px] md:min-h-0 min-w-0 rounded-2xl surface-glass overflow-hidden relative flex items-center justify-center border-2 transition-all cursor-pointer",
                                 renderTarget === 'center' ? "border-[#D4FF00] shadow-[0_0_20px_rgba(212,255,0,0.4)]" : "border-transparent hover:border-white/10")}>
                             {activeFrame && (mode === 'video' ? activeFrame.type === 'video' : (activeFrame.type === 'image' || activeFrame.type === 'multishot')) ? (
                                 <div className="relative w-full h-full flex items-center justify-center">
@@ -2350,7 +2350,7 @@ export function PromptGenerator({ onUpscale }) {
 
                         {/* ── RIGHT PREVIEW ─────────────────────────────────── */}
                         <div onClick={() => setRenderTarget('right')}
-                            className={cn("flex-1 min-w-0 rounded-2xl surface-glass overflow-hidden relative flex items-center justify-center border-2 transition-all cursor-pointer",
+                            className={cn("shrink-0 md:flex-1 h-32 md:h-full min-w-0 rounded-2xl surface-glass overflow-hidden relative flex items-center justify-center border-2 transition-all cursor-pointer",
                                 renderTarget === 'right' ? "border-[#D4FF00] shadow-[0_0_20px_rgba(212,255,0,0.4)]" : "border-transparent hover:border-white/10")}>
                             {(() => {
                                 const isImageLike = mode === 'image' || mode === 'multishot';
@@ -2496,7 +2496,7 @@ export function PromptGenerator({ onUpscale }) {
                         "pr-2 pb-16 space-y-2 custom-scrollbar overflow-x-visible",
                         mentionSearch !== null ? "overflow-y-visible" : "overflow-y-auto max-h-[calc(40vh-16px)]"
                     )}>
-                        <div className="flex gap-2 items-stretch min-h-[84px] relative">
+                        <div className="flex flex-col md:flex-row gap-2 items-stretch min-h-[84px] relative">
                             {mode === 'video' && (isKling ? <KlingShotBuilder selections={selections} setSelections={setSelections} /> : <TimestampMultiShot selections={selections} setSelections={setSelections} />)}
 
                             {isKling ? (
@@ -2528,7 +2528,7 @@ export function PromptGenerator({ onUpscale }) {
                             )}
 
                         <button onClick={generateImage} disabled={isLoading}
-                                className={cn("w-48 shrink-0 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all shadow-2xl active:scale-95 h-full",
+                                className={cn("w-full md:w-48 shrink-0 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all shadow-2xl active:scale-95 h-20 md:h-full",
                                     isLoading ? "bg-white/5 cursor-not-allowed" : "bg-[#D4FF00] hover:bg-white hover:shadow-[0_0_30px_rgba(212,255,0,0.3)]")}>
                                 <Zap className={cn("w-6 h-6 text-black", isLoading && "animate-pulse")} />
                                 <span className="text-sm font-black text-black uppercase tracking-tighter">
@@ -2601,7 +2601,7 @@ export function PromptGenerator({ onUpscale }) {
                                         <div className="w-1.5 h-1.5 rounded-full bg-[#D4FF00] animate-pulse" />
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-4 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                                     {[
                                         { id: 'dialogue', label: 'Dialogue', icon: Mic, placeholder: 'What they say...' },
                                         { id: 'sfx', label: 'SFX', icon: Zap, placeholder: 'Crunch, bang, splash...' },
@@ -2643,14 +2643,14 @@ export function PromptGenerator({ onUpscale }) {
                             </div>
                         </div>
                     ) : (
-                            <div className="flex w-full gap-2">
+                            <div className="flex flex-wrap md:flex-nowrap w-full gap-2">
                                 {['engine', 'camera', 'angle', 'lens', 'composition', 'lighting', 'style', 'aspectRatio', 'quality'].map(key => {
                                     let flexValue = 1;
                                     if (key === 'engine' || key === 'composition') flexValue = 1.5;
                                     if (key === 'lens' || key === 'quality') flexValue = 0.5;
 
                                     return (
-                                        <div key={key} style={{ flex: flexValue }} className="min-w-0">
+                                        <div key={key} style={{ flex: flexValue }} className="min-w-[45%] md:min-w-0">
                                             <label className="text-[10px] font-bold text-gray-500 mb-1 block uppercase tracking-wider truncate">{key === 'lens' ? 'Lens' : key === 'aspectRatio' ? 'Ratio' : key}</label>
                                             {key === 'engine' ? (
                                                 <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white">
@@ -2675,7 +2675,7 @@ export function PromptGenerator({ onUpscale }) {
                                     )
                                 })}
                                 {(mode === 'multishot' || mode === 'image') && (
-                                    <div style={{ flex: 1 }} className="min-w-0">
+                                    <div style={{ flex: 1 }} className="min-w-[45%] md:min-w-0">
                                         <label className="text-[10px] font-bold text-purple-400 mb-1 block uppercase tracking-wider truncate">Variations</label>
                                         <div className="flex bg-white/5 border border-white/10 rounded-lg p-0.5">
                                             <button onClick={() => setSelections(p => ({ ...p, multishotMode: 'single' }))}
@@ -2694,7 +2694,7 @@ export function PromptGenerator({ onUpscale }) {
                             </div>
                         )}
                         {isNanoBanana && (
-                            <div className="grid grid-cols-4 gap-4 pt-2 border-t border-white/5">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t border-white/5">
                                 <div>
                                     <label className="text-[10px] font-bold text-yellow-400 mb-2 block uppercase tracking-[0.2em] flex items-center gap-2"><Focus className="w-3 h-3" /> Focus Ctrl</label>
                                     <select value={selections.focusPoint} onChange={e => setSelections(p => ({ ...p, focusPoint: e.target.value }))} className="w-full bg-yellow-400/5 border border-yellow-400/20 rounded-xl p-2.5 text-xs text-white outline-none">
@@ -2720,12 +2720,12 @@ export function PromptGenerator({ onUpscale }) {
             {/* ─── ZOOM MODAL ──────────────────────────────────────────── */}
             {
                 zoomState.isOpen && (
-                    <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-8">
-                        <button onClick={() => setZoomState(p => ({ ...p, isOpen: false }))} className="absolute top-8 right-8 text-white/50 hover:text-white transition"><X className="w-8 h-8" /></button>
-                        {activeFrame?.type === 'video' ? <video src={zoomState.url} controls autoPlay loop className="max-w-full max-h-full rounded-2xl" style={{ maxHeight: '80vh' }} /> : <img src={zoomState.url} className="max-w-full max-h-full rounded-2xl" alt="Zoomed" />}
-                        <div className="absolute bottom-12 flex gap-4">
-                            <button onClick={() => setZoomState(p => ({ ...p, isEditing: true }))} className="bg-[#D4FF00] text-black px-6 py-2 rounded-full font-bold uppercase text-xs flex items-center gap-2 hover:bg-white transition"><PenTool className="w-4 h-4" /> Edit</button>
-                            <button onClick={() => downloadImage(zoomState.url)} className="bg-white text-black px-6 py-2 rounded-full font-bold uppercase text-xs flex items-center gap-2 hover:bg-cyan-500 hover:text-white transition"><Download className="w-4 h-4" /> Download</button>
+                    <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-8">
+                        <button onClick={() => setZoomState(p => ({ ...p, isOpen: false }))} className="absolute top-4 right-4 md:top-8 md:right-8 text-white/50 hover:text-white transition"><X className="w-6 h-6 md:w-8 md:h-8" /></button>
+                        {activeFrame?.type === 'video' ? <video src={zoomState.url} controls autoPlay loop className="max-w-full max-h-full rounded-2xl shadow-2xl" style={{ maxHeight: '85vh' }} /> : <img src={zoomState.url} className="max-w-full max-h-full rounded-2xl shadow-2xl" alt="Zoomed" />}
+                        <div className="absolute bottom-6 md:bottom-12 flex gap-4 w-full justify-center px-4 md:w-auto">
+                            <button onClick={() => setZoomState(p => ({ ...p, isEditing: true }))} className="flex-1 md:flex-none justify-center bg-[#D4FF00] text-black px-6 py-3 md:py-2 rounded-full font-bold uppercase text-[10px] md:text-xs flex items-center gap-2 hover:bg-white transition shadow-xl"><PenTool className="w-4 h-4" /> Edit</button>
+                            <button onClick={() => downloadImage(zoomState.url)} className="flex-1 md:flex-none justify-center bg-white text-black px-6 py-3 md:py-2 rounded-full font-bold uppercase text-[10px] md:text-xs flex items-center gap-2 hover:bg-cyan-500 hover:text-white transition shadow-xl"><Download className="w-4 h-4" /> Save</button>
                         </div>
                     </div>
                 )
@@ -2919,7 +2919,7 @@ export function PromptGenerator({ onUpscale }) {
 
                             <div className="flex-1 overflow-y-auto custom-scrollbar">
                                 {galleryTab === 'recent' ? (
-                                    <div className="grid grid-cols-4 gap-3">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                                         {frames.filter(f => f.url && !f.loading).map(frame => (
                                             <div key={frame.id} onClick={() => { setActiveFrameId(frame.id); setShowGallery(false) }}
                                                 className={cn("relative aspect-video rounded-xl overflow-hidden cursor-pointer group border-2 transition-all",

@@ -375,14 +375,14 @@ function PipelineSection() {
 
   return (
     <section ref={ref} style={{
-      padding: '120px 48px',
+      padding: isMobile ? '80px 24px' : '120px 48px',
       background: T.bg2, borderTop: `1px solid ${T.gray}`, borderBottom: `1px solid ${T.gray}`
     }}>
       <Reveal>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 80 }}>
           <div>
             <SectionEye>HOW IT WORKS</SectionEye>
-            <SectionTitle>THE<br />PIPELINE</SectionTitle>
+            <SectionTitle>{isMobile ? 'THE PIPELINE' : <>THE<br />PIPELINE</>}</SectionTitle>
           </div>
           <p style={{
             fontFamily: "'Syne',sans-serif", fontSize: 13, lineHeight: 1.7,
@@ -395,14 +395,17 @@ function PipelineSection() {
 
       <Reveal delay={0.1}>
         <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(6,1fr)',
+          display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(6,1fr)',
+          gap: isMobile ? 40 : 2,
           position: 'relative', marginTop: 0
         }}>
           {/* connector line */}
-          <div style={{
-            position: 'absolute', top: 26, left: '8%', right: '8%',
-            height: 1, background: T.gray
-          }} />
+          {!isMobile && (
+            <div style={{
+              position: 'absolute', top: 26, left: '8%', right: '8%',
+              height: 1, background: T.gray
+            }} />
+          )}
 
           {PIPE.map((p, i) => (
             <div key={p.n} style={{
@@ -690,7 +693,15 @@ export default function LandingPage({ onEnter, onPricing }) {
   const [assets, setAssets] = useState(INITIAL_ASSETS);
   const [hoveredMode, setHoveredMode] = useState(null);
   const [isMuted, setIsMuted] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   const videoRef = useRef(null);
+  
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 1024);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   useEffect(() => {
     const fetchAssets = async () => {
@@ -1043,7 +1054,7 @@ export default function LandingPage({ onEnter, onPricing }) {
 
       {/* ══════ FEATURES ══════ */}
       <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr',
+        display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
         gap: 2, background: T.gray
       }}>
         {[
@@ -1083,7 +1094,7 @@ export default function LandingPage({ onEnter, onPricing }) {
           }}>
             <div>
               <SectionEye>OUTPUT GALLERY</SectionEye>
-              <SectionTitle>GENERATED<br />IN STUDIO</SectionTitle>
+              <SectionTitle>{isMobile ? 'GENERATED IN STUDIO' : <>GENERATED<br />IN STUDIO</>}</SectionTitle>
             </div>
             <p style={{
               fontFamily: "'Syne',sans-serif", fontSize: 13, lineHeight: 1.7,
@@ -1097,8 +1108,8 @@ export default function LandingPage({ onEnter, onPricing }) {
         <Reveal delay={0.1}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: '1.5fr 1fr 1fr',
-            gridTemplateRows: '340px 300px',
+            gridTemplateColumns: isMobile ? '1fr' : '1.5fr 1fr 1fr',
+            gridTemplateRows: isMobile ? 'auto' : '340px 300px',
             gap: 2
           }}>
             {VCELLS.map((cell, i) => (
@@ -1143,7 +1154,7 @@ export default function LandingPage({ onEnter, onPricing }) {
 
         <Reveal delay={0.1}>
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(3,1fr)',
+            display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)',
             gap: 2, background: T.gray
           }}>
             {MODES.map((m, i) => (

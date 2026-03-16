@@ -264,20 +264,26 @@ export default function DirectorHUD() {
     return (
         <motion.div
             initial={{ x: 400, opacity: 0 }}
-            animate={{ x: isCollapsed ? 315 : 0, opacity: 1 }}
+            animate={{ 
+                x: window.innerWidth < 768 ? 0 : (isCollapsed ? 315 : 0),
+                y: window.innerWidth < 768 ? (isCollapsed ? 'calc(100vh - 60px)' : 0) : 0,
+                opacity: 1 
+            }}
             transition={{ type: 'spring', stiffness: 200, damping: 30 }}
-            onMouseEnter={() => setIsCollapsed(false)}
-            className="fixed right-0 top-0 h-screen w-[320px] bg-[#050505]/95 backdrop-blur-3xl border-l border-white/10 shadow-[-50px_0_100px_rgba(0,0,0,0.8)] z-50 flex flex-col overflow-visible"
+            className={`fixed ${window.innerWidth < 768 ? 'inset-x-0 bottom-0 h-[90vh] w-full rounded-t-[3rem]' : 'right-0 top-0 h-screen w-[320px]'} bg-[#050505]/95 backdrop-blur-3xl border-l md:border-l border-white/10 shadow-[-50px_0_100px_rgba(0,0,0,0.8)] z-50 flex flex-col overflow-visible`}
         >
-            {/* COLLAPSE TOGGLE */}
+            {/* COLLAPSE TOGGLE / HANDLE (Mobile) */}
             <button
                 onClick={(e) => {
                     e.stopPropagation();
                     setIsCollapsed(!isCollapsed);
                 }}
-                className="absolute left-[-28px] top-1/2 -translate-y-1/2 w-7 h-20 bg-[#050505]/95 border-l border-t border-b border-white/10 rounded-l-xl flex items-center justify-center text-white/40 hover:text-[#bef264] transition-colors z-50 shadow-[-5px_0_15px_rgba(0,0,0,0.5)]"
+                className={`absolute ${window.innerWidth < 768 
+                    ? 'top-[-12px] left-1/2 -translate-x-1/2 w-20 h-1.5 bg-white/20 rounded-full' 
+                    : 'left-[-28px] top-1/2 -translate-y-1/2 w-7 h-20 bg-[#050505]/95 border-l border-t border-b border-white/10 rounded-l-xl flex items-center justify-center text-white/40 hover:text-[#bef264] transition-colors shadow-[-5px_0_15px_rgba(0,0,0,0.5)]'
+                } z-50`}
             >
-                {isCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+                {window.innerWidth >= 768 && (isCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />)}
             </button>
 
 
