@@ -18,6 +18,37 @@ export const useAppStore = create((set, get) => ({
     activeCharacter: null,
     userShorts: 50,
     userProfile: null,
+    cachedAssets: null,
+    isAssetsLoading: false,
+
+    clearSession: () => {
+        set({
+            userProfile: null,
+            userShorts: 0,
+            cachedAssets: null,
+            nodes: [],
+            edges: [],
+            activeNodeId: null,
+            focusedNodeId: null,
+            anchorImage: null,
+            imageAnalysis: null,
+            detailMatrix: null,
+            activeCharacter: null,
+            currentWardrobe: '',
+            currentProduct: { image: null, description: '', labels: [], colors: [] },
+            currentLocation: null,
+            lastGeneratedPrompt: '',
+            universeBible: {
+                characters: {},
+                locations: {},
+                rules: [],
+                history: [],
+                cachedContentName: null
+            }
+        });
+        // Clear local storage surgical traces if any
+        localStorage.removeItem('hidden_filmstrip_frames');
+    },
 
     // Director Settings
     actionScript: '',

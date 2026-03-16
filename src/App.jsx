@@ -15,6 +15,7 @@ import PricingPage from './components/pages/PricingPage'
 import { supabase } from './lib/supabase'
 import { initFaviconAnimation } from './utils/favicon'
 import { Toast } from './components/common/Toast'
+import { useAppStore } from './store'
 
 const FULL_HEIGHT_TABS = new Set([
   'home',
@@ -58,6 +59,10 @@ function App() {
     if (supabase) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         (_event, session) => {
+          if (!session) {
+            // Logged out or session lost - clear everything
+            useAppStore.getState().clearSession()
+          }
           setUser(session?.user || null)
         }
       )

@@ -897,11 +897,5 @@ export function InfluencerStudio({ setActiveTab }) {
         </div>
     );
 }
-() => setShowCreateModal(false)}
-                        onCreate={handleCreateChar}
-                    />
-                )}
-            </AnimatePresence>
-        </div>
-    );
-}
+
+export { InfluencerStudio };
