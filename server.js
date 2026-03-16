@@ -3112,12 +3112,27 @@ app.get('/api/proxy/asset', async (req, res) => {
         const { url } = req.query;
         if (!url) return res.status(400).send('URL is required');
 
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`Failed to fetch asset: ${response.statusText}`);
+        // Pass along range headers to support HTML5 video seeking/streaming
+        const options = {};
+        if (req.headers.range) {
+            options.headers = { 'Range': req.headers.range };
+        }
 
+        const response = await fetch(url, options);
+        if (!response.ok && response.status !== 206) throw new Error(`Failed to fetch asset: ${response.statusText}`);
+
+        // Forward type and dimensions
         res.set('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
         res.set('Content-Length', response.headers.get('content-length'));
-        res.set('Accept-Ranges', 'bytes'); // Support video streaming/seeking
+        res.set('Accept-Ranges', 'bytes'); 
+
+        // Support partial content range for video chunks
+        if (response.status === 206) {
+            res.status(206);
+            if (response.headers.get('content-range')) {
+                res.set('Content-Range', response.headers.get('content-range'));
+            }
+        }
 
         response.body.pipe(res);
 
