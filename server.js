@@ -181,25 +181,49 @@ if (await isRedisAvailable()) {
 
         new Worker('image-generation', async (job) => {
             const { reqBody } = job.data;
+            console.log(`[WORKER] Starting image job ${job.id} for model ${reqBody.model}`);
             await updateJobStatus(job.id, 'processing');
             const mockReq = { body: reqBody };
             let finalUrl = null;
-            const mockRes = { json: (d) => { finalUrl = d.url; return d; }, status: () => mockRes, headersSent: false };
-            await handleGoogle(mockReq, mockRes);
-            if (!finalUrl) throw new Error("handleGoogle did not return a valid URL");
-            await updateJobStatus(job.id, 'completed', { url: finalUrl });
+            const mockRes = { 
+                json: (d) => { finalUrl = d.url; return d; }, 
+                status: () => mockRes, 
+                headersSent: false 
+            };
+            try {
+                await handleGoogle(mockReq, mockRes);
+                if (!finalUrl) throw new Error("handleGoogle did not return a valid URL");
+                await updateJobStatus(job.id, 'completed', { url: finalUrl });
+                console.log(`[WORKER] Image job ${job.id} completed successfully.`);
+            } catch (err) {
+                console.error(`[WORKER] Image job ${job.id} failed:`, err);
+                await updateJobStatus(job.id, 'failed', null, err.message);
+                throw err;
+            }
             return { url: finalUrl };
         }, { connection: redisConn, concurrency: CONCURRENCY });
 
         new Worker('video-generation', async (job) => {
             const { reqBody } = job.data;
+            console.log(`[WORKER] Starting video job ${job.id} for model ${reqBody.model}`);
             await updateJobStatus(job.id, 'processing');
             const mockReq = { body: reqBody };
             let finalUrl = null, finalVideoUrl = null;
-            const mockRes = { json: (d) => { finalUrl = d.url; finalVideoUrl = d.videoUrl; return d; }, status: () => mockRes, headersSent: false };
-            await handleGoogle(mockReq, mockRes);
-            if (!finalUrl) throw new Error("handleGoogle did not return a valid URL");
-            await updateJobStatus(job.id, 'completed', { url: finalUrl, videoUrl: finalVideoUrl });
+            const mockRes = { 
+                json: (d) => { finalUrl = d.url; finalVideoUrl = d.videoUrl; return d; }, 
+                status: () => mockRes, 
+                headersSent: false 
+            };
+            try {
+                await handleGoogle(mockReq, mockRes);
+                if (!finalUrl && !finalVideoUrl) throw new Error("handleGoogle did not return a valid URL or videoUrl");
+                await updateJobStatus(job.id, 'completed', { url: finalUrl, videoUrl: finalVideoUrl });
+                console.log(`[WORKER] Video job ${job.id} completed successfully.`);
+            } catch (err) {
+                console.error(`[WORKER] Video job ${job.id} failed:`, err);
+                await updateJobStatus(job.id, 'failed', null, err.message);
+                throw err;
+            }
             return { url: finalUrl, videoUrl: finalVideoUrl };
         }, { connection: redisConn, concurrency: CONCURRENCY });
 
@@ -1690,6 +1714,10 @@ async function handleGoogle(req, res) {
                     });
                 });
                 req.on('error', (e) => reject(e));
+                req.setTimeout(60000, () => {
+                    req.destroy();
+                    reject(new Error("Imagen API Request Timeout (60s)"));
+                });
                 req.write(postData);
                 req.end();
             });
