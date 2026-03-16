@@ -897,5 +897,3 @@ export function InfluencerStudio({ setActiveTab }) {
         </div>
     );
 }
-
-export { InfluencerStudio };
