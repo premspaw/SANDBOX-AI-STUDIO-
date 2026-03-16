@@ -1773,26 +1773,30 @@ export function PromptGenerator({ onUpscale }) {
                 const res = await fetch(getApiUrl(`/api/job-status/${jobId}`));
                 if (!res.ok) throw new Error('Failed to fetch job status');
                 const data = await res.json();
+                const jobState = data.status || data.state;
                 
-                if (data.status === 'completed') {
+                if (jobState === 'completed') {
                     const resultUrl = data.url || data.videoUrl;
-                    if (resultUrl) {
-                        // Show video/image IMMEDIATELY, save to DB in background
-                        setFrames(prev => prev.map(f => f.id === frameId ? { ...f, url: resultUrl, loading: false } : f));
-                        if (renderTarget === 'left') setLeftPreviewId(frameId);
-                        else if (renderTarget === 'right') setRightPreviewId(frameId);
-                        setRenderTarget('center');
-                        // Non-blocking asset save
-                        saveAsset(resultUrl, frameId, isVideoJob ? 'video' : 'image').then(assetData => {
-                            if (assetData) setFrames(prev => prev.map(f => f.id === frameId ? { ...f, assetPath: assetData.path, assetId: assetData.id } : f));
-                        }).catch(e => console.warn('[SAVE_ASSET_BG]', e));
+                    if (!resultUrl) {
+                        throw new Error('Job completed but no result URL was returned');
                     }
+
+                    console.log('[QUEUE] Job completed in UI:', { jobId, jobState, resultUrl });
+                    // Show video/image IMMEDIATELY, save to DB in background
+                    setFrames(prev => prev.map(f => f.id === frameId ? { ...f, url: resultUrl, loading: false } : f));
+                    if (renderTarget === 'left') setLeftPreviewId(frameId);
+                    else if (renderTarget === 'right') setRightPreviewId(frameId);
+                    setRenderTarget('center');
+                    // Non-blocking asset save
+                    saveAsset(resultUrl, frameId, isVideoJob ? 'video' : 'image').then(assetData => {
+                        if (assetData) setFrames(prev => prev.map(f => f.id === frameId ? { ...f, assetPath: assetData.path, assetId: assetData.id } : f));
+                    }).catch(e => console.warn('[SAVE_ASSET_BG]', e));
                     return;
-                } else if (data.status === 'failed') {
+                } else if (jobState === 'failed') {
                     throw new Error(data.error || 'Generation failed in queue');
-                } else if (data.status === 'queued') {
+                } else if (jobState === 'queued') {
                     setQueueStatus(`Queued... ${isVideoJob ? 'Video render may take 2–5 min' : 'Image render usually finishes soon'}`);
-                } else if (data.status === 'processing') {
+                } else if (jobState === 'processing') {
                     setQueueStatus(
                         isVideoJob
                             ? `Rendering video... ${data.progress ? `${data.progress}%` : 'This can take a few minutes'}`
