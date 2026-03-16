@@ -123,7 +123,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                 {!isCollapsed && (
                     <div>
                         <button onClick={() => setActiveTab('home')} className="flex items-center gap-3 hover:opacity-80 transition-opacity focus:outline-none group">
-                            <BrandLogo size={40} className="w-10 h-10 drop-shadow-[0_0_8px_rgba(212,255,0,0.3)]" />
+                            <BrandLogo size={54} className="w-14 h-14 drop-shadow-[0_0_12px_rgba(212,255,0,0.4)]" />
                             <div className="flex flex-col items-start mt-1">
                                 <h1 className="text-[20px] font-black text-metallic transition-all tracking-tighter uppercase italic leading-none">
                                     ZEROLENS
@@ -135,7 +135,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                 )}
                 {isCollapsed && (
                     <button onClick={() => setActiveTab('home')} className="w-full flex justify-center hover:opacity-80 transition-opacity focus:outline-none cursor-pointer">
-                        <BrandLogo size={40} className="w-10 h-10 drop-shadow-[0_0_8px_rgba(212,255,0,0.3)]" />
+                        <BrandLogo size={54} className="w-14 h-14 drop-shadow-[0_0_12px_rgba(212,255,0,0.4)]" />
                     </button>
                 )}
             </div>
@@ -158,9 +158,9 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                     onClick={toggleCollapse}
                     className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground hover:text-white hover:bg-white/5 rounded-lg transition-colors justify-center"
                 >
-                    {isCollapsed ? <ChevronRight className="w-4 h-4" /> : (
+                    {isCollapsed ? <ChevronRight className="w-5 h-5" /> : (
                         <div className="flex items-center gap-2 w-full">
-                            <ChevronLeft className="w-4 h-4" />
+                            <ChevronLeft className="w-5 h-5" />
                             <span className="font-bold uppercase tracking-wider">Collapse</span>
                         </div>
                     )}
@@ -169,14 +169,14 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                 <div className="px-3 py-2 space-y-2">
                     <div className={cn(
                         "flex items-center gap-2 px-3 py-2 bg-[#D4FF00]/10 border border-[#D4FF00]/30 rounded-xl transition-all",
-                        isCollapsed ? "justify-center px-0" : ""
+                        isCollapsed ? "justify-center px-1" : ""
                     )}>
                         {isCollapsed ? (
-                            <span className="text-sm">🎞</span>
+                            <Coins className="w-4 h-4 text-[#D4FF00]" />
                         ) : (
                             <div className="flex items-center justify-between w-full">
                                 <div className="flex items-center gap-1.5">
-                                    <span className="text-sm">🎞</span>
+                                    <Coins className="w-4 h-4 text-[#D4FF00]" />
                                     <span className="text-[13px] font-black text-[#D4FF00]">{shorts}</span>
                                     <span className="text-[9px] text-[#555] font-bold tracking-widest leading-none mt-0.5">SHORTS</span>
                                 </div>

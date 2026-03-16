@@ -795,7 +795,7 @@ export default function LandingPage({ onEnter, onPricing }) {
           {assets.heroBackground && (
             <video
               ref={videoRef}
-              autoPlay muted loop playsInline
+              autoPlay muted loop playsInline preload="auto"
               src={resolveAsset(assets.heroBackground)}
               style={{
                 position: 'absolute', top: '50%', left: '50%',
@@ -828,7 +828,7 @@ export default function LandingPage({ onEnter, onPricing }) {
             pointerEvents: 'none',
             display: 'flex', alignItems: 'flex-end',
           }}>
-            <video autoPlay muted loop playsInline
+            <video autoPlay muted loop playsInline preload="auto"
               src={resolveAsset(assets.foregroundSubject)}
               style={{
                 height: '100%', width: 'auto', objectFit: 'contain',
@@ -988,7 +988,7 @@ export default function LandingPage({ onEnter, onPricing }) {
               }} />
               {assets.pipelineDemo ? (
                 <video
-                  controls loop playsInline
+                  controls loop playsInline preload="auto"
                   src={resolveAsset(assets.pipelineDemo)}
                   style={{
                     position: 'absolute', inset: 0,
