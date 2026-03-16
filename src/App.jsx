@@ -42,6 +42,8 @@ function App() {
   const [newPassword, setNewPassword] = useState('')
   const userProfile = useAppStore(state => state.userProfile)
   const isAdmin = userProfile?.role === 'admin'
+  const isShowingAuthModal = useAppStore(state => state.isShowingAuthModal);
+  const setShowingAuthModal = useAppStore(state => state.setShowingAuthModal);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -97,9 +99,6 @@ function App() {
   }
 
   if (!authChecked) return null; // wait for session check
-
-  const isShowingAuthModal = useAppStore(state => state.isShowingAuthModal);
-  const setShowingAuthModal = useAppStore(state => state.setShowingAuthModal);
 
   const tabComponents = {
     home: <LandingPage onEnter={handleEnterStudio} onPricing={() => setActiveTab('pricing')} />,
