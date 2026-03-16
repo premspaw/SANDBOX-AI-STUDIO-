@@ -37,6 +37,8 @@ function App() {
   const [activeTab, setActiveTab] = useState('home')
   const [user, setUser] = useState(null)
   const [authChecked, setAuthChecked] = useState(false)
+  const userProfile = useAppStore(state => state.userProfile)
+  const isAdmin = userProfile?.role === 'admin'
 
   // Check for existing session on mount
   useEffect(() => {

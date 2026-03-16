@@ -43,16 +43,21 @@ export default function SettingsPage() {
 
         try {
             const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('You are not logged in.');
+
+            const payload = {
+                id: user.id,
+                email: user.email || null,
+                full_name: fullName,
+                marketing_emails: marketingEmails,
+                security_alerts: securityAlerts,
+                two_factor_enabled: twoFactorEnabled,
+                updated_at: new Date().toISOString()
+            };
+
             const { error } = await supabase
                 .from('profiles')
-                .update({
-                    full_name: fullName,
-                    marketing_emails: marketingEmails,
-                    security_alerts: securityAlerts,
-                    two_factor_enabled: twoFactorEnabled,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', user.id);
+                .upsert(payload, { onConflict: 'id' });
 
             if (error) throw error;
             setMessage({ type: 'success', text: 'Settings updated successfully!' });

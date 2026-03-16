@@ -70,8 +70,9 @@ function SidebarNavItem({ item, activeTab, setActiveTab, isCollapsed, mouseY }) 
 
 export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }) {
     const mouseY = useMotionValue(Infinity);
-    const { runtimeMode, apiKey, setApiKey, checkRuntimeMode } = useAppStore();
+    const { runtimeMode, apiKey, setApiKey, checkRuntimeMode, userProfile } = useAppStore();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const isAdmin = userProfile?.role === 'admin';
 
     // Auto-hide sidebar on all pages after 5 seconds
     useEffect(() => {

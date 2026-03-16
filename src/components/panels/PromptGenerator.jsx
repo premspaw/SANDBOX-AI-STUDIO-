@@ -1761,10 +1761,14 @@ export function PromptGenerator({ onUpscale }) {
         return (<svg width="80" height="62" viewBox="0 0 80 62" className="mx-auto"><path d={pts} fill="none" stroke={active ? '#84CC16' : '#333'} strokeWidth={active ? 2 : 1} strokeLinecap="round" strokeLinejoin="round" /></svg>)
     }
 
-    const pollJobStatus = async (jobId, frameId, costKey) => {
+    const pollJobStatus = async (jobId, frameId, costKey, jobType = 'image') => {
+        const isVideoJob = jobType === 'video';
+        const maxWaitMs = isVideoJob ? 6 * 60 * 1000 : 3 * 60 * 1000;
+        const pollIntervalMs = isVideoJob ? 3000 : 2000;
+        const maxAttempts = Math.ceil(maxWaitMs / pollIntervalMs);
+
         try {
             let attempt = 0;
-            const maxAttempts = 120; // 4 minutes max
             while (attempt < maxAttempts) {
                 const res = await fetch(getApiUrl(`/api/job-status/${jobId}`));
                 if (!res.ok) throw new Error('Failed to fetch job status');
@@ -1779,7 +1783,7 @@ export function PromptGenerator({ onUpscale }) {
                         else if (renderTarget === 'right') setRightPreviewId(frameId);
                         setRenderTarget('center');
                         // Non-blocking asset save
-                        saveAsset(resultUrl, frameId, mode === 'video' ? 'video' : 'image').then(assetData => {
+                        saveAsset(resultUrl, frameId, isVideoJob ? 'video' : 'image').then(assetData => {
                             if (assetData) setFrames(prev => prev.map(f => f.id === frameId ? { ...f, assetPath: assetData.path, assetId: assetData.id } : f));
                         }).catch(e => console.warn('[SAVE_ASSET_BG]', e));
                     }
@@ -1787,19 +1791,31 @@ export function PromptGenerator({ onUpscale }) {
                 } else if (data.status === 'failed') {
                     throw new Error(data.error || 'Generation failed in queue');
                 } else if (data.status === 'queued') {
-                    setQueueStatus(`Waiting in line (Position: ${data.position || '?'})`);
+                    setQueueStatus(`Queued... ${isVideoJob ? 'Video render may take 2–5 min' : 'Image render usually finishes soon'}`);
                 } else if (data.status === 'processing') {
-                    setQueueStatus(`Processing ${data.progress || 0}%`);
+                    setQueueStatus(
+                        isVideoJob
+                            ? `Rendering video... ${data.progress ? `${data.progress}%` : 'This can take a few minutes'}`
+                            : `Generating image... ${data.progress ? `${data.progress}%` : 'Almost there'}`
+                    );
                 }
                 
                 attempt++;
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
             }
-            throw new Error('Generation timed out in queue');
+            throw new Error(
+                isVideoJob
+                    ? 'Video is taking longer than usual. It may still be processing in background.'
+                    : 'Image is taking longer than usual. Please try again.'
+            );
         } catch (err) {
-            await refund(costKey);
+            const message = err?.message || '';
+            const timedOut = message.toLowerCase().includes('taking longer than usual') || message.toLowerCase().includes('timed out');
+            if (!timedOut) {
+                await refund(costKey);
+            }
             console.error('Polling error:', err);
-            let msg = err.message;
+            let msg = message;
             if (msg.toLowerCase().includes('safety system')) msg = "Creative Block: The AI's safety filters flagged this prompt.";
             alert(`AI Engine Status: ${msg}`);
             setFrames(prev => prev.map(f => f.id === frameId ? { ...f, loading: false, error: true } : f));
@@ -1924,7 +1940,7 @@ export function PromptGenerator({ onUpscale }) {
             if (data.jobId) {
                 setQueueStatus("Sending to AI Engine...")
                 // We do NOT block the thread or call setIsLoading(false) yet.
-                pollJobStatus(data.jobId, newFrameId, costKey)
+                pollJobStatus(data.jobId, newFrameId, costKey, mode === 'video' ? 'video' : 'image')
             } else {
                 // Synchronous fallback
                 if (userId) fetchBalance(userId);

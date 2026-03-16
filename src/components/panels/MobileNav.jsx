@@ -8,7 +8,8 @@ import { useAppStore } from '../../store';
 export function MobileNav({ activeTab, setActiveTab }) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const { shorts } = useShorts();
-    const { runtimeMode } = useAppStore();
+    const { runtimeMode, userProfile } = useAppStore();
+    const isAdmin = userProfile?.role === 'admin';
 
     const mainNavItems = [
         { id: 'prompt', label: 'Prompt', icon: Bot },
