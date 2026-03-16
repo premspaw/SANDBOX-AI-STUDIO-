@@ -37,6 +37,8 @@ function App() {
   const [activeTab, setActiveTab] = useState('home')
   const [user, setUser] = useState(null)
   const [authChecked, setAuthChecked] = useState(false)
+  const [isRecoveringPassword, setIsRecoveringPassword] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
   const userProfile = useAppStore(state => state.userProfile)
   const isAdmin = userProfile?.role === 'admin'
 
@@ -60,12 +62,15 @@ function App() {
     // Listen for auth state changes
     if (supabase) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        (_event, session) => {
+        (event, session) => {
+          if (event === 'PASSWORD_RECOVERY') {
+            setIsRecoveringPassword(true);
+          }
+          
           const currentUserId = useAppStore.getState().userProfile?.id || null
           const nextUserId = session?.user?.id || null
 
           if (!session || (currentUserId && nextUserId && currentUserId !== nextUserId)) {
-            // Logged out, session lost, or switched to a different account
             useAppStore.getState().clearSession()
           }
           setUser(session?.user || null)
@@ -138,6 +143,48 @@ function App() {
       <div className={containerClassName}>
         {tabComponents[activeTab] ?? null}
       </div>
+
+      {isRecoveringPassword && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[9999]">
+          <div className="bg-zinc-900 border border-white/10 p-6 rounded-2xl w-full max-w-sm text-center shadow-2xl">
+            <h3 className="text-xl font-bold bg-gradient-to-r from-lime-400 to-emerald-400 bg-clip-text text-transparent mb-2">Reset Password</h3>
+            <p className="text-xs text-zinc-400 mb-5">Choose a new password for your account.</p>
+            <input 
+               type="password" 
+               placeholder="Enter new password" 
+               value={newPassword}
+               onChange={(e) => setNewPassword(e.target.value)}
+               className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white text-sm outline-none mb-4 focus:border-lime-500 transition-colors"
+            />
+            <button 
+               onClick={async () => {
+                   if (!newPassword || newPassword.length < 6) {
+                       alert("Password must be at least 6 characters!");
+                       return;
+                   }
+                   const { error } = await supabase.auth.updateUser({ password: newPassword });
+                   if (error) { 
+                       alert(error.message); 
+                   } else { 
+                       alert("Password updated successfully!"); 
+                       setIsRecoveringPassword(false);
+                       setNewPassword('');
+                   }
+               }}
+               className="w-full bg-lime-400 text-black font-bold p-3 rounded-xl hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-lime-500/20"
+            >
+               Save New Password
+            </button>
+            <button 
+               onClick={() => setIsRecoveringPassword(false)}
+               className="text-[10px] text-zinc-500 hover:text-white mt-4 transition-colors"
+            >
+               Skip for now
+            </button>
+          </div>
+        </div>
+      )}
+
       <Toast />
     </Layout>
   )

@@ -101,11 +101,7 @@ function SectionEye({ children }) {
 }
 
 const resolveAsset = (url) => {
-  if (!url || typeof url !== 'string') return url;
-  if (url.includes('supabase.co/storage/v1/object/sign')) {
-    return getApiUrl(`/api/proxy/asset?url=${encodeURIComponent(url)}`);
-  }
-  return url;
+  return url; // Stream direct from Supabase CDN to fix buffer lags
 };
 
 function SectionTitle({ children }) {
