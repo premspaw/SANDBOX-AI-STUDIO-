@@ -3,19 +3,22 @@
  * Centralizes the backend URL for production and development.
  */
 
+// Determine if we're in a development environment
+const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
+
 // Safe environment variable retrieval
 const VITE_API_URL =
     (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) ||
     (typeof process !== 'undefined' && process.env && process.env.VITE_API_URL) ||
-    'http://localhost:3002';
+    (isDev ? 'http://localhost:3002' : '');
 
 const VITE_WS_URL =
     (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_WS_URL) ||
     (typeof process !== 'undefined' && process.env && process.env.VITE_WS_URL) ||
-    null;
+    (isDev ? 'ws://localhost:3002' : '');
 
 // Ensure base URL doesn't have a trailing slash
-export const API_BASE_URL = VITE_API_URL.endsWith('/') ? VITE_API_URL.slice(0, -1) : VITE_API_URL;
+export const API_BASE_URL = VITE_API_URL ? (VITE_API_URL.endsWith('/') ? VITE_API_URL.slice(0, -1) : VITE_API_URL) : '';
 
 /**
  * Helper to ensure URLs don't have double slashes
@@ -33,6 +36,14 @@ export const getApiUrl = (endpoint) => {
  */
 export const getWsUrl = () => {
     if (VITE_WS_URL) return VITE_WS_URL;
+    if (!API_BASE_URL) {
+        // If relative URL, build WS from current window location
+        if (typeof window !== 'undefined') {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            return `${protocol}//${window.location.host}`;
+        }
+        return '';
+    }
     const base = API_BASE_URL.replace('http://', 'ws://').replace('https://', 'wss://');
     return base;
 };

@@ -59,8 +59,11 @@ function App() {
     if (supabase) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         (_event, session) => {
-          if (!session) {
-            // Logged out or session lost - clear everything
+          const currentUserId = useAppStore.getState().userProfile?.id || null
+          const nextUserId = session?.user?.id || null
+
+          if (!session || (currentUserId && nextUserId && currentUserId !== nextUserId)) {
+            // Logged out, session lost, or switched to a different account
             useAppStore.getState().clearSession()
           }
           setUser(session?.user || null)

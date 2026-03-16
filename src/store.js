@@ -19,6 +19,7 @@ export const useAppStore = create((set, get) => ({
     userShorts: 50,
     userProfile: null,
     cachedAssets: null,
+    cachedAssetsUserId: null,
     isAssetsLoading: false,
 
     clearSession: () => {
@@ -26,6 +27,7 @@ export const useAppStore = create((set, get) => ({
             userProfile: null,
             userShorts: 0,
             cachedAssets: null,
+            cachedAssetsUserId: null,
             nodes: [],
             edges: [],
             activeNodeId: null,
@@ -73,6 +75,12 @@ export const useAppStore = create((set, get) => ({
     currentLocation: null,
     cachedAssets: null,
     isAssetsLoading: false,
+
+    setCachedAssets: (payload) => {
+        if (!payload) return set({ cachedAssets: null, cachedAssetsUserId: null });
+        const { userId = null, ...assets } = payload;
+        set({ cachedAssets: assets, cachedAssetsUserId: userId });
+    },
 
     // React Flow State
     nodes: [],
@@ -136,7 +144,7 @@ export const useAppStore = create((set, get) => ({
     setCurrentProduct: (data) => set({ currentProduct: data }),
     setCurrentLocation: (location) => set({ currentLocation: location }),
     clearCurrentLocation: () => set({ currentLocation: null }),
-    setCachedAssets: (assets) => set({ cachedAssets: assets }),
+    setCachedAssets: (assets, userId = null) => set({ cachedAssets: assets, cachedAssetsUserId: userId }),
     setIsAssetsLoading: (loading) => set({ isAssetsLoading: loading }),
 
     // Standalone / API Actions

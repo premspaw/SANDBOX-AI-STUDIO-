@@ -201,15 +201,15 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
     const [activeTab, setActiveTab] = useState('images');
     const [viewMode, setViewMode] = useState('grid');
     const [isConnectedToDrive, setIsConnectedToDrive] = useState(false);
-    const { cachedAssets, setCachedAssets } = useAppStore();
-    const [assets, setAssets] = useState(cachedAssets || {
+    const { cachedAssets, cachedAssetsUserId, setCachedAssets } = useAppStore();
+    const [assets, setAssets] = useState({
         images: [],
         videos: [],
         models: [],
         upscaled: [],
         characters: []
     });
-    const [loading, setLoading] = useState(!cachedAssets);
+    const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [isNeuralSearch, setIsNeuralSearch] = useState(false);
 
@@ -330,7 +330,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
     };
 
     React.useEffect(() => {
-        fetchAssets();
+        fetchAssets(true);
     }, []);
 
     const handleSemanticSearch = async () => {
