@@ -544,7 +544,7 @@ export const useAppStore = create((set, get) => ({
             await supabase.from('shorts_transactions').insert({
                 user_id: userId,
                 amount: -amount,
-                reason,
+                action_type: reason,
                 created_at: new Date().toISOString()
             });
             return { success: true };
@@ -569,7 +569,7 @@ export const useAppStore = create((set, get) => ({
             await supabase.from('shorts_transactions').insert({
                 user_id: userId,
                 amount,
-                reason: `refund_${reason}`,
+                action_type: `refund_${reason}`,
                 created_at: new Date().toISOString()
             });
         } catch (err) {
