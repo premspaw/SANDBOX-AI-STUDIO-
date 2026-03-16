@@ -798,8 +798,10 @@ export default function LandingPage({ onEnter, onPricing }) {
               autoPlay muted loop playsInline
               src={resolveAsset(assets.heroBackground)}
               style={{
-                width: '100%', height: '100%', objectFit: 'cover',
-                opacity: 1
+                position: 'absolute', top: '50%', left: '50%',
+                transform: 'translate(-50%, -50%)',
+                minWidth: '100%', minHeight: '100%',
+                objectFit: 'cover', opacity: 1
               }}
             />
           )}
