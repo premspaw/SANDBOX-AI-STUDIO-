@@ -986,7 +986,7 @@ export default function LandingPage({ onEnter, onPricing }) {
               }} />
               {assets.pipelineDemo ? (
                 <video
-                  autoPlay muted loop playsInline
+                  controls loop playsInline
                   src={resolveAsset(assets.pipelineDemo)}
                   style={{
                     position: 'absolute', inset: 0,
