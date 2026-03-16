@@ -70,6 +70,9 @@ export const StoryboardView = ({
     };
 
     const generateStoryboard = async () => {
+        console.log("[STORYBOARD] Clicked generateStoryboard top handler.");
+        console.log("[STORYBOARD] State:", { productImage: sceneSettings.productImage, sceneBrief: sceneBrief });
+
         if (!sceneSettings.productImage && !sceneBrief) {
             alert("Please provide at least a Hero/Product image or a brief description.");
             return;

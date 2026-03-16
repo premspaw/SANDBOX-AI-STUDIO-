@@ -53,6 +53,9 @@ export const MultiShotView = ({
     };
 
     const generateMultiShot = async () => {
+        console.log("[MULTISHOT] Clicked generateMultiShot top handler.");
+        console.log("[MULTISHOT] State:", { productImage: sceneSettings.productImage, subject: subject });
+
         if (!sceneSettings.productImage && !subject) {
             alert("Please provide at least a Hero image or a subject description.");
             return;
