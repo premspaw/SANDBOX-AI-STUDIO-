@@ -2343,10 +2343,13 @@ export function PromptGenerator({ onUpscale }) {
                                             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2 z-20 pointer-events-none">
                                                 <button onClick={() => setZoomState({ url: activeFrame.url, isOpen: true, slot: activeFrame.id, isEditing: false })} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white pointer-events-auto"><Maximize2 className="w-4 h-4" /></button>
                                                 <button onClick={() => downloadImage(activeFrame.url)} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white pointer-events-auto"><Download className="w-4 h-4" /></button>
-                                                <button onClick={() => setSelections(p => ({ ...p, referenceImage: activeFrame.assetPath || activeFrame.url }))} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white pointer-events-auto" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
+                                                
                                                 {(activeFrame.type === 'image' || activeFrame.type === 'multishot') && activeFrame.model !== 'gemini-3-pro-image-preview' && (
-                                                    <button onClick={() => upscaleImage(activeFrame.id)} className="px-3 py-2 bg-[#D4AF37] hover:bg-yellow-400 rounded-lg text-black text-[9px] font-black uppercase flex items-center gap-1 pointer-events-auto"><Sparkles className="w-3 h-3" /> Upscale 4K</button>
+                                                    <button onClick={() => upscaleImage(activeFrame.id)} className="px-3 py-2 bg-[#D4AF37] hover:bg-yellow-400 rounded-lg text-black text-[9px] font-black uppercase flex items-center gap-1 pointer-events-auto"><Sparkles className="w-3 h-3" /> 4K</button>
                                                 )}
+
+                                                <button onClick={() => setSelections(p => ({ ...p, referenceImage: activeFrame.assetPath || activeFrame.url }))} className="p-2 bg-cyan-500/20 hover:bg-cyan-400 text-cyan-400 hover:text-black rounded-lg pointer-events-auto transition-all" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
+                                                
                                                 {(activeFrame.type === 'image' || activeFrame.type === 'multishot') && (
                                                     <>
                                                         <button onClick={() => { setSelections(p => ({ ...p, firstFrame: activeFrame.assetPath || activeFrame.url })); setMode('video') }} className="px-2 py-2 bg-[#D4FF00] hover:bg-white rounded-lg text-black text-[9px] font-black uppercase flex items-center gap-1 pointer-events-auto"><Film className="w-3 h-3" /> First</button>
