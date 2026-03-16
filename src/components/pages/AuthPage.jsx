@@ -81,6 +81,7 @@ export default function AuthPage({ onAuthSuccess }) {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [isForgotPassword, setIsForgotPassword] = useState(false);
 
     // Load fonts
     useEffect(() => {
@@ -98,18 +99,8 @@ export default function AuthPage({ onAuthSuccess }) {
         setError('');
         setSuccess('');
 
-        if (!email || !password) {
-            setError('Please fill in all fields.');
-            return;
-        }
-
-        if (!isLogin && password !== confirmPassword) {
-            setError('Passwords do not match.');
-            return;
-        }
-
-        if (password.length < 6) {
-            setError('Password must be at least 6 characters.');
+        if (!email) {
+            setError('Please enter your email.');
             return;
         }
 
@@ -122,6 +113,34 @@ export default function AuthPage({ onAuthSuccess }) {
                 return;
             }
 
+            if (isForgotPassword) {
+                const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin,
+                });
+                if (resetError) throw resetError;
+                setSuccess('Password reset link sent! Check your email.');
+                setLoading(false);
+                return;
+            }
+
+            if (!password) {
+                setError('Please enter your password.');
+                setLoading(false);
+                return;
+            }
+
+            if (!isLogin && password !== confirmPassword) {
+                setError('Passwords do not match.');
+                setLoading(false);
+                return;
+            }
+
+            if (password.length < 6) {
+                setError('Password must be at least 6 characters.');
+                setLoading(false);
+                return;
+            }
+
             if (isLogin) {
                 const { data, error: authError } = await supabase.auth.signInWithPassword({
                     email,
@@ -129,6 +148,7 @@ export default function AuthPage({ onAuthSuccess }) {
                 });
                 if (authError) throw authError;
                 if (data?.user) {
+                    await ensureProfile(data.user);
                     onAuthSuccess(data.user);
                 }
             } else {
@@ -253,12 +273,13 @@ export default function AuthPage({ onAuthSuccess }) {
                     }}>
 
                         {/* Mode Toggle Switcher */}
-                        <div style={{
-                            display: 'flex',
-                            marginBottom: 24,
-                            position: 'relative',
-                            borderBottom: '1px solid rgba(255,255,255,0.05)',
-                        }}>
+                        {!isForgotPassword && (
+                            <div style={{
+                                display: 'flex',
+                                marginBottom: 24,
+                                position: 'relative',
+                                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                            }}>
                             {['LOGIN', 'SIGN UP'].map((mode, i) => {
                                 const active = (i === 0 && isLogin) || (i === 1 && !isLogin);
                                 return (
@@ -293,7 +314,8 @@ export default function AuthPage({ onAuthSuccess }) {
                                     </button>
                                 );
                             })}
-                        </div>
+                            </div>
+                        )}
 
                         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -308,22 +330,43 @@ export default function AuthPage({ onAuthSuccess }) {
                                 />
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <label style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em', opacity: 0.3 }}>PASSWORD_KEY</label>
-                                    <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ background: 'none', border: 'none', color: T.lime, fontSize: 10, fontFamily: "'DM Mono',monospace", cursor: 'pointer', opacity: 0.6 }}>{showPassword ? 'HIDE' : 'SHOW'}</button>
+                            {!isForgotPassword && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <label style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em', opacity: 0.3 }}>PASSWORD_KEY</label>
+                                        <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ background: 'none', border: 'none', color: T.lime, fontSize: 10, fontFamily: "'DM Mono',monospace", cursor: 'pointer', opacity: 0.6 }}>{showPassword ? 'HIDE' : 'SHOW'}</button>
+                                    </div>
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="••••••••"
+                                        style={inputStyle}
+                                    />
                                 </div>
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    style={inputStyle}
-                                />
-                            </div>
+                            )}
+
+                            {!isForgotPassword && isLogin && (
+                                <button
+                                    type="button"
+                                    onClick={() => { setIsForgotPassword(true); setError(''); setSuccess(''); }}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: 'rgba(255,255,255,0.4)',
+                                        fontSize: 12,
+                                        fontFamily: "'DM Mono',monospace",
+                                        textAlign: 'right',
+                                        cursor: 'pointer',
+                                        marginTop: -8,
+                                    }}
+                                >
+                                    Forgot password?
+                                </button>
+                            )}
 
                             <AnimatePresence>
-                                {!isLogin && (
+                                {!isLogin && !isForgotPassword && (
                                     <motion.div
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: 'auto' }}
@@ -378,8 +421,26 @@ export default function AuthPage({ onAuthSuccess }) {
                                     boxShadow: `0 0 30px rgba(200,241,53,0.15)`
                                 }}
                             >
-                                {loading ? 'AUTHENTICATING...' : (isLogin ? 'ENTER STUDIO →' : 'INITIALIZE ACCOUNT →')}
+                                {loading ? 'AUTHENTICATING...' : (isForgotPassword ? 'SEND RESET LINK →' : (isLogin ? 'ENTER STUDIO →' : 'INITIALIZE ACCOUNT →'))}
                             </motion.button>
+
+                            {isForgotPassword && (
+                                <button
+                                    type="button"
+                                    onClick={() => { setIsForgotPassword(false); setError(''); setSuccess(''); }}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: 'rgba(255,255,255,0.3)',
+                                        fontSize: 12,
+                                        fontFamily: "'DM Mono',monospace",
+                                        textAlign: 'center',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    ← BACK TO LOGIN
+                                </button>
+                            )}
                         </form>
                     </div>
 

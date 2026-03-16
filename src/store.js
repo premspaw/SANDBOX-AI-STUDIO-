@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { applyNodeChanges, applyEdgeChanges, addEdge } from 'reactflow';
 import { getApiUrl } from './config/apiConfig';
+import { supabase } from './lib/supabase';
 
 export const useAppStore = create((set, get) => ({
     // Character Info
@@ -454,13 +455,48 @@ export const useAppStore = create((set, get) => ({
 
     fetchUserProfile: async (userId) => {
         try {
-            const { data, error } = await supabase
+            const { data: authData } = await supabase.auth.getUser();
+            const authUser = authData?.user;
+
+            let { data, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', userId)
-                .single();
+                .maybeSingle();
+
+            if (error) throw error;
+
+            if (!data && authUser && authUser.id === userId) {
+                const payload = {
+                    id: authUser.id,
+                    email: authUser.email || null,
+                    full_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || '',
+                    marketing_emails: true,
+                    security_alerts: true,
+                    two_factor_enabled: false,
+                    tier: 'FREE',
+                    updated_at: new Date().toISOString(),
+                };
+
+                const { error: upsertError } = await supabase
+                    .from('profiles')
+                    .upsert(payload, { onConflict: 'id' });
+
+                if (upsertError) throw upsertError;
+
+                const result = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', userId)
+                    .single();
+
+                data = result.data;
+                error = result.error;
+                if (error) throw error;
+            }
+
             if (data) {
-                set({ userProfile: data, userShorts: data.shorts_balance });
+                set({ userProfile: data, userShorts: data.shorts_balance ?? 50 });
             }
         } catch (err) {
             console.error('Store: Fetch profile failed', err);
