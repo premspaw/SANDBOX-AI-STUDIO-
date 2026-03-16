@@ -53,12 +53,16 @@ export const MultiShotView = ({
     };
 
     const generateMultiShot = async () => {
+        alert("DEBUG: generateMultiShot clicked!");
         if (!sceneSettings.productImage && !subject) {
             alert("Please provide at least a Hero image or a subject description.");
             return;
         }
 
+        alert("DEBUG: spending shorts next...");
         const res = await spend('image_grid_multishot');
+        alert("DEBUG: spend returned: " + JSON.stringify(res));
+
         if (!res || (!res.success && res.reason !== 'unauthenticated')) {
             alert("Not enough shorts or " + (res?.reason || "error"));
             return;
@@ -68,6 +72,7 @@ export const MultiShotView = ({
         setShotSlots(slots => slots.map(s => ({ ...s, loading: true, url: null })));
 
         try {
+            alert("DEBUG: reaching try block, payload assembly next...");
             let promptText = `A single composite image containing exactly 9 distinct cinematic photographs of the same subject from 9 different camera angles, arranged in a flawless 3x3 layout. High-end production value, dramatic lighting, full color.\n\n`;
 
             if (sceneSettings.productImage || sceneSettings.characterRef) {
