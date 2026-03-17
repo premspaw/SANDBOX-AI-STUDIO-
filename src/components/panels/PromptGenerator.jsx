@@ -1358,8 +1358,28 @@ export function PromptGenerator({ onUpscale }) {
         multishotMode: 'single',
     })
 
-    const [frames, setFrames] = useState([])
-    const [activeFrameId, setActiveFrameId] = useState(null)
+    const [frames, setFrames] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem('cached_assets_list') || '[]');
+        } catch (e) { return []; }
+    });
+
+    const [activeFrameId, setActiveFrameId] = useState(() => localStorage.getItem('active_image_frame_id') || null)
+
+    useEffect(() => {
+        if (frames && frames.length > 0) {
+            localStorage.setItem('cached_assets_list', JSON.stringify(frames.slice(0, 20)));
+        }
+    }, [frames]);
+
+    useEffect(() => {
+        if (activeFrameId) {
+            localStorage.setItem('active_image_frame_id', activeFrameId);
+        } else {
+            localStorage.removeItem('active_image_frame_id');
+        }
+    }, [activeFrameId]);
+
     const [queueStatus, setQueueStatus] = useState("Initializing...")
 
     // ─────────────────────────────────────────────
@@ -2235,6 +2255,7 @@ export function PromptGenerator({ onUpscale }) {
                         setFrames={setFrames}
                         setActiveFrameId={setActiveFrameId}
                         setMode={setMode}
+                        selections={selections}
                         setSelections={setSelections}
                         storyboardSlots={storyboardSlots}
                         setStoryboardSlots={setStoryboardSlots}
@@ -2254,6 +2275,7 @@ export function PromptGenerator({ onUpscale }) {
                         setFrames={setFrames}
                         setActiveFrameId={setActiveFrameId}
                         setMode={setMode}
+                        selections={selections}
                         setSelections={setSelections}
                         shotSlots={shotSlots}
                         setShotSlots={setShotSlots}

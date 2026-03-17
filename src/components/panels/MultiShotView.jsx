@@ -7,7 +7,7 @@ import { useShorts } from '../../hooks/useShorts';
 import { SHORTS_COST } from '../../config/shortsConfig';
 
 export const MultiShotView = ({
-    activeFrame, frames, setFrames, setActiveFrameId, setMode, setSelections,
+    activeFrame, frames, setFrames, setActiveFrameId, setMode, selections, setSelections,
     shotSlots, setShotSlots, activeSlotId, setActiveSlotId, runAiUpscale, upscaling
 }) => {
     const { token } = useAppStore();
@@ -35,6 +35,14 @@ export const MultiShotView = ({
             }
         }
     }, [activeFrame]);
+
+    useEffect(() => {
+        if (selections?.referenceImage) {
+            if (!sceneSettings.productImage) {
+                setSceneSettings(p => ({ ...p, productImage: selections.referenceImage }));
+            }
+        }
+    }, [selections?.referenceImage]);
 
     const triggerUpload = (target) => {
         setUploadTarget(target);
@@ -236,6 +244,9 @@ export const MultiShotView = ({
                             className="w-full h-24 bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-white resize-none focus:border-[#D4FF00]/50 outline-none"
                         />
                     </div>
+
+                    {/* Spacer to push button to bottom */}
+                    <div className="flex-1" />
 
                     <button
                         onClick={generateMultiShot}

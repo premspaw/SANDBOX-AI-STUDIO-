@@ -8,7 +8,7 @@ import { useShorts } from '../../hooks/useShorts';
 import { SHORTS_COST } from '../../config/shortsConfig';
 
 export const StoryboardView = ({
-    activeFrame, frames, setFrames, setActiveFrameId, setMode, setSelections,
+    activeFrame, frames, setFrames, setActiveFrameId, setMode, selections, setSelections,
     storyboardSlots, setStoryboardSlots, activeSlotId, setActiveSlotId, runAiUpscale, upscaling
 }) => {
     // ─────────────────────────────────────────────
@@ -47,6 +47,14 @@ export const StoryboardView = ({
             }
         }
     }, [activeFrame]);
+
+    useEffect(() => {
+        if (selections?.referenceImage) {
+            if (!sceneSettings.productImage) {
+                setSceneSettings(p => ({ ...p, productImage: selections.referenceImage }));
+            }
+        }
+    }, [selections?.referenceImage]);
 
 
     // ─────────────────────────────────────────────
@@ -285,6 +293,9 @@ export const StoryboardView = ({
                             className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none"
                         />
                     </div>
+
+                    {/* Spacer to push button downwards */}
+                    <div className="flex-1" />
 
                     <button
                         onClick={generateStoryboard}
