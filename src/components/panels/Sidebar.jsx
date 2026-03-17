@@ -37,7 +37,7 @@ function SidebarNavItem({ item, activeTab, setActiveTab, isCollapsed, mouseY }) 
             }}
             onClick={() => setActiveTab(item.id)}
             className={cn(
-                "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-300 border-[1px] border-transparent group/navitem overflow-hidden relative",
+                "w-full flex items-center gap-2 px-2 py-2.5 rounded-xl transition-all duration-300 border-[1px] border-transparent group/navitem overflow-hidden relative",
                 isActive
                     ? `bg-white/5 border-white/20 ${item.glow}`
                     : "text-white/40 hover:text-white",
@@ -117,30 +117,28 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
             onMouseLeave={() => mouseY.set(Infinity)}
             className={cn(
                 "border-r border-white/10 surface-glass flex flex-col transition-all duration-300 z-50 relative",
-                isCollapsed ? "w-14" : "w-52"
+                isCollapsed ? "w-12" : "w-48"
             )}>
-            <div className="p-3 flex items-center justify-between">
-                {!isCollapsed && (
-                    <div>
-                        <button onClick={() => setActiveTab('home')} className="flex items-center gap-3 hover:opacity-80 transition-opacity focus:outline-none group">
-                            <BrandLogo size={54} className="w-14 h-14 drop-shadow-[0_0_12px_rgba(212,255,0,0.4)]" />
-                            <div className="flex flex-col items-start mt-1">
-                                <h1 className="text-[20px] font-black text-metallic transition-all tracking-tighter uppercase italic leading-none">
-                                    ZEROLENS
-                                </h1>
-                                <p className="text-[9px] text-white/20 font-mono mt-0.5 uppercase tracking-widest font-bold">Creative Suite</p>
-                            </div>
-                        </button>
+            <div className={cn("pt-1.5 pb-1 px-3 flex items-center transition-all duration-300", isCollapsed ? "justify-center" : "justify-between")}>
+                <button onClick={() => setActiveTab('home')} className="flex items-center gap-2 hover:opacity-80 transition-opacity focus:outline-none group">
+                    <BrandLogo 
+                        size={isCollapsed ? 32 : 54} 
+                        className={cn("transition-all duration-300 drop-shadow-[0_0_12px_rgba(212,255,0,0.4)]", isCollapsed ? "w-8 h-8" : "w-14 h-14")} 
+                    />
+                    
+                    <div className={cn(
+                        "flex flex-col items-start mt-1 transition-all duration-300 overflow-hidden",
+                        isCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto ml-1"
+                    )}>
+                        <h1 className="text-[18px] font-black text-metallic tracking-tighter uppercase italic leading-none whitespace-nowrap">
+                            ZEROLENS
+                        </h1>
+                        <p className="text-[8px] text-white/20 font-mono mt-0.5 uppercase tracking-widest font-bold whitespace-nowrap">Creative Suite</p>
                     </div>
-                )}
-                {isCollapsed && (
-                    <button onClick={() => setActiveTab('home')} className="w-full flex justify-center hover:opacity-80 transition-opacity focus:outline-none cursor-pointer">
-                        <BrandLogo size={54} className="w-14 h-14 drop-shadow-[0_0_12px_rgba(212,255,0,0.4)]" />
-                    </button>
-                )}
+                </button>
             </div>
 
-            <nav className="flex-1 px-2.5 space-y-2 relative" onMouseLeave={() => mouseY.set(Infinity)}>
+            <nav className="flex-1 px-2 space-y-2 relative overflow-y-auto overflow-x-hidden custom-scrollbar" onMouseLeave={() => mouseY.set(Infinity)}>
                 {navItems.map((item) => (
                     <SidebarNavItem
                         key={item.id}
@@ -153,7 +151,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                 ))}
             </nav>
 
-            <div className="p-3 border-t border-border space-y-1">
+            <div className={cn("border-t border-border space-y-1", isCollapsed ? "p-1" : "p-3")}>
                 <button
                     onClick={toggleCollapse}
                     className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground hover:text-white hover:bg-white/5 rounded-lg transition-colors justify-center"
@@ -166,7 +164,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                     )}
                 </button>
 
-                <div className="px-3 py-2 space-y-2">
+                <div className={cn("space-y-2", isCollapsed ? "px-0.5 py-1" : "px-3 py-2")}>
                     <div className={cn(
                         "flex items-center gap-2 px-3 py-2 bg-[#D4FF00]/10 border border-[#D4FF00]/30 rounded-xl transition-all",
                         isCollapsed ? "justify-center px-1" : ""

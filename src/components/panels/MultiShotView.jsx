@@ -92,7 +92,8 @@ export const MultiShotView = ({
                 promptText += `Subject: ${subject}\n\n`;
             }
 
-            promptText += `STRICT VISUAL REQUIREMENT: Generate 9 distinct borderless frames within the single picture. Each frame must be a different camera angle (Close-up, Wide, Low-angle, Profile, etc.) of the EXACT SAME SUBJECT. Photorealistic quality.\nEXTREMELY IMPORTANT NEGATIVE CONSTRAINTS: DO NOT generate any text, letters, camera angles, shot types, abbreviations, labels, or captions. DO NOT write words like C.U., L.S., or any scene descriptions inside the image. Just output the pure cinematic photographs.`;
+            promptText += `STRICT VISUAL REQUIREMENT: Generate 9 distinct borderless cinematic photographs within the single composite picture layout. Each frame must be a different angle (From Above, Side-view, Close-up, Wide, etc.) of the EXACT SAME SUBJECT with perfect photorealistic quality.\n\n`;
+            promptText += `CRITICAL ANTI-TEXT OVERLAY INSTRUCTION: The final drawing MUST BE 100% FREE OF ANY WRITTEN WORDS, TEXT, LETTERS, CAPTIONS, LABELS, TITLES, ABBREVIATIONS, OR HEADER STRIPS ON TOP OF ANY FRAME. DO NOT label which angle is which inside the frame. Only output the raw visual photographs without single letter overlay.`;
 
             const payload = {
                 prompt: promptText,
@@ -203,7 +204,7 @@ export const MultiShotView = ({
         <div className="flex-1 flex flex-col lg:flex-row gap-2 h-full overflow-hidden">
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
 
-            <div className="w-full lg:w-1/3 min-w-[300px] flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-1">
+            <div className="w-full lg:w-[28%] min-w-[280px] flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-1">
                 <div className="surface-glass rounded-2xl p-4 flex flex-col gap-4 border border-white/5 flex-1">
                     <h3 className="text-xs font-black text-white uppercase flex items-center gap-2">
                         <Grid className="w-4 h-4 text-[#D4FF00]" />

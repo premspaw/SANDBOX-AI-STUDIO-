@@ -239,7 +239,7 @@ export const StoryboardView = ({
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
 
             {/* ── LEFT COLUMN: Setup & Brief ── */}
-            <div className="w-full lg:w-1/3 min-w-[300px] flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-1">
+            <div className="w-full lg:w-[28%] min-w-[280px] flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-1">
 
                 <div className="surface-glass rounded-2xl p-4 md:p-5 flex flex-col gap-4 border border-white/5 flex-1">
                     <h3 className="text-sm md:text-xs font-black text-white uppercase flex items-center gap-2">
