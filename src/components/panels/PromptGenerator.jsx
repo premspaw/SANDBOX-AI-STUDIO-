@@ -1396,6 +1396,11 @@ export function PromptGenerator({ onUpscale }) {
     const [rightPreviewId, setRightPreviewId] = useState(null)
     const [renderTarget, setRenderTarget] = useState('center')
     const MAX_FRAMES = 20
+    const toThumb = (url) => {
+        if (!url) return url;
+        if (url.startsWith('http')) return `${url.split('?')[0]}?width=150&quality=60`;
+        return url; // data: URLs stay as-is
+    };
 
     const removeFrame = async (id) => {
         setFrames(prev => {
@@ -1598,17 +1603,18 @@ export function PromptGenerator({ onUpscale }) {
     // Removed automatic reference board population to follow "Session Only" rule.
 
     // ── Load Recent Generations from DB ──
-    const toThumb = (url) => {
-        if (!url) return url;
-        if (url.includes('supabase.co') || url.includes('railway.app')) {
-            return `${url.split('?')[0]}?width=150&quality=60`;
-        }
-        return url; // data: URLs or CDN links stay as-is
-    };
 
     const loadRecentFrames = async () => {
         if (isLoadingRef.current || !supabase || !userProfile?.id) return;
         isLoadingRef.current = true; // Lock the door
+
+        // ✅ Parse hiddenIds once here, reuse in both code paths below
+        let hiddenIds = [];
+        try {
+            const raw = localStorage.getItem('hidden_filmstrip_frames');
+            if (raw && raw.length < 50000) hiddenIds = JSON.parse(raw);
+        } catch { hiddenIds = []; }
+
         try {
             console.log('[PromptGenerator] Loading recent frames...');
             if (!userProfile?.id) {
@@ -1623,8 +1629,6 @@ export function PromptGenerator({ onUpscale }) {
             if (cached) {
                 const allCached = [...(cached.images || []), ...(cached.videos || [])];
                 if (allCached.length > 0) {
-                    let hiddenIds = [];
-                    try { hiddenIds = JSON.parse(localStorage.getItem('hidden_filmstrip_frames') || '[]'); } catch {}
                     const recentFrames = allCached
                         .filter(a => !hiddenIds.includes(a.id))
                         .slice(0, MAX_FRAMES)
@@ -1665,12 +1669,6 @@ export function PromptGenerator({ onUpscale }) {
 
             if (assets && assets.length > 0) {
                 console.log(`[PromptGenerator] Found ${assets.length} historical frames.`);
-                // Get list of frames user has hidden from the strip
-                let hiddenIds = []
-                try {
-                    hiddenIds = JSON.parse(localStorage.getItem('hidden_filmstrip_frames') || '[]')
-                } catch (e) { console.warn("[PromptGenerator] Hidden frames parse error:", e) }
-
                 const recentFrames = assets
                     .filter(a => !hiddenIds.includes(a.id)) // Surgical curation: filter out hidden ones
                     .map(a => ({
@@ -2622,7 +2620,7 @@ export function PromptGenerator({ onUpscale }) {
                                 <div key={frame.id} className={cn("shrink-0 w-20 h-full rounded-lg overflow-hidden cursor-pointer transition-all border-2 relative group/strip", activeFrameId === frame.id ? "border-[#D4FF00] shadow-[0_0_10px_#D4FF00]" : "border-transparent hover:border-white/20")}>
                                     <div onClick={() => setActiveFrameId(frame.id)} className="w-full h-full">
                                         {frame.loading ? <div className="w-full h-full bg-black/40 flex items-center justify-center"><Sparkles className="w-3 h-3 text-[#D4FF00] animate-spin" /></div>
-                                            : frame.url ? (frame.type === 'video' ? <video src={frame.url} muted preload="metadata" className="w-full h-full object-cover" /> : <img src={frame.url} loading="lazy" className="w-full h-full object-cover" />)
+                                            : frame.url ? (frame.type === 'video' ? <video src={frame.url} muted preload="metadata" className="w-full h-full object-cover" /> : <img src={toThumb(frame.url)} loading="lazy" className="w-full h-full object-cover" />)
                                                 : <div className="w-full h-full bg-black/40 flex items-center justify-center"><X className="w-3 h-3 text-red-500/50" /></div>}
                                     </div>
 
@@ -3084,7 +3082,7 @@ export function PromptGenerator({ onUpscale }) {
                                                 {frame.type === 'video' ? (
                                                     <video src={frame.url} muted preload="metadata" className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <img src={frame.url} loading="lazy" className="w-full h-full object-cover" />
+                                                    <img src={toThumb(frame.url)} loading="lazy" className="w-full h-full object-cover" />
                                                 )}
                                                 <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <p className="text-[8px] font-bold text-white/80 truncate">{frame.model}</p>
