@@ -2206,13 +2206,20 @@ export function PromptGenerator({ onUpscale }) {
                         {[{ id: 'image', label: 'IMAGE', icon: ImageIcon }, { id: 'multishot', label: 'MULTI SHOT', icon: Grid }, { id: 'storyboard', label: 'STORYBOARD', icon: Layers }, { id: 'video', label: 'VIDEO', icon: Film }].map(tab => (
                             <button key={tab.id} onClick={() => {
                                 setMode(tab.id);
-                                // Auto-select latest compatible frame
+                                
                                 const isImageLike = tab.id === 'image' || tab.id === 'multishot';
-                                const latestOfTab = [...frames].reverse().find(f => {
-                                    if (isImageLike) return (f.type === 'image' || f.type === 'multishot') && f.url;
-                                    return f.type === tab.id && f.url;
-                                });
-                                if (latestOfTab) setActiveFrameId(latestOfTab.id);
+                                const currentFrame = frames.find(f => f.id === activeFrameId);
+                                const isCompatible = currentFrame && (isImageLike 
+                                    ? (currentFrame.type === 'image' || currentFrame.type === 'multishot') 
+                                    : currentFrame.type === tab.id);
+
+                                if (!isCompatible) {
+                                    const latestOfTab = frames.find(f => {
+                                        if (isImageLike) return (f.type === 'image' || f.type === 'multishot') && f.url;
+                                        return f.type === tab.id && f.url;
+                                    });
+                                    if (latestOfTab) setActiveFrameId(latestOfTab.id);
+                                }
                             }} className={cn(
                                 "px-4 py-2 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all border-r border-white/5 last:border-r-0",
                                 mode === tab.id ? "bg-[#D4FF00] text-black shadow-[0_0_15px_rgba(212,255,0,0.3)]" : "bg-white/[0.03] text-gray-500 hover:text-white hover:bg-white/[0.06]"
