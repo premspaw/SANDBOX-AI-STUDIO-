@@ -1360,6 +1360,7 @@ export function PromptGenerator({ onUpscale }) {
 
     const [frames, setFrames] = useState([]);
     const isLoadingRef = useRef(false);
+    const hasLoadedRef = useRef(false);
 
     const [activeFrameId, setActiveFrameId] = useState(() => localStorage.getItem('active_image_frame_id') || null)
 
@@ -1398,8 +1399,8 @@ export function PromptGenerator({ onUpscale }) {
     const MAX_FRAMES = 20
     const toThumb = (url) => {
         if (!url) return url;
-        if (url.startsWith('http')) return `${url.split('?')[0]}?width=150&quality=60`;
-        return url; // data: URLs stay as-is
+        // Don't append Supabase transform params - they require a paid add-on
+        return url;
     };
 
     const removeFrame = async (id) => {
@@ -1702,7 +1703,8 @@ export function PromptGenerator({ onUpscale }) {
         }
     }
     useEffect(() => {
-        if (userProfile?.id) {
+        if (userProfile?.id && !hasLoadedRef.current) {
+            hasLoadedRef.current = true;
             loadRecentFrames();
         }
     }, [userProfile?.id]);
