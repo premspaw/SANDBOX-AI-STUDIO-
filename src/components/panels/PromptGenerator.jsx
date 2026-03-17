@@ -1359,6 +1359,7 @@ export function PromptGenerator({ onUpscale }) {
     })
 
     const [frames, setFrames] = useState([]);
+    const [isInitialLoading, setIsInitialLoading] = useState(false);
 
     const [activeFrameId, setActiveFrameId] = useState(() => localStorage.getItem('active_image_frame_id') || null)
 
@@ -1598,7 +1599,8 @@ export function PromptGenerator({ onUpscale }) {
 
     // ── Load Recent Generations from DB ──
     const loadRecentFrames = async () => {
-        if (!supabase) return;
+        if (isInitialLoading || !supabase || !userProfile?.id) return;
+        setIsInitialLoading(true); // Lock the door
         try {
             console.log('[PromptGenerator] Loading recent frames...');
             if (!userProfile?.id) {
@@ -1619,7 +1621,9 @@ export function PromptGenerator({ onUpscale }) {
                         .filter(a => !hiddenIds.includes(a.id))
                         .slice(0, MAX_FRAMES)
                         .map(a => ({
-                            id: a.id, assetId: a.id, url: a.url, assetPath: a.url,
+                            id: a.id, assetId: a.id, 
+                            url: a.url.includes('supabase.co') ? `${a.url}?width=150&quality=60` : a.url,
+                            assetPath: a.url,
                             type: a.type || 'image', model: a.model || 'Historical', loading: false
                         }));
                     setFrames(prev => {
@@ -1662,7 +1666,8 @@ export function PromptGenerator({ onUpscale }) {
                     .map(a => ({
                         id: a.id,
                         assetId: a.id,
-                        url: a.url,
+                        // Add ?width=150 to the URL to download a thumbnail instead of a 4K file
+                        url: a.url.includes('supabase.co') ? `${a.url}?width=150&quality=60` : a.url,
                         assetPath: a.url,
                         type: a.type || 'image',
                         model: a.model || 'Historical',
@@ -1689,7 +1694,11 @@ export function PromptGenerator({ onUpscale }) {
             console.error('[PromptGenerator] Failed to load recent frames logic:', err);
         }
     }
-    useEffect(() => { loadRecentFrames() }, [userProfile?.id])
+    useEffect(() => {
+        if (userProfile?.id) {
+            loadRecentFrames();
+        }
+    }, [userProfile?.id]);
 
     const getFStop = (ap) => {
         if (selections.camera === 'iphone' || selections.camera === 'gopro') return 'Auto Aperture'
