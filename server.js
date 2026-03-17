@@ -16,6 +16,7 @@ import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 
 import nodeFetch from 'node-fetch';
+import { decode } from 'base64-arraybuffer';
 
 // -------------------------------------------------------------
 // GLOBAL HEADERS INJECTOR (For Restricted API Keys)
@@ -568,6 +569,53 @@ app.post('/api/forge/generate', async (req, res) => {
     } catch (error) {
         console.error('Forge Generation Error:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// Save Asset (Universal for Image/Video, Local/Remote)
+app.post('/api/save-asset', async (req, res) => {
+    try {
+        const { imageData, fileName, type, userId, isUrlOnly } = req.body;
+        
+        if (!userId) throw new Error('Unauthorized asset save attempt.');
+
+        let publicUrl = imageData; 
+        let path = `generated/${fileName}`;
+
+        // If not already a URL and we have base64 data, upload to Supabase
+        if (!isUrlOnly && imageData && imageData.startsWith('data:')) {
+            console.log(`[STORAGE] Decoding and uploading ${type} to Supabase: ${fileName}`);
+            const base64Str = imageData.split(',')[1];
+            
+            if (!supabase) throw new Error('Supabase not configured locally.');
+
+            const { data, error } = await supabase.storage
+                .from('assets') 
+                .upload(fileName, decode(base64Str), {
+                    contentType: type === 'video' ? 'video/mp4' : 'image/png',
+                    upsert: true
+                });
+
+            if (error) throw error;
+
+            const { data: { publicUrl: supabaseUrl } } = supabase.storage
+                .from('assets')
+                .getPublicUrl(fileName);
+            
+            publicUrl = supabaseUrl;
+            path = data.path;
+        }
+
+        res.json({ 
+            success: true, 
+            path: path, 
+            url: publicUrl,
+            id: `asset_${Date.now()}` 
+        });
+
+    } catch (err) {
+        console.error('[BACKEND_SAVE_ERROR]:', err);
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -1757,9 +1805,9 @@ async function handleGoogle(req, res) {
                     });
                 });
                 req.on('error', (e) => reject(e));
-                req.setTimeout(60000, () => {
+                req.setTimeout(180000, () => {
                     req.destroy();
-                    reject(new Error("Imagen API Request Timeout (60s)"));
+                    reject(new Error("Imagen API Request Timeout (180s)"));
                 });
                 req.write(postData);
                 req.end();

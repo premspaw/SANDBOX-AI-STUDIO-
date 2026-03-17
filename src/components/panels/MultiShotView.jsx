@@ -8,7 +8,7 @@ import { SHORTS_COST } from '../../config/shortsConfig';
 
 export const MultiShotView = ({
     activeFrame, frames, setFrames, setActiveFrameId, setMode, selections, setSelections,
-    shotSlots, setShotSlots, activeSlotId, setActiveSlotId, runAiUpscale, upscaling
+    shotSlots, setShotSlots, activeSlotId, setActiveSlotId, runAiUpscale, upscaling, selectedModel
 }) => {
     const { token } = useAppStore();
     const { spend } = useShorts();
@@ -27,6 +27,25 @@ export const MultiShotView = ({
     const fileInputRef = useRef(null);
     const [uploadTarget, setUploadTarget] = useState(null);
     const gridImgRef = useRef(null);
+    const gridContainerRef = useRef(null);
+
+    // Calculate the actual rendered image bounds inside the object-contain container
+    const getRenderedImageBounds = () => {
+        const img = gridImgRef.current;
+        const container = gridContainerRef.current;
+        if (!img || !container) return null;
+        const containerW = container.clientWidth;
+        const containerH = container.clientHeight;
+        const natW = img.naturalWidth;
+        const natH = img.naturalHeight;
+        if (!natW || !natH) return null;
+        const scale = Math.min(containerW / natW, containerH / natH);
+        const renderedW = natW * scale;
+        const renderedH = natH * scale;
+        const offsetX = (containerW - renderedW) / 2;
+        const offsetY = (containerH - renderedH) / 2;
+        return { offsetX, offsetY, renderedW, renderedH };
+    };
 
     useEffect(() => {
         if (activeFrame?.url) {
@@ -97,7 +116,7 @@ export const MultiShotView = ({
 
             const payload = {
                 prompt: promptText,
-                model: 'nano-banana-2',
+                model: selectedModel || 'nano-banana-2',
                 aspect_ratio: '16:9',
                 product_image: sceneSettings.productImage,
                 identity_images: [sceneSettings.characterRef].filter(Boolean),
@@ -113,7 +132,10 @@ export const MultiShotView = ({
                 body: JSON.stringify(payload)
             });
 
-            if (!response.ok) throw new Error("Multi-Shot generation failed");
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.message || errData.error || "Multi-Shot generation failed");
+            }
             const result = await response.json();
 
             setShotSlots([{
@@ -178,6 +200,21 @@ export const MultiShotView = ({
             loading: false,
             prompt: `Extracted Angle ${shotNumber}`
         }]);
+    };
+
+    // Recompute overlay position on image load and window resize
+    const [overlayStyle, setOverlayStyle] = useState({});
+    const updateOverlay = () => {
+        const bounds = getRenderedImageBounds();
+        if (bounds) {
+            setOverlayStyle({
+                position: 'absolute',
+                left: `${bounds.offsetX}px`,
+                top: `${bounds.offsetY}px`,
+                width: `${bounds.renderedW}px`,
+                height: `${bounds.renderedH}px`,
+            });
+        }
     };
 
     const sendToVideo = (slot) => {
@@ -278,10 +315,16 @@ export const MultiShotView = ({
 
                     {activeSlot?.url ? (
                         <>
-                            <div className="relative w-full h-full flex items-center justify-center">
-                                <img src={activeSlot.url} ref={activeSlot.isGrid ? gridImgRef : null} className="w-full h-full object-contain bg-black/40" crossOrigin="anonymous" />
-                                {activeSlot.isGrid && (
-                                    <div className="absolute inset-0 flex items-center justify-center z-10">
+                            <div ref={gridContainerRef} className="relative w-full h-full flex items-center justify-center">
+                                <img
+                                    src={activeSlot.url}
+                                    ref={activeSlot.isGrid ? gridImgRef : null}
+                                    className="w-full h-full object-contain bg-black/40"
+                                    crossOrigin="anonymous"
+                                    onLoad={updateOverlay}
+                                />
+                                {activeSlot.isGrid && overlayStyle.width && (
+                                    <div style={overlayStyle} className="z-10">
                                         <div className="w-full h-full grid grid-cols-3 grid-rows-3" style={{ pointerEvents: 'auto' }}>
                                             {[...Array(9)].map((_, i) => (
                                                 <div key={i} onClick={() => handleCellClick(Math.floor(i / 3), i % 3)}
@@ -298,10 +341,16 @@ export const MultiShotView = ({
 
                             <div className="absolute right-4 top-4 flex flex-col gap-2 z-20">
                                 {!activeSlot.isGrid && (
-                                    <button onClick={() => sendToVideo(activeSlot)} className="p-3 bg-[#D4FF00]/90 hover:bg-[#D4FF00] rounded-xl text-black shadow-xl group flex items-center gap-2 transition-all">
-                                        <Film className="w-4 h-4 md:w-5 md:h-5" />
-                                        <span className="text-[10px] font-black uppercase md:w-0 overflow-hidden md:group-hover:w-auto transition-all whitespace-nowrap">Send to Video</span>
-                                    </button>
+                                    <>
+                                        <button onClick={() => runAiUpscale(activeSlot.url)} disabled={upscaling} className={cn("p-3 bg-fuchsia-600/90 hover:bg-fuchsia-600 rounded-xl text-white shadow-xl group flex items-center gap-2 transition-all", upscaling && "opacity-50 cursor-not-allowed")}>
+                                            <Zap className={cn("w-4 h-4 md:w-5 md:h-5", upscaling && "animate-pulse")} />
+                                            <span className="text-[10px] font-black uppercase md:w-0 overflow-hidden md:group-hover:w-auto transition-all whitespace-nowrap">{upscaling ? 'Upscaling...' : 'Upscale 4K'}</span>
+                                        </button>
+                                        <button onClick={() => sendToVideo(activeSlot)} className="p-3 bg-[#D4FF00]/90 hover:bg-[#D4FF00] rounded-xl text-black shadow-xl group flex items-center gap-2 transition-all">
+                                            <Film className="w-4 h-4 md:w-5 md:h-5" />
+                                            <span className="text-[10px] font-black uppercase md:w-0 overflow-hidden md:group-hover:w-auto transition-all whitespace-nowrap">Send to Video</span>
+                                        </button>
+                                    </>
                                 )}
                                 <button onClick={() => downloadImage(activeSlot.url)} className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl text-white transition-all">
                                     <Download className="w-4 h-4" />

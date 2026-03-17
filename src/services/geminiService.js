@@ -12,32 +12,33 @@ const getAIConfig = () => {
     const projectId = (typeof process !== 'undefined' ? process.env.GOOGLE_PROJECT_ID : null) || 'ai-cinemastudio-569815811058';
     const location = (typeof process !== 'undefined' ? process.env.GOOGLE_LOCATION : null) || 'us-central1';
     
-    return { apiKey, isToken, projectId, location };
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://sandbox-ai-studio.up.railway.app';
+    return { apiKey, isToken, projectId, location, origin: currentOrigin };
 };
 
 let _aiInstance = null;
 const getAI = () => {
     if (_aiInstance) return _aiInstance;
-    const { apiKey } = getAIConfig();
+    const { apiKey, origin } = getAIConfig();
     if (!apiKey) {
         throw new Error('[geminiService] GOOGLE_API_KEY is not set. Add it to your Railway service variables.');
     }
     _aiInstance = new GoogleGenAI({ 
         apiKey,
         headers: {
-            'Referer': 'http://localhost:5173/',
-            'Origin': 'http://localhost:5173'
+            'Referer': origin,
+            'Origin': origin
         },
         fetchOptions: {
             headers: {
-                'Referer': 'http://localhost:5173/',
-                'Origin': 'http://localhost:5173'
+                'Referer': origin,
+                'Origin': origin
             }
         },
         requestOptions: {
             headers: {
-                'Referer': 'http://localhost:5173/',
-                'Origin': 'http://localhost:5173'
+                'Referer': origin,
+                'Origin': origin
             }
         }
     });
@@ -370,7 +371,7 @@ export const generateCharacterImage = async (params) => {
                     imageConfig: {
                         aspectRatio: (params.aspectRatio || "16:9").replace('—', ':').split(' ')[0],
                         // Valid values in 2026: "1K", "2K", "4K"
-                        imageSize: (params.quality === '4k' || engine.includes('pro')) ? "4K" : "1K"
+                        imageSize: (String(params.quality).toUpperCase() === '4K' || engine.includes('pro')) ? "4K" : "1K"
                     }
                 }
             });
@@ -422,15 +423,18 @@ export const upscaleImage = async (image, targetRes) => {
             const client = getAI();
             const base64Data = image.includes('base64,') ? image.split(',')[1] : image;
             const result = await client.models.generateContent({
-                model: 'gemini-3.1-pro-image-preview',
+                model: 'gemini-3.1-flash-image-preview',
                 contents: [{
                     parts: [
                         { inlineData: { data: base64Data, mimeType: 'image/png' } },
-                        { text: "Refine to 4K resolution. Enhance micro-textures while preserving 100% identity. Maintain exact identity, high fidelity textures, cinematic lighting." }
+                        { text: `Refine to ${targetRes} resolution. Enhance micro-textures while preserving 100% identity. Maintain exact identity, high fidelity textures, cinematic lighting.` }
                     ]
                 }],
                 config: {
-                    responseModalities: ["IMAGE"]
+                    responseModalities: ["IMAGE"],
+                    imageConfig: {
+                        imageSize: targetRes && targetRes.toUpperCase() === '4K' ? '4K' : '2K'
+                    }
                 }
             });
 

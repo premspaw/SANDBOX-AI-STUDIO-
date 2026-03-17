@@ -1358,19 +1358,11 @@ export function PromptGenerator({ onUpscale }) {
         multishotMode: 'single',
     })
 
-    const [frames, setFrames] = useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem('cached_assets_list') || '[]');
-        } catch (e) { return []; }
-    });
+    const [frames, setFrames] = useState([]);
 
     const [activeFrameId, setActiveFrameId] = useState(() => localStorage.getItem('active_image_frame_id') || null)
 
-    useEffect(() => {
-        if (frames && frames.length > 0) {
-            localStorage.setItem('cached_assets_list', JSON.stringify(frames.slice(0, 20)));
-        }
-    }, [frames]);
+    // Removed local storage frames caching that was causing lags with large base64 strings
 
     useEffect(() => {
         if (activeFrameId) {
@@ -1402,7 +1394,7 @@ export function PromptGenerator({ onUpscale }) {
     const [leftPreviewId, setLeftPreviewId] = useState(null)
     const [rightPreviewId, setRightPreviewId] = useState(null)
     const [renderTarget, setRenderTarget] = useState('center')
-    const MAX_FRAMES = 50
+    const MAX_FRAMES = 20
 
     const removeFrame = async (id) => {
         setFrames(prev => {
@@ -1608,18 +1600,49 @@ export function PromptGenerator({ onUpscale }) {
     const loadRecentFrames = async () => {
         if (!supabase) return;
         try {
-            console.log('[PromptGenerator] Loading recent frames from DB...');
+            console.log('[PromptGenerator] Loading recent frames...');
             if (!userProfile?.id) {
                 setFrames([]);
                 console.log('[PromptGenerator] No user profile found; skipping historical frames load.');
                 return;
             }
 
-            let query = supabase.from('assets').select('*').eq('user_id', userProfile.id);
-            
-            const { data: assets, error } = await query
+            // --- Try Zustand cache first (avoids duplicate Supabase round-trip) ---
+            const store = useAppStore.getState();
+            const cached = store.cachedAssets;
+            if (cached) {
+                const allCached = [...(cached.images || []), ...(cached.videos || [])];
+                if (allCached.length > 0) {
+                    let hiddenIds = [];
+                    try { hiddenIds = JSON.parse(localStorage.getItem('hidden_filmstrip_frames') || '[]'); } catch {}
+                    const recentFrames = allCached
+                        .filter(a => !hiddenIds.includes(a.id))
+                        .slice(0, MAX_FRAMES)
+                        .map(a => ({
+                            id: a.id, assetId: a.id, url: a.url, assetPath: a.url,
+                            type: a.type || 'image', model: a.model || 'Historical', loading: false
+                        }));
+                    setFrames(prev => {
+                        const sessionIds = new Set(prev.map(f => f.id));
+                        const newHistorical = recentFrames.filter(f => !sessionIds.has(f.id));
+                        return newHistorical.length === 0 ? prev : [...prev, ...newHistorical];
+                    });
+                    setFrames(prev => {
+                        if (prev.length > 0 && !activeFrameId) setActiveFrameId(prev[0].id);
+                        return prev;
+                    });
+                    console.log('[PromptGenerator] Used cached assets for filmstrip.');
+                    return;
+                }
+            }
+
+            // --- Fallback: lightweight DB query (narrow select) ---
+            const { data: assets, error } = await supabase
+                .from('assets')
+                .select('id, url, type, model, created_at')
+                .eq('user_id', userProfile.id)
                 .order('created_at', { ascending: false })
-                .limit(50);
+                .limit(MAX_FRAMES);
 
             if (error) {
                 console.error('[PromptGenerator] Supabase error loading assets:', error.message);
@@ -1760,17 +1783,43 @@ export function PromptGenerator({ onUpscale }) {
 
     const saveAsset = async (url, slot, type = 'image') => {
         try {
-            const ext = type === 'video' ? 'mp4' : 'png'
-            const fileName = `flare_${slot}_${Date.now()}.${ext}`
-            const { data: { user } } = await supabase.auth.getUser()
-            const res = await fetch(getApiUrl('/api/save-asset'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageData: url, fileName, type, userId: user?.id }) })
-            const data = await res.json()
-            return { path: data.path, id: data.id }
-        } catch (err) { 
-            console.error('[SAVE_ASSET] Error:', err)
-            return null 
+            const ext = type === 'video' ? 'mp4' : 'png';
+            const fileName = `flare_${slot}_${Date.now()}.${ext}`;
+            const { data: { user } } = await supabase.auth.getUser();
+
+            // 1. PRE-CHECK: Is this already a remote URL? 
+            // If it starts with http, it's already hosted (e.g. Supabase or external AI URL)
+            // We only need to tell the DB about it, not re-send the binary data.
+            const isRemote = url.startsWith('http');
+            
+            const payload = {
+                imageData: url, // Could be base64 or remote URL
+                fileName,
+                type,
+                userId: user?.id,
+                isUrlOnly: isRemote // Tell backend: "Don't process, just record"
+            };
+
+            const res = await fetch(getApiUrl('/api/save-asset'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to save asset');
+
+            // Return both the path (Supabase internal) and the final public URL
+            return { 
+                path: data.path, 
+                id: data.id, 
+                url: data.url || url 
+            };
+        } catch (err) {
+            console.error('[SAVE_ASSET_FAILURE]:', err);
+            return null;
         }
-    }
+    };
 
     const updateVideoSetting = (key, val) => {
         setSelections(p => { let u = { ...p, [key]: val }; if (key === 'dialogue' && val !== 'Off' && val !== 'Ambient Only') u.audio = 'On'; return u })
@@ -2052,11 +2101,12 @@ export function PromptGenerator({ onUpscale }) {
             if (!res.ok) throw new Error(data.message || data.error || 'Upscale failed')
 
             if (data.url) {
-                const assetData = await saveAsset(data.url, frameId, 'image')
+                const finalUrl = data.url.startsWith('http') || data.url.startsWith('data:') ? data.url : getApiUrl(data.url);
+                const assetData = await saveAsset(finalUrl, frameId, 'image')
                 const currentModel = AI_MODELS.find(m => m.id === selectedModel)
                 setFrames(prev => prev.map(f => f.id === frameId ? { 
                     ...f, 
-                    url: data.url, 
+                    url: finalUrl, 
                     assetPath: assetData?.path, 
                     assetId: assetData?.id, 
                     model: currentModel?.modelId || 'gemini-3.1-flash-image-preview', 
@@ -2116,6 +2166,9 @@ export function PromptGenerator({ onUpscale }) {
             const { data: { user } } = await supabase.auth.getUser()
             console.log('[CROP_UPSCALE] Auth user:', user?.id || 'anonymous');
 
+            // Find the active frame object safely within this scope
+            const activeFrame = frames.find(f => f.id === activeFrameId);
+
             // Robust fallback for prompt
             const basePrompt = customPrompt || activeFrame?.prompt || generatedPrompt || 'Cinematic character focal point'
             const prompt = `${basePrompt} - 4K isolate, cinematic texture, high-detail finish`
@@ -2123,12 +2176,15 @@ export function PromptGenerator({ onUpscale }) {
             const currentModel = AI_MODELS.find(m => m.id === selectedModel)
             const modelToUse = currentModel?.modelId || 'gemini-3.1-flash-image-preview'
 
+            // Payload Optimization: Max size to prevent 413 Payload Too Large on Railway 
+            const compressedImage = await compressImageToMax1024(imageToProcess);
+
             const payload = {
                 model: modelToUse,
                 prompt,
                 aspect_ratio: '16:9',
                 quality: '4k',
-                image: imageToProcess, // Optimized blob or URL
+                image: compressedImage, // Optimized blob or URL
                 userId: user?.id || null
             }
 
@@ -2145,14 +2201,35 @@ export function PromptGenerator({ onUpscale }) {
 
             if (!res.ok) throw new Error(data.message || data.error || 'Upscale failed')
 
-            if (data.url) {
-                const newId = `frame-${Date.now()}`
+            const newId = `frame-${Date.now()}`;
+
+            if (data.jobId) {
+                // If the backend runs this as a background job (preventing Railway timeout)
+                console.log(`[CROP_UPSCALE] Job queued: ${data.jobId}`);
+                setFrames(prev => [...prev, {
+                    id: newId,
+                    url: null,
+                    type: 'image',
+                    model: modelToUse,
+                    prompt,
+                    aspectRatio: '16:9',
+                    loading: true
+                }]);
+                setActiveFrameId(newId);
+                setUpscaledImage(null);
+                setMode('image');
+                setPreviewTab('image');
+                
+                pollJobStatus(data.jobId, newId, 'image_upscale_4k', 'image');
+            } else if (data.url) {
+                // If the backend returns it synchronously
+                const finalUrl = data.url.startsWith('http') || data.url.startsWith('data:') ? data.url : getApiUrl(data.url);
                 console.log(`[CROP_UPSCALE] Creating new asset: ${newId}`);
-                const assetData = await saveAsset(data.url, newId, 'image')
+                const assetData = await saveAsset(finalUrl, newId, 'image')
 
                 setFrames(prev => [...prev, {
                     id: newId,
-                    url: data.url,
+                    url: finalUrl,
                     assetPath: assetData?.path,
                     assetId: assetData?.id,
                     type: 'image',
@@ -2171,7 +2248,7 @@ export function PromptGenerator({ onUpscale }) {
 
                 console.log('[CROP_UPSCALE] Finalized successfully.');
             } else {
-                throw new Error('AI Engine reported success but URL was missing from the response.');
+                throw new Error('AI Engine reported success but URL or Job ID was missing from the response.');
             }
         } catch (err) {
             console.error('[CROP_UPSCALE] Terminal Failure:', err);
@@ -2270,6 +2347,7 @@ export function PromptGenerator({ onUpscale }) {
                         setActiveSlotId={setActiveStorySlotId}
                         runAiUpscale={runAiUpscale}
                         upscaling={upscaling}
+                        selectedModel={selectedModel}
                     />
                 </div>
             )}
@@ -2290,6 +2368,7 @@ export function PromptGenerator({ onUpscale }) {
                         setActiveSlotId={setActiveShotSlotId}
                         runAiUpscale={runAiUpscale}
                         upscaling={upscaling}
+                        selectedModel={selectedModel}
                     />
                 </div>
             )}

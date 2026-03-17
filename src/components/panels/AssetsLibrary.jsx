@@ -354,7 +354,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
     };
 
     React.useEffect(() => {
-        fetchAssets(true);
+        fetchAssets(false);
     }, []);
 
     const handleSemanticSearch = async () => {
