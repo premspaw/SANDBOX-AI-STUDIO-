@@ -1359,7 +1359,7 @@ export function PromptGenerator({ onUpscale }) {
     })
 
     const [frames, setFrames] = useState([]);
-    const [isInitialLoading, setIsInitialLoading] = useState(false);
+    const isLoadingRef = useRef(false);
 
     const [activeFrameId, setActiveFrameId] = useState(() => localStorage.getItem('active_image_frame_id') || null)
 
@@ -1598,9 +1598,17 @@ export function PromptGenerator({ onUpscale }) {
     // Removed automatic reference board population to follow "Session Only" rule.
 
     // ── Load Recent Generations from DB ──
+    const toThumb = (url) => {
+        if (!url) return url;
+        if (url.includes('supabase.co') || url.includes('railway.app')) {
+            return `${url.split('?')[0]}?width=150&quality=60`;
+        }
+        return url; // data: URLs or CDN links stay as-is
+    };
+
     const loadRecentFrames = async () => {
-        if (isInitialLoading || !supabase || !userProfile?.id) return;
-        setIsInitialLoading(true); // Lock the door
+        if (isLoadingRef.current || !supabase || !userProfile?.id) return;
+        isLoadingRef.current = true; // Lock the door
         try {
             console.log('[PromptGenerator] Loading recent frames...');
             if (!userProfile?.id) {
@@ -1622,18 +1630,20 @@ export function PromptGenerator({ onUpscale }) {
                         .slice(0, MAX_FRAMES)
                         .map(a => ({
                             id: a.id, assetId: a.id, 
-                            url: a.url.includes('supabase.co') ? `${a.url}?width=150&quality=60` : a.url,
+                            url: toThumb(a.url),
                             assetPath: a.url,
                             type: a.type || 'image', model: a.model || 'Historical', loading: false
                         }));
                     setFrames(prev => {
                         const sessionIds = new Set(prev.map(f => f.id));
                         const newHistorical = recentFrames.filter(f => !sessionIds.has(f.id));
-                        return newHistorical.length === 0 ? prev : [...prev, ...newHistorical];
-                    });
-                    setFrames(prev => {
-                        if (prev.length > 0 && !activeFrameId) setActiveFrameId(prev[0].id);
-                        return prev;
+                        if (newHistorical.length === 0) return prev;
+                        const merged = [...prev, ...newHistorical];
+                        // Set activeFrameId synchronously inside the same batch
+                        if (!activeFrameId && merged.length > 0) {
+                            setTimeout(() => setActiveFrameId(merged[0].id), 0); // defer after render
+                        }
+                        return merged;
                     });
                     console.log('[PromptGenerator] Used cached assets for filmstrip.');
                     return;
@@ -1666,8 +1676,7 @@ export function PromptGenerator({ onUpscale }) {
                     .map(a => ({
                         id: a.id,
                         assetId: a.id,
-                        // Add ?width=150 to the URL to download a thumbnail instead of a 4K file
-                        url: a.url.includes('supabase.co') ? `${a.url}?width=150&quality=60` : a.url,
+                        url: toThumb(a.url),
                         assetPath: a.url,
                         type: a.type || 'image',
                         model: a.model || 'Historical',
@@ -1678,20 +1687,20 @@ export function PromptGenerator({ onUpscale }) {
                     const sessionIds = new Set(prev.map(f => f.id));
                     const newHistorical = recentFrames.filter(f => !sessionIds.has(f.id));
                     if (newHistorical.length === 0) return prev;
-                    return [...prev, ...newHistorical];
-                });
-
-                setFrames(prev => {
-                    if (prev.length > 0 && !activeFrameId) {
-                        setActiveFrameId(prev[0].id);
+                    const merged = [...prev, ...newHistorical];
+                    // Set activeFrameId synchronously inside the same batch
+                    if (!activeFrameId && merged.length > 0) {
+                        setTimeout(() => setActiveFrameId(merged[0].id), 0); // defer after render
                     }
-                    return prev;
+                    return merged;
                 });
             } else {
                 console.log('[PromptGenerator] No historical frames found in DB.');
             }
         } catch (err) {
             console.error('[PromptGenerator] Failed to load recent frames logic:', err);
+        } finally {
+            isLoadingRef.current = false;
         }
     }
     useEffect(() => {
