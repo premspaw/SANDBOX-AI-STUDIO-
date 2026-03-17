@@ -18,7 +18,7 @@ import { useShorts } from '../../hooks/useShorts'
 import { StoryboardView } from './StoryboardView'
 import { MultiShotView } from './MultiShotView'
 import { SHORTS_COST } from '../../config/shortsConfig'
-import { refineNarrative } from '../../services/geminiService'
+import { refineNarrative, compressImageToMax1024 } from '../../services/geminiService'
 
 // ─────────────────────────────────────────────
 // CONSTANTS
@@ -1360,7 +1360,7 @@ export function PromptGenerator({ onUpscale }) {
 
     const [frames, setFrames] = useState([]);
     const isLoadingRef = useRef(false);
-    const hasLoadedRef = useRef(false);
+    const hasFetched = useRef(false);
 
     const [activeFrameId, setActiveFrameId] = useState(() => localStorage.getItem('active_image_frame_id') || null)
 
@@ -1397,11 +1397,6 @@ export function PromptGenerator({ onUpscale }) {
     const [rightPreviewId, setRightPreviewId] = useState(null)
     const [renderTarget, setRenderTarget] = useState('center')
     const MAX_FRAMES = 20
-    const toThumb = (url) => {
-        if (!url) return url;
-        // Don't append Supabase transform params - they require a paid add-on
-        return url;
-    };
 
     const removeFrame = async (id) => {
         setFrames(prev => {
@@ -1635,7 +1630,7 @@ export function PromptGenerator({ onUpscale }) {
                         .slice(0, MAX_FRAMES)
                         .map(a => ({
                             id: a.id, assetId: a.id, 
-                            url: toThumb(a.url),
+                            url: a.url,
                             assetPath: a.url,
                             type: a.type || 'image', model: a.model || 'Historical', loading: false
                         }));
@@ -1675,7 +1670,7 @@ export function PromptGenerator({ onUpscale }) {
                     .map(a => ({
                         id: a.id,
                         assetId: a.id,
-                        url: toThumb(a.url),
+                        url: a.url,
                         assetPath: a.url,
                         type: a.type || 'image',
                         model: a.model || 'Historical',
@@ -1703,8 +1698,8 @@ export function PromptGenerator({ onUpscale }) {
         }
     }
     useEffect(() => {
-        if (userProfile?.id && !hasLoadedRef.current) {
-            hasLoadedRef.current = true;
+        if (userProfile?.id && !hasFetched.current) {
+            hasFetched.current = true;
             loadRecentFrames();
         }
     }, [userProfile?.id]);
@@ -1827,11 +1822,17 @@ export function PromptGenerator({ onUpscale }) {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to save asset');
 
-            // Return both the path (Supabase internal) and the final public URL
+            // Generate thumb for filmstrip performance if it's a data URL
+            const thumb = type === 'image' && url.startsWith('data:') 
+                ? await compressImageToMax1024(url) 
+                : url;
+
+            // Return path (Supabase internal), final public URL, and thumb
             return { 
                 path: data.path, 
                 id: data.id, 
-                url: data.url || url 
+                url: data.url || url,
+                thumb 
             };
         } catch (err) {
             console.error('[SAVE_ASSET_FAILURE]:', err);
@@ -1876,7 +1877,12 @@ export function PromptGenerator({ onUpscale }) {
                     setRenderTarget('center');
                     // Non-blocking asset save
                     saveAsset(resultUrl, frameId, isVideoJob ? 'video' : 'image').then(assetData => {
-                        if (assetData) setFrames(prev => prev.map(f => f.id === frameId ? { ...f, assetPath: assetData.path, assetId: assetData.id } : f));
+                        if (assetData) setFrames(prev => prev.map(f => f.id === frameId ? { 
+                            ...f, 
+                            assetPath: assetData.path, 
+                            assetId: assetData.id,
+                            thumb: assetData.thumb // Store compressed thumbnail
+                        } : f));
                     }).catch(e => console.warn('[SAVE_ASSET_BG]', e));
                     return;
                 } else if (jobState === 'failed') {
@@ -2048,7 +2054,12 @@ export function PromptGenerator({ onUpscale }) {
                     setRenderTarget('center')
                     // Non-blocking asset save - never block playback
                     saveAsset(resultUrl, newFrameId, mode === 'video' ? 'video' : 'image').then(assetData => {
-                        if (assetData) setFrames(prev => prev.map(f => f.id === newFrameId ? { ...f, assetPath: assetData.path, assetId: assetData.id } : f))
+                        if (assetData) setFrames(prev => prev.map(f => f.id === newFrameId ? { 
+                            ...f, 
+                            assetPath: assetData.path, 
+                            assetId: assetData.id,
+                            thumb: assetData.thumb // Store compressed thumbnail
+                        } : f))
                     }).catch(e => console.warn('[SAVE_ASSET_BG]', e))
                 }
                 setIsLoading(false)
@@ -2127,6 +2138,7 @@ export function PromptGenerator({ onUpscale }) {
                     url: finalUrl, 
                     assetPath: assetData?.path, 
                     assetId: assetData?.id, 
+                    thumb: assetData?.thumb, // Store compressed thumbnail
                     model: currentModel?.modelId || 'gemini-3.1-flash-image-preview', 
                     loading: false 
                 } : f))
@@ -2250,6 +2262,7 @@ export function PromptGenerator({ onUpscale }) {
                     url: finalUrl,
                     assetPath: assetData?.path,
                     assetId: assetData?.id,
+                    thumb: assetData?.thumb, // Store compressed thumbnail
                     type: 'image',
                     model: currentModel?.modelId || 'gemini-3.1-flash-image-preview',
                     prompt,
@@ -2622,7 +2635,7 @@ export function PromptGenerator({ onUpscale }) {
                                 <div key={frame.id} className={cn("shrink-0 w-20 h-full rounded-lg overflow-hidden cursor-pointer transition-all border-2 relative group/strip", activeFrameId === frame.id ? "border-[#D4FF00] shadow-[0_0_10px_#D4FF00]" : "border-transparent hover:border-white/20")}>
                                     <div onClick={() => setActiveFrameId(frame.id)} className="w-full h-full">
                                         {frame.loading ? <div className="w-full h-full bg-black/40 flex items-center justify-center"><Sparkles className="w-3 h-3 text-[#D4FF00] animate-spin" /></div>
-                                            : frame.url ? (frame.type === 'video' ? <video src={frame.url} muted preload="metadata" className="w-full h-full object-cover" /> : <img src={toThumb(frame.url)} loading="lazy" className="w-full h-full object-cover" />)
+                                            : frame.url ? (frame.type === 'video' ? <video src={frame.url} muted preload="metadata" className="w-full h-full object-cover" /> : <img src={frame.thumb || frame.url} loading="lazy" decoding="async" className="w-full h-full object-cover" />)
                                                 : <div className="w-full h-full bg-black/40 flex items-center justify-center"><X className="w-3 h-3 text-red-500/50" /></div>}
                                     </div>
 
@@ -3084,7 +3097,7 @@ export function PromptGenerator({ onUpscale }) {
                                                 {frame.type === 'video' ? (
                                                     <video src={frame.url} muted preload="metadata" className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <img src={toThumb(frame.url)} loading="lazy" className="w-full h-full object-cover" />
+                                                    <img src={frame.thumb || frame.url} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                                                 )}
                                                 <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <p className="text-[8px] font-bold text-white/80 truncate">{frame.model}</p>
