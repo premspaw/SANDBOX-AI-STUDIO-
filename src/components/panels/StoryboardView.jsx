@@ -78,6 +78,8 @@ export const StoryboardView = ({
     };
 
     const generateStoryboard = async () => {
+        if (isGenerating) return;
+
         console.log("[STORYBOARD] Clicked generateStoryboard top handler.");
         console.log("[STORYBOARD] State:", { productImage: sceneSettings.productImage, sceneBrief: sceneBrief });
 
@@ -86,10 +88,17 @@ export const StoryboardView = ({
             return;
         }
 
-        // Cost check BEFORE generation
+        // Set Loading Immediately for Instance Response Time!
+        setIsGenerating(true);
+        setStoryboardSlots(slots => slots.map(s => ({ ...s, loading: true, url: null })));
+
         const res = await spend('storyboard_gen');
 
         if (!res || !res.success) {
+            // Restore loading if spend fails
+            setIsGenerating(false);
+            setStoryboardSlots(slots => slots.map(s => ({ ...s, loading: false })));
+
             if (res?.reason === 'unauthenticated') {
                 useAppStore.getState().setShowingAuthModal(true);
             } else {
@@ -98,31 +107,62 @@ export const StoryboardView = ({
             return;
         }
 
-        setIsGenerating(true);
-
-        // Set all slots to loading
-        setStoryboardSlots(slots => slots.map(s => ({ ...s, loading: true, url: null })));
-
         try {
             // NOTE: In a real app, you'd send `sceneSettings` and `sceneBrief` to your backend
             // which would return 4 (or N) distinct images and prompts.
             // For now, we simulate calling the standard image generator 4 times (or using a dedicated SB endpoint).
 
             // Generate a 3x3 grid using the multishot prompt technique
-            let promptText = `A single composite image containing exactly 9 distinct cinematic photographs arranged in a flawless 3x3 layout. High-end production value, dramatic lighting, full color.\n\n`;
-            if (sceneSettings.productImage || sceneSettings.characterRef) {
-                promptText += `Take the subject and visual identity from the attached reference image exactly as-is.\n\nPlace that exact subject into this scene: ${sceneBrief}\n\n`;
-            } else {
-                promptText += `Scene Brief: ${sceneBrief}\n\n`;
-            }
-            promptText += `STRICT VISUAL REQUIREMENT: Generate 9 distinct borderless frames within the single picture. Show scene progression. Photorealistic quality.\nEXTREMELY IMPORTANT NEGATIVE CONSTRAINTS: DO NOT generate any text, letters, camera angles, shot types, abbreviations, labels, or captions. DO NOT write words like C.U., L.S., or any scene descriptions inside the image. Just output the pure cinematic photographs.`;
+            const buildStoryboardPrompt = (sceneBrief, hasRefImage) => {
+                const header = `A single composite image containing exactly 9 distinct cinematic photographs
+arranged in a flawless 3x3 grid layout. Read left-to-right, top-to-bottom as a timeline.
+Each row represents a new beat. High-end production value, dramatic lighting, full color.`;
+
+                const subject = hasRefImage
+                    ? `Take the subject and visual identity from the attached reference image exactly as-is.
+Maintain 100% character continuity — the same subject must appear in all 9 frames 
+experiencing the passage of time through this scene: ${sceneBrief || 'a cinematic story'}`
+                    : `Scene: ${sceneBrief || 'a cinematic story'}`;
+
+                const arc = `
+Arrange the sequence chronologically from top-left (start) to bottom-right (end).
+
+FRAME 1 (Top-Left):    ESTABLISHING — Wide angle. Setting the world and location.
+FRAME 2 (Top-Center):  ARRIVAL — Subject enters the scene. Medium shot.
+FRAME 3 (Top-Right):   TENSION BUILDS — Close-up. Emotional state becomes visible.
+FRAME 4 (Mid-Left):    COMPLICATION — Something changes. Wide reaction shot.
+FRAME 5 (Mid-Center):  THE PIVOT — Sudden change in action or emotion. Most dramatic frame.
+FRAME 6 (Mid-Right):   TURNING POINT — Low angle. Power shift visible.
+FRAME 7 (Bot-Left):    AFTERMATH — Medium shot. Consequences visible.
+FRAME 8 (Bot-Center):  RESOLUTION — Wide shot. World has changed.
+FRAME 9 (Bot-Right):   FINAL REACTION — Close-up. Emotional punctuation. End of story.`;
+
+                const footer = `
+STRICT VISUAL REQUIREMENTS:
+- 9 distinct borderless frames in a single composite picture
+- Each frame visually distinct in angle, lighting and composition
+- Chronological story flow from Frame 1 to Frame 9
+- Subject identity locked — same character in every frame
+- Photorealistic cinematic quality throughout
+
+CRITICAL — ZERO TEXT RULE: NO text, letters, labels, captions, shot type abbreviations,
+scene numbers, or ANY written characters anywhere on any frame. Pure visual only.`;
+
+                return `${header}\n\n${subject}\n${arc}\n${footer}`;
+            };
 
             const payload = {
-                prompt: promptText,
+                prompt: buildStoryboardPrompt(
+                    sceneBrief, 
+                    !!sceneSettings.productImage || !!sceneSettings.characterRef
+                ),
                 model: selectedModel || 'nano-banana-2',
                 aspect_ratio: '16:9',
-                product_image: sceneSettings.productImage,
-                identity_images: [sceneSettings.characterRef].filter(Boolean),
+                image: sceneSettings.productImage || sceneSettings.characterRef || null,
+                identity_images: [
+                    sceneSettings.characterRef, 
+                    sceneSettings.productImage
+                ].filter(Boolean),
                 references: [sceneSettings.styleRef].filter(Boolean)
             };
 
@@ -473,6 +513,7 @@ export const StoryboardView = ({
                                         {/* Hover Actions */}
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                             {!slot.isGrid && (
+                                                <>
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -483,6 +524,8 @@ export const StoryboardView = ({
                                                 >
                                                     <Sparkles className="w-4 h-4" />
                                                 </button>
+                                                    <button onClick={(e) => { e.stopPropagation(); downloadImage(slot.url); }} className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-lg text-white hover:scale-110 transition-transform shadow-lg" title="Download Image"><Download className="w-4 h-4" /></button>
+                                                </>
                                             )}
                                         </div>
                                     </>

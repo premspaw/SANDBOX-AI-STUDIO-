@@ -20,6 +20,7 @@ export const MultiShotView = ({
     });
 
     const [subject, setSubject] = useState("");
+    const [activePreset, setActivePreset] = useState("cinematic_arc");
     const [isGenerating, setIsGenerating] = useState(false);
 
     const activeSlot = shotSlots.find(s => s.id === activeSlotId);
@@ -80,6 +81,8 @@ export const MultiShotView = ({
     };
 
     const generateMultiShot = async () => {
+        if (isGenerating) return;
+
         console.log("[MULTISHOT] Clicked generateMultiShot top handler.");
         console.log("[MULTISHOT] State:", { productImage: sceneSettings.productImage, subject: subject });
 
@@ -88,9 +91,17 @@ export const MultiShotView = ({
             return;
         }
 
+        // Set Loading Immediately for Instance Response Time!
+        setIsGenerating(true);
+        setShotSlots(slots => slots.map(s => ({ ...s, loading: true, url: null })));
+
         const res = await spend('image_grid_multishot');
 
         if (!res || !res.success) {
+            // Restore loading if spend fails
+            setIsGenerating(false);
+            setShotSlots(slots => slots.map(s => ({ ...s, loading: false })));
+            
             if (res?.reason === 'unauthenticated') {
                 useAppStore.getState().setShowingAuthModal(true);
             } else {
@@ -99,28 +110,156 @@ export const MultiShotView = ({
             return;
         }
 
-        setIsGenerating(true);
-        setShotSlots(slots => slots.map(s => ({ ...s, loading: true, url: null })));
-
         try {
-            let promptText = `A single composite image containing exactly 9 distinct cinematic photographs of the same subject from 9 different camera angles, arranged in a flawless 3x3 layout. High-end production value, dramatic lighting, full color.\n\n`;
+            const ANGLE_PRESETS = {
+                person: [
+                    '1. Extreme close-up of face, dramatic side lighting',
+                    '2. Wide shot, golden hour environment',
+                    '3. Low angle looking up, urban background',
+                    '4. Overhead bird\'s eye view',
+                    '5. Medium shot, nature environment',
+                    '6. Side profile silhouette against sunset',
+                    '7. Dutch angle, neon city night scene',
+                    '8. Over-the-shoulder POV shot',
+                    '9. Full body wide, minimalist studio'
+                ],
+                car: [
+                    '1. Front 3/4 angle, studio dramatic lighting',
+                    '2. Rear 3/4 angle, golden hour road',
+                    '3. Side profile, motion blur highway',
+                    '4. Low angle front grille, wide lens',
+                    '5. Overhead drone shot, mountain road',
+                    '6. Interior cockpit driver POV',
+                    '7. Wheel close-up, wet road reflection',
+                    '8. Rear light close-up, night neon',
+                    '9. Full wide, desert landscape epic'
+                ],
+                product: [
+                    '1. Hero shot straight on, white studio',
+                    '2. 45 degree angle, soft shadow',
+                    '3. Extreme close-up texture detail',
+                    '4. Flat lay overhead, lifestyle props',
+                    '5. Side profile, gradient background',
+                    '6. In-hand lifestyle use shot',
+                    '7. Backlit silhouette, dramatic rim light',
+                    '8. Macro detail shot, shallow DOF',
+                    '9. Full environment lifestyle wide shot'
+                ],
+                food: [
+                    '1. Overhead flat lay, full spread',
+                    '2. Side angle 45 degrees, steam rising',
+                    '3. Extreme macro, texture close-up',
+                    '4. Fork/spoon action shot mid-bite',
+                    '5. Full table setting wide shot',
+                    '6. Backlit golden hour window light',
+                    '7. Cross-section cut-through detail',
+                    '8. Hand holding, lifestyle casual',
+                    '9. Night mood, candlelight ambiance'
+                ],
+                fashion: [
+                    'FRAME 1: BEAUTY CLOSE-UP — Face fills frame, studio beauty lighting, catch lights in eyes',
+                    'FRAME 2: WALKING TOWARDS — Subject walks toward camera, motion blur on feet, sharp face',
+                    'FRAME 3: FABRIC MACRO — Extreme close-up on clothing texture/pattern, no face',
+                    'FRAME 4: BACK SHOT — Camera behind subject, facing away, environment ahead',
+                    'FRAME 5: MIRROR REFLECTION — Subject reflected in mirror, double composition',
+                    'FRAME 6: SITTING POSE — Ground level, subject seated, architectural framing',
+                    'FRAME 7: HAND/ACCESSORY DETAIL — Extreme close-up on hands, jewelry, bag, shoes only',
+                    'FRAME 8: ENVIRONMENTAL WIDE — Subject tiny in massive environment, fashion editorial scale',
+                    'FRAME 9: STRAIGHT TO CAMERA — Direct eye contact, medium shot, neutral power pose'
+                ],
+                thriller: [
+                    'FRAME 1: SHADOWED ENTRY — Subject partially hidden in doorway shadow, half face visible',
+                    'FRAME 2: OVER SHOULDER STALK — Camera follows from behind, subject unaware',
+                    'FRAME 3: REFLECTION IN GLASS — Subject seen through window/mirror distortion',
+                    'FRAME 4: LOW ANGLE THREAT — Extreme low angle, subject looms, sky behind',
+                    'FRAME 5: EXTREME ISOLATION — Subject tiny in massive empty space, alone',
+                    'FRAME 6: CLOSE-UP EYES ONLY — Crop to eyes only, extreme tension, sweat/detail visible',
+                    'FRAME 7: HANDS IN ACTION — Close-up on hands doing something, face out of frame',
+                    'FRAME 8: DUTCH ANGLE RUN — Tilted camera, subject in motion, urgency',
+                    'FRAME 9: FINAL WIDE REVEAL — Pull back wide, full context of situation visible'
+                ]
+            };
 
-            if (sceneSettings.productImage || sceneSettings.characterRef) {
-                promptText += `Take the subject and visual identity from the attached reference image exactly as-is. Maintain 100% subject consistency across all 9 frames.\n\nPlace that exact subject into these diverse angles: ${subject}\n\n`;
-            } else {
-                promptText += `Subject: ${subject}\n\n`;
-            }
+            const detectSubjectType = (text) => {
+                if (!text) return 'person';
+                const t = text.toLowerCase();
+                if (t.match(/fashion|model|runway|editorial|outfit|lookbook/)) return 'fashion';
+                if (t.match(/thriller|suspense|dark|noir|mystery|chase|danger/)) return 'thriller';
+                if (t.match(/car|vehicle|suv|truck|bike|motorcycle|ferrari|bmw|mercedes/)) return 'car';
+                if (t.match(/food|burger|pizza|drink|coffee|cake|dish|meal/)) return 'food';
+                if (t.match(/product|bottle|box|bag|shoe|watch|phone|gadget/)) return 'product';
+                return 'person';
+            };
 
-            promptText += `STRICT VISUAL REQUIREMENT: Generate 9 distinct borderless cinematic photographs within the single composite picture layout. Each frame must be a different angle (From Above, Side-view, Close-up, Wide, etc.) of the EXACT SAME SUBJECT with perfect photorealistic quality.\n\n`;
-            promptText += `CRITICAL ANTI-TEXT OVERLAY INSTRUCTION: The final drawing MUST BE 100% FREE OF ANY WRITTEN WORDS, TEXT, LETTERS, CAPTIONS, LABELS, TITLES, ABBREVIATIONS, OR HEADER STRIPS ON TOP OF ANY FRAME. DO NOT label which angle is which inside the frame. Only output the raw visual photographs without single letter overlay.`;
+            const buildMultiShotPrompt = (subjectText, hasRefImage) => {
+                if (activePreset === 'cinematic_arc') {
+                     return `### [HEADER: THE LAYOUT LOCK]
+A high-end 3x3 cinematic contact sheet. 9 distinct borderless photographs in one single composite image. 35mm anamorphic lens style.
+
+### [BODY: THE SUBJECT ANCHOR]
+CRITICAL INSTRUCTION: Use the provided reference image as the EXACT IDENTITY for the subject. 
+Maintain 100% consistency in facial features, hair, and clothing across all 9 frames. 
+Maintain the EXACT SAME environment and background location across all 9 frames from the reference.
+The subject from the reference image is now placed into these 9 specific camera setups:
+
+FRAME 1 (Top-Left):    EXTREME CLOSE-UP — Macro lens on face only. Eyes and jewelry fill entire frame. Zero background visible. Heavy bokeh.
+FRAME 2 (Top-Center):  WIDE ESTABLISHING — Full courtyard visible, subject small in frame, architecture dominates 80% of image.
+FRAME 3 (Top-Right):   MACRO DETAIL — Ultra-tight on saree fabric/jewelry only. No face visible. Pure textile/gold texture fills frame.
+FRAME 4 (Mid-Left):    LOW ANGLE HEROIC — Camera at ground level shooting upward. Subject towers above, sky/ceiling behind. Extreme perspective distortion.
+FRAME 5 (Mid-Center):  OVERHEAD DRONE — Camera pointing straight down from above. Subject seen from top, floor pattern visible around them.
+FRAME 6 (Mid-Right):   MEDIUM SHOT — Waist up only. Diffused ring-light. Saree texture and jewelry detail visible.
+FRAME 7 (Bot-Left):    DRAMATIC RIM LIGHT — Near-dark environment, single strong edge light outlining subject from behind, face and front still visible.
+FRAME 8 (Bot-Center):  POV FIRST PERSON — Camera IS the subject's eyes looking forward. Hands visible in foreground, environment ahead.
+FRAME 9 (Bot-Right):   FULL BODY VERTICAL — Head to toe, straight on, neutral ambient light, full saree visible from top to bottom.
+
+CRITICAL ENFORCEMENT: Each frame MUST look completely different from every other frame.
+If Frame 1 is a close-up, Frame 2 MUST NOT be a close-up.
+If Frame 2 is wide, Frame 3 MUST NOT be wide.
+Maximum visual diversity and dynamic frame-to-frame contrast is mandatory.
+
+### [FOOTER: THE CLEANLINESS RULE]
+STRICT NEGATIVE CONSTRAINTS:
+- 100% NO TEXT. No labels like "1", "Shot A", "Urban", or "Neon". No captions, no letters, no watermark.
+- ABSOLUTELY NO BORDER LINES, NO GRID LINES, NO DIVIDER LINES, AND NO BLACK/WHITE FRAMES DIVIDING THE 9 SHOTS.
+- The 9 photographs must sit seamless and edge-to-edge with each other in the 3x3 frame.
+- Output ONLY the 9 raw visual photographs seamless in a 3x3 contact layout.`;
+                }
+
+                const subjectType = detectSubjectType(subjectText);
+                const angles = ANGLE_PRESETS[subjectType].join('\n');
+
+                const header = hasRefImage
+                    ? `Take the subject and visual identity from the attached reference image exactly as-is.
+Maintain 100% subject consistency across all 9 frames.
+Place that exact subject into these 9 completely different scenarios:`
+                    : `Subject: ${subjectText || 'the subject'}
+Place this subject into these 9 completely different scenarios:`;
+
+                const footer = `
+STRICT VISUAL REQUIREMENT: Generate exactly 9 distinct borderless cinematic photographs
+in a single 3x3 composite grid. Each frame MUST show a dramatically different camera angle,
+environment, and lighting. Maximum visual diversity across all 9 panels.
+
+CRITICAL: NO TEXT, NO LABELS, NO CAPTIONS, NO LETTERS anywhere on any frame.
+Output only raw visual photographs.`;
+
+                return `${header}\n${angles}\n${footer}`;
+            };
 
             const payload = {
-                prompt: promptText,
+                prompt: buildMultiShotPrompt(
+                    subject, 
+                    !!sceneSettings.productImage || !!sceneSettings.characterRef
+                ),
                 model: selectedModel || 'nano-banana-2',
                 aspect_ratio: '16:9',
-                product_image: sceneSettings.productImage,
-                identity_images: [sceneSettings.characterRef].filter(Boolean),
-                references: [sceneSettings.styleRef].filter(Boolean)
+                image: sceneSettings.productImage || sceneSettings.characterRef || null,
+                identity_images: [
+                    sceneSettings.characterRef, 
+                    sceneSettings.productImage
+                ].filter(Boolean),
+                references: [sceneSettings.styleRef].filter(Boolean),
+                quality: '2k'
             };
 
             const response = await fetch(getApiUrl('/api/generate-image'), {
@@ -216,6 +355,11 @@ export const MultiShotView = ({
             });
         }
     };
+    useEffect(() => {
+        window.addEventListener('resize', updateOverlay);
+        return () => window.removeEventListener('resize', updateOverlay);
+    }, []);
+
 
     const sendToVideo = (slot) => {
         if (!slot.url) return;
@@ -274,6 +418,20 @@ export const MultiShotView = ({
                     </div>
 
                     <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Grid Template</label>
+                        <select value={activePreset} onChange={e => setActivePreset(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none">
+                            <option value="cinematic_arc">Cinematic Arc (Default)</option>
+                            <option value="dynamic">Dynamic (Auto-detect)</option>
+                            <option value="fashion">Fashion Editorial</option>
+                            <option value="thriller">Cinematic Thriller</option>
+                            <option value="car">Car Showcase</option>
+                            <option value="food">Food Photography</option>
+                            <option value="product">Product Shots</option>
+                            <option value="person">Standard Portrait</option>
+                        </select>
+                    </div>
+
+<div className="flex flex-col gap-1.5">
                         <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Subject Description</label>
                         <textarea
                             value={subject}
@@ -342,9 +500,9 @@ export const MultiShotView = ({
                             <div className="absolute right-4 top-4 flex flex-col gap-2 z-20">
                                 {!activeSlot.isGrid && (
                                     <>
-                                        <button onClick={() => runAiUpscale(activeSlot.url)} disabled={upscaling} className={cn("p-3 bg-fuchsia-600/90 hover:bg-fuchsia-600 rounded-xl text-white shadow-xl group flex items-center gap-2 transition-all", upscaling && "opacity-50 cursor-not-allowed")}>
+                                        <button onClick={() => runAiUpscale(activeSlot.url, activeSlot.prompt || '', '2k')} disabled={upscaling} className={cn("p-3 bg-fuchsia-600/90 hover:bg-fuchsia-600 rounded-xl text-white shadow-xl group flex items-center gap-2 transition-all", upscaling && "opacity-50 cursor-not-allowed")}>
                                             <Zap className={cn("w-4 h-4 md:w-5 md:h-5", upscaling && "animate-pulse")} />
-                                            <span className="text-[10px] font-black uppercase md:w-0 overflow-hidden md:group-hover:w-auto transition-all whitespace-nowrap">{upscaling ? 'Upscaling...' : 'Upscale 4K'}</span>
+                                            <span className="text-[10px] font-black uppercase md:w-0 overflow-hidden md:group-hover:w-auto transition-all whitespace-nowrap">{upscaling ? 'Upscaling...' : 'Upscale 2K'}</span>
                                         </button>
                                         <button onClick={() => sendToVideo(activeSlot)} className="p-3 bg-[#D4FF00]/90 hover:bg-[#D4FF00] rounded-xl text-black shadow-xl group flex items-center gap-2 transition-all">
                                             <Film className="w-4 h-4 md:w-5 md:h-5" />
@@ -396,16 +554,19 @@ export const MultiShotView = ({
                                         {/* Hover Actions */}
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                             {!slot.isGrid && (
+                                                <>
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        runAiUpscale(slot.url, slot.prompt);
+                                                        runAiUpscale(slot.url, slot.prompt, '2k');
                                                     }}
                                                     className="p-2 bg-[#D4FF00] rounded-lg text-black hover:scale-110 transition-transform shadow-lg"
-                                                    title="Upscale to 4K"
+                                                    title="Upscale to 2K"
                                                 >
                                                     <Sparkles className="w-4 h-4" />
                                                 </button>
+                                                    <button onClick={(e) => { e.stopPropagation(); downloadImage(slot.url); }} className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-lg text-white hover:scale-110 transition-transform shadow-lg" title="Download Image"><Download className="w-4 h-4" /></button>
+                                                </>
                                             )}
                                         </div>
                                     </>

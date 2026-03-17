@@ -302,3 +302,13 @@ option {
   animation-duration: 0.25s;
   animation-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
 }
+/* Performance tweaks for filmstrip rendering */
+.film-strip-item {
+  contain: content; /* helps with layout isolation for long strips */
+  flex-shrink: 0;
+  will-change: transform;
+}
+
+img {
+  content-visibility: auto; /* helps lazy render of large image lists */
+}

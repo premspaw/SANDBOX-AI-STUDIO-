@@ -1844,6 +1844,13 @@ export function PromptGenerator({ onUpscale }) {
         setSelections(p => { let u = { ...p, [key]: val }; if (key === 'dialogue' && val !== 'Off' && val !== 'Ambient Only') u.audio = 'On'; return u })
     }
 
+    // Simple UI toast for non-blocking messages
+    const [toast, setToast] = useState(null);
+    const showToast = (msg, duration = 4000) => {
+      setToast(msg);
+      window.setTimeout(() => setToast(null), duration);
+    };
+
     const SpeedRampCurve = ({ name, active }) => {
         const pts = (SPEED_RAMP_CURVES[name] || SPEED_RAMP_CURVES.Linear).map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0] * 0.8},${p[1]}`).join(' ')
         return (<svg width="80" height="62" viewBox="0 0 80 62" className="mx-auto"><path d={pts} fill="none" stroke={active ? '#84CC16' : '#333'} strokeWidth={active ? 2 : 1} strokeLinecap="round" strokeLinejoin="round" /></svg>)
@@ -1858,9 +1865,10 @@ export function PromptGenerator({ onUpscale }) {
         try {
             let attempt = 0;
             while (attempt < maxAttempts) {
-                const res = await fetch(getApiUrl(`/api/job-status/${jobId}`));
+            const res = await fetch(getApiUrl(`/api/job-status/${jobId}`));
                 if (!res.ok) throw new Error('Failed to fetch job status');
                 const data = await res.json();
+                console.debug('[RAILWAY] Job status poll', jobId, 'state', data.status || data.state, 'progress', data.progress)
                 const jobState = data.status || data.state;
                 
                 if (jobState === 'completed') {
@@ -1869,21 +1877,23 @@ export function PromptGenerator({ onUpscale }) {
                         throw new Error('Job completed but no result URL was returned');
                     }
 
-                    console.log('[QUEUE] Job completed in UI:', { jobId, jobState, resultUrl });
-                    // Show video/image IMMEDIATELY, save to DB in background
-                    setFrames(prev => prev.map(f => f.id === frameId ? { ...f, url: resultUrl, loading: false } : f));
-                    if (renderTarget === 'left') setLeftPreviewId(frameId);
-                    else if (renderTarget === 'right') setRightPreviewId(frameId);
-                    setRenderTarget('center');
-                    // Non-blocking asset save
-                    saveAsset(resultUrl, frameId, isVideoJob ? 'video' : 'image').then(assetData => {
-                        if (assetData) setFrames(prev => prev.map(f => f.id === frameId ? { 
-                            ...f, 
-                            assetPath: assetData.path, 
-                            assetId: assetData.id,
-                            thumb: assetData.thumb // Store compressed thumbnail
-                        } : f));
-                    }).catch(e => console.warn('[SAVE_ASSET_BG]', e));
+                    // 1) Save to Supabase Storage (Middleman)
+                    const assetData = await saveAsset(resultUrl, frameId, isVideoJob ? 'video' : 'image');
+
+                    // 2) Update the specific Frame in UI
+                    setFrames(prev => prev.map(f => f.id === frameId ? { 
+                        ...f, 
+                        url: resultUrl, 
+                        assetPath: assetData?.path,
+                        assetId: assetData?.id,
+                        loading: false 
+                    } : f));
+
+                    // 3) Optional: If this was a 4K upscale, make it the active view
+                    setActiveFrameId(frameId);
+                    
+                    done = true;
+                    setQueueStatus("Generation Complete");
                     return;
                 } else if (jobState === 'failed') {
                     throw new Error(data.error || 'Generation failed in queue');
@@ -1914,7 +1924,7 @@ export function PromptGenerator({ onUpscale }) {
             console.error('Polling error:', err);
             let msg = message;
             if (msg.toLowerCase().includes('safety system')) msg = "Creative Block: The AI's safety filters flagged this prompt.";
-            alert(`AI Engine Status: ${msg}`);
+            showToast(`AI Engine Status: ${msg}`);
             setFrames(prev => prev.map(f => f.id === frameId ? { ...f, loading: false, error: true } : f));
         } finally {
             setIsLoading(false);
@@ -2112,7 +2122,7 @@ export function PromptGenerator({ onUpscale }) {
                 model: modelToUse,
                 prompt,
                 aspect_ratio: frame.aspectRatio || '16:9',
-                quality: '4k',
+                quality: qualityOverride || '4k',
                 image: frame.url,
                 userId: user?.id || null
             }
@@ -2291,9 +2301,166 @@ export function PromptGenerator({ onUpscale }) {
 
     const filteredModels = AI_MODELS.filter(m => m.type === (mode === 'multishot' ? 'image' : mode))
     const activeFrame = frames.find(f => f.id === activeFrameId) || null
+    // Props bridging for onUpscale (new clean API) + legacy window hook fallback
+    const promptGeneratorBridgeProps = (typeof window !== 'undefined' && window.__PROMPTGENERATOR_PROPS__) ? window.__PROMPTGENERATOR_PROPS__ : {}
+    const triggerExternalUpscale = async (frame) => {
+      const propOnUpscale = typeof promptGeneratorBridgeProps.onUpscale === 'function' ? promptGeneratorBridgeProps.onUpscale : null
+      if (typeof propOnUpscale === 'function') {
+        try {
+          const res = await propOnUpscale(frame)
+          if (res) return true
+        } catch (e) {
+          console.error('[PROMPT-GEN] onUpscale prop failed', e)
+        }
+      }
+      const external = typeof window !== 'undefined' ? window.__PROMPTGENERATOR_ONUPSCALE__ : undefined
+      if (typeof external === 'function') {
+        try {
+          const result = await external(frame)
+          if (result) return true
+        } catch (e) {
+          console.error('[PROMPT-GEN] External onUpscale failed', e)
+        }
+      }
+      return false
+    }
+    const internalUpscale = async (frameId) => {
+      if (!frameId) return
+      await upscaleImage(frameId)
+    }
+    const handleUpscale = async (frame) => {
+      if (!frame) return
+      const didExternal = await triggerExternalUpscale(frame)
+      if (didExternal) return
+      await upscaleImage(frame.id)
+    }
+
+    // 4K Upscale: new drop-in replacement with frame.assetPath as source
+    const compressImageToMax1024 = (src) => {
+      return new Promise((resolve, reject) => {
+        if (!src) { reject(new Error('No source provided')); return }
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => {
+          const max = 1024
+          const w = img.naturalWidth
+          const h = img.naturalHeight
+          const scale = Math.min(1, max / Math.max(w, h))
+          const cw = Math.max(1, Math.floor(w * scale))
+          const ch = Math.max(1, Math.floor(h * scale))
+          const canvas = document.createElement('canvas')
+          canvas.width = cw
+          canvas.height = ch
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, cw, ch)
+          try {
+            const data = canvas.toDataURL('image/jpeg', 0.92)
+            resolve(data)
+          } catch (e) {
+            reject(e)
+          }
+        }
+        img.onerror = (e) => reject(e)
+        img.src = src
+        // note: potential CORS issues if source not allowed
+      })
+    }
+
+    const upscaleImageDropIn = async (frameId) => {
+      console.debug('[4K_UPSCALE] Start drop-in for frame', frameId);
+      const frame = frames.find(f => f.id === frameId)
+      if (!frame || !frame.url && !frame.assetPath) {
+        alert('Upscale failed: Frame not found.')
+        return
+      }
+
+        const spendRes = await spend('image_upscale_4k')
+        console.debug('[RAILWAY] Upscale cost check response:', spendRes)
+      if (!spendRes || !spendRes.success) {
+        if (spendRes?.reason === 'unauthenticated') {
+          useAppStore.getState().setShowingAuthModal(true)
+        } else {
+          alert("Not enough shorts: " + (spendRes?.reason || 'error'))
+        }
+        return
+      }
+
+      setIsLoading(true)
+      setFrames(prev => prev.map(f => f.id === frameId ? { ...f, loading: true } : f))
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        console.debug('[RAILWAY] Current user from Supabase:', user?.id)
+
+        // Use full-res assetPath if available, else fall back to frame.url
+        const sourceUrl = frame.url
+        const compressedBase64 = await compressImageToMax1024(sourceUrl)
+
+        // Basic Gemini 3.1-like prompt for upscaling. Modify as needed for your backend.
+        const payload = {
+          model: 'gemini-3.1-flash-image-preview',
+          prompt: `${frame.prompt || 'Cinematic masterpiece'} - 4K high fidelity, micro-texture refinement, cinematic lighting`,
+          aspect_ratio: frame.aspectRatio || '16:9',
+          quality: '4K',
+          image: compressedBase64,
+          userId: user?.id || null
+        }
+
+        console.log('[4K_UPSCALE] Payload size:', Math.round(JSON.stringify(payload).length / 1024), 'KB')
+
+        const response = await fetch(getApiUrl('/api/generate-image'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        console.debug('[RAILWAY] Upscale /generate-image response OK?', response.ok)
+
+        const data = await response.json()
+        console.debug('[RAILWAY] Upscale response data:', data)
+        if (!response.ok) throw new Error(data.error || 'Upscale request failed')
+
+        if (data.jobId) {
+          setQueueStatus("Upscaling to 4K... 45-60 seconds.")
+          pollJobStatus(data.jobId, frameId, 'image_upscale_4k', 'image')
+        } else if (data.url) {
+          await handleUpscaleSuccess(data.url, frameId)
+        }
+      } catch (err) {
+        console.error('[4K_UPSCALE_ERROR]:', err)
+        await refund('image_upscale_4k')
+        showToast(`4K Error: ${err.message}`)
+        setFrames(prev => prev.map(f => f.id === frameId ? { ...f, loading: false } : f))
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    const handleUpscaleSuccess = async (newUrl, frameId) => {
+      // Store thumb for filmstrip performance; also save asset metadata
+      const frame = frames.find(f => f.id === frameId)
+      if (!frame) return
+      const thumb = await compressImageToMax1024(newUrl)
+      const assetData = await saveAsset(newUrl, `upscale_${frameId}`, 'image')
+      setFrames(prev => prev.map(f => f.id === frameId ? {
+        ...f,
+        url: newUrl,
+        thumb: thumb,
+        assetPath: assetData?.path,
+        assetId: assetData?.id,
+        loading: false,
+        is4K: true
+      } : f))
+    }
 
     return (
         <div className="h-screen overflow-hidden flex flex-col bg-black px-2 pb-0 pt-0 gap-2">
+            {toast && (
+              <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 9999 }}>
+                <div style={{ background: '#111', color: '#fff', padding: '10px 14px', borderRadius: 8, boxShadow: '0 4px 14px rgba(0,0,0,.4)' }}>
+                  {toast}
+                </div>
+              </div>
+            )}
             {/* ─── TOP BAR ─────────────────────────────────────────────── */}
             <div className="relative flex items-center justify-between pt-2 shrink-0">
                 {/* ── Left Side: Logo/REC ── */}
@@ -2427,7 +2594,7 @@ export function PromptGenerator({ onUpscale }) {
                                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
                                             <button onClick={() => setZoomState({ url: leftFrame.url, isOpen: true, slot: leftFrame.id, isEditing: false })} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"><Maximize2 className="w-4 h-4" /></button>
                                             <button onClick={() => downloadImage(leftFrame.url)} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"><Download className="w-4 h-4" /></button>
-                                            <button onClick={() => setSelections(p => ({ ...p, referenceImage: leftFrame.assetPath || leftFrame.url }))} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
+                                            <button onClick={() => setSelections(p => ({ ...p, referenceImage: leftFrame.url }))} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
                                             <button onClick={() => setLeftPreviewId(null)} className="p-2 bg-red-500/30 hover:bg-red-500/50 rounded-lg text-white" title="Unpin"><X className="w-4 h-4" /></button>
                                         </div>
                                         <div className="absolute top-2 left-2 px-2 py-0.5 bg-[#D4FF00]/80 text-black text-[7px] font-black uppercase rounded-md">Left</div>
@@ -2491,16 +2658,24 @@ export function PromptGenerator({ onUpscale }) {
                                                 <button onClick={() => setZoomState({ url: activeFrame.url, isOpen: true, slot: activeFrame.id, isEditing: false })} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white pointer-events-auto"><Maximize2 className="w-4 h-4" /></button>
                                                 <button onClick={() => downloadImage(activeFrame.url)} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white pointer-events-auto"><Download className="w-4 h-4" /></button>
                                                 
-                                                {(activeFrame.type === 'image' || activeFrame.type === 'multishot') && activeFrame.model !== 'gemini-3-pro-image-preview' && (
-                                                    <button onClick={() => upscaleImage(activeFrame.id)} className="px-3 py-2 bg-[#D4AF37] hover:bg-yellow-400 rounded-lg text-black text-[9px] font-black uppercase flex items-center gap-1 pointer-events-auto"><Sparkles className="w-3 h-3" /> 4K</button>
-                                                )}
+                        {(activeFrame && (activeFrame.type === 'image' || activeFrame.type === 'multishot') && activeFrame.model !== 'gemini-3-pro-image-preview') && (
+                            <button
+                                 onClick={() => handleUpscale(activeFrame)}
+                                 className="px-3 py-2 bg-[#D4AF37] hover:bg-yellow-400 rounded-lg text-black text-[9px] font-black uppercase flex items-center gap-1 pointer-events-auto"
+                                disabled={!(activeFrame?.url || activeFrame?.assetPath)}
+                                aria-disabled={!(activeFrame?.url || activeFrame?.assetPath)}
+                                title={!(activeFrame?.url || activeFrame?.assetPath) ? 'No image available for upscaling' : 'Upscale to 4K'}
+                             >
+                                <Sparkles className="w-3 h-3" /> 4K
+                            </button>
+                        )}
 
-                                                <button onClick={() => setSelections(p => ({ ...p, referenceImage: activeFrame.assetPath || activeFrame.url }))} className="p-2 bg-cyan-500/20 hover:bg-cyan-400 text-cyan-400 hover:text-black rounded-lg pointer-events-auto transition-all" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
+                                                <button onClick={() => setSelections(p => ({ ...p, referenceImage: activeFrame.url }))} className="p-2 bg-cyan-500/20 hover:bg-cyan-400 text-cyan-400 hover:text-black rounded-lg pointer-events-auto transition-all" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
                                                 
                                                 {(activeFrame.type === 'image' || activeFrame.type === 'multishot') && (
                                                     <>
-                                                        <button onClick={() => { setSelections(p => ({ ...p, firstFrame: activeFrame.assetPath || activeFrame.url })); setMode('video') }} className="px-2 py-2 bg-[#D4FF00] hover:bg-white rounded-lg text-black text-[9px] font-black uppercase flex items-center gap-1 pointer-events-auto"><Film className="w-3 h-3" /> First</button>
-                                                        <button onClick={() => { setSelections(p => ({ ...p, lastFrame: activeFrame.assetPath || activeFrame.url })); setMode('video') }} className="px-2 py-2 bg-purple-500 hover:bg-purple-400 rounded-lg text-white text-[9px] font-black uppercase flex items-center gap-1 pointer-events-auto"><FastForward className="w-3 h-3" /> Last</button>
+                                                        <button onClick={() => { setSelections(p => ({ ...p, firstFrame: activeFrame.url })); setMode('video') }} className="px-2 py-2 bg-[#D4FF00] hover:bg-white rounded-lg text-black text-[9px] font-black uppercase flex items-center gap-1 pointer-events-auto"><Film className="w-3 h-3" /> First</button>
+                                                        <button onClick={() => { setSelections(p => ({ ...p, lastFrame: activeFrame.url })); setMode('video') }} className="px-2 py-2 bg-purple-500 hover:bg-purple-400 rounded-lg text-white text-[9px] font-black uppercase flex items-center gap-1 pointer-events-auto"><FastForward className="w-3 h-3" /> Last</button>
                                                     </>
                                                 )}
                                             </div>
@@ -2535,7 +2710,7 @@ export function PromptGenerator({ onUpscale }) {
                                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
                                             <button onClick={() => setZoomState({ url: rightFrame.url, isOpen: true, slot: rightFrame.id, isEditing: false })} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"><Maximize2 className="w-4 h-4" /></button>
                                             <button onClick={() => downloadImage(rightFrame.url)} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"><Download className="w-4 h-4" /></button>
-                                            <button onClick={() => setSelections(p => ({ ...p, referenceImage: rightFrame.assetPath || rightFrame.url }))} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
+                                            <button onClick={() => setSelections(p => ({ ...p, referenceImage: rightFrame.url }))} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
                                             <button onClick={() => setRightPreviewId(null)} className="p-2 bg-red-500/30 hover:bg-red-500/50 rounded-lg text-white" title="Unpin"><X className="w-4 h-4" /></button>
                                         </div>
                                         <div className="absolute top-2 right-2 px-2 py-0.5 bg-purple-500/80 text-white text-[7px] font-black uppercase rounded-md">Right</div>
@@ -3105,7 +3280,7 @@ export function PromptGenerator({ onUpscale }) {
                                                         <button onClick={(e) => { e.stopPropagation(); downloadImage(frame.url) }} className="px-1.5 py-0.5 bg-white/10 hover:bg-white/20 rounded text-[7px] text-white font-bold">DL</button>
                                                         <button onClick={(e) => { 
                                                             e.stopPropagation(); 
-                                                            const url = frame.assetPath || frame.url;
+                                                            const url = frame.url;
                                                             setSelections(p => ({ ...p, referenceImage: url }));
                                                             addRefItem({ id: crypto.randomUUID(), name: `Ref_${frame.id.slice(-4)}`, category: 'mood', imageUrl: url });
                                                         }} className="px-1.5 py-0.5 bg-purple-500/50 hover:bg-purple-500 rounded text-[7px] text-white font-bold">ADD TO REF</button>

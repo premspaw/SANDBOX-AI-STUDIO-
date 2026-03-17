@@ -1734,7 +1734,7 @@ async function handleGoogle(req, res) {
             )).filter(Boolean);
 
             // ── HTTP/base64 fallback ──────────────────────
-            const { images = [], references = [], consistencyRefs = [], image: baseImage } = req.body || {};
+            const { images = [], references = [], consistencyRefs = [], image: baseImage, product_image, identity_images = [] } = req.body || {};
             const combinedRefs = [...(images || []), ...(references || []), ...(identity_images || []), ...(consistencyRefs || []), product_image, baseImage].filter(Boolean);
             const inputImages = Array.from(new Set(combinedRefs)); // De-duplicate
 
@@ -1749,6 +1749,17 @@ async function handleGoogle(req, res) {
 
             const contentParts = [...gcsContentParts, ...httpContentParts];
             contentParts.push({ text: biblePrefix + prompt.replace(/--ar\s+\d+:\d+/g, '').trim() });
+
+            console.log(`[BACKEND] contentParts total: ${contentParts.length}`);
+            contentParts.forEach((p, idx) => {
+                const type = p.inlineData ? 'inlineData' : p.fileData ? 'fileData' : 'text';
+                if (type === 'inlineData') {
+                    console.log(`  - Part [${idx}]: type=${type} (size: ${Math.round(p.inlineData.data.length / 1024)} KB)`);
+                } else {
+                    console.log(`  - Part [${idx}]: type=${type} (${p.text?.substring(0, 50)}...)`);
+                }
+            });
+
 
             // MANUAL REST API CALL (Bypasses SDK header stripping)
             const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
