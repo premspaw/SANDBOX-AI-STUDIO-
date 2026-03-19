@@ -294,6 +294,83 @@ app.get('/cinema', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'cine
 // Production static serving (for built React app)
 app.use(express.static(path.join(__dirname, 'dist')));
 
+// ─────────────────────────────────────────────────────────────
+// RAZORPAY AUTOMATED CREDITS WEBHOOK
+// ─────────────────────────────────────────────────────────────
+app.post('/api/webhook/razorpay', async (req, res) => {
+    try {
+        const payload = req.body;
+        console.log('[RAZORPAY_WEBHOOK] Received Event:', payload.event);
+
+        if (payload.event === 'payment.captured' || payload.event === 'order.paid') {
+            const payment = payload.payload.payment.entity;
+            const amount_in_rs = payment.amount / 100; // Razorpay uses Paise
+            const userId = payment.notes?.client_id;
+
+            if (!userId) {
+                console.warn('[RAZORPAY_WEBHOOK] Missing client_id (userId) in payment notes.', payment.notes);
+                return res.status(200).json({ success: false, reason: 'missing_user_id' });
+            }
+
+            // Map Price to Credit Allocation
+            let creditsToAdd = 0;
+            if (amount_in_rs >= 1999) creditsToAdd = 3000;
+            else if (amount_in_rs >= 1499) creditsToAdd = 1200; // Business
+            else if (amount_in_rs >= 1199) creditsToAdd = 1200;
+            else if (amount_in_rs >= 899) creditsToAdd = 1200; // Top-up 900
+            else if (amount_in_rs >= 799) creditsToAdd = 600;  // Director
+            else if (amount_in_rs >= 399) creditsToAdd = 500;  // Influencer
+            else if (amount_in_rs >= 300) creditsToAdd = 350;  // Top-up 300
+            else if (amount_in_rs >= 299) creditsToAdd = 350;
+
+            if (creditsToAdd > 0) {
+                console.log(`[RAZORPAY_WEBHOOK] Adding ${creditsToAdd} Credits to User ${userId} for payment of ₹${amount_in_rs}`);
+
+                if (!supabaseAdmin) {
+                    throw new Error("Supabase Admin client not initialized in server.js");
+                }
+
+                // 1. Get current balance
+                const { data: profile, error: getError } = await supabaseAdmin
+                    .from('profiles')
+                    .select('shorts_balance')
+                    .eq('id', userId)
+                    .single();
+
+                if (getError) throw getError;
+
+                const current_balance = profile?.shorts_balance ?? 0;
+                const new_balance = current_balance + creditsToAdd;
+
+                // 2. Increment balance
+                const { error: updateError } = await supabaseAdmin
+                    .from('profiles')
+                    .update({ shorts_balance: new_balance })
+                    .eq('id', userId);
+
+                if (updateError) throw updateError;
+
+                // 3. Log transaction
+                await supabaseAdmin.from('shorts_transactions').insert({
+                    user_id: userId,
+                    amount: creditsToAdd,
+                    action_type: 'razorpay_topup',
+                    created_at: new Date().toISOString()
+                });
+
+                console.log(`[RAZORPAY_WEBHOOK] ✅ Balance updated successfully for ${userId}`);
+            }
+        }
+
+        // Always return 200 OK to Razorpay to prevent retry spam
+        res.status(200).json({ success: true });
+
+    } catch (err) {
+        console.error('[RAZORPAY_WEBHOOK_ERROR]:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Rate Limiting (Protects from DDoS and API Abuses)
 const apiLimiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minute window

@@ -35,7 +35,8 @@ const FULL_HEIGHT_TABS = new Set([
 ])
 
 function App() {
-  const [activeTab, setActiveTab] = useState('home')
+  const activeTab = useAppStore(state => state.activeTab)
+  const setActiveTab = useAppStore(state => state.setActiveTab)
   const [user, setUser] = useState(null)
   const [authChecked, setAuthChecked] = useState(false)
   const [isRecoveringPassword, setIsRecoveringPassword] = useState(false)

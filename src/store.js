@@ -23,7 +23,9 @@ export const useAppStore = create((set, get) => ({
     cachedAssetsUserId: null,
     isAssetsLoading: false,
     isShowingAuthModal: false,
+    activeTab: 'home',
 
+    setActiveTab: (val) => set({ activeTab: val }),
     setShowingAuthModal: (val) => set({ isShowingAuthModal: val }),
 
     clearSession: () => {

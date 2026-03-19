@@ -125,14 +125,14 @@ const PricingPage = () => {
     ];
 
     return (
-        <div className="h-screen bg-[#030303] text-white p-6 flex flex-col relative overflow-hidden font-sans">
+        <div className="min-h-screen bg-[#030303] text-white p-6 flex flex-col relative overflow-y-auto font-sans pb-12">
             {/* Ambient Background Glows */}
             <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-gradient-to-b from-[#D4FF00]/15 to-transparent blur-[120px] -z-10 opacity-70" />
             <div className="absolute bottom-[-20%] left-[-10%] w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] -z-10" />
             <div className="absolute bottom-[-20%] right-[-10%] w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px] -z-10" />
 
             {/* Premium Header Bar */}
-            <div className="flex justify-between items-center bg-white/[0.02] border border-white/5 backdrop-blur-md p-4 rounded-2xl mb-5 shrink-0 shadow-2xl relative overflow-hidden">
+            <div className="flex justify-between items-center bg-white/[0.02] border border-white/5 backdrop-blur-md p-2 rounded-xl mb-3 shrink-0 shadow-2xl relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.01] to-transparent animate-shimmer" />
                 <div className="flex items-center gap-4">
                     <div className="px-3 py-1 bg-gradient-to-r from-[#D4FF00]/10 to-transparent border border-[#D4FF00]/20 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-[#D4FF00] flex items-center gap-1.5 shadow-[0_0_20px_rgba(212,255,0,0.1)]">
@@ -234,6 +234,48 @@ const PricingPage = () => {
                         </motion.div>
                     )
                 })}
+            </div>
+
+            {/* Top-Up Credits Section */}
+            <div className="mt-5 bg-white/[0.01] border border-white/5 rounded-2xl p-4 backdrop-blur-md shrink-0">
+                <div className="flex items-center gap-2 mb-3">
+                    <Coins size={16} className="text-[#D4FF00]" />
+                    <h2 className="text-xs font-black uppercase tracking-widest text-white/80">Need a Quick Top-Up? <span className="text-white/30">(One-time Credits)</span></h2>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-3">
+                    {[
+                        { price: 300, credits: "350 Credits", desc: "Starter Boost", link: "https://rzp.io/rzp/topup300" },
+                        { price: 900, credits: "1200 Credits", desc: "Popular top-up", link: "https://rzp.io/rzp/topup900", popular: true },
+                        { price: 2000, credits: "3000 Credits", desc: "Agency Bundle", link: "https://rzp.io/rzp/topup2000" }
+                    ].map((topup) => (
+                        <div key={topup.price} className={cn(
+                            "p-3 rounded-xl border flex items-center justify-between transition-all duration-300 hover:scale-[1.02]",
+                            topup.popular ? "bg-[#D4FF00]/[0.03] border-[#D4FF00]/30" : "bg-white/[0.02] border-white/5"
+                        )}>
+                            <div>
+                                <div className="text-white font-black italic text-base tracking-tight">₹{topup.price}</div>
+                                <div className="text-[10px] text-zinc-500 font-medium">{topup.desc}</div>
+                            </div>
+                            
+                            <div className="text-right">
+                                <div className="text-[#D4FF00] font-black text-sm tracking-tight">{topup.credits}</div>
+                                <button 
+                                    onClick={() => {
+                                        const userIdLink = userProfile?.id ? `?client_id=${userProfile.id}` : "";
+                                        window.open(`${topup.link}${userIdLink}`, "_blank");
+                                    }}
+                                    className={cn(
+                                        "text-[9px] font-black uppercase tracking-wider px-3 py-1 rounded-md mt-1 transition-all",
+                                        topup.popular ? "bg-[#D4FF00] text-black shadow-[0_0_10px_rgba(212,255,0,0.2)]" : "bg-white/10 text-white hover:bg-white/20"
+                                    )}
+                                >
+                                    Buy Now
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );

@@ -7,6 +7,7 @@ export const useShorts = () => {
     const userProfile = useAppStore(s => s.userProfile)
 
     const spend = async (costKey) => {
+        if (userProfile?.role === 'admin') return { success: true }
         const amount = SHORTS_COST[costKey]
         if (!amount) return { success: false, reason: 'unknown_cost' }
         if (!userProfile?.id) return { success: false, reason: 'unauthenticated' }
@@ -14,13 +15,17 @@ export const useShorts = () => {
     }
 
     const refund = async (costKey) => {
+        if (userProfile?.role === 'admin') return
         const amount = SHORTS_COST[costKey]
         if (!amount) return
         if (!userProfile?.id) return
         await refundShorts(userProfile.id, amount, costKey)
     }
 
-    const canAfford = (costKey) => userShorts >= (SHORTS_COST[costKey] || 0)
+    const canAfford = (costKey) => {
+        if (userProfile?.role === 'admin') return true
+        return userShorts >= (SHORTS_COST[costKey] || 0)
+    }
 
     return { shorts: userShorts, spend, refund, canAfford, refresh: () => userProfile?.id ? fetchBalance(userProfile.id) : null }
 }
