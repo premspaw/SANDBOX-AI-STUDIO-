@@ -31,6 +31,6 @@
   <line x1="110" y1="52" x2="50" y2="108" stroke="#AADD00" stroke-width="8" stroke-linecap="round"/>
   <line x1="50" y1="108" x2="110" y2="108" stroke="#AADD00" stroke-width="8" stroke-linecap="round"/>
   
-  <!-- Lens glint dot top-right -->
-  <circle cx="116" cy="50" r="4.5" fill="#AADD00" opacity="0.55"/>
+  <!-- Lens recording glint REC dot top-right -->
+  <circle cx="116" cy="50" r="4.5" fill="#FF3333" opacity="0.9"/>
 </svg>

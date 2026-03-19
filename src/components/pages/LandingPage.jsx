@@ -798,8 +798,9 @@ export default function LandingPage({ onEnter, onPricing }) {
               autoPlay muted loop playsInline preload="auto"
               src={resolveAsset(assets.heroBackground)}
               style={{
-                position: 'absolute', top: '50%', left: '50%',
-                transform: 'translate(-50%, -50%)',
+                position: 'absolute', top: '50%', 
+                left: '50%',
+                transform: `translate(-50%, -50%) ${isMobile ? 'scale(1.35)' : 'scale(1)'}`,
                 minWidth: '100%', minHeight: '100%',
                 objectFit: 'cover', opacity: 1
               }}
@@ -817,14 +818,21 @@ export default function LandingPage({ onEnter, onPricing }) {
             top: -200, left: -150, pointerEvents: 'none', zIndex: 1
           }} />
 
+        {/* Cinematic blend filter to bridge dividing edge transparently */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 2,
+          background: 'linear-gradient(to right, rgba(5,5,5,0.92) 0%, rgba(5,5,5,0.4) 50%, rgba(5,5,5,0.0) 80%)',
+          pointerEvents: 'none'
+        }} />
+
         {/* ── LAYER 3: FOREGROUND SUBJECT ── */}
         {assets.foregroundSubject && (
           <div style={{
             position: 'absolute',
-            right: '2%',
-            bottom: 0,
+            right: isMobile ? '20%' : '2%',
+            bottom: isMobile ? '-5%' : 0,
             zIndex: 4,
-            height: '92%',
+            height: isMobile ? '65%' : '92%',
             pointerEvents: 'none',
             display: 'flex', alignItems: 'flex-end',
           }}>
@@ -936,13 +944,19 @@ export default function LandingPage({ onEnter, onPricing }) {
       {/* ══════ VIDEO FEATURE STRIP ══════ */}
       <Reveal>
         <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr',
+          display: isMobile ? 'block' : 'grid', 
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+          position: 'relative',
           gap: 2, background: T.gray
         }}>
           {/* Left copy */}
           <div style={{
-            background: T.bg, padding: '80px 64px',
-            display: 'flex', flexDirection: 'column', justifyContent: 'center'
+            background: isMobile ? 'linear-gradient(to right, rgba(0,0,0,0.85) 40%, rgba(0,0,0,0.3) 100%)' : T.bg, 
+            padding: isMobile ? '64px 24px' : '80px 64px',
+            display: 'flex', flexDirection: 'column', justifyContent: 'center',
+            position: isMobile ? 'absolute' : 'relative',
+            inset: isMobile ? 0 : 'auto',
+            zIndex: isMobile ? 10 : 'auto',
           }}>
             <SectionEye>WATCH IT WORK</SectionEye>
             <SectionTitle>TWO IMAGES.<br />ONE PIPELINE.<br />
@@ -972,7 +986,7 @@ export default function LandingPage({ onEnter, onPricing }) {
           {/* Right video panel */}
           <div style={{
             position: 'relative', overflow: 'hidden',
-            background: T.bg2, minHeight: 560
+            background: T.bg2, minHeight: isMobile ? 480 : 560
           }}>
             <div style={{
               width: '100%', height: '100%', minHeight: 560,

@@ -84,8 +84,8 @@ const BrandLogo = ({ className = 'w-8 h-8', size = 32 }) => {
                     <line x1="50" y1="104" x2="110" y2="104" stroke={lime} strokeWidth="8" strokeLinecap="round"/>
                 </motion.g>
 
-                {/* Lens glint dot top-right */}
-                <circle cx="116" cy="54" r="4.5" fill={lime} opacity="0.55"/>
+                {/* Lens recording glint dot top-right */}
+                <circle cx="116" cy="54" r="4.5" fill="#FF3333" opacity="0.9"/>
             </svg>
         </div>
     );
