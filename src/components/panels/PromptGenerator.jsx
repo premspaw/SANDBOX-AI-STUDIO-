@@ -25,11 +25,11 @@ import { refineNarrative, compressImageToMax1024 } from '../../services/geminiSe
 // ─────────────────────────────────────────────
 
 const CAMERA_ANGLES = [
-    { id: 'extreme_wide', label: 'Extreme Wide', desc: 'Vast landscape', img: '/assets/angle_wide.png' },
+    { id: 'extreme_wide', label: 'Extreme Wide', desc: 'Vast landscape', img: '/assets/angle_extreme_wide.png' },
     { id: 'wide', label: 'Wide Shot', desc: 'Full scene', img: '/assets/angle_wide.png' },
-    { id: 'medium', label: 'Medium Shot', desc: 'Waist up', img: '/assets/angle_closeup.png' },
+    { id: 'medium', label: 'Medium Shot', desc: 'Waist up', img: '/assets/angle_medium.png' },
     { id: 'closeup', label: 'Close Up', desc: 'Face details', img: '/assets/angle_closeup.png' },
-    { id: 'extreme_closeup', label: 'Extreme Close', desc: 'Eye/Detail', img: '/assets/angle_closeup.png' },
+    { id: 'extreme_closeup', label: 'Extreme Close', desc: 'Eye/Detail', img: '/assets/angle_extreme_closeup.png' },
     { id: 'low_angle', label: 'Low Angle', desc: 'Looking up', img: '/assets/angle_low.png' },
     { id: 'high_angle', label: 'High Angle', desc: 'Looking down', img: '/assets/angle_drone.png' },
     { id: 'drone', label: 'Drone View', desc: 'Aerial', img: '/assets/angle_drone.png' },
@@ -43,7 +43,7 @@ const CAMERA_MODELS = [
     {
         id: 'arri', label: 'ARRI Alexa 35', type: 'Cinema', icon: Film,
         desc: 'The Hollywood gold standard. High dynamic range, organic color.',
-        narrative: 'captured on an ARRI Alexa 35 cinema camera, rendering organic filmic grain, wide dynamic range, and a natural color science with deep shadow detail',
+        soul: 'featuring the legendary ARRI REVEAL color science, natural color rendition, and soft highlight roll-off characteristic of high-end cinema',
         invalidAngles: [],
         lensMap: {
             'extreme_wide': { lenses: ['12mm', '14mm', '16mm'], default: '14mm' },
@@ -63,7 +63,7 @@ const CAMERA_MODELS = [
     {
         id: 'sony', label: 'Sony Venice 2', type: 'Cinema', icon: Video,
         desc: 'Full-frame digital cinema, dual base ISO. Clean & sharp.',
-        narrative: 'shot on a Sony Venice 2 full-frame cinema camera, producing pristine digital clarity, wide color gamut, and ultra-clean highlights',
+        soul: 'showcasing incredible 8K clarity, rich shadow detail, and the subtle texture rendering unique to the Sony Venice 2',
         invalidAngles: [],
         lensMap: {
             'extreme_wide': { lenses: ['16mm Anamorphic', '18mm'], default: '16mm Anamorphic' },
@@ -83,7 +83,7 @@ const CAMERA_MODELS = [
     {
         id: 'red', label: 'RED V-Raptor', type: 'Cinema', icon: Video,
         desc: '8K Vista Vision. Ultra-high resolution and raw detail.',
-        narrative: 'photographed with a RED V-Raptor 8K Vista Vision camera, delivering razor-sharp micro-detail, rich texture, and hyper-real resolution',
+        soul: 'photographed with the sharp, high-contrast, and ultra-dynamic 8K RAW aesthetic of a RED V-Raptor sensor',
         invalidAngles: [],
         lensMap: {
             'extreme_wide': { lenses: ['12mm', '15mm'], default: '12mm' },
@@ -103,7 +103,7 @@ const CAMERA_MODELS = [
     {
         id: 'imax', label: 'IMAX 70mm', type: 'Film', icon: Film,
         desc: 'Massive format film. Unparalleled depth and resolution.',
-        narrative: 'captured on IMAX 70mm large-format film, with unmatched tonal depth, immersive sharpness, and the iconic cinematic grandeur of the format',
+        soul: 'capturing the massive vertical scale, epic detail, and grand immersive feeling of a native 70mm IMAX film frame',
         invalidAngles: ['drone', 'pov', 'dutch'], // "all others not recommended"
         lensMap: {
             'extreme_wide': { lenses: ['15mm IMAX', '18mm IMAX'], default: '15mm IMAX' },
@@ -120,7 +120,7 @@ const CAMERA_MODELS = [
     {
         id: 'iphone', label: 'iPhone 15 Pro', type: 'Mobile', icon: Smartphone,
         desc: 'Modern mobile look. Deep depth of field, digital sharpening.',
-        narrative: 'taken on an iPhone 15 Pro, with characteristic mobile sharpness, computational photography processing, and digital depth-of-field rendering',
+        soul: 'with the sharp, high-definition, and vibrant HDR mobile-cinematography look of a modern iPhone',
         invalidAngles: [],
         lensMap: {
             'extreme_wide': { lenses: ['13mm Ultra Wide'], default: '13mm' },
@@ -140,7 +140,7 @@ const CAMERA_MODELS = [
     {
         id: 'gopro', label: 'GoPro Hero 12', type: 'Action', icon: Camera,
         desc: 'Action cam fisheye. High distortion, infinite focus.',
-        narrative: 'shot on a GoPro Hero 12 action camera, with signature wide fisheye distortion, infinite depth of field, and high-contrast vivid colors',
+        soul: 'with an ultra-wide fisheye perspective, high-intensity action stabilization, and rugged outdoor clarity',
         invalidAngles: ['closeup', 'extreme_closeup'], // "Not recommended"
         lensMap: {
             'extreme_wide': { lenses: ['12mm SuperView'], default: '12mm SuperView' },
@@ -158,7 +158,7 @@ const CAMERA_MODELS = [
     {
         id: 'vhs', label: 'Vintage Camcorder', type: 'Retro', icon: Video,
         desc: '1990s home video tape. Noisy, chromatic aberration.',
-        narrative: 'recorded on a 1990s VHS camcorder, with magnetic tape grain, chromatic color bleeding, interlace scan lines, and the warm nostalgic decay of analog video',
+        soul: 'with 90s lo-fi textures, slight magnetic tape grain, chromatic aberration, and a nostalgic VHS timestamp aesthetic',
         invalidAngles: [],
         lensMap: {
             // Default generic fallback for all if not explicitly mapped.
@@ -168,7 +168,7 @@ const CAMERA_MODELS = [
     {
         id: 'dslr', label: 'Canon R5', type: 'Hybrid', icon: Camera,
         desc: 'Modern mirrorless photography/video hybrid.',
-        narrative: 'photographed with a Canon R5 mirrorless camera, combining clinical digital sharpness with beautiful optical rendering and accurate, natural color reproduction',
+        soul: 'with a Canon R5 mirrorless sensor, combining clinical digital sharpness with beautiful optical rendering and natural color reproduction',
         invalidAngles: [],
         lensMap: {
             '*': { lenses: ['24mm', '35mm', '50mm', '85mm', '70-200mm'], default: '50mm' }
@@ -176,8 +176,8 @@ const CAMERA_MODELS = [
     },
     {
         id: 'blackmagic', label: 'Blackmagic 6K', type: 'Cinema', icon: Video,
-        desc: 'Indie cinema workhorse. Raw, gritty, natural skin tones.',
-        narrative: 'shot on a Blackmagic Pocket Cinema Camera 6K, rendering a gritty indie film aesthetic, pleasing natural skin tones, and subtle color roll-off',
+        desc: 'Indie cinema workhorse. Raw, gritty, natural tonality.',
+        soul: 'with the raw, indie-film aesthetic and organic film-like grain of a Blackmagic 6K sensor',
         invalidAngles: [],
         lensMap: {
             'extreme_wide': { lenses: ['12mm', '16mm'], default: '16mm' },
@@ -197,7 +197,7 @@ const CAMERA_MODELS = [
     {
         id: 'hasselblad', label: 'Hasselblad X2D', type: 'Photography', icon: Camera,
         desc: 'Medium format luxury. Incredible resolution and color depth.',
-        narrative: 'photographed with a Hasselblad X2D medium format camera, utilizing Hasselblad Natural Color Solution to render breathtaking detail and smooth tonal transitions',
+        soul: 'photographed with the extreme 100MP medium-format detail, 16-bit color depth, and unmatched micro-contrast of a Hasselblad',
         invalidAngles: ['drone', 'pov'], // "Action not made for this"
         lensMap: {
             'extreme_wide': { lenses: ['21mm XCD'], default: '21mm' },
@@ -221,23 +221,23 @@ const LIGHTING_STYLES = [
     },
     {
         id: 'cinematic', label: 'Cinematic',
-        narrative: 'dramatically lit with high contrast chiaroscuro, deep shadows, and carefully controlled single-source key lighting'
+        narrative: 'with professional 3-point lighting, deep shadows, and a teal-and-orange color grade'
     },
     {
         id: 'natural', label: 'Natural Daylight',
-        narrative: 'bathed in soft, diffused natural daylight with gentle fill from environmental bounce'
+        narrative: 'illuminated by the soft, diffused light of an overcast afternoon, creating realistic and gentle shadows'
     },
     {
         id: 'neon', label: 'Neon Cyberpunk',
-        narrative: 'soaked in vibrant neon light from multiple colored sources — electric magenta and acid violet — casting hard colored shadows'
+        narrative: 'drenched in high-contrast pink and cyan neon glows, with wet asphalt reflecting the vibrant city lights'
     },
     {
         id: 'golden', label: 'Golden Hour',
-        narrative: 'illuminated by the warm, low-angle golden hour sun casting long amber shadows and a glowing atmospheric haze'
+        narrative: 'bathed in the warm, long-shadowed, amber glow of a setting sun at the horizon'
     },
     {
         id: 'studio', label: 'Studio Pro',
-        narrative: 'lit with a professional three-point studio setup — soft key, balanced fill, and a crisp rim light'
+        narrative: 'with clean, controlled studio softbox lighting and a perfectly neutral, high-key background'
     },
 ]
 
@@ -332,18 +332,18 @@ const ASPECT_RATIOS = [
 
 // Maps angle IDs → narrative shot type phrases for Gemini
 const ANGLE_NARRATIVES = {
-    extreme_wide: 'An extreme wide establishing shot',
-    wide: 'A wide shot',
-    medium: 'A medium shot framing the subject from the waist up',
-    closeup: 'A cinematic close-up',
-    extreme_closeup: 'An extreme close-up revealing intimate detail',
-    low_angle: 'A low-angle shot looking upward',
-    high_angle: 'A high-angle shot looking down',
-    drone: 'An aerial drone perspective from far above',
-    pov: 'A first-person POV shot through the subject\'s eyes',
-    dutch: 'A Dutch angle with the camera tilted at 30°',
-    ots: 'An over-the-shoulder shot',
-    eagle_pov: 'An extreme top-down bird\'s-eye view looking straight down at the location, with the subject either absent or secondary to the environmental layout',
+    extreme_wide: 'capturing a vast, sprawling landscape where the environment is the primary focus and the subject appears small in the frame',
+    wide: 'showing the full scene and the subject\'s entire form, establishing the relationship between the subject and the setting',
+    medium: 'framed to show the subject\'s interaction with the immediate environment while maintaining focus on its core features',
+    closeup: 'tightly framed on the subject to capture every subtle texture, detail, and intricate feature',
+    extreme_closeup: 'an intense, microscopic focus on a single detail, such as an eye or a mechanical component, filling the entire frame',
+    low_angle: 'looking up at the subject from a ground-level perspective to make them appear powerful, imposing, and significant',
+    high_angle: 'looking down at the subject from an elevated position to provide an overview of the ground or make the subject appear vulnerable',
+    drone: 'a majestic aerial bird\'s-eye view, captured from high above to reveal a grand geometric perspective of the world below',
+    pov: 'looking directly from the subject\'s perspective at the scene as if in a first-person view',
+    dutch: 'with a tilted horizon and a slanted camera angle to create a sense of unease, tension, or psychological instability',
+    ots: 'framing the subject from behind a secondary observer, looking over the shoulder toward the focal point',
+    eagle_pov: 'an extreme top-down bird\'s-eye view looking straight down at the location, emphasizing the environmental layout over the subject',
 }
 
 // Maps mood/atmosphere based on lighting + style combo
@@ -401,11 +401,11 @@ const MOOD_MAP = {
 
 // f-stop narrative phrases
 const FSTOP_NARRATIVES = {
-    '1.4': 'a wide open f/1.4 aperture creating a razor-thin plane of focus with luxuriously blurred bokeh behind the subject',
-    '2.8': 'an f/2.8 aperture with soft, creamy background separation',
-    '5.6': 'an f/5.6 standard aperture balancing sharp subject detail against a slightly softened environment',
-    '8.0': 'a stopped-down f/8 aperture keeping the entire scene in crisp, sharp focus',
-    '16': 'an f/16 deep-focus aperture rendering every plane — foreground to horizon — with absolute sharpness',
+    '1.4': 'with a wide f/1.4 aperture, creating a dreamy, blurred background (bokeh) that isolates the subject perfectly',
+    '2.8': 'with a wide f/2.8 aperture, creating a creamy, blurred background (bokeh) that isolates the subject perfectly',
+    '5.6': 'with an f/5.6 aperture, balancing sharp subject detail against a naturally softened environment',
+    '8.0': 'with a deep depth of field (f/8.0), ensuring every detail from foreground to background is in sharp focus',
+    '16': 'with a deep depth of field (f/11), ensuring every detail from foreground to background is in sharp focus',
 }
 
 const PRO_LIGHTING_TRANSFORMS = [
@@ -635,20 +635,6 @@ const buildNanoBananaProPrompt = (selections) => {
     const styleLabel = isStyleNone ? null : (artStyle?.narrative || 'photorealistic')
     const qualityLabel = selections.quality?.toUpperCase() || '2K'
 
-    // Reference image editing mode
-    if (selections.referenceImage) {
-        const parts = [
-            `Editing instruction: ${subject || 'modify the scene as described'}.`,
-            `Composition: ${angleLabel}${compositionLabel}.`,
-            ...(styleLabel ? [`Style: ${styleLabel}.`] : []),
-            `Lighting: ${lightingLabel}.`,
-            `Camera: ${cam.label}, ${selections.focalLength}mm lens at ${fstopLabel}.`,
-            `Aspect ratio: ${selections.aspectRatio}.`,
-            `Output resolution: ${qualityLabel}.`,
-        ]
-        return parts.join(' ')
-    }
-
     // Pro Enhancements
     const focusCtrl = PRO_FOCUS_CONTROLS.find(f => f.id === selections.focusPoint)
     let proNotes = []
@@ -672,106 +658,90 @@ const buildNanoBananaProPrompt = (selections) => {
 }
 
 /**
- * Nano Banana (Gemini 2.5 Flash Image) optimized prompt builder.
+ * Nano Banana (Gemini 3.1 Flash Image) optimized prompt builder.
+ * Follows a descriptive, narrative paragraph format for maximum coherence.
  *
- * Core principle from Google's docs:
- * "Describe the scene, don't list keywords. A narrative, descriptive paragraph
- *  will almost always produce a better, more coherent image."
- *
- * Template:
- * "[Shot type] of [subject], [action/expression], set in [environment].
- *  The scene is illuminated by [lighting], creating a [mood] atmosphere.
- *  Captured on [camera] with a [focal length] lens at [aperture].
- *  [Style quality descriptors]. Aspect ratio [X:Y]."
+ * Assembly Order:
+ * 1. Framing/Perspective
+ * 2. Subject + Action/Scene
+ * 3. Camera + Lens + Aperture
+ * 4. Lighting
+ * 5. Quality & Technicals
  */
-const buildNanoBananaPrompt = (selections) => {
+const buildNanoBananaPrompt = (selections, getFStop) => {
     const cam = CAMERA_MODELS.find(c => c.id === selections.camera) || CAMERA_MODELS[0]
     const lighting = LIGHTING_STYLES.find(l => l.id === selections.lighting)
     const artStyle = ART_STYLES.find(s => s.id === selections.style)
-    const shotType = ANGLE_NARRATIVES[selections.angle] || 'A medium shot'
-    const moodPrefix = selections.lighting === 'none' && selections.style === 'none' ? 'none_none' : `${selections.lighting}_${selections.style}`
-    const mood = MOOD_MAP[moodPrefix] || 'evocative'
+    const angle = CAMERA_ANGLES.find(a => a.id === selections.angle) || CAMERA_ANGLES[2]
+    const spatialDirective = ANGLE_NARRATIVES[selections.angle] || 'showing the subject in a natural setting'
 
-    // Focal length → descriptive phrase
+    // Lens Physics & Perspective Mapping
     const fl = selections.focalLength
     let lensDesc
-    if (fl <= 18) lensDesc = `an ultra-wide ${fl}mm lens with dramatic environmental perspective`
-    else if (fl <= 28) lensDesc = `a wide ${fl}mm lens slightly expanding the scene's spatial depth`
-    else if (fl <= 40) lensDesc = `a natural-perspective ${fl}mm lens closely mimicking human vision`
-    else if (fl <= 60) lensDesc = `a standard ${fl}mm portrait lens rendering natural proportions`
-    else if (fl <= 100) lensDesc = `a short telephoto ${fl}mm lens gently compressing depth and flattering the subject`
-    else lensDesc = `a telephoto ${fl}mm lens strongly compressing spatial depth and isolating the subject against a distant, abstract background`
+    if (fl <= 16) lensDesc = `${fl}mm ultra-wide angle lens that exaggerates the distance and creates a vast, expansive sense of space`
+    else if (fl <= 24) lensDesc = `${fl}mm wide-angle lens that establishes the environment while keeping the subject clear and sharp`
+    else if (fl <= 50) lensDesc = `${fl}mm prime lens for a natural, undistorted perspective that feels intimate and lifelike`
+    else if (fl <= 100) lensDesc = `${fl}mm telephoto lens that compresses the background, creating a tight focus and professional portrait feel`
+    else lensDesc = `${fl}mm telephoto lens that heavily compresses the background and isolates the subject with extreme clarity`
 
-    // Aperture → narrative
-    const ap = selections.aperture
-    let fstopDesc
-    if (ap < 20) fstopDesc = FSTOP_NARRATIVES['1.4']
-    else if (ap < 40) fstopDesc = FSTOP_NARRATIVES['2.8']
-    else if (ap < 60) fstopDesc = FSTOP_NARRATIVES['5.6']
-    else if (ap < 80) fstopDesc = FSTOP_NARRATIVES['8.0']
-    else fstopDesc = FSTOP_NARRATIVES['16']
+    // Aperture & Focus Narrative
+    const apertureLabel = typeof getFStop === 'function' ? getFStop(selections.aperture) : 'Auto Aperture'
+
+
+
+
+
+
 
     const store = useAppStore.getState()
     const activeChar = store.activeCharacter
     const charDesc = activeChar?.metadata?.imageAnalysis?.description || activeChar?.personality || ''
 
     let subject = selections.subject?.trim() || 'the subject'
-
-    // ANTI-LEAKAGE: Swap name for descriptor
     if (activeChar && (subject.toLowerCase() === activeChar.name.toLowerCase() || subject === 'the subject')) {
         subject = charDesc || subject
     }
-    const compPrompt = COMPOSITION_PROMPTS[selections.composition]
-    const compositionNarrative = compPrompt ? `, arranged with a ${compPrompt}` : ''
+
+    const compPrompt = COMPOSITION_PROMPTS[selections.composition] || 'balanced visual symmetry'
     const isStyleNone = selections.style === 'none'
+    const stylePrefix = isStyleNone ? '' : `${artStyle?.label || 'Photorealistic'} `
 
-    // EDITING TEMPLATE (Multi-modal)
-    if (selections.referenceImage) {
-        return `Using the provided image of ${subject}, please modify the scene. 
-        Ensure the output maintains the original image's ${lighting?.label || 'lighting'} and composition, 
-        but adjust the elements as follows: ${shotType} framing with ${lensDesc}${compositionNarrative}. 
-        ${!isStyleNone && artStyle?.quality ? `Focus on ${artStyle.quality}. ` : ''}The final image should be in a ${selections.aspectRatio} aspect ratio.`
-    }
-
-    // Opening: inject style only if not None
-    let opening = shotType
+    // Opening Style Injection
+    let perspectiveBlock = angle.label
     if (!isStyleNone) {
-        const styleLabel = artStyle?.narrative || 'photorealistic'
-        if (opening.startsWith('A ')) opening = opening.replace('A ', `A ${styleLabel} `)
-        else if (opening.startsWith('An ')) opening = opening.replace('An ', `An ${styleLabel} `)
-        else opening = `${styleLabel} ${opening}`
+        const styleLabel = artStyle?.label || 'photorealistic'
+        if (perspectiveBlock.startsWith('A ')) perspectiveBlock = perspectiveBlock.replace('A ', `A ${styleLabel} `)
+        else if (perspectiveBlock.startsWith('An ')) perspectiveBlock = perspectiveBlock.replace('An ', `An ${styleLabel} `)
+        else perspectiveBlock = `${styleLabel} ${perspectiveBlock}`
     }
 
-    const camNarrative = cam.narrative.charAt(0).toUpperCase() + cam.narrative.slice(1)
-
-    // Pro Features Narratives
+    // Pro Features
     const focusCtrl = PRO_FOCUS_CONTROLS.find(f => f.id === selections.focusPoint)
-
     let proNotes = []
     if (focusCtrl && focusCtrl.id !== 'none') proNotes.push(focusCtrl.narrative)
-    if (selections.searchGrounding) proNotes.push("Augment the scene with accurate real-world knowledge and real-time information from Google Search.")
-
+    if (selections.searchGrounding) proNotes.push("Augment with accurate real-world knowledge from Google Search.")
     const proNarrative = proNotes.length > 0 ? ` ${proNotes.join(' ')}` : ''
 
-    // Dynamic Environment Description
-    let envDesc = 'meticulously detailed environment'
-    if (selections.style === 'cyberpunk') envDesc = 'high-tech, rain-slicked futuristic cityscape'
-    else if (selections.style === 'oil_painting') envDesc = 'richly textured canvas with visible impasto strokes'
-    else if (selections.style === 'architecture') envDesc = 'geometrically perfect architectural setting'
-    else if (selections.style === 'product') envDesc = 'minimalist, commercial-grade studio environment'
-    else if (selections.style === 'anime') envDesc = 'painterly, stylized anime background'
+    // Environment & Lighting
+    let envDesc = 'set in a meticulously detailed environment'
+    if (selections.style === 'cyberpunk') envDesc = 'set in a high-tech, rain-slicked futuristic cityscape with wet, reflective streets'
+    else if (selections.style === 'oil_painting') envDesc = 'set in a richly textured canvas with visible impasto strokes'
+    else if (selections.style === 'architecture') envDesc = 'set in a geometrically perfect architectural setting'
+    else if (selections.style === 'product') envDesc = 'set in a minimalist, commercial-grade studio environment'
+    else if (selections.style === 'anime') envDesc = 'set in a painterly, stylized anime background'
 
-    const lightingNarrative = selections.lighting === 'none' ? 'natural, balanced lighting' : (lighting?.narrative || 'cinematic lighting')
-    const finalAtmosphere = (selections.lighting === 'none' && selections.style === 'realistic')
-        ? 'creating an authentic and true-to-life atmosphere'
-        : `creating a ${mood} atmosphere`
+    const lightingStyle = selections.lighting === 'none' ? 'natural, balanced light' : (lighting?.label || 'cinematic lighting')
 
-    // Quality emphasis — omit entirely if style is None
-    const qualityEmphasis = !isStyleNone && artStyle?.quality
-        ? `, emphasizing ${artStyle.quality}`
-        : ''
+    // Assembly
+    const line1 = `${stylePrefix}${angle.label}, ${spatialDirective} of a ${subject}.`
+    const line2 = `Captured on ${cam.label} ${cam.soul || ''} with a ${lensDesc} at ${apertureLabel}.`
+    const line3 = `The lighting is ${lightingStyle} arranged with a ${compPrompt}.`
+    const line4 = `High-fidelity 4K Master, ultra-detailed textures.${proNarrative}`
+    const ratio = `--ar ${selections.aspectRatio}`
 
-    return `${opening} of ${subject}, set in a ${envDesc}${compositionNarrative}. The scene is ${lightingNarrative}, ${finalAtmosphere}. ${camNarrative}, with ${lensDesc}, and ${fstopDesc}${qualityEmphasis}.${proNarrative} The final image should be composed for a ${selections.aspectRatio} aspect ratio.`
+
+
+    return `${line1} ${line2} ${line3} ${line4} ${ratio}`
 }
 
 /**
@@ -780,9 +750,9 @@ const buildNanoBananaPrompt = (selections) => {
  */
 const buildStandardPrompt = (selections, getFStop) => {
     const cam = CAMERA_MODELS.find(c => c.id === selections.camera) || CAMERA_MODELS[0]
-    const angle = CAMERA_ANGLES.find(a => a.id === selections.angle)?.label || ''
-    const lighting = LIGHTING_STYLES.find(l => l.id === selections.lighting)?.label || ''
-    const artStyle = ART_STYLES.find(s => s.id === selections.style)?.label || ''
+    const angle = CAMERA_ANGLES.find(a => a.id === selections.angle) || CAMERA_ANGLES[2]
+    const lighting = LIGHTING_STYLES.find(l => l.id === selections.lighting)
+    const artStyle = ART_STYLES.find(s => s.id === selections.style)
     const store = useAppStore.getState()
     const activeChar = store.activeCharacter
     const charDesc = activeChar?.metadata?.imageAnalysis?.description || activeChar?.personality || ''
@@ -797,10 +767,18 @@ const buildStandardPrompt = (selections, getFStop) => {
         ? 'Following the composition and style of the attached reference image, '
         : ''
 
-    const compKeyword = COMPOSITION_PROMPTS[selections.composition]
-    const compositionPart = compKeyword ? `, ${compKeyword}` : ''
+    const compKeyword = COMPOSITION_PROMPTS[selections.composition] || 'balanced visual symmetry'
+    const apertureLabel = typeof getFStop === 'function' ? getFStop(selections.aperture) : 'Auto Aperture'
+    const styleLabel = artStyle?.label ? `${artStyle.label} style ` : ''
 
-    return `${refContext}${artStyle} style image of ${subject}. Shot on ${cam.label} with ${selections.lens} lens at ${selections.focalLength}mm (${getFStop(selections.aperture)}). ${angle} shot${compositionPart}. ${lighting} lighting. Ultra-detailed, 4K, cinematic. --ar ${selections.aspectRatio}`
+    // ── Template Assembly ──
+    const line1 = `${refContext}${styleLabel}${angle.label} of ${subject}.`
+    const line2 = `Captured on ${cam.label} ${cam.soul || ''} with a ${selections.lens} lens at ${selections.focalLength}mm at ${apertureLabel}.`
+    const line3 = `The lighting is ${lighting?.label || 'cinematic'} arranged with a ${compKeyword}.`
+    const line4 = `High-fidelity 4K Master, ultra-detailed textures.`
+    const ratio = `--ar ${selections.aspectRatio}`
+
+    return `${line1} ${line2} ${line3} ${line4} ${ratio}`
 }
 
 /**
@@ -1711,7 +1689,8 @@ export function PromptGenerator({ onUpscale }) {
         return 'f/16 (Everything in Focus)'
     }
 
-    const isNanoBanana = selectedModel === 'nano-banana' || selectedModel.includes('gemini') || selectedModel === 'nano-banana-2'
+    const isNanoBanana = selectedModel === 'nano-banana' || selectedModel.includes('gemini') || selectedModel === 'nano-banana-2' 
+
     const isKling = ['kling', 'kling-2.6', 'kling-3.0', 'kling-2.1'].includes(selectedModel)
 
 
@@ -1784,14 +1763,14 @@ export function PromptGenerator({ onUpscale }) {
     const generatedPrompt = mode === 'video'
         ? buildVideoPrompt(selections, selectedModel)
         : selectedModel === 'gemini-3-pro-image-preview' ? buildNanoBananaProPrompt(selections)
-            : ['gemini-2.5-flash-image', 'gemini-3.1-flash-image-preview'].includes(selectedModel) ? buildNanoBananaPrompt(selections)
+            : (selectedModel === 'nano-banana' || selectedModel === 'nano-banana-2' || selectedModel.includes('gemini')) ? buildNanoBananaPrompt(selections, getFStop)
                 : buildStandardPrompt(selections, getFStop)
 
     const copyPrompt = () => navigator.clipboard.writeText(generatedPrompt)
 
     const downloadImage = (url, filename = 'flare-gen.png') => {
-        const a = document.createElement('a'); a.href = url; a.download = filename
-        document.body.appendChild(a); a.click(); document.body.removeChild(a)
+        const a = document.createElement('a'); a.href = url; a.download = filename; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
     }
 
     const saveAsset = async (url, slot, type = 'image') => {
@@ -1935,9 +1914,11 @@ export function PromptGenerator({ onUpscale }) {
     };
 
     const generateImage = async () => {
+        if (isLoading) return;
+        setIsLoading(true);
         const modelInfo = AI_MODELS.find(m => m.id === selectedModel)
-        if (!modelInfo?.available) { alert(`${modelInfo?.name || 'This model'} is coming soon!`); return }
-        if (frames.length >= MAX_FRAMES) { alert('Frame limit reached (50). Clear some frames.'); return }
+        if (!modelInfo?.available) { alert(`${modelInfo?.name || 'This model'} is coming soon!`); setIsLoading(false); return }
+        if (frames.length >= MAX_FRAMES) { alert('Frame limit reached (50). Clear some frames.'); setIsLoading(false); return }
 
         let costKey = 'image_nano_banana';
         if (mode === 'video') {
@@ -1954,6 +1935,7 @@ export function PromptGenerator({ onUpscale }) {
         // Deduct shorts before starting
         const res = await spend(costKey);
         if (!res || !res.success) {
+            setIsLoading(false);
             if (res?.reason === 'unauthenticated') {
                 useAppStore.getState().setShowingAuthModal(true);
             } else {
@@ -1965,7 +1947,7 @@ export function PromptGenerator({ onUpscale }) {
         const newFrameId = `frame-${Date.now()}`
         setFrames(prev => [...prev, { id: newFrameId, url: null, type: mode, model: selectedModel, prompt: generatedPrompt, aspectRatio: selections.aspectRatio, loading: true }])
         setActiveFrameId(newFrameId)
-        setIsLoading(true)
+
 
         try {
             const isGoogleVideo = selectedModel === 'veo' || selectedModel === 'veo-fast' || selectedModel.startsWith('veo-3.1');
@@ -2593,7 +2575,7 @@ export function PromptGenerator({ onUpscale }) {
                                         )}
                                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
                                             <button onClick={() => setZoomState({ url: leftFrame.url, isOpen: true, slot: leftFrame.id, isEditing: false })} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"><Maximize2 className="w-4 h-4" /></button>
-                                            <button onClick={() => downloadImage(leftFrame.url)} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"><Download className="w-4 h-4" /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); downloadImage(leftFrame.url); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"><Download className="w-4 h-4" /></button>
                                             <button onClick={() => setSelections(p => ({ ...p, referenceImage: leftFrame.url }))} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
                                             <button onClick={() => setLeftPreviewId(null)} className="p-2 bg-red-500/30 hover:bg-red-500/50 rounded-lg text-white" title="Unpin"><X className="w-4 h-4" /></button>
                                         </div>
@@ -2656,7 +2638,7 @@ export function PromptGenerator({ onUpscale }) {
                                             )}
                                             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2 z-20 pointer-events-none">
                                                 <button onClick={() => setZoomState({ url: activeFrame.url, isOpen: true, slot: activeFrame.id, isEditing: false })} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white pointer-events-auto"><Maximize2 className="w-4 h-4" /></button>
-                                                <button onClick={() => downloadImage(activeFrame.url)} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white pointer-events-auto"><Download className="w-4 h-4" /></button>
+                                                <button onClick={(e) => { e.stopPropagation(); downloadImage(activeFrame.url); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white pointer-events-auto"><Download className="w-4 h-4" /></button>
                                                 
                         {(activeFrame && (activeFrame.type === 'image' || activeFrame.type === 'multishot') && activeFrame.model !== 'gemini-3-pro-image-preview') && (
                             <button
@@ -2709,7 +2691,7 @@ export function PromptGenerator({ onUpscale }) {
                                         )}
                                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
                                             <button onClick={() => setZoomState({ url: rightFrame.url, isOpen: true, slot: rightFrame.id, isEditing: false })} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"><Maximize2 className="w-4 h-4" /></button>
-                                            <button onClick={() => downloadImage(rightFrame.url)} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"><Download className="w-4 h-4" /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); downloadImage(rightFrame.url); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"><Download className="w-4 h-4" /></button>
                                             <button onClick={() => setSelections(p => ({ ...p, referenceImage: rightFrame.url }))} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
                                             <button onClick={() => setRightPreviewId(null)} className="p-2 bg-red-500/30 hover:bg-red-500/50 rounded-lg text-white" title="Unpin"><X className="w-4 h-4" /></button>
                                         </div>
@@ -2873,7 +2855,7 @@ export function PromptGenerator({ onUpscale }) {
                             )}
 
                         <button onClick={generateImage} disabled={isLoading}
-                                className={cn("w-full md:w-48 shrink-0 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all shadow-2xl active:scale-95 h-20 md:h-full",
+                                className={cn("w-full md:w-52 shrink-0 rounded-[20px] flex flex-col items-center justify-center gap-1 transition-all shadow-[0_10px_30px_rgba(212,255,0,0.15)] active:scale-95 h-20",
                                     isLoading ? "bg-white/5 cursor-not-allowed" : "bg-[#D4FF00] hover:bg-white hover:shadow-[0_0_30px_rgba(212,255,0,0.3)]")}>
                                 <Zap className={cn("w-6 h-6 text-black", isLoading && "animate-pulse")} />
                                 <span className="text-sm font-black text-black uppercase tracking-tighter">
@@ -2898,7 +2880,7 @@ export function PromptGenerator({ onUpscale }) {
                         {mode === 'video' ? (
                             <div className="space-y-1">
                                 <div className="flex flex-wrap gap-2">
-                                <div className="flex-1 min-w-[110px]">
+                                <div className="flex-1 min-w-[105px]">
                                     <label className="text-[10px] font-bold text-gray-500 mb-1 block uppercase tracking-wider">Engine</label>
                                     <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white">
                                         {filteredModels.map(m => <option key={m.id} value={m.id} disabled={!m.available}>{m.name}{m.available ? '' : ' — Soon'}</option>)}
@@ -2995,7 +2977,7 @@ export function PromptGenerator({ onUpscale }) {
                                     if (key === 'lens' || key === 'quality') flexValue = 0.5;
 
                                     return (
-                                        <div key={key} style={{ flex: flexValue }} className="min-w-[45%] md:min-w-0">
+                                        <div key={key} style={{ flex: flexValue }} className={cn("min-w-[45%] md:min-w-0", key === 'engine' && "md:flex-[0_1_115px]")}>
                                             <label className="text-[10px] font-bold text-gray-500 mb-1 block uppercase tracking-wider truncate">{key === 'lens' ? 'Lens' : key === 'aspectRatio' ? 'Ratio' : key}</label>
                                             {key === 'engine' ? (
                                                 <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white">
@@ -3069,8 +3051,9 @@ export function PromptGenerator({ onUpscale }) {
                         <button onClick={() => setZoomState(p => ({ ...p, isOpen: false }))} className="absolute top-4 right-4 md:top-8 md:right-8 text-white/50 hover:text-white transition"><X className="w-6 h-6 md:w-8 md:h-8" /></button>
                         {activeFrame?.type === 'video' ? <video src={zoomState.url} controls autoPlay loop className="max-w-full max-h-full rounded-2xl shadow-2xl" style={{ maxHeight: '85vh' }} /> : <img src={zoomState.url} className="max-w-full max-h-full rounded-2xl shadow-2xl" alt="Zoomed" />}
                         <div className="absolute bottom-6 md:bottom-12 flex gap-4 w-full justify-center px-4 md:w-auto">
+                            <button onClick={() => setZoomState(p => ({ ...p, isOpen: false }))} className="flex-1 md:flex-none justify-center bg-white/10 hover:bg-white/20 border border-white/10 text-white px-6 py-3 md:py-2 rounded-full font-bold uppercase text-[10px] md:text-xs flex items-center gap-2 transition shadow-xl"><X className="w-4 h-4" /> Back</button>
                             <button onClick={() => setZoomState(p => ({ ...p, isEditing: true }))} className="flex-1 md:flex-none justify-center bg-[#D4FF00] text-black px-6 py-3 md:py-2 rounded-full font-bold uppercase text-[10px] md:text-xs flex items-center gap-2 hover:bg-white transition shadow-xl"><PenTool className="w-4 h-4" /> Edit</button>
-                            <button onClick={() => downloadImage(zoomState.url)} className="flex-1 md:flex-none justify-center bg-white text-black px-6 py-3 md:py-2 rounded-full font-bold uppercase text-[10px] md:text-xs flex items-center gap-2 hover:bg-cyan-500 hover:text-white transition shadow-xl"><Download className="w-4 h-4" /> Save</button>
+                            <button onClick={(e) => { e.stopPropagation(); downloadImage(zoomState.url); }} className="flex-1 md:flex-none justify-center bg-white text-black px-6 py-3 md:py-2 rounded-full font-bold uppercase text-[10px] md:text-xs flex items-center gap-2 hover:bg-cyan-500 hover:text-white transition shadow-xl"><Download className="w-4 h-4" /> Save</button>
                         </div>
                     </div>
                 )
@@ -3336,7 +3319,7 @@ export function PromptGenerator({ onUpscale }) {
                                 <img src={upscaledImage} alt="Crop Preview" className="max-w-full max-h-[70vh] rounded-xl border border-white/5 object-contain shadow-2xl" />
                             </div>
                             <div className="flex gap-3 px-6 py-4 border-t border-white/5 bg-black/20">
-                                <button onClick={() => downloadImage(upscaledImage, 'isolated-crop.png')}
+                                <button onClick={(e) => { e.stopPropagation(); downloadImage(upscaledImage, 'isolated-crop.png'); }}
                                     className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-all border border-white/10">
                                     <Download className="w-4 h-4" /> Download
                                 </button>

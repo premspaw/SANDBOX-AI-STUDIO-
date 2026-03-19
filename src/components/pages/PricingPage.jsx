@@ -9,17 +9,45 @@ import { getApiUrl } from '../../config/apiConfig';
 const PricingPage = () => {
     const [isYearly, setIsYearly] = useState(true);
     const [loadingPlan, setLoadingPlan] = useState(null);
-    const { fetchUserProfile } = useAppStore();
+    const { fetchUserProfile, userProfile } = useAppStore();
 
 
     const modelPricing = [
         {
-            category: "Video Generation",
+            category: "Image Production",
             models: [
-                { name: "Kling 3.0 (720p/1080p)", cost: "6-7 credits/5s" },
-                { name: "Veo 3.1 (720p/1080p)", cost: "3-6 credits/5s" },
-                { name: "Veo 3.1 4K", cost: "12 credits/5s" },
-                { name: "Kling Omni 3 Image Ref", cost: "5 credits/5s" }
+                { name: "Nano Banana Standard", cost: "1 credit" },
+                { name: "Nano Banana 2 / Flash", cost: "2 credits" },
+                { name: "Nano Banana Pro", cost: "5 credits" },
+                { name: "Multi-Shot 9-Grid Matrix", cost: "2 credits" },
+                { name: "4K AI Upscaling Master", cost: "3 credits" }
+            ]
+        },
+        {
+            category: "Video Production",
+            models: [
+                { name: "Veo 3.1 Fast Preview (5s)", cost: "10 credits" },
+                { name: "Veo 3.1 High Fidelity (5s)", cost: "20 credits" },
+                { name: "Kling 3.0 Action (5s)", cost: "10 credits" }
+            ]
+        },
+        {
+            category: "Workflows & Scenarios",
+            models: [
+                { name: "Storyboard 9-Frame Setup", cost: "5 credits" },
+                { name: "UGC Script Narrative Generation", cost: "1 credit" },
+                { name: "UGC Scene Single Render", cost: "10 credits" },
+                { name: "UGC Full Compilation Production", cost: "20 credits" }
+            ]
+        },
+        {
+            category: "Commercial & Forge",
+            models: [
+                { name: "Product Shoot Context (Single)", cost: "3 credits" },
+                { name: "Product Pack (5 Scenes Bundle)", cost: "12 credits" },
+                { name: "360 Rotating Turn Showcase", cost: "8 credits" },
+                { name: "AI Character Identity Kit", cost: "15 credits" },
+                { name: "Movie Matrix Grid Embeddings", cost: "10 credits" }
             ]
         }
     ];
@@ -27,17 +55,18 @@ const PricingPage = () => {
     const plans = [
         {
             name: "Influencer",
-            monthlyPrice: 299,
-            yearlyPrice: 239,
-            description: "Perfect for exploring AI cinematography for the first time.",
+            monthlyPrice: 399,
+            yearlyPrice: 319,
+            description: "Now with a 6-Month Free Trial layout!",
             features: [
-                "150 Main Credits / month",
-                "1 AI Character Creation",
+                "500 Main Credits / month",
+                "6-Month Free Trial Included",
+                "5,000 Nano Banana Images (1k/2k Generation)",
+                "3 Video Generations (Kling/Veo) OR",
+                "1 Complete Ad Generation (16s)",
                 "2 Concurrent Jobs",
-                "25 Kling 720p Videos (5s) OR",
                 "2 Veo 1080p Videos (8s)",
-                "25,000 Nano Banana Images",
-                "720p Export Resolution",
+                "Kling 720p Support (5s)",
                 "Standard Support"
             ],
             icon: Shield,
@@ -96,222 +125,115 @@ const PricingPage = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-[#080808] text-white p-8 pb-20 relative overflow-hidden">
-            {/* Background Decorations */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-gradient-to-b from-[#D4FF00]/10 to-transparent blur-[120px] -z-10 opacity-50" />
-            <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] -z-10" />
-            <div className="absolute bottom-0 -right-24 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] -z-10" />
+        <div className="h-screen bg-[#030303] text-white p-6 flex flex-col relative overflow-hidden font-sans">
+            {/* Ambient Background Glows */}
+            <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-gradient-to-b from-[#D4FF00]/15 to-transparent blur-[120px] -z-10 opacity-70" />
+            <div className="absolute bottom-[-20%] left-[-10%] w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] -z-10" />
+            <div className="absolute bottom-[-20%] right-[-10%] w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px] -z-10" />
 
-            <div className="max-w-6xl mx-auto space-y-8 md:space-y-12">
-                {/* Header */}
-                <div className="text-center space-y-4">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-[#D4FF00]"
-                    >
-                        <Coins size={12} />
-                        Subscription Plans
-                    </motion.div>
-
-                    <motion.h1
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="text-3xl md:text-6xl font-black italic tracking-tighter uppercase leading-[0.9] text-metallic"
-                    >
-                        Elevate Your Production
-                    </motion.h1>
-
-                    <motion.p
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="text-white/40 max-w-xl mx-auto text-sm font-medium tracking-tight"
-                    >
-                        Flexible, high-octane plans designed for the next generation of AI cinematographers.
-                        Get 50% more value than any other studio platform.
-                    </motion.p>
+            {/* Premium Header Bar */}
+            <div className="flex justify-between items-center bg-white/[0.02] border border-white/5 backdrop-blur-md p-4 rounded-2xl mb-5 shrink-0 shadow-2xl relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.01] to-transparent animate-shimmer" />
+                <div className="flex items-center gap-4">
+                    <div className="px-3 py-1 bg-gradient-to-r from-[#D4FF00]/10 to-transparent border border-[#D4FF00]/20 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-[#D4FF00] flex items-center gap-1.5 shadow-[0_0_20px_rgba(212,255,0,0.1)]">
+                        <Coins size={12} strokeWidth={2.5} /> Credit pipeline
+                    </div>
+                    <h1 className="text-2xl font-black italic uppercase tracking-tight text-white/90">
+                        Elevate <span className="text-[#D4FF00]">Production</span>
+                    </h1>
                 </div>
 
-                {/* Toggle */}
-                <div className="flex flex-col md:flex-row justify-center items-center gap-4 py-4">
-                    <div className="flex items-center gap-4">
-                        <span className={cn("text-xs font-black uppercase tracking-widest transition-colors", !isYearly ? "text-white" : "text-white/20")}>Monthly</span>
-                        <button
-                            onClick={() => setIsYearly(!isYearly)}
-                            className="relative w-14 h-7 bg-white/5 rounded-full border border-white/10 p-1 flex items-center transition-all hover:border-[#D4FF00]/40 shadow-inner"
+                {/* Toggle - Premium */}
+                <div className="flex items-center gap-3">
+                    <span className={cn("text-[10px] font-bold uppercase tracking-widest transition-colors duration-300", !isYearly ? "text-white" : "text-white/30")}>Monthly</span>
+                    <button onClick={() => setIsYearly(!isYearly)} className="relative w-12 h-6 bg-white/5 rounded-full border border-white/10 p-0.5 flex items-center transition-all duration-500 hover:border-[#D4FF00]/50 shadow-inner group">
+                        <motion.div animate={{ x: isYearly ? 24 : 0 }} className="w-5 h-5 bg-[#D4FF00] rounded-full shadow-[0_0_15px_rgba(212,255,0,0.8)] flex items-center justify-center group-hover:scale-105 transition-transform" />
+                    </button>
+                    <span className={cn("text-[10px] font-bold uppercase tracking-widest transition-colors duration-300", isYearly ? "text-white" : "text-white/30")}>Yearly</span>
+                    <div className="px-2 py-0.5 bg-[#D4FF00]/20 border border-[#D4FF00]/40 rounded-lg text-[9px] font-black text-[#D4FF00] uppercase tracking-wider animate-pulse shadow-[0_0_15px_rgba(212,255,0,0.1)]">Save 20%</div>
+                </div>
+            </div>
+
+            {/* Main Content Layout Grid - Stagger Layouts */}
+            <div className="flex-1 grid grid-cols-3 gap-5 overflow-hidden pb-2">
+                {plans.map((plan, idx) => {
+                    const currentPrice = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
+                    return (
+                        <motion.div
+                            key={plan.name}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            whileHover={{ y: -5, borderColor: plan.popular ? 'rgba(212,255,0,0.5)' : 'rgba(255,255,255,0.15)', boxShadow: plan.popular ? '0 10px 40px rgba(212,255,0,0.1)' : '0 10px 40px rgba(255,255,255,0.02)' }}
+                            transition={{ delay: 0.08 * idx, type: "spring", stiffness: 300, damping: 20 }}
+                            className={cn(
+                                "relative flex flex-col p-6 rounded-2xl transition-all duration-300 overflow-hidden",
+                                "backdrop-blur-xl border flex-1 h-full flex flex-col justify-between",
+                                plan.popular
+                                    ? "bg-[#D4FF00]/[0.02] border-[#D4FF00]/20 shadow-[0_0_30px_rgba(212,255,0,0.03)]"
+                                    : "bg-white/[0.01] border-white/5"
+                            )}
                         >
-                            <motion.div
-                                animate={{ x: isYearly ? 28 : 0 }}
-                                className="w-5 h-5 bg-[#D4FF00] rounded-full shadow-[0_0_15px_rgba(212,255,0,0.6)]"
-                            />
-                        </button>
-                        <span className={cn("text-xs font-black uppercase tracking-widest transition-colors", isYearly ? "text-white" : "text-white/20")}>Yearly</span>
-                    </div>
-                    <div className="px-2 py-0.5 bg-[#D4FF00]/10 border border-[#D4FF00]/20 rounded-lg">
-                        <span className="text-[9px] font-black text-[#D4FF00] uppercase">Save 20%</span>
-                    </div>
-                </div>
+                            {/* Card Shimmer on popular */}
+                            {plan.popular && <div className="absolute inset-0 bg-gradient-to-b from-[#D4FF00]/[0.03] via-transparent to-transparent -z-10" />}
 
-                {/* Pricing Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-                    {plans.map((plan, idx) => {
-                        const currentPrice = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
-                        return (
-                            <motion.div
-                                key={plan.name}
-                                initial={{ opacity: 0, y: 30 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1 * (idx + 3) }}
-                                className={cn(
-                                    "relative group flex flex-col p-8 rounded-[2rem] transition-all duration-500 overflow-hidden",
-                                    "backdrop-blur-xl border-l-[1px] border-t-[1px]",
-                                    plan.popular
-                                        ? "bg-white/[0.04] scale-105 border-[#D4FF00]/40 shadow-[0_0_40px_rgba(212,255,0,0.05)]"
-                                        : "bg-white/[0.02] hover:bg-white/[0.04] border-white/10 shadow-xl"
-                                )}
-                            >
-                                {plan.popular && (
-                                    <div className="absolute top-6 right-6">
-                                        <div className="px-3 py-1 bg-[#D4FF00] rounded-full text-[9px] font-black text-black uppercase tracking-wider shadow-[0_0_20px_rgba(212,255,0,0.4)]">
-                                            Most Popular
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="space-y-6 flex-1">
-                                    <div className={cn("inline-flex p-3 rounded-2xl bg-white/5 border border-white/10", plan.iconColor)}>
-                                        <plan.icon size={24} />
-                                    </div>
-
-                                    <div>
-                                        <h3 className="text-xl font-black uppercase tracking-tighter italic text-metallic">{plan.name}</h3>
-                                        <p className="text-white/40 text-xs mt-1 leading-relaxed font-bold uppercase tracking-tighter">{plan.description}</p>
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <div className="flex items-baseline gap-1">
-                                            <span className="text-4xl font-black italic tracking-tighter text-white">₹{currentPrice}</span>
-                                            <span className="text-white/20 text-sm font-bold uppercase">/month</span>
-                                        </div>
-                                        {isYearly && (
-                                            <p className="text-[9px] text-[#D4FF00]/60 font-black uppercase tracking-widest">
-                                                Billed ₹{(plan.yearlyPrice * 12).toLocaleString()} annually
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div className="space-y-3 pt-6 border-t border-white/10">
-                                        {plan.features.map((feature, fIdx) => (
-                                            <div key={fIdx} className="flex items-center gap-3 group/feature">
-                                                <div className={cn("p-1 rounded-full bg-white/5 border border-white/10", plan.popular ? "text-[#D4FF00]" : "text-white/40")}>
-                                                    <Check size={10} strokeWidth={4} />
-                                                </div>
-                                                <span className="text-xs font-bold text-white/60 group-hover/feature:text-white transition-colors">
-                                                    {feature}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
+                            {plan.popular && (
+                                <div className="absolute top-5 right-5 px-3 py-1 bg-gradient-to-r from-[#D4FF00] to-yellow-400 rounded-full text-[8px] font-black text-black uppercase tracking-wider shadow-lg">
+                                    Most Popular
                                 </div>
+                            )}
 
-                                <button
-                                    onClick={() => handlePurchase(plan.name)}
-                                    disabled={loadingPlan !== null}
-                                    className={cn(
-                                        "mt-12 w-full py-4 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 group/btn",
-                                        plan.popular
-                                            ? "bg-[#D4FF00] text-black hover:shadow-[0_0_40px_rgba(212,255,0,0.4)]"
-                                            : "bg-white/10 text-white hover:bg-white/20 border border-white/10",
-                                        loadingPlan === plan.name && "opacity-70 cursor-wait"
-                                    )}>
-                                    {loadingPlan === plan.name ? (
-                                        <Loader2 size={14} className="animate-spin" />
-                                    ) : (
-                                        <>
-                                            {plan.buttonText}
-                                            <ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
-                                        </>
-                                    )}
-                                </button>
-
-                            </motion.div>
-                        );
-                    })}
-                </div>
-
-                {/* Model Pricing Detail Section */}
-                <motion.div
-                    initial={{ opacity: 0, y: 40 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.8 }}
-                    className="space-y-8 pt-12"
-                >
-                    <div className="text-center space-y-2">
-                        <h2 className="text-3xl font-black uppercase italic tracking-tighter text-metallic">Model Credit Costs</h2>
-                        <p className="text-white/40 text-[10px] uppercase tracking-[0.3em] font-black">Detailed breakdown of AI computation costs</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {modelPricing.map((section, sidx) => (
-                            <div key={sidx} className="p-8 rounded-[2rem] bg-white/[0.02] border border-white/10 backdrop-blur-md space-y-6 shadow-2xl">
-                                <h3 className="text-[11px] font-black text-[#D4FF00] uppercase tracking-[0.3em] pl-2 border-l-2 border-[#D4FF00]">{section.category}</h3>
-                                <div className="space-y-4">
-                                    {section.models.map((model, midx) => (
-                                        <div key={midx} className="flex justify-between items-center py-3 border-b border-white/5 last:border-0 group/row">
-                                            <span className="text-[11px] font-bold text-white/40 group-hover/row:text-white transition-colors uppercase italic tracking-tight">{model.name}</span>
-                                            <span className="px-3 py-1 bg-white/5 rounded-lg text-[9px] font-black text-[#D4FF00] border border-[#D4FF00]/10 uppercase tracking-tighter shadow-[0_0_15px_rgba(212,255,0,0.05)]">{model.cost}</span>
-                                        </div>
-                                    ))}
+                            <div className="flex items-center gap-3 mb-5 shrink-0">
+                                <div className={cn("inline-flex p-3 rounded-xl bg-white/5 border border-white/10 shadow-md", plan.iconColor)}>
+                                    <plan.icon size={22} strokeWidth={2} />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-black uppercase tracking-tight text-white mb-0.5">{plan.name} TIER</h3>
+                                    <p className="text-white/50 text-[10px] font-medium leading-tight max-w-[180px]">{plan.description}</p>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                </motion.div>
 
-                {/* FAQ / Trust Segment */}
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.9 }}
-                    className="p-10 rounded-[2.5rem] bg-white/[0.02] border border-white/10 backdrop-blur-3xl flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl relative overflow-hidden"
-                >
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-[#D4FF00]/5 rounded-full blur-[80px] -z-10" />
-                    <div className="space-y-4 text-center md:text-left relative z-10">
-                        <div className="space-y-1">
-                            <h4 className="text-2xl font-black uppercase italic tracking-tighter text-metallic">Need a custom plan?</h4>
-                            <p className="text-white/40 text-[11px] font-bold uppercase tracking-tighter max-w-md">
-                                For movie studios, advertising agencies, and corporate workflows, we offer tailored pipeline integration.
-                            </p>
-                        </div>
-                    </div>
-                    <button className="px-10 py-5 bg-white text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-[#D4FF00] hover:text-black transition-all shadow-xl hover:shadow-[0_0_30px_rgba(212,255,0,0.3)] whitespace-nowrap relative z-10">
-                        Contact Enterprise
-                    </button>
-                </motion.div>
+                            <div className="space-y-1 mb-5 shrink-0 pb-4 border-b border-white/5">
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-4xl font-black italic tracking-tighter text-white">₹{currentPrice}</span>
+                                    <span className="text-white/40 text-xs font-bold uppercase">/mo</span>
+                                </div>
+                                {isYearly && <p className="text-[9px] text-[#D4FF00]/80 font-bold uppercase tracking-widest leading-none">Billed ₹{(plan.yearlyPrice * 12).toLocaleString()} annually</p>}
+                            </div>
 
-                {/* Terms and Conditions Footer */}
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 1.0 }}
-                    className="pt-12 text-center space-y-4 border-t border-white/5"
-                >
-                    <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest max-w-3xl mx-auto leading-relaxed">
-                        Terms & Conditions: Prices are listed in INR (₹). Yearly plans are billed annually and include a 20% discount.
-                        "Batch Mode Support" indicates tasks may be processed over a 24-hour window to ensure optimal pricing.
-                        Unused monthly credits do not roll over to the next billing cycle.
-                        Model credit costs are subject to change based on underlying provider pricing (Google Vertex AI, Higgsfield).
-                    </p>
-                    <div className="flex justify-center items-center gap-6 pt-4">
-                        <a href="#" className="text-[10px] text-white/20 hover:text-white/60 font-bold uppercase tracking-[0.2em] transition-colors">Privacy Policy</a>
-                        <span className="w-1 h-1 rounded-full bg-white/10" />
-                        <a href="#" className="text-[10px] text-white/20 hover:text-white/60 font-bold uppercase tracking-[0.2em] transition-colors">Terms of Service</a>
-                        <span className="w-1 h-1 rounded-full bg-white/10" />
-                        <a href="#" className="text-[10px] text-white/20 hover:text-white/60 font-bold uppercase tracking-[0.2em] transition-colors">Billing Policy</a>
-                    </div>
-                </motion.div>
+                            <div className="flex-1 overflow-y-auto custom-scrollbar pr-3 space-y-2.5">
+                                {plan.features.map((feature, fIdx) => (
+                                    <div key={fIdx} className="flex items-start gap-3 group/feat">
+                                        <div className={cn("p-1 rounded-full mt-0.5 border flex-shrink-0 transition-colors", plan.popular ? "text-[#D4FF00] border-[#D4FF00]/20 bg-[#D4FF00]/5" : "text-white/40 border-white/10 bg-white/[0.02]")}>
+                                            <Check size={9} strokeWidth={4} />
+                                        </div>
+                                        <span className="text-[11px] font-medium text-white/70 group-hover/feat:text-white transition-colors leading-snug">
+                                            {feature}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button 
+                                onClick={() => {
+                                    if (plan.name === "Influencer") {
+                                        const userIdLink = userProfile?.id ? `?client_id=${userProfile.id}` : "";
+                                        window.open(`https://rzp.io/rzp/tleOsf2${userIdLink}`, "_blank");
+                                    } else {
+                                        alert("Purchasing: " + plan.name);
+                                    }
+                                }} 
+                                className={cn(
+                                    "mt-5 w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shrink-0 group/btn",
+                                    plan.popular 
+                                        ? "bg-[#D4FF00] text-black hover:bg-[#e6ff00] hover:shadow-[0_0_25px_rgba(212,255,0,0.4)]" 
+                                        : "bg-white/5 text-white hover:bg-white/10 border border-white/10 hover:border-white/20"
+                                )}
+                            >
+                                {plan.buttonText} <ArrowRight size={13} className="group-hover/btn:translate-x-1 transition-transform" />
+                            </button>
+                        </motion.div>
+                    )
+                })}
             </div>
         </div>
     );
