@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZeroLens Logo Kit</title>
+<link rel="icon" type="image/svg+xml" href="zerolens-favicon-dark.svg">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0d0d0d; font-family: system-ui, -apple-system, sans-serif; color: #ccc; padding: 3rem 2rem; }
+  h1 { font-size: 13px; letter-spacing: 4px; color: #AADD00; text-transform: uppercase; font-weight: 500; margin-bottom: 3rem; }
+  .section { margin-bottom: 4rem; }
+  .section-title { font-size: 10px; letter-spacing: 3px; color: #444; text-transform: uppercase; margin-bottom: 1.5rem; border-bottom: 0.5px solid #222; padding-bottom: 8px; }
+  .row { display: flex; align-items: center; gap: 3rem; flex-wrap: wrap; }
+  .bg-white { background: #f5f5f2; padding: 2rem; border-radius: 12px; }
+  .bg-dark  { background: #0a0a0a; padding: 2rem; border-radius: 12px; border: 0.5px solid #222; }
+  .bg-chrome { background: #ffffff; padding: 1rem 1.5rem; border-radius: 8px; display: flex; align-items: center; gap: 8px; }
+  .chrome-tab { font-size: 12px; color: #333; }
+  code { display: block; background: #111; border: 0.5px solid #222; border-radius: 8px; padding: 1rem 1.25rem; font-family: monospace; font-size: 12px; color: #AADD00; line-height: 1.8; margin-top: 1rem; white-space: pre; overflow-x: auto; }
+  .label { font-size: 11px; color: #555; letter-spacing: 1px; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<h1>ZeroLens — Logo Kit</h1>
+
+<!-- ANIMATED -->
+<div class="section">
+  <div class="section-title">Animated logo — intro + idle loop</div>
+  <div class="row">
+    <div class="bg-dark">
+      <img src="zerolens-animated.svg" width="120" height="120" alt="ZeroLens animated logo"/>
+    </div>
+    <div>
+      <div class="label">Embed in your app</div>
+      <code>&lt;img src="zerolens-animated.svg"
+     width="120" height="120"
+     alt="ZeroLens"/&gt;</code>
+      <div class="label" style="margin-top:1rem;">Or inline for full CSS control</div>
+      <code>&lt;!-- paste SVG source inline --&gt;</code>
+    </div>
+  </div>
+</div>
+
+<!-- FAVICON SOLUTION -->
+<div class="section">
+  <div class="section-title">Favicon — Chrome tab solution</div>
+  <div class="row">
+
+    <div>
+      <div class="bg-chrome">
+        <img src="zerolens-favicon-dark.svg" width="16" height="16"/>
+        <span class="chrome-tab">zerolens.ai — AI Cinema Studio</span>
+      </div>
+      <div class="label">Light Chrome tab (default) — dark bg fills the icon</div>
+    </div>
+
+    <div style="background:#3c3c3c; padding:1rem 1.5rem; border-radius:8px; display:flex; align-items:center; gap:8px;">
+      <img src="zerolens-favicon-white.svg" width="16" height="16"/>
+      <span style="font-size:12px; color:#ddd;">zerolens.ai — AI Cinema Studio</span>
+      <div></div>
+    </div>
+
+    <div class="bg-dark">
+      <img src="zerolens-favicon-dark.svg" width="32" height="32"/>
+      <div class="label">32px preview</div>
+    </div>
+  </div>
+
+  <code>&lt;!-- In your HTML head --&gt;
+&lt;link rel="icon" type="image/svg+xml" href="/zerolens-favicon-dark.svg"&gt;
+
+&lt;!-- PWA + Apple touch icon --&gt;
+&lt;link rel="apple-touch-icon" href="/apple-touch-icon.png"&gt;
+&lt;meta name="theme-color" content="#0a0a0a"&gt;</code>
+</div>
+
+<!-- WHY THIS WORKS -->
+<div class="section">
+  <div class="section-title">Why the dark background solves Chrome</div>
+  <div style="font-size:13px; line-height:1.9; color:#777; max-width:560px;">
+    Chrome renders favicons on a white tab strip.<br>
+    A transparent SVG with only lime strokes becomes invisible.<br><br>
+    <span style="color:#AADD00;">Solution:</span> The favicon has a filled #0a0a0a circle behind the mark.<br>
+    This creates a self-contained "badge" that reads on any background —<br>
+    white tab bar, dark mode, pinned tab, bookmarks bar.
+  </div>
+</div>
+
+</body>
+</html>

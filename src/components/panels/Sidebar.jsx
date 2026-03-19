@@ -86,7 +86,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
     }, [activeTab, isCollapsed, toggleCollapse]);
 
     const navItems = [
-        { id: 'prompt', label: 'Prompt Builder', icon: Image, color: 'text-purple-400', bgColor: 'bg-purple-400', hoverColor: 'group-hover/navitem:text-purple-400', glow: 'shadow-[0_0_15px_rgba(168,85,247,0.1)]' },
+        { id: 'prompt', label: 'Director Vision', icon: Image, color: 'text-purple-400', bgColor: 'bg-purple-400', hoverColor: 'group-hover/navitem:text-purple-400', glow: 'shadow-[0_0_15px_rgba(168,85,247,0.1)]' },
         { id: 'creator', label: 'Creator', icon: Camera, color: 'text-emerald-400', bgColor: 'bg-emerald-400', hoverColor: 'group-hover/navitem:text-emerald-400', glow: 'shadow-[0_0_15px_rgba(52,211,153,0.1)]' },
         { id: 'influencer', label: 'AI Influencer', icon: Users, color: 'text-[#bef264]', bgColor: 'bg-[#bef264]', hoverColor: 'group-hover/navitem:text-[#bef264]', glow: 'shadow-[0_0_15px_rgba(190,242,100,0.1)]' },
         { id: 'directors-cut', label: "Director's Cut", icon: Clapperboard, color: 'text-cyan-400', bgColor: 'bg-cyan-400', hoverColor: 'group-hover/navitem:text-cyan-400', glow: 'shadow-[0_0_15px_rgba(34,211,238,0.1)]' },
@@ -122,8 +122,8 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
             <div className={cn("pt-1.5 pb-1 px-3 flex items-center transition-all duration-300", isCollapsed ? "justify-center" : "justify-between")}>
                 <button onClick={() => setActiveTab('home')} className="flex items-center gap-2 hover:opacity-80 transition-opacity focus:outline-none group">
                     <BrandLogo 
-                        size={isCollapsed ? 32 : 54} 
-                        className={cn("transition-all duration-300 drop-shadow-[0_0_12px_rgba(212,255,0,0.4)]", isCollapsed ? "w-8 h-8" : "w-14 h-14")} 
+                        size={isCollapsed ? 28 : 42} 
+                        className={cn("transition-all duration-300 drop-shadow-[0_0_12px_rgba(212,255,0,0.4)]", isCollapsed ? "w-7 h-7" : "w-11 h-11")} 
                     />
                     
                     <div className={cn(
@@ -133,7 +133,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                         <h1 className="text-[18px] font-black text-metallic tracking-tighter uppercase italic leading-none whitespace-nowrap">
                             ZEROLENS
                         </h1>
-                        <p className="text-[8px] text-white/20 font-mono mt-0.5 uppercase tracking-widest font-bold whitespace-nowrap">Creative Suite</p>
+                        <p className="text-[7.5px] text-white/25 font-semibold mt-0.5 tracking-wide whitespace-nowrap">Direct without a camera.</p>
                     </div>
                 </button>
             </div>
