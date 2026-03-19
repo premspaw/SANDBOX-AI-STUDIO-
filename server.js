@@ -285,6 +285,12 @@ app.use('/assets', express.static(path.join(__dirname, 'public', 'assets'), {
     }
 }));
 
+// Niche SEO Static Pages Handlers
+app.get('/real-estate', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'real-estate', 'index.html')));
+app.get('/fashion', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'fashion', 'index.html')));
+app.get('/food', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'food', 'index.html')));
+app.get('/cinema', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'cinema', 'index.html')));
+
 // Production static serving (for built React app)
 app.use(express.static(path.join(__dirname, 'dist')));
 
