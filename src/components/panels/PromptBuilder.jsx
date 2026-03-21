@@ -21,7 +21,7 @@ const NODE_CONFIG = {
 };
 
 const colorMap = {
-    blue: 'text-blue-400 border-blue-500/30 bg-blue-500/10',
+    blue: 'text-[#AADD00] border-[#AADD00]/30 bg-[#AADD00]/10',
     orange: 'text-orange-400 border-orange-500/30 bg-orange-500/10',
     pink: 'text-pink-400 border-pink-500/30 bg-pink-500/10',
     yellow: 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10',

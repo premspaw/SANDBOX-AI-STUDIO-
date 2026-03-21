@@ -3164,7 +3164,8 @@ Return ONLY a valid JSON object with the following structure:
                               <Button onClick={handleSelectKey} className="w-full py-2.5 text-[9px]">Authorize Vertex Key</Button>
                             </div>
                           ) : (
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pointer-events-auto">
+                            <div className={`grid grid-cols-2 ${isAdmin ? 'sm:grid-cols-3' : 'sm:grid-cols-4'} gap-1.5 pointer-events-auto`}>
+                              {!isAdmin && (
                               <button
                                 onClick={handleResetKey}
                                 className="flex flex-col gap-1.5 group"
@@ -3175,6 +3176,7 @@ Return ONLY a valid JSON object with the following structure:
                                   <span className="truncate">Vertex</span>
                                 </div>
                               </button>
+                              )}
                               <Dropdown
                                 label="Duration"
                                 value={`${durationSeconds} s`}

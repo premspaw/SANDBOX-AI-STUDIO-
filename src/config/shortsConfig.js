@@ -16,10 +16,10 @@ export const SHORTS_COST = {
     product_pack_5: 12,
     product_360: 8,
 
-    // Video (Veo)
-    veo_fast: 10,
-    veo_full: 20,
-    kling: 10,
+    // Video (Veo & Kling)
+    veo_fast: 20,
+    veo_full: 80,
+    kling: 15,
 
     // Storyboard
     storyboard_gen: 5,

@@ -918,9 +918,9 @@ const buildVideoPrompt = (selections, selectedModel) => {
 // ── SUB-COMPONENTS (Defined outside to prevent unmount on render) ──
 const KlingShotBuilder = ({ selections, setSelections }) => (
     <div className="w-1/3 shrink-0 h-full">
-        <div className="h-full bg-blue-500/5 border border-blue-500/20 rounded-xl p-2 flex flex-col overflow-hidden">
+        <div className="h-full bg-[#AADD00]/5 border border-[#AADD00]/20 rounded-xl p-2 flex flex-col overflow-hidden">
             <div className="flex items-center justify-between mb-2">
-                <label className="text-[10px] font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                <label className="text-[10px] font-bold text-[#AADD00] uppercase tracking-widest flex items-center gap-2">
                     <Zap className="w-3.5 h-3.5" /> Kling Shot Builder
                 </label>
                 <button 
@@ -928,14 +928,14 @@ const KlingShotBuilder = ({ selections, setSelections }) => (
                         ...p, 
                         timestampSegments: [...(p.timestampSegments || []), { id: Date.now(), start: 0, end: 2, description: '' }] 
                     }))}
-                    className="px-1.5 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded text-blue-400 text-[8px] font-black uppercase transition-all"
+                    className="px-1.5 py-0.5 bg-[#AADD00]/10 hover:bg-[#AADD00]/20 border border-[#AADD00]/20 rounded text-[#AADD00] text-[8px] font-black uppercase transition-all"
                 >
                     + Add Segment
                 </button>
             </div>
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar min-h-[40px]">
                 {(selections.timestampSegments || []).map((seg, idx) => (
-                    <div key={seg.id || idx} className="bg-black/40 border border-blue-500/5 rounded-lg p-1.5 space-y-1 group/seg">
+                    <div key={seg.id || idx} className="bg-black/40 border border-[#AADD00]/5 rounded-lg p-1.5 space-y-1 group/seg">
                         <div className="flex items-center gap-1.5 justify-between">
                             <div className="flex items-center gap-1 text-[8px] font-bold text-white/40">
                                 <input 
@@ -948,7 +948,7 @@ const KlingShotBuilder = ({ selections, setSelections }) => (
                                             timestampSegments: p.timestampSegments.map((s, i) => i === idx ? { ...s, start: val } : s)
                                         }));
                                     }}
-                                    className="w-6 bg-white/5 border-none p-0 px-0.5 focus:outline-none rounded text-center text-blue-400"
+                                    className="w-6 bg-white/5 border-none p-0 px-0.5 focus:outline-none rounded text-center text-[#AADD00]"
                                 />
                                 <span>-</span>
                                 <input 
@@ -961,7 +961,7 @@ const KlingShotBuilder = ({ selections, setSelections }) => (
                                             timestampSegments: p.timestampSegments.map((s, i) => i === idx ? { ...s, end: val } : s)
                                         }));
                                     }}
-                                    className="w-6 bg-white/5 border-none p-0 px-0.5 focus:outline-none rounded text-center text-blue-400"
+                                    className="w-6 bg-white/5 border-none p-0 px-0.5 focus:outline-none rounded text-center text-[#AADD00]"
                                 />
                                 <span className="uppercase ml-1">sec</span>
                             </div>
@@ -988,8 +988,8 @@ const KlingShotBuilder = ({ selections, setSelections }) => (
                 ))}
                 {(selections.timestampSegments || []).length === 0 && (
                     <div className="h-full flex flex-col items-center justify-center opacity-20 py-4">
-                        <Zap className="w-6 h-6 mb-1 text-blue-400" />
-                        <span className="text-[7px] font-bold uppercase text-blue-400">Add sequence mapping</span>
+                        <Zap className="w-6 h-6 mb-1 text-[#AADD00]" />
+                        <span className="text-[7px] font-bold uppercase text-[#AADD00]">Add sequence mapping</span>
                     </div>
                 )}
             </div>
@@ -1079,7 +1079,7 @@ const TimestampMultiShot = ({ selections, setSelections }) => (
     <div className="w-1/3 shrink-0 h-full">
         <div className="h-full bg-white/5 border border-white/10 rounded-xl p-2 flex flex-col overflow-hidden">
             <div className="flex items-center justify-between mb-2">
-                <label className="text-[10px] font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                <label className="text-[10px] font-bold text-[#AADD00] uppercase tracking-widest flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5" /> Timestamp Multi-Shot
                 </label>
                 <button 
@@ -1087,7 +1087,7 @@ const TimestampMultiShot = ({ selections, setSelections }) => (
                         ...p, 
                         timestampSegments: [...(p.timestampSegments || []), { id: Date.now(), start: 0, end: 2, description: '' }] 
                     }))}
-                    className="px-1.5 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded text-blue-400 text-[8px] font-black uppercase transition-all"
+                    className="px-1.5 py-0.5 bg-[#AADD00]/10 hover:bg-[#AADD00]/20 border border-[#AADD00]/20 rounded text-[#AADD00] text-[8px] font-black uppercase transition-all"
                 >
                     + Add Segment
                 </button>
@@ -1107,7 +1107,7 @@ const TimestampMultiShot = ({ selections, setSelections }) => (
                                             timestampSegments: p.timestampSegments.map((s, i) => i === idx ? { ...s, start: val } : s)
                                         }));
                                     }}
-                                    className="w-6 bg-white/5 border-none p-0 px-0.5 focus:outline-none rounded text-center text-blue-400"
+                                    className="w-6 bg-white/5 border-none p-0 px-0.5 focus:outline-none rounded text-center text-[#AADD00]"
                                 />
                                 <span>-</span>
                                 <input 
@@ -1120,7 +1120,7 @@ const TimestampMultiShot = ({ selections, setSelections }) => (
                                             timestampSegments: p.timestampSegments.map((s, i) => i === idx ? { ...s, end: val } : s)
                                         }));
                                     }}
-                                    className="w-6 bg-white/5 border-none p-0 px-0.5 focus:outline-none rounded text-center text-blue-400"
+                                    className="w-6 bg-white/5 border-none p-0 px-0.5 focus:outline-none rounded text-center text-[#AADD00]"
                                 />
                                 <span className="uppercase ml-1">sec</span>
                             </div>
@@ -3039,7 +3039,7 @@ export function PromptGenerator({ onUpscale }) {
                                     </select>
                                 </div>
                                 <div className="flex flex-col justify-end">
-                                    <button onClick={() => setSelections(p => ({ ...p, searchGrounding: !p.searchGrounding }))} className={cn("w-full py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-2 transition-all border", selections.searchGrounding ? "bg-blue-500/20 border-blue-500 text-blue-400" : "bg-white/5 border-white/10 text-gray-500")}>
+                                    <button onClick={() => setSelections(p => ({ ...p, searchGrounding: !p.searchGrounding }))} className={cn("w-full py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-2 transition-all border", selections.searchGrounding ? "bg-[#AADD00]/20 border-[#AADD00] text-[#AADD00]" : "bg-white/5 border-white/10 text-gray-500")}>
                                         <Zap className={cn("w-3 h-3", selections.searchGrounding && "animate-pulse")} /> Live Search
                                     </button>
                                 </div>
@@ -3135,7 +3135,7 @@ export function PromptGenerator({ onUpscale }) {
                             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar min-h-[300px] flex flex-col gap-3">
                                 {[
                                     { id: 'characters', label: 'CHARACTERS', desc: 'MULTIPLE ALLOWED', icon: Users, color: 'text-purple-400' },
-                                    { id: 'locations', label: 'LOCATION', desc: 'ONE LOCATION', icon: Map, color: 'text-blue-400' },
+                                    { id: 'locations', label: 'LOCATION', desc: 'ONE LOCATION', icon: Map, color: 'text-[#AADD00]' },
                                     { id: 'wardrobes', label: 'WARDROBE', desc: 'ONE WARDROBE REF', icon: Smartphone, color: 'text-indigo-400' },
                                     { id: 'props', label: 'PROPS', desc: 'MULTIPLE PROPS', icon: Package, color: 'text-amber-600' },
                                     { id: 'moods', label: 'MOOD/STYLE', desc: 'ONE MOOD REF', icon: Palette, color: 'text-rose-500' }

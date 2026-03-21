@@ -54,73 +54,93 @@ const PricingPage = () => {
 
     const plans = [
         {
-            name: "Influencer",
+            name: "Starter",
             monthlyPrice: 399,
             yearlyPrice: 319,
-            description: "Now with a 6-Month Free Trial layout!",
+            description: "An affordable kickstart with a 6-Month setup value layout!",
             features: [
-                "500 Main Credits / month",
-                "6-Month Free Trial Included",
-                "5,000 Nano Banana Images (1k/2k Generation)",
-                "3 Video Generations (Kling/Veo) OR",
-                "1 Complete Ad Generation (16s)",
+                "250 Main Credits / month",
+                "Starter Character Creation",
                 "2 Concurrent Jobs",
-                "2 Veo 1080p Videos (8s)",
-                "Kling 720p Support (5s)",
+                "Kling 720p Access (5s)",
+                "Basic Storyboard builder",
                 "Standard Support"
             ],
             icon: Shield,
-            color: "from-blue-500/10 to-blue-600/5",
-            borderColor: "border-blue-500/20",
-            iconColor: "text-blue-400",
-            buttonText: "Start Exploring",
-            popular: false
+            color: "from-gray-500/10 to-gray-600/5",
+            borderColor: "border-gray-500/20",
+            iconColor: "text-gray-400",
+            buttonText: "Get Started",
+            popular: false,
+            link: "https://rzp.io/rzp/vPs9Yvib"
         },
         {
-            name: "Director",
-            monthlyPrice: 999,
-            yearlyPrice: 799,
-            description: "The choice of professional creators and social media influencers.",
+            name: "Creator",
+            monthlyPrice: 799,
+            yearlyPrice: 639,
+            description: "The choice for professional creators and growing visual brands.",
             features: [
                 "600 Main Credits / month",
                 "3 AI Character Creations",
                 "4 Concurrent Jobs",
                 "100 Kling 720p Videos (5s) OR",
-                "7 Veo 1080p Videos (8s)",
-                "80,000 Nano Banana Images",
-                "1080p Export Resolution",
+                "5 Veo 1080p Videos (8s)",
                 "Batch Mode Support",
                 "Priority Support"
             ],
             icon: Zap,
+            color: "from-blue-500/10 to-blue-600/5",
+            borderColor: "border-blue-500/20",
+            iconColor: "text-blue-400",
+            buttonText: "Start Exploring",
+            popular: false,
+            link: "https://rzp.io/rzp/xCEhb7Nl"
+        },
+        {
+            name: "Pro",
+            monthlyPrice: 2500,
+            yearlyPrice: 1999,
+            description: "Maximum cinematic horsepower for Agencies and Power Users.",
+            features: [
+                "2000 Main Credits / month",
+                "10 AI Character Creations",
+                "8 Concurrent Jobs",
+                "200 Kling 720p Videos (5s) OR",
+                "18 Veo 1080p Videos (8s)",
+                "Unlimited Nano Banana Images",
+                "4K Export Support",
+                "24/7 Dedicated Support"
+            ],
+            icon: Sparkles,
             color: "from-[#D4FF00]/10 to-[#D4FF00]/5",
             borderColor: "border-[#D4FF00]/40",
             iconColor: "text-[#D4FF00]",
             buttonText: "Go Professional",
-            popular: true
+            popular: true,
+            link: "https://rzp.io/rzp/xjMjFsMo"
         },
         {
-            name: "Business",
-            monthlyPrice: 1499,
-            yearlyPrice: 1199,
-            description: "Maximum power for agencies and power users requiring high volume.",
+            name: "Enterprise",
+            monthlyPrice: 5000,
+            yearlyPrice: 3999,
+            description: "Enterprise scalability for Commercial workflows and large volumes.",
             features: [
-                "1200 Main Credits / month",
-                "10 AI Character Creations",
-                "8 Concurrent Jobs",
-                "200 Kling 720p Videos (5s) OR",
-                "15 Veo 1080p Videos (8s)",
-                "Unlimited Nano Banana Images",
-                "4K Export Resolution",
-                "Advanced Batch Processing",
-                "24/7 Dedicated Support"
+                "5000 Main Credits / month",
+                "Unlimited AI Characters",
+                "16 Concurrent Jobs",
+                "500 Kling 720p Videos (5s) OR",
+                "40 Veo 1080p Videos (8s)",
+                "Multi-node Sync renders",
+                "Raw Source Assets exports",
+                "Custom visual model training"
             ],
-            icon: Sparkles,
+            icon: Coins,
             color: "from-purple-500/10 to-purple-600/5",
             borderColor: "border-purple-500/20",
             iconColor: "text-purple-400",
-            buttonText: "Join Elite",
-            popular: false
+            buttonText: "Get Enterprise",
+            popular: false,
+            link: "https://rzp.io/rzp/UCU5bwCC"
         }
     ];
 
@@ -136,7 +156,7 @@ const PricingPage = () => {
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.01] to-transparent animate-shimmer" />
                 <div className="flex items-center gap-4">
                     <div className="px-3 py-1 bg-gradient-to-r from-[#D4FF00]/10 to-transparent border border-[#D4FF00]/20 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-[#D4FF00] flex items-center gap-1.5 shadow-[0_0_20px_rgba(212,255,0,0.1)]">
-                        <Coins size={12} strokeWidth={2.5} /> Credit pipeline
+                        <Zap size={12} strokeWidth={2.5} className="animate-pulse" /> Production Fuel
                     </div>
                     <h1 className="text-2xl font-black italic uppercase tracking-tight text-white/90">
                         Elevate <span className="text-[#D4FF00]">Production</span>
@@ -155,7 +175,7 @@ const PricingPage = () => {
             </div>
 
             {/* Main Content Layout Grid - Stagger Layouts */}
-            <div className="flex-1 grid grid-cols-3 gap-5 overflow-hidden pb-2">
+            <div className="flex-1 grid grid-cols-4 gap-4 overflow-hidden pb-2">
                 {plans.map((plan, idx) => {
                     const currentPrice = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
                     return (
@@ -215,9 +235,9 @@ const PricingPage = () => {
 
                             <button 
                                 onClick={() => {
-                                    if (plan.name === "Influencer") {
+                                    if (plan.link) {
                                         const userIdLink = userProfile?.id ? `?client_id=${userProfile.id}` : "";
-                                        window.open(`https://rzp.io/rzp/tleOsf2${userIdLink}`, "_blank");
+                                        window.open(`${plan.link}${userIdLink}`, "_blank");
                                     } else {
                                         alert("Purchasing: " + plan.name);
                                     }
@@ -245,9 +265,9 @@ const PricingPage = () => {
                 
                 <div className="grid grid-cols-3 gap-3">
                     {[
-                        { price: 300, credits: "350 Credits", desc: "Starter Boost", link: "https://rzp.io/rzp/topup300" },
-                        { price: 900, credits: "1200 Credits", desc: "Popular top-up", link: "https://rzp.io/rzp/topup900", popular: true },
-                        { price: 2000, credits: "3000 Credits", desc: "Agency Bundle", link: "https://rzp.io/rzp/topup2000" }
+                        { price: 300, credits: "300 Credits", desc: "Starter Boost", link: "https://rzp.io/rzp/3EWkwPb3" },
+                        { price: 900, credits: "1000 Credits", desc: "Popular top-up", link: "https://rzp.io/rzp/G31rlOC", popular: true },
+                        { price: 2000, credits: "2500 Credits", desc: "Agency bundle", link: "https://rzp.io/rzp/3jqnUqY" }
                     ].map((topup) => (
                         <div key={topup.price} className={cn(
                             "p-3 rounded-xl border flex items-center justify-between transition-all duration-300 hover:scale-[1.02]",

@@ -20,7 +20,7 @@ export function MobileNav({ activeTab, setActiveTab }) {
 
     const moreNavItems = [
         { id: 'directors-cut', label: "Director's Cut", icon: Clapperboard },
-        { id: 'director-studio', label: "Director Studio", icon: Video },
+        { id: 'creative-studio', label: "Creative Studio", icon: Video },
         { id: 'ugc', label: 'UGC Engine', icon: Sparkles },
         { id: 'settings', label: 'Settings', icon: Settings },
         ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: Shield, color: 'text-red-500' }] : []),

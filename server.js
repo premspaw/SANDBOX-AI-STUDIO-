@@ -78,6 +78,66 @@ import * as productService from './services/productService.js';
 import * as cacheService from './services/cacheService.js';
 import { GoogleAuth } from 'google-auth-library';
 
+// ─────────────────────────────────────────────────────────────
+// VERTEX AI AUTH via Service Account (for Veo 3.1 Video Gen)
+// Uses the zerolen service account JSON key for Bearer tokens
+// ─────────────────────────────────────────────────────────────
+const VERTEX_KEY_PATH = path.join(__dirname, 'gen-lang-client-0438096272-veo.json');
+const VERTEX_PROJECT_ID = 'gen-lang-client-0438096272';
+const VERTEX_LOCATION = process.env.GOOGLE_LOCATION || 'us-central1';
+
+let _vertexAuth = null;
+let _vertexTokenCache = { token: null, expiry: 0 };
+
+/**
+ * Gets a fresh Bearer token from the zerolen service account.
+ * Tokens are cached and auto-refreshed 60s before expiry.
+ */
+const getVertexToken = async () => {
+    const now = Date.now();
+    if (_vertexTokenCache.token && _vertexTokenCache.expiry > now + 60_000) {
+        return _vertexTokenCache.token;
+    }
+
+    try {
+        if (!_vertexAuth) {
+            if (!fs.existsSync(VERTEX_KEY_PATH)) {
+                console.warn(`[VERTEX_AUTH] Key file not found at: ${VERTEX_KEY_PATH}`);
+                return null;
+            }
+            _vertexAuth = new GoogleAuth({
+                keyFile: VERTEX_KEY_PATH,
+                scopes: [
+                    'https://www.googleapis.com/auth/cloud-platform',
+                    'https://www.googleapis.com/auth/generative-language'
+                ]
+
+            });
+        }
+
+        const client = await _vertexAuth.getClient();
+        const tokenResponse = await client.getAccessToken();
+        const token = tokenResponse.token || tokenResponse;
+        
+        // Cache for ~55 mins (tokens last 60 mins)
+        _vertexTokenCache = { token, expiry: now + 55 * 60 * 1000 };
+        console.log(`[VERTEX_AUTH] ✅ Token refreshed for ${VERTEX_PROJECT_ID} (expires in ~55m)`);
+        return token;
+    } catch (err) {
+        console.error(`[VERTEX_AUTH] ❌ Token refresh failed:`, err.message);
+        return null;
+    }
+};
+
+// Log on startup whether the key file exists
+if (fs.existsSync(VERTEX_KEY_PATH)) {
+    console.log(`[VERTEX_AUTH] ✅ Service account key found: ${VERTEX_KEY_PATH}`);
+    // Pre-warm the token
+    getVertexToken().catch(() => {});
+} else {
+    console.warn(`[VERTEX_AUTH] ⚠️  No service account key at: ${VERTEX_KEY_PATH}`);
+}
+
 let _geminiClient = null;
 const getGeminiClient = () => {
     if (!_geminiClient) {
@@ -734,6 +794,15 @@ async function resolveImageForGemini(imageUrl, gcsUri) {
         }
     }
 
+    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('//') && 
+        !imageUrl.startsWith('gs://') && imageUrl.length > 100) {
+        console.log('[resolveImageForGemini] Raw base64 detected, wrapping...');
+        const isPng = imageUrl.startsWith('iVBORw0KGgo');
+        const detectedMimeType = isPng ? 'image/png' : 'image/jpeg';
+        return { type: 'inline', mimeType: detectedMimeType, data: imageUrl };
+
+    }
+
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 seconds safety timeout
@@ -1064,14 +1133,6 @@ async function consumeCredits(userId, cost) {
         console.warn("[SERVER] Profile/Credit check issue, allowing bypass for user:", userId, error.message);
     }
     return true;
-
-    if (err2) {
-        console.error("[SERVER] Credit Deduct Error:", err2);
-        throw new Error("Failed to deduct credits from account.");
-    }
-
-    console.log(`[CREDIT_SYSTEM] Deducted ${cost} from user ${userId}. Remaining: ${profile.shorts_balance - cost}`);
-    return true;
 }
 
 // --- Pricing & Subscription API ---
@@ -1218,6 +1279,7 @@ Action: ${prompt || "modify the highlighted area as requested"}`;
 
 // Generate Image (Multi-Model Support)
 app.post('/api/generate-image', async (req, res) => {
+
     try {
         const { model, prompt, aspect_ratio, image, resolution, userId } = req.body;
         console.log(`[SERVER] Received generation request for model: ${model}`);
@@ -1226,14 +1288,14 @@ app.post('/api/generate-image', async (req, res) => {
         let cost = 1; // Default
         if (model === 'nano-banana-2' || model === 'gemini-3.1-flash-image-preview') cost = 2;
         if (model?.includes('pro') || model === 'gemini-3-pro-image-preview' || model === 'nano-banana-pro-preview') cost = 5;
-        if (model === 'veo' || model === 'veo-3.1-generate-preview') cost = 5;
-        if (model === 'veo-fast' || model === 'veo-3.1-fast-generate-preview') cost = 3;
+        if (model === 'veo' || model === 'veo3' || model === 'veo-3.1-generate-preview') cost = 5;
+        if (model === 'veo-fast' || model === 'veo3_fast' || model === 'veo-3.1-fast-generate-preview') cost = 3;
         if (model === 'kling' || model?.includes('kling-3.0') || model?.includes('kling/') || model === 'runway' || model === 'pika') cost = 10; // Future-proofing
 
         await consumeCredits(userId, cost);
 
         const targetModel = model || req.body.modelEngine;
-        const isVeo = targetModel === 'veo' || targetModel === 'veo-fast' || targetModel?.includes('veo-3.1');
+        const isVeo = targetModel === 'veo' || targetModel === 'veo-fast' || targetModel?.includes('veo-3.1') || targetModel?.includes('veo3');
 
         // Route to appropriate model via Queue
         switch (targetModel) {
@@ -1247,8 +1309,16 @@ app.post('/api/generate-image', async (req, res) => {
             case 'gemini-3-pro-image-preview':
             case 'veo':
             case 'veo-fast':
+            case 'veo3':
+            case 'veo3_fast':
             case 'veo-3.1-generate-preview':
             case 'veo-3.1-fast-generate-preview':
+                const videoProvider = req.body.provider || process.env.VEO_PROVIDER || 'google';
+                if (videoProvider?.toLowerCase() === 'kie') {
+                    console.log("[VEO] Routing via KIE AI wrapper endpoints.");
+                    return handleKieVeo(req, res);
+                }
+
                 // If Redis queues are available, use async job system
                 if ((isVeo && videoQueue) || (!isVeo && imageQueue)) {
                     const jobId = uuidv4();
@@ -1434,13 +1504,14 @@ async function resolveFrameUri(frameData) {
 
         if (!buffer) return null;
 
+        // ✅ Convert buffer to Blob for @google/genai SDK
+        const blob = new Blob([buffer], { type: mimeType });
+
         // Upload to Google AI Files API
         const uploadResponse = await client.files.upload({
-            file: {
-                data: buffer,
-                mimeType: mimeType
-            },
+            file: blob,
             config: {
+                mimeType: mimeType,
                 displayName: `veo-frame-${Date.now()}`
             }
         });
@@ -1524,12 +1595,153 @@ async function resolveToPublicUrl(imgData, userId) {
             if (!uploadError) {
                 const { data } = supabase.storage.from('assets').getPublicUrl(subPath);
                 return data?.publicUrl;
+            } else {
+                throw new Error(`Supabase Asset Upload Failed: ${uploadError.message || JSON.stringify(uploadError)}`);
             }
         }
     } catch (e) {
-        console.error('[RESOLVE-URL-ERR]', e.message);
+        throw e; // Bubble up instead of returning null
     }
     return null;
+}
+
+/**
+ * Handler for Veo 3.1 via KIE AI API Wrapper
+ */
+async function handleKieVeo(req, res) {
+    try {
+        const { prompt, firstFrame, lastFrame, referenceImages = [], duration, includeAudio, userId, aspect_ratio } = req.body;
+        const apiKey = process.env.KLING_API_KEY; // Using KIE Key
+
+        if (!apiKey) throw new Error("KIE API Key not configured. Please add KLING_API_KEY to your environment.");
+
+        // ✅ Only 2 valid model strings per docs
+        const modelId = req.body.model;
+        const kieModelMap = {
+            "veo3":                           "veo3",
+            "veo3_fast":                      "veo3_fast",
+            "veo-3.1-generate-preview":      "veo3",
+            "veo-3.1-fast-generate-preview": "veo3_fast",
+            "veo":                           "veo3",
+            "veo-fast":                      "veo3_fast"
+        };
+        console.log(`[KIE-VEO] Resolving assets for user ${userId}...`);
+        
+        // ─── Resolve all images ───────────────────────────────────
+        const resolvedRefs = [];
+
+        // Resolve referenceImages (Person, Outfit, Stage from Stylist)
+        if (Array.isArray(referenceImages) && referenceImages.length > 0) {
+            for (const img of referenceImages.slice(0, 3)) {
+                const url = await resolveToPublicUrl(img, userId);
+                if (url) resolvedRefs.push(url);
+            }
+        }
+
+        // Fallback to firstFrame if no refs
+        if (resolvedRefs.length === 0 && firstFrame) {
+            const url = await resolveToPublicUrl(firstFrame, userId);
+            if (url) resolvedRefs.push(url);
+        }
+
+        // lastFrame — for first+last interpolation
+        const resolvedLastFrame = lastFrame ? await resolveToPublicUrl(lastFrame, userId) : null;
+
+        console.log(`[VEO-KIE] Resolved images: ${resolvedRefs.length} refs, lastFrame: ${!!resolvedLastFrame}`);
+
+        // ─── Determine generation type ────────────────────────────
+        let generationType;
+        let imageUrls = undefined;
+
+        if (resolvedRefs.length >= 1 && !resolvedLastFrame) {
+            // REFERENCE_2_VIDEO requires veo3_fast — force it
+            generationType = 'REFERENCE_2_VIDEO';
+            kieModel = 'veo3_fast';   // ← docs: REFERENCE_2_VIDEO only supports veo3_fast
+            imageUrls = resolvedRefs.slice(0, 3);
+        } else if (resolvedLastFrame) {
+            // First + last frame interpolation
+            generationType = 'FIRST_AND_LAST_FRAMES_2_VIDEO';
+            imageUrls = [
+                resolvedRefs[0] || resolvedLastFrame,
+                resolvedLastFrame
+            ].filter(Boolean).slice(0, 2);
+        } else if (resolvedRefs.length === 0 && firstFrame) {
+            // Single image i2v
+            generationType = 'FIRST_AND_LAST_FRAMES_2_VIDEO';
+            const url = await resolveToPublicUrl(firstFrame, userId);
+            imageUrls = url ? [url] : undefined;
+        } else {
+            // Text to video
+            generationType = 'TEXT_2_VIDEO';
+        }
+
+        console.log(`[VEO-KIE] Mode: ${generationType} | Model: ${kieModel} | Images: ${imageUrls?.length || 0}`);
+
+        // ─── Build payload ────────────────────────────────────────
+        const payload = {
+            prompt,
+            model: kieModel,
+            generationType,
+            duration: duration,
+            includeAudio: includeAudio,
+            aspect_ratio: aspect_ratio || "16:9",
+            enableTranslation: false,
+            ...(imageUrls?.length > 0 && { imageUrls })
+        };
+ 
+        const createResp = await fetch("https://api.kie.ai/api/v1/veo/generate", {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const createData = await createResp.json();
+        if (createData.code !== 200) throw new Error(`KIE Veo Task Creation Failed: ${createData.msg || JSON.stringify(createData)}`);
+
+        const taskId = createData.data?.taskId;
+        if (!taskId) throw new Error('KIE Veo returned no taskId');
+        console.log(`[KIE-VEO] Task Created: ${taskId}. Polling...`);
+
+        let attempts = 0;
+        const maxAttempts = 80; 
+        while (attempts < maxAttempts) {
+            await new Promise(r => setTimeout(r, 8000));
+            attempts++;
+
+            const pollResp = await fetch(`https://api.kie.ai/api/v1/veo/record-info?taskId=${taskId}`, {
+                headers: { 'Authorization': `Bearer ${apiKey}` }
+            });
+            const pollData = await pollResp.json();
+
+            if (pollData.code !== 200) throw new Error(`KIE Veo Polling Failed: ${pollData.msg}`);
+
+            const successFlag = pollData.data?.successFlag;
+            console.log(`[KIE-VEO-POLL] Status: successFlag=${successFlag} (${attempts})`);
+
+            if (successFlag === 1) {
+                const resultUrls = pollData.data?.response?.resultUrls;
+                const finalUrl = Array.isArray(resultUrls) ? resultUrls[0] : resultUrls;
+                if (!finalUrl) throw new Error("KIE reported success but no result URL was found.");
+                
+                console.log(`[KIE-VEO] Success! Archiving result: ${finalUrl}`);
+                const videoResp = await fetch(finalUrl);
+                const ab = await videoResp.arrayBuffer();
+                const videoBuffer = Buffer.from(ab);
+                const supabaseUrl = await uploadVideoToSupabase(videoBuffer, userId);
+                
+                return res.json({ url: supabaseUrl, videoUrl: supabaseUrl });
+            } else if (successFlag === 2) {
+                throw new Error(`KIE Veo Generation Failed: ${pollData.data?.errorMessage || 'Generation error'}`);
+            }
+        }
+        throw new Error("KIE Veo Render Timeout - Job is still processing.");
+
+    } catch (err) {
+        console.error('[KIE-VEO-ERR]', err);
+        res.status(500).json({ error: err.message });
+    }
 }
 
 /**
@@ -1646,7 +1858,7 @@ async function handleGoogle(req, res) {
         const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
 
         // 2. Define isVeo detection early
-        const isVeo = targetModel === 'veo' || targetModel === 'veo-fast' || targetModel?.includes('veo-3.1');
+        const isVeo = targetModel === 'veo' || targetModel === 'veo-fast' || targetModel?.includes('veo-3.1') || targetModel?.includes('veo3');
 
         // 3. Universal Aspect Ratio Cleaner
         const rawRatio = aspect_ratio || aspectRatio || "16:9";
@@ -1655,10 +1867,13 @@ async function handleGoogle(req, res) {
 
         // --- VIDEO BRANCH ---
         if (isVeo) {
-            console.log(`[VEO-PROD] Starting generation for user: ${userId}`);
+            console.log(`[VEO-PROD] Starting generation for user: ${userId} via Service Account`);
 
-            const modelId = (targetModel === 'veo-fast' || targetModel === 'veo') 
-                ? (targetModel === 'veo-fast' ? 'veo-3.1-fast-generate-preview' : 'veo-3.1-generate-preview')
+            const token = await getVertexToken();
+            if (!token && !apiKey) throw new Error('Failed to acquire service account token or API key for Veo video generation');
+
+            const modelId = (targetModel === 'veo-fast' || targetModel === 'veo' || targetModel === 'veo3' || targetModel === 'veo3_fast') 
+                ? (targetModel.includes('fast') ? 'veo-3.1-fast-generate-preview' : 'veo-3.1-generate-preview')
                 : targetModel;
 
             const resolvedResolution = (() => {
@@ -1667,129 +1882,178 @@ async function handleGoogle(req, res) {
                 return r.toLowerCase(); 
             })();
 
-            // Duration enforcement for Documentation compliance
+            // Duration enforcement
             const hasLastFrame = !!lastFrame;
             const hasRefImages = Array.isArray(referenceImages) && referenceImages.length > 0;
             const isHighRes = ['1080p', '4k'].includes(resolvedResolution);
-            const validDuration = (hasLastFrame || hasRefImages || isHighRes) ? 8 : (parseInt(duration) || 6);
+            const requestedDuration = parseInt(duration) || 8;
+            const validDuration = hasLastFrame ? 8 : requestedDuration;
 
-            // Step 1: Upload Assets
-            const [firstUri, lastUri, refObjects] = await Promise.all([
-                resolveFrameUri(firstFrame),
-                resolveFrameUri(lastFrame),
-                Promise.all(referenceImages.slice(0, 3).map(async (src) => {
-                    const uploaded = await resolveFrameUri(src);
-                    return uploaded ? { image: { fileData: uploaded }, referenceType: 'subject' } : null;
-                })).then(objs => objs.filter(Boolean))
+            // ─── Resolve images to base64 for Service Account REST API ────────────────
+            const resolveToBase64 = async (src) => {
+                if (!src) return null;
+                try {
+                    if (src.startsWith('data:')) {
+                        return { bytesBase64Encoded: src.split(',')[1], mimeType: src.match(/:(.*?);/)?.[1] || 'image/png' };
+                    }
+                    if (src.startsWith('http')) {
+                        const resp = await fetch(src);
+                        const ab = await resp.arrayBuffer();
+                        return { bytesBase64Encoded: Buffer.from(ab).toString('base64'), mimeType: resp.headers.get('content-type') || 'image/png' };
+                    }
+                    return { bytesBase64Encoded: src, mimeType: 'image/png' };
+                } catch (e) { return null; }
+            };
+
+            const [firstFrameData, lastFrameData] = await Promise.all([
+                resolveToBase64(firstFrame),
+                resolveToBase64(lastFrame)
             ]);
 
-            // Step 2: Generate Video (Using Plural Method generateVideos)
-            const operation = await client.models.generateVideos({
-                model: modelId,
-                prompt: prompt,
-                image: firstUri ? { fileData: firstUri } : undefined,
-                config: {
+            const resolvedRefs = await Promise.all(referenceImages.slice(0, 3).map(async (src) => {
+                const b64 = await resolveToBase64(src);
+
+                if (!b64) return null;
+                return {
+                    image: {
+                        bytesBase64Encoded: b64.bytesBase64Encoded,
+                        mimeType: b64.mimeType
+                    },
+                    referenceType: "asset"
+                };
+            }));
+            const filteredRefs = resolvedRefs.filter(Boolean);
+
+            // ─── Initiate Long Running Operation via REST ───
+            const hasValidRefImages = filteredRefs.length > 0;
+            const isVertex = hasValidRefImages && !!token; // Use Vertex only when ref images present
+            const endpoint = isVertex
+                ? `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelId}:predictLongRunning`
+                : `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:predictLongRunning?key=${apiKey}`;
+
+            const payload = {
+                instances: [{
+                    prompt: prompt,
+                    ...(firstFrameData && { image: firstFrameData }),
+                    ...(lastFrameData && { lastFrame: lastFrameData }),
+                    ...(filteredRefs.length > 0 && { referenceImages: filteredRefs })
+                }],
+                parameters: {
                     aspectRatio: validRatio,
                     durationSeconds: validDuration,
                     resolution: resolvedResolution,
-                    lastFrame: lastUri ? { fileData: lastUri } : undefined,
-                    referenceImages: refObjects.length > 0 ? refObjects : undefined,
-                    includeAudio: req.body.audio === 'On'
+                    sampleCount: 1,
+                    generateAudio: req.body.includeAudio || false,
+                    ...(filteredRefs.length > 0 && { durationSeconds: 8 }) // docs say must be 8 with refs
                 }
-            }, {
-                headers: {
-                    'Referer': 'http://localhost:5173/',
-                    'Origin': 'http://localhost:5173'
-                },
-                httpOptions: {
-                    headers: {
-                        'Referer': 'http://localhost:5173/',
-                        'Origin': 'http://localhost:5173'
-                    }
-                },
-                requestOptions: {
-                    headers: {
-                        'Referer': 'http://localhost:5173/',
-                        'Origin': 'http://localhost:5173'
-                    }
-                }
+            };
+
+            const headers = { 'Content-Type': 'application/json' };
+            if (isVertex) headers['Authorization'] = `Bearer ${token}`;
+
+            console.log(`[VEO-PROD] Requesting via ${isVertex ? 'Service Account' : 'API Key'}: ${modelId} | Duration: ${validDuration}s`);
+            const initResp = await fetch(endpoint, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(payload)
             });
 
-            console.log(`[VEO-PROD] Operation Created: ${operation.name}`);
+            const operation = await initResp.json();
 
-            // Step 3: Polling Loop (Standard 2026 Production Polling)
+            if (operation.error) {
+                console.error("[VEO-PROD] REST Initiation Error:", JSON.stringify(operation.error, null, 2));
+                throw new Error(operation.error.message || "Veo Generation Initiation Failed");
+            }
+
+            console.log(`[VEO-PROD] Operation Started: ${operation.name}`);
+
+            // ─── Polling Loop (Token-Based) ───
             let isDone = false;
             let attempts = 0;
-            const maxAttempts = 80; // 8 minutes safety
+            const maxAttempts = 100; 
+            let operationResult = operation;
+
             while (!isDone && attempts < maxAttempts) {
                 await new Promise(r => setTimeout(r, 6000));
                 attempts++;
 
-                const isToken = apiKey?.startsWith('AQ.') || apiKey?.startsWith('ya29.');
-                const projectId = process.env.GOOGLE_PROJECT_ID || 'ai-cinemastudio-569815811058';
-                const location = process.env.GOOGLE_LOCATION || 'us-central1';
-                
-                // Construct poll URL based on auth type
-                const pollUrl = isToken 
-                    ? `https://${location}-aiplatform.googleapis.com/v1/${operation.name.includes('/') ? operation.name : `projects/${projectId}/locations/${location}/operations/${operation.name}`}`
-                    : `https://generativelanguage.googleapis.com/v1beta/${operation.name}?key=${apiKey}`;
-                
-                const pollResp = await fetch(pollUrl, {
-                    headers: {
-                        'Referer': 'http://localhost:5173/',
-                        'Origin': 'http://localhost:5173',
-                        ...(isToken ? { 'Authorization': `Bearer ${apiKey}` } : {})
-                    }
-                });
-                const opStatus = await pollResp.json();
+                const isProjectBased = operationResult.name.startsWith('projects/');
+                let pollUrl, pollMethod, pollBody, pollHeaders = {};
 
-                console.log(`[VEO-POLL] Status: ${opStatus.done ? 'DONE' : 'PENDING'}, Keys: ${Object.keys(opStatus).join(', ')}`);
-                if (opStatus.error) {
-                    console.error("[VEO-API-ERR]", opStatus.error);
-                    throw new Error(opStatus.error.message || "Veo Engine Failure");
+                if (isVertex && isProjectBased) {
+                    // Vertex uses POST fetchPredictOperation
+                    pollUrl = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelId}:fetchPredictOperation`;
+                    pollMethod = 'POST';
+                    pollBody = JSON.stringify({ operationName: operationResult.name });
+                    pollHeaders['Authorization'] = `Bearer ${token}`;
+                    pollHeaders['Content-Type'] = 'application/json';
+                } else {
+                    // AI Studio uses GET
+                    pollUrl = `https://generativelanguage.googleapis.com/v1beta/${operationResult.name}?key=${apiKey}`;
+                    pollMethod = 'GET';
+                    pollBody = undefined;
                 }
 
-                if (opStatus.done) {
+                const pollResp = await fetch(pollUrl, { 
+                    method: pollMethod, 
+                    headers: pollHeaders,
+                    body: pollBody
+                });
+
+                operationResult = await pollResp.json();
+
+
+                if (operationResult.error) {
+                    console.error("[VEO-PROD] Polling Error:", operationResult.error);
+                    throw new Error(operationResult.error.message || "Veo Polling Failed");
+                }
+
+                if (operationResult.done) {
                     isDone = true;
-                    // Precise target: search in the response first
-                    const videoData = findVideoInResponse(opStatus.response || opStatus);
+                    // Extract video data
+                    const videoData = findVideoInResponse(operationResult.response || operationResult);
                     if (!videoData) {
-                        console.error("[VEO-ERR] No video data found in response. Saving diagnostic log...");
-                        fs.writeFileSync(path.join(__dirname, 'last_veo_response.json'), JSON.stringify(opStatus, null, 2));
-                        throw new Error("Safety refusal or structural error: No video returned.");
+                        fs.writeFileSync(path.join(__dirname, 'last_veo_response.json'), JSON.stringify(operationResult, null, 2));
+                        throw new Error("No video returned from engine (Safety or Filtered). Check logs.");
                     }
 
-                    console.log(`[VEO-PROD] Video data extracted. Keys: ${Object.keys(videoData).join(', ')}`);
-                    let videoUrl = null;
-                    const b64Source = videoData.videoBytes || videoData.bytesBase64Encoded || videoData.videoUri;
+                    console.log(`[VEO-PROD] Video ready! Downloading via token...`);
+                    let videoBuffer;
 
-                    if (b64Source) {
-                        console.log(`[VEO-PROD] Source type: ${typeof b64Source === 'string' ? (b64Source.startsWith('http') ? 'URL' : 'Base64 String') : 'Buffer/Bytes'}`);
-                        let videoBuffer;
-                        if (typeof b64Source === 'string' && (b64Source.startsWith('http') || b64Source.startsWith('https://'))) {
-                            const videoResp = await fetch(`${b64Source}${b64Source.includes('?') ? '&' : '?'}key=${apiKey}`);
-                            const ab = await videoResp.arrayBuffer();
-                            videoBuffer = Buffer.from(ab);
-                        } else {
-                            videoBuffer = typeof b64Source === 'string' ? Buffer.from(b64Source, 'base64') : Buffer.from(b64Source);
+                    if (videoData.videoBytes || videoData.bytesBase64Encoded) {
+                        videoBuffer = Buffer.from(videoData.videoBytes || videoData.bytesBase64Encoded, 'base64');
+                    } else if (videoData.uri || videoData.videoUri) {
+                        const dlUri = videoData.uri || videoData.videoUri;
+                        const dlUrl = isVertex && isProjectBased
+                            ? `${dlUri}?alt=media`
+                            : `${dlUri}&key=${apiKey}`;
+
+                        const dlHeaders = {};
+                        if (isVertex && isProjectBased) {
+                            dlHeaders['Authorization'] = `Bearer ${token}`;
                         }
-                        videoUrl = await uploadVideoToSupabase(videoBuffer, userId);
-                    } else if (videoData.uri) {
-                        const isToken = apiKey?.startsWith('AQ.') || apiKey?.startsWith('ya29.');
-                        const downloadUrl = isToken ? videoData.uri : `${videoData.uri}?key=${apiKey}`;
-                        const videoResp = await fetch(downloadUrl, {
-                            headers: isToken ? { 'Authorization': `Bearer ${apiKey}` } : {}
-                        });
-                        const ab = await videoResp.arrayBuffer();
-                        const videoBuffer = Buffer.from(ab);
-                        videoUrl = await uploadVideoToSupabase(videoBuffer, userId);
+
+                        const dlResp = await fetch(dlUrl, { headers: dlHeaders });
+
+                        if (!dlResp.ok) throw new Error(`Video download failed: ${dlResp.statusText}`);
+                        const ab = await dlResp.arrayBuffer();
+                        videoBuffer = Buffer.from(ab);
                     }
-                    
-                    if (!videoUrl) throw new Error("Failed to extract video content from engine response.");
-                    return res.json({ url: videoUrl, videoUrl });
+
+                    if (!videoBuffer) throw new Error("Failed to extract video content.");
+
+                    const finalUrl = await uploadVideoToSupabase(videoBuffer, userId);
+                    console.log(`[VEO-PROD] ✅ Generation successful: ${finalUrl.substring(0, 50)}...`);
+                    return res.json({ url: finalUrl, videoUrl: finalUrl });
+                }
+
+                if (attempts % 10 === 0) {
+                    console.log(`[VEO-PROD] Polling... (${attempts * 6}s elapsed)`);
                 }
             }
-            throw new Error("Render Timeout");
+
+            throw new Error("Veo Generation timed out after 10 minutes.");
+
 
         } else {
             // --- IMAGE BRANCH (NANO BANANA) ---
@@ -1817,8 +2081,8 @@ async function handleGoogle(req, res) {
             )).filter(Boolean);
 
             // ── HTTP/base64 fallback ──────────────────────
-            const { images = [], references = [], consistencyRefs = [], image: baseImage, product_image, identity_images = [] } = req.body || {};
-            const combinedRefs = [...(images || []), ...(references || []), ...(identity_images || []), ...(consistencyRefs || []), product_image, baseImage].filter(Boolean);
+            const { images = [], references = [], consistencyRefs = [], image: baseImage, product_image, identity_images = [], referenceImages = [] } = req.body || {};
+            const combinedRefs = [...(images || []), ...(references || []), ...(identity_images || []), ...(consistencyRefs || []), ...(referenceImages || []), product_image, baseImage].filter(Boolean);
             const inputImages = Array.from(new Set(combinedRefs)); // De-duplicate
 
             const httpContentParts = await Promise.all(inputImages.map(async (img) => {
@@ -1830,7 +2094,16 @@ async function handleGoogle(req, res) {
 
             const biblePrefix = bible ? `### NEURAL_UNIVERSE_BIBLE_CONTEXT\n${Object.entries(bible.characters || {}).map(([id, char]) => `- ${char.name}: ${char.backstory?.substring(0, 50)}...`).join('\n')}\nINSTRUCTIONS: Maintain consistency.\n\n` : "";
 
-            const contentParts = [...gcsContentParts, ...httpContentParts];
+            const contentParts = [];
+            
+            if (gcsContentParts.length > 0 || httpContentParts.length > 0) {
+                 contentParts.push({ text: "### REFERENCE IMAGES PROVIDED BY USER:\nBelow are reference assets loaded by the user (such as character features, clothing styles, or environment/stage details). Integrates these visual concepts faithfully into the layout of the generated output image." });
+                 contentParts.push(...gcsContentParts, ...httpContentParts);
+                 contentParts.push({ text: "### MAIN SCENE DIRECTION:\n" });
+            } else {
+                 contentParts.push(...gcsContentParts, ...httpContentParts);
+            }
+            
             contentParts.push({ text: biblePrefix + prompt.replace(/--ar\s+\d+:\d+/g, '').trim() });
 
             console.log(`[BACKEND] contentParts total: ${contentParts.length}`);
@@ -1928,6 +2201,13 @@ async function handleGoogle(req, res) {
     } catch (error) {
         console.error('CRITICAL GOOGLE ERROR:', error);
         if (!res.headersSent) {
+            const isQuota = error.status === 429 || error.statusCode === 429 || error.message?.includes('429') || error.message?.includes('Quota');
+            if (isQuota) {
+                return res.status(429).json({
+                    error: 'Quota Exceeded',
+                    message: 'Google AI Quota or Rate Limit exceeded. Please wait a minute or check your workspace Billing plan.'
+                });
+            }
             res.status(500).json({
                 error: 'AI Engineering Error',
                 message: error.message
@@ -3484,7 +3764,7 @@ app.post('/api/ugc/preview-scene', async (req, res) => {
 
         // ── STEP 2: VEO 3.1 I2V ANIMATION ────────────────────────────
         broadcastProgress(taskId, 2, 3, 'Animating keyframe with Veo 3.1...');
-        console.log(`[UGC - PREVIEW] STEP 2 — Sending keyframe to Veo I2V`);
+        console.log(`[UGC-PREVIEW] STEP 2 — Sending keyframe to Veo I2V via Service Account`);
 
         const motionPrompt = [
             scene?.action || 'Smooth, confident movement',
@@ -3493,7 +3773,10 @@ app.post('/api/ugc/preview-scene', async (req, res) => {
         ].filter(Boolean).join('. ');
 
         // Fetch the keyframe and convert to base64 for Veo
-        const apiKey = process.env.GOOGLE_API_KEY;
+        const token = await getVertexToken();
+        const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+        if (!token && !apiKey) throw new Error('Failed to acquire service account token or API key for video generation');
+
         let keyframeBase64 = '';
         let keyframeMime = 'image/png';
 
@@ -3514,7 +3797,7 @@ app.post('/api/ugc/preview-scene', async (req, res) => {
         const validDuration = [4, 6, 8].includes(Number(duration)) ? Number(duration) : 6;
         const validAspectRatio = ['16:9', '9:16', '1:1'].includes(aspectRatio) ? aspectRatio : '9:16';
         const veoModel = 'veo-3.1-generate-preview';
-        const veoEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${veoModel}:predictLongRunning?key=${apiKey}`;
+        const veoEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${veoModel}:predictLongRunning`;
 
         const veoBody = {
             instances: [{
@@ -3530,7 +3813,10 @@ app.post('/api/ugc/preview-scene', async (req, res) => {
 
         const veoInitResp = await withRetry(() => fetch(veoEndpoint, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify(veoBody)
         }));
         const operation = await veoInitResp.json();
@@ -3541,17 +3827,21 @@ app.post('/api/ugc/preview-scene', async (req, res) => {
         }
 
         console.log(`[UGC-PREVIEW] Veo operation started: ${operation.name}`);
-        broadcastProgress(taskId, 3, 3, 'Rendering video (this takes ~2 min)...');
+        broadcastProgress(taskId, 3, 3, 'Rendering video (Service Account)...');
 
         // Poll until complete
-        const pollUrl = `https://generativelanguage.googleapis.com/v1beta/${operation.name}?key=${apiKey}`;
+        const pollUrl = `https://generativelanguage.googleapis.com/v1beta/${operation.name}`;
         let attempts = 0;
+
         const maxAttempts = 60;
         while (attempts < maxAttempts) {
             await new Promise(r => setTimeout(r, 6000));
             attempts++;
-            const pollResp = await fetch(pollUrl);
+            const pollResp = await fetch(pollUrl, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const opStatus = await pollResp.json();
+
             if (opStatus.done) {
                 const videoData = findVideoInResponse(opStatus);
                 if (!videoData) {
@@ -3561,11 +3851,15 @@ app.post('/api/ugc/preview-scene', async (req, res) => {
 
                 let finalVideoUrl = null;
                 if (videoData.uri) {
-                    finalVideoUrl = `${videoData.uri}&key=${apiKey}`;
+                    finalVideoUrl = `${videoData.uri}?alt=media&key=${apiKey}`;
+                    if (token && token.startsWith('ya29')) {
+                        finalVideoUrl = `${videoData.uri}?alt=media`;
+                    }
                 } else if (videoData.videoBytes || videoData.bytesBase64Encoded) {
                     const b64 = videoData.videoBytes ? Buffer.from(videoData.videoBytes).toString('base64') : videoData.bytesBase64Encoded;
                     finalVideoUrl = `data:video/mp4;base64,${b64}`;
                 }
+
 
                 if (!finalVideoUrl) throw new Error('Failed to assemble video URL from Veo response.');
 
@@ -3635,15 +3929,20 @@ app.post('/api/ugc/veo-i2v', async (req, res) => {
         const modelName = 'veo-3.1-generate-preview';
         let operation;
 
-        // We prioritize the REST API predictLongRunning as it has been more stable for Veo 3.1 in this environment
-        const apiKey = process.env.GOOGLE_API_KEY;
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predictLongRunning?key=${apiKey}`;
+        // We prioritize the REST API predictLongRunning with Service Account Auth
+        const token = await getVertexToken();
+        const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+        if (!token && !apiKey) throw new Error('Failed to acquire service account token or API key for Veo I2V');
 
-        console.log(`[VEO-I2V] Calling REST API: ${endpoint}`);
-        // Use nodeFetch instead of global fetch for better stability on Node 18
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predictLongRunning`;
+
+        console.log(`[VEO-I2V] Calling REST API via Service Account for project: ${VERTEX_PROJECT_ID}`);
         const restResponse = await fetch(endpoint, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify({
                 instances: [instance],
                 parameters: {
@@ -3661,6 +3960,7 @@ app.post('/api/ugc/veo-i2v', async (req, res) => {
             throw new Error(operation.error.message || "REST Initiation Failed");
         }
 
+
         console.log(`[VEO-I2V] Operation started: ${operation.name}`);
         broadcastProgress(taskId, 2, 3, 'Animating scene (Veo 3.1 Render)...');
 
@@ -3674,9 +3974,12 @@ app.post('/api/ugc/veo-i2v', async (req, res) => {
             await new Promise(resolve => setTimeout(resolve, 6000)); // 6s interval
 
             try {
-                const pollResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/${operationResult.name}?key=${apiKey}`);
+                const pollResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/${operationResult.name}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 if (!pollResp.ok) throw new Error(`HTTP Error: ${pollResp.status}`);
                 operationResult = await pollResp.json();
+
 
                 if (operationResult.error) {
                     console.error(`[VEO-I2V] Polling Error:`, JSON.stringify(operationResult.error, null, 2));
@@ -3715,11 +4018,14 @@ app.post('/api/ugc/veo-i2v', async (req, res) => {
             videoUrl = `data:video/mp4;base64,${b64}`;
         } else if (video.uri) {
             console.log(`[VEO-I2V] Downloading URI: ${video.uri}`);
-            const videoResp = await fetch(`${video.uri}&key=${apiKey}`);
+            const videoResp = await fetch(`${video.uri}?alt=media`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (!videoResp.ok) throw new Error(`Video download failed: ${videoResp.statusText}`);
             const videoBuffer = await videoResp.arrayBuffer();
             videoUrl = `data:video/mp4;base64,${Buffer.from(videoBuffer).toString('base64')}`;
         }
+
 
         if (!videoUrl) throw new Error('Failed to assemble video URL.');
 
