@@ -74,6 +74,7 @@ function StarField() {
 
 export default function AuthPage({ onAuthSuccess, isModal = false }) {
     const [isLogin, setIsLogin] = useState(true);
+    const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -82,6 +83,31 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
     const [success, setSuccess] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isForgotPassword, setIsForgotPassword] = useState(false);
+
+    // Helper to ensure profile exists
+    const ensureProfile = async (user) => {
+        if (!user) return;
+        try {
+            const { data, error: profileError } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('id', user.id)
+                .maybeSingle();
+            
+            if (!data && !profileError) {
+                // Create profile if missing
+                await supabase.from('profiles').insert({
+                    id: user.id,
+                    email: user.email,
+                    full_name: user.user_metadata?.full_name || '',
+                    shorts_balance: 50, // Default starting balance
+                    tier: 'FREE'
+                });
+            }
+        } catch (e) {
+            console.error("Error ensuring profile:", e);
+        }
+    };
 
     // Load fonts
     useEffect(() => {
@@ -152,14 +178,25 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                     onAuthSuccess(data.user);
                 }
             } else {
+                if (!fullName) {
+                    setError('Please enter your full name.');
+                    setLoading(false);
+                    return;
+                }
                 const { data, error: authError } = await supabase.auth.signUp({
                     email,
                     password,
+                    options: {
+                        data: {
+                            full_name: fullName,
+                        }
+                    }
                 });
                 if (authError) throw authError;
                 if (data?.user && !data.user.identities?.length) {
                     setError('An account with this email already exists.');
                 } else if (data?.session) {
+                    await ensureProfile(data.user);
                     onAuthSuccess(data.user);
                 } else {
                     setSuccess('Account created! Check your email for a confirmation link.');
@@ -318,6 +355,26 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                         )}
 
                         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <AnimatePresence>
+                                {!isLogin && !isForgotPassword && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        style={{ display: 'flex', flexDirection: 'column', gap: 8, overflow: 'hidden' }}
+                                    >
+                                        <label style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em', opacity: 0.3 }}>FULL_NAME</label>
+                                        <input
+                                            type="text"
+                                            value={fullName}
+                                            onChange={(e) => setFullName(e.target.value)}
+                                            placeholder="John Doe"
+                                            style={inputStyle}
+                                        />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                 <label style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em', opacity: 0.3 }}>EMAIL_ADDRESS</label>
                                 <input

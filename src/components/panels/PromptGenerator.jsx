@@ -1001,7 +1001,7 @@ const KlingCharacterLayer = ({ selections, handleTextChange, setShowRefBoard, me
     <div className="flex-1 bg-purple-500/5 border border-purple-500/20 rounded-xl p-2 flex flex-col">
         <div className="flex items-center justify-between mb-2">
             <label className="text-[10px] font-bold text-purple-400 uppercase tracking-widest flex items-center gap-2">
-                <Zap className="w-3.5 h-3.5" /> Kling Character Layer
+                <Zap className="w-3.5 h-3.5" /> Kling & Veo Ingredients
             </label>
             <div className="flex items-center gap-2">
                 <span className="text-gray-600 font-normal normal-case tracking-normal text-[9px] hidden sm:block">Type @ to tag</span>
@@ -1080,7 +1080,7 @@ const TimestampMultiShot = ({ selections, setSelections }) => (
         <div className="h-full bg-white/5 border border-white/10 rounded-xl p-2 flex flex-col overflow-hidden">
             <div className="flex items-center justify-between mb-2">
                 <label className="text-[10px] font-bold text-[#AADD00] uppercase tracking-widest flex items-center gap-2">
-                    <Clock className="w-3.5 h-3.5" /> Timestamp Multi-Shot
+                    <Clock className="w-3.5 h-3.5" /> Veo Sequence Builder
                 </label>
                 <button 
                     onClick={() => setSelections(p => ({ 
@@ -1140,7 +1140,7 @@ const TimestampMultiShot = ({ selections, setSelections }) => (
                                 ...p,
                                 timestampSegments: p.timestampSegments.map((s, i) => i === idx ? { ...s, description: e.target.value } : s)
                             }))}
-                            placeholder="Segment description..."
+                            placeholder="Veo 3.1 sequence action or shot description..."
                             className="w-full bg-white/5 border border-white/5 rounded p-1 text-[10px] text-white/80 placeholder:text-white/10 focus:outline-none resize-none h-8 custom-scrollbar"
                         />
                     </div>

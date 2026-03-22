@@ -18,6 +18,7 @@ export default function SettingsPage() {
     const [marketingEmails, setMarketingEmails] = useState(true);
     const [securityAlerts, setSecurityAlerts] = useState(true);
     const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+    const [billingHistory, setBillingHistory] = useState([]);
 
     useEffect(() => {
         if (profile) {
@@ -25,6 +26,26 @@ export default function SettingsPage() {
             setMarketingEmails(profile.marketing_emails ?? true);
             setSecurityAlerts(profile.security_alerts ?? true);
             setTwoFactorEnabled(profile.two_factor_enabled ?? false);
+
+            // Fetch billing history if active tab is billing
+            if (activeTab === 'billing') {
+                const fetchBillingHistory = async (userId) => {
+                    try {
+                        const { data, error } = await supabase
+                            .from('billing_history')
+                            .select('*')
+                            .eq('user_id', userId)
+                            .order('created_at', { ascending: false })
+                            .limit(10);
+                        
+                        if (error) throw error;
+                        setBillingHistory(data || []);
+                    } catch (err) {
+                        console.error('Error fetching billing history:', err);
+                    }
+                };
+                fetchBillingHistory(profile.id);
+            }
         } else {
             setLoading(true);
             const checkUser = async () => {
@@ -34,7 +55,7 @@ export default function SettingsPage() {
             };
             checkUser();
         }
-    }, [profile]);
+    }, [profile, activeTab]);
 
     const handleUpdateProfile = async (e) => {
         e.preventDefault();
@@ -142,87 +163,162 @@ export default function SettingsPage() {
 
                         {/* PROFILE VIEW */}
                         {activeTab === 'profile' && (
-                            <form onSubmit={handleUpdateProfile} className="bg-white/5 border border-white/10 rounded-2xl p-8 space-y-6">
-                                <h2 className="text-lg font-black text-white uppercase tracking-wider italic">Personal Information</h2>
-
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] text-white/40 font-black uppercase tracking-widest ml-1">Email Address</label>
-                                        <div className="relative group">
-                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-                                            <input
-                                                type="email"
-                                                value={profile?.email || ''}
-                                                disabled
-                                                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm text-white/40 font-medium cursor-not-allowed"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] text-white/40 font-black uppercase tracking-widest ml-1">Full Name</label>
-                                        <div className="relative group">
-                                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-[#bef264] transition-colors" />
-                                            <input
-                                                type="text"
-                                                value={fullName}
-                                                onChange={(e) => setFullName(e.target.value)}
-                                                placeholder="Your Name"
-                                                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm text-white focus:border-[#bef264]/50 outline-none transition-all"
-                                            />
-                                        </div>
-                                    </div>
+                            <div className="space-y-6">
+                                {/* Greeting Section */}
+                                <div className="bg-gradient-to-r from-[#bef264]/20 to-transparent border border-[#bef264]/10 rounded-2xl p-8">
+                                    <h2 className="text-2xl font-black text-white uppercase tracking-tight italic flex items-center gap-3">
+                                        Hey {fullName.split(' ')[0] || 'there'}, <span className="text-[#bef264]">Welcome to ZeroLines!</span>
+                                    </h2>
+                                    <p className="text-white/60 text-sm mt-2 font-medium">
+                                        You're all set to create some amazing things. Your cinematic journey starts here.
+                                    </p>
                                 </div>
 
-                                {message.text && (
-                                    <div className={`p-4 rounded-xl text-xs font-bold uppercase tracking-widest ${message.type === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                                        {message.text}
+                                <form onSubmit={handleUpdateProfile} className="bg-white/5 border border-white/10 rounded-2xl p-8 space-y-6">
+                                    <div className="flex items-center justify-between">
+                                        <h2 className="text-lg font-black text-white uppercase tracking-wider italic">Personal Information</h2>
+                                        <span className="text-[10px] text-[#bef264] font-black uppercase tracking-widest bg-[#bef264]/10 px-2 py-1 rounded">Profile Active</span>
                                     </div>
-                                )}
 
-                                <button
-                                    type="submit"
-                                    disabled={saving}
-                                    className="w-full py-4 bg-[#bef264] text-black font-black uppercase text-xs tracking-[0.2em] rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-[#bef264]/10 disabled:opacity-50"
-                                >
-                                    {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                                    Save Profile
-                                </button>
-                            </form>
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] text-white/40 font-black uppercase tracking-widest ml-1">Email Address</label>
+                                            <div className="relative group">
+                                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                                                <input
+                                                    type="email"
+                                                    value={profile?.email || ''}
+                                                    disabled
+                                                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm text-white/40 font-medium cursor-not-allowed"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] text-white/40 font-black uppercase tracking-widest ml-1">Full Name</label>
+                                            <div className="relative group">
+                                                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-[#bef264] transition-colors" />
+                                                <input
+                                                    type="text"
+                                                    value={fullName}
+                                                    onChange={(e) => setFullName(e.target.value)}
+                                                    placeholder="Your Name"
+                                                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm text-white focus:border-[#bef264]/50 outline-none transition-all"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {message.text && (
+                                        <div className={`p-4 rounded-xl text-xs font-bold uppercase tracking-widest ${message.type === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                                            {message.text}
+                                        </div>
+                                    )}
+
+                                    <button
+                                        type="submit"
+                                        disabled={saving}
+                                        className="w-full py-4 bg-[#bef264] text-black font-black uppercase text-xs tracking-[0.2em] rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-[#bef264]/10 disabled:opacity-50"
+                                    >
+                                        {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                        Update Profile
+                                    </button>
+                                </form>
+                            </div>
                         )}
 
                         {/* BILLING VIEW */}
                         {activeTab === 'billing' && (
                             <div className="space-y-6">
-                                <div className="bg-gradient-to-br from-[#bef264]/10 to-transparent border border-[#bef264]/20 rounded-2xl p-8">
-                                    <div className="flex items-start justify-between">
+                                <div className="bg-gradient-to-br from-[#bef264]/10 to-transparent border border-[#bef264]/20 rounded-2xl p-8 relative overflow-hidden">
+                                     {/* Background Decor */}
+                                     {profile?.tier !== 'FREE' && (
+                                        <div className="absolute -right-8 -top-8 w-32 h-32 bg-[#bef264]/10 blur-3xl rounded-full" />
+                                     )}
+
+                                    <div className="flex items-start justify-between relative z-10">
                                         <div>
-                                            <h2 className="text-lg font-black text-white uppercase tracking-wider italic">Membership Tier</h2>
-                                            <p className="text-white/40 text-[10px] font-mono uppercase tracking-widest mt-1">Manage your active subscription</p>
+                                            <h2 className="text-lg font-black text-white uppercase tracking-wider italic">Membership Status</h2>
+                                            <p className="text-white/40 text-[10px] font-mono uppercase tracking-widest mt-1">
+                                                Plan Active Since: {profile?.updated_at ? new Date(profile.updated_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '---'}
+                                            </p>
                                         </div>
-                                        <div className="px-3 py-1 bg-[#bef264] text-black rounded-full border border-[#bef264]/50 shadow-[0_0_15px_rgba(190,242,100,0.3)]">
-                                            <span className="text-[10px] font-black uppercase tracking-widest">{profile?.tier || 'FREE'} PLAN</span>
+                                        <div className="px-4 py-1.5 bg-[#bef264] text-black rounded-full border border-[#bef264]/50 shadow-[0_0_20px_rgba(190,242,100,0.4)]">
+                                            <span className="text-[11px] font-black uppercase tracking-widest leading-none">
+                                                {profile?.tier || 'FREE'} PLAN
+                                            </span>
                                         </div>
                                     </div>
 
-                                    <div className="mt-8 pt-8 border-t border-[#bef264]/20 flex gap-4">
-                                        <button className="flex-1 py-3 bg-[#bef264] text-black font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-[#a3d951] transition-colors">
-                                            Change Plan
+                                    <div className="mt-8 grid grid-cols-2 gap-4">
+                                        <div className="p-4 bg-white/5 border border-white/5 rounded-xl">
+                                            <div className="text-[10px] text-white/40 font-black uppercase tracking-widest flex items-center gap-2 mb-1">
+                                                <Coins size={10} className="text-[#bef264]" /> Monthly Allowance
+                                            </div>
+                                            <div className="text-lg font-black text-white">
+                                                {profile?.tier === 'STARTER' ? '250 Credits' : 
+                                                 profile?.tier === 'INFLUENCER' ? '600 Credits' : 
+                                                 profile?.tier === 'DIRECTOR' ? '2000 Credits' :
+                                                 profile?.tier === 'ENTERPRISE' ? '5000 Credits' : '50 Free Credits'}
+                                            </div>
+                                        </div>
+                                        <div className="p-4 bg-white/5 border border-white/5 rounded-xl">
+                                            <div className="text-[10px] text-white/40 font-black uppercase tracking-widest flex items-center gap-2 mb-1">
+                                                <Zap size={10} className="text-[#bef264]" /> Productivity Perk
+                                            </div>
+                                            <div className="text-[11px] font-bold text-white uppercase">
+                                                {profile?.tier === 'STARTER' ? '2 Concurrent Jobs' : 
+                                                 profile?.tier === 'INFLUENCER' ? '4 Concurrent Jobs' : 
+                                                 profile?.tier === 'DIRECTOR' ? '8 Concurrent Jobs' :
+                                                 profile?.tier === 'ENTERPRISE' ? '16 Concurrent Jobs' : '1 Concurrent Job'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-8 pt-8 border-t border-[#bef264]/10 flex gap-4">
+                                        <button 
+                                            onClick={() => window.location.href = '/pricing'}
+                                            className="flex-1 py-3 bg-[#bef264] text-black font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-[#a3d951] transition-all hover:scale-[1.02]"
+                                        >
+                                            Upgrade Plan
                                         </button>
-                                        <button className="flex-1 py-3 bg-white/5 border border-white/10 text-white hover:bg-white/10 font-black uppercase text-[10px] tracking-widest rounded-xl transition-colors">
-                                            Payment Methods
+                                        <button className="flex-1 py-3 bg-white/5 border border-white/10 text-white hover:bg-white/10 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all">
+                                            Billing Dashboard
                                         </button>
                                     </div>
                                 </div>
 
                                 <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
-                                    <h3 className="text-white font-black uppercase tracking-wider italic">Billing History</h3>
+                                    <h3 className="text-white font-black uppercase tracking-wider italic flex items-center gap-2">
+                                        Recent Transactions
+                                    </h3>
                                     <div className="mt-6 space-y-3">
-                                        <div className="flex items-center justify-between py-3 border-b border-white/5">
-                                            <div className="text-xs text-white/60 font-mono">Oct 24, 2026</div>
-                                            <div className="text-xs text-white font-bold tracking-wider">₹1,999.00</div>
-                                            <button className="text-[10px] text-[#bef264] uppercase tracking-widest font-bold hover:underline">Download</button>
-                                        </div>
+                                        {billingHistory.length > 0 ? (
+                                            billingHistory.map((bill) => (
+                                                <div key={bill.id} className="flex items-center justify-between py-4 px-4 bg-black/20 rounded-xl border border-white/5">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] text-white/40 font-black uppercase tracking-widest">{bill.plan_name}</span>
+                                                        <span className="text-xs text-white font-mono mt-1">
+                                                            {new Date(bill.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-right flex flex-col items-end">
+                                                        <div className={`text-[10px] font-black uppercase tracking-widest mb-1 ${bill.status === 'SUCCESS' ? 'text-[#bef264]' : 'text-red-400'}`}>
+                                                            {bill.status}
+                                                        </div>
+                                                        <div className="text-[9px] text-white/20 font-mono">
+                                                            ID: {bill.transaction_id || 'N/A'}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-xs text-white font-black tracking-tighter">₹{bill.amount}</div>
+                                                        <button className="text-[9px] text-white/30 uppercase tracking-widest font-black hover:text-[#bef264] transition-colors mt-1">RECIPE</button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-center py-8 text-white/20 text-[10px] font-black uppercase tracking-[0.2em]">No transactions recorded.</div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

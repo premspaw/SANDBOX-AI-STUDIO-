@@ -75,7 +75,7 @@ const PricingPage = () => {
             link: "https://rzp.io/rzp/vPs9Yvib"
         },
         {
-            name: "Creator",
+            name: "Influencer",
             monthlyPrice: 799,
             yearlyPrice: 639,
             description: "The choice for professional creators and growing visual brands.",
@@ -97,7 +97,7 @@ const PricingPage = () => {
             link: "https://rzp.io/rzp/xCEhb7Nl"
         },
         {
-            name: "Pro",
+            name: "Director",
             monthlyPrice: 2500,
             yearlyPrice: 1999,
             description: "Maximum cinematic horsepower for Agencies and Power Users.",

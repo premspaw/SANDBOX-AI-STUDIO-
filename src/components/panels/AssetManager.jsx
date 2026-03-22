@@ -2,28 +2,42 @@ import React, { useState } from 'react';
 import { LANDING_ASSETS as INITIAL_ASSETS } from '../../config/landingAssets';
 import { getApiUrl } from '../../config/apiConfig';
 import { AssetsLibrary } from './AssetsLibrary';
-import { Search, Database, Image as ImageIcon, Video, Music, X } from 'lucide-react';
+import { Search, Database, Image as ImageIcon, Video, Music, X, Upload, Trash2, CheckCircle2 } from 'lucide-react';
 
 export const AssetManager = () => {
     const [assets, setAssets] = useState(INITIAL_ASSETS);
+    const [library, setLibrary] = useState([]);
+    const [activeTab, setActiveTab] = useState('config'); // 'config' or 'library'
     const [status, setStatus] = useState({ type: '', message: '' });
     const [isSaving, setIsSaving] = useState(false);
     const [isLibraryOpen, setIsLibraryOpen] = useState(false);
     const [pickerConfig, setPickerConfig] = useState(null); // { field, index (optional), type }
+    const [isUploading, setIsUploading] = useState(false);
+
+    const fetchLibrary = async () => {
+        try {
+            const response = await fetch(getApiUrl('/api/admin/landing-assets/library'));
+            const data = await response.json();
+            setLibrary(data || []);
+        } catch (err) {
+            console.warn("[AssetManager] Failed to fetch library:", err);
+        }
+    };
 
     React.useEffect(() => {
-        const fetchAssets = async () => {
+        const load = async () => {
+            // 1. Fetch Active Config
             try {
                 const response = await fetch(getApiUrl('/api/get-landing-assets'));
                 const data = await response.json();
-                if (data && Object.keys(data).length > 0) {
-                    setAssets(data);
-                }
+                if (data && Object.keys(data).length > 0) setAssets(data);
             } catch (err) {
                 console.warn("[AssetManager] Failed to fetch assets:", err);
             }
+            // 2. Fetch Library
+            await fetchLibrary();
         };
-        fetchAssets();
+        load();
     }, []);
 
     const handleInputChange = (field, value) => {
@@ -33,26 +47,28 @@ export const AssetManager = () => {
         }));
     };
 
-    const handleGalleryChange = (index, field, value) => {
-        const newGallery = [...assets.gallery];
-        newGallery[index] = { ...newGallery[index], [field]: value };
+    const handleArrayChange = (arrayName, index, field, value) => {
+        const newArray = [...(assets[arrayName] || [])];
+        newArray[index] = { ...newArray[index], [field]: value };
         setAssets(prev => ({
             ...prev,
-            gallery: newGallery
+            [arrayName]: newArray
         }));
     };
 
-    const openPicker = (field, type, index = null) => {
-        setPickerConfig({ field, type, index });
+    const openPicker = (field, type, index = null, arrayName = null) => {
+        setPickerConfig({ field, type, index, arrayName });
         setIsLibraryOpen(true);
     };
 
     const handleSelectFromLibrary = (url) => {
         if (!pickerConfig) return;
-        const { field, index } = pickerConfig;
+        const { field, index, arrayName } = pickerConfig;
 
-        if (index !== null) {
-            handleGalleryChange(index, field, url);
+        if (arrayName && index !== null) {
+            handleArrayChange(arrayName, index, field, url);
+        } else if (index !== null) {
+            handleArrayChange('gallery', index, field, url);
         } else {
             handleInputChange(field, url);
         }
@@ -105,14 +121,88 @@ export const AssetManager = () => {
         }
     };
 
+    const handleFileUpload = async (e, category = 'gallery', targetField = null, targetIndex = null) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        setStatus({ type: 'info', message: `Uploading ${file.name}...` });
+
+        try {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                const base64 = reader.result;
+                const response = await fetch(getApiUrl('/api/admin/landing-assets/upload'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fileName: file.name,
+                        category,
+                        type: file.type.startsWith('video') ? 'video' : 'image',
+                        base64
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    setStatus({ type: 'success', message: `${file.name} uploaded to library!` });
+                    await fetchLibrary(); // Refresh library
+                    
+                    // If target provided, auto-fill it
+                    if (targetField) {
+                        if (targetIndex !== null) {
+                            handleArrayChange(category === 'gallery' ? 'gallery' : category, targetIndex, targetField, data.asset.url);
+                        } else {
+                            handleInputChange(targetField, data.asset.url);
+                        }
+                    }
+                } else {
+                    throw new Error(data.error || 'Upload failed');
+                }
+                setIsUploading(false);
+            };
+        } catch (error) {
+            console.error('Upload error:', error);
+            setStatus({ type: 'error', message: error.message });
+            setIsUploading(false);
+        }
+    };
+
+    const deleteFromLibrary = async (id) => {
+        if (!window.confirm("Remove this asset from library? (It won't break live site if used)")) return;
+        try {
+            const response = await fetch(getApiUrl(`/api/admin/landing-assets/library/${id}`), {
+                method: 'DELETE'
+            });
+            if (response.ok) {
+                setLibrary(prev => prev.filter(item => item.id !== id));
+            }
+        } catch (err) {
+            console.error("Delete failed:", err);
+        }
+    };
+
     return (
         <div className="p-6 max-w-4xl mx-auto bg-zinc-900/50 backdrop-blur-xl rounded-2xl border border-white/10 text-white min-h-[80vh] relative">
             <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-4">
                 <div>
-                    <h2 className="text-3xl font-bold bg-gradient-to-r from-[#AADD00] to-purple-400 bg-clip-text text-transparent">
-                        Landing Asset Manager
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-[#AADD00] to-purple-400 bg-clip-text text-transparent italic tracking-tighter uppercase">
+                        Landing Admin
                     </h2>
-                    <p className="text-zinc-400 text-sm mt-1">Update URLs for the landing page videos and gallery.</p>
+                    <div className="flex gap-4 mt-2">
+                        <button 
+                            onClick={() => setActiveTab('config')}
+                            className={`text-xs font-bold tracking-widest uppercase pb-1 border-b-2 transition-all ${activeTab === 'config' ? 'border-[#AADD00] text-[#AADD00]' : 'border-transparent text-zinc-500 hover:text-white'}`}
+                        >
+                            Configuration
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('library')}
+                            className={`text-xs font-bold tracking-widest uppercase pb-1 border-b-2 transition-all ${activeTab === 'library' ? 'border-purple-500 text-purple-400' : 'border-transparent text-zinc-500 hover:text-white'}`}
+                        >
+                            Asset Library (DB)
+                        </button>
+                    </div>
                 </div>
                 <button
                     onClick={saveChanges}
@@ -135,180 +225,365 @@ export const AssetManager = () => {
                 </div>
             )}
 
-            <div className="space-y-8 h-[calc(80vh-200px)] overflow-y-auto pr-4 custom-scrollbar">
-                {/* Main Hero Assets */}
-                <section>
-                    <h3 className="text-lg font-semibold mb-4 text-[#AADD00] flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#AADD00]"></span>
-                        Main Hero & Pipeline
-                    </h3>
-                    <div className="grid gap-6">
-                        <div className="space-y-2">
-                            <label className="text-sm text-zinc-400 block">Hero Background Video URL</label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={assets.heroBackground || ''}
-                                    onChange={(e) => handleInputChange('heroBackground', e.target.value)}
-                                    className="flex-1 bg-black/40 border border-white/10 rounded-lg p-3 text-sm focus:border-[#AADD00] outline-none transition-colors"
-                                    placeholder="https://..."
-                                />
-                                <button
-                                    onClick={() => openPicker('heroBackground', 'videos')}
-                                    className="px-4 bg-[#AADD00]/20 hover:bg-[#AADD00]/40 border border-[#AADD00]/30 rounded-lg text-[#AADD00] flex items-center gap-2 text-xs font-bold transition-all"
-                                >
-                                    <Database size={14} /> PICK
-                                </button>
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm text-zinc-400 block">Foreground Subject (Optional Image/Video URL)</label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={assets.foregroundSubject || ''}
-                                    onChange={(e) => handleInputChange('foregroundSubject', e.target.value)}
-                                    className="flex-1 bg-black/40 border border-white/10 rounded-lg p-3 text-sm focus:border-[#AADD00] outline-none transition-colors"
-                                    placeholder="null or https://..."
-                                />
-                                <button
-                                    onClick={() => openPicker('foregroundSubject', 'images')}
-                                    className="px-4 bg-[#AADD00]/20 hover:bg-[#AADD00]/40 border border-[#AADD00]/30 rounded-lg text-[#AADD00] flex items-center gap-2 text-xs font-bold transition-all"
-                                >
-                                    <ImageIcon size={14} /> PICK
-                                </button>
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm text-zinc-400 block">Pipeline Demo Video URL</label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={assets.pipelineDemo || ''}
-                                    onChange={(e) => handleInputChange('pipelineDemo', e.target.value)}
-                                    className="flex-1 bg-black/40 border border-white/10 rounded-lg p-3 text-sm focus:border-[#AADD00] outline-none transition-colors"
-                                    placeholder="https://..."
-                                />
-                                <button
-                                    onClick={() => openPicker('pipelineDemo', 'videos')}
-                                    className="px-4 bg-[#AADD00]/20 hover:bg-[#AADD00]/40 border border-[#AADD00]/30 rounded-lg text-[#AADD00] flex items-center gap-2 text-xs font-bold transition-all"
-                                >
-                                    <Video size={14} /> PICK
-                                </button>
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm text-zinc-400 block">Background Music URL (mp3)</label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={assets.backgroundMusic || ''}
-                                    onChange={(e) => handleInputChange('backgroundMusic', e.target.value)}
-                                    className="flex-1 bg-black/40 border border-white/10 rounded-lg p-3 text-sm focus:border-[#AADD00] outline-none transition-colors"
-                                    placeholder="https://...mp3"
-                                />
-                                <button
-                                    className="px-4 bg-zinc-800 border border-white/5 rounded-lg text-zinc-500 flex items-center gap-2 text-xs font-bold opacity-50 cursor-not-allowed"
-                                >
-                                    <Music size={14} /> LIB
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Gallery Items */}
-                <section>
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold text-purple-400 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-purple-400"></span>
-                            Output Gallery
-                        </h3>
-                        <button
-                            onClick={addGalleryItem}
-                            className="text-xs bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 px-3 py-1 rounded-full border border-purple-600/30 transition-all font-bold"
-                        >
-                            + ADD NEW VIDEO
-                        </button>
-                    </div>
-                    <div className="space-y-6">
-                        {assets.gallery.map((item, index) => (
-                            <div key={index} className="p-4 bg-white/5 rounded-xl border border-white/10 space-y-4 relative group">
-                                <button
-                                    onClick={() => removeGalleryItem(index)}
-                                    className="absolute top-4 right-4 text-zinc-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                                    title="Remove Item"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                        <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
-                                        <path fillRule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" />
-                                    </svg>
-                                </button>
-                                <div className="flex justify-between">
-                                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Item #{index + 1}</span>
-                                    <span className="text-xs text-zinc-400 mr-8">{item.name}</span>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs text-zinc-500 uppercase">Tag</label>
-                                        <input
-                                            type="text"
-                                            value={item.tag}
-                                            onChange={(e) => handleGalleryChange(index, 'tag', e.target.value)}
-                                            className="w-full bg-black/40 border border-white/5 rounded-md p-2 text-xs outline-none"
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs text-zinc-500 uppercase">Name</label>
-                                        <input
-                                            type="text"
-                                            value={item.name}
-                                            onChange={(e) => handleGalleryChange(index, 'name', e.target.value)}
-                                            className="w-full bg-black/40 border border-white/5 rounded-md p-2 text-xs outline-none"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs text-zinc-500 uppercase">Meta</label>
-                                        <input
-                                            type="text"
-                                            value={item.meta}
-                                            onChange={(e) => handleGalleryChange(index, 'meta', e.target.value)}
-                                            className="w-full bg-black/40 border border-white/5 rounded-md p-2 text-xs outline-none"
-                                        />
-                                    </div>
-                                    <div className="flex items-center gap-2 pt-6">
-                                        <input
-                                            type="checkbox"
-                                            checked={item.big}
-                                            onChange={(e) => handleGalleryChange(index, 'big', e.target.checked)}
-                                            className="accent-purple-500"
-                                        />
-                                        <label className="text-xs text-zinc-500 uppercase">Feature (Big Cell)</label>
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-zinc-500 uppercase">Video URL (src)</label>
+            <div className="space-y-8 h-[calc(80vh-220px)] overflow-y-auto pr-4 custom-scrollbar">
+                {activeTab === 'config' ? (
+                    <>
+                        {/* Main Hero Assets */}
+                        <section>
+                            <h3 className="text-lg font-semibold mb-4 text-[#AADD00] flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-[#AADD00]"></span>
+                                Hero & Brand
+                            </h3>
+                            <div className="grid gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm text-zinc-400 block uppercase tracking-wider text-[10px]">Hero Background Loop</label>
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
-                                            value={item.src}
-                                            onChange={(e) => handleGalleryChange(index, 'src', e.target.value)}
-                                            className="flex-1 bg-black/40 border border-white/5 rounded-md p-2 text-xs outline-none focus:border-purple-500"
+                                            value={assets.heroBackground || ''}
+                                            onChange={(e) => handleInputChange('heroBackground', e.target.value)}
+                                            className="flex-1 bg-black/40 border border-white/10 rounded-lg p-3 text-sm focus:border-[#AADD00] outline-none transition-colors font-mono"
+                                            placeholder="https://..."
                                         />
-                                        <button
-                                            onClick={() => openPicker('src', 'videos', index)}
-                                            className="px-4 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-600/30 rounded-md text-purple-400 flex items-center gap-2 text-xs font-bold transition-all"
-                                        >
-                                            <Search size={14} /> PICK
-                                        </button>
+                                        <div className="flex gap-1">
+                                            <button
+                                                onClick={() => openPicker('heroBackground', 'videos')}
+                                                className="px-4 bg-[#AADD00]/10 hover:bg-[#AADD00]/20 border border-[#AADD00]/30 rounded-lg text-[#AADD00] flex items-center gap-2 text-[10px] font-black transition-all"
+                                            >
+                                                <Database size={14} /> PICK
+                                            </button>
+                                            <label className="px-4 bg-zinc-800 hover:bg-zinc-700 border border-white/10 rounded-lg text-white flex items-center gap-2 text-[10px] font-black cursor-pointer transition-all">
+                                                <Upload size={14} /> UPLOAD
+                                                <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'hero', 'heroBackground')} accept="video/*" />
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm text-zinc-400 block uppercase tracking-wider text-[10px]">Foreground Overlay (Veo/Subject)</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={assets.foregroundSubject || ''}
+                                            onChange={(e) => handleInputChange('foregroundSubject', e.target.value)}
+                                            className="flex-1 bg-black/40 border border-white/10 rounded-lg p-3 text-sm focus:border-[#AADD00] outline-none transition-colors font-mono"
+                                            placeholder="null or https://..."
+                                        />
+                                        <div className="flex gap-1">
+                                            <button
+                                                onClick={() => openPicker('foregroundSubject', 'video')}
+                                                className="px-4 bg-[#AADD00]/10 hover:bg-[#AADD00]/20 border border-[#AADD00]/30 rounded-lg text-[#AADD00] flex items-center gap-2 text-[10px] font-black transition-all"
+                                            >
+                                                <ImageIcon size={14} /> PICK
+                                            </button>
+                                            <label className="px-4 bg-zinc-800 hover:bg-zinc-700 border border-white/10 rounded-lg text-white flex items-center gap-2 text-[10px] font-black cursor-pointer transition-all">
+                                                <Upload size={14} /> UPLOAD
+                                                <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'subject', 'foregroundSubject')} accept="video/*,image/*" />
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm text-zinc-400 block uppercase tracking-wider text-[10px]">Pipeline Flow Video</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={assets.pipelineDemo || ''}
+                                            onChange={(e) => handleInputChange('pipelineDemo', e.target.value)}
+                                            className="flex-1 bg-black/40 border border-white/10 rounded-lg p-3 text-sm focus:border-[#AADD00] outline-none transition-colors font-mono"
+                                            placeholder="https://..."
+                                        />
+                                        <div className="flex gap-1">
+                                            <button
+                                                onClick={() => openPicker('pipelineDemo', 'videos')}
+                                                className="px-4 bg-[#AADD00]/10 hover:bg-[#AADD00]/20 border border-[#AADD00]/30 rounded-lg text-[#AADD00] flex items-center gap-2 text-[10px] font-black transition-all"
+                                            >
+                                                <Video size={14} /> PICK
+                                            </button>
+                                            <label className="px-4 bg-zinc-800 hover:bg-zinc-700 border border-white/10 rounded-lg text-white flex items-center gap-2 text-[10px] font-black cursor-pointer transition-all">
+                                                <Upload size={14} /> UPLOAD
+                                                <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'pipeline', 'pipelineDemo')} accept="video/*" />
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                </section>
+                        </section>
+
+                        {/* UGC Factory Segment */}
+                        <section className="border-t border-white/5 pt-8">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-semibold text-emerald-400 flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                    UGC Factory (4 Slots)
+                                </h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {(assets.ugcAssets || []).map((item, index) => (
+                                    <div key={index} className="p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10 space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-[10px] font-black text-emerald-500/50 uppercase tracking-widest">SLOT #{index + 1}</span>
+                                            <input
+                                                type="text"
+                                                value={item.tag}
+                                                onChange={(e) => handleArrayChange('ugcAssets', index, 'tag', e.target.value)}
+                                                className="bg-transparent border-none text-[10px] text-right font-black text-emerald-400 outline-none w-24 uppercase"
+                                                placeholder="TAG"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="flex gap-1">
+                                                <input
+                                                    type="text"
+                                                    value={item.src}
+                                                    onChange={(e) => handleArrayChange('ugcAssets', index, 'src', e.target.value)}
+                                                    className="flex-1 bg-black/40 border border-white/5 rounded-lg p-2 text-xs outline-none focus:border-emerald-500 font-mono"
+                                                    placeholder="Video URL"
+                                                />
+                                                <button
+                                                    onClick={() => openPicker('src', 'videos', index, 'ugcAssets')}
+                                                    className="p-2 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-600/30 rounded-lg text-emerald-400 transition-all"
+                                                >
+                                                    <Database size={14} />
+                                                </button>
+                                                <label className="p-2 bg-zinc-800 hover:bg-zinc-700 border border-white/10 rounded-lg text-white cursor-pointer transition-all">
+                                                    <Upload size={14} />
+                                                    <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'ugcAssets', 'src', index)} accept="video/*" />
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        {/* Product Studio Segment */}
+                        <section className="border-t border-white/5 pt-8">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-semibold text-blue-400 flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                                    Product Studio (3 Slots)
+                                </h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {(assets.productAssets || []).map((item, index) => (
+                                    <div key={index} className="p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10 space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-[10px] font-black text-blue-500/50 uppercase tracking-widest">SLOT #{index + 1}</span>
+                                            <input
+                                                type="text"
+                                                value={item.tag}
+                                                onChange={(e) => handleArrayChange('productAssets', index, 'tag', e.target.value)}
+                                                className="bg-transparent border-none text-[10px] text-right font-black text-blue-400 outline-none w-20 uppercase"
+                                                placeholder="TAG"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="flex gap-1">
+                                                <input
+                                                    type="text"
+                                                    value={item.src}
+                                                    onChange={(e) => handleArrayChange('productAssets', index, 'src', e.target.value)}
+                                                    className="flex-1 bg-black/40 border border-white/5 rounded-lg p-2 text-xs outline-none focus:border-blue-500 font-mono"
+                                                    placeholder="URL"
+                                                />
+                                                <button
+                                                    onClick={() => openPicker('src', 'videos', index, 'productAssets')}
+                                                    className="p-1.5 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-600/30 rounded-lg text-blue-400"
+                                                >
+                                                    <Database size={12} />
+                                                </button>
+                                                <label className="p-1.5 bg-zinc-800 hover:bg-zinc-700 border border-white/10 rounded-lg text-white cursor-pointer transition-all">
+                                                    <Upload size={12} />
+                                                    <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'productAssets', 'src', index)} accept="video/*" />
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        {/* Cinema Segment */}
+                        <section className="border-t border-white/5 pt-8">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-semibold text-rose-400 flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+                                    Camera Director (Cinema)
+                                </h3>
+                            </div>
+                            <div className="p-6 bg-rose-500/5 rounded-2xl border border-rose-500/10 space-y-4">
+                                <div className="flex gap-4 items-center">
+                                    <div className="flex-1 space-y-2">
+                                        <label className="text-[10px] font-black text-rose-500/50 uppercase tracking-widest">Cinematic Highlight Video</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={assets.cinemaAssets?.[0]?.src || ''}
+                                                onChange={(e) => handleArrayChange('cinemaAssets', 0, 'src', e.target.value)}
+                                                className="flex-1 bg-black/40 border border-white/10 rounded-lg p-3 text-sm focus:border-rose-500 outline-none transition-colors font-mono"
+                                                placeholder="https://..."
+                                            />
+                                            <button
+                                                onClick={() => openPicker('src', 'videos', 0, 'cinemaAssets')}
+                                                className="px-4 bg-rose-600/10 hover:bg-rose-600/20 border border-rose-600/30 rounded-lg text-rose-400 flex items-center gap-2 text-[10px] font-black transition-all"
+                                            >
+                                                <Database size={14} /> PICK
+                                            </button>
+                                            <label className="px-4 bg-zinc-800 hover:bg-zinc-700 border border-white/10 rounded-lg text-white flex items-center gap-2 text-[10px] font-black cursor-pointer transition-all">
+                                                <Upload size={14} /> UPLOAD
+                                                <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'cinemaAssets', 'src', 0)} accept="video/*" />
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Gallery Items */}
+                        <section className="border-t border-white/5 pt-8">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-semibold text-purple-400 flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-purple-400"></span>
+                                    Output Gallery (Multi-Column)
+                                </h3>
+                                <button
+                                    onClick={addGalleryItem}
+                                    className="text-[10px] bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 px-4 py-2 rounded-full border border-purple-600/30 transition-all font-black uppercase"
+                                >
+                                    + ADD TO GALLERY
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {assets.gallery.map((item, index) => (
+                                    <div key={index} className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-4 relative group">
+                                        <button
+                                            onClick={() => removeGalleryItem(index)}
+                                            className="absolute top-4 right-4 text-zinc-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                            title="Remove Item"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                        <div className="flex justify-between items-center bg-black/40 -mx-4 -mt-4 p-3 rounded-t-2xl border-b border-white/5">
+                                            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">GALLERY ITEM #{index + 1}</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] text-zinc-500 uppercase font-black">Tag</label>
+                                                <input
+                                                    type="text"
+                                                    value={item.tag}
+                                                    onChange={(e) => handleArrayChange('gallery', index, 'tag', e.target.value)}
+                                                    className="w-full bg-black/40 border border-white/5 rounded-lg p-2 text-xs outline-none focus:border-purple-500"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] text-zinc-500 uppercase font-black">Title</label>
+                                                <input
+                                                    type="text"
+                                                    value={item.name}
+                                                    onChange={(e) => handleArrayChange('gallery', index, 'name', e.target.value)}
+                                                    className="w-full bg-black/40 border border-white/5 rounded-lg p-2 text-xs outline-none focus:border-purple-500"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] text-zinc-500 uppercase font-black">Source URL</label>
+                                            <div className="flex gap-1">
+                                                <input
+                                                    type="text"
+                                                    value={item.src}
+                                                    onChange={(e) => handleArrayChange('gallery', index, 'src', e.target.value)}
+                                                    className="flex-1 bg-black/40 border border-white/5 rounded-lg p-2 text-xs outline-none focus:border-purple-500 font-mono"
+                                                />
+                                                <button
+                                                    onClick={() => openPicker('src', 'videos', index, 'gallery')}
+                                                    className="p-2 bg-purple-600/10 hover:bg-purple-600/20 border border-purple-600/30 rounded-lg text-purple-400 transition-all"
+                                                >
+                                                    <Database size={14} />
+                                                </button>
+                                                <label className="p-2 bg-zinc-800 hover:bg-zinc-700 border border-white/10 rounded-lg text-white cursor-pointer transition-all">
+                                                    <Upload size={14} />
+                                                    <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'gallery', 'src', index)} accept="video/*" />
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    </>
+                ) : (
+                    <section className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-bold text-purple-400 italic">Asset Library</h3>
+                                <p className="text-xs text-zinc-500">Persistent inventory stored in `landing_video_assets` table.</p>
+                            </div>
+                            <label className="px-6 py-2 bg-purple-600 hover:bg-purple-500 rounded-full text-white font-bold text-xs cursor-pointer flex items-center gap-2 transition-all shadow-lg shadow-purple-900/40">
+                                <Upload size={16} /> UPLOAD TO LIBRARY
+                                <input type="file" className="hidden" onChange={(e) => handleFileUpload(e)} accept="video/*,image/*" />
+                            </label>
+                        </div>
+
+                        <div className="bg-black/40 border border-white/10 rounded-2xl overflow-hidden">
+                            <table className="w-full text-left text-xs">
+                                <thead className="bg-white/5 text-zinc-500 uppercase font-black">
+                                    <tr>
+                                        <th className="p-4">Preview</th>
+                                        <th className="p-4">Title / ID</th>
+                                        <th className="p-4">Category</th>
+                                        <th className="p-4">Created</th>
+                                        <th className="p-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {library.map((asset) => (
+                                        <tr key={asset.id} className="hover:bg-white/5 transition-colors group">
+                                            <td className="p-4">
+                                                <div className="w-20 aspect-video bg-zinc-800 rounded-lg overflow-hidden border border-white/10 relative">
+                                                    <video src={asset.url} className="w-full h-full object-cover" />
+                                                </div>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="font-bold text-white">{asset.title}</div>
+                                                <div className="text-[10px] text-zinc-600 font-mono truncate w-32">{asset.id}</div>
+                                            </td>
+                                            <td className="p-4 uppercase tracking-widest text-[#AADD00]">{asset.category}</td>
+                                            <td className="p-4 text-zinc-500">{new Date(asset.created_at).toLocaleDateString()}</td>
+                                            <td className="p-4 text-right">
+                                                <div className="flex gap-2 justify-end">
+                                                    <button 
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(asset.url);
+                                                            setStatus({ type: 'success', message: 'URL copied!' });
+                                                        }}
+                                                        className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-all"
+                                                        title="Copy URL"
+                                                    >
+                                                        <Search size={14} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => deleteFromLibrary(asset.id)}
+                                                        className="p-2 hover:bg-red-500/10 rounded-lg text-zinc-600 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100"
+                                                        title="Delete from Library"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {library.length === 0 && (
+                                        <tr>
+                                            <td colSpan="5" className="p-12 text-center text-zinc-500 italic">No assets in library. Start uploading!</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                )}
             </div>
 
             {/* ASSET LIBRARY MODAL */}

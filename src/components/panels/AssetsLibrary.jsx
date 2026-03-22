@@ -208,7 +208,8 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         videos: [],
         models: [],
         upscaled: [],
-        characters: []
+        characters: [],
+        landing: []
     });
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -305,31 +306,19 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 }
             });
 
-            const dbImages = (dbAssets || []).filter(a => a.type === 'image' || !a.type);
-            const dbVideos = (dbAssets || []).filter(a => a.type === 'video');
+            // 4. Fetch Landing Inventory (Global)
+            const { data: rawLanding, error: landingError } = await supabase
+                .from("landing_video_assets")
+                .select("*")
+                .order("created_at", { ascending: false });
 
-            const sharedGallery = Array.isArray(LANDING_ASSETS?.gallery) ? LANDING_ASSETS.gallery : [];
-            const sharedVideos = [LANDING_ASSETS?.heroBackground, LANDING_ASSETS?.pipelineDemo]
-                .filter(Boolean)
-                .map((url, idx) => ({
-                    id: `shared-video-${idx}`,
-                    type: 'video',
-                    url,
-                    name: idx === 0 ? 'Landing Hero Video' : 'Pipeline Demo Video',
-                    created_at: new Date(0).toISOString(),
-                    isShared: true,
-                }));
-            const sharedImages = sharedGallery
-                .filter(item => item?.type !== 'video')
-                .map((item, idx) => ({
-                    id: item.id || `shared-image-${idx}`,
-                    type: 'image',
-                    url: item.url,
-                    image: item.url,
-                    name: item.title || `Landing Gallery ${idx + 1}`,
-                    created_at: new Date(0).toISOString(),
-                    isShared: true,
-                }));
+            if (landingError) console.error("Landing assets error:", landingError.message);
+
+            const landingAssets = (rawLanding || []).map(a => ({
+                ...a,
+                type: a.url.match(/\.(mp4|webm|mov)$/i) ? 'video' : 'image',
+                name: a.title || 'Untitled Landing Asset'
+            }));
 
             const newAssets = {
                 images: [...sharedImages, ...dbImages],
@@ -339,7 +328,8 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     { id: 'm2', name: 'Flux Pro', type: 'Replicate', size: 'N/A', date: 'Active' },
                 ],
                 upscaled: [],
-                characters: finalCharacters
+                characters: finalCharacters,
+                landing: landingAssets || []
             };
 
             setAssets(newAssets);
@@ -482,6 +472,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     {[
                         { id: 'images', label: 'Images', icon: ImageIcon },
                         { id: 'characters', label: 'Characters', icon: User },
+                        { id: 'landing', label: 'Landing Inventory', icon: Database },
                         { id: 'matrix', label: 'Movie Matrix', icon: Box },
                         { id: 'videos', label: 'Videos', icon: Video },
                         { id: 'models', label: 'AI Models', icon: Box },

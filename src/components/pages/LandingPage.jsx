@@ -60,26 +60,7 @@ const PIPE = [
 ];
 
 // ─── OUTPUT MODES ─────────────────────────────────────────────
-const MODES = [
-  {
-    num: 'MODE 01', title: 'UGC\nFACTORY',
-    desc: 'Turn any product into a scroll-stopping UGC ad in 60 seconds. Authentic talking-head style, real reactions, perfect for paid social.',
-    chips: ['9:16 REEL', 'TALKING HEAD', '15 — 60s', 'TIKTOK READY'],
-    glow: T.lime,
-  },
-  {
-    num: 'MODE 02', title: 'CINEMA\nPREVIS',
-    desc: 'Full shot-by-shot previs for directors and agencies. Set your lens, light, and scene — complete storyboard before you touch a camera.',
-    chips: ['16:9 CINEMATIC', 'STORYBOARD PDF', 'SHOT LIST', 'DIRECTOR NOTES'],
-    glow: T.cyan,
-  },
-  {
-    num: 'MODE 03', title: 'BRAND\nCONTENT',
-    desc: 'Full-spectrum brand content from one upload. Fashion editorials, product launches, seasonal campaigns — consistent character, unlimited variations.',
-    chips: ['ALL RATIOS', 'MULTI-FORMAT', 'BRAND LOCKED', 'BATCH EXPORT'],
-    glow: T.red,
-  },
-];
+
 
 
 
@@ -248,7 +229,7 @@ function VCell({ cell, style = {} }) {
     >
       {/* Placeholder bg or Real Video */}
       <div style={{
-        width: '100%', height: '100%', minHeight: cell.big ? 640 : 320,
+        width: '100%', aspectRatio: '1/1',
         background: 'linear-gradient(135deg,#0c0c0c,#111)',
         position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'
       }}>
@@ -347,6 +328,93 @@ function VCell({ cell, style = {} }) {
     </div>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  UGC CARD COMPONENT
+// ═══════════════════════════════════════════════════════════════
+function UGCCard({ card, assets, index }) {
+  const [hovered, setHovered] = useState(false);
+  const videoSrc = assets?.ugcGallery && assets.ugcGallery[index]?.src;
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: T.bg,
+        height: card.height,
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'flex-end',
+        padding: 28,
+      }}
+    >
+      {/* Media or Placeholder */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+        {videoSrc ? (
+          <video
+            autoPlay muted loop playsInline
+            src={resolveAsset(videoSrc)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          <>
+            {/* Grid bg */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              backgroundImage: `linear-gradient(rgba(200,241,53,0.03) 1px,transparent 1px), linear-gradient(90deg,rgba(200,241,53,0.03) 1px,transparent 1px)`,
+              backgroundSize: '40px 40px',
+            }} />
+            {/* Glow */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: `radial-gradient(ellipse at center, rgba(200,241,53,0.04) 0%, transparent 70%)`,
+            }} />
+          </>
+        )}
+      </div>
+
+      {/* Content */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <span style={{
+          fontFamily: "'DM Mono',monospace", fontSize: 9,
+          letterSpacing: '0.3em', color: T.lime,
+          border: `1px solid rgba(200,241,53,0.25)`,
+          padding: '4px 10px', display: 'inline-block', marginBottom: 10
+        }}>
+          {card.tag}
+        </span>
+        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 28, letterSpacing: '0.05em', color: T.white, lineHeight: 1 }}>
+          {card.name}
+        </div>
+        <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, letterSpacing: '0.2em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase', marginTop: 6 }}>
+          {card.meta}
+        </div>
+      </div>
+
+      {/* Hover Play Button */}
+      <motion.div
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: hovered ? 1 : 0, opacity: hovered ? 1 : 0 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+        style={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%,-50%)',
+          width: 54, height: 54, background: T.lime, borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5
+        }}
+      >
+        <div style={{
+          width: 0, height: 0,
+          borderTop: '8px solid transparent', borderBottom: '8px solid transparent',
+          borderLeft: '13px solid #000', marginLeft: 3
+        }} />
+      </motion.div>
+    </div>
+  );
+}
+
 
 // ═══════════════════════════════════════════════════════════════
 //  PIPELINE SECTION
@@ -461,7 +529,7 @@ function PipelineSection({ isMobile }) {
 const MQ_ITEMS = ['UGC ADS', 'PREVIS', 'REELS', 'STORYBOARDS', 'COMMERCIALS', 'FASHION FILMS'];
 
 function Marquee({ reverse }) {
-  const doubled = [...MQ_ITEMS, ...MQ_ITEMS];
+  const items = [...MQ_ITEMS, ...MQ_ITEMS, ...MQ_ITEMS, ...MQ_ITEMS];
   return (
     <div style={{ overflow: 'hidden', padding: '24px 0' }}>
       <motion.div
@@ -469,7 +537,7 @@ function Marquee({ reverse }) {
         transition={{ duration: 22, ease: 'linear', repeat: Infinity }}
         style={{ display: 'flex', whiteSpace: 'nowrap', willChange: 'transform' }}
       >
-        {doubled.map((item, i) => (
+        {items.map((item, i) => (
           <span key={i} style={{ display: 'inline-flex', alignItems: 'center' }}>
             <span style={{
               fontFamily: "'Bebas Neue',sans-serif", fontSize: 76,
@@ -687,7 +755,6 @@ function AnimatedStats() {
 // ═══════════════════════════════════════════════════════════════
 export default function LandingPage({ onEnter, onPricing }) {
   const [assets, setAssets] = useState(INITIAL_ASSETS);
-  const [hoveredMode, setHoveredMode] = useState(null);
   const [isMuted, setIsMuted] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const videoRef = useRef(null);
@@ -714,7 +781,7 @@ export default function LandingPage({ onEnter, onPricing }) {
     fetchAssets();
   }, []);
 
-  const VCELLS = assets.gallery || INITIAL_ASSETS.gallery || [];
+  const VCELLS = (assets.gallery && assets.gallery.length > 0) ? assets.gallery : (INITIAL_ASSETS.gallery || []);
 
   const toggleMute = () => {
     const video = videoRef.current;
@@ -735,7 +802,7 @@ export default function LandingPage({ onEnter, onPricing }) {
     document.head.appendChild(link);
   }, []);
 
-  const s = {
+   const s = {
     page: {
       background: T.bg, color: T.white,
       fontFamily: "'Syne',sans-serif",
@@ -940,129 +1007,9 @@ export default function LandingPage({ onEnter, onPricing }) {
       {/* ══════ STATS (Animated) ══════ */}
       <AnimatedStats />
 
+      {/* ══════ SCROLL STACK ══════ */}
+      <StackSection assets={assets} isMobile={isMobile} />
 
-      {/* ══════ VIDEO FEATURE STRIP ══════ */}
-      <Reveal>
-        <div style={{
-          display: isMobile ? 'block' : 'grid', 
-          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-          position: 'relative',
-          gap: 2, background: T.gray
-        }}>
-          {/* Left copy */}
-          <div style={{
-            background: isMobile ? 'linear-gradient(to right, rgba(0,0,0,0.85) 40%, rgba(0,0,0,0.3) 100%)' : T.bg, 
-            padding: isMobile ? '64px 24px' : '80px 64px',
-            display: 'flex', flexDirection: 'column', justifyContent: 'center',
-            position: isMobile ? 'absolute' : 'relative',
-            inset: isMobile ? 0 : 'auto',
-            zIndex: isMobile ? 10 : 'auto',
-          }}>
-            <SectionEye>WATCH IT WORK</SectionEye>
-            <SectionTitle>TWO IMAGES.<br />ONE PIPELINE.<br />
-              <span style={{ color: T.lime }}>FULL VIDEO.</span>
-            </SectionTitle>
-            <p style={{
-              fontSize: 15, lineHeight: 1.8,
-              color: 'rgba(240,237,232,0.38)', maxWidth: 380, marginBottom: 40
-            }}>
-              Watch the ZEROLENS pipeline in real time. A character anchor photo and a product scan go in — a broadcast-ready ad comes out. Gemini writes it. Imagen 4 frames it. Veo 2 renders it.
-            </p>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              {['GEMINI 2.0', 'IMAGEN 4', 'VEO 2'].map((label, i) => (
-                <span key={label} style={{
-                  fontFamily: "'DM Mono',monospace", fontSize: 10,
-                  letterSpacing: '0.25em', textTransform: 'uppercase',
-                  padding: '8px 16px',
-                  border: `1px solid ${i === 0 ? 'rgba(200,241,53,0.25)' : 'rgba(240,237,232,0.1)'}`,
-                  color: i === 0 ? T.lime : 'rgba(240,237,232,0.3)'
-                }}>
-                  {label}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Right video panel */}
-          <div style={{
-            position: 'relative', overflow: 'hidden',
-            background: T.bg2, minHeight: isMobile ? 480 : 560
-          }}>
-            <div style={{
-              width: '100%', height: '100%', minHeight: 560,
-              background: 'linear-gradient(135deg,#0c0c0c,#111)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              position: 'relative'
-            }}>
-              <div style={{
-                position: 'absolute', inset: 0,
-                backgroundImage: `linear-gradient(rgba(200,241,53,0.04) 1px,transparent 1px),
-                  linear-gradient(90deg,rgba(200,241,53,0.04) 1px,transparent 1px)`,
-                backgroundSize: '44px 44px'
-              }} />
-              {assets.pipelineDemo ? (
-                <video
-                  controls loop playsInline preload="auto"
-                  src={resolveAsset(assets.pipelineDemo)}
-                  style={{
-                    position: 'absolute', inset: 0,
-                    width: '100%', height: '100%', objectFit: 'cover',
-                    opacity: 1, zIndex: 0
-                  }}
-                />
-              ) : (
-                <div style={{
-                  position: 'relative', zIndex: 1,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16
-                }}>
-                  <motion.div
-                    animate={{
-                      boxShadow: [
-                        '0 0 0 0 rgba(200,241,53,0)',
-                        '0 0 0 24px rgba(200,241,53,0.04)',
-                        '0 0 0 0 rgba(200,241,53,0)',
-                      ]
-                    }}
-                    transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                    style={{
-                      width: 88, height: 88,
-                      border: '1px solid rgba(200,241,53,0.2)', borderRadius: '50%',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}
-                  >
-                    <div style={{
-                      width: 0, height: 0,
-                      borderTop: '12px solid transparent', borderBottom: '12px solid transparent',
-                      borderLeft: '20px solid rgba(200,241,53,0.3)', marginLeft: 5
-                    }} />
-                  </motion.div>
-                  <span style={{
-                    fontFamily: "'DM Mono',monospace", fontSize: 10,
-                    letterSpacing: '0.3em', color: 'rgba(240,237,232,0.15)', textTransform: 'uppercase'
-                  }}>
-                    {assets.pipelineDemo ? 'PIPELINE DEMO ACTIVE' : 'DEMO VIDEO · SWAP SRC WHEN READY'}
-                  </span>
-                </div>
-              )}
-            </div>
-            {/* Bottom badge */}
-            <div style={{ position: 'absolute', bottom: 32, left: 32, zIndex: 2 }}>
-              <span style={{
-                fontFamily: "'DM Mono',monospace", fontSize: 9,
-                letterSpacing: '0.3em', textTransform: 'uppercase',
-                color: T.lime, border: '1px solid rgba(200,241,53,0.3)',
-                padding: '6px 14px', background: 'rgba(5,5,5,0.7)',
-                backdropFilter: 'blur(8px)', display: 'inline-block'
-              }}>
-                ⬡ PIPELINE DEMO · 60s · LIVE RENDER
-              </span>
-            </div>
-          </div>
-        </div>
-      </Reveal>
-
-      {/* ══════ PIPELINE ══════ */}
-      <PipelineSection isMobile={isMobile} />
 
       {/* ══════ FEATURES ══════ */}
       <div style={{
@@ -1072,23 +1019,23 @@ export default function LandingPage({ onEnter, onPricing }) {
         {[
           {
             n: '01 // IDENTITY_LOCK', ico: '⬡', title: 'CHARACTER ENGINE',
-            desc: 'Upload 3 anchor photos. Gemini Vision extracts a complete physical fingerprint — locking your character\'s face across every generation. No celebrity bleed. No drift.',
-            tag: 'GEMINI VISION + IMAGEN 4'
+            desc: 'Upload 3 anchor photos. The system extracts a complete physical fingerprint — locking your character\'s face across every generation. No celebrity bleed. No drift.',
+            tag: 'CHARACTER CONSISTENCY'
           },
           {
             n: '02 // PRODUCT_SCAN', ico: '◈', title: 'PRODUCT INTELLIGENCE',
             desc: 'Drop any product photo. AI analyzes shape, color, texture, brand tone, and exactly how a person naturally interacts with it — then locks that into every scene.',
-            tag: 'VISION ANALYSIS API'
+            tag: 'BRAND INTEGRITY'
           },
           {
             n: '03 // DIRECTOR_CORE', ico: '◎', title: 'AI DIRECTOR MODE',
-            desc: 'Set your lens, lighting, angle, and ratio from the director panel. The system writes a full shot-by-shot script, storyboards with Imagen 4, cuts the final with Veo 2.',
-            tag: 'VEO 2 VIDEO ENGINE'
+            desc: 'Set your lens, lighting, angle, and ratio from the director panel. The system writes a full shot-by-shot script, storyboards the scenes, and renders the final cinematic cut.',
+            tag: 'PRODUCTION CORE'
           },
           {
             n: '04 // OUTPUT_MATRIX', ico: '▣', title: 'ALL FORMAT OUTPUT',
             desc: 'One session outputs everything — Instagram Reels, YouTube pre-roll, Stories, LinkedIn banners, storyboard PDFs, and raw frames. Every ratio, every platform, simultaneously.',
-            tag: 'MULTI-FORMAT EXPORT'
+            tag: 'INSTANT EXPORT'
           },
         ].map((f, i) => (
           <Reveal key={f.n} delay={i * 0.05}>
@@ -1097,42 +1044,7 @@ export default function LandingPage({ onEnter, onPricing }) {
         ))}
       </div>
 
-      {/* ══════ VIDEO GRID ══════ */}
-      <section style={{ padding: '120px 48px' }}>
-        <Reveal>
-          <div style={{
-            display: 'flex', alignItems: 'flex-end',
-            justifyContent: 'space-between', marginBottom: 64
-          }}>
-            <div>
-              <SectionEye>OUTPUT GALLERY</SectionEye>
-              <SectionTitle>{isMobile ? 'GENERATED IN STUDIO' : <>GENERATED<br />IN STUDIO</>}</SectionTitle>
-            </div>
-            <p style={{
-              fontFamily: "'Syne',sans-serif", fontSize: 13, lineHeight: 1.7,
-              color: 'rgba(240,237,232,0.3)', maxWidth: 260, textAlign: 'right'
-            }}>
-              Every frame below was produced entirely by the ZEROLENS pipeline. No human director. No crew.
-            </p>
-          </div>
-        </Reveal>
-
-        <Reveal delay={0.1}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : '1.5fr 1fr 1fr',
-            gridTemplateRows: isMobile ? 'auto' : '340px 300px',
-            gap: 2
-          }}>
-            {VCELLS.map((cell, i) => (
-              <VCell key={i} cell={cell}
-                style={cell.big ? { gridRow: 'span 2' } : {}} />
-            ))}
-          </div>
-        </Reveal>
-      </section>
-
-      {/* ══════ MARQUEE ══════ */}
+      {/* ══════ SCRLLING HIGHLIGHTS ══════ */}
       <div style={{
         borderTop: `1px solid ${T.gray}`,
         borderBottom: `1px solid ${T.gray}`, background: T.bg2, overflow: 'hidden'
@@ -1143,82 +1055,66 @@ export default function LandingPage({ onEnter, onPricing }) {
         </div>
       </div>
 
-
-      {/* ══════ OUTPUT MODES ══════ */}
-      <section style={{ padding: '120px 48px' }}>
-        <Reveal>
-          <div style={{
-            display: 'flex', alignItems: 'flex-end',
-            justifyContent: 'space-between', marginBottom: 80
-          }}>
-            <div>
-              <SectionEye>USE CASES</SectionEye>
-              <SectionTitle>WHAT<br />YOU BUILD</SectionTitle>
+      {/* ══════ VIDEO GRID ══════ */}
+      <section style={{
+        height: isMobile ? 'auto' : '140vh', 
+        padding: isMobile ? '80px 24px' : '120px 48px',
+        overflow: 'hidden', display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: 'center', gap: isMobile ? 40 : 64,
+        background: T.bg
+      }}>
+        <div style={{ flex: 1, maxWidth: isMobile ? '100%' : '40%' }}>
+          <Reveal>
+            <div style={{ marginBottom: 32 }}>
+              <SectionEye>OUTPUT GALLERY</SectionEye>
+              <SectionTitle>{isMobile ? 'GENERATED IN STUDIO' : <>GENERATED<br />IN STUDIO</>}</SectionTitle>
             </div>
             <p style={{
-              fontFamily: "'Syne',sans-serif", fontSize: 13, lineHeight: 1.7,
-              color: 'rgba(240,237,232,0.3)', maxWidth: 260, textAlign: 'right'
+              fontFamily: "'Syne',sans-serif", fontSize: 16, lineHeight: 1.6,
+              color: 'rgba(240,237,232,0.5)', maxWidth: 400
             }}>
-              Three creation modes for every brief.
+              Every frame below was produced entirely by the ZEROLENS pipeline. No human director. No crew.
             </p>
-          </div>
-        </Reveal>
+          </Reveal>
+        </div>
 
-        <Reveal delay={0.1}>
-          <div style={{
-            display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)',
-            gap: 2, background: T.gray
-          }}>
-            {MODES.map((m, i) => (
-              <motion.div
-                key={m.num}
-                onHoverStart={() => setHoveredMode(i)}
-                onHoverEnd={() => setHoveredMode(null)}
-                style={{
-                  background: T.bg, padding: '52px 44px',
-                  cursor: 'pointer', position: 'relative', overflow: 'hidden'
-                }}
-                animate={{ background: hoveredMode === i ? '#0d0d0d' : T.bg }}
-                transition={{ duration: 0.3 }}
-              >
-                {/* corner glow */}
-                <motion.div
-                  animate={{ opacity: hoveredMode === i ? 1 : 0 }}
-                  transition={{ duration: 0.4 }}
-                  style={{
-                    position: 'absolute', top: -80, right: -80,
-                    width: 240, height: 240, borderRadius: '50%',
-                    background: `radial-gradient(circle,${m.glow}11 0%,transparent 70%)`,
-                    pointerEvents: 'none'
-                  }}
-                />
-                <div style={{
-                  fontFamily: "'DM Mono',monospace", fontSize: 10,
-                  letterSpacing: '0.35em', textTransform: 'uppercase',
-                  color: 'rgba(240,237,232,0.2)', marginBottom: 28,
-                  display: 'flex', alignItems: 'center', gap: 10
-                }}>
-                  <span style={{ width: 20, height: 1, background: 'currentColor', display: 'inline-block' }} />
-                  {m.num}
-                </div>
-                <h3 style={{
-                  fontFamily: "'Bebas Neue',sans-serif", fontSize: 50,
-                  letterSpacing: '0.02em', lineHeight: 0.9, marginBottom: 20,
-                  whiteSpace: 'pre-line'
-                }}>
-                  {m.title}
-                </h3>
-                <p style={{ fontSize: 14, lineHeight: 1.8, color: 'rgba(240,237,232,0.32)' }}>
-                  {m.desc}
-                </p>
-                <div style={{ marginTop: 36, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {m.chips.map(c => <Chip key={c} label={c} active={hoveredMode === i} />)}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </Reveal>
+        <div style={{
+          flex: 1.5, height: isMobile ? 'auto' : '130vh',
+          overflow: 'hidden', display: 'flex', alignItems: 'center',
+          position: 'relative'
+        }}>
+          {/* Internal CSS for the rolling effect */}
+          <style>{`
+            @keyframes roll-gallery {
+              0% { transform: translateY(0); }
+              100% { transform: translateY(-50%); }
+            }
+            .rolling-grid {
+              animation: roll-gallery 60s linear infinite;
+            }
+            .rolling-grid:hover {
+              animation-play-state: paused;
+            }
+          `}</style>
+
+          <Reveal delay={0.2} style={{ height: '100%', width: '100%' }}>
+            <div className="rolling-grid" style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(3,1fr)',
+              gap: 8,
+              width: '100%'
+            }}>
+              {/* Duplicate assets for seamless loop */}
+              {([...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS])
+                .slice(0, 48).map((cell, i) => (
+                  <VCell key={i} cell={cell} />
+                ))}
+            </div>
+          </Reveal>
+        </div>
       </section>
+
 
       {/* ══════ CTA ══════ */}
       <section style={{
@@ -1240,21 +1136,13 @@ export default function LandingPage({ onEnter, onPricing }) {
         <Reveal>
           <h2 style={{
             fontFamily: "'Bebas Neue',sans-serif",
-            fontSize: 'clamp(64px,11vw,168px)', lineHeight: 0.87,
+            fontSize: 'clamp(64px,10vw,140px)', lineHeight: 0.9,
             letterSpacing: '-0.01em', marginBottom: 40, position: 'relative', zIndex: 1
           }}>
-            ZERO CREW.<br />
-            <span style={{ color: T.lime }}>ZERO LIMITS.</span>
+            ZERO CREW. ZERO STUDIO.<br />
+            ZERO LIMITS. <span style={{ color: T.lime }}>ZERO LENS.</span><br />
+            <span style={{ color: T.lime }}>INFINITE CINEMA.</span>
           </h2>
-        </Reveal>
-        <Reveal delay={0.1}>
-          <p style={{
-            fontFamily: "'DM Mono',monospace", fontSize: 12,
-            letterSpacing: '0.25em', color: 'rgba(240,237,232,0.3)',
-            textTransform: 'uppercase', marginBottom: 56, position: 'relative', zIndex: 1
-          }}>
-            Your character. Your product. Our pipeline. One click.
-          </p>
         </Reveal>
         <Reveal delay={0.2}>
           <div style={{ display: 'inline-flex', gap: 16, position: 'relative', zIndex: 1 }}>
@@ -1278,7 +1166,7 @@ export default function LandingPage({ onEnter, onPricing }) {
           <motion.div animate={{ opacity: [1, 0.3, 1], scale: [1, 0.5, 1] }}
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
             style={{ width: 8, height: 8, background: T.lime, borderRadius: '50%' }} />
-          ANTI&#8209;GRAVITY STUDIOS
+          A Synthcore product
         </div>
         <div style={{ display: 'flex', gap: 32 }}>
           {['PIPELINE', 'PRICING', 'DOCS', 'LEGAL'].map(l => (
@@ -1419,3 +1307,460 @@ function BtnGhost({ children, onClick }) {
     </motion.button>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  STACK SECTION (SCROLL STACK EFFECT)
+// ═══════════════════════════════════════════════════════════════
+function StackSection({ assets, isMobile }) {
+  const containerRef = useRef(null);
+  const card1Ref = useRef(null);
+  const card2Ref = useRef(null);
+
+  useEffect(() => {
+    const page = document.querySelector('.landing-page-container');
+    if (!page) return;
+
+    const onScroll = () => {
+      const container = containerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const scrolled = -rect.top;
+      const vh = window.innerHeight;
+
+      // Card 1 shrinks as card 2 comes up
+      if (card1Ref.current) {
+        const progress = Math.min(Math.max((scrolled - vh * 1.4) / (vh * 0.4), 0), 1);
+        const scale = 1 - progress * 0.06;
+        const brightness = 1 - progress * 0.3;
+        card1Ref.current.style.transform = `scale(${scale})`;
+        card1Ref.current.style.filter = `brightness(${brightness})`;
+        card1Ref.current.style.transformOrigin = 'top center';
+      }
+
+      // Card 2 shrinks as card 3 comes up
+      if (card2Ref.current) {
+        const progress = Math.min(Math.max((scrolled - vh * 3.2) / (vh * 0.4), 0), 1);
+        const scale = 1 - progress * 0.06;
+        const brightness = 1 - progress * 0.3;
+        card2Ref.current.style.transform = `scale(${scale})`;
+        card2Ref.current.style.filter = `brightness(${brightness})`;
+        card2Ref.current.style.transformOrigin = 'top center';
+      }
+    };
+
+    page.addEventListener('scroll', onScroll);
+    return () => page.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Use section-specific assets from the config
+  const ugcVideos = assets?.ugcAssets || [];
+  const productVideos = assets?.productAssets || [];
+  const cinemaVideo = assets?.cinemaAssets?.[0];
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', height: '490vh' }}>
+
+      {/* ── CARD 1: UGC ── */}
+      <div
+        ref={card1Ref}
+        style={{
+          position: 'sticky', top: 0, zIndex: 10,
+          height: '130vh', overflow: 'hidden',
+          background: T.bg,
+          borderTop: `1px solid ${T.gray}`,
+          transition: 'transform 0.1s linear, filter 0.1s linear',
+          display: 'flex', flexDirection: 'column',
+          padding: isMobile ? '30px 24px' : '40px 48px',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 40, flexShrink: 0 }}>
+          <div style={{ marginBottom: 20 }}>
+            <SectionEye>UGC FACTORY</SectionEye>
+            <div style={{
+              fontFamily: "'Bebas Neue',sans-serif",
+              fontSize: isMobile ? 48 : 84,
+              lineHeight: 1, letterSpacing: '0.02em',
+              display: 'flex', gap: isMobile ? 12 : 24, flexWrap: 'wrap'
+            }}>
+              <span>5 CLICKS.</span>
+              <span style={{ color: T.lime }}>60 SECONDS.</span>
+              <span>FULL AD.</span>
+            </div>
+          </div>
+          
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: isMobile ? 'column' : 'row', 
+            gap: isMobile ? 12 : 32, 
+            alignItems: 'center',
+            borderTop: '1px solid rgba(255,255,255,0.05)',
+            paddingTop: 16
+          }}>
+            {[
+              'Upload your character photo',
+              'Drop the product',
+              'Choose format & duration',
+              'AI writes the script',
+              'Render & export instantly',
+            ].map((step, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{
+                  fontFamily: "'DM Mono',monospace", fontSize: 8,
+                  letterSpacing: '0.2em', color: T.lime,
+                  background: `rgba(200,241,53,0.08)`,
+                  padding: '4px 8px', borderRadius: 2, flexShrink: 0
+                }}>
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <span style={{
+                  fontFamily: "'DM Mono',monospace", fontSize: 9,
+                  letterSpacing: '0.1em', color: 'rgba(240,237,232,0.45)',
+                  textTransform: 'uppercase', whiteSpace: 'nowrap'
+                }}>
+                  {step}
+                </span>
+                {i < 4 && !isMobile && (
+                  <div style={{ width: 12, height: 1, background: 'rgba(255,255,255,0.1)', marginLeft: 8 }} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 4 Vertical Videos */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)',
+          gap: 3, flex: 1, minHeight: 0,
+        }}>
+          {[
+            { tag: 'TALKING HEAD', name: 'PRODUCT DROP', meta: '9:16 · TIKTOK', offset: 40 },
+            { tag: 'LIFESTYLE', name: 'BRAND STORY', meta: '9:16 · REELS', offset: 0 },
+            { tag: 'UNBOXING', name: 'REVEAL FORMAT', meta: '9:16 · STORIES', offset: 40 },
+            { tag: 'TESTIMONIAL', name: 'SOCIAL PROOF', meta: '9:16 · YOUTUBE', offset: 0 },
+          ].map((card, i) => (
+            <div
+              key={i}
+              style={{
+                marginTop: isMobile ? 0 : card.offset,
+                background: T.bg2,
+                position: 'relative', overflow: 'hidden',
+                borderRadius: 4, flex: 1,
+              }}
+            >
+              {ugcVideos[i]?.src ? (
+                <video
+                  autoPlay muted loop playsInline
+                  src={ugcVideos[i].src}
+                  style={{ 
+                    width: '100%', height: '100%', 
+                    objectFit: 'contain', objectPosition: 'center top',
+                    position: 'absolute', inset: 0 
+                  }}
+                />
+              ) : (
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  backgroundImage: `linear-gradient(rgba(200,241,53,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(200,241,53,0.04) 1px,transparent 1px)`,
+                  backgroundSize: '32px 32px',
+                }}>
+                  {/* Placeholder vertical phone shape */}
+                  <div style={{
+                    position: 'absolute', top: '50%', left: '50%',
+                    transform: 'translate(-50%,-60%)',
+                    width: 40, height: 68,
+                    border: `1px solid rgba(200,241,53,0.2)`,
+                    borderRadius: 6,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <div style={{
+                      width: 0, height: 0,
+                      borderTop: '5px solid transparent',
+                      borderBottom: '5px solid transparent',
+                      borderLeft: `8px solid rgba(200,241,53,0.3)`,
+                      marginLeft: 2,
+                    }} />
+                  </div>
+                </div>
+              )}
+              {/* Gradient overlay */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                background: 'linear-gradient(to top, rgba(5,5,5,0.9) 0%, transparent 50%)',
+              }} />
+              {/* Labels */}
+              <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16, zIndex: 1 }}>
+                <span style={{
+                  fontFamily: "'DM Mono',monospace", fontSize: 7,
+                  letterSpacing: '0.3em', color: T.lime,
+                  border: `1px solid rgba(200,241,53,0.25)`,
+                  padding: '2px 6px', display: 'inline-block', marginBottom: 6
+                }}>
+                  {card.tag}
+                </span>
+                <div style={{
+                  fontFamily: "'Bebas Neue',sans-serif", fontSize: 18,
+                  color: T.white, lineHeight: 1
+                }}>
+                  {card.name}
+                </div>
+                <div style={{
+                  fontFamily: "'DM Mono',monospace", fontSize: 7,
+                  color: 'rgba(240,237,232,0.3)', textTransform: 'uppercase',
+                  letterSpacing: '0.2em', marginTop: 4
+                }}>
+                  {card.meta}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ height: '50vh' }} />
+
+      {/* ── CARD 2: PRODUCT SHOOT ── */}
+      <div
+        ref={card2Ref}
+        style={{
+          position: 'sticky', top: 0, zIndex: 20,
+          height: '130vh', overflow: 'hidden',
+          background: T.bg2,
+          borderTop: `1px solid ${T.gray}`,
+          transition: 'transform 0.1s linear, filter 0.1s linear',
+          display: 'flex', flexDirection: 'column',
+          padding: isMobile ? '40px 24px' : '60px 48px',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 40, flexShrink: 0 }}>
+          <div>
+            <SectionEye>PRODUCT STUDIO</SectionEye>
+            <div style={{
+              fontFamily: "'Bebas Neue',sans-serif",
+              fontSize: isMobile ? 48 : 72,
+              lineHeight: 0.9, letterSpacing: '0.02em'
+            }}>
+              DROP A PRODUCT.<br />
+              <span style={{ color: T.lime }}>GET A SHOOT.</span>
+            </div>
+          </div>
+          <p style={{
+            fontFamily: "'Syne',sans-serif", fontSize: 14,
+            lineHeight: 1.8, color: 'rgba(240,237,232,0.3)',
+            maxWidth: 300, textAlign: 'right'
+          }}>
+            One product photo generates a complete editorial shoot — every angle, every lighting setup, every format. No studio. No photographer.
+          </p>
+        </div>
+
+        {/* 3 Product Videos - mix of portrait + landscape */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 1.4fr 1fr',
+          gap: 3, flex: 1, minHeight: 0,
+        }}>
+          {[
+            { tag: 'MACRO DETAIL', name: 'TEXTURE SHOT', meta: '1:1 · CLOSE-UP' },
+            { tag: 'HERO SHOT', name: 'FULL EDITORIAL', meta: '4:5 · CAMPAIGN' },
+            { tag: 'LIFESTYLE', name: 'IN-USE SCENE', meta: '9:16 · SOCIAL' },
+          ].map((card, i) => (
+            <div
+              key={i}
+              style={{
+                background: T.bg,
+                position: 'relative', overflow: 'hidden',
+                borderRadius: 4,
+              }}
+            >
+              {productVideos[i]?.src ? (
+                <video
+                  autoPlay muted loop playsInline
+                  src={productVideos[i].src}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
+                />
+              ) : (
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  backgroundImage: `linear-gradient(rgba(200,241,53,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(200,241,53,0.03) 1px,transparent 1px)`,
+                  backgroundSize: '40px 40px',
+                }}>
+                  <div style={{
+                    position: 'absolute', top: '50%', left: '50%',
+                    transform: 'translate(-50%,-50%)',
+                    width: i === 1 ? 60 : 48, height: i === 1 ? 60 : 48,
+                    border: `1px solid rgba(200,241,53,0.15)`,
+                    borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <div style={{
+                      width: 0, height: 0,
+                      borderTop: '6px solid transparent',
+                      borderBottom: '6px solid transparent',
+                      borderLeft: `10px solid rgba(200,241,53,0.25)`,
+                      marginLeft: 2,
+                    }} />
+                  </div>
+                </div>
+              )}
+              <div style={{
+                position: 'absolute', inset: 0,
+                background: 'linear-gradient(to top, rgba(5,5,5,0.85) 0%, transparent 55%)',
+              }} />
+              <div style={{ position: 'absolute', bottom: 20, left: 20, right: 20, zIndex: 1 }}>
+                <span style={{
+                  fontFamily: "'DM Mono',monospace", fontSize: 7,
+                  letterSpacing: '0.3em', color: T.lime,
+                  border: `1px solid rgba(200,241,53,0.25)`,
+                  padding: '2px 6px', display: 'inline-block', marginBottom: 8
+                }}>
+                  {card.tag}
+                </span>
+                <div style={{
+                  fontFamily: "'Bebas Neue',sans-serif", fontSize: 22,
+                  color: T.white, lineHeight: 1
+                }}>
+                  {card.name}
+                </div>
+                <div style={{
+                  fontFamily: "'DM Mono',monospace", fontSize: 7,
+                  color: 'rgba(240,237,232,0.3)', textTransform: 'uppercase',
+                  letterSpacing: '0.2em', marginTop: 4
+                }}>
+                  {card.meta}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ height: '50vh' }} />
+
+      {/* ── CARD 3: CINEMA ── */}
+      <div
+        style={{
+          position: 'sticky', top: 0, zIndex: 30,
+          height: '130vh', overflow: 'hidden',
+          background: '#0a0807',
+          borderTop: `1px solid ${T.gray}`,
+          display: 'flex', flexDirection: 'column',
+          padding: isMobile ? '40px 24px' : '60px 48px',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32, flexShrink: 0 }}>
+          <div>
+            <SectionEye>CINEMA DIRECTOR</SectionEye>
+            <div style={{
+              fontFamily: "'Bebas Neue',sans-serif",
+              fontSize: isMobile ? 48 : 72,
+              lineHeight: 0.9, letterSpacing: '0.02em'
+            }}>
+              SET THE SCENE.<br />
+              <span style={{ color: T.lime }}>ROLL CAMERA.</span>
+            </div>
+          </div>
+          <p style={{
+            fontFamily: "'Syne',sans-serif", fontSize: 14,
+            lineHeight: 1.8, color: 'rgba(240,237,232,0.3)',
+            maxWidth: 300, textAlign: 'right'
+          }}>
+            Full cinematic previs in widescreen. Set your lens, angle, and lighting. AI frames every shot like a Vogue film director.
+          </p>
+        </div>
+
+        {/* 1 Big Cinema Video - 16:9 */}
+        <div style={{ flex: 1, minHeight: 0, position: 'relative', borderRadius: 4, overflow: 'hidden' }}>
+          {cinemaVideo?.src ? (
+            <video
+              autoPlay muted loop playsInline
+              src={cinemaVideo.src}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            <div style={{
+              width: '100%', height: '100%',
+              backgroundImage: `linear-gradient(rgba(200,241,53,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(200,241,53,0.03) 1px,transparent 1px)`,
+              backgroundSize: '60px 60px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              position: 'relative',
+            }}>
+              {/* Cinescope letterbox lines */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '12%', background: '#050505' }} />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '12%', background: '#050505' }} />
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16
+              }}>
+                <div style={{
+                  width: 80, height: 80,
+                  border: `1px solid rgba(200,241,53,0.2)`,
+                  borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <div style={{
+                    width: 0, height: 0,
+                    borderTop: '12px solid transparent',
+                    borderBottom: '12px solid transparent',
+                    borderLeft: `20px solid rgba(200,241,53,0.3)`,
+                    marginLeft: 4,
+                  }} />
+                </div>
+                <span style={{
+                  fontFamily: "'DM Mono',monospace", fontSize: 10,
+                  letterSpacing: '0.4em', color: 'rgba(240,237,232,0.15)',
+                  textTransform: 'uppercase'
+                }}>
+                  CINEMATIC VIDEO SPACE
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Letterbox overlay */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '10%', background: 'rgba(5,5,5,0.7)', zIndex: 1 }} />
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '10%', background: 'rgba(5,5,5,0.7)', zIndex: 1 }} />
+
+          {/* Film info overlay */}
+          <div style={{
+            position: 'absolute', bottom: '12%', left: 32, right: 32,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            zIndex: 2,
+          }}>
+            <div>
+              <span style={{
+                fontFamily: "'DM Mono',monospace", fontSize: 8,
+                letterSpacing: '0.3em', color: T.lime,
+                border: `1px solid rgba(200,241,53,0.25)`,
+                padding: '3px 8px', display: 'inline-block', marginBottom: 8
+              }}>
+                CINEMA PREVIS
+              </span>
+              <div style={{
+                fontFamily: "'Bebas Neue',sans-serif", fontSize: 32,
+                color: T.white, lineHeight: 1
+              }}>
+                DIRECTOR'S CUT
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 24 }}>
+              {['16:9 WIDESCREEN', '24FPS', 'DOLBY VISION'].map((spec, i) => (
+                <div key={i} style={{ textAlign: 'center' }}>
+                  <div style={{
+                    fontFamily: "'DM Mono',monospace", fontSize: 8,
+                    letterSpacing: '0.25em', color: 'rgba(240,237,232,0.4)',
+                    textTransform: 'uppercase'
+                  }}>
+                    {spec}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  );
+}

@@ -366,34 +366,40 @@ app.post('/api/webhook/razorpay', async (req, res) => {
             const payment = payload.payload.payment.entity;
             const amount_in_rs = payment.amount / 100; // Razorpay uses Paise
             const userId = payment.notes?.client_id;
+            const transaction_id = payment.id || payment.order_id || 'N/A';
 
             if (!userId) {
                 console.warn('[RAZORPAY_WEBHOOK] Missing client_id (userId) in payment notes.', payment.notes);
                 return res.status(200).json({ success: false, reason: 'missing_user_id' });
             }
 
-            // Map Price to Credit Allocation
+            // Map Price to Credit Allocation & Tier
             let creditsToAdd = 0;
-            if (amount_in_rs >= 1999) creditsToAdd = 3000;
-            else if (amount_in_rs >= 1499) creditsToAdd = 1200; // Business
-            else if (amount_in_rs >= 1199) creditsToAdd = 1200;
-            else if (amount_in_rs >= 899) creditsToAdd = 1200; // Top-up 900
-            else if (amount_in_rs >= 799) creditsToAdd = 600;  // Director
-            else if (amount_in_rs >= 399) creditsToAdd = 500;  // Influencer
-            else if (amount_in_rs >= 300) creditsToAdd = 350;  // Top-up 300
-            else if (amount_in_rs >= 299) creditsToAdd = 350;
+            let targetTier = null;
+            let planName = 'TOP-UP';
+
+            // Plans (Monthly/Yearly approximate match by price)
+            if (amount_in_rs >= 4000) { creditsToAdd = 5000; targetTier = 'ENTERPRISE'; planName = 'Enterprise'; }
+            else if (amount_in_rs >= 1900) { creditsToAdd = 2500; targetTier = 'DIRECTOR'; planName = 'Director'; }
+            else if (amount_in_rs >= 790) { creditsToAdd = 600; targetTier = 'INFLUENCER'; planName = 'Influencer'; }
+            else if (amount_in_rs >= 300) { creditsToAdd = 250; targetTier = 'STARTER'; planName = 'Starter'; }
+            
+            // Overrides for specific top-up amounts (exact match)
+            if (amount_in_rs === 300) { creditsToAdd = 300; targetTier = null; planName = '300-Credits Pack'; }
+            if (amount_in_rs === 900) { creditsToAdd = 1000; targetTier = null; planName = '1000-Credits Pack'; }
+            if (amount_in_rs === 2000) { creditsToAdd = 2500; targetTier = null; planName = '2500-Credits Pack'; }
 
             if (creditsToAdd > 0) {
-                console.log(`[RAZORPAY_WEBHOOK] Adding ${creditsToAdd} Credits to User ${userId} for payment of ₹${amount_in_rs}`);
+                console.log(`[RAZORPAY_WEBHOOK] Processing payment of ₹${amount_in_rs} for ${userId}. Credits: +${creditsToAdd}, Tier: ${targetTier || 'unchanged'}`);
 
                 if (!supabaseAdmin) {
                     throw new Error("Supabase Admin client not initialized in server.js");
                 }
 
-                // 1. Get current balance
+                // 1. Get current balance and tier
                 const { data: profile, error: getError } = await supabaseAdmin
                     .from('profiles')
-                    .select('shorts_balance')
+                    .select('shorts_balance, tier')
                     .eq('id', userId)
                     .single();
 
@@ -401,24 +407,42 @@ app.post('/api/webhook/razorpay', async (req, res) => {
 
                 const current_balance = profile?.shorts_balance ?? 0;
                 const new_balance = current_balance + creditsToAdd;
+                
+                // 2. Build profile update
+                const profileUpdate = { 
+                    shorts_balance: new_balance,
+                    last_payment_at: new Date().toISOString()
+                };
+                if (targetTier) profileUpdate.tier = targetTier;
 
-                // 2. Increment balance
+                // 3. Execution update
                 const { error: updateError } = await supabaseAdmin
                     .from('profiles')
-                    .update({ shorts_balance: new_balance })
+                    .update(profileUpdate)
                     .eq('id', userId);
 
                 if (updateError) throw updateError;
 
-                // 3. Log transaction
-                await supabaseAdmin.from('shorts_transactions').insert({
+                // 4. Log detailed billing history
+                await supabaseAdmin.from('billing_history').insert({
                     user_id: userId,
-                    amount: creditsToAdd,
-                    action_type: 'razorpay_topup',
+                    plan_name: planName,
+                    amount: amount_in_rs,
+                    status: 'SUCCESS',
+                    transaction_id: transaction_id,
                     created_at: new Date().toISOString()
                 });
 
-                console.log(`[RAZORPAY_WEBHOOK] ✅ Balance updated successfully for ${userId}`);
+                // 5. Log transaction in shorts_transactions
+                await supabaseAdmin.from('shorts_transactions').insert({
+                    user_id: userId,
+                    amount: creditsToAdd,
+                    action_type: 'razorpay_payment',
+                    reason: `Purchase: ${planName}`,
+                    created_at: new Date().toISOString()
+                });
+
+                console.log(`[RAZORPAY_WEBHOOK] ✅ Balance and Plan (${planName}) updated successfully for ${userId}`);
             }
         }
 
@@ -1277,6 +1301,74 @@ Action: ${prompt || "modify the highlighted area as requested"}`;
     }
 });
 
+// Analyze Frames for Autoprompting
+app.post('/api/analyze-frames', async (req, res) => {
+    try {
+        const { firstFrame, lastFrame } = req.body;
+        if (!firstFrame) throw new Error("At least first frame is required to analyze.");
+
+        const parts = [];
+        
+        const formatImage = async (imgData) => {
+            if (imgData.startsWith('data:')) {
+                const mime = imgData.match(/:(.*?);/)?.[1] || 'image/png';
+                const data = imgData.split(',')[1];
+                return { inlineData: { mimeType: mime, data: data } };
+            } else if (imgData.startsWith('http')) {
+                const response = await fetch(imgData);
+                const arrayBuffer = await response.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+                const mime = response.headers.get('content-type') || 'image/png';
+                return { inlineData: { mimeType: mime, data: buffer.toString('base64') } };
+            }
+            return { inlineData: { mimeType: 'image/png', data: imgData } };
+        };
+
+        if (firstFrame) {
+            parts.push({ text: "First Frame:" });
+            parts.push(await formatImage(firstFrame));
+        }
+        if (lastFrame) {
+            parts.push({ text: "Last Frame:" });
+            parts.push(await formatImage(lastFrame));
+        }
+
+        const promptTemplate = `You are an elite fashion film director and cinematographer working for Vogue, Harper's Bazaar, and top luxury brands.
+
+Analyze the provided reference frame(s) and write a precise, professional video generation prompt.
+
+STRICT RULES:
+- Describe ONE single continuous camera movement with clear intention — no cuts, no jumps, no random drift
+- The camera movement must have a deliberate START position and END position
+- Focus on: fabric texture and movement, model's confident pose and expression, skin and hair detail, luxury lighting atmosphere
+- If TWO frames are provided: describe the exact smooth organic motion that connects them naturally — the model's body should transition fluidly, fabric should flow, lighting should remain consistent
+- Camera style: cinematic, stabilized, deliberate — like a high-end perfume or luxury fashion commercial
+- Lighting: dramatic rim lighting, golden hour, soft studio diffusion, or moody editorial — match what is visible in the reference
+- Never mention "transition", "cut", "scene change" or any editing terminology
+- The video should feel like one breathtaking uninterrupted moment frozen in time and then set in motion
+
+Output ONLY the raw prompt text ready for the video model. No preamble, no labels, no explanation.`;
+
+        parts.push({ text: promptTemplate });
+
+        const result = await client.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{
+                role: 'user',
+                parts: parts
+            }]
+        });
+
+        // Safely extract text from the new Google GenAI SDK result
+        const textResponse = (typeof result.text === 'function' ? result.text() : result.text) || result.response?.text?.() || result.candidates?.[0]?.content?.parts?.[0]?.text || "Cinematic fashion shot focusing on the subject's elegant attire, dramatic lighting, and dynamic camera movement slowly panning across the scene.";
+        
+        res.json({ prompt: textResponse.trim() });
+    } catch (e) {
+        console.error("Autoprompting error:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Generate Image (Multi-Model Support)
 app.post('/api/generate-image', async (req, res) => {
 
@@ -1292,13 +1384,25 @@ app.post('/api/generate-image', async (req, res) => {
         if (model === 'veo-fast' || model === 'veo3_fast' || model === 'veo-3.1-fast-generate-preview') cost = 3;
         if (model === 'kling' || model?.includes('kling-3.0') || model?.includes('kling/') || model === 'runway' || model === 'pika') cost = 10; // Future-proofing
 
-        await consumeCredits(userId, cost);
+        // await consumeCredits(userId, cost); // Bypassing for sandbox testing as requested
 
         const targetModel = model || req.body.modelEngine;
         const isVeo = targetModel === 'veo' || targetModel === 'veo-fast' || targetModel?.includes('veo-3.1') || targetModel?.includes('veo3');
 
         // Route to appropriate model via Queue
         switch (targetModel) {
+            case 'kling':
+            case 'kling-2.6':
+            case 'kling-v2.6':
+            case 'kling-v2.6-pro':
+            case 'kling-2.6/video':
+            case 'kling-2.6/image-to-video':
+            case 'kling-3.0/video':
+            case 'kling/v2-5-turbo-image-to-video-pro':
+            case 'veo-kling':
+                console.log(`[DIRECT] Processing Kling Video synchronously.`);
+                return await handleKling(req, res);
+
             case 'gemini': // Compatibility for unrefreshed browsers
             case 'nano-banana':
             case 'nano-banana-2':
@@ -1337,15 +1441,6 @@ app.post('/api/generate-image', async (req, res) => {
                 // No Redis - direct synchronous fallback
                 console.log(`[DIRECT] No Redis. Processing ${targetModel} synchronously.`);
                 return await handleGoogle(req, res);
-
-            case 'kling':
-            case 'kling-2.6':
-            case 'kling-2.6/video':
-            case 'kling-3.0/video':
-            case 'kling/v2-5-turbo-image-to-video-pro':
-            case 'veo-kling':
-                console.log(`[DIRECT] Processing Kling Video synchronously.`);
-                return await handleKling(req, res);
 
             case 'openai':
             case 'replicate':
@@ -1625,6 +1720,7 @@ async function handleKieVeo(req, res) {
             "veo":                           "veo3",
             "veo-fast":                      "veo3_fast"
         };
+        let kieModel = kieModelMap[modelId] || 'veo3'; // Resolve the correct KIE model ID
         console.log(`[KIE-VEO] Resolving assets for user ${userId}...`);
         
         // ─── Resolve all images ───────────────────────────────────
@@ -1690,6 +1786,7 @@ async function handleKieVeo(req, res) {
         };
  
         const createResp = await fetch("https://api.kie.ai/api/v1/veo/generate", {
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`
@@ -1749,39 +1846,38 @@ async function handleKieVeo(req, res) {
  */
 async function handleKling(req, res) {
     try {
-        const { prompt, firstFrame, lastFrame, duration, userId, negative_prompt, cfg_scale } = req.body;
+        const { prompt, firstFrame, lastFrame, duration, userId, aspect_ratio } = req.body;
         const apiKey = process.env.KLING_API_KEY;
-
-        if (!apiKey) throw new Error("Kling API Key not configured. Please add KLING_API_KEY to your environment.");
+        if (!apiKey) throw new Error("Kling API Key not configured.");
 
         console.log(`[KLING] Resolving assets for user ${userId}...`);
         const [imgUrl, tailUrl] = await Promise.all([
             resolveToPublicUrl(firstFrame, userId),
             resolveToPublicUrl(lastFrame, userId)
         ]);
+        
+        if (!imgUrl) throw new Error("Kling 3.0 requires at least a starting image URL.");
 
-        if (!imgUrl) throw new Error("Kling requires at least one starting image URL.");
+        // Build image_urls array (max 2 for start/end)
+        const image_urls = [imgUrl];
+        if (tailUrl) image_urls.push(tailUrl);
 
-        let image_urls = [imgUrl];
-        if (tailUrl) {
-            image_urls.push(tailUrl);
-        }
-
+        // Always use Kling 3.0 per the latest API spec
         const payload = {
-            model: req.body.model || "kling-3.0/video",
+            model: "kling-3.0/video",
             input: {
                 prompt: prompt,
                 image_urls: image_urls,
-                mode: "pro",
-                sound: false,
-                multi_shots: prompt.includes('[') && prompt.includes('-') && prompt.includes(']'),
-                duration: String(duration).includes("10") ? "10" : "5",
-                negative_prompt: negative_prompt || "low quality, blur, distort",
-                cfg_scale: parseFloat(cfg_scale) || 0.5
+                sound: req.body.includeAudio || false,
+                duration: String(duration || "5"),
+                aspect_ratio: aspect_ratio || "16:9",
+                mode: "pro", // Default to high resolution for Director Studio
+                multi_shots: false,
+                multi_prompt: [] // Required by schema even if multi_shots is false
             }
         };
 
-        console.log(`[KLING] Creating task with payload:`, JSON.stringify(payload, null, 2));
+        console.log(`[KLING-3.0] Creating task:`, JSON.stringify(payload, null, 2));
         const createResp = await fetch("https://api.kie.ai/api/v1/jobs/createTask", {
             method: 'POST',
             headers: {
@@ -1793,16 +1889,14 @@ async function handleKling(req, res) {
 
         const createData = await createResp.json();
         console.log(`[KLING] Create response:`, JSON.stringify(createData, null, 2));
-        if (createData.code !== 200) throw new Error(`Kling Task Creation Failed: ${createData.msg || 'Unknown Error'}`);
+        if (createData.code !== 200) throw new Error(`Kling Task Failed: ${createData.msg}`);
 
         const taskId = createData.data.taskId;
         console.log(`[KLING] Task Created: ${taskId}. Polling...`);
 
-        // Polling loop
         let isDone = false;
         let attempts = 0;
-        const maxAttempts = 120; // 12 minutes
-        while (!isDone && attempts < maxAttempts) {
+        while (!isDone && attempts < 120) {
             await new Promise(r => setTimeout(r, 6000));
             attempts++;
 
@@ -1810,33 +1904,26 @@ async function handleKling(req, res) {
                 headers: { 'Authorization': `Bearer ${apiKey}` }
             });
             const pollData = await pollResp.json();
-
             if (pollData.code !== 200) throw new Error(`Kling Polling Failed: ${pollData.msg}`);
 
             const state = pollData.data.state;
-            console.log(`[KLING-POLL] Status: ${state} (${attempts})`);
+            console.log(`[KLING-POLL] ${state} (${attempts})`);
 
             if (state === 'success') {
                 isDone = true;
                 const resultJson = JSON.parse(pollData.data.resultJson);
                 const finalUrl = resultJson.resultUrls[0];
-                
-                if (!finalUrl) throw new Error("Kling reported success but no result URL was found.");
-                
-                // Archiving to Supabase for persistence
-                console.log(`[KLING] Success! Archiving result: ${finalUrl}`);
+                if (!finalUrl) throw new Error("No result URL found.");
+
                 const videoResp = await fetch(finalUrl);
                 const ab = await videoResp.arrayBuffer();
-                const videoBuffer = Buffer.from(ab);
-                const supabaseUrl = await uploadVideoToSupabase(videoBuffer, userId);
-                
+                const supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId);
                 return res.json({ url: supabaseUrl, videoUrl: supabaseUrl });
             } else if (state === 'fail') {
-                throw new Error(`Kling Generation Failed: ${pollData.data.failMsg || 'Refusal or Engine Error'}`);
+                throw new Error(`Kling Failed: ${pollData.data.failMsg || 'Engine Error'}`);
             }
         }
-        throw new Error("Kling Render Timeout - Job is still processing.");
-
+        throw new Error("Kling Timeout.");
     } catch (err) {
         console.error('[KLING-ERR]', err);
         res.status(500).json({ error: err.message });
@@ -1850,7 +1937,7 @@ async function handleGoogle(req, res) {
         const { 
             model, modelEngine, prompt, aspect_ratio, aspectRatio, 
             bible, duration, resolution, firstFrame, lastFrame, 
-            referenceImages = [], quality, userId,
+            referenceImages = [], ingredients = [], quality, userId,
             identity_images = [], product_image = null, identity_gcs_uris = []
         } = req.body;
 
@@ -1886,8 +1973,8 @@ async function handleGoogle(req, res) {
             const hasLastFrame = !!lastFrame;
             const hasRefImages = Array.isArray(referenceImages) && referenceImages.length > 0;
             const isHighRes = ['1080p', '4k'].includes(resolvedResolution);
-            const requestedDuration = parseInt(duration) || 8;
-            const validDuration = hasLastFrame ? 8 : requestedDuration;
+            const requestedDuration = parseInt(duration) || 6;
+            const validDuration = requestedDuration;
 
             // ─── Resolve images to base64 for Service Account REST API ────────────────
             const resolveToBase64 = async (src) => {
@@ -1910,15 +1997,12 @@ async function handleGoogle(req, res) {
                 resolveToBase64(lastFrame)
             ]);
 
-            const resolvedRefs = await Promise.all(referenceImages.slice(0, 3).map(async (src) => {
+            const rawRefs = (ingredients.length > 0 ? ingredients : referenceImages);
+            const resolvedRefs = await Promise.all(rawRefs.slice(0, 3).map(async (src) => {
                 const b64 = await resolveToBase64(src);
-
                 if (!b64) return null;
                 return {
-                    image: {
-                        bytesBase64Encoded: b64.bytesBase64Encoded,
-                        mimeType: b64.mimeType
-                    },
+                    image: { bytesBase64Encoded: b64.bytesBase64Encoded, mimeType: b64.mimeType },
                     referenceType: "asset"
                 };
             }));
@@ -1926,7 +2010,8 @@ async function handleGoogle(req, res) {
 
             // ─── Initiate Long Running Operation via REST ───
             const hasValidRefImages = filteredRefs.length > 0;
-            const isVertex = hasValidRefImages && !!token; // Use Vertex only when ref images present
+            // Proactively try to use Vertex for Veo 3.1 features
+            const isVertex = !!token; 
             const endpoint = isVertex
                 ? `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelId}:predictLongRunning`
                 : `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:predictLongRunning?key=${apiKey}`;
@@ -1936,15 +2021,15 @@ async function handleGoogle(req, res) {
                     prompt: prompt,
                     ...(firstFrameData && { image: firstFrameData }),
                     ...(lastFrameData && { lastFrame: lastFrameData }),
-                    ...(filteredRefs.length > 0 && { referenceImages: filteredRefs })
+                    // Priority: if an 'image' (firstFrame) is provided, Google forbids sending 'referenceImages' in the same instance.
+                    ...((filteredRefs.length > 0 && !firstFrameData) && { referenceImages: filteredRefs })
                 }],
                 parameters: {
                     aspectRatio: validRatio,
                     durationSeconds: validDuration,
                     resolution: resolvedResolution,
                     sampleCount: 1,
-                    generateAudio: req.body.includeAudio || false,
-                    ...(filteredRefs.length > 0 && { durationSeconds: 8 }) // docs say must be 8 with refs
+                    ...(isVertex && { generateAudio: req.body.includeAudio || false })
                 }
             };
 
@@ -3622,6 +3707,102 @@ export const LANDING_ASSETS = ${JSON.stringify(assets, null, 4)};
         res.json({ success: true, message: 'Landing assets updated successfully (Supabase + Local)' });
     } catch (error) {
         console.error('Update Landing Assets Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- LANDING ASSETS LIBRARY & DIRECT UPLOADS ---
+
+/**
+ * GET /api/admin/landing-assets/library
+ * Returns all assets from the inventory table.
+ */
+app.get('/api/admin/landing-assets/library', async (req, res) => {
+    try {
+        if (!supabaseAdmin) throw new Error("Supabase Admin not initialized");
+        const { data, error } = await supabaseAdmin
+            .from('landing_video_assets')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.json(data || []);
+    } catch (error) {
+        console.error('[SERVER] Fetch Library Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/admin/landing-assets/upload
+ * Handles direct binary upload to Supabase storage and DB entry.
+ */
+app.post('/api/admin/landing-assets/upload', async (req, res) => {
+    try {
+        const { fileName, category, type = 'video', base64 } = req.body;
+        if (!base64 || !fileName) throw new Error("Missing file data or name");
+
+        if (!supabaseAdmin) throw new Error("Supabase Admin not initialized");
+
+        // 1. Prepare Buffer
+        const buffer = Buffer.from(base64.replace(/^data:.*?;base64,/, ''), 'base64');
+        const mimeType = type === 'video' ? 'video/mp4' : 'image/jpeg';
+        const bucketPath = `landing/${Date.now()}_${fileName}`;
+
+        // 2. Upload to Storage (use 'assets' bucket as default or create 'landing-assets' if preferred)
+        // We'll use 'assets' bucket since it's already used by the app.
+        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+            .from('assets')
+            .upload(bucketPath, buffer, { contentType: mimeType, upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        // 3. Get Public URL
+        const { data: publicData } = supabaseAdmin.storage
+            .from('assets')
+            .getPublicUrl(bucketPath);
+
+        const publicUrl = publicData.publicUrl;
+
+        // 4. Insert into Library Table
+        const { data: dbData, error: dbError } = await supabaseAdmin
+            .from('landing_video_assets')
+            .insert([{
+                url: publicUrl,
+                title: fileName.split('.')[0] || 'Untitled',
+                category: category || 'gallery',
+                meta: { OriginalName: fileName, Size: buffer.length }
+            }])
+            .select();
+
+        if (dbError) throw dbError;
+
+        res.json({ success: true, asset: dbData[0] });
+    } catch (error) {
+        console.error('[SERVER] Upload Asset Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * DELETE /api/admin/landing-assets/library/:id
+ */
+app.delete('/api/admin/landing-assets/library/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!supabaseAdmin) throw new Error("Supabase Admin not initialized");
+
+        // We could delete from storage too, but for safety let's just remove from DB inventory for now
+        // to avoid accidental breakage of live landing page if someone deletes a used asset.
+        const { error } = await supabaseAdmin
+            .from('landing_video_assets')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (error) {
+        console.error('[SERVER] Delete Library Asset Error:', error);
         res.status(500).json({ error: error.message });
     }
 });
