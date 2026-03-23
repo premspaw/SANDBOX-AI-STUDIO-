@@ -1948,8 +1948,10 @@ export function PromptGenerator({ onUpscale }) {
             setIsLoading(false);
             if (res?.reason === 'unauthenticated') {
                 useAppStore.getState().setShowingAuthModal(true);
+            } else if (res?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+                useAppStore.getState().setActiveTab('pricing');
             } else {
-                alert("Not enough shorts or " + (res?.reason || "error"));
+                alert("Generation could not proceed: " + (res?.reason || "error"));
             }
             return;
         }
@@ -2096,8 +2098,10 @@ export function PromptGenerator({ onUpscale }) {
         if (!res || !res.success) {
             if (res?.reason === 'unauthenticated') {
                 useAppStore.getState().setShowingAuthModal(true);
+            } else if (res?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+                useAppStore.getState().setActiveTab('pricing');
             } else {
-                alert("Not enough shorts or " + (res?.reason || "error"));
+                alert("Upscale could not proceed: " + (res?.reason || "error"));
             }
             return;
         }
@@ -2185,8 +2189,14 @@ export function PromptGenerator({ onUpscale }) {
 
         // Cost check BEFORE upscaling
         const res = await spend('image_upscale_4k');
-        if (!res || (!res.success && res.reason !== 'unauthenticated')) {
-            alert("Not enough shorts or " + (res?.reason || "error"));
+        if (!res || !res.success) {
+            if (res?.reason === 'unauthenticated') {
+                useAppStore.getState().setShowingAuthModal(true);
+            } else if (res?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+                useAppStore.getState().setActiveTab('pricing');
+            } else {
+                alert("Upscale could not proceed: " + (res?.reason || "error"));
+            }
             return;
         }
 
@@ -2371,8 +2381,10 @@ export function PromptGenerator({ onUpscale }) {
       if (!spendRes || !spendRes.success) {
         if (spendRes?.reason === 'unauthenticated') {
           useAppStore.getState().setShowingAuthModal(true)
+        } else if (spendRes?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+          useAppStore.getState().setActiveTab('pricing')
         } else {
-          alert("Not enough shorts: " + (spendRes?.reason || 'error'))
+          alert("Upscale could not proceed: " + (spendRes?.reason || 'error'))
         }
         return
       }

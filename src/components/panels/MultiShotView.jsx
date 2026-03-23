@@ -104,8 +104,10 @@ export const MultiShotView = ({
             
             if (res?.reason === 'unauthenticated') {
                 useAppStore.getState().setShowingAuthModal(true);
+            } else if (res?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+                useAppStore.getState().setActiveTab('pricing');
             } else {
-                alert("Not enough shorts or " + (res?.reason || "error"));
+                alert("Multi-Shot generation could not proceed: " + (res?.reason || "error"));
             }
             return;
         }

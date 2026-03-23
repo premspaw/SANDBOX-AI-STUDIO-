@@ -14,12 +14,12 @@ export function MobileNav({ activeTab, setActiveTab }) {
     const mainNavItems = [
         { id: 'prompt', label: 'Prompt', icon: Bot },
         { id: 'creator', label: 'Creator', icon: Camera },
-        { id: 'influencer', label: 'Influencer', icon: Users },
+        ...(isAdmin ? [{ id: 'influencer', label: 'Influencer', icon: Users }] : []),
         { id: 'assets', label: 'Assets', icon: FolderOpen },
     ];
 
     const moreNavItems = [
-        { id: 'directors-cut', label: "Director's Cut", icon: Clapperboard },
+        ...(isAdmin ? [{ id: 'directors-cut', label: "Director's Cut", icon: Clapperboard }] : []),
         { id: 'creative-studio', label: "Creative Studio", icon: Video },
         { id: 'ugc', label: 'UGC Engine', icon: Sparkles },
         { id: 'settings', label: 'Settings', icon: Settings },

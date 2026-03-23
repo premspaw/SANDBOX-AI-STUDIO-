@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, CreditCard, Shield, Bell, LogOut, Save, Loader2, Coins, CheckSquare, Square } from 'lucide-react';
+import { User, Mail, CreditCard, Shield, Bell, LogOut, Save, Loader2, Coins, CheckSquare, Square, Zap } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store';
 
@@ -174,56 +174,7 @@ export default function SettingsPage() {
                                     </p>
                                 </div>
 
-                                <form onSubmit={handleUpdateProfile} className="bg-white/5 border border-white/10 rounded-2xl p-8 space-y-6">
-                                    <div className="flex items-center justify-between">
-                                        <h2 className="text-lg font-black text-white uppercase tracking-wider italic">Personal Information</h2>
-                                        <span className="text-[10px] text-[#bef264] font-black uppercase tracking-widest bg-[#bef264]/10 px-2 py-1 rounded">Profile Active</span>
-                                    </div>
 
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] text-white/40 font-black uppercase tracking-widest ml-1">Email Address</label>
-                                            <div className="relative group">
-                                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-                                                <input
-                                                    type="email"
-                                                    value={profile?.email || ''}
-                                                    disabled
-                                                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm text-white/40 font-medium cursor-not-allowed"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] text-white/40 font-black uppercase tracking-widest ml-1">Full Name</label>
-                                            <div className="relative group">
-                                                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-[#bef264] transition-colors" />
-                                                <input
-                                                    type="text"
-                                                    value={fullName}
-                                                    onChange={(e) => setFullName(e.target.value)}
-                                                    placeholder="Your Name"
-                                                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm text-white focus:border-[#bef264]/50 outline-none transition-all"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {message.text && (
-                                        <div className={`p-4 rounded-xl text-xs font-bold uppercase tracking-widest ${message.type === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                                            {message.text}
-                                        </div>
-                                    )}
-
-                                    <button
-                                        type="submit"
-                                        disabled={saving}
-                                        className="w-full py-4 bg-[#bef264] text-black font-black uppercase text-xs tracking-[0.2em] rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-[#bef264]/10 disabled:opacity-50"
-                                    >
-                                        {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                                        Update Profile
-                                    </button>
-                                </form>
                             </div>
                         )}
 

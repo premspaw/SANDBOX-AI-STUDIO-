@@ -479,8 +479,15 @@ export function InfluencerStudio({ setActiveTab }) {
         // Deduction check before generation
         const costKey = mode === 'video' ? 'ugc_video_scene' : 'image_nano_banana_2';
         const res = await spend(costKey);
-        if (!res || (!res.success && res.reason !== 'unauthenticated')) {
-            alert("Not enough shorts or " + (res?.reason || "error"));
+        if (!res || !res.success) {
+            setLoading(false);
+            if (res?.reason === 'unauthenticated') {
+                useAppStore.getState().setShowingAuthModal(true);
+            } else if (res?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+                useAppStore.getState().setActiveTab('pricing');
+            } else {
+                alert("Generation could not proceed: " + (res?.reason || "error"));
+            }
             return;
         }
 
@@ -556,8 +563,15 @@ export function InfluencerStudio({ setActiveTab }) {
 
         // Deduction check
         const res = await spend('identity_kit');
-        if (!res || (!res.success && res.reason !== 'unauthenticated')) {
-            alert("Not enough shorts or " + (res?.reason || "error"));
+        if (!res || !res.success) {
+            setKitLoading(false);
+            if (res?.reason === 'unauthenticated') {
+                useAppStore.getState().setShowingAuthModal(true);
+            } else if (res?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+                useAppStore.getState().setActiveTab('pricing');
+            } else {
+                alert("Identity Kit generation could not proceed: " + (res?.reason || "error"));
+            }
             return;
         }
 

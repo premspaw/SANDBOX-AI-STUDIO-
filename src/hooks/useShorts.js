@@ -11,6 +11,7 @@ export const useShorts = () => {
         const amount = SHORTS_COST[costKey]
         if (!amount) return { success: false, reason: 'unknown_cost' }
         if (!userProfile?.id) return { success: false, reason: 'unauthenticated' }
+        if (userShorts < amount) return { success: false, reason: 'insufficient_funds' }
         return await spendShorts(userProfile.id, amount, costKey)
     }
 

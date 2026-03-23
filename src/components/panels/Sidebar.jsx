@@ -1,4 +1,4 @@
-import { Bot, Clapperboard, Settings, ChevronLeft, ChevronRight, Camera, FolderOpen, Users, Shield, Video, Sparkles, Coins, CreditCard, LayoutDashboard, Image, Megaphone } from 'lucide-react'
+import { Bot, Clapperboard, Settings, ChevronLeft, ChevronRight, Camera, FolderOpen, Users, Shield, Video, Sparkles, Coins, CreditCard, LayoutDashboard, Image, Megaphone, User } from 'lucide-react'
 import logo from '../../assets/acs-icon.svg'
 import BrandLogo from '../common/BrandLogo'
 import { cn } from '../../lib/utils'
@@ -10,17 +10,31 @@ import { useShorts } from '../../hooks/useShorts'
 
 function SidebarNavItem({ item, activeTab, setActiveTab, isCollapsed, mouseY }) {
     const ref = useRef(null);
+    const isCollapsedRef = useRef(isCollapsed);
+    useEffect(() => {
+        isCollapsedRef.current = isCollapsed;
+    }, [isCollapsed]);
 
-    const distance = useTransform(mouseY, (val) => {
-        const bounds = ref.current?.getBoundingClientRect() ?? { y: 0, height: 0 };
-        return val - bounds.y - bounds.height / 2;
+    const scaleSync = useTransform(mouseY, (val) => {
+        if (!ref.current || val === Infinity) return 1;
+        const bounds = ref.current.getBoundingClientRect();
+        const center = bounds.y + bounds.height / 2;
+        const dist = Math.abs(val - center);
+        const t = Math.max(0, 1 - dist / 100); // 100px falloff range
+        const power = 1 - (1 - t) ** 2;
+        return 1 + (isCollapsedRef.current ? 0.75 : 0.22) * power;
     });
 
-    const scaleSync = useTransform(distance, [-100, 0, 100], [1, isCollapsed ? 1.6 : 1.15, 1]);
-    const scale = useSpring(scaleSync, { mass: 0.1, stiffness: 150, damping: 14 });
+    const scale = useSpring(scaleSync, { mass: 0.1, stiffness: 200, damping: 20 });
 
-    const zIndexSync = useTransform(distance, [-100, 0, 100], [1, 10, 1]);
-    const zIndex = useSpring(zIndexSync, { mass: 0.1, stiffness: 150, damping: 14 });
+    const zIndexSync = useTransform(mouseY, (val) => {
+        if (!ref.current || val === Infinity) return 1;
+        const bounds = ref.current.getBoundingClientRect();
+        const center = bounds.y + bounds.height / 2;
+        const dist = Math.abs(val - center);
+        return dist < 50 ? 20 : 1;
+    });
+    const zIndex = useSpring(zIndexSync, { mass: 0.1, stiffness: 400, damping: 30 });
     const zIndexRounded = useTransform(zIndex, Math.round);
 
     const isActive = activeTab === item.id;
@@ -37,33 +51,30 @@ function SidebarNavItem({ item, activeTab, setActiveTab, isCollapsed, mouseY }) 
             }}
             onClick={() => setActiveTab(item.id)}
             className={cn(
-                "w-full flex items-center gap-2 px-2 py-2.5 rounded-xl transition-all duration-300 border-[1px] border-transparent group/navitem overflow-hidden relative",
+                "w-full flex items-center py-2.5 rounded-xl border-[1px] border-transparent group/navitem overflow-visible relative transition-[background-color,border-color,color,opacity] duration-300",
                 isActive
                     ? `bg-white/5 border-white/20 ${item.glow}`
                     : "text-white/40 hover:text-white",
-                isCollapsed && "justify-center"
+                isCollapsed ? "justify-center px-0 gap-0" : "px-2 gap-2"
             )}
             title={isCollapsed ? item.label : ''}
         >
-            <div className={cn(
-                "absolute inset-0 opacity-0 transition-opacity duration-300 pointer-events-none",
-                isActive ? "opacity-20" : "group-hover/navitem:opacity-10",
-                item.bgColor
-            )} />
+            {/* Remove colored overlay as it is not aligned correctly */}
 
             <item.icon className={cn(
                 "w-4.5 h-4.5 min-w-[18px] transition-all duration-300 z-10 shrink-0",
                 isActive ? item.color : `group-hover/navitem:rotate-12 ${item.hoverColor}`
             )} />
 
-            {!isCollapsed && (
-                <span className={cn(
-                    "text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 z-10",
-                    isActive ? item.color : item.hoverColor
-                )}>
-                    {item.label}
-                </span>
-            )}
+            <span className={cn(
+                "text-[11px] font-bold uppercase tracking-wider transition-all z-10 whitespace-nowrap",
+                isActive ? item.color : item.hoverColor,
+                isCollapsed 
+                    ? "opacity-0 -translate-x-2 pointer-events-none duration-150 delay-0 w-0 overflow-hidden" 
+                    : "opacity-100 translate-x-0 duration-200 delay-[220ms] ml-2"
+            )}>
+                {item.label}
+            </span>
         </motion.button>
     );
 }
@@ -87,14 +98,16 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
 
     const navItems = [
         { id: 'prompt', label: 'Director Vision', icon: Image, color: 'text-purple-400', bgColor: 'bg-purple-400', hoverColor: 'group-hover/navitem:text-purple-400', glow: 'shadow-[0_0_15px_rgba(168,85,247,0.1)]' },
-        { id: 'creator', label: 'Creator', icon: Camera, color: 'text-emerald-400', bgColor: 'bg-emerald-400', hoverColor: 'group-hover/navitem:text-emerald-400', glow: 'shadow-[0_0_15px_rgba(52,211,153,0.1)]' },
-        { id: 'influencer', label: 'AI Influencer', icon: Users, color: 'text-[#bef264]', bgColor: 'bg-[#bef264]', hoverColor: 'group-hover/navitem:text-[#bef264]', glow: 'shadow-[0_0_15px_rgba(190,242,100,0.1)]' },
-        { id: 'directors-cut', label: "Director's Cut", icon: Clapperboard, color: 'text-cyan-400', bgColor: 'bg-cyan-400', hoverColor: 'group-hover/navitem:text-cyan-400', glow: 'shadow-[0_0_15px_rgba(34,211,238,0.1)]' },
+        { id: 'creator', label: 'Creator', icon: User, color: 'text-emerald-400', bgColor: 'bg-emerald-400', hoverColor: 'group-hover/navitem:text-emerald-400', glow: 'shadow-[0_0_15px_rgba(52,211,153,0.1)]' },
         { id: 'creative-studio', label: "Creative Studio", icon: Video, color: 'text-orange-400', bgColor: 'bg-orange-400', hoverColor: 'group-hover/navitem:text-orange-400', glow: 'shadow-[0_0_15px_rgba(251,146,60,0.1)]' },
         { id: 'ugc', label: 'UGC Engine', icon: Megaphone, color: 'text-amber-400', bgColor: 'bg-amber-400', hoverColor: 'group-hover/navitem:text-amber-400', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.1)]' },
         { id: 'assets', label: 'Assets Library', icon: FolderOpen, color: 'text-[#AADD00]', bgColor: 'bg-[#AADD00]', hoverColor: 'group-hover/navitem:text-[#AADD00]', glow: 'shadow-[0_0_15px_rgba(96,165,250,0.1)]' },
         { id: 'settings', label: 'Settings', icon: Settings, color: 'text-neutral-300', bgColor: 'bg-neutral-300', hoverColor: 'group-hover/navitem:text-neutral-300', glow: 'shadow-[0_0_15px_rgba(163,163,163,0.4)]' },
-        ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: Shield, color: 'text-red-500', bgColor: 'bg-red-500', hoverColor: 'group-hover/navitem:text-red-500', glow: 'shadow-[0_0_15px_rgba(248,113,113,0.1)]' }] : []),
+        ...(isAdmin ? [
+            { id: 'influencer', label: 'AI Influencer', icon: Users, color: 'text-[#bef264]', bgColor: 'bg-[#bef264]', hoverColor: 'group-hover/navitem:text-[#bef264]', glow: 'shadow-[0_0_15px_rgba(190,242,100,0.1)]' },
+            { id: 'directors-cut', label: "Director's Cut", icon: Clapperboard, color: 'text-cyan-400', bgColor: 'bg-cyan-400', hoverColor: 'group-hover/navitem:text-cyan-400', glow: 'shadow-[0_0_15px_rgba(34,211,238,0.1)]' },
+            { id: 'admin', label: 'Admin', icon: Shield, color: 'text-red-500', bgColor: 'bg-red-500', hoverColor: 'group-hover/navitem:text-red-500', glow: 'shadow-[0_0_15px_rgba(248,113,113,0.1)]' }
+        ] : []),
     ]
 
     const { shorts, refresh } = useShorts()
@@ -116,10 +129,15 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
             onMouseMove={(e) => mouseY.set(e.clientY)}
             onMouseLeave={() => mouseY.set(Infinity)}
             className={cn(
-                "border-r border-white/10 surface-glass flex flex-col transition-all duration-300 z-50 relative",
+                "border-r border-white/10 surface-glass flex flex-col z-50 relative h-full min-h-0 overflow-hidden transition-[width] duration-[350ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
                 isCollapsed ? "w-12" : "w-48"
             )}>
-            <div className={cn("pt-1.5 pb-1 px-3 flex items-center transition-all duration-300", isCollapsed ? "justify-center" : "justify-between")}>
+
+            {/* Header — shrink-0 so it never compresses */}
+            <div className={cn(
+                "pt-1.5 pb-1 px-4 flex items-center transition-all duration-300 shrink-0",
+                isCollapsed ? "justify-center" : "justify-between"
+            )}>
                 <button onClick={() => setActiveTab('home')} className="flex items-center gap-2 hover:opacity-80 transition-opacity focus:outline-none group">
                     <BrandLogo 
                         size={isCollapsed ? 28 : 42} 
@@ -127,8 +145,10 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                     />
                     
                     <div className={cn(
-                        "flex flex-col items-start mt-1 transition-all duration-300 overflow-hidden",
-                        isCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto ml-1"
+                        "flex flex-col items-start mt-1 transition-all overflow-hidden",
+                        isCollapsed 
+                            ? "opacity-0 w-0 -translate-x-2 duration-150 delay-0" 
+                            : "opacity-100 w-auto ml-2 translate-x-0 duration-200 delay-[220ms]"
                     )}>
                         <h1 className="text-[18px] font-black text-metallic tracking-tighter uppercase italic leading-none whitespace-nowrap">
                             ZEROLENS
@@ -138,7 +158,11 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                 </button>
             </div>
 
-            <nav className="flex-1 px-2 space-y-2 relative overflow-y-auto overflow-x-hidden custom-scrollbar" onMouseLeave={() => mouseY.set(Infinity)}>
+            {/* Nav — flex-1 + min-h-0 lets it scroll when content overflows */}
+            <nav
+                className="flex-1 min-h-0 px-2 space-y-2 relative overflow-y-auto overflow-x-hidden custom-scrollbar"
+                onMouseLeave={() => mouseY.set(Infinity)}
+            >
                 {navItems.map((item) => (
                     <SidebarNavItem
                         key={item.id}
@@ -151,96 +175,59 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                 ))}
             </nav>
 
-            <div className={cn("border-t border-border space-y-1", isCollapsed ? "p-1" : "p-3")}>
+            {/* Footer — shrink-0 so it never compresses or disappears */}
+            <div className={cn("border-t border-border space-y-1 shrink-0", isCollapsed ? "p-1" : "p-3")}>
                 <button
                     onClick={toggleCollapse}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground hover:text-white hover:bg-white/5 rounded-lg transition-colors justify-center"
+                    className="w-full relative flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground hover:text-white hover:bg-white/5 rounded-lg transition-colors justify-center min-h-[36px]"
                 >
-                    {isCollapsed ? <ChevronRight className="w-5 h-5" /> : (
-                        <div className="flex items-center gap-2 w-full">
-                            <ChevronLeft className="w-5 h-5" />
-                            <span className="font-bold uppercase tracking-wider">Collapse</span>
-                        </div>
-                    )}
+                    <ChevronRight className={cn(
+                        "w-5 h-5 absolute transition-all duration-300",
+                        isCollapsed ? "opacity-100 scale-100 rotate-0" : "opacity-0 scale-0 rotate-180"
+                    )} />
+                    
+                    <div className={cn(
+                        "flex items-center gap-2 overflow-hidden transition-all",
+                        isCollapsed 
+                            ? "opacity-0 w-0 -translate-x-2 duration-150 delay-0" 
+                            : "opacity-100 w-full translate-x-0 duration-200 delay-[220ms]"
+                    )}>
+                        <ChevronLeft className="w-5 h-5 shrink-0" />
+                        <span className="font-bold uppercase tracking-wider whitespace-nowrap">Collapse</span>
+                    </div>
                 </button>
 
                 <div className={cn("space-y-2", isCollapsed ? "px-0.5 py-1" : "px-3 py-2")}>
                     <div className={cn(
-                        "flex items-center gap-2 px-3 py-2 bg-[#D4FF00]/10 border border-[#D4FF00]/30 rounded-xl transition-all",
-                        isCollapsed ? "justify-center px-1" : ""
+                        "flex items-center gap-2 bg-[#D4FF00]/10 border border-[#D4FF00]/30 rounded-xl transition-all h-9 px-3",
+                        isCollapsed ? "justify-center" : "justify-between"
                     )}>
-                        {isCollapsed ? (
+                        <div className="flex items-center gap-2 shrink-0">
                             <Coins className="w-4 h-4 text-[#D4FF00]" />
-                        ) : (
-                            <div className="flex items-center justify-between w-full">
-                                <div className="flex items-center gap-1.5">
-                                    <Coins className="w-4 h-4 text-[#D4FF00]" />
-                                    <span className="text-[13px] font-black text-[#D4FF00]">{shorts}</span>
-                                    <span className="text-[9px] text-[#555] font-bold tracking-widest leading-none mt-0.5">SHORTS</span>
-                                </div>
-                                <button
-                                    onClick={() => {/* navigate to top up */ }}
-                                    className="text-[8px] font-bold text-[#D4FF00] hover:text-white bg-transparent border-none cursor-pointer tracking-wider"
-                                >
-                                    + TOP UP
-                                </button>
+                            <div className={cn(
+                                "flex items-center gap-1.5 transition-all overflow-hidden",
+                                isCollapsed 
+                                    ? "opacity-0 w-0 -translate-x-2 duration-150 delay-0" 
+                                    : "opacity-100 w-auto translate-x-0 duration-200 delay-[220ms]"
+                            )}>
+                                <span className="text-[13px] font-black text-[#D4FF00]">{shorts}</span>
+                                <span className="text-[9px] text-[#555] font-bold tracking-widest mt-0.5">SHORTS</span>
                             </div>
+                        </div>
+
+                        {!isCollapsed && (
+                            <button
+                                onClick={() => {}}
+                                className="text-[8px] font-bold text-[#D4FF00] hover:text-white transition-all duration-200 delay-[250ms] whitespace-nowrap"
+                            >
+                                + TOP UP
+                            </button>
                         )}
                     </div>
 
-                    {!isCollapsed && (
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-white/20">System Status</span>
-                            <div className={cn(
-                                "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider",
-                                runtimeMode === 'SERVER' ? "bg-lime-500/10 text-lime-400" : "bg-orange-500/10 text-orange-400"
-                            )}>
-                                <span className={cn("w-1 h-1 rounded-full", runtimeMode === 'SERVER' ? "bg-lime-400 animate-pulse" : "bg-orange-400")} />
-                                {runtimeMode}
-                            </div>
-                        </div>
-                    )}
 
-                    <button
-                        onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                        className={cn(
-                            "w-full flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors rounded-lg",
-                            isSettingsOpen && "bg-white/5 text-white"
-                        )}
-                    >
-                        <Settings className={cn("w-4 h-4", isSettingsOpen && "animate-spin-slow")} />
-                        {!isCollapsed && <span className="font-bold uppercase tracking-wider">System Config</span>}
-                    </button>
 
-                    {!isCollapsed && isSettingsOpen && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            className="bg-black/20 rounded-xl p-3 border border-white/5 space-y-3 mt-2"
-                        >
-                            <div className="space-y-1.5">
-                                <label className="text-[8px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1">
-                                    <Shield size={10} className="text-lime-500" />
-                                    Google API Key
-                                </label>
-                                <input
-                                    type="password"
-                                    value={apiKey}
-                                    onChange={(e) => setApiKey(e.target.value)}
-                                    placeholder="Enter AI Studio Key..."
-                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[9px] text-white focus:outline-none focus:border-lime-500/50 transition-all"
-                                />
-                                <p className="text-[7px] text-white/20 leading-tight">Required for Standalone mode if no backend server is detected.</p>
-                            </div>
 
-                            <button
-                                onClick={() => checkRuntimeMode()}
-                                className="w-full py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[8px] font-black text-white/40 uppercase tracking-widest transition-all"
-                            >
-                                Re-check connection
-                            </button>
-                        </motion.div>
-                    )}
                 </div>
             </div>
         </aside>

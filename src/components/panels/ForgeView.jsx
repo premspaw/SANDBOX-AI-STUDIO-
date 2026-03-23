@@ -24,22 +24,17 @@ const API = API_BASE_URL;
 
 function ScanningRing({ active }) {
     return (
-        <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-[-12px] pointer-events-none rounded-full">
             <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
-                className={`absolute inset-[-10px] border border-dashed rounded-full transition-opacity duration-300 ${active ? 'border-[#bef264]/40 opacity-100' : 'border-white/5 opacity-0'}`}
+                className={`absolute inset-[8px] border border-dashed rounded-full transition-opacity duration-300 ${active ? 'border-[#bef264]/40 opacity-100' : 'border-white/5 opacity-0'}`}
             />
             <motion.div
                 animate={{ rotate: -360 }}
                 transition={{ duration: 15, repeat: Infinity, ease: 'linear' }}
-                className={`absolute inset-[-20px] border border-dotted rounded-full transition-opacity duration-300 ${active ? 'border-[#bef264]/20 opacity-100' : 'border-white/5 opacity-0'}`}
+                className={`absolute inset-[4px] border border-dotted rounded-full transition-opacity duration-300 ${active ? 'border-[#bef264]/20 opacity-100' : 'border-white/5 opacity-0'}`}
             />
-            {/* Corner Brackets */}
-            <div className={`absolute -top-4 -left-4 w-4 h-4 border-t-2 border-l-2 transition-colors ${active ? 'border-[#bef264]' : 'border-white/10'}`} />
-            <div className={`absolute -top-4 -right-4 w-4 h-4 border-t-2 border-r-2 transition-colors ${active ? 'border-[#bef264]' : 'border-white/10'}`} />
-            <div className={`absolute -bottom-4 -left-4 w-4 h-4 border-b-2 border-l-2 transition-colors ${active ? 'border-[#bef264]' : 'border-white/10'}`} />
-            <div className={`absolute -bottom-4 -right-4 w-4 h-4 border-b-2 border-r-2 transition-colors ${active ? 'border-[#bef264]' : 'border-white/10'}`} />
         </div>
     );
 }
@@ -178,8 +173,14 @@ export function ForgeView({ onComplete }) {
 
         // Deduction check before forging
         const res = await spend('identity_kit');
-        if (!res || (!res.success && res.reason !== 'unauthenticated')) {
-            alert("Not enough shorts or " + (res?.reason || "error"));
+        if (!res || !res.success) {
+            if (res?.reason === 'unauthenticated') {
+                useAppStore.getState().setShowingAuthModal(true);
+            } else if (res?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+                useAppStore.getState().setActiveTab('pricing');
+            } else {
+                alert("Identity Synth could not proceed: " + (res?.reason || "error"));
+            }
             return;
         }
 
@@ -240,8 +241,14 @@ export function ForgeView({ onComplete }) {
 
         // Deduction check before matrix forging
         const res = await spend('movie_matrix');
-        if (!res || (!res.success && res.reason !== 'unauthenticated')) {
-            alert("Not enough shorts or " + (res?.reason || "error"));
+        if (!res || !res.success) {
+            if (res?.reason === 'unauthenticated') {
+                useAppStore.getState().setShowingAuthModal(true);
+            } else if (res?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+                useAppStore.getState().setActiveTab('pricing');
+            } else {
+                alert("Matrix Forge could not proceed: " + (res?.reason || "error"));
+            }
             return;
         }
 
@@ -420,20 +427,11 @@ export function ForgeView({ onComplete }) {
     };
 
     return (
-        <div className="w-full h-full bg-[#030303] p-4 lg:p-10 flex flex-col items-center overflow-hidden relative">
+        <div className="w-full h-full bg-[#030303] p-2 md:p-4 flex flex-col items-center overflow-x-hidden overflow-y-auto relative">
             <MatrixOverlay />
 
-            <div className="text-center mb-6 space-y-1 px-4">
-                <h1 className="text-xl md:text-3xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-white via-[#bef264] to-emerald-400 tracking-tighter uppercase whitespace-normal md:whitespace-nowrap">
-                    Create your character identity
-                </h1>
-                <div className="flex items-center justify-center gap-3 opacity-40">
-                    <Activity size={12} className="text-[#bef264] shrink-0" />
-                    <p className="font-mono text-[7px] md:text-[9px] tracking-[0.2em] text-[#bef264] uppercase text-center">Tell the AI who you are — and watch your character come alive.</p>
-                </div>
-            </div>
 
-            <div className="flex gap-4 mb-6 z-10">
+            <div className="flex gap-4 mb-2 z-10">
                 <button
                     onClick={() => setForgeTab('matrix')}
                     className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${forgeTab === 'matrix' ? 'bg-[#bef264]/10 border-[#bef264] text-[#bef264]' : 'bg-transparent border-white/10 text-white/40 hover:text-white hover:border-white/30'}`}
@@ -448,10 +446,10 @@ export function ForgeView({ onComplete }) {
                 </button>
             </div>
 
-            <div className="flex flex-col gap-8 w-full max-w-5xl h-auto md:h-[72vh] mx-auto overflow-y-auto md:overflow-hidden custom-scrollbar pb-40 md:pb-0">
+            <div className="flex-1 flex flex-col gap-6 w-full max-w-5xl mx-auto overflow-y-auto custom-scrollbar pb-40 md:pb-6">
 
                 {/* Center Main View */}
-                <div className="flex-1 min-h-0 flex items-center justify-center relative w-full">
+                <div className="flex-1 min-h-0 flex items-center justify-center relative w-full px-4 md:py-8">
                     {forgeTab === 'kit' ? (
                         (!kit.anchor && !isForging) ? (
                             <div className="w-full h-full flex flex-col items-center justify-center relative">
@@ -507,31 +505,33 @@ export function ForgeView({ onComplete }) {
                             </div>
                         )
                     ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center relative">
-                            <div className="flex-1 flex flex-col lg:flex-row items-center justify-center p-4 w-full gap-16">
+                        <div className="w-full flex-1 min-h-0 flex flex-col items-center justify-center relative">
+                            <div className="flex-1 flex flex-col lg:flex-row items-center justify-center p-2 md:p-6 w-full gap-12 md:gap-16 overflow-visible">
                                 {!matrixUrl && !isForgingMatrix ? (
-                                    <div className="flex flex-col md:flex-row gap-8 md:gap-16 items-center justify-center relative w-full lg:w-auto">
-                                        {/* Connector Line - Only on desktop */}
-                                        <div className="hidden md:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-px bg-gradient-to-r from-transparent via-[#bef264]/20 to-transparent pointer-events-none" />
+                                    <div className="flex flex-col md:flex-row gap-8 md:gap-16 items-center justify-center relative w-full lg:w-auto p-8 py-12">
+                                        {/* Connector Line - Subtler than before to avoid overlap issues */}
+                                        <div className="hidden md:block absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-px bg-gradient-to-r from-transparent via-[#bef264]/30 to-transparent pointer-events-none" />
 
                                         <div className="flex flex-col items-center gap-6 z-10 w-full md:w-auto">
                                             <div
                                                 onClick={() => faceRef.current?.click()}
-                                                className="w-40 h-40 md:w-44 md:h-44 rounded-full bg-[#050505] border-2 border-dashed border-[#bef264]/20 flex items-center justify-center overflow-hidden cursor-pointer hover:border-[#bef264]/60 group transition-all relative"
+                                                className="w-32 h-32 md:w-36 md:h-36 rounded-full bg-[#050505] border-2 border-dashed border-[#bef264]/20 flex items-center justify-center cursor-pointer hover:border-[#bef264]/60 group transition-all relative overflow-visible"
                                             >
                                                 <ScanningRing active={!!faceAnchor} />
-                                                {faceAnchor ? (
-                                                    <img src={faceAnchor} className="w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-700" alt="Face" />
-                                                ) : (
-                                                    <motion.div
-                                                        animate={{ opacity: [0.2, 0.5, 0.2] }}
-                                                        transition={{ duration: 2, repeat: Infinity }}
-                                                        className="flex flex-col items-center gap-2"
-                                                    >
-                                                        <User size={32} className="text-[#bef264] md:w-10 md:h-10" />
-                                                        <span className="text-[7px] font-black uppercase tracking-[0.4em]">Face Anchor</span>
-                                                    </motion.div>
-                                                )}
+                                                <div className="absolute inset-0 rounded-full overflow-hidden">
+                                                    {faceAnchor ? (
+                                                        <img src={faceAnchor} className="w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-700" alt="Face" />
+                                                    ) : (
+                                                        <motion.div
+                                                            animate={{ opacity: [0.2, 0.5, 0.2] }}
+                                                            transition={{ duration: 2, repeat: Infinity }}
+                                                            className="flex flex-col items-center justify-center h-full gap-2"
+                                                        >
+                                                            <User size={32} className="text-[#bef264] md:w-10 md:h-10" />
+                                                            <span className="text-[7px] font-black uppercase tracking-[0.4em]">Face Anchor</span>
+                                                        </motion.div>
+                                                    )}
+                                                </div>
                                                 <input type="file" ref={faceRef} className="hidden" onChange={(e) => handleFileUpload(e, 'face')} />
                                                 <input type="file" ref={fileRef} className="hidden" onChange={(e) => handleFileUpload(e, 'origin')} accept="image/*" />
                                             </div>
@@ -553,21 +553,23 @@ export function ForgeView({ onComplete }) {
                                         <div className="flex flex-col items-center gap-6 z-10 w-full md:w-auto">
                                             <div
                                                 onClick={() => costumeRef_fileRef.current?.click()}
-                                                className="w-40 h-40 md:w-44 md:h-44 rounded-full bg-[#050505] border-2 border-dashed border-[#bef264]/20 flex items-center justify-center overflow-hidden cursor-pointer hover:border-[#bef264]/60 group transition-all relative"
+                                                className="w-32 h-32 md:w-36 md:h-36 rounded-full bg-[#050505] border-2 border-dashed border-[#bef264]/20 flex items-center justify-center cursor-pointer hover:border-[#bef264]/60 group transition-all relative overflow-visible"
                                             >
                                                 <ScanningRing active={!!costumeRef} />
-                                                {costumeRef ? (
-                                                    <img src={costumeRef} className="w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-700" alt="Costume" />
-                                                ) : (
-                                                    <motion.div
-                                                        animate={{ opacity: [0.2, 0.5, 0.2] }}
-                                                        transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-                                                        className="flex flex-col items-center gap-2"
-                                                    >
-                                                        <Layers size={32} className="text-[#bef264] md:w-10 md:h-10" />
-                                                        <span className="text-[7px] font-black uppercase tracking-[0.4em]">Outfit DNA</span>
-                                                    </motion.div>
-                                                )}
+                                                <div className="absolute inset-0 rounded-full overflow-hidden">
+                                                    {costumeRef ? (
+                                                        <img src={costumeRef} className="w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-700" alt="Costume" />
+                                                    ) : (
+                                                        <motion.div
+                                                            animate={{ opacity: [0.2, 0.5, 0.2] }}
+                                                            transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
+                                                            className="flex flex-col items-center justify-center h-full gap-2"
+                                                        >
+                                                            <Layers size={32} className="text-[#bef264] md:w-10 md:h-10" />
+                                                            <span className="text-[7px] font-black uppercase tracking-[0.4em]">Outfit DNA</span>
+                                                        </motion.div>
+                                                    )}
+                                                </div>
                                                 <input type="file" ref={costumeRef_fileRef} className="hidden" onChange={(e) => handleFileUpload(e, 'costume')} />
                                             </div>
                                             <div className="text-center">
@@ -656,7 +658,7 @@ export function ForgeView({ onComplete }) {
                 </div>
 
                 {/* Bottom Control Bar */}
-                <div className="fixed bottom-16 md:bottom-10 md:relative bg-black/80 md:bg-black/40 border border-white/10 rounded-none md:rounded-3xl p-4 md:p-5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 md:gap-6 backdrop-blur-3xl z-40 w-full shrink-0 mt-4 shadow-2xl">
+                <div className="fixed bottom-4 md:bottom-2 md:relative bg-black/80 md:bg-black/40 border border-white/10 rounded-none md:rounded-3xl p-4 md:p-5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 md:gap-6 backdrop-blur-3xl z-40 w-full shrink-0 mt-8 md:mt-12 shadow-2xl">
                     <div className="flex-1 space-y-1">
                         <label className="text-[8px] font-black text-[#bef264]/40 uppercase tracking-[0.4em] ml-1">Character Name</label>
                         <div className="flex gap-2">

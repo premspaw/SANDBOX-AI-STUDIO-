@@ -101,8 +101,10 @@ export const StoryboardView = ({
 
             if (res?.reason === 'unauthenticated') {
                 useAppStore.getState().setShowingAuthModal(true);
+            } else if (res?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+                useAppStore.getState().setActiveTab('pricing');
             } else {
-                alert("Not enough shorts or " + (res?.reason || "error"));
+                alert("Storyboard generation could not proceed: " + (res?.reason || "error"));
             }
             return;
         }

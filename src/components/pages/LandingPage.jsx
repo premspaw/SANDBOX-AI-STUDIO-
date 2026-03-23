@@ -605,7 +605,7 @@ function AnimatedTimeStat({ duration = 2500 }) {
 
     // Phase 1 (0–40%): 5hr → 1hr countdown
     // Phase 2 (40–55%): switch unit hr → min, jump to 60
-    // Phase 3 (55–100%): 60min → 5min countdown
+    // Phase 3 (55–100%): 60min → 1min countdown
     const animate = (now) => {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
@@ -622,10 +622,10 @@ function AnimatedTimeStat({ duration = 2500 }) {
         setValue(Math.round(60 - p * 10));
         setUnit('min');
       } else {
-        // Phase 3: 50min → 5min
+        // Phase 3: 50min → 1min
         const p = (progress - 0.55) / 0.45;
         const eased3 = 1 - Math.pow(1 - p, 3);
-        setValue(Math.round(50 - eased3 * 45));
+        setValue(Math.round(50 - eased3 * 49));
         setUnit('min');
       }
 
@@ -694,7 +694,7 @@ function AnimatedStats({ isMobile }) {
           </div>
         </div>
 
-        {/* 0 → 6 */}
+        {/* ZERO → CREW */}
         <div style={{
           padding: isMobile ? '32px 24px' : '44px 48px',
           borderRight: `1px solid ${T.gray}`,
@@ -704,13 +704,13 @@ function AnimatedStats({ isMobile }) {
             fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 42 : 56,
             letterSpacing: '0.02em', color: T.lime, lineHeight: 1
           }}>
-            <AnimatedCounter start={0} end={6} duration={2000} />
+            ZERO
           </div>
           <div style={{
             fontFamily: "'DM Mono',monospace", fontSize: 9,
             letterSpacing: '0.3em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
           }}>
-            Output formats per session
+            Crew. No team needed.
           </div>
         </div>
 
@@ -925,27 +925,14 @@ export default function LandingPage({ onEnter, onPricing }) {
           pointerEvents: 'none'
         }} />
 
-        {/* Live badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.1 }}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 10,
-            fontFamily: "'DM Mono',monospace", fontSize: 11, letterSpacing: '0.4em',
-            color: T.lime, textTransform: 'uppercase', marginBottom: 20, position: 'relative', zIndex: 10
-          }}
-        >
-          <BrandLogo size={20} className="opacity-80" />
-          ZEROLENS
-        </motion.div>
+
 
         {/* CYCLING TITLE */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.85, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          style={{ position: 'relative', zIndex: 2, maxWidth: isMobile ? '100%' : '58%' }}
+          style={{ position: 'relative', zIndex: 2, maxWidth: isMobile ? '100%' : '58%', marginTop: 20 }}
         >
           <HeroTitle />
         </motion.div>
@@ -977,7 +964,8 @@ export default function LandingPage({ onEnter, onPricing }) {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
           style={{
-            borderTop: `1px solid ${T.gray}`, paddingTop: 24,
+            borderTop: `1px solid ${T.gray}`, paddingTop: 10,
+            marginLeft: isMobile ? -24 : -48, marginRight: isMobile ? -24 : -48,
             overflow: 'hidden', position: 'relative', zIndex: 2
           }}
         >
@@ -1013,9 +1001,9 @@ export default function LandingPage({ onEnter, onPricing }) {
       <StackSection assets={assets} isMobile={isMobile} />
 
 
-      {/* ══════ FEATURES ══════ */}
+      {/* ══════ FEATURES (Compressed) ══════ */}
       <div style={{
-        display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+        display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4,1fr)',
         gap: 2, background: T.gray
       }}>
         {[
@@ -1143,7 +1131,7 @@ export default function LandingPage({ onEnter, onPricing }) {
           }}>
             ZERO CREW. ZERO STUDIO.<br />
             ZERO LIMITS. <span style={{ color: T.lime }}>ZERO LENS.</span><br />
-            <span style={{ color: T.lime }}>INFINITE CREATIVITY</span>
+            BUT <span style={{ color: T.lime }}>INFINITE CREATIVITY</span>
           </h2>
         </Reveal>
         <Reveal delay={0.2}>
@@ -1222,8 +1210,9 @@ function FeatureCard({ f, isMobile }) {
       onHoverEnd={() => setHovered(false)}
       animate={{ background: hovered ? '#0e0e0e' : T.bg }}
       style={{
-        padding: isMobile ? '48px 32px' : '64px 56px', position: 'relative',
-        overflow: 'hidden', cursor: 'pointer'
+        padding: isMobile ? '32px 20px' : '48px 40px', position: 'relative',
+        overflow: 'hidden', cursor: 'pointer', height: '100%',
+        display: 'flex', flexDirection: 'column'
       }}
     >
       <motion.div
@@ -1236,33 +1225,34 @@ function FeatureCard({ f, isMobile }) {
         }}
       />
       <span style={{
-        fontFamily: "'DM Mono',monospace", fontSize: 9,
+        fontFamily: "'DM Mono',monospace", fontSize: 8,
         letterSpacing: '0.3em', color: 'rgba(240,237,232,0.18)',
-        marginBottom: 32, display: 'block', textTransform: 'uppercase'
+        marginBottom: 20, display: 'block', textTransform: 'uppercase'
       }}>
         {f.n}
       </span>
-      <span style={{ fontSize: isMobile ? 28 : 36, marginBottom: 24, display: 'block' }}>{f.ico}</span>
+      <span style={{ fontSize: isMobile ? 24 : 32, marginBottom: 16, display: 'block' }}>{f.ico}</span>
       <h3 style={{
-        fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 36 : 44,
-        letterSpacing: '0.03em', color: T.white, lineHeight: 0.95, marginBottom: 18
+        fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 24 : 32,
+        letterSpacing: '0.03em', color: T.white, lineHeight: 0.95, marginBottom: 12
       }}>
         {f.title}
       </h3>
-      <p style={{ fontSize: 14, lineHeight: 1.8, color: 'rgba(240,237,232,0.38)', maxWidth: 380 }}>
+      <p style={{ fontSize: 13, lineHeight: 1.6, color: 'rgba(240,237,232,0.38)', flex: 1 }}>
         {f.desc}
       </p>
       <span style={{
-        display: 'inline-block', marginTop: 32,
-        fontFamily: "'DM Mono',monospace", fontSize: 9,
+        display: 'inline-block', marginTop: 24, alignSelf: 'flex-start',
+        fontFamily: "'DM Mono',monospace", fontSize: 8,
         letterSpacing: '0.25em', textTransform: 'uppercase',
-        color: T.lime, border: '1px solid rgba(200,241,53,0.2)', padding: '6px 14px'
+        color: T.lime, border: '1px solid rgba(200,241,53,0.15)', padding: '4px 10px'
       }}>
         {f.tag}
       </span>
     </motion.div>
   );
 }
+
 
 function BtnPrimary({ children, onClick, isMobile }) {
   const [hovered, setHovered] = useState(false);
@@ -1415,7 +1405,7 @@ function StackSection({ assets, isMobile }) {
       <div
         ref={card1Ref}
         style={{
-          position: 'sticky', top: 0, zIndex: 10,
+          position: 'sticky', top: -10, zIndex: 10,
           height: '130vh', overflow: 'hidden',
           background: T.bg,
           borderTop: `1px solid ${T.gray}`,
@@ -1453,7 +1443,7 @@ function StackSection({ assets, isMobile }) {
               'Drop the product',
               'Choose format & duration',
               'AI writes the script',
-              'Render & export instantly',
+              'Render & export instantly including videos',
             ].map((step, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{
@@ -1572,7 +1562,7 @@ function StackSection({ assets, isMobile }) {
       <div
         ref={card2Ref}
         style={{
-          position: 'sticky', top: 0, zIndex: 20,
+          position: 'sticky', top: -30, zIndex: 20,
           height: '130vh', overflow: 'hidden',
           background: T.bg2,
           borderTop: `1px solid ${T.gray}`,
@@ -1590,7 +1580,8 @@ function StackSection({ assets, isMobile }) {
               fontSize: isMobile ? 48 : 72,
               lineHeight: 0.9, letterSpacing: '0.02em'
             }}>
-              DROP A PRODUCT. <span style={{ color: T.lime }}>GET A SHOOT.</span>
+              DROP A PRODUCT OR WARDROBE.<br />
+              <span style={{ color: T.lime }}>GET A SHOOT.</span>
             </div>
           </div>
           <p style={{
@@ -1718,8 +1709,8 @@ function StackSection({ assets, isMobile }) {
           </p>
         </div>
 
-        {/* 1 Big Cinema Video - 16:9 */}
-        <div style={{ flex: 1, minHeight: 0, position: 'relative', borderRadius: 4, overflow: 'hidden' }}>
+        {/* 1 Big Cinema Video - 16:9 - Increased height and removed overlays */}
+        <div style={{ flex: 1.25, minHeight: 0, position: 'relative', borderRadius: 4, overflow: 'hidden' }}>
           {cinemaVideo?.src ? (
             <StackVideo src={cinemaVideo.src} />
           ) : (
@@ -1761,49 +1752,9 @@ function StackSection({ assets, isMobile }) {
             </div>
           )}
 
-          {/* Letterbox overlay */}
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '10%', background: 'rgba(5,5,5,0.7)', zIndex: 1 }} />
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '10%', background: 'rgba(5,5,5,0.7)', zIndex: 1 }} />
-
-          {/* Film info overlay */}
-          <div style={{
-            position: 'absolute', bottom: '12%', left: 32, right: 32,
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            zIndex: 2,
-          }}>
-            <div>
-              <span style={{
-                fontFamily: "'DM Mono',monospace", fontSize: 8,
-                letterSpacing: '0.3em', color: T.lime,
-                border: `1px solid rgba(200,241,53,0.25)`,
-                padding: '3px 8px', display: 'inline-block', marginBottom: 8
-              }}>
-                CINEMA PREVIS
-              </span>
-              <div style={{
-                fontFamily: "'Bebas Neue',sans-serif", fontSize: 32,
-                color: T.white, lineHeight: 1
-              }}>
-                DIRECTOR'S CUT
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 24 }}>
-              {['16:9 WIDESCREEN', '24FPS', 'DOLBY VISION'].map((spec, i) => (
-                <div key={i} style={{ textAlign: 'center' }}>
-                  <div style={{
-                    fontFamily: "'DM Mono',monospace", fontSize: 8,
-                    letterSpacing: '0.25em', color: 'rgba(240,237,232,0.4)',
-                    textTransform: 'uppercase'
-                  }}>
-                    {spec}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Overlays removed per user request */}
         </div>
       </div>
-
     </div>
   );
 }
