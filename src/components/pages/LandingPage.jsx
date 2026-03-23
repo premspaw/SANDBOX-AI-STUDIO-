@@ -24,26 +24,30 @@ const T = {
 // ─── HERO SLIDES ──────────────────────────────────────────────
 const SLIDES = [
   {
-    line1: 'DROP A PRODUCT.',
-    line2: 'GET A SHOOT.',
-    accent: 'SHARP.',
-    sub: 'The world\'s first AI director. Drop a product — get a full editorial shoot in 60 seconds. No crew. No budget. No waiting.',
+    line1: 'DROP A FACE.',
+    line2: 'DROP A PRODUCT.',
+    prefix: 'GET AN ',
+    accent: 'AD.',
+    sub: 'The world\'s first AI director. Drop a face and a product — get a full UGC ad video in 60 seconds. No crew. No budget. No waiting.',
   },
   {
     line1: 'WRITE A SCENE.',
     line2: 'DIRECT THE SHOT.',
+    prefix: 'GET A ',
     accent: 'CINEMA.',
     sub: 'Shoot cinematic previs without touching a camera. Set your lens, light, and scene — AI writes the script, frames every shot, renders the cut.',
   },
   {
     line1: 'PICK A FORMAT.',
     line2: 'DROP A PRODUCT.',
+    prefix: 'GET A ',
     accent: 'REEL.',
     sub: 'Social-ready content at infinite scale. One character, one product, every format — Reels, Stories, TikToks, all in a single session.',
   },
   {
     line1: 'SET THE BRIEF.',
     line2: 'UPLOAD THE BRAND.',
+    prefix: 'GET A ',
     accent: 'COMMERCIAL.',
     sub: 'From brief to broadcast in minutes. Upload your assets, pick a style, get a full commercial — Gemini + Imagen 4 + Veo 2 in one pipeline.',
   },
@@ -129,7 +133,7 @@ function Reveal({ children, delay = 0, style = {} }) {
 // ═══════════════════════════════════════════════════════════════
 //  HERO TITLE CYCLER
 // ═══════════════════════════════════════════════════════════════
-function HeroTitle() {
+function HeroTitle({ isMobile }) {
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
@@ -152,12 +156,14 @@ function HeroTitle() {
   return (
     <h1 style={{
       fontFamily: "'Bebas Neue',sans-serif",
-      fontSize: fs, lineHeight: 0.9,
-      letterSpacing: '-0.01em', marginBottom: 40,
+      fontSize: fs, lineHeight: isMobile ? 1.1 : 0.9,
+      letterSpacing: '-0.01em', marginBottom: isMobile ? 32 : 40,
       position: 'relative', zIndex: 10,
     }}>
-      {/* LINE 1 — cycles */}
-      <span style={{ display: 'block', overflow: 'hidden', height: '1.05em', position: 'relative' }}>
+      <span style={{
+        display: 'block', overflow: 'hidden',
+        height: isMobile ? '2.15em' : '1.05em', position: 'relative'
+      }}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
             key={idx}
@@ -165,9 +171,19 @@ function HeroTitle() {
             initial="enter"
             animate="center"
             exit="exit"
-            style={{ display: 'block', lineHeight: '1.05', position: 'absolute', top: 0, left: 0, width: '100%' }}
+            style={{
+              display: 'block', lineHeight: '1.05', position: 'absolute',
+              top: 0, left: 0, width: '100%',
+              whiteSpace: isMobile ? 'normal' : 'nowrap'
+            }}
           >
-            {cur.line1}
+            {isMobile ? (
+              <>
+                {cur.line1.split(' ').slice(0, 2).join(' ')}
+                <br />
+                {cur.line1.split(' ').slice(2).join(' ')}
+              </>
+            ) : cur.line1}
           </motion.span>
         </AnimatePresence>
       </span>
@@ -190,9 +206,9 @@ function HeroTitle() {
         </motion.span>
       </AnimatePresence>
 
-      {/* LINE 3 — "GET AN ___" */}
+      {/* LINE 3 — dynamic prefix from slides */}
       <span style={{ display: 'block' }}>
-        GET AN&nbsp;
+        {cur.prefix}
         <span style={{ display: 'inline-flex', overflow: 'hidden', verticalAlign: 'top', height: '0.87em', position: 'relative', width: '5.5em' }}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.span
@@ -460,7 +476,7 @@ function PipelineSection({ isMobile }) {
       <Reveal delay={0.1}>
         <div style={{
           display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(6,1fr)',
-          gap: isMobile ? 40 : 2,
+          gap: isMobile ? '32px 20px' : 2,
           position: 'relative', marginTop: 0
         }}>
           {/* connector line */}
@@ -654,19 +670,19 @@ function AnimatedStats({ isMobile }) {
       }}>
         {/* $100 → $5 */}
         <div style={{
-          padding: isMobile ? '32px 24px' : '44px 48px',
+          padding: isMobile ? '24px 16px' : '44px 48px',
           borderRight: `1px solid ${T.gray}`,
           borderBottom: isMobile ? `1px solid ${T.gray}` : 'none',
-          display: 'flex', flexDirection: 'column', gap: 10
+          display: 'flex', flexDirection: 'column', gap: 8
         }}>
           <div style={{
-            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 42 : 56,
+            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 32 : 56,
             letterSpacing: '0.02em', color: T.lime, lineHeight: 1
           }}>
             <AnimatedCounter start={100} end={5} prefix="$" duration={2200} />
           </div>
           <div style={{
-            fontFamily: "'DM Mono',monospace", fontSize: 9,
+            fontFamily: "'DM Mono',monospace", fontSize: isMobile ? 8 : 9,
             letterSpacing: '0.3em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
           }}>
             Full ad video cost
@@ -675,19 +691,19 @@ function AnimatedStats({ isMobile }) {
 
         {/* 5hr → 5min */}
         <div style={{
-          padding: isMobile ? '32px 24px' : '44px 48px',
+          padding: isMobile ? '24px 16px' : '44px 48px',
           borderRight: isMobile ? 'none' : `1px solid ${T.gray}`,
           borderBottom: isMobile ? `1px solid ${T.gray}` : 'none',
-          display: 'flex', flexDirection: 'column', gap: 10
+          display: 'flex', flexDirection: 'column', gap: 8
         }}>
           <div style={{
-            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 42 : 56,
+            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 32 : 56,
             letterSpacing: '0.02em', color: T.lime, lineHeight: 1
           }}>
             <AnimatedTimeStat duration={2500} />
           </div>
           <div style={{
-            fontFamily: "'DM Mono',monospace", fontSize: 9,
+            fontFamily: "'DM Mono',monospace", fontSize: isMobile ? 8 : 9,
             letterSpacing: '0.3em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
           }}>
             Average generation time
@@ -696,18 +712,18 @@ function AnimatedStats({ isMobile }) {
 
         {/* ZERO → CREW */}
         <div style={{
-          padding: isMobile ? '32px 24px' : '44px 48px',
+          padding: isMobile ? '24px 16px' : '44px 48px',
           borderRight: `1px solid ${T.gray}`,
-          display: 'flex', flexDirection: 'column', gap: 10
+          display: 'flex', flexDirection: 'column', gap: 8
         }}>
           <div style={{
-            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 42 : 56,
+            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 32 : 56,
             letterSpacing: '0.02em', color: T.lime, lineHeight: 1
           }}>
             ZERO
           </div>
           <div style={{
-            fontFamily: "'DM Mono',monospace", fontSize: 9,
+            fontFamily: "'DM Mono',monospace", fontSize: isMobile ? 8 : 9,
             letterSpacing: '0.3em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
           }}>
             Crew. No team needed.
@@ -716,11 +732,11 @@ function AnimatedStats({ isMobile }) {
 
         {/* ∞ pulsing */}
         <div style={{
-          padding: isMobile ? '32px 24px' : '44px 48px',
-          display: 'flex', flexDirection: 'column', gap: 10
+          padding: isMobile ? '24px 16px' : '44px 48px',
+          display: 'flex', flexDirection: 'column', gap: 8
         }}>
           <div style={{
-            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 42 : 56,
+            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 32 : 56,
             letterSpacing: '0.02em', color: T.lime, lineHeight: 1
           }}>
             <motion.span
@@ -740,7 +756,7 @@ function AnimatedStats({ isMobile }) {
             </motion.span>
           </div>
           <div style={{
-            fontFamily: "'DM Mono',monospace", fontSize: 9,
+            fontFamily: "'DM Mono',monospace", fontSize: isMobile ? 8 : 9,
             letterSpacing: '0.3em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
           }}>
             Creative variations possible
@@ -854,26 +870,46 @@ export default function LandingPage({ onEnter, onPricing }) {
 
       {/* ══════ HERO ══════ */}
       <section style={{
-        minHeight: isMobile ? '90vh' : '100vh', display: 'flex', flexDirection: 'column',
-        justifyContent: 'flex-end', padding: isMobile ? '0 24px 32px' : '0 48px 24px',
-        position: 'relative', overflow: 'hidden'
+        minHeight: '100vh',
+        display: 'flex', flexDirection: 'column',
+        justifyContent: isMobile ? 'flex-end' : 'flex-end',
+        padding: isMobile ? '0 20px 24px' : '0 48px 24px',
+        position: 'relative', overflow: 'hidden',
       }}>
 
         {/* ── LAYER 1: BG VIDEO ── */}
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden', background: '#050505' }}>
           {assets.heroBackground && (
-            <video
-              ref={videoRef}
-              autoPlay muted loop playsInline preload="auto"
-              src={resolveAsset(assets.heroBackground)}
-              style={{
-                position: 'absolute', top: '44%', 
-                left: '50%',
-                transform: `translate(-50%, -50%) ${isMobile ? 'scale(1.35)' : 'scale(1)'}`,
-                minWidth: '100%', minHeight: '100%',
-                objectFit: 'cover', opacity: 1
-              }}
-            />
+            <>
+              <video
+                ref={videoRef}
+                autoPlay muted loop playsInline preload="auto"
+                src={resolveAsset(assets.heroBackground)}
+                style={isMobile ? {
+                  position: 'absolute',
+                  top: 0, left: 0,
+                  width: '100%',
+                  height: '50%',          // video takes top half only
+                  objectFit: 'cover',
+                  objectPosition: 'center center',
+                  opacity: 1,
+                } : {
+                  position: 'absolute', top: '44%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  minWidth: '100%', minHeight: '100%',
+                  objectFit: 'cover', opacity: 1,
+                }}
+              />
+              {isMobile && (
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: 'linear-gradient(to bottom, transparent 30%, #050505 60%)',
+                  zIndex: 1,
+                  pointerEvents: 'none',
+                }} />
+              )}
+            </>
           )}
           {/* Overlays and Vignettes removed for maximum clarity */}
         </div>
@@ -895,13 +931,13 @@ export default function LandingPage({ onEnter, onPricing }) {
         }} />
 
         {/* ── LAYER 3: FOREGROUND SUBJECT ── */}
-        {assets.foregroundSubject && (
+        {!isMobile && assets.foregroundSubject && (
           <div style={{
             position: 'absolute',
-            right: isMobile ? '20%' : '2%',
-            bottom: isMobile ? '-2%' : '4%',
+            right: '2%',
+            bottom: '4%',
             zIndex: 4,
-            height: isMobile ? '65%' : '92%',
+            height: '92%',
             pointerEvents: 'none',
             display: 'flex', alignItems: 'flex-end',
           }}>
@@ -914,7 +950,6 @@ export default function LandingPage({ onEnter, onPricing }) {
                 opacity: 1,
               }}
             />
-            {/* Fade removed for maximum clarity */}
           </div>
         )}
 
@@ -932,9 +967,14 @@ export default function LandingPage({ onEnter, onPricing }) {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.85, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          style={{ position: 'relative', zIndex: 2, maxWidth: isMobile ? '100%' : '58%', marginTop: 20 }}
+          style={{
+            position: 'relative', zIndex: 2,
+            maxWidth: isMobile ? '100%' : '58%',
+            marginTop: isMobile ? 'auto' : 20,
+            paddingTop: isMobile ? 60 : 0,
+          }}
         >
-          <HeroTitle />
+          <HeroTitle isMobile={isMobile} />
         </motion.div>
 
         {/* Bottom row */}
@@ -998,41 +1038,13 @@ export default function LandingPage({ onEnter, onPricing }) {
       <AnimatedStats isMobile={isMobile} />
 
       {/* ══════ SCROLL STACK ══════ */}
-      <StackSection assets={assets} isMobile={isMobile} />
+      {isMobile
+        ? <MobileStackSection assets={assets} />
+        : <StackSection assets={assets} isMobile={false} />
+      }
 
 
-      {/* ══════ FEATURES (Compressed) ══════ */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4,1fr)',
-        gap: 2, background: T.gray
-      }}>
-        {[
-          {
-            n: '01 // IDENTITY_LOCK', ico: '⬡', title: 'CHARACTER ENGINE',
-            desc: 'Upload 3 anchor photos. The system extracts a complete physical fingerprint — locking your character\'s face across every generation. No celebrity bleed. No drift.',
-            tag: 'CHARACTER CONSISTENCY'
-          },
-          {
-            n: '02 // PRODUCT_SCAN', ico: '◈', title: 'PRODUCT INTELLIGENCE',
-            desc: 'Drop any product photo. AI analyzes shape, color, texture, brand tone, and exactly how a person naturally interacts with it — then locks that into every scene.',
-            tag: 'BRAND INTEGRITY'
-          },
-          {
-            n: '03 // DIRECTOR_CORE', ico: '◎', title: 'AI DIRECTOR MODE',
-            desc: 'Set your lens, lighting, angle, and ratio from the director panel. The system writes a full shot-by-shot script, storyboards the scenes, and renders the final cinematic cut.',
-            tag: 'PRODUCTION CORE'
-          },
-          {
-            n: '04 // OUTPUT_MATRIX', ico: '▣', title: 'ALL FORMAT OUTPUT',
-            desc: 'One session outputs everything — Instagram Reels, YouTube pre-roll, Stories, LinkedIn banners, storyboard PDFs, and raw frames. Every ratio, every platform, simultaneously.',
-            tag: 'INSTANT EXPORT'
-          },
-        ].map((f, i) => (
-          <Reveal key={f.n} delay={i * 0.05}>
-            <FeatureCard f={f} isMobile={isMobile} />
-          </Reveal>
-        ))}
-      </div>
+      {/* FEATURES section removed per user request */}
 
       {/* ══════ SCRLLING HIGHLIGHTS ══════ */}
       <div style={{
@@ -1040,19 +1052,23 @@ export default function LandingPage({ onEnter, onPricing }) {
         borderBottom: `1px solid ${T.gray}`, background: T.bg2, overflow: 'hidden'
       }}>
         <Marquee />
-        <div style={{ borderTop: `1px solid ${T.gray2}` }}>
-          <Marquee reverse />
-        </div>
+        {!isMobile && (
+          <div style={{ borderTop: `1px solid ${T.gray2}` }}>
+            <Marquee reverse />
+          </div>
+        )}
       </div>
 
       {/* ══════ VIDEO GRID ══════ */}
       <section style={{
-        height: isMobile ? 'auto' : '140vh', 
-        padding: isMobile ? '80px 24px' : '120px 48px',
-        overflow: 'hidden', display: 'flex',
+        height: isMobile ? 'auto' : '140vh',
+        padding: isMobile ? '60px 20px' : '120px 48px',
+        overflow: 'hidden',
+        display: 'flex',
         flexDirection: isMobile ? 'column' : 'row',
-        alignItems: 'center', gap: isMobile ? 40 : 64,
-        background: T.bg
+        alignItems: isMobile ? 'stretch' : 'center',
+        gap: isMobile ? 32 : 64,
+        background: T.bg,
       }}>
         <div style={{ flex: 1, maxWidth: isMobile ? '100%' : '40%' }}>
           <Reveal>
@@ -1089,15 +1105,18 @@ export default function LandingPage({ onEnter, onPricing }) {
           `}</style>
 
           <Reveal delay={0.2} style={{ height: '100%', width: '100%' }}>
-            <div className="rolling-grid" style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(3,1fr)',
-              gap: 8,
-              width: '100%'
-            }}>
-              {/* Duplicate assets for seamless loop */}
-              {([...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS])
-                .slice(0, 48).map((cell, i) => (
+            <div
+              className={isMobile ? '' : 'rolling-grid'}   // no animation on mobile
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(3,1fr)',
+                gap: 8,
+                width: '100%',
+              }}
+            >
+              {([...VCELLS, ...(isMobile ? [] : [...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS])])
+                .slice(0, isMobile ? 6 : 48)
+                .map((cell, i) => (
                   <VCell key={i} cell={cell} />
                 ))}
             </div>
@@ -1117,6 +1136,7 @@ export default function LandingPage({ onEnter, onPricing }) {
           position: 'absolute', top: '50%', left: '50%',
           transform: 'translate(-50%,-50%)',
           fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 120 : 500, lineHeight: 1,
+          display: isMobile ? 'none' : 'block',
           WebkitTextStroke: '1px rgba(200,241,53,0.03)', color: 'transparent',
           pointerEvents: 'none', whiteSpace: 'nowrap', letterSpacing: '-0.05em',
           userSelect: 'none'
@@ -1144,12 +1164,12 @@ export default function LandingPage({ onEnter, onPricing }) {
 
       {/* ══════ FOOTER ══════ */}
       <footer style={{
-        padding: isMobile ? '60px 24px' : '44px 48px', borderTop: `1px solid ${T.gray}`,
+        padding: isMobile ? '32px 24px' : '20px 48px', borderTop: `1px solid ${T.gray}`,
         display: 'flex', flexDirection: isMobile ? 'column' : 'row', 
-        justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center',
-        gap: isMobile ? 40 : 20,
+        justifyContent: 'space-between', alignItems: 'center',
+        gap: isMobile ? 32 : 20,
         fontFamily: "'DM Mono',monospace", fontSize: 9,
-        letterSpacing: '0.25em', color: 'rgba(240,237,232,0.18)', textTransform: 'uppercase'
+        letterSpacing: '0.25em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
       }}>
         <div style={{
           fontFamily: "'Bebas Neue',sans-serif", fontSize: 20,
@@ -1160,14 +1180,16 @@ export default function LandingPage({ onEnter, onPricing }) {
             style={{ width: 8, height: 8, background: T.lime, borderRadius: '50%' }} />
           A Synthcore product
         </div>
-        <div style={{ display: 'flex', gap: isMobile ? 12 : 32, flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row' }}>
+        
+        <div style={{ display: 'flex', gap: isMobile ? 20 : 32, flexWrap: 'wrap', justifyContent: 'center' }}>
           {['PIPELINE', 'PRICING', 'DOCS', 'LEGAL'].map(l => (
-            <a key={l} href="#" style={{ color: 'inherit', textDecoration: 'none' }}
-              onMouseEnter={e => e.target.style.color = T.lime}
-              onMouseLeave={e => e.target.style.color = 'inherit'}>{l}</a>
+            <a key={l} href="#" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }}
+               onMouseEnter={e => e.target.style.color = T.lime}
+               onMouseLeave={e => e.target.style.color = 'inherit'}>{l}</a>
           ))}
         </div>
-        <span style={{ fontSize: 8 }}>© 2026 ZEROLENS. ALL RIGHTS RESERVED.</span>
+
+        <span style={{ fontSize: 8, color: 'rgba(240,237,232,0.15)' }}>© 2026 ZEROLENS. ALL RIGHTS RESERVED.</span>
       </footer>
 
     </div>
@@ -1238,7 +1260,7 @@ function FeatureCard({ f, isMobile }) {
       }}>
         {f.title}
       </h3>
-      <p style={{ fontSize: 13, lineHeight: 1.6, color: 'rgba(240,237,232,0.38)', flex: 1 }}>
+      <p style={{ fontSize: isMobile ? 12 : 13, lineHeight: 1.6, color: 'rgba(240,237,232,0.38)', flex: 1 }}>
         {f.desc}
       </p>
       <span style={{
@@ -1346,6 +1368,208 @@ function StackVideo({ src, objectFit = 'cover', objectPosition = 'center' }) {
         )}
       </motion.button>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// PATCH 4: STACK SECTION — replace with mobile version
+// ─────────────────────────────────────────────────────────────
+
+function MobileStackSection({ assets }) {
+  const ugcVideos = assets?.ugcAssets || [];
+  const productVideos = assets?.productAssets || [];
+  const cinemaVideo = assets?.cinemaAssets?.[0];
+
+  const sectionStyle = {
+    borderTop: `1px solid ${T.gray}`,
+    background: T.bg,
+    padding: '18px 20px 48px',
+  };
+
+  const headingStyle = {
+    fontFamily: "'Bebas Neue',sans-serif",
+    fontSize: 28,
+    lineHeight: 1.1,
+    letterSpacing: '0.02em',
+    marginBottom: 24,
+  };
+
+  const videoGridStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2,1fr)',
+    gap: 3,
+    marginTop: 24,
+  };
+
+  const videoCardStyle = {
+    position: 'relative',
+    overflow: 'hidden',
+    borderRadius: 4,
+    aspectRatio: '9/16',
+    background: T.bg2,
+  };
+
+  const labelStyle = {
+    position: 'absolute', bottom: 14, left: 14, right: 14, zIndex: 2,
+    pointerEvents: 'none',
+  };
+
+  const tagStyle = {
+    fontFamily: "'DM Mono',monospace", fontSize: 7,
+    letterSpacing: '0.25em', color: T.lime,
+    border: `1px solid rgba(200,241,53,0.25)`,
+    padding: '2px 6px', display: 'inline-block', marginBottom: 5,
+  };
+
+  const nameStyle = {
+    fontFamily: "'Bebas Neue',sans-serif", fontSize: 16,
+    color: T.white, lineHeight: 1,
+  };
+
+  const gradientOverlay = {
+    position: 'absolute', inset: 0,
+    background: 'linear-gradient(to top, rgba(5,5,5,0.88) 0%, transparent 55%)',
+    pointerEvents: 'none', zIndex: 1,
+  };
+
+  const ugcCards = [
+    { tag: 'TALKING HEAD', name: 'PRODUCT DROP' },
+    { tag: 'LIFESTYLE', name: 'BRAND STORY' },
+    { tag: 'UNBOXING', name: 'REVEAL FORMAT' },
+    { tag: 'TESTIMONIAL', name: 'SOCIAL PROOF' },
+  ];
+
+  const productCards = [
+    { tag: 'MACRO DETAIL', name: 'TEXTURE SHOT' },
+    { tag: 'HERO SHOT', name: 'FULL EDITORIAL' },
+  ];
+
+  return (
+    <>
+      {/* ── UGC Section ── */}
+      <div style={sectionStyle}>
+        <SectionEye>UGC FACTORY</SectionEye>
+        <div style={headingStyle}>
+          5 CLICKS. <span style={{ color: T.lime }}>60 SECONDS.</span> FULL AD.
+        </div>
+        <p style={{
+          fontFamily: "'Syne',sans-serif", fontSize: 14, lineHeight: 1.6,
+          color: 'rgba(240,237,232,0.35)', marginBottom: 8,
+        }}>
+          Upload character, drop product, choose format — AI renders in 60 seconds.
+        </p>
+        <div style={videoGridStyle}>
+          {ugcCards.map((card, i) => (
+            <div key={i} style={videoCardStyle}>
+              {ugcVideos[i]?.src ? (
+                <video autoPlay muted loop playsInline
+                  src={ugcVideos[i].src}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
+                />
+              ) : (
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  backgroundImage: `linear-gradient(rgba(200,241,53,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(200,241,53,0.04) 1px,transparent 1px)`,
+                  backgroundSize: '28px 28px',
+                }} />
+              )}
+              <div style={gradientOverlay} />
+              <div style={labelStyle}>
+                <span style={tagStyle}>{card.tag}</span>
+                <div style={nameStyle}>{card.name}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Product Studio Section ── */}
+      <div style={{ ...sectionStyle, background: T.bg2 }}>
+        <SectionEye>PRODUCT STUDIO</SectionEye>
+        <div style={headingStyle}>
+          DROP A PRODUCT. <span style={{ color: T.lime }}>GET A SHOOT.</span>
+        </div>
+        <p style={{
+          fontFamily: "'Syne',sans-serif", fontSize: 14, lineHeight: 1.6,
+          color: 'rgba(240,237,232,0.35)', marginBottom: 8,
+        }}>
+          One photo → full editorial. Every angle, every format.
+        </p>
+        <div style={{ ...videoGridStyle, gridTemplateColumns: '1fr 1fr' }}>
+          {productCards.map((card, i) => (
+            <div key={i} style={{ ...videoCardStyle, aspectRatio: i === 1 ? '3/4' : '9/16' }}>
+              {productVideos[i]?.src ? (
+                <video autoPlay muted loop playsInline
+                  src={productVideos[i].src}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  backgroundImage: `linear-gradient(rgba(200,241,53,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(200,241,53,0.03) 1px,transparent 1px)`,
+                  backgroundSize: '32px 32px',
+                }} />
+              )}
+              <div style={gradientOverlay} />
+              <div style={labelStyle}>
+                <span style={tagStyle}>{card.tag}</span>
+                <div style={nameStyle}>{card.name}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Cinema Section ── */}
+      <div style={{ ...sectionStyle, background: '#0a0807' }}>
+        <SectionEye>CINEMA DIRECTOR</SectionEye>
+        <div style={headingStyle}>
+          SET THE SCENE. <span style={{ color: T.lime }}>ROLL CAMERA.</span>
+        </div>
+        <div style={{
+          position: 'relative', borderRadius: 4, overflow: 'hidden',
+          aspectRatio: '16/9', background: T.bg2, marginTop: 20,
+        }}>
+          {cinemaVideo?.src ? (
+            <video autoPlay muted loop playsInline
+              src={cinemaVideo.src}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            <div style={{
+              position: 'absolute', inset: 0,
+              backgroundImage: `linear-gradient(rgba(200,241,53,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(200,241,53,0.03) 1px,transparent 1px)`,
+              backgroundSize: '40px 40px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <div style={{
+                width: 60, height: 60,
+                border: `1px solid rgba(200,241,53,0.2)`,
+                borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <div style={{
+                  width: 0, height: 0,
+                  borderTop: '9px solid transparent',
+                  borderBottom: '9px solid transparent',
+                  borderLeft: `15px solid rgba(200,241,53,0.3)`,
+                  marginLeft: 3,
+                }} />
+              </div>
+            </div>
+          )}
+          {/* Cinescope letterbox bars */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '10%', background: '#0a0807', zIndex: 1 }} />
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '10%', background: '#0a0807', zIndex: 1 }} />
+        </div>
+        <p style={{
+          fontFamily: "'Syne',sans-serif", fontSize: 13, lineHeight: 1.7,
+          color: 'rgba(240,237,232,0.3)', marginTop: 16,
+        }}>
+          Full cinematic previs in widescreen. Set lens, angle, lighting — AI frames every shot.
+        </p>
+      </div>
+    </>
   );
 }
 
