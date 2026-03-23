@@ -302,6 +302,7 @@ app.set('trust proxy', 1);
 app.get('/api/health-check', (req, res) => {
     res.json({ status: 'ready', version: '1.0.9', timestamp: new Date().toISOString() });
 });
+app.get('/api/ping', (req, res) => res.json({ message: 'pong', timestamp: new Date().toISOString() }));
 const httpServer = http.createServer(app);
 const port = process.env.PORT || 3002;
 console.log(`[SERVER] Google API key configured: ${process.env.GOOGLE_API_KEY ? 'YES' : 'NO'}`);
@@ -3590,7 +3591,7 @@ app.get('/api/get-landing-assets', async (req, res) => {
 
         // 2. Fallback to local landingAssets.js
         try {
-            const filePath = path.join(__dirname, '..', 'src', 'config', 'landingAssets.js');
+            const filePath = path.join(__dirname, 'src', 'config', 'landingAssets.js');
             if (fs.existsSync(filePath)) {
                 const content = fs.readFileSync(filePath, 'utf8');
                 const jsonMatch = content.match(/export const LANDING_ASSETS = (\{[\s\S]*\});/);
@@ -3617,6 +3618,7 @@ app.get('/api/get-landing-assets', async (req, res) => {
         }
     }
 });
+
 
 // Update Landing Page Assets Configuration
 app.get('/api/proxy/asset', async (req, res) => {
@@ -3707,102 +3709,6 @@ export const LANDING_ASSETS = ${JSON.stringify(assets, null, 4)};
         res.json({ success: true, message: 'Landing assets updated successfully (Supabase + Local)' });
     } catch (error) {
         console.error('Update Landing Assets Error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// --- LANDING ASSETS LIBRARY & DIRECT UPLOADS ---
-
-/**
- * GET /api/admin/landing-assets/library
- * Returns all assets from the inventory table.
- */
-app.get('/api/admin/landing-assets/library', async (req, res) => {
-    try {
-        if (!supabaseAdmin) throw new Error("Supabase Admin not initialized");
-        const { data, error } = await supabaseAdmin
-            .from('landing_video_assets')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        res.json(data || []);
-    } catch (error) {
-        console.error('[SERVER] Fetch Library Error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-/**
- * POST /api/admin/landing-assets/upload
- * Handles direct binary upload to Supabase storage and DB entry.
- */
-app.post('/api/admin/landing-assets/upload', async (req, res) => {
-    try {
-        const { fileName, category, type = 'video', base64 } = req.body;
-        if (!base64 || !fileName) throw new Error("Missing file data or name");
-
-        if (!supabaseAdmin) throw new Error("Supabase Admin not initialized");
-
-        // 1. Prepare Buffer
-        const buffer = Buffer.from(base64.replace(/^data:.*?;base64,/, ''), 'base64');
-        const mimeType = type === 'video' ? 'video/mp4' : 'image/jpeg';
-        const bucketPath = `landing/${Date.now()}_${fileName}`;
-
-        // 2. Upload to Storage (use 'assets' bucket as default or create 'landing-assets' if preferred)
-        // We'll use 'assets' bucket since it's already used by the app.
-        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-            .from('assets')
-            .upload(bucketPath, buffer, { contentType: mimeType, upsert: true });
-
-        if (uploadError) throw uploadError;
-
-        // 3. Get Public URL
-        const { data: publicData } = supabaseAdmin.storage
-            .from('assets')
-            .getPublicUrl(bucketPath);
-
-        const publicUrl = publicData.publicUrl;
-
-        // 4. Insert into Library Table
-        const { data: dbData, error: dbError } = await supabaseAdmin
-            .from('landing_video_assets')
-            .insert([{
-                url: publicUrl,
-                title: fileName.split('.')[0] || 'Untitled',
-                category: category || 'gallery',
-                meta: { OriginalName: fileName, Size: buffer.length }
-            }])
-            .select();
-
-        if (dbError) throw dbError;
-
-        res.json({ success: true, asset: dbData[0] });
-    } catch (error) {
-        console.error('[SERVER] Upload Asset Error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-/**
- * DELETE /api/admin/landing-assets/library/:id
- */
-app.delete('/api/admin/landing-assets/library/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        if (!supabaseAdmin) throw new Error("Supabase Admin not initialized");
-
-        // We could delete from storage too, but for safety let's just remove from DB inventory for now
-        // to avoid accidental breakage of live landing page if someone deletes a used asset.
-        const { error } = await supabaseAdmin
-            .from('landing_video_assets')
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
-        res.json({ success: true });
-    } catch (error) {
-        console.error('[SERVER] Delete Library Asset Error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -4412,6 +4318,79 @@ app.get('/api/kling/status/:requestId', async (req, res) => {
     } catch (error) {
         console.error('[KLING-STATUS-ERR]', error);
         res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+
+// ─────────────────────────────────────────────────────────────
+// ASSET MANAGER LIBRARY ROUTES
+// ─────────────────────────────────────────────────────────────
+app.get('/api/landing-assets-library', async (req, res) => {
+    try {
+        if (!supabase) return res.json({ assets: [] });
+
+        // List files from multiple folders
+        const folders = ['', 'videos', 'generated', 'refs'];
+        const allAssets = [];
+
+        for (const folder of folders) {
+            const { data, error } = await supabase.storage
+                .from('assets')
+                .list(folder, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
+
+            if (error || !data) continue;
+
+            const files = data
+                .filter(f => f.id !== null) // ← filter out folders (folders have null id)
+                .map(file => {
+                    const path = folder ? `${folder}/${file.name}` : file.name;
+                    return {
+                        id: file.id,
+                        name: file.name,
+                        url: supabase.storage.from('assets').getPublicUrl(path).data.publicUrl,
+                        type: file.name.match(/\.(mp4|webm|mov)$/i) ? 'video' : 'image',
+                        size: file.metadata?.size || 0,
+                        created_at: file.created_at
+                    };
+                });
+
+            allAssets.push(...files);
+        }
+
+        res.json({ assets: allAssets });
+    } catch (err) {
+        console.error('[ASSET-LIBRARY]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/landing-assets-upload', async (req, res) => {
+    try {
+        if (!supabase) return res.status(503).json({ error: 'Supabase not configured' });
+
+        const { base64, fileName, mimeType } = req.body;
+        if (!base64 || !fileName) return res.status(400).json({ error: 'Missing base64 or fileName' });
+
+        const buffer = Buffer.from(
+            base64.includes(',') ? base64.split(',')[1] : base64,
+            'base64'
+        );
+
+        const { data, error } = await supabase.storage
+            .from('assets')
+            .upload(fileName, buffer, { contentType: mimeType || 'image/jpeg', upsert: true });
+
+        if (error) throw error;
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('assets')
+            .getPublicUrl(fileName);
+
+        console.log(`[ASSET-UPLOAD] ✅ ${fileName} → ${publicUrl}`);
+        res.json({ success: true, url: publicUrl, path: data.path });
+    } catch (err) {
+        console.error('[ASSET-UPLOAD]', err);
+        res.status(500).json({ error: err.message });
     }
 });
 

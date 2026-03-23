@@ -16,9 +16,9 @@ export const AssetManager = () => {
 
     const fetchLibrary = async () => {
         try {
-            const response = await fetch(getApiUrl('/api/admin/landing-assets/library'));
+            const response = await fetch(getApiUrl('/api/landing-assets-library'));
             const data = await response.json();
-            setLibrary(data || []);
+            setLibrary(data.assets || []);
         } catch (err) {
             console.warn("[AssetManager] Failed to fetch library:", err);
         }
@@ -30,7 +30,16 @@ export const AssetManager = () => {
             try {
                 const response = await fetch(getApiUrl('/api/get-landing-assets'));
                 const data = await response.json();
-                if (data && Object.keys(data).length > 0) setAssets(data);
+                if (data && Object.keys(data).length > 0) {
+                    setAssets(prev => ({
+                        ...prev,
+                        ...data,
+                        // Ensure newly added sections are initialized if missing from DB
+                        ugcAssets: data.ugcAssets || prev.ugcAssets,
+                        productAssets: data.productAssets || prev.productAssets,
+                        cinemaAssets: data.cinemaAssets || prev.cinemaAssets
+                    }));
+                }
             } catch (err) {
                 console.warn("[AssetManager] Failed to fetch assets:", err);
             }
@@ -133,7 +142,7 @@ export const AssetManager = () => {
             reader.readAsDataURL(file);
             reader.onload = async () => {
                 const base64 = reader.result;
-                const response = await fetch(getApiUrl('/api/admin/landing-assets/upload'), {
+                const response = await fetch(getApiUrl('/api/landing-assets-upload'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -151,9 +160,9 @@ export const AssetManager = () => {
                     // If target provided, auto-fill it
                     if (targetField) {
                         if (targetIndex !== null) {
-                            handleArrayChange(category === 'gallery' ? 'gallery' : category, targetIndex, targetField, data.asset.url);
+                            handleArrayChange(category === 'gallery' ? 'gallery' : category, targetIndex, targetField, data.url);
                         } else {
-                            handleInputChange(targetField, data.asset.url);
+                            handleInputChange(targetField, data.url);
                         }
                     }
                 } else {
@@ -620,7 +629,7 @@ export const AssetManager = () => {
                 </div>
             )}
 
-            <style jsx>{`
+            <style>{`
                 .custom-scrollbar::-webkit-scrollbar {
                     width: 6px;
                 }

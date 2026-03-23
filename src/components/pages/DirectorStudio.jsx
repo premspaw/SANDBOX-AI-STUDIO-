@@ -836,12 +836,16 @@ export default function DirectorStudio() {
 
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-between gap-3">
-                                            <select onChange={(e) => {
-                                                const presets = mediaType === 'video' ? VIDEO_PRESETS : IMAGE_PRESETS;
-                                                const p = presets.find(x => x.name === e.target.value);
-                                                if (p) setPrompt(p.prompt);
-                                            }} className="flex-1 bg-[#111113] border border-[#1e1e24] rounded-xl px-2 py-2 text-[10px] text-white/50 uppercase">
-                                                <option disabled selected>Direction Preset</option>
+                                            <select 
+                                                defaultValue="Direction Preset"
+                                                onChange={(e) => {
+                                                    const presets = mediaType === 'video' ? VIDEO_PRESETS : IMAGE_PRESETS;
+                                                    const p = presets.find(x => x.name === e.target.value);
+                                                    if (p) setPrompt(p.prompt);
+                                                }} 
+                                                className="flex-1 bg-[#111113] border border-[#1e1e24] rounded-xl px-2 py-2 text-[10px] text-white/50 uppercase"
+                                            >
+                                                <option disabled>Direction Preset</option>
                                                 {(mediaType === 'video' ? VIDEO_PRESETS : IMAGE_PRESETS).map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
                                             </select>
                                             

@@ -24,10 +24,10 @@ const T = {
 // ─── HERO SLIDES ──────────────────────────────────────────────
 const SLIDES = [
   {
-    line1: 'DROP A FACE.',
-    line2: 'DROP A PRODUCT.',
-    accent: 'AD.',
-    sub: 'The world\'s first AI director. Drop a face and a product — get a full UGC ad video in 60 seconds. No crew. No budget. No waiting.',
+    line1: 'DROP A PRODUCT.',
+    line2: 'GET A SHOOT.',
+    accent: 'SHARP.',
+    sub: 'The world\'s first AI director. Drop a product — get a full editorial shoot in 60 seconds. No crew. No budget. No waiting.',
   },
   {
     line1: 'WRITE A SCENE.',
@@ -641,7 +641,7 @@ function AnimatedTimeStat({ duration = 2500 }) {
   );
 }
 
-function AnimatedStats() {
+function AnimatedStats({ isMobile }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: '-60px' });
 
@@ -650,22 +650,23 @@ function AnimatedStats() {
       <div ref={ref} style={{
         background: T.bg2, borderTop: `1px solid ${T.gray}`,
         borderBottom: `1px solid ${T.gray}`,
-        display: 'grid', gridTemplateColumns: 'repeat(4,1fr)'
+        display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)'
       }}>
         {/* $100 → $5 */}
         <div style={{
-          padding: '44px 48px',
+          padding: isMobile ? '32px 24px' : '44px 48px',
           borderRight: `1px solid ${T.gray}`,
+          borderBottom: isMobile ? `1px solid ${T.gray}` : 'none',
           display: 'flex', flexDirection: 'column', gap: 10
         }}>
           <div style={{
-            fontFamily: "'Bebas Neue',sans-serif", fontSize: 56,
+            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 42 : 56,
             letterSpacing: '0.02em', color: T.lime, lineHeight: 1
           }}>
             <AnimatedCounter start={100} end={5} prefix="$" duration={2200} />
           </div>
           <div style={{
-            fontFamily: "'DM Mono',monospace", fontSize: 10,
+            fontFamily: "'DM Mono',monospace", fontSize: 9,
             letterSpacing: '0.3em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
           }}>
             Full ad video cost
@@ -674,18 +675,19 @@ function AnimatedStats() {
 
         {/* 5hr → 5min */}
         <div style={{
-          padding: '44px 48px',
-          borderRight: `1px solid ${T.gray}`,
+          padding: isMobile ? '32px 24px' : '44px 48px',
+          borderRight: isMobile ? 'none' : `1px solid ${T.gray}`,
+          borderBottom: isMobile ? `1px solid ${T.gray}` : 'none',
           display: 'flex', flexDirection: 'column', gap: 10
         }}>
           <div style={{
-            fontFamily: "'Bebas Neue',sans-serif", fontSize: 56,
+            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 42 : 56,
             letterSpacing: '0.02em', color: T.lime, lineHeight: 1
           }}>
             <AnimatedTimeStat duration={2500} />
           </div>
           <div style={{
-            fontFamily: "'DM Mono',monospace", fontSize: 10,
+            fontFamily: "'DM Mono',monospace", fontSize: 9,
             letterSpacing: '0.3em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
           }}>
             Average generation time
@@ -694,18 +696,18 @@ function AnimatedStats() {
 
         {/* 0 → 6 */}
         <div style={{
-          padding: '44px 48px',
+          padding: isMobile ? '32px 24px' : '44px 48px',
           borderRight: `1px solid ${T.gray}`,
           display: 'flex', flexDirection: 'column', gap: 10
         }}>
           <div style={{
-            fontFamily: "'Bebas Neue',sans-serif", fontSize: 56,
+            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 42 : 56,
             letterSpacing: '0.02em', color: T.lime, lineHeight: 1
           }}>
             <AnimatedCounter start={0} end={6} duration={2000} />
           </div>
           <div style={{
-            fontFamily: "'DM Mono',monospace", fontSize: 10,
+            fontFamily: "'DM Mono',monospace", fontSize: 9,
             letterSpacing: '0.3em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
           }}>
             Output formats per session
@@ -714,11 +716,11 @@ function AnimatedStats() {
 
         {/* ∞ pulsing */}
         <div style={{
-          padding: '44px 48px',
+          padding: isMobile ? '32px 24px' : '44px 48px',
           display: 'flex', flexDirection: 'column', gap: 10
         }}>
           <div style={{
-            fontFamily: "'Bebas Neue',sans-serif", fontSize: 56,
+            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 42 : 56,
             letterSpacing: '0.02em', color: T.lime, lineHeight: 1
           }}>
             <motion.span
@@ -738,7 +740,7 @@ function AnimatedStats() {
             </motion.span>
           </div>
           <div style={{
-            fontFamily: "'DM Mono',monospace", fontSize: 10,
+            fontFamily: "'DM Mono',monospace", fontSize: 9,
             letterSpacing: '0.3em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
           }}>
             Creative variations possible
@@ -807,7 +809,7 @@ export default function LandingPage({ onEnter, onPricing }) {
       background: T.bg, color: T.white,
       fontFamily: "'Syne',sans-serif",
       overflowX: 'hidden', overflowY: 'auto', height: '100%',
-      zoom: '80%',
+      zoom: isMobile ? '100%' : '80%',
       scrollbarWidth: 'none', msOverflowStyle: 'none',
     },
   };
@@ -822,20 +824,20 @@ export default function LandingPage({ onEnter, onPricing }) {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         style={{
-          position: 'fixed', bottom: 40, right: 40, zIndex: 1000,
+          position: 'fixed', bottom: isMobile ? 30 : 40, right: isMobile ? 24 : 40, zIndex: 1000,
           background: isMuted ? 'rgba(5,5,5,0.8)' : T.lime,
           border: `1px solid ${isMuted ? 'rgba(240,237,232,0.1)' : 'transparent'}`,
-          borderRadius: 4, padding: '10px 16px',
+          borderRadius: 4, padding: isMobile ? '8px 12px' : '10px 16px',
           display: 'flex', alignItems: 'center', gap: 10,
           cursor: 'pointer', backdropFilter: 'blur(10px)',
           color: isMuted ? 'rgba(240,237,232,0.5)' : '#000',
-          fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em',
+          fontFamily: "'DM Mono',monospace", fontSize: isMobile ? 8 : 10, letterSpacing: '0.2em',
           textTransform: 'uppercase',
           boxShadow: isMuted ? 'none' : `0 0 20px ${T.lime}33`
         }}
       >
         <div style={{
-          width: 8, height: 8, borderRadius: '50%',
+          width: isMobile ? 6 : 8, height: isMobile ? 6 : 8, borderRadius: '50%',
           background: isMuted ? 'rgba(240,237,232,0.2)' : '#000',
           position: 'relative'
         }}>
@@ -852,8 +854,8 @@ export default function LandingPage({ onEnter, onPricing }) {
 
       {/* ══════ HERO ══════ */}
       <section style={{
-        minHeight: '100vh', display: 'flex', flexDirection: 'column',
-        justifyContent: 'flex-end', padding: '0 48px 24px',
+        minHeight: isMobile ? '90vh' : '100vh', display: 'flex', flexDirection: 'column',
+        justifyContent: 'flex-end', padding: isMobile ? '0 24px 32px' : '0 48px 24px',
         position: 'relative', overflow: 'hidden'
       }}>
 
@@ -865,7 +867,7 @@ export default function LandingPage({ onEnter, onPricing }) {
               autoPlay muted loop playsInline preload="auto"
               src={resolveAsset(assets.heroBackground)}
               style={{
-                position: 'absolute', top: '50%', 
+                position: 'absolute', top: '44%', 
                 left: '50%',
                 transform: `translate(-50%, -50%) ${isMobile ? 'scale(1.35)' : 'scale(1)'}`,
                 minWidth: '100%', minHeight: '100%',
@@ -897,7 +899,7 @@ export default function LandingPage({ onEnter, onPricing }) {
           <div style={{
             position: 'absolute',
             right: isMobile ? '20%' : '2%',
-            bottom: isMobile ? '-5%' : 0,
+            bottom: isMobile ? '-2%' : '4%',
             zIndex: 4,
             height: isMobile ? '65%' : '92%',
             pointerEvents: 'none',
@@ -943,7 +945,7 @@ export default function LandingPage({ onEnter, onPricing }) {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.85, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          style={{ position: 'relative', zIndex: 2, maxWidth: '58%' }}
+          style={{ position: 'relative', zIndex: 2, maxWidth: isMobile ? '100%' : '58%' }}
         >
           <HeroTitle />
         </motion.div>
@@ -959,8 +961,8 @@ export default function LandingPage({ onEnter, onPricing }) {
           }}
         >
           {/* Sub copy — cycles with title */}
-          <div style={{ position: 'relative', minHeight: '5em', maxWidth: 800 }}>
-            <SubCopy />
+          <div style={{ position: 'relative', minHeight: isMobile ? '6em' : '5em', maxWidth: isMobile ? '100%' : 800 }}>
+            <SubCopy isMobile={isMobile} />
           </div>
 
           <div style={{ display: 'flex', gap: 14 }}>
@@ -1005,7 +1007,7 @@ export default function LandingPage({ onEnter, onPricing }) {
       </section>
 
       {/* ══════ STATS (Animated) ══════ */}
-      <AnimatedStats />
+      <AnimatedStats isMobile={isMobile} />
 
       {/* ══════ SCROLL STACK ══════ */}
       <StackSection assets={assets} isMobile={isMobile} />
@@ -1039,7 +1041,7 @@ export default function LandingPage({ onEnter, onPricing }) {
           },
         ].map((f, i) => (
           <Reveal key={f.n} delay={i * 0.05}>
-            <FeatureCard f={f} />
+            <FeatureCard f={f} isMobile={isMobile} />
           </Reveal>
         ))}
       </div>
@@ -1118,7 +1120,7 @@ export default function LandingPage({ onEnter, onPricing }) {
 
       {/* ══════ CTA ══════ */}
       <section style={{
-        padding: '160px 48px', textAlign: 'center',
+        padding: isMobile ? '100px 24px' : '160px 48px', textAlign: 'center',
         background: T.bg2, borderTop: `1px solid ${T.gray}`,
         position: 'relative', overflow: 'hidden'
       }}>
@@ -1126,7 +1128,7 @@ export default function LandingPage({ onEnter, onPricing }) {
         <div style={{
           position: 'absolute', top: '50%', left: '50%',
           transform: 'translate(-50%,-50%)',
-          fontFamily: "'Bebas Neue',sans-serif", fontSize: 500, lineHeight: 1,
+          fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 120 : 500, lineHeight: 1,
           WebkitTextStroke: '1px rgba(200,241,53,0.03)', color: 'transparent',
           pointerEvents: 'none', whiteSpace: 'nowrap', letterSpacing: '-0.05em',
           userSelect: 'none'
@@ -1136,27 +1138,29 @@ export default function LandingPage({ onEnter, onPricing }) {
         <Reveal>
           <h2 style={{
             fontFamily: "'Bebas Neue',sans-serif",
-            fontSize: 'clamp(64px,10vw,140px)', lineHeight: 0.9,
+            fontSize: isMobile ? 56 : 'clamp(64px,10vw,140px)', lineHeight: 0.9,
             letterSpacing: '-0.01em', marginBottom: 40, position: 'relative', zIndex: 1
           }}>
             ZERO CREW. ZERO STUDIO.<br />
             ZERO LIMITS. <span style={{ color: T.lime }}>ZERO LENS.</span><br />
-            <span style={{ color: T.lime }}>INFINITE CINEMA.</span>
+            <span style={{ color: T.lime }}>INFINITE CREATIVITY</span>
           </h2>
         </Reveal>
         <Reveal delay={0.2}>
-          <div style={{ display: 'inline-flex', gap: 16, position: 'relative', zIndex: 1 }}>
-            <BtnPrimary onClick={onEnter}>OPEN THE STUDIO →</BtnPrimary>
-            <BtnGhost onClick={onPricing}>VIEW PRICING</BtnGhost>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, position: 'relative', zIndex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <BtnPrimary onClick={onEnter} isMobile={isMobile}>OPEN THE STUDIO →</BtnPrimary>
+            <BtnGhost onClick={onPricing} isMobile={isMobile}>VIEW PRICING</BtnGhost>
           </div>
         </Reveal>
       </section>
 
       {/* ══════ FOOTER ══════ */}
       <footer style={{
-        padding: '44px 48px', borderTop: `1px solid ${T.gray}`,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        fontFamily: "'DM Mono',monospace", fontSize: 10,
+        padding: isMobile ? '60px 24px' : '44px 48px', borderTop: `1px solid ${T.gray}`,
+        display: 'flex', flexDirection: isMobile ? 'column' : 'row', 
+        justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center',
+        gap: isMobile ? 40 : 20,
+        fontFamily: "'DM Mono',monospace", fontSize: 9,
         letterSpacing: '0.25em', color: 'rgba(240,237,232,0.18)', textTransform: 'uppercase'
       }}>
         <div style={{
@@ -1168,14 +1172,14 @@ export default function LandingPage({ onEnter, onPricing }) {
             style={{ width: 8, height: 8, background: T.lime, borderRadius: '50%' }} />
           A Synthcore product
         </div>
-        <div style={{ display: 'flex', gap: 32 }}>
+        <div style={{ display: 'flex', gap: isMobile ? 12 : 32, flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row' }}>
           {['PIPELINE', 'PRICING', 'DOCS', 'LEGAL'].map(l => (
             <a key={l} href="#" style={{ color: 'inherit', textDecoration: 'none' }}
               onMouseEnter={e => e.target.style.color = T.lime}
               onMouseLeave={e => e.target.style.color = 'inherit'}>{l}</a>
           ))}
         </div>
-        <span>© 2026 ZEROLENS. ALL RIGHTS RESERVED.</span>
+        <span style={{ fontSize: 8 }}>© 2026 ZEROLENS. ALL RIGHTS RESERVED.</span>
       </footer>
 
     </div>
@@ -1186,14 +1190,14 @@ export default function LandingPage({ onEnter, onPricing }) {
 //  HELPER COMPONENTS
 // ═══════════════════════════════════════════════════════════════
 
-function SubCopy() {
+function SubCopy({ isMobile }) {
   const [idx, setIdx] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setIdx(i => (i + 1) % SLIDES.length), 5000);
     return () => clearInterval(id);
   }, []);
   return (
-    <div style={{ position: 'relative', minHeight: '4.5em' }}>
+    <div style={{ position: 'relative', minHeight: isMobile ? '6em' : '4.5em' }}>
       <AnimatePresence initial={false}>
         <motion.p
           key={idx}
@@ -1210,7 +1214,7 @@ function SubCopy() {
   );
 }
 
-function FeatureCard({ f }) {
+function FeatureCard({ f, isMobile }) {
   const [hovered, setHovered] = useState(false);
   return (
     <motion.div
@@ -1218,7 +1222,7 @@ function FeatureCard({ f }) {
       onHoverEnd={() => setHovered(false)}
       animate={{ background: hovered ? '#0e0e0e' : T.bg }}
       style={{
-        padding: '64px 56px', position: 'relative',
+        padding: isMobile ? '48px 32px' : '64px 56px', position: 'relative',
         overflow: 'hidden', cursor: 'pointer'
       }}
     >
@@ -1232,25 +1236,25 @@ function FeatureCard({ f }) {
         }}
       />
       <span style={{
-        fontFamily: "'DM Mono',monospace", fontSize: 10,
+        fontFamily: "'DM Mono',monospace", fontSize: 9,
         letterSpacing: '0.3em', color: 'rgba(240,237,232,0.18)',
-        marginBottom: 44, display: 'block', textTransform: 'uppercase'
+        marginBottom: 32, display: 'block', textTransform: 'uppercase'
       }}>
         {f.n}
       </span>
-      <span style={{ fontSize: 36, marginBottom: 28, display: 'block' }}>{f.ico}</span>
+      <span style={{ fontSize: isMobile ? 28 : 36, marginBottom: 24, display: 'block' }}>{f.ico}</span>
       <h3 style={{
-        fontFamily: "'Bebas Neue',sans-serif", fontSize: 44,
+        fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 36 : 44,
         letterSpacing: '0.03em', color: T.white, lineHeight: 0.95, marginBottom: 18
       }}>
         {f.title}
       </h3>
-      <p style={{ fontSize: 15, lineHeight: 1.8, color: 'rgba(240,237,232,0.38)', maxWidth: 380 }}>
+      <p style={{ fontSize: 14, lineHeight: 1.8, color: 'rgba(240,237,232,0.38)', maxWidth: 380 }}>
         {f.desc}
       </p>
       <span style={{
         display: 'inline-block', marginTop: 32,
-        fontFamily: "'DM Mono',monospace", fontSize: 10,
+        fontFamily: "'DM Mono',monospace", fontSize: 9,
         letterSpacing: '0.25em', textTransform: 'uppercase',
         color: T.lime, border: '1px solid rgba(200,241,53,0.2)', padding: '6px 14px'
       }}>
@@ -1260,7 +1264,7 @@ function FeatureCard({ f }) {
   );
 }
 
-function BtnPrimary({ children, onClick }) {
+function BtnPrimary({ children, onClick, isMobile }) {
   const [hovered, setHovered] = useState(false);
   return (
     <motion.button
@@ -1268,11 +1272,12 @@ function BtnPrimary({ children, onClick }) {
       onHoverEnd={() => setHovered(false)}
       onClick={onClick}
       style={{
-        fontFamily: "'DM Mono',monospace", fontSize: 12,
+        fontFamily: "'DM Mono',monospace", fontSize: isMobile ? 11 : 12,
         letterSpacing: '0.18em', textTransform: 'uppercase',
         background: T.lime, color: hovered ? T.lime : '#000',
-        border: 'none', padding: '18px 36px', cursor: 'pointer',
-        position: 'relative', overflow: 'hidden'
+        border: 'none', padding: isMobile ? '16px 28px' : '18px 36px', cursor: 'pointer',
+        position: 'relative', overflow: 'hidden',
+        width: isMobile ? '100%' : 'auto'
       }}
     >
       <motion.div
@@ -1285,7 +1290,7 @@ function BtnPrimary({ children, onClick }) {
   );
 }
 
-function BtnGhost({ children, onClick }) {
+function BtnGhost({ children, onClick, isMobile }) {
   const [hovered, setHovered] = useState(false);
   return (
     <motion.button
@@ -1297,14 +1302,60 @@ function BtnGhost({ children, onClick }) {
         color: hovered ? T.lime : T.white,
       }}
       style={{
-        fontFamily: "'DM Mono',monospace", fontSize: 12,
+        fontFamily: "'DM Mono',monospace", fontSize: isMobile ? 11 : 12,
         letterSpacing: '0.18em', textTransform: 'uppercase',
         background: 'transparent', border: '1px solid rgba(240,237,232,0.18)',
-        padding: '18px 36px', cursor: 'pointer', color: T.white
+        padding: isMobile ? '16px 28px' : '18px 36px', cursor: 'pointer', color: T.white,
+        width: isMobile ? '100%' : 'auto'
       }}
     >
       {children}
     </motion.button>
+  );
+}
+
+// ─── INDIVIDUAL VIDEO FOR STACK SECTIONS ─────────────────────
+function StackVideo({ src, objectFit = 'cover', objectPosition = 'center' }) {
+  const [isMuted, setIsMuted] = useState(true);
+  return (
+    <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+      <video
+        autoPlay
+        muted={isMuted}
+        loop
+        playsInline
+        src={src}
+        style={{ width: '100%', height: '100%', objectFit, objectPosition }}
+      />
+      <motion.button
+        onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        style={{
+          position: 'absolute', top: 20, right: 20, zIndex: 30,
+          background: isMuted ? 'rgba(0,0,0,0.6)' : T.lime,
+          color: isMuted ? T.white : '#000',
+          border: `1px solid ${isMuted ? 'rgba(255,255,255,0.15)' : 'transparent'}`,
+          borderRadius: '50%', width: 36, height: 36,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', backdropFilter: 'blur(12px)',
+          boxShadow: isMuted ? 'none' : `0 0 25px ${T.lime}88`
+        }}
+      >
+        {isMuted ? (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <line x1="23" y1="9" x2="17" y2="15" />
+            <line x1="17" y1="9" x2="23" y2="15" />
+          </svg>
+        ) : (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+          </svg>
+        )}
+      </motion.button>
+    </div>
   );
 }
 
@@ -1435,9 +1486,9 @@ function StackSection({ assets, isMobile }) {
           gap: 3, flex: 1, minHeight: 0,
         }}>
           {[
-            { tag: 'TALKING HEAD', name: 'PRODUCT DROP', meta: '9:16 · TIKTOK', offset: 40 },
+            { tag: 'TALKING HEAD', name: 'PRODUCT DROP', meta: '9:16 · TIKTOK', offset: 0 },
             { tag: 'LIFESTYLE', name: 'BRAND STORY', meta: '9:16 · REELS', offset: 0 },
-            { tag: 'UNBOXING', name: 'REVEAL FORMAT', meta: '9:16 · STORIES', offset: 40 },
+            { tag: 'UNBOXING', name: 'REVEAL FORMAT', meta: '9:16 · STORIES', offset: 0 },
             { tag: 'TESTIMONIAL', name: 'SOCIAL PROOF', meta: '9:16 · YOUTUBE', offset: 0 },
           ].map((card, i) => (
             <div
@@ -1450,14 +1501,10 @@ function StackSection({ assets, isMobile }) {
               }}
             >
               {ugcVideos[i]?.src ? (
-                <video
-                  autoPlay muted loop playsInline
-                  src={ugcVideos[i].src}
-                  style={{ 
-                    width: '100%', height: '100%', 
-                    objectFit: 'contain', objectPosition: 'center top',
-                    position: 'absolute', inset: 0 
-                  }}
+                <StackVideo 
+                  src={ugcVideos[i].src} 
+                  objectFit="cover" 
+                  objectPosition="center top" 
                 />
               ) : (
                 <div style={{
@@ -1488,9 +1535,10 @@ function StackSection({ assets, isMobile }) {
               <div style={{
                 position: 'absolute', inset: 0,
                 background: 'linear-gradient(to top, rgba(5,5,5,0.9) 0%, transparent 50%)',
+                pointerEvents: 'none'
               }} />
               {/* Labels */}
-              <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16, zIndex: 1 }}>
+              <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16, zIndex: 1, pointerEvents: 'none' }}>
                 <span style={{
                   fontFamily: "'DM Mono',monospace", fontSize: 7,
                   letterSpacing: '0.3em', color: T.lime,
@@ -1542,8 +1590,7 @@ function StackSection({ assets, isMobile }) {
               fontSize: isMobile ? 48 : 72,
               lineHeight: 0.9, letterSpacing: '0.02em'
             }}>
-              DROP A PRODUCT.<br />
-              <span style={{ color: T.lime }}>GET A SHOOT.</span>
+              DROP A PRODUCT. <span style={{ color: T.lime }}>GET A SHOOT.</span>
             </div>
           </div>
           <p style={{
@@ -1575,10 +1622,9 @@ function StackSection({ assets, isMobile }) {
               }}
             >
               {productVideos[i]?.src ? (
-                <video
-                  autoPlay muted loop playsInline
-                  src={productVideos[i].src}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
+                <StackVideo 
+                  src={productVideos[i].src} 
+                  objectFit="cover" 
                 />
               ) : (
                 <div style={{
@@ -1607,8 +1653,9 @@ function StackSection({ assets, isMobile }) {
               <div style={{
                 position: 'absolute', inset: 0,
                 background: 'linear-gradient(to top, rgba(5,5,5,0.85) 0%, transparent 55%)',
+                pointerEvents: 'none'
               }} />
-              <div style={{ position: 'absolute', bottom: 20, left: 20, right: 20, zIndex: 1 }}>
+              <div style={{ position: 'absolute', bottom: 20, left: 20, right: 20, zIndex: 1, pointerEvents: 'none' }}>
                 <span style={{
                   fontFamily: "'DM Mono',monospace", fontSize: 7,
                   letterSpacing: '0.3em', color: T.lime,
@@ -1674,11 +1721,7 @@ function StackSection({ assets, isMobile }) {
         {/* 1 Big Cinema Video - 16:9 */}
         <div style={{ flex: 1, minHeight: 0, position: 'relative', borderRadius: 4, overflow: 'hidden' }}>
           {cinemaVideo?.src ? (
-            <video
-              autoPlay muted loop playsInline
-              src={cinemaVideo.src}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
+            <StackVideo src={cinemaVideo.src} />
           ) : (
             <div style={{
               width: '100%', height: '100%',

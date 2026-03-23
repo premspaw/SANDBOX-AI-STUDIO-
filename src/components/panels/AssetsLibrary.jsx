@@ -20,7 +20,8 @@ import {
     ChevronRight,
     Film,
     Bot,
-    Lock
+    Lock,
+    Database
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
@@ -224,6 +225,8 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
 
         console.log("AssetsLibrary: fetchAssets starting [PARALLEL_PROXY_MODE]...");
         setLoading(true);
+        const sharedImages = [];
+        const sharedVideos = [];
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
@@ -240,6 +243,10 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 .order("created_at", { ascending: false });
 
             if (imgError) console.error("Images error:", imgError.message);
+
+            // --- Categorize DB Assets into Images vs Videos (Moved up for visibility) ---
+            const dbImages = (dbAssets || []).filter(a => !a?.url?.match(/\.(mp4|webm|mov)$/i));
+            const dbVideos = (dbAssets || []).filter(a => a?.url?.match(/\.(mp4|webm|mov)$/i));
 
             // 2. Fetch characters from CHARACTERS table for current user only
             const { data: dbCharacters, error: charError } = await supabase
@@ -269,6 +276,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     rawData: c
                 };
             });
+
 
             // --- LOCAL MIRROR MERGE (Emergency Fallback, per-user scoped) ---
             let localCharacters = [];
@@ -306,19 +314,19 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 }
             });
 
-            // 4. Fetch Landing Inventory (Global)
-            const { data: rawLanding, error: landingError } = await supabase
-                .from("landing_video_assets")
-                .select("*")
-                .order("created_at", { ascending: false });
-
-            if (landingError) console.error("Landing assets error:", landingError.message);
-
-            const landingAssets = (rawLanding || []).map(a => ({
-                ...a,
-                type: a.url.match(/\.(mp4|webm|mov)$/i) ? 'video' : 'image',
-                name: a.title || 'Untitled Landing Asset'
-            }));
+            // 4. Fetch Landing Inventory (Global via API)
+            let landingAssets = [];
+            try {
+                const landingResp = await fetch(getApiUrl('/api/landing-assets-library'));
+                const landingData = await landingResp.json();
+                landingAssets = (landingData.assets || []).map(a => ({
+                    ...a,
+                    type: a.type || (a.url?.match(/\.(mp4|webm|mov)$/i) ? 'video' : 'image'),
+                    name: a.name || 'Landing Asset'
+                }));
+            } catch (e) {
+                console.warn("Landing assets fetch failed:", e.message);
+            }
 
             const newAssets = {
                 images: [...sharedImages, ...dbImages],
@@ -385,8 +393,14 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         if (!window.confirm("Permanently delete this asset from the database?")) return;
         
         try {
-            const { error } = await supabase.from('assets').delete().eq('id', id);
-            if (error) throw error;
+            if (tab === 'landing') {
+                const response = await fetch(getApiUrl(`/api/landing-assets-library/${id}`), { method: 'DELETE' });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.error || 'Failed to delete via API');
+            } else {
+                const { error } = await supabase.from('assets').delete().eq('id', id);
+                if (error) throw error;
+            }
 
             // Update local state
             setAssets(prev => ({
@@ -403,7 +417,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
             }
         } catch (err) {
             console.error("Delete asset failed:", err);
-            alert("Failed to delete asset. Please try again.");
+            alert("Failed to delete asset. " + err.message);
         }
     };
 
