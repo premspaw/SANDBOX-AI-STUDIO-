@@ -1442,6 +1442,20 @@ export function PromptGenerator({ onUpscale }) {
     const [zoomState, setZoomState] = useState({ url: null, isOpen: false, slot: null, isEditing: false })
     const [isPolishing, setIsPolishing] = useState(false)
 
+    const startFrameInputRef = useRef(null)
+    const endFrameInputRef = useRef(null)
+
+    const handleFrameUpload = (e, field) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        const reader = new FileReader()
+        reader.onloadend = () => {
+            setSelections(p => ({ ...p, [field]: reader.result }))
+        }
+        reader.readAsDataURL(file)
+        e.target.value = ''
+    }
+
     const handleRefinePrompt = async (specificField = null) => {
         setIsPolishing(true)
         try {
@@ -2737,8 +2751,9 @@ export function PromptGenerator({ onUpscale }) {
                         {mode === 'video' && (
                             <>
                                 {/* START FRAME SLOT */}
-                                <div className={cn("shrink-0 w-24 h-full rounded-lg border-2 border-dashed flex flex-col items-center justify-center relative overflow-hidden group/frame transition-all",
-                                    selections.firstFrame ? "bg-[#D4FF00]/10 border-[#D4FF00]/40 shadow-[0_0_10px_rgba(212,255,0,0.2)]" : "bg-lime-500/5 border-lime-500/20 hover:border-lime-500/40")}>
+                                <input type="file" accept="image/*" className="hidden" ref={startFrameInputRef} onChange={(e) => handleFrameUpload(e, 'firstFrame')} />
+                                <div onClick={() => !selections.firstFrame && startFrameInputRef.current?.click()} className={cn("shrink-0 w-24 h-full rounded-lg border-2 border-dashed flex flex-col items-center justify-center relative overflow-hidden group/frame transition-all",
+                                    selections.firstFrame ? "bg-[#D4FF00]/10 border-[#D4FF00]/40 shadow-[0_0_10px_rgba(212,255,0,0.2)]" : "bg-lime-500/5 border-lime-500/20 hover:border-lime-500/40 cursor-pointer")}>
                                     {selections.firstFrame ? (
                                         <>
                                             <img src={selections.firstFrame} className="absolute inset-0 w-full h-full object-cover" />
@@ -2750,14 +2765,15 @@ export function PromptGenerator({ onUpscale }) {
                                     ) : (
                                         <div className="flex flex-col items-center gap-0.5 opacity-30 group-hover/frame:opacity-60 transition-opacity">
                                             <ImageIcon className="w-3.5 h-3.5 text-lime-400" />
-                                            <span className="text-[6px] font-black text-lime-400 uppercase tracking-tighter">Start Slot</span>
+                                            <span className="text-[6px] font-black text-lime-400 uppercase tracking-tighter">Upload Start</span>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* END FRAME SLOT */}
-                                <div className={cn("shrink-0 w-24 h-full rounded-lg border-2 border-dashed flex flex-col items-center justify-center relative overflow-hidden group/frame transition-all",
-                                    selections.lastFrame ? "bg-purple-500/10 border-purple-500/40 shadow-[0_0_10px_rgba(168,85,247,0.2)]" : "bg-purple-500/5 border-purple-500/20 hover:border-purple-500/40")}>
+                                <input type="file" accept="image/*" className="hidden" ref={endFrameInputRef} onChange={(e) => handleFrameUpload(e, 'lastFrame')} />
+                                <div onClick={() => !selections.lastFrame && endFrameInputRef.current?.click()} className={cn("shrink-0 w-24 h-full rounded-lg border-2 border-dashed flex flex-col items-center justify-center relative overflow-hidden group/frame transition-all",
+                                    selections.lastFrame ? "bg-purple-500/10 border-purple-500/40 shadow-[0_0_10px_rgba(168,85,247,0.2)]" : "bg-purple-500/5 border-purple-500/20 hover:border-purple-500/40 cursor-pointer")}>
                                     {selections.lastFrame ? (
                                         <>
                                             <img src={selections.lastFrame} className="absolute inset-0 w-full h-full object-cover" />
@@ -2769,7 +2785,7 @@ export function PromptGenerator({ onUpscale }) {
                                     ) : (
                                         <div className="flex flex-col items-center gap-0.5 opacity-30 group-hover/frame:opacity-60 transition-opacity">
                                             <ImageIcon className="w-3.5 h-3.5 text-purple-400" />
-                                            <span className="text-[6px] font-black text-purple-400 uppercase tracking-tighter">End Slot</span>
+                                            <span className="text-[6px] font-black text-purple-400 uppercase tracking-tighter">Upload End</span>
                                         </div>
                                     )}
                                 </div>
