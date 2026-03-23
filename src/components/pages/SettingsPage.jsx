@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, CreditCard, Shield, Bell, LogOut, Save, Loader2, Coins, CheckSquare, Square, Zap } from 'lucide-react';
+import { User, Mail, CreditCard, Shield, Bell, LogOut, Save, Loader2, Coins, CheckSquare, Square, Zap, ChevronRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store';
 
 export default function SettingsPage() {
     const profile = useAppStore(state => state.userProfile);
     const fetchUserProfile = useAppStore(state => state.fetchUserProfile);
+    const setUserProfile = useAppStore(state => state.setUserProfile);
+    const setActiveTabGlobal = useAppStore(state => state.setActiveTab);
 
     const [activeTab, setActiveTab] = useState('profile');
     const [loading, setLoading] = useState(false);
@@ -105,76 +107,146 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="max-w-4xl mx-auto py-12 px-6">
+        <div className="max-w-4xl mx-auto py-6 md:py-12 px-4 md:px-6">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-8"
+                className="space-y-6 md:space-y-8"
             >
+                {/* Mobile Back Button */}
+                <button 
+                    onClick={() => setActiveTabGlobal('home')}
+                    className="lg:hidden flex items-center gap-2 text-white/30 hover:text-[#bef264] transition-colors mb-4"
+                >
+                    <ChevronRight className="w-4 h-4 rotate-180" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Back to Studio</span>
+                </button>
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-white/10 pb-8">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between border-b border-white/10 pb-8 gap-6">
                     <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-2xl bg-[#bef264]/10 border border-[#bef264]/20 flex items-center justify-center">
-                            <User className="w-8 h-8 text-[#bef264]" />
+                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-[#bef264]/10 border border-[#bef264]/20 flex items-center justify-center shrink-0">
+                            <User className="w-6 h-6 md:w-8 md:h-8 text-[#bef264]" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-black tracking-tight text-white uppercase italic">Account Settings</h1>
-                            <p className="text-white/40 text-sm font-mono mt-1 uppercase tracking-widest">Manage your ZEROLENS profile</p>
+                            <h1 className="text-xl md:text-3xl font-black tracking-tight text-white uppercase italic">Account Settings</h1>
+                            <p className="text-white/40 text-[10px] md:text-sm font-mono mt-1 uppercase tracking-widest leading-none">Manage your ZEROLENS profile</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2 rounded-xl">
-                        <Coins className="w-4 h-4 text-[#bef264]" />
-                        <div>
-                            <p className="text-[10px] text-white/40 font-black uppercase tracking-widest leading-none">Shorts Balance</p>
-                            <p className="text-sm font-black text-[#bef264] mt-0.5">{profile?.shorts_balance || 0} SHORTS</p>
+                    <div className="flex items-center justify-between sm:justify-start gap-4 bg-white/5 border border-white/10 px-4 py-3 rounded-xl">
+                        <div className="flex items-center gap-3">
+                            <Coins className="w-4 h-4 text-[#bef264]" />
+                            <div>
+                                <p className="text-[9px] text-white/40 font-black uppercase tracking-widest leading-none">Shorts Balance</p>
+                                <p className="text-sm font-black text-[#bef264] mt-1">{profile?.shorts_balance || 0} SHORTS</p>
+                            </div>
                         </div>
+                        <button 
+                            onClick={() => window.location.href = '/pricing#top-up'}
+                            className="bg-[#bef264] text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-[#a3d951] transition-all ml-4"
+                        >
+                            TOP UP
+                        </button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {/* Navigation Sidebar */}
-                    <div className="space-y-2">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Navigation - Horizontal on mobile, Sidebar on desktop */}
+                    <div className="flex lg:flex-col overflow-x-auto lg:overflow-x-visible no-scrollbar pb-2 lg:pb-0 gap-2">
                         {[
                             { id: 'profile', label: 'Profile', icon: User },
-                            { id: 'billing', label: 'Billing & Plans', icon: CreditCard },
+                            { id: 'billing', label: 'Billing', icon: CreditCard },
                             { id: 'security', label: 'Security', icon: Shield },
-                            { id: 'notifications', label: 'Notifications', icon: Bell },
+                            { id: 'notifications', label: 'Alerts', icon: Bell },
                         ].map((item) => (
                             <button
                                 key={item.id}
                                 onClick={() => setActiveTab(item.id)}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === item.id ? 'bg-[#bef264] text-black font-black shadow-[0_0_15px_rgba(190,242,100,0.2)]' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+                                className={`flex items-center gap-3 px-5 py-3 rounded-xl transition-all whitespace-nowrap min-w-fit lg:w-full ${activeTab === item.id ? 'bg-[#bef264] text-black font-black shadow-[0_0_15px_rgba(190,242,100,0.2)]' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
                             >
-                                <item.icon size={18} />
-                                <span className="text-xs uppercase tracking-widest">{item.label}</span>
+                                <item.icon size={16} className="shrink-0" />
+                                <span className="text-[10px] lg:text-xs uppercase tracking-widest">{item.label}</span>
                             </button>
                         ))}
                         <button
                             onClick={() => supabase.auth.signOut()}
-                            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-500/10 transition-all mt-8"
+                            className="flex items-center gap-3 px-5 py-3 rounded-xl text-red-500 hover:bg-red-500/10 transition-all whitespace-nowrap min-w-fit lg:w-full lg:mt-8"
                         >
-                            <LogOut size={18} />
-                            <span className="text-xs uppercase tracking-widest font-bold">Sign Out</span>
+                            <LogOut size={16} className="shrink-0" />
+                            <span className="text-[10px] lg:text-xs uppercase tracking-widest font-black">Sign Out</span>
                         </button>
                     </div>
 
                     {/* Main Content Area */}
-                    <div className="md:col-span-2 space-y-6">
+                    <div className="lg:col-span-2 space-y-6">
 
                         {/* PROFILE VIEW */}
                         {activeTab === 'profile' && (
                             <div className="space-y-6">
                                 {/* Greeting Section */}
-                                <div className="bg-gradient-to-r from-[#bef264]/20 to-transparent border border-[#bef264]/10 rounded-2xl p-8">
-                                    <h2 className="text-2xl font-black text-white uppercase tracking-tight italic flex items-center gap-3">
-                                        Hey {fullName.split(' ')[0] || 'there'}, <span className="text-[#bef264]">Welcome to ZeroLines!</span>
+                                <div className="bg-gradient-to-r from-[#bef264]/20 to-transparent border border-[#bef264]/10 rounded-2xl p-6 md:p-8">
+                                    <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight italic flex items-center gap-3">
+                                        Hey {fullName.split(' ')[0] || 'there'}, <span className="text-[#bef264]">Welcome to ZEROLENS!</span>
                                     </h2>
-                                    <p className="text-white/60 text-sm mt-2 font-medium">
+                                    <p className="text-white/60 text-[11px] md:text-sm mt-3 font-medium leading-relaxed">
                                         You're all set to create some amazing things. Your cinematic journey starts here.
                                     </p>
                                 </div>
 
+                                {/* Profile Form Section */}
+                                <form onSubmit={handleUpdateProfile} className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 space-y-6">
+                                    <h3 className="text-lg font-black text-white uppercase tracking-wider italic flex items-center gap-2">
+                                        Personal Information
+                                    </h3>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 ml-1">Full Name</label>
+                                            <div className="relative">
+                                                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#bef264]/40" />
+                                                <input 
+                                                    type="text"
+                                                    value={fullName}
+                                                    onChange={(e) => setFullName(e.target.value)}
+                                                    placeholder="Enter your full name"
+                                                    className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-xs font-bold text-white focus:border-[#bef264]/40 focus:outline-none transition-all"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 ml-1">Email Address</label>
+                                            <div className="relative">
+                                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/10" />
+                                                <input 
+                                                    type="email"
+                                                    value={profile?.email || ''}
+                                                    readOnly
+                                                    className="w-full bg-white/5 border border-white/5 rounded-xl py-3.5 pl-12 pr-4 text-xs font-bold text-white/20 cursor-not-allowed focus:outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
 
+                                    <div className="pt-4">
+                                        <button
+                                            type="submit"
+                                            disabled={saving}
+                                            className="w-full sm:w-auto px-12 py-3.5 bg-[#bef264] text-black font-black uppercase text-[10px] tracking-widest rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-[#bef264]/10 disabled:opacity-50"
+                                        >
+                                            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                            Update Profile
+                                        </button>
+                                    </div>
+
+                                    {message.text && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className={`p-4 rounded-xl border text-[10px] font-bold uppercase tracking-wider ${message.type === 'success' ? 'bg-[#bef264]/10 border-[#bef264]/20 text-[#bef264]' : 'bg-red-500/10 border-red-500/20 text-red-500'}`}
+                                        >
+                                            {message.text}
+                                        </motion.div>
+                                    )}
+                                </form>
                             </div>
                         )}
 
@@ -226,14 +298,20 @@ export default function SettingsPage() {
                                         </div>
                                     </div>
 
-                                    <div className="mt-8 pt-8 border-t border-[#bef264]/10 flex gap-4">
+                                    <div className="mt-8 pt-8 border-t border-[#bef264]/10 grid grid-cols-1 sm:grid-cols-3 gap-3">
                                         <button 
                                             onClick={() => window.location.href = '/pricing'}
-                                            className="flex-1 py-3 bg-[#bef264] text-black font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-[#a3d951] transition-all hover:scale-[1.02]"
+                                            className="w-full py-3 bg-[#bef264] text-black font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-[#a3d951] transition-all hover:scale-[1.02]"
                                         >
                                             Upgrade Plan
                                         </button>
-                                        <button className="flex-1 py-3 bg-white/5 border border-white/10 text-white hover:bg-white/10 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all">
+                                        <button 
+                                            onClick={() => window.location.href = '/pricing#top-up'}
+                                            className="w-full py-3 bg-white/5 border border-[#bef264]/30 text-[#bef264] hover:bg-[#bef264]/10 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all"
+                                        >
+                                            Top-Up Credits
+                                        </button>
+                                        <button className="w-full py-3 bg-white/5 border border-white/10 text-white hover:bg-white/10 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all">
                                             Billing Dashboard
                                         </button>
                                     </div>
@@ -246,27 +324,30 @@ export default function SettingsPage() {
                                     <div className="mt-6 space-y-3">
                                         {billingHistory.length > 0 ? (
                                             billingHistory.map((bill) => (
-                                                <div key={bill.id} className="flex items-center justify-between py-4 px-4 bg-black/20 rounded-xl border border-white/5">
+                                                <div key={bill.id} className="flex flex-col sm:flex-row sm:items-center justify-between py-4 px-4 bg-black/20 rounded-xl border border-white/5 gap-4">
                                                     <div className="flex flex-col">
                                                         <span className="text-[10px] text-white/40 font-black uppercase tracking-widest">{bill.plan_name}</span>
                                                         <span className="text-xs text-white font-mono mt-1">
                                                             {new Date(bill.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                                                         </span>
                                                     </div>
-                                                    <div className="text-right flex flex-col items-end">
-                                                        <div className={`text-[10px] font-black uppercase tracking-widest mb-1 ${bill.status === 'SUCCESS' ? 'text-[#bef264]' : 'text-red-400'}`}>
-                                                            {bill.status}
+                                                    <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto">
+                                                        <div className="text-left sm:text-right flex flex-col sm:items-end">
+                                                            <div className={`text-[10px] font-black uppercase tracking-widest mb-1 ${bill.status === 'SUCCESS' ? 'text-[#bef264]' : 'text-red-400'}`}>
+                                                                {bill.status}
+                                                            </div>
+                                                            <div className="text-[9px] text-white/20 font-mono">
+                                                                ID: {bill.transaction_id || 'N/A'}
+                                                            </div>
                                                         </div>
-                                                        <div className="text-[9px] text-white/20 font-mono">
-                                                            ID: {bill.transaction_id || 'N/A'}
+                                                        <div className="text-right flex flex-col items-end">
+                                                            <div className="text-xs text-white font-black tracking-tighter">₹{bill.amount}</div>
+                                                            <button className="text-[9px] text-white/30 uppercase tracking-widest font-black hover:text-[#bef264] transition-colors mt-1 underline decoration-white/10">RECEIPT</button>
                                                         </div>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <div className="text-xs text-white font-black tracking-tighter">₹{bill.amount}</div>
-                                                        <button className="text-[9px] text-white/30 uppercase tracking-widest font-black hover:text-[#bef264] transition-colors mt-1">RECIPE</button>
                                                     </div>
                                                 </div>
                                             ))
+
                                         ) : (
                                             <div className="text-center py-8 text-white/20 text-[10px] font-black uppercase tracking-[0.2em]">No transactions recorded.</div>
                                         )}

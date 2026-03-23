@@ -1804,8 +1804,7 @@ function StackSection({ assets, isMobile }) {
               fontSize: isMobile ? 48 : 72,
               lineHeight: 0.9, letterSpacing: '0.02em'
             }}>
-              DROP A PRODUCT OR WARDROBE.<br />
-              <span style={{ color: T.lime }}>GET A SHOOT.</span>
+              DROP A PRODUCT OR WARDROBE. <span style={{ color: T.lime }}>GET A SHOOT.</span>
             </div>
           </div>
           <p style={{
@@ -1920,8 +1919,7 @@ function StackSection({ assets, isMobile }) {
               fontSize: isMobile ? 48 : 72,
               lineHeight: 0.9, letterSpacing: '0.02em'
             }}>
-              SET THE SCENE.<br />
-              <span style={{ color: T.lime }}>ROLL CAMERA.</span>
+              SET THE SCENE. <span style={{ color: T.lime }}>ROLL CAMERA.</span>
             </div>
           </div>
           <p style={{

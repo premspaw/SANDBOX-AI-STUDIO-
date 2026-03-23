@@ -230,7 +230,14 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
-                setAssets({ images: [], videos: [], characters: [] });
+                setAssets({
+                    images: [],
+                    videos: [],
+                    models: [],
+                    upscaled: [],
+                    characters: [],
+                    landing: []
+                });
                 setLoading(false);
                 return;
             }
@@ -596,9 +603,9 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 ) : activeTab === 'characters' || activeTab === 'matrix' ? (
                     <div>
                         {(() => {
-                            const filteredChars = activeTab === 'matrix'
-                                ? assets.characters.filter(c => c.isMatrix)
-                                : assets.characters.filter(c => !c.isMatrix);
+                            const filteredChars = (assets.characters || []).filter(c => 
+                                activeTab === 'matrix' ? c.isMatrix : !c.isMatrix
+                            );
 
                             if (filteredChars.length === 0) {
                                 return (
@@ -643,7 +650,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                             );
                         })()}
                     </div>
-                ) : assets[activeTab].length === 0 ? (
+                ) : (assets[activeTab]?.length || 0) === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center gap-4 opacity-20 text-center">
                         <FolderOpen className="w-20 h-20 text-[#bef264]/20" />
                         <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Sector_Null // No_Assets_Located</span>

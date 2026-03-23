@@ -12,16 +12,16 @@ export function MobileNav({ activeTab, setActiveTab }) {
     const isAdmin = userProfile?.role === 'admin';
 
     const mainNavItems = [
-        { id: 'prompt', label: 'Prompt', icon: Bot },
-        { id: 'creator', label: 'Creator', icon: Camera },
+        { id: 'creative-studio', label: 'Studio', icon: Video },
+        { id: 'ugc', label: 'UGC', icon: Sparkles },
         ...(isAdmin ? [{ id: 'influencer', label: 'Influencer', icon: Users }] : []),
-        { id: 'assets', label: 'Assets', icon: FolderOpen },
+        { id: 'prompt', label: 'Prompt', icon: Bot },
     ];
 
     const moreNavItems = [
         ...(isAdmin ? [{ id: 'directors-cut', label: "Director's Cut", icon: Clapperboard }] : []),
-        { id: 'creative-studio', label: "Creative Studio", icon: Video },
-        { id: 'ugc', label: 'UGC Engine', icon: Sparkles },
+        { id: 'assets', label: 'Assets', icon: FolderOpen },
+        { id: 'creator', label: 'Creator Engine', icon: Camera },
         { id: 'settings', label: 'Settings', icon: Settings },
         ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: Shield, color: 'text-red-500' }] : []),
     ];
