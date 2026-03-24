@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import { motion, AnimatePresence } from 'motion/react';
-import { Upload, User, Box, FileText, Camera, Play, Pause, Wand2, Loader2, Volume2, Sparkles, Video, X, Scissors, Plus, Trash2, Save, ChevronRight, ChevronLeft, ChevronDown, Layout, AlertCircle, HelpCircle, Settings, SidebarClose, SidebarOpen, Download, ZoomIn, ZoomOut, GripVertical, Check, CheckCircle, BrainCircuit, Zap, ShieldCheck, Shield, MessageSquare, Clock, Activity, Maximize, Layers, Monitor, Search, Package, Droplets, Wind, Fingerprint } from 'lucide-react';
+import { Upload, User, Box, FileText, Camera, Play, Pause, Wand2, Loader2, Volume2, VolumeX, Sparkles, Video, X, Scissors, Plus, Trash2, Save, ChevronRight, ChevronLeft, ChevronDown, Layout, AlertCircle, HelpCircle, Settings, SidebarClose, SidebarOpen, Download, ZoomIn, ZoomOut, GripVertical, Check, CheckCircle, BrainCircuit, Zap, ShieldCheck, Shield, MessageSquare, Clock, Activity, Maximize, Layers, Monitor, Search, Package, Droplets, Wind, Fingerprint } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { GoogleGenAI, Modality, Type } from '@google/genai';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
@@ -949,6 +949,7 @@ export default function UGC() {
   const [imageStyle, setImageStyle] = useState<'studio' | 'ultra-realistic' | 'iphone' | 'short' | 'normal' | 'cinematic'>('ultra-realistic');
   const [aspectRatio, setAspectRatio] = useState<'9:16' | '16:9' | '1:1'>('9:16');
   const [durationSeconds, setDurationSeconds] = useState<'4' | '6' | '8'>('8');
+  const [includeAudio, setIncludeAudio] = useState(false);
   const [videoResolution, setVideoResolution] = useState<'720p' | '1080p'>('720p');
   const [selectedVideoStyle, setSelectedVideoStyle] = useState<'calm' | 'energetic' | 'action' | 'professional' | 'casual' | 'storytelling'>('calm');
   const [isPerformanceStyleExpanded, setIsPerformanceStyleExpanded] = useState(false);
@@ -1040,6 +1041,12 @@ export default function UGC() {
   const [isMontageApproved, setIsMontageApproved] = useState(false);
   const [isGeneratingMontageOptions, setIsGeneratingMontageOptions] = useState(false);
   const [showMontageOptions, setShowMontageOptions] = useState(false);
+  const [montageGeneratedImg, setMontageGeneratedImg] = useState<string>('');
+  const [isGeneratingMontageImg, setIsGeneratingMontageImg] = useState(false);
+  const [montageImgProgressMsg, setMontageImgProgressMsg] = useState('');
+  const [montageImgExpanded, setMontageImgExpanded] = useState(false);
+  const [montageAudioEnabled, setMontageAudioEnabled] = useState(false);
+  const [montageDuration, setMontageDuration] = useState<'4' | '6' | '8'>('4');
 
   const totalTimelineDuration = timeline.reduce((acc: number, t: TimelineItem) => acc + (t.end - t.start), 0);
 
@@ -1095,6 +1102,9 @@ export default function UGC() {
           e.preventDefault();
           setIsPlaying(prev => !prev);
         }
+      }
+      if (e.code === 'Escape') {
+        setMontageImgExpanded(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -1579,7 +1589,7 @@ export default function UGC() {
         config: {
           responseMimeType: "application/json",
         }
-      }), 15000, "Montage analysis timed out. Please try again.");
+      }), 60000, "Montage analysis timed out. Please try again.");
 
       const options = JSON.parse(response.text || '[]');
       setMontageOptions(options);
@@ -1589,36 +1599,164 @@ export default function UGC() {
     setIsGeneratingMontageOptions(false);
   };
 
-  const generateMontageVideo = async (option: any) => {
-    if (!productImg) return;
-    setIsGeneratingVideo(true);
-    setVideoProgressMsg(`Generating ${option.title} Montage...`);
+  /**
+   * Step 1 of the montage pipeline: generate a reference image using
+   * character + product images (mirrors the generateImage() logic) then
+   * store it in montageGeneratedImg so the user can preview it before
+   * moving on to Veo animation.
+   */
+  const generateMontageReferenceImage = async (option: any): Promise<string> => {
+    if (!productImg && !characterImg) return '';
+    setIsGeneratingMontageImg(true);
+    setMontageImgProgressMsg('Calibrating Studio Camera...');
+    let generatedUrl = '';
     try {
       const ai = getAI();
-      const base64 = await resizeImage(productImg.file);
-      
+      let contents: { text?: string; inlineData?: { mimeType: string; data: string } }[] = [];
+
+      // Build style prompt (UGC ultra-realistic for montage)
+      const stylePrompt = 'Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality';
+
+      // Add character reference if present
+      if (characterImg) {
+        setMontageImgProgressMsg('Loading Character Reference...');
+        contents.push(await fileToGenerativePart(characterImg.file));
+      }
+
+      // Add product reference if present
+      if (productImg) {
+        setMontageImgProgressMsg('Analysing Product DNA...');
+        contents.push(await fileToGenerativePart(productImg.file));
+      }
+
+      setMontageImgProgressMsg('Synthesising Reference Frame...');
+
+      // Build instruction based on what references we have
+      let promptInstructions = '';
+      const sceneDesc = `${option.title} — ${option.prompt.substring(0, 120)}`;
+
+      if (characterImg && productImg) {
+        promptInstructions = `The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.
+        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: ${sceneDesc}.
+        Style: ${stylePrompt}.
+        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.`;
+      } else if (characterImg) {
+        promptInstructions = `The image is the PERSON (creator) reference.
+        TASK: Generate ONE UGC-style photo of this person in the following scene: ${sceneDesc}.
+        Style: ${stylePrompt}.`;
+      } else if (productImg) {
+        promptInstructions = `The image is the PRODUCT reference.
+        TASK: Generate ONE UGC-style photo of a creator using/showcasing this product in the following scene: ${sceneDesc}.
+        The product in the final image must look exactly like the reference. Style: ${stylePrompt}.`;
+      } else {
+        promptInstructions = `TASK: Generate ONE UGC-style photo for this scene: ${sceneDesc}. Style: ${stylePrompt}.`;
+      }
+
+      contents.push({ text: promptInstructions });
+
+      const modelName = hasPaidKey ? 'gemini-3.1-flash-image-preview' : 'gemini-2.5-flash-image';
+      setMontageImgProgressMsg('AI Generating Reference Image...');
+
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: [{ parts: contents }],
+        config: {
+          imageConfig: { aspectRatio: aspectRatio as any }
+        }
+      });
+
+      for (const part of response.candidates?.[0]?.content?.parts || []) {
+        if (part.inlineData) {
+          const url = `data:image/png;base64,${part.inlineData.data}`;
+          generatedUrl = url;
+          setMontageGeneratedImg(url);
+          break;
+        }
+      }
+    } catch (e) {
+      handleApiError(e, 'Montage reference image generation');
+    }
+    setIsGeneratingMontageImg(false);
+    setMontageImgProgressMsg('');
+    return generatedUrl;
+  };
+
+  /**
+   * Step 2 of the montage pipeline: animate the reference image to video
+   * using Veo with the generated (or fallback product) image as the first frame.
+   */
+  const generateMontageVideo = async (option: any) => {
+    if (!productImg && !characterImg && !montageGeneratedImg) return;
+    setIsGeneratingVideo(true);
+    setVideoProgressMsg(`Animating ${option.title} Montage...`);
+    try {
+      const ai = getAI();
+
+      // Prefer the already-generated reference image; fall back to product image.
+      let imageBase64 = '';
+      let imageMime = 'image/jpeg';
+
+      if (montageGeneratedImg) {
+        // decode the data URL
+        setVideoProgressMsg('Loading Generated Reference...');
+        imageMime = montageGeneratedImg.split(';')[0].split(':')[1];
+        imageBase64 = montageGeneratedImg.split(',')[1];
+        // resize for Veo
+        const imgBlob = await (await fetch(montageGeneratedImg)).blob();
+        imageBase64 = await resizeImage(imgBlob);
+      } else if (productImg) {
+        setVideoProgressMsg('Loading Product Reference...');
+        imageBase64 = await resizeImage(productImg.file);
+      }
+
+      setVideoProgressMsg(`Submitting to Veo-3...`);
       let operation = await ai.models.generateVideos({
         model: 'veo-3.1-fast-generate-preview',
         prompt: option.prompt.substring(0, 1000),
         image: {
-          imageBytes: base64,
-          mimeType: 'image/jpeg',
+          imageBytes: imageBase64,
+          mimeType: imageMime,
         },
         config: {
           numberOfVideos: 1,
+          durationSeconds: parseInt(montageDuration),
+          includeAudio: montageAudioEnabled,
           resolution: '720p',
-          aspectRatio: aspectRatio === '1:1' ? '9:16' : aspectRatio as any,
-        }
+          aspectRatio: aspectRatio === '1:1' ? '9:16' : aspectRatio,
+        } as any
       });
 
+      const pollMsgs = [
+        'Generating Video Frames...',
+        'Animating Character Motion...',
+        'Refining Realistic Details...',
+        'Processing Visual Output...',
+        'Finalizing Render...'
+      ];
+      let pollCount = 0;
       while (!operation.done) {
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 10000));
+        setVideoProgressMsg(pollMsgs[Math.min(pollCount, pollMsgs.length - 1)]);
+        pollCount++;
         operation = await ai.operations.getVideosOperation({ operation: operation });
+      }
+
+      const generateVideoResponse = (operation.response as any)?.generateVideoResponse;
+      const raiFiltered = generateVideoResponse?.raiMediaFilteredCount || 0;
+
+      if (raiFiltered > 0) {
+        const reason = generateVideoResponse?.raiMediaFilteredReasons?.[0] || 'Prompt conflicted with safety policies.';
+        showToast(`Montage blocked by safety filter — try rephrasing the prompt. (You were not charged)`, 'error');
+        console.warn('Veo RAI filter:', reason);
+        setIsGeneratingVideo(false);
+        setVideoProgressMsg('');
+        return;
       }
 
       const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
       if (downloadLink) {
         const apiKey = getApiKey();
+        setVideoProgressMsg('Downloading Render...');
         const response = await fetch(downloadLink, {
           method: 'GET',
           headers: { 'x-goog-api-key': apiKey },
@@ -1631,16 +1769,20 @@ export default function UGC() {
           type: 'video',
           url: url,
           start: 0,
-          end: 4,
-          duration: 4,
+          end: parseInt(montageDuration),
+          duration: parseInt(montageDuration),
           originalFile: new File([blob], `${option.id}_montage.mp4`, { type: 'video/mp4' })
         };
         setTimeline(prev => [...prev, newItem]);
-        showToast(`${option.title} montage added to timeline!`, "success");
+        setGallery((prev: GalleryItem[]) => [...prev, { id: Date.now().toString(), type: 'video', url }]);
+        showToast(`${option.title} montage added to timeline!`, 'success');
         setShowMontageOptions(false);
+        setMontageGeneratedImg(''); // reset for next montage
+      } else {
+        showToast('Veo returned no video. The prompt may have been filtered. Try rephrasing.', 'error');
       }
     } catch (e) {
-      handleApiError(e, "Montage video generation");
+      handleApiError(e, 'Montage video generation');
     }
     setIsGeneratingVideo(false);
     setVideoProgressMsg('');
@@ -1744,7 +1886,7 @@ export default function UGC() {
             required: ["characterActions", "script", "toneSummary"]
           }
         }
-      }), 15000, "Video analysis timed out. Please try again.");
+      }), 90000, "Video analysis timed out. Please try again.");
 
       setAnalysisProgress('Finalizing Results...');
       const result = safeJsonParse(response.text);
@@ -1788,7 +1930,7 @@ export default function UGC() {
             required: ["tags", "description"]
           }
         }
-      }), 15000, "Product analysis timed out. Please try again.");
+      }), 60000, "Product analysis timed out. Please try again.");
 
       const data = safeJsonParse(response.text);
       if (data.tags) setProductTags(data.tags);
@@ -2671,7 +2813,9 @@ Return ONLY a valid JSON object with the following structure:
         config: {
           numberOfVideos: 1,
           resolution: videoResolution as any,
-          aspectRatio: aspectRatio === '1:1' ? '9:16' : aspectRatio as any // Veo doesn't support 1:1
+          aspectRatio: aspectRatio === '1:1' ? '9:16' : aspectRatio as any, // Veo doesn't support 1:1
+          durationSeconds: parseInt(durationSeconds),
+          includeAudio: includeAudio
         }
       };
 
@@ -2697,6 +2841,19 @@ Return ONLY a valid JSON object with the following structure:
         operation = await ai.operations.getVideosOperation({ operation });
       }
 
+      setVideoProgressMsg('Checking Response...');
+      const generateVideoResponse = (operation.response as any)?.generateVideoResponse;
+      const raiFiltered = generateVideoResponse?.raiMediaFilteredCount || 0;
+
+      if (raiFiltered > 0) {
+        const reason = generateVideoResponse?.raiMediaFilteredReasons?.[0] || 'Prompt conflicted with safety policies.';
+        setVideoError(`Video blocked by Veo safety filter. Try rephrasing your prompt.\n\nReason: ${reason}\n\nYou have not been charged.`);
+        showToast('Video blocked by safety filter — try rephrasing the prompt. (Not charged)', 'error');
+        setIsGeneratingVideo(false);
+        setVideoProgressMsg('');
+        return;
+      }
+
       setVideoProgressMsg('Downloading Render...');
       const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
       if (downloadLink) {
@@ -2719,6 +2876,9 @@ Return ONLY a valid JSON object with the following structure:
         setGeneratedVideo(finalUrl);
         setGallery((prev: GalleryItem[]) => [...prev, { id: Date.now().toString(), type: 'video', url: finalUrl }]);
         addToTimeline({ type: 'video', url: finalUrl });
+      } else {
+        setVideoError('Veo returned no video. The prompt may have been filtered — try a different prompt.');
+        showToast('No video generated. Try rephrasing your prompt.', 'error');
       }
     } catch (e: any) {
       handleApiError(e, "Video generation");
@@ -2752,6 +2912,53 @@ Return ONLY a valid JSON object with the following structure:
           <button onClick={() => setToast(null)} className="ml-2 hover:opacity-70">
             <X size={14} />
           </button>
+        </div>
+      )}
+
+      {/* ── Montage Image Lightbox ────────────────────────────────── */}
+      {montageImgExpanded && montageGeneratedImg && (
+        <div
+          className="fixed inset-0 z-[2000] bg-black/92 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setMontageImgExpanded(false)}
+        >
+          <div
+            className="relative max-w-3xl w-full flex flex-col items-center"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Top bar */}
+            <div className="w-full flex items-center justify-between px-1 py-2 mb-2">
+              <span className="text-[9px] font-mono text-[#c8f135] uppercase tracking-widest flex items-center gap-1.5">
+                <Camera size={11} />
+                Character + Product Reference
+              </span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={montageGeneratedImg}
+                  download="montage-reference.png"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 border border-white/15 rounded-lg text-[9px] font-black uppercase tracking-widest text-white hover:bg-[#c8f135]/20 hover:text-[#c8f135] hover:border-[#c8f135]/40 transition-all"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <Download size={11} />
+                  Save PNG
+                </a>
+                <button
+                  onClick={() => setMontageImgExpanded(false)}
+                  className="w-7 h-7 rounded-full bg-white/10 border border-white/15 flex items-center justify-center hover:bg-red-500/70 transition-colors"
+                >
+                  <X size={13} className="text-white" />
+                </button>
+              </div>
+            </div>
+            {/* Image */}
+            <div className="rounded-xl overflow-hidden border border-[#c8f135]/20 shadow-[0_0_60px_rgba(200,241,53,0.08)] w-full">
+              <img
+                src={montageGeneratedImg}
+                alt="Montage Reference Full Size"
+                className="w-full h-auto max-h-[82vh] object-contain"
+              />
+            </div>
+            <p className="mt-2 text-[8px] font-mono text-gray-600 uppercase tracking-widest">Click outside to close</p>
+          </div>
         </div>
       )}
 
@@ -3195,6 +3402,7 @@ Return ONLY a valid JSON object with the following structure:
                                         setSelectedMontageOption(option);
                                         setMontagePrompt(option.prompt);
                                         setIsMontageApproved(false);
+                                        setMontageGeneratedImg(''); // clear stale ref image when switching clips
                                       }}
                                       disabled={isGeneratingVideo}
                                       className={`flex items-center gap-3 p-2.5 border rounded-lg transition-all group relative overflow-hidden text-left ${selectedMontageOption?.id === option.id ? 'bg-[#c8f135]/10 border-[#c8f135]/40' : 'bg-white/5 border-white/10 hover:border-[#c8f135]/40'} `}
@@ -3243,24 +3451,166 @@ Return ONLY a valid JSON object with the following structure:
                                       onChange={(e) => {
                                         setMontagePrompt(e.target.value);
                                         setIsMontageApproved(false);
+                                        setMontageGeneratedImg(''); // reset ref image if prompt edited
                                       }}
                                       className="w-full h-20 bg-black/40 border border-white/5 rounded-lg px-3 py-2 font-sans text-[11px] text-white focus:outline-none focus:border-[#c8f135] resize-none leading-relaxed"
                                       placeholder="Edit montage prompt here..."
                                     />
-                                    <button
-                                      onClick={() => generateMontageVideo({ ...selectedMontageOption, prompt: montagePrompt })}
-                                      disabled={!isMontageApproved || isGeneratingVideo}
-                                      className="w-full py-2 bg-[#c8f135] text-black font-black text-[10px] uppercase tracking-widest rounded-lg hover:bg-[#d9ff4d] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                    >
-                                      <Video size={14} />
-                                      Produce Montage Video
-                                    </button>
+
+                                    {/* ── Two-Step Montage Pipeline ── */}
+                                    <div className="space-y-2">
+                                      {/* Step 1: Generate Reference Image */}
+                                      <div className="p-2.5 bg-black/30 rounded-lg border border-white/5">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="w-4 h-4 rounded-full bg-[#c8f135]/20 border border-[#c8f135]/40 text-[#c8f135] text-[7px] font-black flex items-center justify-center">1</span>
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-[#c8f135]">Generate Reference Image</span>
+                                          </div>
+                                          {montageGeneratedImg && (
+                                            <span className="text-[7px] font-mono text-[#c8f135] bg-[#c8f135]/10 px-2 py-0.5 rounded border border-[#c8f135]/30">✓ Ready</span>
+                                          )}
+                                        </div>
+
+                                        {/* Generated reference image preview */}
+                                        {montageGeneratedImg && (
+                                          <div className="relative mb-2 rounded-lg overflow-hidden border border-[#c8f135]/30 group/img">
+                                            <img src={montageGeneratedImg} alt="Montage Reference" className="w-full max-h-[140px] object-cover" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-2">
+                                              <span className="text-[7px] font-mono text-[#c8f135] uppercase tracking-widest">Character + Product Reference</span>
+                                            </div>
+                                            {/* Expand button */}
+                                            <button
+                                              onClick={() => setMontageImgExpanded(true)}
+                                              className="absolute top-1.5 left-1.5 w-6 h-6 bg-black/70 rounded-full flex items-center justify-center hover:bg-[#c8f135]/80 hover:text-black transition-colors opacity-0 group-hover/img:opacity-100"
+                                              title="Expand image"
+                                            >
+                                              <ZoomIn size={11} className="text-white" />
+                                            </button>
+                                            {/* Push to Monitor button */}
+                                            <button
+                                              onClick={() => {
+                                                setGeneratedImg(montageGeneratedImg);
+                                                setScenes((prev: Scene[]) => prev.map((s: Scene, i: number) => i === activeSceneIndex ? { ...s, image: montageGeneratedImg } : s));
+                                                setRenderMode('image');
+                                                showToast('Reference image pushed to Studio Monitor!', 'success');
+                                              }}
+                                              className="absolute bottom-1.5 left-1.5 flex items-center gap-1 px-2 py-1 bg-black/80 border border-[#c8f135]/40 rounded-md text-[7px] font-black uppercase tracking-widest text-[#c8f135] hover:bg-[#c8f135]/20 transition-all opacity-0 group-hover/img:opacity-100"
+                                              title="Push to Studio Monitor"
+                                            >
+                                              <Monitor size={9} />
+                                              Push to Monitor
+                                            </button>
+                                            {/* Remove button */}
+                                            <button
+                                              onClick={() => setMontageGeneratedImg('')}
+                                              className="absolute top-1.5 right-1.5 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center hover:bg-red-500/80 transition-colors"
+                                              title="Remove"
+                                            >
+                                              <X size={9} className="text-white" />
+                                            </button>
+                                          </div>
+                                        )}
+
+                                        {/* Show loading state */}
+                                        {isGeneratingMontageImg && (
+                                          <div className="flex items-center gap-2 py-2 animate-pulse">
+                                            <Loader2 size={12} className="animate-spin text-[#c8f135]" />
+                                            <span className="text-[8px] font-mono text-[#c8f135] uppercase tracking-widest">{montageImgProgressMsg || 'Generating...'}</span>
+                                          </div>
+                                        )}
+
+                                        <button
+                                          onClick={() => generateMontageReferenceImage({ ...selectedMontageOption, prompt: montagePrompt })}
+                                          disabled={!isMontageApproved || isGeneratingMontageImg || isGeneratingVideo}
+                                          className="w-full py-1.5 bg-white/10 border border-white/15 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-[#c8f135]/10 hover:border-[#c8f135]/40 hover:text-[#c8f135] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                                        >
+                                          {isGeneratingMontageImg ? <Loader2 size={11} className="animate-spin" /> : <Camera size={11} />}
+                                          {montageGeneratedImg ? 'Regenerate Image' : 'Generate Reference Image'}
+                                        </button>
+                                      </div>
+
+                                      {/* Step 2: Animate to Video */}
+                                      <div className={`p-2.5 rounded-lg border transition-all ${montageGeneratedImg ? 'bg-black/30 border-[#c8f135]/20' : 'bg-black/20 border-white/5 opacity-60'}`}>
+                                        <div className="flex items-center gap-1.5 mb-2">
+                                          <span className={`w-4 h-4 rounded-full text-[7px] font-black flex items-center justify-center ${montageGeneratedImg ? 'bg-[#c8f135] text-black' : 'bg-white/10 border border-white/20 text-gray-500'}`}>2</span>
+                                          <span className={`text-[8px] font-black uppercase tracking-widest ${montageGeneratedImg ? 'text-white' : 'text-gray-500'}`}>Animate to Video</span>
+                                          {!montageGeneratedImg && <span className="text-[7px] text-gray-600 font-mono uppercase">( complete step 1 first )</span>}
+                                        </div>
+
+                                        {/* ── Audio & Duration controls ── */}
+                                        <div className="flex items-center gap-2 mb-2.5">
+                                          {/* Audio toggle */}
+                                          <button
+                                            onClick={() => setMontageAudioEnabled(prev => !prev)}
+                                            title={montageAudioEnabled ? 'Audio ON — click to disable (saves credits)' : 'Audio OFF — click to enable'}
+                                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-all flex-shrink-0 ${
+                                              montageAudioEnabled
+                                                ? 'bg-[#c8f135]/15 border-[#c8f135]/50 text-[#c8f135]'
+                                                : 'bg-white/5 border-white/10 text-gray-500 hover:border-white/20'
+                                            }`}
+                                          >
+                                            {montageAudioEnabled ? <Volume2 size={11} /> : <VolumeX size={11} />}
+                                            {montageAudioEnabled ? 'Audio' : 'Mute'}
+                                          </button>
+
+                                          {/* Duration pills */}
+                                          <div className="flex items-center gap-1 flex-1">
+                                            {(['4', '6', '8'] as const).map(sec => (
+                                              <button
+                                                key={sec}
+                                                onClick={() => setMontageDuration(sec)}
+                                                className={`flex-1 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-all ${
+                                                  montageDuration === sec
+                                                    ? 'bg-[#c8f135] text-black border-[#c8f135]'
+                                                    : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20 hover:text-white'
+                                                }`}
+                                              >
+                                                {sec}s
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+
+                                        {/* Credit hint */}
+                                        <p className="text-[7px] font-mono text-gray-600 uppercase tracking-wider mb-2">
+                                          {montageAudioEnabled ? '🔊 Audio ON — costs more credits' : '🔇 Muted — saves credits'} &nbsp;·&nbsp; {montageDuration}s clip
+                                        </p>
+
+                                        <button
+                                          onClick={() => generateMontageVideo({ ...selectedMontageOption, prompt: montagePrompt })}
+                                          disabled={!isMontageApproved || isGeneratingVideo || isGeneratingMontageImg}
+                                          className="w-full py-2 bg-[#c8f135] text-black font-black text-[10px] uppercase tracking-widest rounded-lg hover:bg-[#d9ff4d] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                        >
+                                          {isGeneratingVideo ? <Loader2 size={13} className="animate-spin" /> : <Video size={13} />}
+                                          {isGeneratingVideo ? (videoProgressMsg || 'Generating...') : (montageGeneratedImg ? 'Animate Reference → Video' : 'Produce Montage Video')}
+                                        </button>
+                                      </div>
+                                    </div>
                                   </div>
                                 )}
                               </div>
                             ) : (
-                              <div className="text-center py-4">
-                                <p className="text-[9px] text-gray-500 font-mono uppercase tracking-widest">Upload a product image to unlock montages</p>
+                              <div className="flex flex-col items-center gap-3 py-4">
+                                {productImg ? (
+                                  // Product is uploaded but analysis failed/timed out — show retry
+                                  <>
+                                    <div className="flex items-center gap-2 text-amber-400/70">
+                                      <AlertCircle size={14} />
+                                      <p className="text-[9px] font-mono uppercase tracking-widest">Analysis incomplete. Retry to unlock clips.</p>
+                                    </div>
+                                    <button
+                                      onClick={() => analyzeProductForMontage(productImg.file)}
+                                      disabled={isGeneratingMontageOptions}
+                                      className="flex items-center gap-2 px-4 py-2 bg-[#c8f135]/10 border border-[#c8f135]/30 text-[#c8f135] rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-[#c8f135]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      {isGeneratingMontageOptions ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+                                      {isGeneratingMontageOptions ? 'Analysing...' : 'Analyse for Montages'}
+                                    </button>
+                                  </>
+                                ) : (
+                                  // No product image yet
+                                  <p className="text-[9px] text-gray-500 font-mono uppercase tracking-widest">Upload a product image to unlock montages</p>
+                                )}
                               </div>
                             )}
                           </div>
@@ -3599,7 +3949,7 @@ Return ONLY a valid JSON object with the following structure:
                         </div>
 
                         {/* Controls Overlay */}
-                        <div className="absolute bottom-0 inset-x-0 px-5 pb-1.5 pt-20 bg-gradient-to-t from-[#020202] via-[#020202]/90 to-transparent flex flex-col space-y-4 z-10 pointer-events-none">
+                        <div className="absolute bottom-0 inset-x-0 px-5 pb-12 pt-20 bg-gradient-to-t from-[#020202] via-[#020202]/90 to-transparent flex flex-col space-y-4 z-10 pointer-events-none">
                           <div className="flex bg-black/60 backdrop-blur-md p-1 rounded-lg border border-white/5 pointer-events-auto">
                             {(['image', 'video'] as const).map((mode) => (
                               <button
@@ -3705,7 +4055,7 @@ Return ONLY a valid JSON object with the following structure:
                         </div>
 
                         {/* Controls Overlay */}
-                        <div className="absolute bottom-0 inset-x-0 px-5 pb-1.5 pt-12 bg-gradient-to-t from-[#020202] via-[#020202]/95 to-transparent flex flex-col space-y-2 z-10 pointer-events-none">
+                        <div className="absolute bottom-0 inset-x-0 px-5 pb-12 pt-12 bg-gradient-to-t from-[#020202] via-[#020202]/95 to-transparent flex flex-col space-y-2 z-10 pointer-events-none">
                           <div className="flex bg-black/60 backdrop-blur-md p-1 rounded-lg border border-white/5 pointer-events-auto">
                             {(['image', 'video'] as const).map((mode) => (
                               <button
@@ -3719,7 +4069,7 @@ Return ONLY a valid JSON object with the following structure:
                           </div>
 
                           {videoPrompt && (
-                            <div className="p-3 bg-[#c8f135]/5 border border-[#c8f135]/20 rounded-xl pointer-events-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
+                            <div className="p-3 bg-[#c8f135]/5 border border-[#c8f135]/20 rounded-xl pointer-events-auto flex-shrink-0 hidden lg:block animate-in fade-in slide-in-from-bottom-2 duration-500">
                               <div className="flex items-center gap-2 mb-1.5">
                                 <BrainCircuit size={12} className="text-[#c8f135]" />
                                 <span className="text-[8px] font-black text-[#c8f135] uppercase tracking-widest">AI Context</span>
@@ -3730,40 +4080,34 @@ Return ONLY a valid JSON object with the following structure:
                             </div>
                           )}
 
-                          <div className="grid grid-cols-3 gap-1.5 pointer-events-auto">
-                            <Dropdown
-                              label="Duration"
-                              value={`${durationSeconds} s`}
-                              options={['4s', '6s', '8s']}
-                              onChange={(val: string) => setDurationSeconds(val.replace('s', '') as any)}
-                              direction="up"
-                            />
-                            <Dropdown
-                              label="Ratio"
-                              value={aspectRatio}
-                              options={['9:16', '16:9', '1:1']}
-                              onChange={setAspectRatio}
-                              direction="up"
-                              icon={Layout}
-                            />
-                            <Dropdown
-                              label="Res"
-                              value={videoResolution}
-                              options={['720p', '1080p']}
-                              onChange={setVideoResolution}
-                              direction="up"
-                              icon={Zap}
-                            />
+                          <div className="space-y-2 pointer-events-auto">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setIncludeAudio((prev: boolean) => !prev)}
+                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-all flex-shrink-0 ${includeAudio ? 'bg-[#c8f135]/15 border-[#c8f135]/50 text-[#c8f135]' : 'bg-white/5 border-white/10 text-gray-500 hover:border-white/20'}`}
+                              >
+                                {includeAudio ? <Volume2 size={11} /> : <VolumeX size={11} />}
+                                {includeAudio ? 'Audio' : 'Mute'}
+                              </button>
+                              <div className="flex items-center gap-1 flex-1">
+                                {(['4', '6', '8'] as const).map(sec => (
+                                  <button key={sec} onClick={() => setDurationSeconds(sec as any)} className={`flex-1 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-all ${durationSeconds === sec ? 'bg-[#c8f135] text-black border-[#c8f135]' : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20 hover:text-white'}`}>{sec}s</button>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-[7px] font-mono text-gray-600 uppercase tracking-widest flex-shrink-0 w-12">Ratio</span>
+                              {(['9:16', '16:9', '1:1'] as const).map(ratio => (
+                                <button key={ratio} onClick={() => setAspectRatio(ratio)} className={`flex-1 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-all ${aspectRatio === ratio ? 'bg-[#c8f135] text-black border-[#c8f135]' : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20 hover:text-white'}`}>{ratio}</button>
+                              ))}
+                            </div>
+                            <p className="text-[7px] font-mono text-gray-600 uppercase tracking-wider">
+                              {includeAudio ? '🔊 Audio ON' : '🔇 Muted — saves credits'} &nbsp;·&nbsp; {durationSeconds}s · {aspectRatio}
+                            </p>
+                            <Button onClick={() => generateVideo()} disabled={isGeneratingVideo || !scenes[activeSceneIndex]?.isApproved} loading={isGeneratingVideo} className="w-full py-4">
+                              {scenes[activeSceneIndex]?.isApproved ? 'Produce Video' : 'Approve Scene to Produce'}
+                            </Button>
                           </div>
-
-                        <Button
-                          onClick={() => generateVideo()}
-                            disabled={isGeneratingVideo || !scenes[activeSceneIndex]?.isApproved}
-                            loading={isGeneratingVideo}
-                            className="w-full py-4 pointer-events-auto"
-                          >
-                            {scenes[activeSceneIndex]?.isApproved ? 'Produce Video' : 'Approve Scene to Produce'}
-                          </Button>
                         </div>
                       </>
                     )}
