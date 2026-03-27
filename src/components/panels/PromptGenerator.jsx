@@ -10,7 +10,7 @@ import {
 import { cn } from '../../lib/utils'
 import { AssetsLibrary } from './AssetsLibrary'
 import { useAppStore } from '../../store'
-import { getApiUrl } from '../../config/apiConfig'
+import { getApiUrl, resolveUrl } from '../../config/apiConfig'
 import { supabase } from '../../lib/supabase'
 import CameraGuide from './CameraGuide'
 import ImageEditorModal from '../common/ImageEditorModal'
@@ -44,7 +44,7 @@ const CAMERA_MODELS = [
     {
         id: 'arri', label: 'ARRI Alexa 35', type: 'Cinema', icon: Film,
         desc: 'The Hollywood gold standard. High dynamic range, organic color.',
-        soul: 'featuring the legendary ARRI REVEAL color science, natural color rendition, and soft highlight roll-off characteristic of high-end cinema',
+        soul: 'with organic color science and cinematic highlight roll-off',
         invalidAngles: [],
         lensMap: {
             'extreme_wide': { lenses: ['12mm', '14mm', '16mm'], default: '14mm' },
@@ -65,7 +65,7 @@ const CAMERA_MODELS = [
     {
         id: 'sony', label: 'Sony Venice 2', type: 'Cinema', icon: Video,
         desc: 'Full-frame digital cinema, dual base ISO. Clean & sharp.',
-        soul: 'showcasing incredible 8K clarity, rich shadow detail, and the subtle texture rendering unique to the Sony Venice 2',
+        soul: 'with full-frame clarity and rich shadow detail',
         invalidAngles: [],
         lensMap: {
             'extreme_wide': { lenses: ['16mm Anamorphic', '18mm'], default: '16mm Anamorphic' },
@@ -86,7 +86,7 @@ const CAMERA_MODELS = [
     {
         id: 'red', label: 'RED V-Raptor', type: 'Cinema', icon: Video,
         desc: '8K Vista Vision. Ultra-high resolution and raw detail.',
-        soul: 'photographed with the sharp, high-contrast, and ultra-dynamic 8K RAW aesthetic of a RED V-Raptor sensor',
+        soul: 'with sharp, high-contrast 8K RAW detail',
         invalidAngles: [],
         lensMap: {
             'extreme_wide': { lenses: ['12mm', '15mm'], default: '12mm' },
@@ -107,7 +107,7 @@ const CAMERA_MODELS = [
     {
         id: 'imax', label: 'IMAX 70mm', type: 'Film', icon: Film,
         desc: 'Massive format film. Unparalleled depth and resolution.',
-        soul: 'capturing the massive vertical scale, epic detail, and grand immersive feeling of a native 70mm IMAX film frame',
+        soul: 'capturing the epic scale and immersive depth of a native 70mm IMAX frame',
         invalidAngles: ['drone', 'pov', 'dutch'], // "all others not recommended"
         lensMap: {
             'extreme_wide': { lenses: ['15mm IMAX', '18mm IMAX'], default: '15mm IMAX' },
@@ -125,7 +125,7 @@ const CAMERA_MODELS = [
     {
         id: 'iphone', label: 'iPhone 15 Pro', type: 'Mobile', icon: Smartphone,
         desc: 'Modern mobile look. Deep depth of field, digital sharpening.',
-        soul: 'with the sharp, high-definition, and vibrant HDR mobile-cinematography look of a modern iPhone',
+        soul: 'with vibrant HDR mobile-cinematography clarity',
         invalidAngles: [],
         lensMap: {
             'extreme_wide': { lenses: ['13mm Ultra Wide'], default: '13mm' },
@@ -146,7 +146,7 @@ const CAMERA_MODELS = [
     {
         id: 'gopro', label: 'GoPro Hero 12', type: 'Action', icon: Camera,
         desc: 'Action cam fisheye. High distortion, infinite focus.',
-        soul: 'with an ultra-wide fisheye perspective, high-intensity action stabilization, and rugged outdoor clarity',
+        soul: 'with a fisheye ultra-wide perspective and rugged outdoor clarity',
         invalidAngles: ['closeup', 'extreme_closeup'], // "Not recommended"
         lensMap: {
             'extreme_wide': { lenses: ['12mm SuperView'], default: '12mm SuperView' },
@@ -165,7 +165,7 @@ const CAMERA_MODELS = [
     {
         id: 'vhs', label: 'Vintage Camcorder', type: 'Retro', icon: Video,
         desc: '1990s home video tape. Noisy, chromatic aberration.',
-        soul: 'with 90s lo-fi textures, slight magnetic tape grain, chromatic aberration, and a nostalgic VHS timestamp aesthetic',
+        soul: 'with lo-fi magnetic tape grain and nostalgic VHS chromatic aberration',
         invalidAngles: [],
         lensMap: {
             // Default generic fallback for all if not explicitly mapped.
@@ -175,7 +175,7 @@ const CAMERA_MODELS = [
     {
         id: 'dslr', label: 'Canon R5', type: 'Hybrid', icon: Camera,
         desc: 'Modern mirrorless photography/video hybrid.',
-        soul: 'with a Canon R5 mirrorless sensor, combining clinical digital sharpness with beautiful optical rendering and natural color reproduction',
+        soul: 'with clinical mirrorless sharpness and natural color reproduction',
         invalidAngles: [],
         lensMap: {
             '*': { lenses: ['24mm', '35mm', '50mm', '85mm', '70-200mm'], default: '50mm' }
@@ -184,7 +184,7 @@ const CAMERA_MODELS = [
     {
         id: 'blackmagic', label: 'Blackmagic 6K', type: 'Cinema', icon: Video,
         desc: 'Indie cinema workhorse. Raw, gritty, natural tonality.',
-        soul: 'with the raw, indie-film aesthetic and organic film-like grain of a Blackmagic 6K sensor',
+        soul: 'with a raw, indie-film grain and organic tonality',
         invalidAngles: [],
         lensMap: {
             'extreme_wide': { lenses: ['12mm', '16mm'], default: '16mm' },
@@ -205,7 +205,7 @@ const CAMERA_MODELS = [
     {
         id: 'hasselblad', label: 'Hasselblad X2D', type: 'Photography', icon: Camera,
         desc: 'Medium format luxury. Incredible resolution and color depth.',
-        soul: 'photographed with the extreme 100MP medium-format detail, 16-bit color depth, and unmatched micro-contrast of a Hasselblad',
+        soul: 'with medium-format micro-contrast and extraordinary color depth',
         invalidAngles: ['drone', 'pov'], // "Action not made for this"
         lensMap: {
             'extreme_wide': { lenses: ['21mm XCD'], default: '21mm' },
@@ -220,6 +220,24 @@ const CAMERA_MODELS = [
             'ots': { lenses: ['90mm XCD'], default: '90mm' },
             'eagle_pov': { lenses: ['21mm XCD', '30mm XCD'], default: '21mm XCD' }
         }
+    },
+    {
+        id: 'fujifilm', label: 'Fujifilm X-T5', type: 'Photography', icon: Camera,
+        desc: 'Retro-inspired mirrorless. Famous for film simulations.',
+        soul: 'with authentic film-simulation color science and classic analog warmth',
+        invalidAngles: [],
+        lensMap: {
+            '*': { lenses: ['18mm', '23mm', '35mm', '56mm'], default: '35mm' }
+        }
+    },
+    {
+        id: 'disposable', label: 'Disposable Camera', type: 'Retro', icon: Camera,
+        desc: 'Plastic lens, high noise, nostalgic flash look.',
+        soul: 'with a raw, nostalgic flash aesthetic and characteristic plastic lens distortion',
+        invalidAngles: ['drone', 'ots', 'eagle_pov'],
+        lensMap: {
+            '*': { lenses: ['Fixed 32px'], default: 'Fixed 32mm' }
+        }
     }
 ]
 
@@ -230,77 +248,81 @@ const LIGHTING_STYLES = [
     },
     {
         id: 'cinematic', label: 'Cinematic',
-        narrative: 'with professional 3-point lighting, deep shadows, and a teal-and-orange color grade'
+        narrative: 'professional 3-point lighting with deep, atmospheric shadows'
     },
     {
         id: 'natural', label: 'Natural Daylight',
-        narrative: 'illuminated by the soft, diffused light of an overcast afternoon, creating realistic and gentle shadows'
+        narrative: 'soft, diffused overcast light with gentle, realistic shadows'
     },
     {
         id: 'neon', label: 'Neon Cyberpunk',
-        narrative: 'drenched in high-contrast pink and cyan neon glows, with wet asphalt reflecting the vibrant city lights'
+        narrative: 'high-contrast pink and cyan neon glows with cinematic reflections'
     },
     {
         id: 'golden', label: 'Golden Hour',
-        narrative: 'bathed in the warm, long-shadowed, amber glow of a setting sun at the horizon'
+        narrative: 'warm, long-shadowed amber glow of a setting sun'
     },
     {
         id: 'studio', label: 'Studio Pro',
-        narrative: 'with clean, controlled studio softbox lighting and a perfectly neutral, high-key background'
+        narrative: 'clean, controlled softbox lighting for absolute clarity'
+    },
+    {
+        id: 'chiaroscuro', label: 'Chiaroscuro',
+        narrative: 'dramatic Chiaroscuro with harsh high-contrast shadows'
     },
 ]
 
 const ART_STYLES = [
     {
         id: 'none', label: 'None (Neutral)',
-        narrative: 'in a neutral, realistic style',
-        quality: 'balanced textures, natural materials, clean rendering'
+        narrative: 'natural photography',
+        quality: 'clean textures, natural materials'
     },
     {
         id: 'realistic', label: 'Hyper Realistic',
         narrative: 'photorealistic',
-        quality: 'ultra-detailed, photorealistic rendering, ultra high-definition details, true-to-life textures'
+        quality: '8K photographic fidelity, micro-textured surfaces'
     },
     {
         id: 'anime', label: 'Celestial Anime',
-        narrative: 'in the style of high-end Japanese anime',
-        quality: 'clean line art, cel shading, vibrant colors, Studio Ghibli-level polish'
+        narrative: 'high-end Japanese anime style',
+        quality: 'clean line-art, vibrant cel-shading, Ghibli-level polish'
     },
     {
-        id: 'hyper_realistic', label: 'Hyper Realistic',
-        narrative: 'in a hyper-realistic cinematic style',
-        quality: 'ultra high-definition rendering, hyper-detailed textures, photorealistic materials, flawless lighting'
+        id: 'hyper_realistic', label: 'Film Stills',
+        narrative: 'masterful cinematic style',
+        quality: 'flawless technical resolution, professional color grade'
     },
     {
         id: '3d', label: '3D CGI Render',
-        narrative: 'as a high-end 3D rendered scene',
-        quality: 'Pixar/Disney-quality 3D CGI, global illumination, subsurface scattering'
+        narrative: 'octane-rendered 3D scene',
+        quality: 'global illumination, industry-standard CGI finish'
     },
     {
         id: 'vintage', label: 'Vintage 35mm',
-        narrative: 'in a vintage analog film aesthetic',
-        quality: 'heavy 35mm film grain, faded Kodachrome palette, soft halation'
+        narrative: 'analog 35mm film',
+        quality: 'authentic film grain, soft lens halation'
     },
     {
-        id: 'cyberpunk', label: 'Cyberpunk',
-        narrative: 'in a gritty cyberpunk aesthetic',
-        quality: 'high-tech low-life, rainy urban textures, glowing interfaces, heavy atmosphere'
+        id: 'cyberpunk', label: 'Cyberpunk Noir',
+        narrative: 'gritty cyberpunk aesthetic',
+        quality: 'ray-traced reflections, high-tech textures'
     },
     {
-        id: 'oil_painting', label: 'Oil Painting',
-        narrative: 'as a textured oil painting',
-        quality: 'visible impasto brushstrokes, rich pigment textures, classic canvas grain'
+        id: 'oil_painting', label: 'Old Master Oil',
+        narrative: 'classical oil painting',
+        quality: 'visible impasto strokes, rich pigment depth'
     },
     {
-        id: 'architecture', label: 'Architectural',
-        narrative: 'in a clean architectural photography style',
-        quality: 'perfect perspective, orthogonal lines, pristine surfaces, minimalist lighting'
+        id: 'architecture', label: 'ArchViz Brutalist',
+        narrative: 'architectural visualization',
+        quality: 'structural precision, realistic concrete textures'
     },
     {
-        id: 'product', label: 'Product Photo',
-        narrative: 'as a commercial product photograph',
-        quality: 'macro detail, commercial grade glass/metal rendering, heroic lighting'
-    },
+        id: 'product', label: 'Product Hero',
+        narrative: 'commercial studio photography',
+        quality: 'perfect surface reflections, macro-detail sharpness'
+    }
 ]
 
 const COMPOSITION_OPTIONS = [
@@ -336,24 +358,32 @@ const ASPECT_RATIOS = [
     { id: '1:1', label: '1:1 (Square)' },
     { id: '4:3', label: '4:3 (TV)' },
     { id: '3:4', label: '3:4 (Portrait)' },
+    { id: '3:2', label: '3:2 (Photography)' },
+    { id: '2:3', label: '2:3 (Vertical Photo)' },
+    { id: '4:5', label: '4:5 (Instagram)' },
+    { id: '5:4', label: '5:4 (Display)' },
     { id: '21:9', label: '21:9 (Ultra Wide)' },
+    { id: '1:4', label: '1:4 (Tall Banner)' },
+    { id: '4:1', label: '4:1 (Wide Banner)' },
+    { id: '1:8', label: '1:8 (Skyscraper)' },
+    { id: '8:1', label: '8:1 (Leaderboard)' },
 ]
 
 // Maps angle IDs → narrative shot type phrases for Gemini
 const ANGLE_NARRATIVES = {
-    extreme_wide: 'capturing a vast, sprawling landscape where the environment is the primary focus and the subject appears small in the frame',
-    wide: 'showing the full scene and the subject\'s entire form, establishing the relationship between the subject and the setting',
-    medium: 'framed to show the subject\'s interaction with the immediate environment while maintaining focus on its core features',
-    cowboy: 'framed from the mid-thigh up, giving a heroic and confident cinematic posture that balances the subject with its weapons or tools and surroundings',
-    closeup: 'tightly framed on the subject to capture every subtle texture, detail, and intricate feature',
-    extreme_closeup: 'an intense, microscopic focus on a single detail, such as an eye or a mechanical component, filling the entire frame',
-    low_angle: 'looking up at the subject from a ground-level perspective to make them appear powerful, imposing, and significant',
-    high_angle: 'looking down at the subject from an elevated position to provide an overview of the ground or make the subject appear vulnerable',
-    drone: 'a majestic aerial bird\'s-eye view, captured from high above to reveal a grand geometric perspective of the world below',
-    pov: 'looking directly from the subject\'s perspective at the scene as if in a first-person view',
-    dutch: 'with a tilted horizon and a slanted camera angle to create a sense of unease, tension, or psychological instability',
-    ots: 'framing the subject from behind a secondary observer, looking over the shoulder toward the focal point',
-    eagle_pov: 'an extreme top-down bird\'s-eye view looking straight down at the location, emphasizing the environmental layout over the subject',
+    extreme_wide: 'revealing a vast, sprawling landscape where the environment is the focal point',
+    wide: 'showing the full scene',
+    medium: 'framed to show a natural interaction with the immediate setting',
+    cowboy: 'framed with a heroic, confident posture that emphasizes personal gear and surroundings',
+    closeup: 'tightly focused to reveal every subtle texture and intimate detail',
+    extreme_closeup: 'an intense, microscopic view into a single focal point, filling the frame',
+    low_angle: 'looking up from a powerful ground-level perspective',
+    high_angle: 'looking down from an elevated position to provide a grand overview',
+    drone: 'a majestic aerial bird\'s-eye view from high above',
+    pov: 'looking directly through the subject\'s eyes in a first-person immersion',
+    dutch: 'with a tilted horizon to create a sense of unease and psychological tension',
+    ots: 'looking over the shoulder of a secondary observer toward the focus',
+    eagle_pov: 'a direct top-down bird\'s-eye view, emphasizing the layout from above',
 }
 
 // Maps mood/atmosphere based on lighting + style combo
@@ -542,7 +572,7 @@ const VIDEO_CONTROLS = [
     },
     {
         key: "resolution", label: "RESOLUTION",
-        options: ["720p", "1080p", "4K"],
+        options: ["720p", "1080p", "2K"],
         default: "1080p"
     },
     {
@@ -608,63 +638,53 @@ const SPEED_RAMP_OPTIONS = [
 
 /**
  * Nano Banana PRO (Gemini 3 Pro Image) prompt builder.
- *
- * Follows Google's official structured prompt format:
- * Subject → Composition → Action → Location → Style → Camera/Lighting → Aspect Ratio
- * Simple, direct, labeled sections. No narrative weaving.
+ * Follows the "Prompt like a Creative Director" guidelines:
+ * - Start with a strong verb.
+ * - Describe the scene naturally, replacing keywords with narrative direction.
  */
-const buildNanoBananaProPrompt = (selections) => {
+const buildNanoBananaProPrompt = (selections, getFStop) => {
     const cam = CAMERA_MODELS.find(c => c.id === selections.camera) || CAMERA_MODELS[0]
     const lighting = LIGHTING_STYLES.find(l => l.id === selections.lighting)
     const artStyle = ART_STYLES.find(s => s.id === selections.style)
-    const angleLabel = CAMERA_ANGLES.find(a => a.id === selections.angle)?.label || 'Medium shot'
+    const angle = CAMERA_ANGLES.find(a => a.id === selections.angle) || CAMERA_ANGLES[2]
+    const spatialDirective = ANGLE_NARRATIVES[selections.angle] || 'showing the subject in a natural setting'
 
-    // Aperture label
-    const ap = selections.aperture
-    let fstopLabel
-    if (ap < 20) fstopLabel = 'f/1.4'
-    else if (ap < 40) fstopLabel = 'f/2.8'
-    else if (ap < 60) fstopLabel = 'f/5.6'
-    else if (ap < 80) fstopLabel = 'f/8.0'
-    else fstopLabel = 'f/16'
+    // Aperture & Physics
+    const apertureLabel = typeof getFStop === 'function' ? getFStop(selections.aperture) : 'Auto Aperture'
 
     const store = useAppStore.getState()
     const activeChar = store.activeCharacter
     const charDesc = activeChar?.metadata?.imageAnalysis?.description || activeChar?.personality || ''
 
-    let subject = selections.subject?.trim() || '[describe your subject here]'
-
-    // ANTI-LEAKAGE: If subject is name, swap for description
-    if (activeChar && (subject.toLowerCase() === activeChar.name.toLowerCase() || subject === '[describe your subject here]')) {
+    let subject = selections.subject?.trim() || 'the subject'
+    if (activeChar && (subject.toLowerCase() === activeChar.name.toLowerCase() || subject === 'the subject')) {
         subject = charDesc || subject
     }
-    const lightingLabel = selections.lighting === 'none' ? 'natural, balanced lighting' : (lighting?.label || 'cinematic lighting')
-    const compPrompt = COMPOSITION_PROMPTS[selections.composition]
-    const compositionLabel = compPrompt ? `, ${compPrompt}` : ''
+
+    const compPrompt = COMPOSITION_PROMPTS[selections.composition] || 'balanced visual symmetry'
     const isStyleNone = selections.style === 'none'
-    const styleLabel = isStyleNone ? null : (artStyle?.narrative || 'photorealistic')
-    const qualityLabel = selections.quality?.toUpperCase() || '2K'
+    const stylePrefix = isStyleNone ? '' : `${artStyle?.label || 'Photorealistic'} `
+
+    // Format angle directly to lowercase for sentence insertion
+    const angleStr = angle.label.toLowerCase()
+
+    const lightingLabel = selections.lighting === 'none' ? 'natural, balanced lighting' : (lighting?.narrative || lighting?.label || 'cinematic lighting')
 
     // Pro Enhancements
     const focusCtrl = PRO_FOCUS_CONTROLS.find(f => f.id === selections.focusPoint)
     let proNotes = []
     if (focusCtrl && focusCtrl.id !== 'none') proNotes.push(focusCtrl.narrative)
     if (selections.searchGrounding) proNotes.push('Use real-world accuracy and current information from Google Search.')
+    const proNarrative = proNotes.length > 0 ? ` Additional directives: ${proNotes.join(' ')}` : ''
 
-    // Assemble structured sections — skip Style line entirely if none
-    const parts = [
-        `Subject: ${subject}.`,
-        `Composition: ${angleLabel}${compositionLabel}.`,
-        ...(styleLabel ? [`Style: ${styleLabel}${artStyle?.quality ? `, ${artStyle.quality}` : ''}.`] : []),
-        `Lighting: ${lightingLabel}.`,
-        `Camera: ${cam.label}, ${selections.focalLength}mm lens at ${fstopLabel} aperture.`,
-        `Aspect ratio: ${selections.aspectRatio}.`,
-        `Output resolution: ${qualityLabel}.`,
-    ]
+    // Assembly using explicit "Creative Director" narrative flow
+    const line1 = `${stylePrefix}${angle.label}, ${spatialDirective} of ${subject}.`
+    const line2 = `Captured on ${cam.label} ${cam.soul ? cam.soul + ',' : ''} using a ${selections.focalLength}mm lens at ${apertureLabel} to dictate depth and perspective.`
+    const line3 = `The lighting is ${lightingLabel}, ${compPrompt}.`
+    const qualityTag = isStyleNone ? '' : ` Rendered in a ${artStyle?.quality || 'high-quality'} style.`
+    const ratio = `--ar ${selections.aspectRatio}`
 
-    if (proNotes.length > 0) parts.push(`Additional directives: ${proNotes.join(' ')}`)
-
-    return parts.join('\n')
+    return `${line1} ${line2} ${line3}${qualityTag}${proNarrative} ${ratio}`.replace(/  +/g, ' ').trim()
 }
 
 /**
@@ -688,11 +708,11 @@ const buildNanoBananaPrompt = (selections, getFStop) => {
     // Lens Physics & Perspective Mapping
     const fl = selections.focalLength
     let lensDesc
-    if (fl <= 16) lensDesc = `${fl}mm ultra-wide angle lens that exaggerates the distance and creates a vast, expansive sense of space`
-    else if (fl <= 24) lensDesc = `${fl}mm wide-angle lens that establishes the environment while keeping the subject clear and sharp`
-    else if (fl <= 50) lensDesc = `${fl}mm prime lens for a natural, undistorted perspective that feels intimate and lifelike`
-    else if (fl <= 100) lensDesc = `${fl}mm telephoto lens that compresses the background, creating a tight focus and professional portrait feel`
-    else lensDesc = `${fl}mm telephoto lens that heavily compresses the background and isolates the subject with extreme clarity`
+    if (fl <= 16) lensDesc = `${fl}mm ultra-wide angle lens that exaggerates distance for an expansive sense of space`
+    else if (fl <= 24) lensDesc = `${fl}mm wide-angle lens that establishes the environment`
+    else if (fl <= 50) lensDesc = `${fl}mm prime lens for a natural, undistorted perspective`
+    else if (fl <= 100) lensDesc = `${fl}mm telephoto lens that compresses the background`
+    else lensDesc = `${fl}mm telephoto lens that heavily compresses the background to isolate the subject`
 
     // Aperture & Focus Narrative
     const apertureLabel = typeof getFStop === 'function' ? getFStop(selections.aperture) : 'Auto Aperture'
@@ -712,7 +732,7 @@ const buildNanoBananaPrompt = (selections, getFStop) => {
         subject = charDesc || subject
     }
 
-    const compPrompt = COMPOSITION_PROMPTS[selections.composition] || 'balanced visual symmetry'
+    const compPrompt = COMPOSITION_PROMPTS[selections.composition]
     const isStyleNone = selections.style === 'none'
     const stylePrefix = isStyleNone ? '' : `${artStyle?.label || 'Photorealistic'} `
 
@@ -740,18 +760,16 @@ const buildNanoBananaPrompt = (selections, getFStop) => {
     else if (selections.style === 'product') envDesc = 'set in a minimalist, commercial-grade studio environment'
     else if (selections.style === 'anime') envDesc = 'set in a painterly, stylized anime background'
 
-    const lightingStyle = selections.lighting === 'none' ? 'natural, balanced light' : (lighting?.label || 'cinematic lighting')
+    const lightingLabel = selections.lighting === 'none' ? 'Natural and balanced' : (lighting?.label || 'Cinematic')
 
     // Assembly
-    const line1 = `${stylePrefix}${angle.label}, ${spatialDirective} of a ${subject}.`
-    const line2 = `Captured on ${cam.label} ${cam.soul || ''} with a ${lensDesc} at ${apertureLabel}.`
-    const line3 = `The lighting is ${lightingStyle} arranged with a ${compPrompt}.`
-    const line4 = `High-fidelity 4K Master, ultra-detailed textures.${proNarrative}`
+    const line1 = `${stylePrefix}${angle.label}, ${spatialDirective} of ${subject}.`
+    const line2 = `Captured on ${cam.label} ${cam.soul ? cam.soul + ',' : ''} ${lensDesc} at ${apertureLabel}.`
+    const line3 = `The lighting is ${lightingLabel}${compPrompt ? ', ' + compPrompt : ''}.`
+    const qualityTag = isStyleNone ? '' : ` ${artStyle?.quality || ''}`.trimEnd()
     const ratio = `--ar ${selections.aspectRatio}`
 
-
-
-    return `${line1} ${line2} ${line3} ${line4} ${ratio}`
+    return `${line1} ${line2} ${line3}${qualityTag}${proNarrative} ${ratio}`.replace(/  +/g, ' ').trim()
 }
 
 /**
@@ -777,18 +795,17 @@ const buildStandardPrompt = (selections, getFStop) => {
         ? 'Following the composition and style of the attached reference image, '
         : ''
 
-    const compKeyword = COMPOSITION_PROMPTS[selections.composition] || 'balanced visual symmetry'
+    const compKeyword = COMPOSITION_PROMPTS[selections.composition]
     const apertureLabel = typeof getFStop === 'function' ? getFStop(selections.aperture) : 'Auto Aperture'
     const styleLabel = artStyle?.label ? `${artStyle.label} style ` : ''
 
     // ── Template Assembly ──
     const line1 = `${refContext}${styleLabel}${angle.label} of ${subject}.`
-    const line2 = `Captured on ${cam.label} ${cam.soul || ''} with a ${selections.lens} lens at ${selections.focalLength}mm at ${apertureLabel}.`
-    const line3 = `The lighting is ${lighting?.label || 'cinematic'} arranged with a ${compKeyword}.`
-    const line4 = `High-fidelity 4K Master, ultra-detailed textures.`
+    const line2 = `Captured on ${cam.label} ${cam.soul ? cam.soul + ',' : ''} ${selections.focalLength}mm lens at ${apertureLabel}.`
+    const line3 = `The lighting is ${lighting?.label || 'cinematic'}${compKeyword ? ', ' + compKeyword : ''}.`
     const ratio = `--ar ${selections.aspectRatio}`
 
-    return `${line1} ${line2} ${line3} ${line4} ${ratio}`
+    return `${line1} ${line2} ${line3} ${ratio}`.replace(/  +/g, ' ').trim()
 }
 
 /**
@@ -892,16 +909,16 @@ const buildVideoPrompt = (selections, selectedModel) => {
     // Formula: [Cinematography], [Subject], [Action], [Context]. [Style & Ambiance]. [Audio]. [Frame refs].
     const core = `${cameraClause}, ${subject}${actionClause}${contextClause}.`
     const style = ` ${styleNarrative} aesthetic, ${lightingNarrative}, ${speedNarrative}.`
-    
+
     // Remove "Recorded on..." for I2V/Interpolation as the source image already defines the visual baseline
     // The user explicitly requested to remove this when images are used.
-    const camera = (selections.firstFrame || selections.lastFrame || selections.referenceImage) 
-        ? '' 
+    const camera = (selections.firstFrame || selections.lastFrame || selections.referenceImage)
+        ? ''
         : ` Recorded on ${cam.label} for maximum cinematic realism.`
-        
+
     // Audio directions are only appended if the main Audio toggle is set to "On"
-    const audio = (audioLines.length > 0 && selectedModel !== 'veo-fast' && selections.audio === 'On') 
-        ? ' ' + audioLines.join(' ') 
+    const audio = (audioLines.length > 0 && selectedModel !== 'veo-fast' && selections.audio === 'On')
+        ? ' ' + audioLines.join(' ')
         : ''
 
     // ── Pro Lighting Transforms (Legacy) ───────────────────────────────
@@ -923,10 +940,10 @@ const KlingShotBuilder = ({ selections, setSelections }) => (
                 <label className="text-[10px] font-bold text-[#AADD00] uppercase tracking-widest flex items-center gap-2">
                     <Zap className="w-3.5 h-3.5" /> Kling Shot Builder
                 </label>
-                <button 
-                    onClick={() => setSelections(p => ({ 
-                        ...p, 
-                        timestampSegments: [...(p.timestampSegments || []), { id: Date.now(), start: 0, end: 2, description: '' }] 
+                <button
+                    onClick={() => setSelections(p => ({
+                        ...p,
+                        timestampSegments: [...(p.timestampSegments || []), { id: Date.now(), start: 0, end: 2, description: '' }]
                     }))}
                     className="px-1.5 py-0.5 bg-[#AADD00]/10 hover:bg-[#AADD00]/20 border border-[#AADD00]/20 rounded text-[#AADD00] text-[8px] font-black uppercase transition-all"
                 >
@@ -938,9 +955,9 @@ const KlingShotBuilder = ({ selections, setSelections }) => (
                     <div key={seg.id || idx} className="bg-black/40 border border-[#AADD00]/5 rounded-lg p-1.5 space-y-1 group/seg">
                         <div className="flex items-center gap-1.5 justify-between">
                             <div className="flex items-center gap-1 text-[8px] font-bold text-white/40">
-                                <input 
-                                    type="text" 
-                                    value={seg.start} 
+                                <input
+                                    type="text"
+                                    value={seg.start}
                                     onChange={(e) => {
                                         const val = e.target.value;
                                         setSelections(p => ({
@@ -951,9 +968,9 @@ const KlingShotBuilder = ({ selections, setSelections }) => (
                                     className="w-6 bg-white/5 border-none p-0 px-0.5 focus:outline-none rounded text-center text-[#AADD00]"
                                 />
                                 <span>-</span>
-                                <input 
-                                    type="text" 
-                                    value={seg.end} 
+                                <input
+                                    type="text"
+                                    value={seg.end}
                                     onChange={(e) => {
                                         const val = e.target.value;
                                         setSelections(p => ({
@@ -965,10 +982,10 @@ const KlingShotBuilder = ({ selections, setSelections }) => (
                                 />
                                 <span className="uppercase ml-1">sec</span>
                             </div>
-                            <button 
-                                onClick={() => setSelections(p => ({ 
-                                    ...p, 
-                                    timestampSegments: p.timestampSegments.filter((_, i) => i !== idx) 
+                            <button
+                                onClick={() => setSelections(p => ({
+                                    ...p,
+                                    timestampSegments: p.timestampSegments.filter((_, i) => i !== idx)
                                 }))}
                                 className="opacity-0 group-hover/seg:opacity-100 p-0.5 hover:bg-red-500/20 rounded text-red-500 transition-all"
                             >
@@ -1068,7 +1085,7 @@ const KlingCharacterLayer = ({ selections, handleTextChange, setShowRefBoard, me
 
 const KlingAudioMode = () => (
     <div className="flex-1 min-w-[140px]">
-         <div className="h-full bg-yellow-400/5 border border-yellow-400/20 rounded-lg p-2 flex items-center gap-2 opacity-60">
+        <div className="h-full bg-yellow-400/5 border border-yellow-400/20 rounded-lg p-2 flex items-center gap-2 opacity-60">
             <Sun className="w-3.5 h-3.5 text-yellow-500" />
             <span className="text-[9px] font-black text-yellow-500 uppercase">Kling Audio Mode</span>
         </div>
@@ -1082,10 +1099,10 @@ const TimestampMultiShot = ({ selections, setSelections }) => (
                 <label className="text-[10px] font-bold text-[#AADD00] uppercase tracking-widest flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5" /> Veo Sequence Builder
                 </label>
-                <button 
-                    onClick={() => setSelections(p => ({ 
-                        ...p, 
-                        timestampSegments: [...(p.timestampSegments || []), { id: Date.now(), start: 0, end: 2, description: '' }] 
+                <button
+                    onClick={() => setSelections(p => ({
+                        ...p,
+                        timestampSegments: [...(p.timestampSegments || []), { id: Date.now(), start: 0, end: 2, description: '' }]
                     }))}
                     className="px-1.5 py-0.5 bg-[#AADD00]/10 hover:bg-[#AADD00]/20 border border-[#AADD00]/20 rounded text-[#AADD00] text-[8px] font-black uppercase transition-all"
                 >
@@ -1097,9 +1114,9 @@ const TimestampMultiShot = ({ selections, setSelections }) => (
                     <div key={seg.id || idx} className="bg-black/40 border border-white/5 rounded-lg p-1.5 space-y-1 group/seg">
                         <div className="flex items-center gap-1.5 justify-between">
                             <div className="flex items-center gap-1 text-[8px] font-bold text-white/40">
-                                <input 
-                                    type="text" 
-                                    value={seg.start} 
+                                <input
+                                    type="text"
+                                    value={seg.start}
                                     onChange={(e) => {
                                         const val = e.target.value;
                                         setSelections(p => ({
@@ -1110,9 +1127,9 @@ const TimestampMultiShot = ({ selections, setSelections }) => (
                                     className="w-6 bg-white/5 border-none p-0 px-0.5 focus:outline-none rounded text-center text-[#AADD00]"
                                 />
                                 <span>-</span>
-                                <input 
-                                    type="text" 
-                                    value={seg.end} 
+                                <input
+                                    type="text"
+                                    value={seg.end}
                                     onChange={(e) => {
                                         const val = e.target.value;
                                         setSelections(p => ({
@@ -1124,10 +1141,10 @@ const TimestampMultiShot = ({ selections, setSelections }) => (
                                 />
                                 <span className="uppercase ml-1">sec</span>
                             </div>
-                            <button 
-                                onClick={() => setSelections(p => ({ 
-                                    ...p, 
-                                    timestampSegments: p.timestampSegments.filter((_, i) => i !== idx) 
+                            <button
+                                onClick={() => setSelections(p => ({
+                                    ...p,
+                                    timestampSegments: p.timestampSegments.filter((_, i) => i !== idx)
                                 }))}
                                 className="opacity-0 group-hover/seg:opacity-100 p-0.5 hover:bg-red-500/20 rounded text-red-500 transition-all"
                             >
@@ -1161,7 +1178,7 @@ const VideoNarrativeComponents = ({ mode, isNanoBanana, allRefItems, setShowRefB
         <div className="bg-white/5 border border-white/10 rounded-xl p-2 h-full flex-1 flex flex-col">
             <label className="w-full text-[10px] font-bold text-[#D4FF00] uppercase tracking-widest flex items-center mb-2">
                 <div className="flex items-center gap-2">
-                    <button 
+                    <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRefinePrompt(); }}
                         disabled={isPolishing}
                         className={cn("p-1 hover:bg-[#D4FF00]/10 rounded-md transition-all group/pen cursor-pointer", isPolishing && "opacity-50 cursor-wait")}
@@ -1186,7 +1203,7 @@ const VideoNarrativeComponents = ({ mode, isNanoBanana, allRefItems, setShowRefB
                         <div className="flex flex-col h-full">
                             <div className="flex items-center justify-between mb-1">
                                 <span className="text-[8px] font-bold text-white/30 uppercase">Subject</span>
-                                <button 
+                                <button
                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRefinePrompt('subjectDescription'); }}
                                     className="p-1 hover:bg-[#D4FF00]/10 rounded transition-all group/pen cursor-pointer"
                                     title="AI Refine Subject"
@@ -1204,7 +1221,7 @@ const VideoNarrativeComponents = ({ mode, isNanoBanana, allRefItems, setShowRefB
                         <div className="flex flex-col h-full">
                             <div className="flex items-center justify-between mb-1">
                                 <span className="text-[8px] font-bold text-white/30 uppercase">Action</span>
-                                <button 
+                                <button
                                     onClick={(e) => { e.preventDefault(); handleRefinePrompt('actionDescription'); }}
                                     className="p-1 hover:bg-[#D4FF00]/10 rounded transition-all group/pen"
                                     title="AI Refine Action"
@@ -1222,7 +1239,7 @@ const VideoNarrativeComponents = ({ mode, isNanoBanana, allRefItems, setShowRefB
                         <div className="flex flex-col h-full">
                             <div className="flex items-center justify-between mb-1">
                                 <span className="text-[8px] font-bold text-white/30 uppercase">Context</span>
-                                <button 
+                                <button
                                     onClick={(e) => { e.preventDefault(); handleRefinePrompt('contextDescription'); }}
                                     className="p-1 hover:bg-[#D4FF00]/10 rounded transition-all group/pen"
                                     title="AI Refine Context"
@@ -1247,7 +1264,7 @@ const VideoNarrativeComponents = ({ mode, isNanoBanana, allRefItems, setShowRefB
                         className="w-full bg-black/40 border border-purple-500/10 rounded-lg p-2 text-sm text-white placeholder:text-gray-600 focus:outline-none resize-none flex-1 custom-scrollbar"
                     />
                 )}
-                
+
                 {mentionSearch !== null && (
                     <div className={cn(
                         "absolute bottom-full mb-3 w-80 z-[500] animation-slide-up",
@@ -1324,27 +1341,35 @@ const ProLighting = ({ selections, setSelections }) => (
 )
 
 export function PromptGenerator({ onUpscale }) {
-    const [mode, setMode] = useState('image')
+    const [mode, setMode] = useState(() => localStorage.getItem('prompt_generator_mode') || 'image')
     const [previewTab, setPreviewTab] = useState('image')
-    const [selectedModel, setSelectedModel] = useState('nano-banana')
+    const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('prompt_generator_selected_model') || 'nano-banana')
     const [showCinematography, setShowCinematography] = useState(true)
-    const [selections, setSelections] = useState({
-        camera: 'arri', angle: 'wide', lighting: 'cinematic', style: 'realistic',
-        lens: '35mm', composition: 'none', focalLength: 35, aperture: 45,
-        aspectRatio: '16:9', subject: '', referenceImage: null, quality: '1k',
-        videoInputMode: 'text', referenceUsage: 'first_frame', referenceImageEnd: null,
-        firstFrame: null, lastFrame: null, editInstruction: '',
-        timestampSegments: [{ start: 0, end: 2, description: '' }],
-        cameraMovement: 'Static Shot', lensFocus: 'deep_focus', emotion: 'Neutral',
-        speedRamp: 'Cinematic', dialogue: 'Off', fps: '24fps — Cinematic',
-        loop: 'Off', audio: 'On', cinematographyDescription: '',
-        subjectDescription: '', actionDescription: '', contextDescription: '',
-        audioActive: { dialogue: false, sfx: false, ambient: false, music: false },
-        audioPrompts: { dialogue: '', sfx: '', ambient: '', music: '' },
-        duration: "4 Seconds", resolution: "1080p",
-        searchGrounding: false, lightingTransform: 'none', focusPoint: 'none',
-        multishotMode: 'single',
-    })
+    const [selections, setSelections] = useState(() => {
+        const defaults = {
+            camera: 'arri', angle: 'wide', lighting: 'cinematic', style: 'realistic',
+            lens: '35mm', composition: 'none', focalLength: 35, aperture: 45,
+            aspectRatio: '16:9', subject: '', referenceImage: null, quality: '1k',
+            videoInputMode: 'text', referenceUsage: 'first_frame', referenceImageEnd: null,
+            firstFrame: null, lastFrame: null, editInstruction: '',
+            timestampSegments: [{ start: 0, end: 2, description: '' }],
+            cameraMovement: 'Static Shot', lensFocus: 'deep_focus', emotion: 'Neutral',
+            speedRamp: 'Cinematic', dialogue: 'Off', fps: '24fps — Cinematic',
+            loop: 'Off', audio: 'On', cinematographyDescription: '',
+            subjectDescription: '', actionDescription: '', contextDescription: '',
+            audioActive: { dialogue: false, sfx: false, ambient: false, music: false },
+            audioPrompts: { dialogue: '', sfx: '', ambient: '', music: '' },
+            duration: "4 Seconds", resolution: "1080p",
+            searchGrounding: false, lightingTransform: 'none', focusPoint: 'none',
+            multishotMode: 'single',
+            storyboardBrief: '',
+            storyboardTimings: '1.0, 1.5, 0.5, 2.0',
+        };
+        try {
+            const saved = localStorage.getItem('prompt_generator_selections');
+            return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+        } catch (e) { return defaults; }
+    });
 
     const [frames, setFrames] = useState([]);
     const isLoadingRef = useRef(false);
@@ -1367,19 +1392,70 @@ export function PromptGenerator({ onUpscale }) {
     // ─────────────────────────────────────────────
     // PERSISTENCE STATE for Storyboard / Multi Shot
     // ─────────────────────────────────────────────
-    const [storyboardSlots, setStoryboardSlots] = useState([
-        { id: 'sb-1', url: null, loading: false, prompt: '', duration: '1.0s' },
-        { id: 'sb-2', url: null, loading: false, prompt: '', duration: '1.5s' },
-        { id: 'sb-3', url: null, loading: false, prompt: '', duration: '0.5s' },
-        { id: 'sb-4', url: null, loading: false, prompt: '', duration: '2.0s' },
-    ]);
-    const [shotSlots, setShotSlots] = useState([
-        { id: 'ms-1', url: null, loading: false, prompt: '', duration: 'N/A' },
-    ]);
+    const [storyboardSlots, setStoryboardSlots] = useState(() => {
+        try {
+            const saved = localStorage.getItem('storyboard_slots')
+            return saved ? JSON.parse(saved) : [
+                { id: 'sb-1', url: null, loading: false, prompt: '', duration: '1.0s' },
+                { id: 'sb-2', url: null, loading: false, prompt: '', duration: '1.5s' },
+                { id: 'sb-3', url: null, loading: false, prompt: '', duration: '0.5s' },
+                { id: 'sb-4', url: null, loading: false, prompt: '', duration: '2.0s' },
+            ]
+        } catch (e) { return [] }
+    });
+
+    const [shotSlots, setShotSlots] = useState(() => {
+        try {
+            const saved = localStorage.getItem('multi_shot_slots')
+            const slots = saved ? JSON.parse(saved) : []
+            // Cleanup: remove any legacy empty slots on load
+            return slots.filter(s => s.url || s.loading)
+        } catch (e) { return [] }
+    });
+
     const [upscaling, setUpscaling] = useState(false);
     const [upscaledImage, setUpscaledImage] = useState(null)
-    const [activeStorySlotId, setActiveStorySlotId] = useState('sb-1');
-    const [activeShotSlotId, setActiveShotSlotId] = useState('ms-1');
+    const [activeStorySlotId, setActiveStorySlotId] = useState(() => localStorage.getItem('active_story_slot_id') || 'sb-1');
+    const [activeShotSlotId, setActiveShotSlotId] = useState(() => localStorage.getItem('active_shot_slot_id') || 'ms-1');
+
+    useEffect(() => {
+        localStorage.setItem('storyboard_slots', JSON.stringify(storyboardSlots))
+    }, [storyboardSlots])
+
+    useEffect(() => {
+        localStorage.setItem('multi_shot_slots', JSON.stringify(shotSlots))
+    }, [shotSlots])
+
+    useEffect(() => {
+        localStorage.setItem('active_story_slot_id', activeStorySlotId)
+    }, [activeStorySlotId])
+
+    useEffect(() => {
+        localStorage.setItem('active_shot_slot_id', activeShotSlotId)
+    }, [activeShotSlotId])
+
+    useEffect(() => {
+        // Migration: Remove any ghost slots (no URL and not loading)
+        const hasGhost = shotSlots.some(s => !s.url && !s.loading);
+        if (hasGhost) {
+            setShotSlots(prev => prev.filter(s => s.url || s.loading));
+        }
+    }, [shotSlots]);
+
+    useEffect(() => {
+        localStorage.setItem('prompt_generator_mode', mode)
+    }, [mode])
+
+    useEffect(() => {
+        localStorage.setItem('prompt_generator_selected_model', selectedModel)
+    }, [selectedModel])
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            localStorage.setItem('prompt_generator_selections', JSON.stringify(selections));
+        }, 500);
+        return () => clearTimeout(timeout);
+    }, [selections]);
 
     const [leftPreviewId, setLeftPreviewId] = useState(null)
     const [rightPreviewId, setRightPreviewId] = useState(null)
@@ -1407,12 +1483,32 @@ export function PromptGenerator({ onUpscale }) {
             }
             if (leftPreviewId === id) setLeftPreviewId(null)
             if (rightPreviewId === id) setRightPreviewId(null)
-            
+
             return updated
         })
     }
 
     const gridImgRef = useRef(null)
+
+    // Main film strip scroll persistence per-mode
+    const mainFilmStripRef = useRef(null);
+    const scrollPositions = useRef({ image: 0, video: 0, multishot: 0, storyboard: 0 });
+
+    // Restore scroll position when mode changes
+    useEffect(() => {
+        if (mainFilmStripRef.current) {
+            setTimeout(() => {
+                if (mainFilmStripRef.current) {
+                    mainFilmStripRef.current.scrollLeft = scrollPositions.current[mode] || 0;
+                }
+            }, 10);
+        }
+    }, [mode]);
+
+    const handleMainFilmStripScroll = (e) => {
+        scrollPositions.current[mode] = e.target.scrollLeft;
+    };
+
     const [showGallery, setShowGallery] = useState(false)
     const [galleryTab, setGalleryTab] = useState('recent') // recent | library
     const [isLoading, setIsLoading] = useState(false)
@@ -1459,10 +1555,10 @@ export function PromptGenerator({ onUpscale }) {
     const handleRefinePrompt = async (specificField = null) => {
         setIsPolishing(true)
         try {
-            const fieldsToRefine = specificField ? [specificField] : (mode === 'video' 
+            const fieldsToRefine = specificField ? [specificField] : (mode === 'video'
                 ? ['subjectDescription', 'actionDescription', 'contextDescription']
                 : ['subject'])
-            
+
             for (const field of fieldsToRefine) {
                 const currentText = selections[field]
                 if (currentText && currentText.trim().length > 3) {
@@ -1594,7 +1690,7 @@ export function PromptGenerator({ onUpscale }) {
     }, [mode, selectedModel])
 
     useEffect(() => {
-        if (selectedModel === 'gemini-3-pro-image-preview') setSelections(p => ({ ...p, quality: ['1k', '2k', '4k'].includes(p.quality) ? p.quality : '2k' }))
+        if (selectedModel === 'gemini-3-pro-image-preview') setSelections(p => ({ ...p, quality: ['1k', '2k'].includes(p.quality) ? p.quality : '2k' }))
         else if (selectedModel === 'gemini-2.5-flash-image') setSelections(p => ({ ...p, quality: '1k' }))
     }, [selectedModel])
 
@@ -1631,7 +1727,7 @@ export function PromptGenerator({ onUpscale }) {
                         .filter(a => !hiddenIds.includes(a.id))
                         .slice(0, MAX_FRAMES)
                         .map(a => ({
-                            id: a.id, assetId: a.id, 
+                            id: a.id, assetId: a.id,
                             url: a.url,
                             assetPath: a.url,
                             type: a.type || 'image', model: a.model || 'Historical', loading: false
@@ -1678,7 +1774,7 @@ export function PromptGenerator({ onUpscale }) {
                         model: a.model || 'Historical',
                         loading: false
                     }))
-                
+
                 setFrames(prev => {
                     const sessionIds = new Set(prev.map(f => f.id));
                     const newHistorical = recentFrames.filter(f => !sessionIds.has(f.id));
@@ -1708,12 +1804,12 @@ export function PromptGenerator({ onUpscale }) {
 
     const getFStop = (ap) => {
         if (selections.camera === 'iphone' || selections.camera === 'gopro') return 'Auto Aperture'
-        if (ap < 20) return 'f/1.4 (Blurry BG)'; if (ap < 40) return 'f/2.8 (Soft Focus)'
-        if (ap < 60) return 'f/5.6 (Standard)'; if (ap < 80) return 'f/8.0 (Sharp)'
-        return 'f/16 (Everything in Focus)'
+        if (ap < 20) return 'f/1.4'; if (ap < 40) return 'f/2.8'
+        if (ap < 60) return 'f/5.6'; if (ap < 80) return 'f/8.0'
+        return 'f/16'
     }
 
-    const isNanoBanana = selectedModel === 'nano-banana' || selectedModel.includes('gemini') || selectedModel === 'nano-banana-2' 
+    const isNanoBanana = selectedModel === 'nano-banana' || selectedModel.includes('gemini') || selectedModel === 'nano-banana-2'
 
     const isKling = ['kling', 'kling-2.6', 'kling-3.0', 'kling-2.1'].includes(selectedModel)
 
@@ -1792,9 +1888,9 @@ export function PromptGenerator({ onUpscale }) {
 
     const copyPrompt = () => navigator.clipboard.writeText(generatedPrompt)
 
-    const downloadImage = (url, filename = 'flare-gen.png') => {
-        const a = document.createElement('a'); a.href = url; a.download = filename; a.target = '_blank'; a.rel = 'noopener noreferrer';
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    const downloadImage = (url) => {
+        if (!url) return;
+        window.open(url, '_blank');
     }
 
     const saveAsset = async (url, slot, type = 'image') => {
@@ -1807,7 +1903,7 @@ export function PromptGenerator({ onUpscale }) {
             // If it starts with http, it's already hosted (e.g. Supabase or external AI URL)
             // We only need to tell the DB about it, not re-send the binary data.
             const isRemote = url.startsWith('http');
-            
+
             const payload = {
                 imageData: url, // Could be base64 or remote URL
                 fileName,
@@ -1826,16 +1922,16 @@ export function PromptGenerator({ onUpscale }) {
             if (!res.ok) throw new Error(data.error || 'Failed to save asset');
 
             // Generate thumb for filmstrip performance if it's a data URL
-            const thumb = type === 'image' && url.startsWith('data:') 
-                ? await compressImageToMax1024(url) 
+            const thumb = type === 'image' && url.startsWith('data:')
+                ? await compressImageToMax1024(url)
                 : url;
 
             // Return path (Supabase internal), final public URL, and thumb
-            return { 
-                path: data.path, 
-                id: data.id, 
+            return {
+                path: data.path,
+                id: data.id,
                 url: data.url || url,
-                thumb 
+                thumb
             };
         } catch (err) {
             console.error('[SAVE_ASSET_FAILURE]:', err);
@@ -1850,8 +1946,8 @@ export function PromptGenerator({ onUpscale }) {
     // Simple UI toast for non-blocking messages
     const [toast, setToast] = useState(null);
     const showToast = (msg, duration = 4000) => {
-      setToast(msg);
-      window.setTimeout(() => setToast(null), duration);
+        setToast(msg);
+        window.setTimeout(() => setToast(null), duration);
     };
 
     const SpeedRampCurve = ({ name, active }) => {
@@ -1859,21 +1955,36 @@ export function PromptGenerator({ onUpscale }) {
         return (<svg width="80" height="62" viewBox="0 0 80 62" className="mx-auto"><path d={pts} fill="none" stroke={active ? '#84CC16' : '#333'} strokeWidth={active ? 2 : 1} strokeLinecap="round" strokeLinejoin="round" /></svg>)
     }
 
-    const pollJobStatus = async (jobId, frameId, costKey, jobType = 'image') => {
+    const pollJobStatus = async (jobId, frameId, costKey, jobType = 'image', targetTray = null) => {
         const isVideoJob = jobType === 'video';
-        const maxWaitMs = isVideoJob ? 6 * 60 * 1000 : 3 * 60 * 1000;
+        const maxWaitMs = isVideoJob ? 3 * 60 * 1000 : 1 * 60 * 1000;
         const pollIntervalMs = isVideoJob ? 3000 : 2000;
         const maxAttempts = Math.ceil(maxWaitMs / pollIntervalMs);
 
         try {
             let attempt = 0;
             while (attempt < maxAttempts) {
-            const res = await fetch(getApiUrl(`/api/job-status/${jobId}`));
-                if (!res.ok) throw new Error('Failed to fetch job status');
+                let res;
+                let fetchError = null;
+                
+                try {
+                    res = await fetch(getApiUrl(`/api/job-status/${jobId}`));
+                } catch (e) {
+                    fetchError = e;
+                }
+
+                if (fetchError || !res.ok) {
+                    console.warn(`[POLLING] Attempt ${attempt} failed:`, fetchError?.message || res?.statusText);
+                    // Network issues or transient errors: retry with backoff if it's the first few times
+                    attempt++;
+                    await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+                    continue;
+                }
+
                 const data = await res.json();
                 console.debug('[RAILWAY] Job status poll', jobId, 'state', data.status || data.state, 'progress', data.progress)
                 const jobState = data.status || data.state;
-                
+
                 if (jobState === 'completed') {
                     const resultUrl = data.url || data.videoUrl;
                     if (!resultUrl) {
@@ -1884,22 +1995,39 @@ export function PromptGenerator({ onUpscale }) {
                     const assetData = await saveAsset(resultUrl, frameId, isVideoJob ? 'video' : 'image');
 
                     // 2) Update the specific Frame in UI
-                    setFrames(prev => prev.map(f => f.id === frameId ? { 
-                        ...f, 
-                        url: resultUrl, 
+                    setFrames(prev => prev.map(f => f.id === frameId ? {
+                        ...f,
+                        url: resultUrl,
                         assetPath: assetData?.path,
                         assetId: assetData?.id,
-                        loading: false 
+                        thumb: assetData?.thumb, // ✅ Store thumbnail for performance!
+                        loading: false
                     } : f));
 
-                    // 3) Optional: If this was a 4K upscale, make it the active view
+                    // 2b) Update specific trays based on origin
+                    if (targetTray === 'storyboard' && setStoryboardSlots) {
+                        setStoryboardSlots(prev => prev.map(s => s.id === frameId ? {
+                            ...s,
+                            url: resultUrl,
+                            thumb: assetData?.thumb,
+                            loading: false
+                        } : s));
+                    } else if (setShotSlots) {
+                        setShotSlots(prev => prev.map(s => s.id === frameId ? {
+                            ...s,
+                            url: resultUrl,
+                            thumb: assetData?.thumb, // ✅ Store thumbnail for performance!
+                            loading: false
+                        } : s));
+                    }
+
+                    // 3) Optional: If this was a 2K upscale, make it the active view
                     setActiveFrameId(frameId);
-                    
-                    done = true;
+
                     setQueueStatus("Generation Complete");
                     return;
                 } else if (jobState === 'failed') {
-                    throw new Error(data.error || 'Generation failed in queue');
+                    throw new Error(data.error || 'Generation failed');
                 } else if (jobState === 'queued') {
                     setQueueStatus(`Queued... ${isVideoJob ? 'Video render may take 2–5 min' : 'Image render usually finishes soon'}`);
                 } else if (jobState === 'processing') {
@@ -1909,7 +2037,7 @@ export function PromptGenerator({ onUpscale }) {
                             : `Generating image... ${data.progress ? `${data.progress}%` : 'Almost there'}`
                     );
                 }
-                
+
                 attempt++;
                 await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
             }
@@ -1927,8 +2055,16 @@ export function PromptGenerator({ onUpscale }) {
             console.error('Polling error:', err);
             let msg = message;
             if (msg.toLowerCase().includes('safety system')) msg = "Creative Block: The AI's safety filters flagged this prompt.";
+            
+            // Graceful UI handling: stop loaders in all relevant trays
             showToast(`AI Engine Status: ${msg}`);
             setFrames(prev => prev.map(f => f.id === frameId ? { ...f, loading: false, error: true } : f));
+            
+            if (targetTray === 'storyboard' && setStoryboardSlots) {
+                setStoryboardSlots(prev => prev.map(s => s.id === frameId ? { ...s, loading: false, error: true } : s));
+            } else if (setShotSlots) {
+                setShotSlots(prev => prev.map(s => s.id === frameId ? { ...s, loading: false, error: true } : s));
+            }
         } finally {
             setIsLoading(false);
             setQueueStatus("Initializing...");
@@ -1937,172 +2073,191 @@ export function PromptGenerator({ onUpscale }) {
         }
     };
 
-    const generateImage = async () => {
-        if (isLoading) return;
-        setIsLoading(true);
-        const modelInfo = AI_MODELS.find(m => m.id === selectedModel)
-        if (!modelInfo?.available) { alert(`${modelInfo?.name || 'This model'} is coming soon!`); setIsLoading(false); return }
-        if (frames.length >= MAX_FRAMES) { alert('Frame limit reached (50). Clear some frames.'); setIsLoading(false); return }
-
+    const getCurrentCost = () => {
+        const shotCount = (mode === 'image' && selections.multishotMode === 'triple') ? 3 : 1;
         let costKey = 'image_nano_banana';
+
         if (mode === 'video') {
             if (isKling) costKey = 'kling';
             else costKey = selectedModel === 'veo-fast' ? 'veo_fast' : 'veo_full';
         } else if (mode === 'multishot' && selections.multishotMode === 'multiple') {
             costKey = 'image_grid_multishot';
         } else {
-            if (selectedModel === 'gemini-2.5-flash-image' || selectedModel === 'nano-banana') costKey = 'image_nano_banana';
-            if (selectedModel === 'gemini-3.1-flash-image-preview' || selectedModel === 'nano-banana-2' || selectedModel.includes('3.1-flash')) costKey = 'image_nano_banana_2';
-            if (selectedModel === 'gemini-3-pro-image-preview' || selectedModel === 'nano-banana-pro' || selectedModel.includes('3.0-pro')) costKey = 'image_nano_banana_pro';
+            // Mapping for modern image models
+            if (selectedModel === 'nano-banana-pro' || selectedModel === 'gemini-3-pro-image-preview') costKey = 'image_nano_banana_pro';
+            else if (selectedModel === 'nano-banana-2' || selectedModel.includes('3.1-flash')) costKey = 'image_nano_banana_2';
+            else if (selectedModel === 'gemini-2.0-flash-exp-image-generation') costKey = 'image_nano_banana';
         }
 
-        // Deduct shorts before starting
-        const res = await spend(costKey);
-        if (!res || !res.success) {
+        const unitCost = SHORTS_COST[costKey] || 0;
+        return { costKey, unitCost, totalCost: unitCost * shotCount, shotCount };
+    }
+
+    const generateImage = async () => {
+        if (isLoading) return;
+        setIsLoading(true);
+
+        const { costKey, totalCost, shotCount } = getCurrentCost();
+        
+        // Final sanity check for credits upfront
+        if (useAppStore.getState().userShorts < totalCost && useAppStore.getState().userProfile?.role !== 'admin') {
+            alert(`Insufficient Credits: You need ${totalCost} shorts. You only have ${useAppStore.getState().userShorts}.`);
+            useAppStore.getState().setActiveTab('pricing');
             setIsLoading(false);
-            if (res?.reason === 'unauthenticated') {
-                useAppStore.getState().setShowingAuthModal(true);
-            } else if (res?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
-                useAppStore.getState().setActiveTab('pricing');
-            } else {
-                alert("Generation could not proceed: " + (res?.reason || "error"));
-            }
             return;
         }
 
-        const newFrameId = `frame-${Date.now()}`
-        setFrames(prev => [...prev, { id: newFrameId, url: null, type: mode, model: selectedModel, prompt: generatedPrompt, aspectRatio: selections.aspectRatio, loading: true }])
-        setActiveFrameId(newFrameId)
-
-
         try {
-            const isGoogleVideo = selectedModel === 'veo' || selectedModel === 'veo-fast' || selectedModel.startsWith('veo-3.1');
-            const isKlingVideo = isKling || selectedModel === 'veo-kling';
-            const endpoint = getApiUrl((mode === 'video' && !(isGoogleVideo || isKlingVideo)) ? '/api/ugc/video' : '/api/generate-image')
-            let refImage = selections.firstFrame || selections.lastFrame || selections.referenceImage
-            if (mode === 'video' && !refImage) {
-                const store = useAppStore.getState()
-                refImage = store.activeCharacter?.image || store.activeCharacter?.identity_kit?.anchor
-            }
-            const { data: { user } } = await supabase.auth.getUser()
-            const userId = user?.id
+            for (let i = 0; i < shotCount; i++) {
+                if (shotCount > 1) setQueueStatus(`Preparing variation ${i + 1} of 3...`);
 
-            // ── STRUCTURED REFERENCE ALIGNMENT ──────────────────────────────
-            let finalPrompt = generatedPrompt
-            const taggedItems = getTaggedRefItems(generatedPrompt)
+                const modelInfo = AI_MODELS.find(m => m.id === selectedModel)
+                if (!modelInfo?.available) { alert(`${modelInfo?.name || 'This model'} is coming soon!`); break; }
+                if (frames.length + i >= MAX_FRAMES) { alert('Frame limit reached (50). Clear some frames.'); break; }
 
-            if (taggedItems.length > 0) {
-                const categories = { character: [], location: [], wardrobe: [], prop: [], mood: [] }
-                taggedItems.forEach(item => { if (categories[item.category]) categories[item.category].push(`@${item.name?.replace(/\s+/g, '')}`) })
-
-                let structuralBlock = "\n\n[REFERENCE ALIGNMENT DIRECTIVES]:"
-                if (categories.character.length > 0) {
-                    structuralBlock += `\n- CHARACTERS: ${categories.character.join(', ')}`
-                    if (faceConsistency) structuralBlock += " (CRITICAL: maintain a same 100% face match, identical facial features and bone structure as the character reference)."
+                // Deduct shorts for each iteration
+                const res = await spend(costKey);
+                if (!res || !res.success) {
+                    if (res?.reason === 'unauthenticated') {
+                        useAppStore.getState().setShowingAuthModal(true);
+                    } else if (res?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+                        useAppStore.getState().setActiveTab('pricing');
+                    } else {
+                        alert("Generation could not proceed: " + (res?.reason || "error"));
+                    }
+                    break;
                 }
-                if (categories.location.length > 0) structuralBlock += `\n- LOCATION: ${categories.location.join(', ')} (maintain exact environment layout and architecture from reference).`
-                if (categories.wardrobe.length > 0) structuralBlock += `\n- WARDROBE: ${categories.wardrobe.join(', ')} (match clothing style, fabric textures, and colors from reference).`
-                if (categories.prop.length > 0) structuralBlock += `\n- PROPS: ${categories.prop.join(', ')} (use the exact object designs from reference).`
-                if (categories.mood.length > 0) structuralBlock += `\n- MOOD/STYLE: ${categories.mood.join(', ')} (match color grading, atmosphere, and artistic style from reference).`
 
-                finalPrompt += structuralBlock
-            }
+                const newFrameId = `frame-${Date.now()}-${i}`
+                setFrames(prev => [...prev, { id: newFrameId, url: null, type: mode, model: selectedModel, prompt: generatedPrompt, aspectRatio: selections.aspectRatio, loading: true }])
+                setActiveFrameId(newFrameId)
 
-            // ── MULTI-SHOT / IMAGE VARIATIONS: inject 3x3 grid prompt ──
-            if ((mode === 'multishot' || mode === 'image') && selections.multishotMode === 'multiple') {
-                finalPrompt += ', generated as a 3x3 cinematic grid image showing 9 different creative variations of the exact same subject/scene. Each cell separated by thin black borders. Consistent subject identity across all 9 panels but with varying artistic interpretations.'
-            }
+                const isGoogleVideo = selectedModel === 'veo' || selectedModel === 'veo-fast' || selectedModel.startsWith('veo-3.1');
+                const isKlingVideo = isKling || selectedModel === 'veo-kling';
+                const endpoint = getApiUrl((mode === 'video' && !(isGoogleVideo || isKlingVideo)) ? '/api/ugc/video' : '/api/generate-image')
+                const { data: { user } } = await supabase.auth.getUser()
+                const userId = user?.id
 
-            const validRatio = (selections.aspectRatio || '16:9').split('—')[0].trim().split(' ')[0].trim();
+                // ── STRUCTURED REFERENCE ALIGNMENT ──────────────────────────────
+                let finalPrompt = generatedPrompt
+                const taggedItems = getTaggedRefItems(generatedPrompt)
 
-            const payload = mode === 'video' ? {
-                prompt: finalPrompt,
-                userId,
-                model: AI_MODELS.find(m => m.id === selectedModel)?.modelId || selectedModel,
-                duration: (() => {
-                    const taggedRefs = getTaggedRefItems(finalPrompt).flatMap(i => [i.imageUrl]).filter(Boolean);
-                    const mustBe8 = selections.lastFrame || taggedRefs.length > 0 
-                        || ['1080p', '4K', '4k'].includes(selections.resolution);
-                    return mustBe8 ? 8 : (parseInt(selections.duration.split(' ')[0]) || 4);
-                })(),
-                resolution: (() => {
-                    const raw = selections.resolution || '720p';
-                    return raw === '4K' ? '4k' : raw.toLowerCase();
-                })(),
-                aspect_ratio: validRatio,
-                firstFrame: selections.firstFrame,
-                lastFrame: selections.lastFrame,
-                referenceImages: getTaggedRefItems(finalPrompt)
-                    .flatMap(i => [i.imageUrl])
-                    .filter(Boolean)
-                    .slice(0, 3)
-            } : {
-                model: selectedModel, prompt: finalPrompt, aspect_ratio: validRatio,
-                image: selections.referenceImage,
-                identity_images: [
-                    ...(selections.identity_images || []),
-                    ...taggedCharacters.map(c => c.matrix).filter(Boolean),
-                    ...taggedCharacters.map(c => c.matrix ? null : c.image).filter(Boolean),
-                    ...getTaggedRefItems(finalPrompt).flatMap(i => [i.imageUrl, i.matrixUrl]).filter(Boolean)
-                ].slice(0, 14),
-                identity_gcs_uris: taggedCharacters.filter(c => c.gcs_uri).map(c => ({ name: c.name, uri: c.gcs_uri })),
-                product_image: selections.product_image || null,
-                quality: selections.quality, google_search: selections.searchGrounding,
-                duration: selections.duration, userId
-            }
+                if (taggedItems.length > 0) {
+                    const categories = { character: [], location: [], wardrobe: [], prop: [], mood: [] }
+                    taggedItems.forEach(item => { if (categories[item.category]) categories[item.category].push(`@${item.name?.replace(/\s+/g, '')}`) })
 
-            const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-            const data = await response.json()
+                    let structuralBlock = "\n\n[REFERENCE ALIGNMENT DIRECTIVES]:"
+                    if (categories.character.length > 0) {
+                        structuralBlock += `\n- CHARACTERS: ${categories.character.join(', ')}`
+                        if (faceConsistency) structuralBlock += " (CRITICAL: maintain a same 100% face match, identical facial features and bone structure as the character reference)."
+                    }
+                    if (categories.location.length > 0) structuralBlock += `\n- LOCATION: ${categories.location.join(', ')} (maintain exact environment layout and architecture from reference).`
+                    if (categories.wardrobe.length > 0) structuralBlock += `\n- WARDROBE: ${categories.wardrobe.join(', ')} (match clothing style, fabric textures, and colors from reference).`
+                    if (categories.prop.length > 0) structuralBlock += `\n- PROPS: ${categories.prop.join(', ')} (use the exact object designs from reference).`
+                    if (categories.mood.length > 0) structuralBlock += `\n- MOOD/STYLE: ${categories.mood.join(', ')} (match color grading, atmosphere, and artistic style from reference).`
 
-            if (!response.ok) throw new Error(data.message || data.error || 'Generation failed')
-
-            if (data.jobId) {
-                setQueueStatus("Sending to AI Engine...")
-                // We do NOT block the thread or call setIsLoading(false) yet.
-                pollJobStatus(data.jobId, newFrameId, costKey, mode === 'video' ? 'video' : 'image')
-            } else {
-                // Synchronous fallback
-                if (userId) fetchBalance(userId);
-                const resultUrl = data.url || data.videoUrl
-                if (resultUrl) {
-                    // Show video/image IMMEDIATELY, save to DB in background
-                    setFrames(prev => prev.map(f => f.id === newFrameId ? { ...f, url: resultUrl, loading: false } : f))
-                    if (renderTarget === 'left') setLeftPreviewId(newFrameId)
-                    else if (renderTarget === 'right') setRightPreviewId(newFrameId)
-                    setRenderTarget('center')
-                    // Non-blocking asset save - never block playback
-                    saveAsset(resultUrl, newFrameId, mode === 'video' ? 'video' : 'image').then(assetData => {
-                        if (assetData) setFrames(prev => prev.map(f => f.id === newFrameId ? { 
-                            ...f, 
-                            assetPath: assetData.path, 
-                            assetId: assetData.id,
-                            thumb: assetData.thumb // Store compressed thumbnail
-                        } : f))
-                    }).catch(e => console.warn('[SAVE_ASSET_BG]', e))
+                    finalPrompt += structuralBlock
                 }
-                setIsLoading(false)
+
+                // ── MULTI-SHOT / IMAGE VARIATIONS: inject 3x3 grid prompt ──
+                if ((mode === 'multishot' || mode === 'image') && selections.multishotMode === 'multiple') {
+                    finalPrompt += ', generated as a tight 3x3 cinematic grid image showing 9 different creative variations. ZERO OUTER PADDING — the 9 photographs must touch the literal edges of the image file. Each cell separated by ultra-thin internal black dividers only. Consistent identity across panels.'
+                }
+
+                const validRatio = (selections.aspectRatio || '16:9').split('—')[0].trim().split(' ')[0].trim();
+
+                const payload = mode === 'video' ? {
+                    prompt: finalPrompt,
+                    userId,
+                    model: AI_MODELS.find(m => m.id === selectedModel)?.modelId || selectedModel,
+                    duration: (() => {
+                        const taggedRefs = getTaggedRefItems(finalPrompt).flatMap(i => [i.imageUrl]).filter(Boolean);
+                        const mustBe8 = selections.lastFrame || taggedRefs.length > 0
+                            || ['1080p', '2K', '2k'].includes(selections.resolution);
+                        return mustBe8 ? 8 : (parseInt(selections.duration.split(' ')[0]) || 4);
+                    })(),
+                    resolution: (() => {
+                        const raw = selections.resolution || '720p';
+                        return raw === '4K' ? '4k' : raw.toLowerCase();
+                    })(),
+                    aspect_ratio: validRatio,
+                    firstFrame: selections.firstFrame,
+                    lastFrame: selections.lastFrame,
+                    referenceImages: getTaggedRefItems(finalPrompt)
+                        .flatMap(i => [i.imageUrl])
+                        .filter(Boolean)
+                        .slice(0, 3)
+                } : {
+                    model: selectedModel, prompt: finalPrompt, aspect_ratio: validRatio,
+                    image: selections.referenceImage,
+                    identity_images: [
+                        ...(selections.identity_images || []),
+                        ...taggedCharacters.map(c => c.matrix).filter(Boolean),
+                        ...taggedCharacters.map(c => c.matrix ? null : c.image).filter(Boolean),
+                        ...getTaggedRefItems(finalPrompt).flatMap(i => [i.imageUrl, i.matrixUrl]).filter(Boolean)
+                    ].slice(0, 14),
+                    identity_gcs_uris: taggedCharacters.filter(c => c.gcs_uri).map(c => ({ name: c.name, uri: c.gcs_uri })),
+                    product_image: selections.product_image || null,
+                    quality: selections.quality, google_search: selections.searchGrounding,
+                    duration: selections.duration, userId
+                }
+
+                const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                const data = await response.json()
+
+                if (!response.ok) throw new Error(data.message || data.error || 'Generation failed')
+
+                if (data.jobId) {
+                    if (shotCount === 1) setQueueStatus("Sending to AI Engine...")
+                    pollJobStatus(data.jobId, newFrameId, costKey, mode === 'video' ? 'video' : 'image')
+                } else {
+                    if (userId) fetchBalance(userId);
+                    const resultUrl = data.url || data.videoUrl
+                    if (resultUrl) {
+                        setFrames(prev => prev.map(f => f.id === newFrameId ? { ...f, url: resultUrl, loading: false } : f))
+                        saveAsset(resultUrl, newFrameId, mode === 'video' ? 'video' : 'image').then(assetData => {
+                            if (assetData) {
+                                setFrames(prev => prev.map(f => f.id === newFrameId ? {
+                                    ...f,
+                                    assetPath: assetData.path,
+                                    assetId: assetData.id,
+                                    thumb: assetData.thumb, // ✅ Keep sync!
+                                    loading: false
+                                } : f))
+                                // Ensure shotSlots is also updated if active
+                                if (setShotSlots) {
+                                  setShotSlots(prev => prev.map(s => s.id === newFrameId ? { 
+                                      ...s, url: resultUrl, thumb: assetData.thumb, loading: false 
+                                  } : s));
+                                }
+                            }
+                        })
+                    }
+                }
+                
+                if (shotCount > 1 && i < shotCount - 1) await new Promise(r => setTimeout(r, 800));
             }
         } catch (err) {
-            await refund(costKey)
             console.error('Generation error:', err)
             let msg = err.message
-            if (msg.toLowerCase().includes('safety system')) msg = "Creative Block: The AI's safety filters flagged this prompt. Try refining your subject."
+            if (msg.toLowerCase().includes('safety system')) msg = "Creative Block: The AI's safety filters flagged this prompt."
             alert(`AI Engine Status: ${msg}`)
-            setFrames(prev => prev.map(f => f.id === newFrameId ? { ...f, loading: false, error: true } : f))
+        } finally {
             setIsLoading(false)
+            setQueueStatus("Initializing...")
         }
     }
 
     const upscaleImage = async (frameId) => {
         const frame = frames.find(f => f.id === frameId)
         if (!frame || !frame.url) {
-            console.error('[4K_UPSCALE] Error: Frame or URL missing', { frameId, frame });
+            console.error('[2K_UPSCALE] Error: Frame or URL missing', { frameId, frame });
             alert('Upscale failed: Image source not found.');
             return
         }
         const { data: { user } } = await supabase.auth.getUser()
 
-        console.log(`[4K_UPSCALE] Started for frame: ${frameId}`, {
+        console.log(`[2K_UPSCALE] Started for frame: ${frameId}`, {
             url: frame.url,
             userId: user?.id || 'anonymous'
         });
@@ -2125,14 +2280,18 @@ export function PromptGenerator({ onUpscale }) {
 
         try {
             const prompt = frame.prompt || generatedPrompt || 'Cinematic High Fidelity Masterwork'
-            const currentModel = AI_MODELS.find(m => m.id === selectedModel)
-            const modelToUse = currentModel?.modelId || 'gemini-3.1-flash-image-preview'
+            const currentSelected = AI_MODELS.find(m => m.id === selectedModel);
+            const imageModel = (currentSelected?.type === 'image') 
+                ? currentSelected 
+                : (AI_MODELS.find(m => m.type === 'image') || AI_MODELS[0]);
             
+            const modelToUse = imageModel.modelId || 'gemini-3.1-flash-image-preview';
+
             const payload = {
                 model: modelToUse,
                 prompt,
                 aspect_ratio: frame.aspectRatio || '16:9',
-                quality: qualityOverride || '4k',
+                quality: qualityOverride || '2k',
                 image: frame.url,
                 userId: user?.id || null
             }
@@ -2153,14 +2312,14 @@ export function PromptGenerator({ onUpscale }) {
                 const finalUrl = data.url.startsWith('http') || data.url.startsWith('data:') ? data.url : getApiUrl(data.url);
                 const assetData = await saveAsset(finalUrl, frameId, 'image')
                 const currentModel = AI_MODELS.find(m => m.id === selectedModel)
-                setFrames(prev => prev.map(f => f.id === frameId ? { 
-                    ...f, 
-                    url: finalUrl, 
-                    assetPath: assetData?.path, 
-                    assetId: assetData?.id, 
+                setFrames(prev => prev.map(f => f.id === frameId ? {
+                    ...f,
+                    url: finalUrl,
+                    assetPath: assetData?.path,
+                    assetId: assetData?.id,
                     thumb: assetData?.thumb, // Store compressed thumbnail
-                    model: currentModel?.modelId || 'gemini-3.1-flash-image-preview', 
-                    loading: false 
+                    model: currentModel?.modelId || 'gemini-3.1-flash-image-preview',
+                    loading: false
                 } : f))
                 console.log('[4K_UPSCALE] Success! New URL applied.');
             } else {
@@ -2193,13 +2352,15 @@ export function PromptGenerator({ onUpscale }) {
     }
 
     // ── Upscale via Nano Banana 4K ──
-    const runAiUpscale = async (targetImage = null, customPrompt = null) => {
+    const runAiUpscale = async (targetImage = null, customPrompt = null, targetTray = 'multishot') => {
         const imageToProcess = targetImage || upscaledImage
         if (!imageToProcess) {
             console.error('[CROP_UPSCALE] No image found to upscale.');
             alert('Upscale Error: Please select an image.');
             return
         }
+
+        const newId = `frame-${Date.now()}`;
 
         // Cost check BEFORE upscaling
         const res = await spend('image_upscale_4k');
@@ -2214,8 +2375,29 @@ export function PromptGenerator({ onUpscale }) {
             return;
         }
 
-        console.log('[CROP_UPSCALE] Initiating 4K refinement...');
+        console.log('[CROP_UPSCALE] Initiating 2K refinement...');
         setUpscaling(true)
+
+        // ⚡ IMMEDIATE UI RESPONSE: Add placeholder slot RIGHT NOW, before any async work
+        // This makes the preview section respond within 1 render frame (<16ms)
+        const placeholderSlot = {
+            id: newId,
+            prompt: 'Upscaling to 2K...',
+            loading: true,
+            url: null,
+            isGrid: false,
+            jobType: 'upscale'
+        };
+        if (targetTray === 'storyboard') {
+            setStoryboardSlots(prev => [...prev, placeholderSlot]);
+            setActiveStorySlotId(newId);
+        } else {
+            setShotSlots(prev => [...prev, placeholderSlot]);
+            setActiveShotSlotId(newId);
+        }
+        // Also push a loading frame so the main film strip shows it
+        setFrames(prev => [...prev, { id: newId, url: null, type: 'image', prompt: 'Upscaling...', loading: true }]);
+        setActiveFrameId(newId);
 
         try {
             console.log('[CROP_UPSCALE] Checking session...');
@@ -2225,12 +2407,23 @@ export function PromptGenerator({ onUpscale }) {
             // Find the active frame object safely within this scope
             const activeFrame = frames.find(f => f.id === activeFrameId);
 
-            // Robust fallback for prompt
-            const basePrompt = customPrompt || activeFrame?.prompt || generatedPrompt || 'Cinematic character focal point'
-            const prompt = `${basePrompt} - 4K isolate, cinematic texture, high-detail finish`
+            // Resolve the most accurate prompt (original if it's an extraction)
+            const resolveBase = customPrompt || activeFrame?.prompt || generatedPrompt || 'Cinematic focal point';
+            const basePrompt = resolveBase.includes("extracted from grid") ? generatedPrompt : resolveBase;
+            
+            // STRICT UPSCALER PROMPT: Forbids the Image-to-Image model from hallucinating entirely new scenes.
+            const prompt = `REFINE TO 2K: Upscale this image to high resolution. 
+STRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. 
+DO NOT add new objects or change the scene. Enhance only.
+[Semantic Context: ${basePrompt}]`;
 
-            const currentModel = AI_MODELS.find(m => m.id === selectedModel)
-            const modelToUse = currentModel?.modelId || 'gemini-3.1-flash-image-preview'
+            // ⚠️ FIX: Ensure we use an IMAGE model even if the user has VEO selected in the sidebar
+            const currentSelected = AI_MODELS.find(m => m.id === selectedModel);
+            const imageModel = (currentSelected?.type === 'image') 
+                ? currentSelected 
+                : (AI_MODELS.find(m => m.type === 'image') || AI_MODELS[0]);
+            
+            const modelToUse = imageModel.modelId || 'gemini-3.1-flash-image-preview';
 
             // Payload Optimization: Max size to prevent 413 Payload Too Large on Railway 
             const compressedImage = await compressImageToMax1024(imageToProcess);
@@ -2239,12 +2432,11 @@ export function PromptGenerator({ onUpscale }) {
                 model: modelToUse,
                 prompt,
                 aspect_ratio: '16:9',
-                quality: '4k',
+                quality: '2k',
                 image: compressedImage, // Optimized blob or URL
                 userId: user?.id || null
             }
 
-            console.log('[CROP_UPSCALE] Payload size:', Math.round(JSON.stringify(payload).length / 1024), 'KB');
             console.log('[CROP_UPSCALE] Fetching API:', getApiUrl('/api/generate-image'));
             const res = await fetch(getApiUrl('/api/generate-image'), {
                 method: 'POST',
@@ -2257,33 +2449,19 @@ export function PromptGenerator({ onUpscale }) {
 
             if (!res.ok) throw new Error(data.message || data.error || 'Upscale failed')
 
-            const newId = `frame-${Date.now()}`;
-
             if (data.jobId) {
                 // If the backend runs this as a background job (preventing Railway timeout)
                 console.log(`[CROP_UPSCALE] Job queued: ${data.jobId}`);
-                setFrames(prev => [...prev, {
-                    id: newId,
-                    url: null,
-                    type: 'image',
-                    model: modelToUse,
-                    prompt,
-                    aspectRatio: '16:9',
-                    loading: true
-                }]);
-                setActiveFrameId(newId);
+                // Note: frames entry was already added above as a placeholder, just ensure it stays loading
                 setUpscaledImage(null);
-                setMode('image');
-                setPreviewTab('image');
-                
-                pollJobStatus(data.jobId, newId, 'image_upscale_4k', 'image');
+                pollJobStatus(data.jobId, newId, 'image_upscale_4k', 'image', targetTray);
             } else if (data.url) {
                 // If the backend returns it synchronously
                 const finalUrl = data.url.startsWith('http') || data.url.startsWith('data:') ? data.url : getApiUrl(data.url);
                 console.log(`[CROP_UPSCALE] Creating new asset: ${newId}`);
                 const assetData = await saveAsset(finalUrl, newId, 'image')
 
-                setFrames(prev => [...prev, {
+                const newFrameObj = {
                     id: newId,
                     url: finalUrl,
                     assetPath: assetData?.path,
@@ -2294,14 +2472,31 @@ export function PromptGenerator({ onUpscale }) {
                     prompt,
                     aspectRatio: '16:9',
                     loading: false
-                }])
+                };
+
+                // Update the pre-existing placeholder frame in the film strip (added before async)
+                setFrames(prev => prev.map(f => f.id === newId ? {
+                    ...f,
+                    url: finalUrl,
+                    assetPath: assetData?.path,
+                    assetId: assetData?.id,
+                    thumb: assetData?.thumb,
+                    model: currentModel?.modelId,
+                    prompt,
+                    loading: false
+                } : f))
+
+                // Update the appropriate tray for immediate feedback
+                if (targetTray === 'storyboard') {
+                    setStoryboardSlots(prev => prev.map(s => s.id === newId ? { ...s, url: finalUrl, loading: false } : s));
+                } else {
+                    setShotSlots(prev => prev.map(s => s.id === newId ? { ...s, url: finalUrl, loading: false } : s));
+                }
 
                 setActiveFrameId(newId)
 
-                // Success cleanup and redirect
+                // Success cleanup (stay in current mode)
                 setUpscaledImage(null)
-                setMode('image')
-                setPreviewTab('image')
 
                 console.log('[CROP_UPSCALE] Finalized successfully.');
             } else {
@@ -2310,6 +2505,11 @@ export function PromptGenerator({ onUpscale }) {
         } catch (err) {
             console.error('[CROP_UPSCALE] Terminal Failure:', err);
             alert(`AI Upscale Status: ${err.message}`)
+            if (targetTray === 'storyboard') {
+                setStoryboardSlots(prev => prev.filter(s => s.id !== newId));
+            } else {
+                setShotSlots(prev => prev.filter(s => s.id !== newId));
+            }
         } finally {
             setUpscaling(false)
         }
@@ -2320,164 +2520,164 @@ export function PromptGenerator({ onUpscale }) {
     // Props bridging for onUpscale (new clean API) + legacy window hook fallback
     const promptGeneratorBridgeProps = (typeof window !== 'undefined' && window.__PROMPTGENERATOR_PROPS__) ? window.__PROMPTGENERATOR_PROPS__ : {}
     const triggerExternalUpscale = async (frame) => {
-      const propOnUpscale = typeof promptGeneratorBridgeProps.onUpscale === 'function' ? promptGeneratorBridgeProps.onUpscale : null
-      if (typeof propOnUpscale === 'function') {
-        try {
-          const res = await propOnUpscale(frame)
-          if (res) return true
-        } catch (e) {
-          console.error('[PROMPT-GEN] onUpscale prop failed', e)
+        const propOnUpscale = typeof promptGeneratorBridgeProps.onUpscale === 'function' ? promptGeneratorBridgeProps.onUpscale : null
+        if (typeof propOnUpscale === 'function') {
+            try {
+                const res = await propOnUpscale(frame)
+                if (res) return true
+            } catch (e) {
+                console.error('[PROMPT-GEN] onUpscale prop failed', e)
+            }
         }
-      }
-      const external = typeof window !== 'undefined' ? window.__PROMPTGENERATOR_ONUPSCALE__ : undefined
-      if (typeof external === 'function') {
-        try {
-          const result = await external(frame)
-          if (result) return true
-        } catch (e) {
-          console.error('[PROMPT-GEN] External onUpscale failed', e)
+        const external = typeof window !== 'undefined' ? window.__PROMPTGENERATOR_ONUPSCALE__ : undefined
+        if (typeof external === 'function') {
+            try {
+                const result = await external(frame)
+                if (result) return true
+            } catch (e) {
+                console.error('[PROMPT-GEN] External onUpscale failed', e)
+            }
         }
-      }
-      return false
+        return false
     }
     const internalUpscale = async (frameId) => {
-      if (!frameId) return
-      await upscaleImage(frameId)
+        if (!frameId) return
+        await upscaleImage(frameId)
     }
     const handleUpscale = async (frame) => {
-      if (!frame) return
-      const didExternal = await triggerExternalUpscale(frame)
-      if (didExternal) return
-      await upscaleImage(frame.id)
+        if (!frame) return
+        const didExternal = await triggerExternalUpscale(frame)
+        if (didExternal) return
+        await upscaleImage(frame.id)
     }
 
-    // 4K Upscale: new drop-in replacement with frame.assetPath as source
+    // 2K Upscale: new drop-in replacement with frame.assetPath as source
     const compressImageToMax1024 = (src) => {
-      return new Promise((resolve, reject) => {
-        if (!src) { reject(new Error('No source provided')); return }
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        img.onload = () => {
-          const max = 1024
-          const w = img.naturalWidth
-          const h = img.naturalHeight
-          const scale = Math.min(1, max / Math.max(w, h))
-          const cw = Math.max(1, Math.floor(w * scale))
-          const ch = Math.max(1, Math.floor(h * scale))
-          const canvas = document.createElement('canvas')
-          canvas.width = cw
-          canvas.height = ch
-          const ctx = canvas.getContext('2d')
-          ctx.drawImage(img, 0, 0, cw, ch)
-          try {
-            const data = canvas.toDataURL('image/jpeg', 0.92)
-            resolve(data)
-          } catch (e) {
-            reject(e)
-          }
-        }
-        img.onerror = (e) => reject(e)
-        img.src = src
-        // note: potential CORS issues if source not allowed
-      })
+        return new Promise((resolve, reject) => {
+            if (!src) { reject(new Error('No source provided')); return }
+            const img = new Image()
+            img.crossOrigin = 'anonymous'
+            img.onload = () => {
+                const max = 1024
+                const w = img.naturalWidth
+                const h = img.naturalHeight
+                const scale = Math.min(1, max / Math.max(w, h))
+                const cw = Math.max(1, Math.floor(w * scale))
+                const ch = Math.max(1, Math.floor(h * scale))
+                const canvas = document.createElement('canvas')
+                canvas.width = cw
+                canvas.height = ch
+                const ctx = canvas.getContext('2d')
+                ctx.drawImage(img, 0, 0, cw, ch)
+                try {
+                    const data = canvas.toDataURL('image/jpeg', 0.92)
+                    resolve(data)
+                } catch (e) {
+                    reject(e)
+                }
+            }
+            img.onerror = (e) => reject(e)
+            img.src = src
+            // note: potential CORS issues if source not allowed
+        })
     }
 
     const upscaleImageDropIn = async (frameId) => {
-      console.debug('[4K_UPSCALE] Start drop-in for frame', frameId);
-      const frame = frames.find(f => f.id === frameId)
-      if (!frame || !frame.url && !frame.assetPath) {
-        alert('Upscale failed: Frame not found.')
-        return
-      }
+        console.debug('[2K_UPSCALE] Start drop-in for frame', frameId);
+        const frame = frames.find(f => f.id === frameId)
+        if (!frame || !frame.url && !frame.assetPath) {
+            alert('Upscale failed: Frame not found.')
+            return
+        }
 
         const spendRes = await spend('image_upscale_4k')
         console.debug('[RAILWAY] Upscale cost check response:', spendRes)
-      if (!spendRes || !spendRes.success) {
-        if (spendRes?.reason === 'unauthenticated') {
-          useAppStore.getState().setShowingAuthModal(true)
-        } else if (spendRes?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
-          useAppStore.getState().setActiveTab('pricing')
-        } else {
-          alert("Upscale could not proceed: " + (spendRes?.reason || 'error'))
-        }
-        return
-      }
-
-      setIsLoading(true)
-      setFrames(prev => prev.map(f => f.id === frameId ? { ...f, loading: true } : f))
-
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        console.debug('[RAILWAY] Current user from Supabase:', user?.id)
-
-        // Use full-res assetPath if available, else fall back to frame.url
-        const sourceUrl = frame.url
-        const compressedBase64 = await compressImageToMax1024(sourceUrl)
-
-        // Basic Gemini 3.1-like prompt for upscaling. Modify as needed for your backend.
-        const payload = {
-          model: 'gemini-3.1-flash-image-preview',
-          prompt: `${frame.prompt || 'Cinematic masterpiece'} - 4K high fidelity, micro-texture refinement, cinematic lighting`,
-          aspect_ratio: frame.aspectRatio || '16:9',
-          quality: '4K',
-          image: compressedBase64,
-          userId: user?.id || null
+        if (!spendRes || !spendRes.success) {
+            if (spendRes?.reason === 'unauthenticated') {
+                useAppStore.getState().setShowingAuthModal(true)
+            } else if (spendRes?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+                useAppStore.getState().setActiveTab('pricing')
+            } else {
+                alert("Upscale could not proceed: " + (spendRes?.reason || 'error'))
+            }
+            return
         }
 
-        console.log('[4K_UPSCALE] Payload size:', Math.round(JSON.stringify(payload).length / 1024), 'KB')
+        setIsLoading(true)
+        setFrames(prev => prev.map(f => f.id === frameId ? { ...f, loading: true } : f))
 
-        const response = await fetch(getApiUrl('/api/generate-image'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        })
-        console.debug('[RAILWAY] Upscale /generate-image response OK?', response.ok)
+        try {
+            const { data: { user } } = await supabase.auth.getUser()
+            console.debug('[RAILWAY] Current user from Supabase:', user?.id)
 
-        const data = await response.json()
-        console.debug('[RAILWAY] Upscale response data:', data)
-        if (!response.ok) throw new Error(data.error || 'Upscale request failed')
+            // Use full-res assetPath if available, else fall back to frame.url
+            const sourceUrl = frame.url
+            const compressedBase64 = await compressImageToMax1024(sourceUrl)
 
-        if (data.jobId) {
-          setQueueStatus("Upscaling to 4K... 45-60 seconds.")
-          pollJobStatus(data.jobId, frameId, 'image_upscale_4k', 'image')
-        } else if (data.url) {
-          await handleUpscaleSuccess(data.url, frameId)
+            // Basic Gemini 3.1-like prompt for upscaling. Modify as needed for your backend.
+            const payload = {
+                model: 'gemini-3.1-flash-image-preview',
+                prompt: `${frame.prompt || 'Cinematic masterpiece'} - 2K high fidelity, micro-texture refinement, cinematic lighting`,
+                aspect_ratio: frame.aspectRatio || '16:9',
+                quality: '4K',
+                image: compressedBase64,
+                userId: user?.id || null
+            }
+
+            console.log('[4K_UPSCALE] Payload size:', Math.round(JSON.stringify(payload).length / 1024), 'KB')
+
+            const response = await fetch(getApiUrl('/api/generate-image'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            console.debug('[RAILWAY] Upscale /generate-image response OK?', response.ok)
+
+            const data = await response.json()
+            console.debug('[RAILWAY] Upscale response data:', data)
+            if (!response.ok) throw new Error(data.error || 'Upscale request failed')
+
+            if (data.jobId) {
+                setQueueStatus("Upscaling to 2K... 30-45 seconds.")
+                pollJobStatus(data.jobId, frameId, 'image_upscale_4k', 'image')
+            } else if (data.url) {
+                await handleUpscaleSuccess(data.url, frameId)
+            }
+        } catch (err) {
+            console.error('[4K_UPSCALE_ERROR]:', err)
+            await refund('image_upscale_4k')
+            showToast(`2K Error: ${err.message}`)
+            setFrames(prev => prev.map(f => f.id === frameId ? { ...f, loading: false } : f))
+        } finally {
+            setIsLoading(false)
         }
-      } catch (err) {
-        console.error('[4K_UPSCALE_ERROR]:', err)
-        await refund('image_upscale_4k')
-        showToast(`4K Error: ${err.message}`)
-        setFrames(prev => prev.map(f => f.id === frameId ? { ...f, loading: false } : f))
-      } finally {
-        setIsLoading(false)
-      }
     }
 
     const handleUpscaleSuccess = async (newUrl, frameId) => {
-      // Store thumb for filmstrip performance; also save asset metadata
-      const frame = frames.find(f => f.id === frameId)
-      if (!frame) return
-      const thumb = await compressImageToMax1024(newUrl)
-      const assetData = await saveAsset(newUrl, `upscale_${frameId}`, 'image')
-      setFrames(prev => prev.map(f => f.id === frameId ? {
-        ...f,
-        url: newUrl,
-        thumb: thumb,
-        assetPath: assetData?.path,
-        assetId: assetData?.id,
-        loading: false,
-        is4K: true
-      } : f))
+        // Store thumb for filmstrip performance; also save asset metadata
+        const frame = frames.find(f => f.id === frameId)
+        if (!frame) return
+        const thumb = await compressImageToMax1024(newUrl)
+        const assetData = await saveAsset(newUrl, `upscale_${frameId}`, 'image')
+        setFrames(prev => prev.map(f => f.id === frameId ? {
+            ...f,
+            url: newUrl,
+            thumb: thumb,
+            assetPath: assetData?.path,
+            assetId: assetData?.id,
+            loading: false,
+            is2K: true
+        } : f))
     }
 
     return (
         <div className="h-screen overflow-hidden flex flex-col bg-black px-2 pb-0 pt-0 gap-2">
             {toast && (
-              <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 9999 }}>
-                <div style={{ background: '#111', color: '#fff', padding: '10px 14px', borderRadius: 8, boxShadow: '0 4px 14px rgba(0,0,0,.4)' }}>
-                  {toast}
+                <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 9999 }}>
+                    <div style={{ background: '#111', color: '#fff', padding: '10px 14px', borderRadius: 8, boxShadow: '0 4px 14px rgba(0,0,0,.4)' }}>
+                        {toast}
+                    </div>
                 </div>
-              </div>
             )}
             {/* ─── TOP BAR ─────────────────────────────────────────────── */}
             <div className="relative flex items-center justify-between pt-2 shrink-0">
@@ -2499,11 +2699,11 @@ export function PromptGenerator({ onUpscale }) {
                         {[{ id: 'image', label: 'IMAGE', icon: ImageIcon }, { id: 'multishot', label: 'MULTI SHOT', icon: Grid }, { id: 'storyboard', label: 'STORYBOARD', icon: Layers }, { id: 'video', label: 'VIDEO', icon: Film }].map(tab => (
                             <button key={tab.id} onClick={() => {
                                 setMode(tab.id);
-                                
+
                                 const isImageLike = tab.id === 'image' || tab.id === 'multishot';
                                 const currentFrame = frames.find(f => f.id === activeFrameId);
-                                const isCompatible = currentFrame && (isImageLike 
-                                    ? (currentFrame.type === 'image' || currentFrame.type === 'multishot') 
+                                const isCompatible = currentFrame && (isImageLike
+                                    ? (currentFrame.type === 'image' || currentFrame.type === 'multishot')
                                     : currentFrame.type === tab.id);
 
                                 if (!isCompatible) {
@@ -2564,6 +2764,7 @@ export function PromptGenerator({ onUpscale }) {
                         runAiUpscale={runAiUpscale}
                         upscaling={upscaling}
                         selectedModel={selectedModel}
+                        downloadImage={downloadImage}
                     />
                 </div>
             )}
@@ -2585,6 +2786,7 @@ export function PromptGenerator({ onUpscale }) {
                         runAiUpscale={runAiUpscale}
                         upscaling={upscaling}
                         selectedModel={selectedModel}
+                        refBoard={refBoard}
                     />
                 </div>
             )}
@@ -2605,9 +2807,9 @@ export function PromptGenerator({ onUpscale }) {
                                 if (leftFrame && leftFrame.url) return (
                                     <div className="relative w-full h-full group">
                                         {leftFrame.type === 'video' ? (
-                                            <video src={leftFrame.url} controls loop muted className="w-full h-full object-contain" />
+                                            <video src={resolveUrl(leftFrame.url)} controls loop muted className="w-full h-full object-contain" />
                                         ) : (
-                                            <img src={leftFrame.url} alt="Left Preview" className="w-full h-full object-contain" />
+                                            <img src={resolveUrl(leftFrame.url)} alt="Left Preview" className="w-full h-full object-contain" />
                                         )}
                                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
                                             <button onClick={() => setZoomState({ url: leftFrame.url, isOpen: true, slot: leftFrame.id, isEditing: false })} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"><Maximize2 className="w-4 h-4" /></button>
@@ -2649,10 +2851,10 @@ export function PromptGenerator({ onUpscale }) {
                                     ) : activeFrame.url ? (
                                         <div className="relative w-full h-full group">
                                             {activeFrame.type === 'video' ? (
-                                                <video src={activeFrame.url} controls autoPlay loop muted className="w-full h-full object-contain" />
+                                                <video src={resolveUrl(activeFrame.url)} controls autoPlay loop muted className="w-full h-full object-contain" />
                                             ) : (
                                                 <div className="relative w-full h-full flex items-center justify-center">
-                                                    <img ref={activeFrame.type === 'multishot' ? gridImgRef : null} src={activeFrame.url} alt="Generated" className="w-full h-full object-contain" crossOrigin="anonymous" />
+                                                    <img ref={activeFrame.type === 'multishot' ? gridImgRef : null} src={resolveUrl(activeFrame.url)} alt="Generated" className="w-full h-full object-contain" crossOrigin="anonymous" />
                                                     {/* 3x3 Grid Overlay - Only active in MULTISHOT interface mode or for multishot types if needed, but per user request let's make it flexible */}
                                                     {(mode === 'multishot' || activeFrame.type === 'multishot') && (
                                                         <div className="absolute inset-0 flex items-center justify-center z-10">
@@ -2675,21 +2877,21 @@ export function PromptGenerator({ onUpscale }) {
                                             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2 z-20 pointer-events-none">
                                                 <button onClick={() => setZoomState({ url: activeFrame.url, isOpen: true, slot: activeFrame.id, isEditing: false })} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white pointer-events-auto"><Maximize2 className="w-4 h-4" /></button>
                                                 <button onClick={(e) => { e.stopPropagation(); downloadImage(activeFrame.url); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white pointer-events-auto"><Download className="w-4 h-4" /></button>
-                                                
-                        {(activeFrame && (activeFrame.type === 'image' || activeFrame.type === 'multishot') && activeFrame.model !== 'gemini-3-pro-image-preview') && (
-                            <button
-                                 onClick={() => handleUpscale(activeFrame)}
-                                 className="px-3 py-2 bg-[#D4AF37] hover:bg-yellow-400 rounded-lg text-black text-[9px] font-black uppercase flex items-center gap-1 pointer-events-auto"
-                                disabled={!(activeFrame?.url || activeFrame?.assetPath)}
-                                aria-disabled={!(activeFrame?.url || activeFrame?.assetPath)}
-                                title={!(activeFrame?.url || activeFrame?.assetPath) ? 'No image available for upscaling' : 'Upscale to 4K'}
-                             >
-                                <Sparkles className="w-3 h-3" /> 4K
-                            </button>
-                        )}
+
+                                                {(activeFrame && (activeFrame.type === 'image' || activeFrame.type === 'multishot') && activeFrame.model !== 'gemini-3-pro-image-preview') && (
+                                                    <button
+                                                        onClick={() => handleUpscale(activeFrame)}
+                                                        className="px-3 py-2 bg-[#D4AF37] hover:bg-yellow-400 rounded-lg text-black text-[9px] font-black uppercase flex items-center gap-1 pointer-events-auto"
+                                                        disabled={!(activeFrame?.url || activeFrame?.assetPath)}
+                                                        aria-disabled={!(activeFrame?.url || activeFrame?.assetPath)}
+                                                        title={!(activeFrame?.url || activeFrame?.assetPath) ? 'No image available for upscaling' : 'Upscale to 2K'}
+                                                    >
+                                                        <Sparkles className="w-3 h-3" /> 2K
+                                                    </button>
+                                                )}
 
                                                 <button onClick={() => setSelections(p => ({ ...p, referenceImage: activeFrame.url }))} className="p-2 bg-cyan-500/20 hover:bg-cyan-400 text-cyan-400 hover:text-black rounded-lg pointer-events-auto transition-all" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
-                                                
+
                                                 {(activeFrame.type === 'image' || activeFrame.type === 'multishot') && (
                                                     <>
                                                         <button onClick={() => { setSelections(p => ({ ...p, firstFrame: activeFrame.url })); setMode('video') }} className="px-2 py-2 bg-[#D4FF00] hover:bg-white rounded-lg text-black text-[9px] font-black uppercase flex items-center gap-1 pointer-events-auto"><Film className="w-3 h-3" /> First</button>
@@ -2721,9 +2923,9 @@ export function PromptGenerator({ onUpscale }) {
                                 if (rightFrame && rightFrame.url) return (
                                     <div className="relative w-full h-full group">
                                         {rightFrame.type === 'video' ? (
-                                            <video src={rightFrame.url} controls loop muted className="w-full h-full object-contain" />
+                                            <video src={resolveUrl(rightFrame.url)} controls loop muted className="w-full h-full object-contain" />
                                         ) : (
-                                            <img src={rightFrame.url} alt="Right Preview" className="w-full h-full object-contain" />
+                                            <img src={resolveUrl(rightFrame.url)} alt="Right Preview" className="w-full h-full object-contain" />
                                         )}
                                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
                                             <button onClick={() => setZoomState({ url: rightFrame.url, isOpen: true, slot: rightFrame.id, isEditing: false })} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"><Maximize2 className="w-4 h-4" /></button>
@@ -2746,7 +2948,11 @@ export function PromptGenerator({ onUpscale }) {
                     </div>
 
                     {/* ── FILM ROLL STRIP (Full Width) ─────────────────────── */}
-                    <div className="shrink-0 h-16 surface-glass rounded-xl p-1 flex gap-1 overflow-x-auto custom-scrollbar">
+                    <div 
+                        ref={mainFilmStripRef}
+                        onScroll={handleMainFilmStripScroll}
+                        className="shrink-0 h-16 surface-glass rounded-xl p-1 flex gap-1 overflow-x-auto custom-scrollbar"
+                    >
                         {/* VIDEO MODE: START/END SLOTS & CONTROLS (AT START) */}
                         {mode === 'video' && (
                             <>
@@ -2756,7 +2962,7 @@ export function PromptGenerator({ onUpscale }) {
                                     selections.firstFrame ? "bg-[#D4FF00]/10 border-[#D4FF00]/40 shadow-[0_0_10px_rgba(212,255,0,0.2)]" : "bg-lime-500/5 border-lime-500/20 hover:border-lime-500/40 cursor-pointer")}>
                                     {selections.firstFrame ? (
                                         <>
-                                            <img src={selections.firstFrame} className="absolute inset-0 w-full h-full object-cover" />
+                                            <img src={resolveUrl(selections.firstFrame)} className="absolute inset-0 w-full h-full object-cover" />
                                             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/frame:opacity-100 flex items-center justify-center transition-all">
                                                 <button onClick={(e) => { e.stopPropagation(); setSelections(p => ({ ...p, firstFrame: null })) }} className="p-1 px-1.5 bg-red-500 rounded text-white text-[10px] font-black uppercase shadow-lg">X</button>
                                             </div>
@@ -2776,7 +2982,7 @@ export function PromptGenerator({ onUpscale }) {
                                     selections.lastFrame ? "bg-purple-500/10 border-purple-500/40 shadow-[0_0_10px_rgba(168,85,247,0.2)]" : "bg-purple-500/5 border-purple-500/20 hover:border-purple-500/40 cursor-pointer")}>
                                     {selections.lastFrame ? (
                                         <>
-                                            <img src={selections.lastFrame} className="absolute inset-0 w-full h-full object-cover" />
+                                            <img src={resolveUrl(selections.lastFrame)} className="absolute inset-0 w-full h-full object-cover" />
                                             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/frame:opacity-100 flex items-center justify-center transition-all">
                                                 <button onClick={(e) => { e.stopPropagation(); setSelections(p => ({ ...p, lastFrame: null })) }} className="p-1 px-1.5 bg-red-500 rounded text-white text-[10px] font-black uppercase shadow-lg">X</button>
                                             </div>
@@ -2789,11 +2995,11 @@ export function PromptGenerator({ onUpscale }) {
                                         </div>
                                     )}
                                 </div>
-                                
+
                                 {/* VERTICAL DIVIDER & NEW SCENE */}
                                 <div className="shrink-0 w-px h-10 bg-white/10 mx-2 self-center" />
-                                
-                                <div 
+
+                                <div
                                     onClick={() => {
                                         setSelections(p => ({
                                             ...p,
@@ -2824,30 +3030,30 @@ export function PromptGenerator({ onUpscale }) {
                             </button>
                         )}
                         {frames.filter(frame => {
-                                const isImageLike = mode === 'image' || mode === 'multishot';
-                                return isImageLike ? (frame.type === 'image' || frame.type === 'multishot') : frame.type === mode;
-                            }).map(frame => (
-                                <div key={frame.id} className={cn("shrink-0 w-20 h-full rounded-lg overflow-hidden cursor-pointer transition-all border-2 relative group/strip", activeFrameId === frame.id ? "border-[#D4FF00] shadow-[0_0_10px_#D4FF00]" : "border-transparent hover:border-white/20")}>
-                                    <div onClick={() => setActiveFrameId(frame.id)} className="w-full h-full">
-                                        {frame.loading ? <div className="w-full h-full bg-black/40 flex items-center justify-center"><Sparkles className="w-3 h-3 text-[#D4FF00] animate-spin" /></div>
-                                            : frame.url ? (frame.type === 'video' ? <video src={frame.url} muted preload="metadata" className="w-full h-full object-cover" /> : <img src={frame.thumb || frame.url} loading="lazy" decoding="async" className="w-full h-full object-cover" />)
-                                                : <div className="w-full h-full bg-black/40 flex items-center justify-center"><X className="w-3 h-3 text-red-500/50" /></div>}
-                                    </div>
-
-                                    <button onClick={(e) => { e.stopPropagation(); removeFrame(frame.id) }}
-                                        className="absolute top-1 right-1 p-0.5 bg-red-500/80 rounded-md text-white opacity-0 group-hover/strip:opacity-100 transition-opacity z-10"
-                                        title="Remove Frame">
-                                        <X className="w-2 h-2" />
-                                    </button>
-
-                                    {frame.url && !frame.loading && (
-                                        <div className="absolute bottom-0 inset-x-0 flex opacity-0 group-hover/strip:opacity-100 transition-opacity">
-                                            <button onClick={(e) => { e.stopPropagation(); setLeftPreviewId(frame.id) }} className="flex-1 bg-[#D4FF00]/80 text-black text-[6px] font-black py-0.5 hover:bg-[#D4FF00]" title="Pin to Left Preview">L</button>
-                                            <button onClick={(e) => { e.stopPropagation(); setRightPreviewId(frame.id) }} className="flex-1 bg-purple-500/80 text-white text-[6px] font-black py-0.5 hover:bg-purple-500" title="Pin to Right Preview">R</button>
-                                        </div>
-                                    )}
+                            const isImageLike = mode === 'image' || mode === 'multishot';
+                            return isImageLike ? (frame.type === 'image' || frame.type === 'multishot') : frame.type === mode;
+                        }).map(frame => (
+                            <div key={frame.id} className={cn("shrink-0 w-20 h-full rounded-lg overflow-hidden cursor-pointer transition-all border-2 relative group/strip", activeFrameId === frame.id ? "border-[#D4FF00] shadow-[0_0_10px_#D4FF00]" : "border-transparent hover:border-white/20")}>
+                                <div onClick={() => setActiveFrameId(frame.id)} className="w-full h-full">
+                                    {frame.loading ? <div className="w-full h-full bg-black/40 flex items-center justify-center"><Sparkles className="w-3 h-3 text-[#D4FF00] animate-spin" /></div>
+                                        : frame.url ? (frame.type === 'video' ? <video src={frame.url} muted preload="metadata" className="w-full h-full object-cover" /> : <img src={frame.thumb || frame.url} loading="lazy" decoding="async" className="w-full h-full object-cover" />)
+                                            : <div className="w-full h-full bg-black/40 flex items-center justify-center"><X className="w-3 h-3 text-red-500/50" /></div>}
                                 </div>
-                            ))}
+
+                                <button onClick={(e) => { e.stopPropagation(); removeFrame(frame.id) }}
+                                    className="absolute top-1 right-1 p-0.5 bg-red-500/80 rounded-md text-white opacity-0 group-hover/strip:opacity-100 transition-opacity z-10"
+                                    title="Remove Frame">
+                                    <X className="w-2 h-2" />
+                                </button>
+
+                                {frame.url && !frame.loading && (
+                                    <div className="absolute bottom-0 inset-x-0 flex opacity-0 group-hover/strip:opacity-100 transition-opacity">
+                                        <button onClick={(e) => { e.stopPropagation(); setLeftPreviewId(frame.id) }} className="flex-1 bg-[#D4FF00]/80 text-black text-[6px] font-black py-0.5 hover:bg-[#D4FF00]" title="Pin to Left Preview">L</button>
+                                        <button onClick={(e) => { e.stopPropagation(); setRightPreviewId(frame.id) }} className="flex-1 bg-purple-500/80 text-white text-[6px] font-black py-0.5 hover:bg-purple-500" title="Pin to Right Preview">R</button>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}
@@ -2865,34 +3071,34 @@ export function PromptGenerator({ onUpscale }) {
                             {mode === 'video' && (isKling ? <KlingShotBuilder selections={selections} setSelections={setSelections} /> : <TimestampMultiShot selections={selections} setSelections={setSelections} />)}
 
                             {isKling ? (
-                                <KlingCharacterLayer 
-                                    selections={selections} 
-                                    handleTextChange={handleTextChange} 
-                                    setShowRefBoard={setShowRefBoard} 
-                                    mentionSearch={mentionSearch} 
-                                    setMentionSearch={setMentionSearch} 
-                                    allRefItems={allRefItems} 
-                                    selectMention={selectMention} 
+                                <KlingCharacterLayer
+                                    selections={selections}
+                                    handleTextChange={handleTextChange}
+                                    setShowRefBoard={setShowRefBoard}
+                                    mentionSearch={mentionSearch}
+                                    setMentionSearch={setMentionSearch}
+                                    allRefItems={allRefItems}
+                                    selectMention={selectMention}
                                 />
                             ) : (
-                                <VideoNarrativeComponents 
-                                    mode={mode} 
-                                    isNanoBanana={isNanoBanana} 
-                                    allRefItems={allRefItems} 
-                                    setShowRefBoard={setShowRefBoard} 
-                                    selections={selections} 
-                                    handleTextChange={handleTextChange} 
-                                    mentionSearch={mentionSearch} 
-                                    setMentionSearch={setMentionSearch} 
+                                <VideoNarrativeComponents
+                                    mode={mode}
+                                    isNanoBanana={isNanoBanana}
+                                    allRefItems={allRefItems}
+                                    setShowRefBoard={setShowRefBoard}
+                                    selections={selections}
+                                    handleTextChange={handleTextChange}
+                                    mentionSearch={mentionSearch}
+                                    setMentionSearch={setMentionSearch}
                                     mentionField={mentionField}
-                                    selectMention={selectMention} 
+                                    selectMention={selectMention}
                                     textareaRef={textareaRef}
                                     handleRefinePrompt={handleRefinePrompt}
                                     isPolishing={isPolishing}
                                 />
                             )}
 
-                        <button onClick={generateImage} disabled={isLoading}
+                            <button onClick={generateImage} disabled={isLoading}
                                 className={cn("w-full md:w-52 shrink-0 rounded-[20px] flex flex-col items-center justify-center gap-1 transition-all shadow-[0_10px_30px_rgba(212,255,0,0.15)] active:scale-95 h-20",
                                     isLoading ? "bg-white/5 cursor-not-allowed" : "bg-[#D4FF00] hover:bg-white hover:shadow-[0_0_30px_rgba(212,255,0,0.3)]")}>
                                 <Zap className={cn("w-6 h-6 text-black", isLoading && "animate-pulse")} />
@@ -2900,16 +3106,10 @@ export function PromptGenerator({ onUpscale }) {
                                     {isLoading ? 'Computing...' : mode === 'video' ? 'Generate Video' : 'Generate Image'}
                                 </span>
                                 {!isLoading && (() => {
-                                    let displayCost = SHORTS_COST.image_nano_banana;
-                                    if (mode === 'video') displayCost = selectedModel === 'veo-fast' ? SHORTS_COST.veo_fast : SHORTS_COST.veo_full;
-                                    else if (mode === 'multishot' && selections.multishotMode === 'multiple') displayCost = SHORTS_COST.image_grid_multishot;
-                                    else {
-                                        if (selectedModel === 'nano-banana-pro' || selectedModel === 'gemini-3.0-pro') displayCost = SHORTS_COST.image_nano_banana_pro;
-                                        else if (selectedModel === 'nano-banana-2' || selectedModel === 'gemini-3.1-flash') displayCost = SHORTS_COST.image_nano_banana_2;
-                                    }
+                                    const { totalCost } = getCurrentCost();
                                     return (
                                         <span className="text-[10px] font-bold text-black/60 flex items-center gap-1 uppercase tracking-widest mt-0.5">
-                                            <Film className="w-3 h-3" /> {displayCost} Shorts
+                                            <Film className="w-3 h-3" /> {totalCost} Shorts
                                         </span>
                                     )
                                 })()}
@@ -2918,104 +3118,107 @@ export function PromptGenerator({ onUpscale }) {
                         {mode === 'video' ? (
                             <div className="space-y-1">
                                 <div className="flex flex-wrap gap-2">
-                                <div className="flex-1 min-w-[105px]">
-                                    <label className="text-[10px] font-bold text-gray-500 mb-1 block uppercase tracking-wider">Engine</label>
-                                    <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white">
-                                        {filteredModels.map(m => <option key={m.id} value={m.id} disabled={!m.available}>{m.name}{m.available ? '' : ' — Soon'}</option>)}
-                                    </select>
+                                    <div className="flex-1 min-w-[105px]">
+                                        <label className="text-[10px] font-bold text-gray-500 mb-1 block uppercase tracking-wider">Engine</label>
+                                        <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white">
+                                            {filteredModels.map(m => <option key={m.id} value={m.id} disabled={!m.available}>{m.name}{m.available ? '' : ' — Soon'}</option>)}
+                                        </select>
+                                    </div>
+                                    {VIDEO_CONTROLS.filter(c => !['audio', 'dialogue'].includes(c.key)).map(ctrl => {
+                                        const val = selections[ctrl.key]
+                                        if (ctrl.key === 'speedRamp') return (
+                                            <div key={ctrl.key} className="relative flex-1 min-w-[110px]">
+                                                <label className="text-[10px] font-bold text-gray-500 mb-1 block uppercase tracking-wider">{ctrl.label}</label>
+                                                <button onClick={() => setShowSpeedPanel(!showSpeedPanel)} className={cn("w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white flex justify-between items-center", showSpeedPanel ? "bg-white/10 border-white/30" : "hover:bg-white/10")}><span>{val}</span><ChevronDown className="w-3 h-3 opacity-30" /></button>
+                                                {showSpeedPanel && (
+                                                    <div className="absolute bottom-full left-0 mb-3 z-[150] bg-[#0d0d0d] border border-white/10 rounded-2xl p-4 w-[320px] grid grid-cols-3 gap-2 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
+                                                        {ctrl.options.map(opt => (
+                                                            <div key={opt} onClick={() => { updateVideoSetting('speedRamp', opt); setShowSpeedPanel(false) }} className={cn("p-2 rounded-xl border cursor-pointer text-center", val === opt ? "bg-[#D4FF00]/10 border-[#D4FF00]/40" : "bg-white/5 border-white/5 hover:border-white/20")}>
+                                                                <SpeedRampCurve name={opt} active={val === opt} />
+                                                                <div className={cn("text-[8px] mt-2 uppercase font-black", val === opt ? "text-[#D4FF00]" : "text-white/30")}>{opt}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )
+                                        return (
+                                            <div key={ctrl.key} className="flex-1 min-w-[110px]">
+                                                <label className="text-[10px] font-bold text-gray-500 mb-1 block uppercase tracking-wider">{ctrl.label}</label>
+                                                <select value={val} onChange={e => updateVideoSetting(ctrl.key, e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white">
+                                                    {(ctrl.key === 'duration' && selectedModel === 'kling' ? ['5 Seconds', '10 Seconds'] : ctrl.options).map(o => <option key={o} value={o} className="bg-[#111]">{o}</option>)}
+                                                </select>
+                                            </div>
+                                        )
+                                    })}
+                                    {isKling ? <KlingAudioMode /> : <ProLighting selections={selections} setSelections={setSelections} />}
+
                                 </div>
-                                {VIDEO_CONTROLS.filter(c => !['audio', 'dialogue'].includes(c.key)).map(ctrl => {
-                                    const val = selections[ctrl.key]
-                                    if (ctrl.key === 'speedRamp') return (
-                                        <div key={ctrl.key} className="relative flex-1 min-w-[110px]">
-                                            <label className="text-[10px] font-bold text-gray-500 mb-1 block uppercase tracking-wider">{ctrl.label}</label>
-                                            <button onClick={() => setShowSpeedPanel(!showSpeedPanel)} className={cn("w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white flex justify-between items-center", showSpeedPanel ? "bg-white/10 border-white/30" : "hover:bg-white/10")}><span>{val}</span><ChevronDown className="w-3 h-3 opacity-30" /></button>
-                                            {showSpeedPanel && (
-                                                <div className="absolute bottom-full left-0 mb-3 z-[150] bg-[#0d0d0d] border border-white/10 rounded-2xl p-4 w-[320px] grid grid-cols-3 gap-2 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
-                                                    {ctrl.options.map(opt => (
-                                                        <div key={opt} onClick={() => { updateVideoSetting('speedRamp', opt); setShowSpeedPanel(false) }} className={cn("p-2 rounded-xl border cursor-pointer text-center", val === opt ? "bg-[#D4FF00]/10 border-[#D4FF00]/40" : "bg-white/5 border-white/5 hover:border-white/20")}>
-                                                            <SpeedRampCurve name={opt} active={val === opt} />
-                                                            <div className={cn("text-[8px] mt-2 uppercase font-black", val === opt ? "text-[#D4FF00]" : "text-white/30")}>{opt}</div>
-                                                        </div>
-                                                    ))}
+
+                                {/* EXCLUSIVE AUDIO DIRECTIONS PANEL for Video */}
+                                <div className="bg-white/5 border border-white/10 rounded-2xl p-3 mt-1">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <label className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                                            <Mic className="w-4 h-4" /> Audio Direction Layer
+                                        </label>
+                                        <div className="flex items-center gap-2 px-2 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                                            <span className="text-[8px] font-black text-purple-400 uppercase tracking-tighter">Audio Engine</span>
+                                            <div className="w-1.5 h-1.5 rounded-full bg-[#D4FF00] animate-pulse" />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                                        {[
+                                            { id: 'dialogue', label: 'Dialogue', icon: Mic, placeholder: 'What they say...' },
+                                            { id: 'sfx', label: 'SFX', icon: Zap, placeholder: 'Crunch, bang, splash...' },
+                                            { id: 'ambient', label: 'Ambient', icon: Sun, placeholder: 'Rain, wind, crowd...' },
+                                            { id: 'music', label: 'Music', icon: Music, placeholder: 'Genre, mood, instruments...' }
+                                        ].map(item => (
+                                            <div key={item.id} className={cn("space-y-2 group transition-all p-2 rounded-xl border",
+                                                selections.audioActive?.[item.id] ? "bg-purple-500/5 border-purple-500/20" : "bg-black/20 border-white/5")}>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <item.icon className={cn("w-3.5 h-3.5", selections.audioActive?.[item.id] ? "text-purple-400" : "text-white/20")} />
+                                                        <span className={cn("text-[9px] font-black uppercase tracking-wider", selections.audioActive?.[item.id] ? "text-white" : "text-white/20")}>{item.label}</span>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setSelections(p => ({
+                                                            ...p,
+                                                            audioActive: { ...p.audioActive, [item.id]: !p.audioActive?.[item.id] }
+                                                        }))}
+                                                        className={cn("w-5 h-2.5 rounded-full relative transition-colors border",
+                                                            selections.audioActive?.[item.id] ? "bg-purple-500 border-purple-400 shadow-[0_0_5px_rgba(168,85,247,0.5)]" : "bg-white/10 border-white/10")}
+                                                    >
+                                                        <div className={cn("absolute top-px w-1.5 h-1.5 rounded-full bg-white transition-all", selections.audioActive?.[item.id] ? "right-0.5" : "left-0.5")} />
+                                                    </button>
                                                 </div>
-                                            )}
-                                        </div>
-                                    )
-                                    return (
-                                        <div key={ctrl.key} className="flex-1 min-w-[110px]">
-                                            <label className="text-[10px] font-bold text-gray-500 mb-1 block uppercase tracking-wider">{ctrl.label}</label>
-                                            <select value={val} onChange={e => updateVideoSetting(ctrl.key, e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white">
-                                                {(ctrl.key === 'duration' && selectedModel === 'kling' ? ['5 Seconds', '10 Seconds'] : ctrl.options).map(o => <option key={o} value={o} className="bg-[#111]">{o}</option>)}
-                                            </select>
-                                        </div>
-                                    )
-                                })}
-                                {isKling ? <KlingAudioMode /> : <ProLighting selections={selections} setSelections={setSelections} />}
-
-                            </div>
-
-                            {/* EXCLUSIVE AUDIO DIRECTIONS PANEL for Video */}
-                            <div className="bg-white/5 border border-white/10 rounded-2xl p-3 mt-1">
-                                <div className="flex items-center justify-between mb-3">
-                                    <label className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <Mic className="w-4 h-4" /> Audio Direction Layer
-                                    </label>
-                                    <div className="flex items-center gap-2 px-2 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-                                        <span className="text-[8px] font-black text-purple-400 uppercase tracking-tighter">Audio Engine</span>
-                                        <div className="w-1.5 h-1.5 rounded-full bg-[#D4FF00] animate-pulse" />
+                                                <textarea
+                                                    value={selections.audioPrompts?.[item.id] || ''}
+                                                    onChange={(e) => setSelections(p => ({
+                                                        ...p,
+                                                        audioPrompts: { ...p.audioPrompts, [item.id]: e.target.value }
+                                                    }))}
+                                                    disabled={!selections.audioActive?.[item.id]}
+                                                    placeholder={item.placeholder}
+                                                    className={cn("w-full bg-black/40 border border-white/5 rounded-lg p-1.5 text-[9px] text-white placeholder:text-white/5 focus:outline-none resize-none h-12 custom-scrollbar transition-opacity",
+                                                        !selections.audioActive?.[item.id] && "opacity-20 pointer-events-none")}
+                                                />
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                                    {[
-                                        { id: 'dialogue', label: 'Dialogue', icon: Mic, placeholder: 'What they say...' },
-                                        { id: 'sfx', label: 'SFX', icon: Zap, placeholder: 'Crunch, bang, splash...' },
-                                        { id: 'ambient', label: 'Ambient', icon: Sun, placeholder: 'Rain, wind, crowd...' },
-                                        { id: 'music', label: 'Music', icon: Music, placeholder: 'Genre, mood, instruments...' }
-                                    ].map(item => (
-                                        <div key={item.id} className={cn("space-y-2 group transition-all p-2 rounded-xl border", 
-                                            selections.audioActive?.[item.id] ? "bg-purple-500/5 border-purple-500/20" : "bg-black/20 border-white/5")}>
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <item.icon className={cn("w-3.5 h-3.5", selections.audioActive?.[item.id] ? "text-purple-400" : "text-white/20")} />
-                                                    <span className={cn("text-[9px] font-black uppercase tracking-wider", selections.audioActive?.[item.id] ? "text-white" : "text-white/20")}>{item.label}</span>
-                                                </div>
-                                                <button 
-                                                    onClick={() => setSelections(p => ({ 
-                                                        ...p, 
-                                                        audioActive: { ...p.audioActive, [item.id]: !p.audioActive?.[item.id] } 
-                                                    }))}
-                                                    className={cn("w-5 h-2.5 rounded-full relative transition-colors border", 
-                                                        selections.audioActive?.[item.id] ? "bg-purple-500 border-purple-400 shadow-[0_0_5px_rgba(168,85,247,0.5)]" : "bg-white/10 border-white/10")}
-                                                >
-                                                    <div className={cn("absolute top-px w-1.5 h-1.5 rounded-full bg-white transition-all", selections.audioActive?.[item.id] ? "right-0.5" : "left-0.5")} />
-                                                </button>
-                                            </div>
-                                            <textarea 
-                                                value={selections.audioPrompts?.[item.id] || ''}
-                                                onChange={(e) => setSelections(p => ({
-                                                    ...p,
-                                                    audioPrompts: { ...p.audioPrompts, [item.id]: e.target.value }
-                                                }))}
-                                                disabled={!selections.audioActive?.[item.id]}
-                                                placeholder={item.placeholder}
-                                                className={cn("w-full bg-black/40 border border-white/5 rounded-lg p-1.5 text-[9px] text-white placeholder:text-white/5 focus:outline-none resize-none h-12 custom-scrollbar transition-opacity", 
-                                                    !selections.audioActive?.[item.id] && "opacity-20 pointer-events-none")}
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
                             </div>
-                        </div>
-                    ) : (
+                        ) : (
                             <div className="flex flex-wrap md:flex-nowrap w-full gap-2">
                                 {['engine', 'camera', 'angle', 'lens', 'composition', 'lighting', 'style', 'aspectRatio', 'quality'].map(key => {
                                     let flexValue = 1;
-                                    if (key === 'engine' || key === 'composition') flexValue = 1.5;
-                                    if (key === 'lens' || key === 'quality') flexValue = 0.5;
+                                    if (key === 'engine') flexValue = 1.1;
+                                    if (key === 'angle') flexValue = 1.1;
+                                    if (key === 'lens') flexValue = 0.8; 
+                                    if (key === 'composition') flexValue = 1.3;
+                                    if (key === 'quality') flexValue = 0.6;
 
                                     return (
-                                        <div key={key} style={{ flex: flexValue }} className={cn("min-w-[45%] md:min-w-0", key === 'engine' && "md:flex-[0_1_115px]")}>
+                                        <div key={key} style={{ flex: flexValue }} className={cn("min-w-[45%] md:min-w-0")}>
                                             <label className="text-[10px] font-bold text-gray-500 mb-1 block uppercase tracking-wider truncate">{key === 'lens' ? 'Lens' : key === 'aspectRatio' ? 'Ratio' : key}</label>
                                             {key === 'engine' ? (
                                                 <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white">
@@ -3033,7 +3236,7 @@ export function PromptGenerator({ onUpscale }) {
                                                     {key === 'lighting' && LIGHTING_STYLES.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}
                                                     {key === 'style' && ART_STYLES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                                                     {key === 'aspectRatio' && ASPECT_RATIOS.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
-                                                    {key === 'quality' && ['1k', '2k', '4k'].map(q => <option key={q} value={q}>{q}</option>)}
+                                                    {key === 'quality' && ['1k', '2k'].map(q => <option key={q} value={q}>{q}</option>)}
                                                 </select>
                                             )}
                                         </div>
@@ -3047,6 +3250,11 @@ export function PromptGenerator({ onUpscale }) {
                                                 className={cn("flex-1 py-1 px-2 rounded-md text-[9px] font-black uppercase transition-all truncate",
                                                     selections.multishotMode === 'single' ? "bg-white/10 text-white shadow-inner" : "text-gray-500 hover:text-gray-300")}>
                                                 1
+                                            </button>
+                                            <button onClick={() => setSelections(p => ({ ...p, multishotMode: 'triple' }))}
+                                                className={cn("flex-1 py-1 px-2 rounded-md text-[9px] font-black uppercase transition-all truncate",
+                                                    selections.multishotMode === 'triple' ? "bg-purple-500/50 text-white shadow-lg" : "text-gray-500 hover:text-gray-300")}>
+                                                3
                                             </button>
                                             <button onClick={() => setSelections(p => ({ ...p, multishotMode: 'multiple' }))}
                                                 className={cn("flex-1 py-1 px-2 rounded-md text-[9px] font-black uppercase transition-all truncate",
@@ -3072,8 +3280,8 @@ export function PromptGenerator({ onUpscale }) {
                                     </button>
                                 </div>
                                 <div className="flex flex-col justify-end">
-                                    <button onClick={() => setSelections(p => ({ ...p, quality: p.quality === '4k' ? '2k' : '4k' }))} className={cn("w-full py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-2 transition-all border", selections.quality === '4k' ? "bg-yellow-400 text-black border-yellow-400" : "bg-white/5 border-white/10 text-gray-500")}>
-                                        <Maximize2 className="w-3 h-3" /> 4K Master
+                                    <button onClick={() => setSelections(p => ({ ...p, quality: p.quality === '2k' ? '1k' : '2k' }))} className={cn("w-full py-2.5 rounded-xl text-[10px] font-bold uppercase flex items-center justify-center gap-2 transition-all border", selections.quality === '2k' ? "bg-yellow-400 text-black border-yellow-400" : "bg-white/5 border-white/10 text-gray-500")}>
+                                        <Maximize2 className="w-3 h-3" /> 2K Master
                                     </button>
                                 </div>
                             </div>
@@ -3087,7 +3295,7 @@ export function PromptGenerator({ onUpscale }) {
                 zoomState.isOpen && (
                     <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-8">
                         <button onClick={() => setZoomState(p => ({ ...p, isOpen: false }))} className="absolute top-4 right-4 md:top-8 md:right-8 text-white/50 hover:text-white transition"><X className="w-6 h-6 md:w-8 md:h-8" /></button>
-                        {activeFrame?.type === 'video' ? <video src={zoomState.url} controls autoPlay loop className="max-w-full max-h-full rounded-2xl shadow-2xl" style={{ maxHeight: '85vh' }} /> : <img src={zoomState.url} className="max-w-full max-h-full rounded-2xl shadow-2xl" alt="Zoomed" />}
+                        {activeFrame?.type === 'video' ? <video src={resolveUrl(zoomState.url)} controls autoPlay loop className="max-w-full max-h-full rounded-2xl shadow-2xl" style={{ maxHeight: '85vh' }} /> : <img src={resolveUrl(zoomState.url)} className="max-w-full max-h-full rounded-2xl shadow-2xl" alt="Zoomed" />}
                         <div className="absolute bottom-6 md:bottom-12 flex gap-4 w-full justify-center px-4 md:w-auto">
                             <button onClick={() => setZoomState(p => ({ ...p, isOpen: false }))} className="flex-1 md:flex-none justify-center bg-white/10 hover:bg-white/20 border border-white/10 text-white px-6 py-3 md:py-2 rounded-full font-bold uppercase text-[10px] md:text-xs flex items-center gap-2 transition shadow-xl"><X className="w-4 h-4" /> Back</button>
                             <button onClick={() => setZoomState(p => ({ ...p, isEditing: true }))} className="flex-1 md:flex-none justify-center bg-[#D4FF00] text-black px-6 py-3 md:py-2 rounded-full font-bold uppercase text-[10px] md:text-xs flex items-center gap-2 hover:bg-white transition shadow-xl"><PenTool className="w-4 h-4" /> Edit</button>
@@ -3268,13 +3476,13 @@ export function PromptGenerator({ onUpscale }) {
                                         <LayoutGrid className="w-4 h-4 text-[#D4FF00]" /> Studio Gallery
                                     </h3>
                                     <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
-                                        <button onClick={() => setGalleryTab('recent')} 
-                                            className={cn("px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all", 
+                                        <button onClick={() => setGalleryTab('recent')}
+                                            className={cn("px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all",
                                                 galleryTab === 'recent' ? "bg-[#D4FF00] text-black" : "text-gray-400 hover:text-white")}>
                                             Recent ({frames.filter(f => f.url).length})
                                         </button>
-                                        <button onClick={() => setGalleryTab('library')} 
-                                            className={cn("px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all", 
+                                        <button onClick={() => setGalleryTab('library')}
+                                            className={cn("px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all",
                                                 galleryTab === 'library' ? "bg-[#D4FF00] text-black" : "text-gray-400 hover:text-white")}>
                                             Asset Library
                                         </button>
@@ -3291,16 +3499,16 @@ export function PromptGenerator({ onUpscale }) {
                                                 className={cn("relative aspect-video rounded-xl overflow-hidden cursor-pointer group border-2 transition-all",
                                                     activeFrameId === frame.id ? "border-[#D4FF00] shadow-[0_0_15px_rgba(212,255,0,0.3)]" : "border-white/5 hover:border-white/20")}>
                                                 {frame.type === 'video' ? (
-                                                    <video src={frame.url} muted preload="metadata" className="w-full h-full object-cover" />
+                                                    <video src={resolveUrl(frame.url)} muted preload="metadata" className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <img src={frame.thumb || frame.url} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                                                    <img src={resolveUrl(frame.thumb || frame.url)} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                                                 )}
                                                 <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <p className="text-[8px] font-bold text-white/80 truncate">{frame.model}</p>
                                                     <div className="flex gap-1 mt-1">
                                                         <button onClick={(e) => { e.stopPropagation(); downloadImage(frame.url) }} className="px-1.5 py-0.5 bg-white/10 hover:bg-white/20 rounded text-[7px] text-white font-bold">DL</button>
-                                                        <button onClick={(e) => { 
-                                                            e.stopPropagation(); 
+                                                        <button onClick={(e) => {
+                                                            e.stopPropagation();
                                                             const url = frame.url;
                                                             setSelections(p => ({ ...p, referenceImage: url }));
                                                             addRefItem({ id: crypto.randomUUID(), name: `Ref_${frame.id.slice(-4)}`, category: 'mood', imageUrl: url });
@@ -3363,19 +3571,19 @@ export function PromptGenerator({ onUpscale }) {
                                 </button>
                                 <button onClick={runAiUpscale} disabled={upscaling}
                                     className="flex-2 py-3 px-8 rounded-xl bg-[#D4FF00] hover:bg-white text-black text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-all disabled:opacity-50 min-w-[200px]">
-                                    {upscaling ? <><Sparkles className="w-4 h-4 animate-spin" /> Generating 4K...</> : <><Sparkles className="w-4 h-4" /> Generate 4K Upscale</>}
+                                    {upscaling ? <><Sparkles className="w-4 h-4 animate-spin" /> Generating 2K...</> : <><Sparkles className="w-4 h-4" /> Generate 2K Upscale</>}
                                 </button>
-                                    <button onClick={() => { setSelections(p => ({ ...p, referenceImage: upscaledImage })); setUpscaledImage(null) }}
-                                        className="flex-1 py-3 rounded-xl bg-purple-500/20 hover:bg-purple-500/40 text-purple-300 text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-all border border-purple-500/20">
-                                        <ImagePlus className="w-4 h-4" /> Set as Ref
-                                    </button>
-                                </div>
+                                <button onClick={() => { setSelections(p => ({ ...p, referenceImage: upscaledImage })); setUpscaledImage(null) }}
+                                    className="flex-1 py-3 rounded-xl bg-purple-500/20 hover:bg-purple-500/40 text-purple-300 text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-all border border-purple-500/20">
+                                    <ImagePlus className="w-4 h-4" /> Set as Ref
+                                </button>
                             </div>
                         </div>
-                    )
-                }
+                    </div>
+                )
+            }
 
-                <CameraGuide />
+            <CameraGuide />
         </div>
     );
 }

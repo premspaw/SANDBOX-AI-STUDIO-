@@ -885,30 +885,23 @@ export default function LandingPage({ onEnter, onPricing }) {
                 ref={videoRef}
                 autoPlay muted loop playsInline preload="auto"
                 src={resolveAsset(assets.heroBackground)}
-                style={isMobile ? {
+                style={{
                   position: 'absolute',
                   top: 0, left: 0,
                   width: '100%',
-                  height: '50%',          // video takes top half only
+                  height: '100%',
                   objectFit: 'cover',
-                  objectPosition: 'center center',
+                  objectPosition: 'center',
                   opacity: 1,
-                } : {
-                  position: 'absolute', top: '44%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  minWidth: '100%', minHeight: '100%',
-                  objectFit: 'cover', opacity: 1,
                 }}
               />
-              {isMobile && (
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  background: 'linear-gradient(to bottom, transparent 30%, #050505 60%)',
-                  zIndex: 1,
-                  pointerEvents: 'none',
-                }} />
-              )}
+              <div style={{
+                position: 'absolute', inset: 0, zIndex: 1,
+                background: isMobile
+                  ? 'linear-gradient(to bottom, rgba(5,5,5,0.3) 0%, rgba(5,5,5,0.75) 60%, rgba(5,5,5,0.95) 100%)'
+                  : 'linear-gradient(to right, rgba(5,5,5,0.92) 0%, rgba(5,5,5,0.4) 50%, transparent 80%)',
+                pointerEvents: 'none',
+              }} />
             </>
           )}
           {/* Overlays and Vignettes removed for maximum clarity */}
@@ -923,31 +916,23 @@ export default function LandingPage({ onEnter, onPricing }) {
             top: -200, left: -150, pointerEvents: 'none', zIndex: 1
           }} />
 
-        {/* Cinematic blend filter to bridge dividing edge transparently */}
-        <div style={{
-          position: 'absolute', inset: 0, zIndex: 2,
-          background: 'linear-gradient(to right, rgba(5,5,5,0.92) 0%, rgba(5,5,5,0.4) 50%, rgba(5,5,5,0.0) 80%)',
-          pointerEvents: 'none'
-        }} />
+
 
         {/* ── LAYER 3: FOREGROUND SUBJECT ── */}
         {!isMobile && assets.foregroundSubject && (
           <div style={{
             position: 'absolute',
-            right: '2%',
-            bottom: '4%',
-            zIndex: 4,
-            height: '92%',
+            right: '2%', bottom: '4%',
+            zIndex: 4, height: '92%',
             pointerEvents: 'none',
             display: 'flex', alignItems: 'flex-end',
           }}>
             <video autoPlay muted loop playsInline preload="auto"
               src={resolveAsset(assets.foregroundSubject)}
               style={{
-                height: '100%', width: 'auto', objectFit: 'contain',
-                objectPosition: 'bottom',
+                height: '100%', width: 'auto',
+                objectFit: 'contain', objectPosition: 'bottom',
                 mixBlendMode: 'screen',
-                opacity: 1,
               }}
             />
           </div>

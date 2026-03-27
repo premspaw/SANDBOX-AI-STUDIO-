@@ -82,7 +82,7 @@ const FORMULA = [
   { label: "AUTO — ANGLE", content: "Low Angle shot", color: "#D4AF37" },
   { label: "AUTO — LENS", content: "18mm lens, f/8", color: "#D4AF37" },
   { label: "AUTO — COMPOSITION", content: "Rule of Thirds", color: "#D4AF37" },
-  { label: "AUTO — STYLE", content: "LCU Style · Hyper Realistic · 4K", color: "#D4AF37" },
+  { label: "AUTO — STYLE", content: "LCU Style · Hyper Realistic · 2K", color: "#D4AF37" },
 ];
 
 const COMPOSITIONS = [
@@ -219,13 +219,14 @@ const COMPOSITIONS = [
 ];
 
 const C = { 
-  bg: "#050505", 
-  surface: "#111111", 
-  lime: "#D4FF00", 
-  limeDark: "#3A4500", 
-  gold: "#D4FF00", 
-  text: "#A1A1AA", 
-  border: "rgba(255,255,255,0.08)" 
+  bg: "#09090b", 
+  surface: "#18181b", 
+  accent: "#e4e4e7", 
+  muted: "#71717a", 
+  gold: "#a1a1aa", 
+  text: "#fafafa", 
+  border: "rgba(255,255,255,0.06)",
+  primary: "#D4FF00" 
 };
 
 export default function CameraGuide() {
@@ -238,42 +239,45 @@ export default function CameraGuide() {
   return (
     <>
       <style>{`
-        @keyframes fadeIn{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:scale(1)}}
-        @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(212,255,0,0.3)}50%{box-shadow:0 0 0 8px rgba(212,255,0,0)}}
-        .sb:hover{background:rgba(212,255,0,0.08)!important;color:#D4FF00!important}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(212,255,0,0.4)}50%{box-shadow:0 0 0 4px rgba(212,255,0,0)}}
+        .sb:hover{background:rgba(255,255,255,0.03)!important;color:white!important}
         .xb:hover{background:rgba(255,255,255,0.08)!important;color:white!important}
-        ::-webkit-scrollbar{width:3px}
-        ::-webkit-scrollbar-track{background:#050505}
-        ::-webkit-scrollbar-thumb{background:#D4FF00;border-radius:2px}
+        .guide-text { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .label-text { font-family: 'JetBrains Mono', monospace; }
+        ::-webkit-scrollbar{width:4px}
+        ::-webkit-scrollbar-track{background:#09090b}
+        ::-webkit-scrollbar-thumb{background:#3f3f46;border-radius:10px}
       `}</style>
 
-      {/* Corner button */}
+      {/* Corner button - Reverted to Camera + Subtle Glow */}
       <div style={{position:"fixed",bottom:24,right:24,zIndex:9999}}>
         <button onClick={()=>setOpen(true)} style={{
-          width:52,height:52,borderRadius:"16px",background:"rgba(212,255,0,0.1)",
-          border:"1px solid rgba(212,255,0,0.4)",color:"#D4FF00",fontSize:22,cursor:"pointer",
+          width:42,height:42,borderRadius:"12px",background:"rgba(24,24,27,0.9)",
+          border:"1px solid rgba(212,255,0,0.3)",color:"#fff",fontSize:20,cursor:"pointer",
           display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(12px)",
-          animation:"pulse 2s ease-in-out infinite",boxShadow:"0 4px 24px rgba(212,255,0,0.15)",
+          boxShadow:"0 4px 12px rgba(0,0,0,0.5)",
+          animation:"pulse 2s ease-in-out infinite",
           transition:"all 0.2s"
         }}>🎥</button>
       </div>
 
       {open && (
         <div onClick={e=>e.target===e.currentTarget&&setOpen(false)} style={{
-          position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,0.88)",
-          backdropFilter:"blur(8px)",display:"flex",alignItems:"center",
+          position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,0.9)",
+          backdropFilter:"blur(16px)",display:"flex",alignItems:"center",
           justifyContent:"center",padding:window.innerWidth < 768 ? 8 : 16
         }}>
-          <div style={{
-            background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,
-            width:"100%",maxWidth:860,maxHeight:window.innerWidth < 768 ? "98vh" : "92vh",overflow:"hidden",
-            display:"flex",flexDirection:"column",animation:"fadeIn 0.2s ease",
-            boxShadow:"0 0 80px #D4FF0011"
+          <div className="guide-text" style={{
+            background:C.surface,border:`1px solid ${C.border}`,borderRadius:20,
+            width:"100%",maxWidth:860,maxHeight:window.innerWidth < 768 ? "98vh" : "85vh",overflow:"hidden",
+            display:"flex",flexDirection:"column",animation:"fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+            boxShadow:"0 25px 50px -12px rgba(0, 0, 0, 0.5)"
           }}>
 
             {/* Header */}
             <div style={{
-              padding:window.innerWidth < 768 ? "10px 12px" : "14px 20px",
+              padding:window.innerWidth < 768 ? "10px 12px" : "16px 24px",
               borderBottom:`1px solid ${C.border}`,
               background:C.bg,
               display:"flex",
@@ -282,23 +286,23 @@ export default function CameraGuide() {
               justifyContent:"space-between",
               gap: 12
             }}>
-              <div style={{display:"flex",flexDirection: window.innerWidth < 768 ? "column" : "row", alignItems: window.innerWidth < 768 ? "flex-start" : "center", gap: window.innerWidth < 768 ? 12 : 16, width: "100%"}}>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <span style={{fontSize:22}}>🎥</span>
+              <div style={{display:"flex",flexDirection: window.innerWidth < 768 ? "column" : "row", alignItems: window.innerWidth < 768 ? "flex-start" : "center", gap: window.innerWidth < 768 ? 12 : 24, width: "100%"}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <span style={{fontSize:18}}>📗</span>
                   <div>
-                    <div style={{fontFamily:"sans-serif",fontSize:13,fontWeight:800,color:"#FFF",letterSpacing:2}}>STUDIO GUIDE</div>
-                    <div style={{fontFamily:"monospace",fontSize:9,color:"#71717A",letterSpacing:1.5}}>AI CINEMA REFERENCE</div>
+                    <div className="label-text" style={{fontSize:11,fontWeight:800,color:"#FFF",letterSpacing:1.5}}>STUDIO COMPASS</div>
+                    <div className="label-text" style={{fontSize:8,color:C.muted,letterSpacing:1,marginTop:2}}>CINEMATIC REFERENCE MANUAL</div>
                   </div>
                 </div>
-                <div style={{display:"flex",gap:6, overflowX: "auto", maxWidth: "100%", paddingBottom: 4, noScrollbar: true}}>
+                <div style={{display:"flex",gap:4, overflowX: "auto", maxWidth: "100%", paddingBottom: 4}}>
                   {["CAMERA","SCENE WRITING","COMPOSITION"].map(t=>(
                     <button key={t} onClick={()=>setTab(t)} style={{
-                      padding:"6px 12px",borderRadius:999,fontFamily:"monospace",fontSize:10,
-                      letterSpacing:1,fontWeight:700,cursor:"pointer",
+                      padding:"6px 14px",borderRadius:8,fontSize:10,
+                      fontWeight:600,cursor:"pointer",
                       whiteSpace: "nowrap",
-                      background:tab===t?C.lime:"rgba(255,255,255,0.03)",
-                      color:tab===t? "#000" : "#A1A1AA",
-                      border:`1px solid ${tab===t?C.lime:"rgba(255,255,255,0.08)"}`,transition:"all 0.15s"
+                      background:tab===t?"#fff":"transparent",
+                      color:tab===t? "#000" : C.muted,
+                      border:`1px solid ${tab===t?"#fff":"transparent"}`,transition:"all 0.2s"
                     }}>{t}</button>
                   ))}
                 </div>
@@ -306,8 +310,8 @@ export default function CameraGuide() {
               <button className="xb" onClick={()=>setOpen(false)} style={{
                 position: window.innerWidth < 768 ? "absolute" : "static",
                 top: 10, right: 10,
-                background:"rgba(255,255,255,0.05)",border:`1px solid rgba(255,255,255,0.1)`,color:"#FFF",
-                width:32,height:32,borderRadius:8,cursor:"pointer",fontSize:16,
+                background:"transparent",border:`1px solid transparent`,color:C.muted,
+                width:32,height:32,borderRadius:8,cursor:"pointer",fontSize:20,
                 display:"flex",alignItems:"center",justifyContent:"center",
                 transition:"all 0.15s"
               }}>×</button>
@@ -317,64 +321,65 @@ export default function CameraGuide() {
             {tab==="CAMERA" && (
               <div style={{display:"flex",flexDirection: window.innerWidth < 768 ? "column" : "row", flex:1,overflow:"hidden"}}>
                 <div style={{
-                  width: window.innerWidth < 768 ? "100%" : 190,
+                  width: window.innerWidth < 768 ? "100%" : 210,
                   height: window.innerWidth < 768 ? 80 : "auto",
                   borderRight: window.innerWidth < 768 ? "none" : `1px solid ${C.border}`,
-                  borderBottom: window.innerWidth < 768 ? `1px solid ${C.border}` : "none",
-                  overflowX: window.innerWidth < 768 ? "auto" : "hidden",
-                  overflowY: window.innerWidth < 768 ? "hidden" : "auto",
-                  background:C.bg,flexShrink:0,padding: window.innerWidth < 768 ? "4px" : "8px 0",
-                  display: window.innerWidth < 768 ? "flex" : "block"
+                  overflowY: "auto",
+                  background:C.bg,flexShrink:0,padding: "8px"
                 }}>
                   {CAMERAS.map((c,i)=>(
                     <button key={i} className="sb" onClick={()=>setCam(i)} style={{
-                      width: window.innerWidth < 768 ? "auto" : "100%",
-                      padding: window.innerWidth < 768 ? "6px 10px" : "10px 14px",
+                      width: "100%",
+                      padding: "8px 12px",
                       textAlign:"left",border:"none",
-                      background:cam===i?"#D4FF0011":"transparent",
-                      borderLeft: window.innerWidth < 768 ? "none" : `2px solid ${cam===i?C.lime:"transparent"}`,
-                      borderBottom: window.innerWidth < 768 ? `2px solid ${cam===i?C.lime:"transparent"}` : "none",
-                      cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"all 0.15s",
-                      flexShrink: 0
+                      borderRadius: 8,
+                      background:cam===i?"rgba(255,255,255,0.05)":"transparent",
+                      cursor:"pointer",display:"flex",alignItems:"center",gap:10,transition:"all 0.15s",
+                      marginBottom: 2
                     }}>
                       <span style={{fontSize:14}}>{c.icon}</span>
-                      <div>
-                        <div style={{fontFamily:"monospace",fontSize:10,fontWeight:700,color:cam===i?C.lime:"#888"}}>{c.name.split(" ").slice(0,2).join(" ")}</div>
-                        <div style={{fontFamily:"monospace",fontSize:9,color:cam===i?"#D4FF0088":"#333",marginTop:1}}>{c.name.split(" ").slice(2).join(" ")}</div>
-                      </div>
+                      <div style={{fontSize:11,fontWeight:500,color:cam===i?"#fff":C.muted}}>{c.name}</div>
                     </button>
                   ))}
                 </div>
-                <div style={{flex:1,overflowY:"auto",padding:24}}>
+                <div style={{flex:1,overflowY:"auto",padding:32}}>
                   {(()=>{const c=CAMERAS[cam];return(
-                    <div>
-                      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:6}}>
-                        <span style={{fontSize:28}}>{c.icon}</span>
+                    <div style={{maxWidth:600}}>
+                      <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:8}}>
+                        <span style={{fontSize:32}}>{c.icon}</span>
                         <div>
-                          <div style={{fontFamily:"monospace",fontSize:18,fontWeight:700,color:"#fff"}}>{c.name}</div>
-                          <div style={{fontFamily:"monospace",fontSize:9,color:C.lime,letterSpacing:3,marginTop:2}}>{c.tag}</div>
+                          <div style={{fontSize:24,fontWeight:700,color:"#fff",letterSpacing:"-0.02em"}}>{c.name}</div>
+                          <div className="label-text" style={{fontSize:9,color:C.primary,letterSpacing:2,marginTop:4,fontWeight:"bold"}}>{c.tag}</div>
                         </div>
                       </div>
-                      <div style={{height:1,background:C.border,margin:"14px 0"}}/>
-                      <div style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"12px 14px",marginBottom:12}}>
-                        <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:6}}>VIBE</div>
-                        <div style={{fontFamily:"monospace",fontSize:12,color:"#ccc",lineHeight:1.6}}>{c.vibe}</div>
+                      <div style={{height:1,background:C.border,margin:"24px 0"}}/>
+                      
+                      <div style={{marginBottom:24}}>
+                        <div className="label-text" style={{fontSize:10,color:C.muted,letterSpacing:1.5,marginBottom:8,fontWeight:700}}>AESTHETIC VIBE</div>
+                        <div style={{fontSize:15,color:"#e4e4e7",lineHeight:1.6}}>{c.vibe}</div>
                       </div>
-                      <div style={{marginBottom:12}}>
-                        <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:8}}>BEST FOR</div>
-                        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                          {c.bestFor.map((b,j)=>(
-                            <span key={j} style={{background:"#D4FF0011",border:`1px solid ${C.limeDark}`,color:C.lime,borderRadius:999,padding:"4px 12px",fontFamily:"monospace",fontSize:10}}>{b}</span>
-                          ))}
+
+                      <div style={{display:"grid", gridTemplateColumns: "1fr 1fr", gap: 24}}>
+                        <div>
+                          <div className="label-text" style={{fontSize:10,color:C.muted,letterSpacing:1.5,marginBottom:12,fontWeight:700}}>BEST FOR</div>
+                          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                            {c.bestFor.map((b,j)=>(
+                              <div key={j} style={{display:"flex",alignItems:"center",gap:8, fontSize:12, color:"#a1a1aa"}}>
+                                <div style={{width:4, height:4, borderRadius:"50%", background:C.primary}}/>
+                                {b}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                           <div className="label-text" style={{fontSize:10,color:C.muted,letterSpacing:1.5,marginBottom:12,fontWeight:700}}>SOCIAL TARGET</div>
+                           <div style={{fontSize:12, color:C.primary, lineHeight:1.5}}>{c.social}</div>
                         </div>
                       </div>
-                      <div style={{background:"#0a1400",border:`1px solid ${C.limeDark}`,borderRadius:8,padding:"12px 14px",marginBottom:12}}>
-                        <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:6}}>SOCIAL MEDIA</div>
-                        <div style={{fontFamily:"monospace",fontSize:11,color:C.lime,lineHeight:1.6}}>{c.social}</div>
-                      </div>
-                      <div style={{background:"#1a0000",border:"1px solid #3a1a1a",borderRadius:8,padding:"12px 14px"}}>
-                        <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:6}}>AVOID</div>
-                        <div style={{fontFamily:"monospace",fontSize:11,color:"#CC4444",lineHeight:1.6}}>{c.avoid}</div>
+
+                      <div style={{marginTop:32, padding:20, borderRadius:12, background:"rgba(220, 38, 38, 0.05)", border:"1px solid rgba(220, 38, 38, 0.1)"}}>
+                        <div className="label-text" style={{fontSize:10,color:"#ef4444",letterSpacing:1.5,marginBottom:8,fontWeight:700}}>USAGE WARNING / AVOID</div>
+                        <div style={{fontSize:12,color:"#fca5a5",lineHeight:1.6}}>{c.avoid}</div>
                       </div>
                     </div>
                   );})()}
@@ -385,97 +390,80 @@ export default function CameraGuide() {
             {/* SCENE WRITING TAB */}
             {tab==="SCENE WRITING" && (
               <div style={{display:"flex",flexDirection: window.innerWidth < 768 ? "column" : "row", flex:1,overflow:"hidden"}}>
-
-                {/* Left sidebar */}
                 <div style={{
-                  width: window.innerWidth < 768 ? "100%" : 200,
-                  height: window.innerWidth < 768 ? 140 : "auto",
-                  borderRight: window.innerWidth < 768 ? "none" : `1px solid ${C.border}`,
-                  borderBottom: window.innerWidth < 768 ? `1px solid ${C.border}` : "none",
-                  overflowY: window.innerWidth < 768 ? "auto" : "auto",
-                  background:C.bg,flexShrink:0
+                  width: window.innerWidth < 768 ? "100%" : 220,
+                  borderRight: `1px solid ${C.border}`,
+                  overflowY: "auto",
+                  background:C.bg,flexShrink:0, padding: 12
                 }}>
-                  {/* Formula strip */}
-                  <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.border}`}}>
-                    <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:10}}>PROMPT FORMULA</div>
-                    {FORMULA.map((f,i)=>(
-                      <div key={i} style={{marginBottom:6}}>
-                        <div style={{fontFamily:"monospace",fontSize:7,color:f.color,letterSpacing:2,marginBottom:2}}>{f.label}</div>
-                        <div style={{background:f.color==="#D4FF00"?"#D4FF0011":"#0f0f0f",border:`1px solid ${f.color}22`,borderRadius:4,padding:"4px 8px",fontFamily:"monospace",fontSize:8,color:f.color==="#D4FF00"?C.lime:"#666",lineHeight:1.4}}>{f.content}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Scene type buttons */}
-                  <div style={{padding:"8px 0"}}>
-                    <div style={{padding:"8px 14px",fontFamily:"monospace",fontSize:9,color:"#444",letterSpacing:3}}>SCENE TYPES</div>
-                    {SCENE_TYPES.map((s,i)=>(
-                      <button key={i} className="sb" onClick={()=>setScene(i)} style={{
-                        width:"100%",padding:"10px 14px",textAlign:"left",border:"none",
-                        background:scene===i?"#D4FF0011":"transparent",
-                        borderLeft:`2px solid ${scene===i?s.color:"transparent"}`,
-                        cursor:"pointer",transition:"all 0.15s",display:"flex",alignItems:"center",gap:8
-                      }}>
-                        <span style={{fontSize:14}}>{s.icon}</span>
-                        <div style={{fontFamily:"monospace",fontSize:9,fontWeight:700,color:scene===i?s.color:"#666",letterSpacing:1}}>{s.type}</div>
-                      </button>
-                    ))}
-                  </div>
+                  <div className="label-text" style={{fontSize:10,color:C.muted,letterSpacing:1.5,marginBottom:12,paddingLeft:8,fontWeight:700}}>SCENE TYPES</div>
+                  {SCENE_TYPES.map((s,i)=>(
+                    <button key={i} className="sb" onClick={()=>setScene(i)} style={{
+                      width:"100%",padding:"10px 12px",textAlign:"left",border:"none",
+                      borderRadius: 8,
+                      background:scene===i?"rgba(255,255,255,0.05)":"transparent",
+                      cursor:"pointer",transition:"all 0.15s",display:"flex",alignItems:"center",gap:10,
+                      marginBottom: 2
+                    }}>
+                      <span style={{fontSize:16}}>{s.icon}</span>
+                      <div style={{fontSize:11,fontWeight:500,color:scene===i?"#fff":C.muted}}>{s.type}</div>
+                    </button>
+                  ))}
+                  <div style={{height:1, background:C.border, margin: "16px 8px"}}/>
+                  <div className="label-text" style={{fontSize:9,color:C.muted,letterSpacing:1.5,marginBottom:12,paddingLeft:8,fontWeight:700}}>QUICK FORMULA</div>
+                   {FORMULA.slice(0,3).map((f,i)=>(
+                    <div key={i} style={{padding:"0 8px", marginBottom:10}}>
+                      <div className="label-text" style={{fontSize:7, color:C.muted, textTransform:"uppercase", marginBottom:3}}>{f.label}</div>
+                      <div style={{fontSize:10, color:"#fff", fontWeight:500}}>{f.content}</div>
+                    </div>
+                  ))}
                 </div>
 
-                {/* Scene detail */}
-                <div style={{flex:1,overflowY:"auto",padding:24}}>
+                <div style={{flex:1,overflowY:"auto",padding:32}}>
                   {(()=>{const s=SCENE_TYPES[scene];return(
-                    <div>
-                      {/* Title */}
-                      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
-                        <span style={{fontSize:26}}>{s.icon}</span>
+                    <div style={{maxWidth:600}}>
+                      <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:8}}>
+                        <span style={{fontSize:32}}>{s.icon}</span>
                         <div>
-                          <div style={{fontFamily:"monospace",fontSize:15,fontWeight:700,color:s.color,letterSpacing:2}}>{s.type}</div>
-                          <div style={{fontFamily:"monospace",fontSize:9,color:"#444",letterSpacing:2,marginTop:2}}>HOW TO WRITE THIS SCENE</div>
+                          <div style={{fontSize:24,fontWeight:700,color:"#fff",letterSpacing:"-0.02em"}}>{s.type}</div>
+                          <div className="label-text" style={{fontSize:9,color:s.color,letterSpacing:2,marginTop:4,fontWeight:700}}>NARRATIVE BLUEPRINT</div>
                         </div>
                       </div>
-                      <div style={{height:1,background:C.border,margin:"12px 0"}}/>
+                      <div style={{height:1,background:C.border,margin:"24px 0"}}/>
 
-                      {/* Formula */}
-                      <div style={{marginBottom:14}}>
-                        <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:8}}>FORMULA</div>
-                        <div style={{background:C.bg,border:`1px solid ${s.color}44`,borderRadius:8,padding:"10px 12px",fontFamily:"monospace",fontSize:10,color:s.color,lineHeight:1.6}}>{s.formula}</div>
+                      <div style={{marginBottom:24, padding:20, borderRadius:12, background:"rgba(255,255,255,0.03)", border:`1px solid ${C.border}`}}>
+                        <div className="label-text" style={{fontSize:10,color:C.muted,letterSpacing:1.5,marginBottom:12,fontWeight:700}}>PROMPT STRUCTURE</div>
+                        <div className="label-text" style={{fontSize:12,color:s.color,lineHeight:1.6}}>{s.formula}</div>
                       </div>
 
-                      {/* Bad vs Good */}
-                      <div style={{display:"grid",gridTemplateColumns: window.innerWidth < 768 ? "1fr" : "1fr 1fr",gap:10,marginBottom:14}}>
-                        <div style={{background:"#140000",border:"1px solid #3a1a1a",borderRadius:8,padding:14}}>
-                          <div style={{fontFamily:"monospace",fontSize:9,color:"#CC4444",letterSpacing:3,marginBottom:8}}>❌ WRONG</div>
-                          <div style={{fontFamily:"monospace",fontSize:10,color:"#CC4444",lineHeight:1.6,marginBottom:8,fontStyle:"italic"}}>"{s.bad}"</div>
-                          <div style={{fontFamily:"monospace",fontSize:9,color:"#663333",lineHeight:1.5}}>{s.badReason}</div>
+                      <div style={{display:"grid",gridTemplateColumns: window.innerWidth < 768 ? "1fr" : "1fr 1fr",gap:16,marginBottom:32}}>
+                        <div style={{background:"rgba(220, 38, 38, 0.05)",border:"1px solid rgba(220, 38, 38, 0.1)",borderRadius:12,padding:20}}>
+                          <div className="label-text" style={{fontSize:10,color:"#ef4444",letterSpacing:1.5,marginBottom:12,fontWeight:700}}>❌ WEAK EXAMPLE</div>
+                          <div style={{fontSize:13,color:"#fca5a5",lineHeight:1.6,marginBottom:12,fontStyle:"italic"}}>"{s.bad}"</div>
+                          <div style={{fontSize:11,color:"rgba(252, 165, 165, 0.6)",lineHeight:1.5}}>{s.badReason}</div>
                         </div>
-                        <div style={{background:"#0a1400",border:`1px solid ${C.limeDark}`,borderRadius:8,padding:14}}>
-                          <div style={{fontFamily:"monospace",fontSize:9,color:C.lime,letterSpacing:3,marginBottom:8}}>✅ CORRECT</div>
-                          <div style={{fontFamily:"monospace",fontSize:9,color:C.lime,lineHeight:1.7,marginBottom:8}}>"{s.good}"</div>
-                          <div style={{fontFamily:"monospace",fontSize:9,color:"#4a8a1a",lineHeight:1.5}}>{s.goodReason}</div>
-                        </div>
-                      </div>
-
-                      {/* Verbs */}
-                      <div style={{marginBottom:16}}>
-                        <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:8}}>STRONG VERBS</div>
-                        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                          {s.verbs.map((v,i)=>(
-                            <span key={i} style={{background:C.surface,border:`1px solid #222`,color:"#888",borderRadius:6,padding:"4px 10px",fontFamily:"monospace",fontSize:10}}>{v}</span>
-                          ))}
+                        <div style={{background:"rgba(34, 197, 94, 0.05)",border:"1px solid rgba(34, 197, 94, 0.1)",borderRadius:12,padding:20}}>
+                          <div className="label-text" style={{fontSize:10,color:"#22c55e",letterSpacing:1.5,marginBottom:12,fontWeight:700}}>✅ STRONG EXAMPLE</div>
+                          <div style={{fontSize:12,color:"#86efac",lineHeight:1.7,marginBottom:12}}>"{s.good}"</div>
+                          <div style={{fontSize:11,color:"rgba(134, 239, 172, 0.6)",lineHeight:1.5}}>{s.goodReason}</div>
                         </div>
                       </div>
 
-                      {/* 5 Rules */}
-                      <div style={{height:1,background:C.border,margin:"14px 0"}}/>
-                      <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:10}}>5 RULES FOR EVERY SCENE</div>
-                      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      <div className="label-text" style={{fontSize:10,color:C.muted,letterSpacing:1.5,marginBottom:12,fontWeight:700}}>MASTER KEYWORDS</div>
+                      <div style={{display:"flex",flexWrap:"wrap",gap:8, marginBottom:40}}>
+                        {s.verbs.map((v,i)=>(
+                          <span key={i} style={{background:C.bg,border:`1px solid ${C.border}`,color:"#a1a1aa",borderRadius:8,padding:"6px 14px",fontSize:11}}>{v}</span>
+                        ))}
+                      </div>
+
+                      <div className="label-text" style={{fontSize:10,color:C.muted,letterSpacing:1.5,marginBottom:16,fontWeight:700}}>CORE DIRECTIVES</div>
+                      <div style={{display:"grid", gridTemplateColumns: "1fr 1fr", gap:12}}>
                         {RULES.map((r,i)=>(
-                          <div key={i} style={{display:"flex",gap:12,background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",alignItems:"flex-start"}}>
-                            <div style={{fontFamily:"monospace",fontSize:14,fontWeight:700,color:r.color,flexShrink:0,minWidth:26}}>{r.num}</div>
+                          <div key={i} style={{display:"flex",gap:12,background:C.bg,border:`1px solid ${C.border}`,borderRadius:12,padding:16,alignItems:"flex-start"}}>
+                            <div style={{fontSize:11,fontWeight:700,color:r.color}}>{r.num}</div>
                             <div>
-                              <div style={{fontFamily:"monospace",fontSize:10,fontWeight:700,color:"#fff",letterSpacing:1,marginBottom:3}}>{r.title}</div>
-                              <div style={{fontFamily:"monospace",fontSize:9,color:"#555",lineHeight:1.6}}>{r.desc}</div>
+                              <div style={{fontSize:11,fontWeight:700,color:"#fff",marginBottom:4}}>{r.title}</div>
+                              <div style={{fontSize:10,color:C.muted,lineHeight:1.5}}>{r.desc}</div>
                             </div>
                           </div>
                         ))}
@@ -489,99 +477,77 @@ export default function CameraGuide() {
             {/* COMPOSITION TAB */}
             {tab==="COMPOSITION" && (
               <div style={{display:"flex",flexDirection: window.innerWidth < 768 ? "column" : "row", flex:1,overflow:"hidden"}}>
-                {/* Left list */}
                 <div style={{
-                  width: window.innerWidth < 768 ? "100%" : 200,
-                  height: window.innerWidth < 768 ? 80 : "auto",
-                  borderRight: window.innerWidth < 768 ? "none" : `1px solid ${C.border}`,
-                  borderBottom: window.innerWidth < 768 ? `1px solid ${C.border}` : "none",
-                  overflowX: window.innerWidth < 768 ? "auto" : "hidden",
-                  overflowY: window.innerWidth < 768 ? "hidden" : "auto",
-                  background:C.bg,flexShrink:0,padding: window.innerWidth < 768 ? "4px" : "8px 0",
-                  display: window.innerWidth < 768 ? "flex" : "block"
+                  width: window.innerWidth < 768 ? "100%" : 220,
+                  borderRight: `1px solid ${C.border}`,
+                  overflowY: "auto",
+                  background:C.bg,flexShrink:0, padding: 12
                 }}>
-                  <div style={{display: window.innerWidth < 768 ? "none" : "block", padding:"10px 14px 6px",fontFamily:"monospace",fontSize:9,color:"#444",letterSpacing:3}}>SELECT COMPOSITION</div>
+                  <div className="label-text" style={{fontSize:10,color:C.muted,letterSpacing:1.5,marginBottom:12,paddingLeft:8,fontWeight:700}}>FRAMING STYLES</div>
                   {COMPOSITIONS.map((co,i)=>(
                     <button key={i} className="sb" onClick={()=>setComp(i)} style={{
-                      width: window.innerWidth < 768 ? "auto" : "100%",
-                      padding: window.innerWidth < 768 ? "6px 10px" : "10px 14px",
+                      width: "100%",
+                      padding: "10px 12px",
                       textAlign:"left",border:"none",
-                      background:comp===i?"#D4FF0011":"transparent",
-                      borderLeft: window.innerWidth < 768 ? "none" : `2px solid ${comp===i?co.color:"transparent"}`,
-                      borderBottom: window.innerWidth < 768 ? `2px solid ${comp===i?co.color:"transparent"}` : "none",
-                      cursor:"pointer",transition:"all 0.15s",display:"flex",alignItems:"center",gap:10,
-                      flexShrink: 0
+                      borderRadius: 8,
+                      background:comp===i?"rgba(255,255,255,0.05)":"transparent",
+                      cursor:"pointer",transition:"all 0.15s",display:"flex",alignItems:"center",gap:12,
+                      marginBottom: 2
                     }}>
-                      <span style={{fontSize:16,color:comp===i?co.color:"#444",fontWeight:700,minWidth:20}}>{co.icon}</span>
+                      <span style={{fontSize:18,color:comp===i?co.color:C.muted}}>{co.icon}</span>
                       <div>
-                        <div style={{fontFamily:"monospace",fontSize:9,fontWeight:700,color:comp===i?co.color:"#777",letterSpacing:1}}>{co.name}</div>
-                        <div style={{fontFamily:"monospace",fontSize:8,color:comp===i?co.color+"88":"#333",marginTop:2,letterSpacing:1}}>{co.tag.split("·")[0].trim()}</div>
+                        <div style={{fontSize:11,fontWeight:500,color:comp===i?"#fff":C.muted}}>{co.name}</div>
+                        <div className="label-text" style={{fontSize:7,color:comp===i?co.color:C.muted,marginTop:2,letterSpacing:0.5,textTransform:"uppercase"}}>{co.tag.split("·")[0]}</div>
                       </div>
                     </button>
                   ))}
                 </div>
 
-                {/* Right detail */}
-                <div style={{flex:1,overflowY:"auto",padding:24}}>
+                <div style={{flex:1,overflowY:"auto",padding:32}}>
                   {(()=>{const co=COMPOSITIONS[comp];return(
-                    <div>
-                      {/* Title */}
-                      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:6}}>
-                        <div style={{width:48,height:48,borderRadius:10,background:`${co.color}11`,border:`1px solid ${co.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:co.color,fontWeight:700,flexShrink:0}}>{co.icon}</div>
+                    <div style={{maxWidth:600}}>
+                      <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:8}}>
+                        <div style={{width:56,height:56,borderRadius:14,background:`rgba(255,255,255,0.03)`,border:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,color:co.color,flexShrink:0}}>{co.icon}</div>
                         <div>
-                          <div style={{fontFamily:"monospace",fontSize:16,fontWeight:700,color:co.color,letterSpacing:2}}>{co.name}</div>
-                          <div style={{fontFamily:"monospace",fontSize:9,color:"#555",letterSpacing:2,marginTop:2}}>{co.tag}</div>
+                          <div style={{fontSize:24,fontWeight:700,color:"#fff",letterSpacing:"-0.02em"}}>{co.name}</div>
+                          <div className="label-text" style={{fontSize:9,color:C.muted,letterSpacing:2,marginTop:4,fontWeight:700}}>{co.tag}</div>
                         </div>
                       </div>
-                      <div style={{height:1,background:C.border,margin:"14px 0"}}/>
+                      <div style={{height:1,background:C.border,margin:"24px 0"}}/>
 
-                      {/* What is it */}
-                      <div style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"14px 16px",marginBottom:14}}>
-                        <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:8}}>WHAT IS IT</div>
-                        <div style={{fontFamily:"monospace",fontSize:11,color:"#ccc",lineHeight:1.8}}>{co.what}</div>
+                      <div style={{marginBottom:32}}>
+                        <div className="label-text" style={{fontSize:10,color:C.muted,letterSpacing:1.5,marginBottom:8,fontWeight:700}}>DEFINITION</div>
+                        <div style={{fontSize:16,color:"#e4e4e7",lineHeight:1.7}}>{co.what}</div>
                       </div>
 
-                      {/* Best for + Avoid row */}
-                      <div style={{display:"grid",gridTemplateColumns: window.innerWidth < 768 ? "1fr" : "1fr 1fr",gap:12,marginBottom:14}}>
-                        <div style={{background:"#0a1400",border:`1px solid ${C.limeDark}`,borderRadius:8,padding:12}}>
-                          <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:10}}>✅ BEST FOR</div>
-                          <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                      <div style={{display:"grid",gridTemplateColumns: window.innerWidth < 768 ? "1fr" : "1fr 1fr",gap:24,marginBottom:32}}>
+                        <div>
+                          <div className="label-text" style={{fontSize:10,color:C.muted,letterSpacing:1.5,marginBottom:12,fontWeight:700}}>✅ BEST FOR</div>
+                          <div style={{display:"flex",flexDirection:"column",gap:8}}>
                             {co.bestFor.map((b,i)=>(
-                              <div key={i} style={{display:"flex",alignItems:"center",gap:6}}>
-                                <div style={{width:4,height:4,borderRadius:"50%",background:C.lime,flexShrink:0}}/>
-                                <span style={{fontFamily:"monospace",fontSize:9,color:"#aaa"}}>{b}</span>
+                              <div key={i} style={{display:"flex",alignItems:"center",gap:8, fontSize:12, color:"#a1a1aa"}}>
+                                <div style={{width:4, height:4, borderRadius:"50%", background:co.color}}/>
+                                {b}
                               </div>
                             ))}
                           </div>
                         </div>
-                        <div style={{background:"#140000",border:"1px solid #3a1a1a",borderRadius:8,padding:12}}>
-                          <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:10}}>❌ AVOID</div>
-                          <div style={{fontFamily:"monospace",fontSize:9,color:"#CC4444",lineHeight:1.5}}>{co.avoid}</div>
+                        <div style={{background:"rgba(220, 38, 38, 0.05)",border:"1px solid rgba(220, 38, 38, 0.1)",borderRadius:12,padding:20}}>
+                          <div className="label-text" style={{fontSize:10,color:"#ef4444",letterSpacing:1.5,marginBottom:8,fontWeight:700}}>❌ AVOID</div>
+                          <div style={{fontSize:12,color:"#fca5a5",lineHeight:1.6}}>{co.avoid}</div>
                         </div>
                       </div>
 
-                      {/* Scene match */}
-                      <div style={{marginBottom:14}}>
-                        <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:8}}>PAIRS WITH SCENE TYPE</div>
-                        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                          {co.sceneMatch.map((s,i)=>(
-                            <span key={i} style={{background:`${co.color}11`,border:`1px solid ${co.color}33`,color:co.color,borderRadius:6,padding:"4px 12px",fontFamily:"monospace",fontSize:9,letterSpacing:1}}>{s}</span>
-                          ))}
-                        </div>
+                      <div style={{marginBottom:32, padding:24, borderRadius:12, background:"#0a0a0a", border:`1px solid ${C.border}`}}>
+                        <div className="label-text" style={{fontSize:10,color:C.muted,letterSpacing:1.5,marginBottom:12,fontWeight:700}}>PROMPT SNIPPET</div>
+                        <div style={{fontSize:13,color:co.color,lineHeight:1.6,fontStyle:"italic"}}>"{co.promptAdd}"</div>
                       </div>
 
-                      {/* Prompt add */}
-                      <div style={{background:"#0a0a14",border:"1px solid #2a2a4a",borderRadius:8,padding:"14px 16px",marginBottom:14}}>
-                        <div style={{fontFamily:"monospace",fontSize:9,color:C.gold,letterSpacing:3,marginBottom:8}}>ADD TO YOUR PROMPT</div>
-                        <div style={{fontFamily:"monospace",fontSize:10,color:"#8a8aff",lineHeight:1.8,fontStyle:"italic"}}>"{co.promptAdd}"</div>
-                      </div>
-
-                      {/* Pro tip */}
-                      <div style={{background:`${co.color}08`,border:`1px solid ${co.color}22`,borderRadius:8,padding:"12px 16px",display:"flex",gap:10,alignItems:"flex-start"}}>
-                        <span style={{fontSize:16,flexShrink:0}}>💡</span>
+                      <div style={{padding:20, borderRadius:12, background:`rgba(255,255,255,0.02)`, border:`1px solid ${C.border}`, display:"flex", gap:16, alignItems:"center"}}>
+                        <span style={{fontSize:24}}>💡</span>
                         <div>
-                          <div style={{fontFamily:"monospace",fontSize:9,color:co.color,letterSpacing:3,marginBottom:4}}>PRO TIP</div>
-                          <div style={{fontFamily:"monospace",fontSize:10,color:"#aaa",lineHeight:1.7}}>{co.tip}</div>
+                          <div className="label-text" style={{fontSize:9,color:C.primary,letterSpacing:1.5,marginBottom:4,fontWeight:700}}>PRO TIP</div>
+                          <div style={{fontSize:12,color:"#a1a1aa",lineHeight:1.6}}>{co.tip}</div>
                         </div>
                       </div>
                     </div>
@@ -591,10 +557,10 @@ export default function CameraGuide() {
             )}
 
             {/* Footer */}
-            <div style={{padding:"12px 20px",borderTop:`1px solid ${C.border}`,background:C.bg,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontFamily:"monospace",fontSize:9,color:"#3F3F46",letterSpacing:3}}>STUDIO GUIDE · REFERENCE</span>
-              <span style={{fontFamily:"monospace",fontSize:10,fontWeight:700,color:C.lime,letterSpacing:2}}>
-                {tab==="CAMERA"?`${cam+1} / ${CAMERAS.length} CAMERAS`:tab==="SCENE WRITING"?`${scene+1} / ${SCENE_TYPES.length} SCENE TYPES`:`${comp+1} / ${COMPOSITIONS.length} COMPOSITIONS`}
+            <div style={{padding:"14px 24px",borderTop:`1px solid ${C.border}`,background:C.bg,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span className="label-text" style={{fontSize:8,color:C.muted,letterSpacing:2}}>EST. 2024 · CINEMATIC INTELLIGENCE UNIT</span>
+              <span className="label-text" style={{fontSize:10,fontWeight:700,color:C.primary,letterSpacing:1}}>
+                {tab==="CAMERA"?`${cam+1} / ${CAMERAS.length}`:tab==="SCENE WRITING"?`${scene+1} / ${SCENE_TYPES.length}`:`${comp+1} / ${COMPOSITIONS.length}`}
               </span>
             </div>
           </div>

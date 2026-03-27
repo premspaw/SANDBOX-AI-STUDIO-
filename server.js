@@ -246,18 +246,34 @@ if (await isRedisAvailable()) {
             await updateJobStatus(job.id, 'processing');
             const mockReq = { body: reqBody };
             let finalUrl = null;
+            let workerError = null;
             const mockRes = { 
-                json: (d) => { finalUrl = d.url; return d; }, 
+                json: (d) => { 
+                    if (d.error || d.message) {
+                        workerError = d.message || d.error;
+                    }
+                    if (d.url) {
+                        finalUrl = d.url; 
+                    }
+                    return d; 
+                }, 
                 status: () => mockRes, 
                 headersSent: false 
             };
             try {
                 await handleGoogle(mockReq, mockRes);
-                if (!finalUrl) throw new Error("handleGoogle did not return a valid URL");
+                console.log(`[WORKER] handleGoogle finished for job ${job.id}. finalUrl: ${finalUrl}, workerError: ${workerError}`);
+                
+                if (!finalUrl && !workerError) {
+                    throw new Error("AI Engine finished without returning a result or an error message.");
+                }
+                if (workerError) {
+                    throw new Error(workerError);
+                }
                 await updateJobStatus(job.id, 'completed', { url: finalUrl });
-                console.log(`[WORKER] Image job ${job.id} completed successfully.`);
+                console.log(`[WORKER] Image job ${job.id} completed successfully. URL: ${finalUrl}`);
             } catch (err) {
-                console.error(`[WORKER] Image job ${job.id} failed:`, err);
+                console.error(`[WORKER] Image job ${job.id} failed:`, err.message);
                 await updateJobStatus(job.id, 'failed', null, err.message);
                 throw err;
             }
@@ -270,18 +286,31 @@ if (await isRedisAvailable()) {
             await updateJobStatus(job.id, 'processing');
             const mockReq = { body: reqBody };
             let finalUrl = null, finalVideoUrl = null;
+            let workerError = null;
             const mockRes = { 
-                json: (d) => { finalUrl = d.url; finalVideoUrl = d.videoUrl; return d; }, 
+                json: (d) => { 
+                    if (d.error || d.message) {
+                        workerError = d.message || d.error;
+                    }
+                    if (d.url) finalUrl = d.url;
+                    if (d.videoUrl) finalVideoUrl = d.videoUrl;
+                    return d; 
+                }, 
                 status: () => mockRes, 
                 headersSent: false 
             };
             try {
                 await handleGoogle(mockReq, mockRes);
-                if (!finalUrl && !finalVideoUrl) throw new Error("handleGoogle did not return a valid URL or videoUrl");
+                if (!finalUrl && !finalVideoUrl && !workerError) {
+                    throw new Error("AI Engine finished without returning a video result or an error message.");
+                }
+                if (workerError) {
+                    throw new Error(workerError);
+                }
                 await updateJobStatus(job.id, 'completed', { url: finalUrl, videoUrl: finalVideoUrl });
                 console.log(`[WORKER] Video job ${job.id} completed successfully.`);
             } catch (err) {
-                console.error(`[WORKER] Video job ${job.id} failed:`, err);
+                console.error(`[WORKER] Video job ${job.id} failed:`, err.message);
                 await updateJobStatus(job.id, 'failed', null, err.message);
                 throw err;
             }
@@ -2155,9 +2184,11 @@ async function handleGoogle(req, res) {
             const modelName = modelNameRaw.startsWith('models/') ? modelNameRaw : `models/${modelNameRaw}`;
             // Resolve Image Size from user input
             let imageSize = "1K";
-            if (quality === '4k') imageSize = "4K";
-            else if (quality === '2k') imageSize = "2K";
+            const effectiveQuality = (quality || resolution || "").toLowerCase();
+            if (effectiveQuality === '4k') imageSize = "4K";
+            else if (effectiveQuality === '2k') imageSize = "2K";
             
+            // Only allow Pro features if using a Pro model OR explicitly requested via 4K/2K
             const isPro = modelName.includes('pro') || imageSize === '4K' || imageSize === "2K";
 
             // Resolve Image Parts
@@ -2222,7 +2253,7 @@ async function handleGoogle(req, res) {
                 }
             };
 
-            console.log(`[BACKEND] Calling Imagen REST API: ${modelName}`);
+            console.log(`[IMAGEN-REST] Requesting: ${modelName} | Ratio: ${validRatio} | Size: ${isPro ? imageSize : "1K"}`);
             
             const urlObj = new URL(apiUrl);
             const postData = JSON.stringify(requestBody);
@@ -2246,6 +2277,8 @@ async function handleGoogle(req, res) {
                     res.on('end', () => {
                         try {
                             const parsed = JSON.parse(data);
+                            console.log(`[IMAGEN-REST-DEBUG] StatusCode: ${res.statusCode} | Response Head: ${data.substring(0, 500)}`);
+                            
                             if (res.statusCode >= 400) {
                                 console.error("[IMAGEN-REST-ERR]", data);
                                 reject(new Error(parsed.error?.message || `Google API Error: ${res.statusCode}`));
@@ -2253,12 +2286,17 @@ async function handleGoogle(req, res) {
                                 resolve(parsed);
                             }
                         } catch (e) {
+                            console.error("[IMAGEN-REST-ERR] Parse Error:", data.substring(0, 500));
                             reject(new Error("Failed to parse Google API response"));
                         }
                     });
                 });
-                req.on('error', (e) => reject(e));
+                req.on('error', (e) => {
+                    console.error("[IMAGEN-REST-ERR] Network Error:", e.message);
+                    reject(e);
+                });
                 req.setTimeout(180000, () => {
+                    console.error("[IMAGEN-REST-ERR] Request Timeout (180s)");
                     req.destroy();
                     reject(new Error("Imagen API Request Timeout (180s)"));
                 });
@@ -2273,7 +2311,7 @@ async function handleGoogle(req, res) {
 
             if (!outputPart) {
                 const safetyFeedback = result.promptFeedback;
-                console.error("[AI_BLOCK]", safetyFeedback || "Empty Response");
+                console.error("[AI_BLOCK]", JSON.stringify(result, null, 2));
                 throw new Error(safetyFeedback ? "Content safety block triggered." : "AI engine returned an empty frame.");
             }
 
@@ -2282,6 +2320,13 @@ async function handleGoogle(req, res) {
                 userId,
                 outputPart.inlineData.mimeType
             );
+
+            console.log(`[BACKEND] uploadImageToSupabase result: ${finalUrl ? finalUrl.substring(0, 50) + '...' : 'null'}`);
+
+            if (!finalUrl) {
+                throw new Error("The AI model returned success but no image parity was extracted from the response.");
+            }
+            
             return res.json({ url: finalUrl });
         }
     } catch (error) {

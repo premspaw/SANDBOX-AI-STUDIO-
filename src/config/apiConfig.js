@@ -47,3 +47,24 @@ export const getWsUrl = () => {
     const base = API_BASE_URL.replace('http://', 'ws://').replace('https://', 'wss://');
     return base;
 };
+
+/**
+ * Resolves a URL to its correct form (handles base64, remote, and relative paths)
+ * @param {string} url - The URL or base64 string
+ * @returns {string} - The resolved URL
+ */
+export const resolveUrl = (url) => {
+    if (!url) return '';
+    if (typeof url !== 'string') return url;
+    
+    if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:'))
+        return url;
+        
+    // Handle raw base64 strings that might have been saved without prefix
+    if (url.startsWith('/9j/') || (url.length > 1000 && !url.includes('/'))) {
+        return `data:image/jpeg;base64,${url.startsWith('/') ? url.substring(1) : url}`;
+    }
+    
+    const path = url.startsWith('/') ? url : '/' + url;
+    return `${API_BASE_URL}${path}`;
+};

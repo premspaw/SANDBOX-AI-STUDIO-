@@ -26,7 +26,7 @@ import {
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store';
-import { getApiUrl, API_BASE_URL } from '../../config/apiConfig';
+import { getApiUrl, API_BASE_URL, resolveUrl } from '../../config/apiConfig';
 import { LANDING_ASSETS } from '../../config/landingAssets';
 
 const API = API_BASE_URL;
@@ -35,13 +35,6 @@ const API = API_BASE_URL;
 function CharacterKitCard({ character, onDirectorsCut, onDelete, onSelectReference, compact }) {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-
-    const resolveUrl = (url) => {
-        if (!url) return null;
-        if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:'))
-            return url;
-        return `${API}${url}`;
-    };
 
     const handleDelete = async (e) => {
         e.stopPropagation();
@@ -210,7 +203,8 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         models: [],
         upscaled: [],
         characters: [],
-        landing: []
+        landing: [],
+        templates: []
     });
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -236,7 +230,6 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     models: [],
                     upscaled: [],
                     characters: [],
-                    landing: []
                 });
                 setLoading(false);
                 return;
@@ -251,9 +244,9 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
 
             if (imgError) console.error("Images error:", imgError.message);
 
-            // --- Categorize DB Assets into Images vs Videos (Moved up for visibility) ---
-            const dbImages = (dbAssets || []).filter(a => !a?.url?.match(/\.(mp4|webm|mov)$/i));
-            const dbVideos = (dbAssets || []).filter(a => a?.url?.match(/\.(mp4|webm|mov)$/i));
+            // --- Categorize DB Assets into Images vs Videos (Using 'type' field or fallback to regex) ---
+            const dbImages = (dbAssets || []).filter(a => a.type === 'image' || (!a.type && !a?.url?.match(/\.(mp4|webm|mov)$/i)));
+            const dbVideos = (dbAssets || []).filter(a => a.type === 'video' || (!a.type && a?.url?.match(/\.(mp4|webm|mov)$/i)));
 
             // 2. Fetch characters from CHARACTERS table for current user only
             const { data: dbCharacters, error: charError } = await supabase
@@ -321,20 +314,6 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 }
             });
 
-            // 4. Fetch Landing Inventory (Global via API)
-            let landingAssets = [];
-            try {
-                const landingResp = await fetch(getApiUrl('/api/landing-assets-library'));
-                const landingData = await landingResp.json();
-                landingAssets = (landingData.assets || []).map(a => ({
-                    ...a,
-                    type: a.type || (a.url?.match(/\.(mp4|webm|mov)$/i) ? 'video' : 'image'),
-                    name: a.name || 'Landing Asset'
-                }));
-            } catch (e) {
-                console.warn("Landing assets fetch failed:", e.message);
-            }
-
             const newAssets = {
                 images: [...sharedImages, ...dbImages],
                 videos: [...sharedVideos, ...dbVideos],
@@ -344,7 +323,6 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 ],
                 upscaled: [],
                 characters: finalCharacters,
-                landing: landingAssets || []
             };
 
             setAssets(newAssets);
@@ -381,7 +359,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     characters: data.results.map(c => ({
                         id: c.id,
                         name: c.name,
-                        image: c.image,
+                        image: resolveUrl(c.image),
                         visualStyle: c.visual_style,
                         date: 'Semantic Match',
                         rawData: c
@@ -400,10 +378,9 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         if (!window.confirm("Permanently delete this asset from the database?")) return;
         
         try {
-            if (tab === 'landing') {
-                const response = await fetch(getApiUrl(`/api/landing-assets-library/${id}`), { method: 'DELETE' });
-                const result = await response.json();
-                if (!response.ok || !result.success) throw new Error(result.error || 'Failed to delete via API');
+            if (tab === 'templates') {
+                // Skip or handle as error if templates are no longer supported
+                return;
             } else {
                 const { error } = await supabase.from('assets').delete().eq('id', id);
                 if (error) throw error;
@@ -435,6 +412,41 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         { id: 'models', label: 'AI Models', icon: Box },
         { id: 'upscaled', label: 'Upscaled', icon: ArrowBigUpDash },
     ];
+
+    const handleUploadTemplate = async () => {
+        const title = document.getElementById('tplTitle')?.value;
+        const context = document.getElementById('tplContext')?.value;
+        const prompt = document.getElementById('tplPrompt')?.value;
+        const fileInput = document.getElementById('tplMedia');
+        const file = fileInput?.files?.[0];
+        if (!title || !prompt || !file) {
+            alert('Please provide title, prompt, and a media file.');
+            return;
+        }
+        
+        try {
+            setLoading(true);
+            const ext = file.name.split('.').pop();
+            const fileName = `template_${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+            const { error: uploadError } = await supabase.storage.from('ugc_assets').upload(fileName, file);
+            if (uploadError) throw uploadError;
+            const { data: urlData } = supabase.storage.from('ugc_assets').getPublicUrl(fileName);
+            const { error: dbError } = await supabase.from('ugc_scene_templates').insert({
+                title, scene_context: context, prompt, img: urlData.publicUrl
+            });
+            if (dbError) throw dbError;
+            alert('Template Uploaded successfully!');
+            document.getElementById('tplTitle').value = '';
+            document.getElementById('tplContext').value = '';
+            document.getElementById('tplPrompt').value = '';
+            fileInput.value = '';
+            fetchAssets(true);
+        } catch (e) {
+            console.error(e);
+            alert('Upload failed: ' + e.message);
+            setLoading(false);
+        }
+    };
 
     const handleConnectDrive = () => {
         setIsConnectedToDrive(true);
@@ -492,10 +504,9 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 <div className="flex gap-4 md:gap-8 overflow-x-auto w-full md:w-auto no-scrollbar">
                     {[
                         { id: 'images', label: 'Images', icon: ImageIcon },
-                        { id: 'characters', label: 'Characters', icon: User },
-                        { id: 'landing', label: 'Landing Inventory', icon: Database },
-                        { id: 'matrix', label: 'Movie Matrix', icon: Box },
                         { id: 'videos', label: 'Videos', icon: Video },
+                        { id: 'characters', label: 'Characters', icon: User },
+                        { id: 'matrix', label: 'Movie Matrix', icon: Box },
                         { id: 'models', label: 'AI Models', icon: Box },
                         { id: 'upscaled', label: 'Upscaled', icon: ArrowBigUpDash }
                     ].map(tab => {
@@ -522,47 +533,30 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     })}
                 </div>
 
-                {/* Neural Search Input + Compact Refresh */}
-                <div className="flex items-center gap-3 pb-4 w-full md:w-auto">
-                    <div className="relative group/search flex-1 md:flex-none">
-                        <input
-                            type="text"
-                            placeholder={isNeuralSearch ? "Search by vibe..." : "Search assets..."}
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && (isNeuralSearch ? handleSemanticSearch() : null)}
-                            className="bg-white/5 border border-white/10 rounded-full px-4 md:px-5 py-2 text-[10px] font-bold w-full md:w-64 lg:w-80 focus:outline-none focus:border-[#bef264]/40 transition-all text-white placeholder-white/20"
-                        />
+
+
+                    <div className="flex items-center gap-3 pb-4 w-full md:w-auto">
+                        {compact && (
+                            <button
+                                onClick={() => fetchAssets(true)}
+                                className="p-2 ml-2 hover:bg-[#bef264]/20 hover:text-[#bef264] rounded-xl text-white/40 border border-white/5 transition-all"
+                                title="Force Refresh"
+                            >
+                                <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+                            </button>
+                        )}
+
                         <button
-                            onClick={() => isNeuralSearch ? handleSemanticSearch() : null}
-                            className="absolute right-2 top-1.5 p-1 hover:bg-white/10 rounded-lg transition-colors"
+                            onClick={() => setIsNeuralSearch(!isNeuralSearch)}
+                            className={`px-3 md:px-4 py-2 rounded-full border text-[8px] md:text-[9px] font-black transition-all flex items-center gap-2 whitespace-nowrap ${isNeuralSearch ? 'bg-[#bef264]/10 border-[#bef264]/40 text-[#bef264]' : 'bg-white/5 border-white/10 text-white/30'}`}
                         >
-                            <CheckCircle2 className="w-4 h-4 text-[#bef264]/60" />
+                            <Bot className="w-3.5 h-3.5" />
+                            {isNeuralSearch ? 'NEURAL_ON' : 'NEURAL_OFF'}
                         </button>
                     </div>
-
-                    {compact && (
-                        <button
-                            onClick={() => fetchAssets(true)}
-                            className="p-2 ml-2 hover:bg-[#bef264]/20 hover:text-[#bef264] rounded-xl text-white/40 border border-white/5 transition-all"
-                            title="Force Refresh"
-                        >
-                            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-                        </button>
-                    )}
-
-                    <button
-                        onClick={() => setIsNeuralSearch(!isNeuralSearch)}
-                        className={`px-3 md:px-4 py-2 rounded-full border text-[8px] md:text-[9px] font-black transition-all flex items-center gap-2 whitespace-nowrap ${isNeuralSearch ? 'bg-[#bef264]/10 border-[#bef264]/40 text-[#bef264]' : 'bg-white/5 border-white/10 text-white/30'}`}
-                    >
-                        <Bot className="w-3.5 h-3.5" />
-                        {isNeuralSearch ? 'NEURAL_ON' : 'NEURAL_OFF'}
-                    </button>
                 </div>
-            </div>
 
-            {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar bg-black/10">
+                <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar bg-black/10">
                 {loading ? (
                     <div className="h-full flex flex-col items-center justify-center gap-6">
                         <RefreshCw className="w-10 h-10 md:w-12 md:h-12 text-[#bef264] animate-spin opacity-50" />
@@ -665,7 +659,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                                 {item.type === 'video' ? (
                                     <div className="aspect-[4/5] bg-black relative flex items-center justify-center group/video">
                                         <video
-                                            src={item.url?.startsWith('http') || item.url?.startsWith('data:') ? item.url : `${API}${item.url}`}
+                                            src={resolveUrl(item.url)}
                                             className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
                                             muted
                                             loop
@@ -679,7 +673,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                                 ) : (
                                     <div className={`${activeTab === 'images' ? 'aspect-square' : 'aspect-[4/5]'} bg-[#050505] relative overflow-hidden`}>
                                         <img
-                                            src={item.url?.startsWith('http') || item.url?.startsWith('data:') ? item.url : `${API}${item.url}`}
+                                            src={resolveUrl(item.url)}
                                             alt={item.name}
                                             className="w-full h-full object-cover transition-all duration-1000 brightness-75 group-hover:brightness-110 group-hover:scale-110"
                                             loading="lazy"

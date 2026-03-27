@@ -211,6 +211,12 @@ export const AssetManager = () => {
                         >
                             Asset Library (DB)
                         </button>
+                        <button 
+                            onClick={() => setActiveTab('templates')}
+                            className={`text-xs font-bold tracking-widest uppercase pb-1 border-b-2 transition-all ${activeTab === 'templates' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-zinc-500 hover:text-white'}`}
+                        >
+                            Scene Templates
+                        </button>
                     </div>
                 </div>
                 <button
@@ -522,6 +528,10 @@ export const AssetManager = () => {
                             </div>
                         </section>
                     </>
+                ) : activeTab === 'templates' ? (
+                    <section className="h-full">
+                        <AssetsLibrary compact={true} />
+                    </section>
                 ) : (
                     <section className="space-y-6">
                         <div className="flex justify-between items-center">

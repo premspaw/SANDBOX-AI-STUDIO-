@@ -1,14 +1,108 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, ImagePlus, Zap, Image as ImageIcon, Download, Settings, Upload, X, Map, Users, Smartphone, Package, Palette, FastForward, Maximize2, Layers, Split, Film, ChevronRight, Save, Grid } from 'lucide-react';
+import { Sparkles, ImagePlus, Zap, Image as ImageIcon, Download, Settings, Upload, X, Map, Users, Smartphone, Package, Palette, FastForward, Maximize2, Layers, Split, Film, ChevronRight, Save, Grid, RefreshCw, Play, Flag, Square } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAppStore } from '../../store';
 import { getApiUrl } from '../../config/apiConfig';
 import { useShorts } from '../../hooks/useShorts';
 import { SHORTS_COST } from '../../config/shortsConfig';
 
+let savedScrollPosition = 0;
+
+const ANGLE_PRESETS = {
+    person: [
+        "Extreme close-up macro of face and eyes",
+        "Full body wide shot from low angle",
+        "High angle bird's eye view",
+        "Side profile 90 degree view",
+        "Medium shot waist up with soft bokeh",
+        "Close-up of hands and accessories",
+        "Back view full body",
+        "Dramatic rim lighting silhouette",
+        "Upper body portrait with direct gaze"
+    ],
+    product: [
+        "Macro close-up of product logo and texture",
+        "High angle flat-lay arrangement",
+        "Hero shot from 45 degree angle",
+        "Bottom-up heroic view",
+        "Side profile clean studio shot",
+        "Lifestyle action shot with product in use",
+        "Top-down 90 degree view",
+        "Deep depth of field focus stacking",
+        "Floating/levitating product shot"
+    ],
+    car: [
+        "Macro detail of headlight/badge",
+        "Low wide-angle front 3/4 view",
+        "Aerial top-down view",
+        "Interior dashboard/steering detail",
+        "Direct side profile shot",
+        "Dynamic motion blur tracking shot",
+        "Rear 3/4 angle showing taillights",
+        "Wheel and tire close-up",
+        "Ground-level dramatic front view"
+    ],
+    fashion: [
+        "Headshot with editorial lighting",
+        "Full body walking stride",
+        "Detail of jewelry/fabric texture",
+        "Low angle dynamic pose",
+        "Overhead artistic perspective",
+        "Candid-style street photography",
+        "Back profile showing garment flow",
+        "Seated dramatic pose",
+        "Three-quarter length portrait"
+    ],
+    food: [
+        "Macro close-up of ingredient texture",
+        "Top-down flat lay table setting",
+        "The 'hero' bite/fork-pull shot",
+        "45-degree rustic platter view",
+        "Action shot (pouring/sprinkling)",
+        "Side profile cross-section",
+        "Atmospheric dim lighting mood shot",
+        "Bright airy overhead view",
+        "Close-up of garnish detail"
+    ],
+    thriller: [
+        "Chiaroscuro high-contrast face",
+        "Extreme high angle looking down",
+        "Slightly tilted Dutch angle wide",
+        "Submerged/water reflection shot",
+        "Silhouette in a dark doorway",
+        "Prying POV through a gap",
+        "Harsh flickering light profile",
+        "Long shot through fog/smoke",
+        "Over-the-shoulder stalking view"
+    ]
+};
+
+const CINEMATIC_ARC_DESC = [
+    "[FRAME 1: THE PORTRAIT] Extreme close-up. Face and eyes only. Macro lens. Heavy bokeh.",
+    "[FRAME 2: THE WIDE] Long shot. Full environment scale. Subject is small. Epic architecture.",
+    "[FRAME 3: THE TEXTURE] Macro detail. Extreme tight on clothing/fabric/saree only.",
+    "[FRAME 4: THE LOW ANGLE] Ground level looking up. Heroic, powerful perspective.",
+    "[FRAME 5: THE DRONE] Bird's eye view. Looking straight down from above.",
+    "[FRAME 6: THE MEDIUM] Waist up. Soft side lighting. 50mm lens aesthetics.",
+    "[FRAME 7: THE SILHOUETTE] Dramatic rim lighting. Near-dark atmosphere.",
+    "[FRAME 8: THE POV] Action first-person view. Subject's hands visible in foreground.",
+    "[FRAME 9: THE FULL SHOT] Head to toe. Frontal vertical composition."
+];
+
+const detectSubjectType = (text = "") => {
+    const t = (text || "").toLowerCase();
+    if (t.includes('car') || t.includes('vehicle') || t.includes('automotive')) return 'car';
+    if (t.includes('product') || t.includes('bottle') || t.includes('watch')) return 'product';
+    if (t.includes('food') || t.includes('dish') || t.includes('plate') || t.includes('drink')) return 'food';
+    if (t.includes('fashion') || t.includes('model') || t.includes('outfit') || t.includes('clothes')) return 'fashion';
+    if (t.includes('thriller') || t.includes('dark') || t.includes('mystery') || t.includes('noir')) return 'thriller';
+    return 'person'; // default
+};
+
 export const MultiShotView = ({
     activeFrame, frames, setFrames, setActiveFrameId, setMode, selections, setSelections,
-    shotSlots, setShotSlots, activeSlotId, setActiveSlotId, runAiUpscale, upscaling, selectedModel
+    shotSlots, setShotSlots, activeSlotId, setActiveSlotId, runAiUpscale, upscaling, selectedModel,
+    refBoard = { characters: [], locations: [], wardrobes: [], props: [], moods: [] }
 }) => {
     const { token } = useAppStore();
     const { spend } = useShorts();
@@ -19,9 +113,19 @@ export const MultiShotView = ({
         styleRef: null,
     });
 
-    const [subject, setSubject] = useState("");
-    const [activePreset, setActivePreset] = useState("cinematic_arc");
+    const [subject, setSubject] = useState(selections?.subject || "");
+    const [activePreset, setActivePreset] = useState(selections?.activePreset || "cinematic_arc");
     const [isGenerating, setIsGenerating] = useState(false);
+
+    const handleSubjectChange = (val) => {
+        setSubject(val);
+        setSelections(prev => ({ ...prev, subject: val }));
+    };
+
+    const handlePresetChange = (val) => {
+        setActivePreset(val);
+        setSelections(prev => ({ ...prev, activePreset: val }));
+    };
 
     const activeSlot = shotSlots.find(s => s.id === activeSlotId);
 
@@ -48,21 +152,54 @@ export const MultiShotView = ({
         return { offsetX, offsetY, renderedW, renderedH };
     };
 
-    useEffect(() => {
-        if (activeFrame?.url) {
-            if (!sceneSettings.productImage) {
-                setSceneSettings(p => ({ ...p, productImage: activeFrame.url }));
-            }
-        }
-    }, [activeFrame]);
+    const scrollContainerRef = useRef(null);
 
+    // Restore scroll position on mount
+    useEffect(() => {
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollLeft = savedScrollPosition;
+        }
+    }, []);
+
+    // Save scroll position on update
+    const handleScroll = (e) => {
+        savedScrollPosition = e.target.scrollLeft;
+    };
+
+    // Sync HERO/Product reference with global selections
     useEffect(() => {
         if (selections?.referenceImage) {
-            if (!sceneSettings.productImage) {
-                setSceneSettings(p => ({ ...p, productImage: selections.referenceImage }));
-            }
+            setSceneSettings(p => ({ ...p, productImage: selections.referenceImage }));
         }
     }, [selections?.referenceImage]);
+
+    // Sync Character/Style references with global selections or refBoard
+    useEffect(() => {
+        // From selections (direct slot overrides)
+        if (selections?.characterRef) setSceneSettings(p => ({ ...p, characterRef: selections.characterRef }));
+        if (selections?.styleRef) setSceneSettings(p => ({ ...p, styleRef: selections.styleRef }));
+
+        // Auto-pick from Ref Board if local slots are empty
+        if (!sceneSettings.characterRef && refBoard.characters?.length > 0) {
+            setSceneSettings(p => ({ ...p, characterRef: refBoard.characters[0].imageUrl }));
+        }
+        if (!sceneSettings.styleRef && refBoard.moods?.length > 0) {
+            setSceneSettings(p => ({ ...p, styleRef: refBoard.moods[0].imageUrl }));
+        }
+    }, [selections?.characterRef, selections?.styleRef, refBoard.characters, refBoard.moods]);
+
+    // Initialize from active frame ONLY once on mount
+    useEffect(() => {
+        if (
+            activeFrame?.url &&
+            !sceneSettings.productImage &&
+            activeFrame.type !== 'multishot' &&
+            activeFrame.type !== 'storyboard'
+        ) {
+            setSceneSettings(p => ({ ...p, productImage: activeFrame.url }));
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); 
 
     const triggerUpload = (target) => {
         setUploadTarget(target);
@@ -80,6 +217,59 @@ export const MultiShotView = ({
         reader.readAsDataURL(file);
     };
 
+    const pollJobForUrl = async (jobId) => {
+        const maxAttempts = 30; // ~60 seconds total polling time
+        console.log(`[MULTISHOT_POLL] Starting poll for jobId: ${jobId}`);
+        for (let i = 0; i < maxAttempts; i++) {
+            await new Promise(r => setTimeout(r, 2000));
+            try {
+                let res;
+                try {
+                    res = await fetch(getApiUrl(`/api/job-status/${jobId}`));
+                } catch (fetchErr) {
+                    console.warn(`[MULTISHOT_POLL] Network/Fetch failed (Attempt ${i+1}/${maxAttempts}):`, fetchErr.message);
+                    continue; 
+                }
+
+                if (!res.ok) {
+                    console.warn(`[MULTISHOT_POLL] Server responded with ${res.status} (Attempt ${i+1}/${maxAttempts})`);
+                    continue; 
+                }
+
+                const data = await res.json();
+                const state = data.status || data.state;
+                
+                if (state === 'completed' && data.url) {
+                    console.log(`[MULTISHOT_POLL] Job ${jobId} completed successfully.`);
+                    return data.url;
+                }
+                
+                if (state === 'failed') {
+                    console.error(`[MULTISHOT_POLL] Job ${jobId} failed on server:`, data.error);
+                    throw new Error(data.error || 'Generation failed in queue');
+                }
+                
+                if (i % 5 === 0) {
+                    console.log(`[MULTISHOT_POLL] Job ${jobId} still ${state}... (${i+1}/${maxAttempts})`);
+                }
+            } catch (e) {
+                if (e.message.includes('failed in queue')) throw e;
+                console.warn(`[MULTISHOT_POLL] Polling error (Attempt ${i+1}/${maxAttempts}):`, e.message);
+            }
+        }
+        throw new Error('Multi-Angle generation timed out after 60 seconds. Please try again or check server logs.');
+    };
+
+    const handleDeleteSlot = (id, e) => {
+        e.stopPropagation();
+        const prevSlots = [...shotSlots];
+        setShotSlots(slots => slots.filter(s => s.id !== id));
+        if (activeSlotId === id) {
+            const remaining = prevSlots.filter(s => s.id !== id);
+            setActiveSlotId(remaining.length > 0 ? remaining[0].id : null);
+        }
+    };
+
     const generateMultiShot = async () => {
         if (isGenerating) return;
 
@@ -91,16 +281,21 @@ export const MultiShotView = ({
             return;
         }
 
-        // Set Loading Immediately for Instance Response Time!
+        // Set Loading Immediately for Instant UI Feedback
         setIsGenerating(true);
-        setShotSlots(slots => slots.map(s => ({ ...s, loading: true, url: null })));
+        const newSlots = [
+            { id: 'master-grid', loading: true, url: null, isGrid: true },
+            ...shotSlots.filter(s => !s.isGrid && s.id !== 'master-grid')
+        ];
+        setShotSlots(newSlots);
+        setActiveSlotId('master-grid'); // ⚡ SELECT the drafting grid immediately so it shows up
 
         const res = await spend('image_grid_multishot');
 
         if (!res || !res.success) {
             // Restore loading if spend fails
             setIsGenerating(false);
-            setShotSlots(slots => slots.map(s => ({ ...s, loading: false })));
+            setShotSlots(slots => slots.filter(s => s.url || s.loading === true && s.id !== 'master-grid')); // Remove the failed master-grid
             
             if (res?.reason === 'unauthenticated') {
                 useAppStore.getState().setShowingAuthModal(true);
@@ -111,121 +306,31 @@ export const MultiShotView = ({
             }
             return;
         }
-
         try {
-            const ANGLE_PRESETS = {
-                person: [
-                    '1. Extreme close-up of face, dramatic side lighting',
-                    '2. Wide shot, golden hour environment',
-                    '3. Low angle looking up, urban background',
-                    '4. Overhead bird\'s eye view',
-                    '5. Medium shot, nature environment',
-                    '6. Side profile silhouette against sunset',
-                    '7. Dutch angle, neon city night scene',
-                    '8. Over-the-shoulder POV shot',
-                    '9. Full body wide, minimalist studio'
-                ],
-                car: [
-                    '1. Front 3/4 angle, studio dramatic lighting',
-                    '2. Rear 3/4 angle, golden hour road',
-                    '3. Side profile, motion blur highway',
-                    '4. Low angle front grille, wide lens',
-                    '5. Overhead drone shot, mountain road',
-                    '6. Interior cockpit driver POV',
-                    '7. Wheel close-up, wet road reflection',
-                    '8. Rear light close-up, night neon',
-                    '9. Full wide, desert landscape epic'
-                ],
-                product: [
-                    '1. Hero shot straight on, white studio',
-                    '2. 45 degree angle, soft shadow',
-                    '3. Extreme close-up texture detail',
-                    '4. Flat lay overhead, lifestyle props',
-                    '5. Side profile, gradient background',
-                    '6. In-hand lifestyle use shot',
-                    '7. Backlit silhouette, dramatic rim light',
-                    '8. Macro detail shot, shallow DOF',
-                    '9. Full environment lifestyle wide shot'
-                ],
-                food: [
-                    '1. Overhead flat lay, full spread',
-                    '2. Side angle 45 degrees, steam rising',
-                    '3. Extreme macro, texture close-up',
-                    '4. Fork/spoon action shot mid-bite',
-                    '5. Full table setting wide shot',
-                    '6. Backlit golden hour window light',
-                    '7. Cross-section cut-through detail',
-                    '8. Hand holding, lifestyle casual',
-                    '9. Night mood, candlelight ambiance'
-                ],
-                fashion: [
-                    'FRAME 1: BEAUTY CLOSE-UP — Face fills frame, studio beauty lighting, catch lights in eyes',
-                    'FRAME 2: WALKING TOWARDS — Subject walks toward camera, motion blur on feet, sharp face',
-                    'FRAME 3: FABRIC MACRO — Extreme close-up on clothing texture/pattern, no face',
-                    'FRAME 4: BACK SHOT — Camera behind subject, facing away, environment ahead',
-                    'FRAME 5: MIRROR REFLECTION — Subject reflected in mirror, double composition',
-                    'FRAME 6: SITTING POSE — Ground level, subject seated, architectural framing',
-                    'FRAME 7: HAND/ACCESSORY DETAIL — Extreme close-up on hands, jewelry, bag, shoes only',
-                    'FRAME 8: ENVIRONMENTAL WIDE — Subject tiny in massive environment, fashion editorial scale',
-                    'FRAME 9: STRAIGHT TO CAMERA — Direct eye contact, medium shot, neutral power pose'
-                ],
-                thriller: [
-                    'FRAME 1: SHADOWED ENTRY — Subject partially hidden in doorway shadow, half face visible',
-                    'FRAME 2: OVER SHOULDER STALK — Camera follows from behind, subject unaware',
-                    'FRAME 3: REFLECTION IN GLASS — Subject seen through window/mirror distortion',
-                    'FRAME 4: LOW ANGLE THREAT — Extreme low angle, subject looms, sky behind',
-                    'FRAME 5: EXTREME ISOLATION — Subject tiny in massive empty space, alone',
-                    'FRAME 6: CLOSE-UP EYES ONLY — Crop to eyes only, extreme tension, sweat/detail visible',
-                    'FRAME 7: HANDS IN ACTION — Close-up on hands doing something, face out of frame',
-                    'FRAME 8: DUTCH ANGLE RUN — Tilted camera, subject in motion, urgency',
-                    'FRAME 9: FINAL WIDE REVEAL — Pull back wide, full context of situation visible'
-                ]
-            };
-
-            const detectSubjectType = (text) => {
-                if (!text) return 'person';
-                const t = text.toLowerCase();
-                if (t.match(/fashion|model|runway|editorial|outfit|lookbook/)) return 'fashion';
-                if (t.match(/thriller|suspense|dark|noir|mystery|chase|danger/)) return 'thriller';
-                if (t.match(/car|vehicle|suv|truck|bike|motorcycle|ferrari|bmw|mercedes/)) return 'car';
-                if (t.match(/food|burger|pizza|drink|coffee|cake|dish|meal/)) return 'food';
-                if (t.match(/product|bottle|box|bag|shoe|watch|phone|gadget/)) return 'product';
-                return 'person';
-            };
-
             const buildMultiShotPrompt = (subjectText, hasRefImage) => {
                 if (activePreset === 'cinematic_arc') {
-                     return `### [HEADER: THE LAYOUT LOCK]
-A high-end 3x3 cinematic contact sheet. 9 distinct borderless photographs in one single composite image. 35mm anamorphic lens style.
+                     return `### 9-FRAME CINEMATIC GRID DIRECTIVE
+Create a tight 3x3 contact sheet of 9 high-end cinematic photographs. In a single composite, no borders. 
 
-### [BODY: THE SUBJECT ANCHOR]
-CRITICAL INSTRUCTION: Use the provided reference image as the EXACT IDENTITY for the subject. 
-Maintain 100% consistency in facial features, hair, and clothing across all 9 frames. 
-Maintain the EXACT SAME environment and background location across all 9 frames from the reference.
-The subject from the reference image is now placed into these 9 specific camera setups:
+### THE SUBJECT: ${subjectText || 'The subject from reference'}
+- IDENTITY: Match the EXACT facial features, clothing, and textures from the provided reference.
+- LOCATION: Maintain the environmental context from the reference across all frames.
 
-FRAME 1 (Top-Left):    EXTREME CLOSE-UP — Macro lens on face only. Eyes and jewelry fill entire frame. Zero background visible. Heavy bokeh.
-FRAME 2 (Top-Center):  WIDE ESTABLISHING — Full courtyard visible, subject small in frame, architecture dominates 80% of image.
-FRAME 3 (Top-Right):   MACRO DETAIL — Ultra-tight on saree fabric/jewelry only. No face visible. Pure textile/gold texture fills frame.
-FRAME 4 (Mid-Left):    LOW ANGLE HEROIC — Camera at ground level shooting upward. Subject towers above, sky/ceiling behind. Extreme perspective distortion.
-FRAME 5 (Mid-Center):  OVERHEAD DRONE — Camera pointing straight down from above. Subject seen from top, floor pattern visible around them.
-FRAME 6 (Mid-Right):   MEDIUM SHOT — Waist up only. Diffused ring-light. Saree texture and jewelry detail visible.
-FRAME 7 (Bot-Left):    DRAMATIC RIM LIGHT — Near-dark environment, single strong edge light outlining subject from behind, face and front still visible.
-FRAME 8 (Bot-Center):  POV FIRST PERSON — Camera IS the subject's eyes looking forward. Hands visible in foreground, environment ahead.
-FRAME 9 (Bot-Right):   FULL BODY VERTICAL — Head to toe, straight on, neutral ambient light, full saree visible from top to bottom.
+### THE 9 UNIQUE CAMERA SETUPS (RADICAL DIVERSITY REQUIRED):
+[FRAME 1: THE PORTRAIT] Extreme close-up. Face and eyes only. Macro lens. Heavy bokeh.
+[FRAME 2: THE WIDE] Long shot. Full environment scale. Subject is small. Epic architecture.
+[FRAME 3: THE TEXTURE] Macro detail. Extreme tight on clothing/fabric/saree only. No face.
+[FRAME 4: THE LOW ANGLE] Ground level looking up. Heroic, powerful perspective. Sky behind.
+[FRAME 5: THE DRONE] Bird's eye view. Looking straight down from above. Overhead pattern.
+[FRAME 6: THE MEDIUM] Waist up. Soft side lighting. 50mm lens aesthetics.
+[FRAME 7: THE SILHOUETTE] Dramatic rim lighting. Near-dark atmosphere. Strong edge light.
+[FRAME 8: THE POV] Action first-person view. Subject's hands visible in foreground.
+[FRAME 9: THE FULL SHOT] Head to toe. Frontal vertical composition. Full outfit visible.
 
-CRITICAL ENFORCEMENT: Each frame MUST look completely different from every other frame.
-If Frame 1 is a close-up, Frame 2 MUST NOT be a close-up.
-If Frame 2 is wide, Frame 3 MUST NOT be wide.
-Maximum visual diversity and dynamic frame-to-frame contrast is mandatory.
-
-### [FOOTER: THE CLEANLINESS RULE]
-STRICT NEGATIVE CONSTRAINTS:
-- 100% NO TEXT. No labels like "1", "Shot A", "Urban", or "Neon". No captions, no letters, no watermark.
-- ABSOLUTELY NO BORDER LINES, NO GRID LINES, NO DIVIDER LINES, AND NO BLACK/WHITE FRAMES DIVIDING THE 9 SHOTS.
-- The 9 photographs must sit seamless and edge-to-edge with each other in the 3x3 frame.
-- Output ONLY the 9 raw visual photographs seamless in a 3x3 contact layout.`;
+### MANDATORY VARIATION RULE:
+Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal length. Never repeat a camera height. The environment lighting must shift according to the specific frame directive (e.g. near-dark for Frame 7). No text, labels, or grid lines.`;
                 }
+
 
                 const subjectType = detectSubjectType(subjectText);
                 const angles = ANGLE_PRESETS[subjectType].join('\n');
@@ -248,20 +353,27 @@ Output only raw visual photographs.`;
                 return `${header}\n${angles}\n${footer}`;
             };
 
+            // IMPORTANT: Always use an image model, never the active video model.
+            const IMAGE_MODEL = 'nano-banana-2';
+
             const payload = {
                 prompt: buildMultiShotPrompt(
                     subject, 
                     !!sceneSettings.productImage || !!sceneSettings.characterRef
                 ),
-                model: selectedModel || 'nano-banana-2',
+                model: IMAGE_MODEL,
                 aspect_ratio: '16:9',
                 image: sceneSettings.productImage || sceneSettings.characterRef || null,
                 identity_images: [
                     sceneSettings.characterRef, 
-                    sceneSettings.productImage
-                ].filter(Boolean),
-                references: [sceneSettings.styleRef].filter(Boolean),
-                quality: '2k'
+                    sceneSettings.productImage,
+                    ...(refBoard.characters || []).map(c => c.imageUrl)
+                ].filter(Boolean).slice(0, 14),
+                references: [
+                    sceneSettings.styleRef,
+                    ...(refBoard.moods || []).map(m => m.imageUrl)
+                ].filter(Boolean).slice(0, 5),
+                quality: '1k', // 1k works for nano-banana-2; avoids pro-model size check
             };
 
             const response = await fetch(getApiUrl('/api/generate-image'), {
@@ -277,15 +389,33 @@ Output only raw visual photographs.`;
                 const errData = await response.json().catch(() => ({}));
                 throw new Error(errData.message || errData.error || "Multi-Shot generation failed");
             }
-            const result = await response.json();
+            const rawResult = await response.json();
 
-            setShotSlots([{
-                id: 'slot-1',
-                prompt: `Multi-Angle Grid: ${subject}`,
-                loading: false,
-                url: result.url || null,
-                isGrid: true
-            }]);
+            // Handle async job queue response (when Redis/BullMQ is active on the server)
+            let result;
+            if (rawResult.jobId) {
+                console.log(`[MULTISHOT] Server returned jobId: ${rawResult.jobId}. Polling...`);
+                const url = await pollJobForUrl(rawResult.jobId);
+                result = { url };
+            } else {
+                result = rawResult;
+            }
+
+            if (!result.url) {
+                throw new Error('Server returned no image URL and no jobId.');
+            }
+
+            setShotSlots(prev => [
+                {
+                    id: 'master-grid',
+                    prompt: `Multi-Angle Grid: ${subject}`,
+                    loading: false,
+                    url: result.url || null,
+                    isGrid: true
+                },
+                ...prev.filter(s => !s.isGrid && s.id !== 'master-grid')
+            ]);
+            setActiveSlotId('master-grid');
 
             if (result.url) {
                 const newFrame = {
@@ -298,11 +428,10 @@ Output only raw visual photographs.`;
                 };
                 setFrames(prev => [...prev, newFrame]);
             }
-
         } catch (error) {
             console.error("Multi-Shot generation error:", error);
             alert("Failed to generate Multi-Shot grid.");
-            setShotSlots(slots => slots.map(s => ({ ...s, loading: false })));
+            setShotSlots(slots => slots.filter(s => s.url || s.loading === true)); // Cleanup any lingering empty slots
         } finally {
             setIsGenerating(false);
         }
@@ -314,17 +443,28 @@ Output only raw visual photographs.`;
         const cellW = img.naturalWidth / 3;
         const cellH = img.naturalHeight / 3;
         const canvas = document.createElement('canvas');
-        canvas.width = cellW;
-        canvas.height = cellH;
+        
+        // Slightly inset the crop to avoid black border artifacts (approx 1% of cell)
+        const insetX = cellW * 0.01;
+        const insetY = cellH * 0.01;
+        const targetW = cellW - (insetX * 2);
+        const targetH = cellH - (insetY * 2);
+
+        canvas.width = targetW;
+        canvas.height = targetH;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, col * cellW, row * cellH, cellW, cellH, 0, 0, cellW, cellH);
+        ctx.drawImage(img, (col * cellW) + insetX, (row * cellH) + insetY, targetW, targetH, 0, 0, targetW, targetH);
 
         const croppedUrl = canvas.toDataURL('image/jpeg', 0.9);
         const shotNumber = (row * 3) + col + 1;
+        const type = detectSubjectType(subject);
+        const angleDesc = activePreset === 'cinematic_arc' 
+            ? CINEMATIC_ARC_DESC[shotNumber - 1] 
+            : ANGLE_PRESETS[type][shotNumber - 1];
 
         const newSlot = {
             id: `ms-angle-${Date.now()}`,
-            prompt: `Angle ${shotNumber} extracted from grid`,
+            prompt: subject ? `${subject}. Perspective: ${angleDesc}` : `${angleDesc} extracted from grid`,
             loading: false,
             url: croppedUrl,
             isGrid: false
@@ -358,16 +498,24 @@ Output only raw visual photographs.`;
         }
     };
     useEffect(() => {
+        if (activeSlot?.url) {
+            // Give a tiny timeout to ensure ref is attached if newly rendered
+            const timer = setTimeout(updateOverlay, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [activeSlotId, activeSlot?.url]);
+
+    useEffect(() => {
         window.addEventListener('resize', updateOverlay);
         return () => window.removeEventListener('resize', updateOverlay);
     }, []);
 
 
-    const sendToVideo = (slot) => {
+    const sendToVideo = (slot, type = 'first') => {
         if (!slot.url) return;
         setSelections(p => ({
             ...p,
-            firstFrame: slot.url,
+            [type === 'first' ? 'firstFrame' : 'lastFrame']: slot.url,
             subject: subject
         }));
         setMode('video');
@@ -375,12 +523,7 @@ Output only raw visual photographs.`;
 
     const downloadImage = (url) => {
         if (!url) return;
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `multishot-${Date.now()}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        window.open(url, '_blank');
     };
 
     return (
@@ -421,7 +564,7 @@ Output only raw visual photographs.`;
 
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Grid Template</label>
-                        <select value={activePreset} onChange={e => setActivePreset(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none">
+                        <select value={activePreset} onChange={e => handlePresetChange(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none">
                             <option value="cinematic_arc">Cinematic Arc (Default)</option>
                             <option value="dynamic">Dynamic (Auto-detect)</option>
                             <option value="fashion">Fashion Editorial</option>
@@ -437,7 +580,7 @@ Output only raw visual photographs.`;
                         <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Subject Description</label>
                         <textarea
                             value={subject}
-                            onChange={e => setSubject(e.target.value)}
+                            onChange={e => handleSubjectChange(e.target.value)}
                             placeholder="Describe the subject for multi-angle generation..."
                             className="w-full h-24 bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-white resize-none focus:border-[#D4FF00]/50 outline-none"
                         />
@@ -502,13 +645,21 @@ Output only raw visual photographs.`;
                             <div className="absolute right-4 top-4 flex flex-col gap-2 z-20">
                                 {!activeSlot.isGrid && (
                                     <>
-                                        <button onClick={() => runAiUpscale(activeSlot.url, activeSlot.prompt || '', '2k')} disabled={upscaling} className={cn("p-3 bg-fuchsia-600/90 hover:bg-fuchsia-600 rounded-xl text-white shadow-xl group flex items-center gap-2 transition-all", upscaling && "opacity-50 cursor-not-allowed")}>
-                                            <Zap className={cn("w-4 h-4 md:w-5 md:h-5", upscaling && "animate-pulse")} />
-                                            <span className="text-[10px] font-black uppercase md:w-0 overflow-hidden md:group-hover:w-auto transition-all whitespace-nowrap">{upscaling ? 'Upscaling...' : 'Upscale 2K'}</span>
+                                        <button 
+                                            onClick={() => runAiUpscale(activeSlot.url, activeSlot.prompt || '', 'multishot')} 
+                                            disabled={upscaling || activeSlot.loading} 
+                                            className={cn("p-3 bg-fuchsia-600 hover:bg-fuchsia-500 rounded-xl text-white shadow-xl group flex items-center justify-center gap-2 transition-all", (upscaling || activeSlot.loading) && "opacity-50 cursor-not-allowed")}
+                                        >
+                                            <Sparkles className={cn("w-4 h-4 md:w-5 md:h-5", (upscaling || activeSlot.loading) && "animate-pulse")} />
+                                            <span className="text-[10px] font-black uppercase md:w-0 overflow-hidden md:group-hover:w-auto transition-all whitespace-nowrap">{(upscaling || activeSlot.loading) ? 'Upscaling...' : 'Upscale 2K'}</span>
                                         </button>
-                                        <button onClick={() => sendToVideo(activeSlot)} className="p-3 bg-[#D4FF00]/90 hover:bg-[#D4FF00] rounded-xl text-black shadow-xl group flex items-center gap-2 transition-all">
-                                            <Film className="w-4 h-4 md:w-5 md:h-5" />
-                                            <span className="text-[10px] font-black uppercase md:w-0 overflow-hidden md:group-hover:w-auto transition-all whitespace-nowrap">Send to Video</span>
+                                        <button onClick={() => sendToVideo(activeSlot, 'first')} className="p-3 bg-cyan-500 hover:bg-cyan-400 rounded-xl text-white shadow-xl group flex items-center justify-center gap-2 transition-all">
+                                            <Play className="w-4 h-4 md:w-5 md:h-5" />
+                                            <span className="text-[10px] font-black uppercase md:w-0 overflow-hidden md:group-hover:w-auto transition-all whitespace-nowrap">Start Frame</span>
+                                        </button>
+                                        <button onClick={() => sendToVideo(activeSlot, 'last')} className="p-3 bg-orange-500 hover:bg-orange-400 rounded-xl text-white shadow-xl group flex items-center justify-center gap-2 transition-all">
+                                            <Square className="w-4 h-4 md:w-5 md:h-5" />
+                                            <span className="text-[10px] font-black uppercase md:w-0 overflow-hidden md:group-hover:w-auto transition-all whitespace-nowrap">End Frame</span>
                                         </button>
                                     </>
                                 )}
@@ -518,11 +669,16 @@ Output only raw visual photographs.`;
                             </div>
                         </>
                     ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center gap-3 opacity-20">
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-3">
                             {activeSlot?.loading ? (
                                 <>
-                                    <Sparkles className="w-10 h-10 text-[#D4FF00] animate-spin" />
-                                    <p className="text-xs font-bold uppercase tracking-widest animate-pulse">Drafting Multi-Angles...</p>
+                                    <div className="relative">
+                                        <Sparkles className="w-12 h-12 text-[#D4FF00] animate-spin" />
+                                        <Zap className="w-5 h-5 text-fuchsia-500 absolute -top-1 -right-1 animate-bounce" />
+                                    </div>
+                                    <p className="text-sm font-black uppercase tracking-[0.3em] text-[#D4FF00] animate-pulse">
+                                        {activeSlot?.jobType === 'upscale' ? 'Enhancing to 2K...' : 'Drafting Multi-Angles...'}
+                                    </p>
                                 </>
                             ) : (
                                 <>
@@ -539,46 +695,55 @@ Output only raw visual photographs.`;
                         <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Angle Collection</span>
                     </div>
 
-                    <div className="flex-1 flex gap-2 overflow-x-auto custom-scrollbar pb-1">
+                    <div 
+                        ref={scrollContainerRef}
+                        onScroll={handleScroll}
+                        className="flex-1 flex gap-2 overflow-x-auto custom-scrollbar pb-1"
+                    >
                         {shotSlots.map((slot, idx) => (
                             <div key={slot.id}
                                 onClick={() => setActiveSlotId(slot.id)}
                                 className={cn("shrink-0 h-full aspect-video rounded-xl overflow-hidden cursor-pointer relative border-2 transition-all group",
                                     activeSlotId === slot.id ? "border-[#D4FF00] shadow-[0_0_15px_rgba(212,255,0,0.15)]" : "border-white/5 hover:border-white/20")}>
                                 {slot.loading ? (
-                                    <div className="w-full h-full bg-black/40 flex items-center justify-center">
-                                        <Zap className="w-4 h-4 text-[#D4FF00] animate-pulse" />
+                                    <div className="w-full h-full bg-black/60 flex flex-col items-center justify-center gap-2">
+                                        <div className="relative">
+                                            <Sparkles className="w-5 h-5 text-fuchsia-400 animate-pulse" />
+                                            <Zap className="w-3 h-3 text-[#D4FF00] absolute -top-1 -right-1 animate-bounce" />
+                                        </div>
+                                        <span className="text-[7px] font-black text-[#D4FF00] uppercase tracking-[0.2em] animate-pulse">
+                                            {slot.jobType === 'upscale' ? 'Upscaling...' : 'Drafting...'}
+                                        </span>
                                     </div>
                                 ) : slot.url ? (
                                     <>
-                                        <img src={slot.url} className="w-full h-full object-cover" />
+                                        <img src={slot.thumb || slot.url} className="w-full h-full object-cover" />
+                                        
 
-                                        {/* Hover Actions */}
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                            {!slot.isGrid && (
-                                                <>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        runAiUpscale(slot.url, slot.prompt, '2k');
-                                                    }}
-                                                    className="p-2 bg-[#D4FF00] rounded-lg text-black hover:scale-110 transition-transform shadow-lg"
-                                                    title="Upscale to 2K"
-                                                >
-                                                    <Sparkles className="w-4 h-4" />
-                                                </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); downloadImage(slot.url); }} className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-lg text-white hover:scale-110 transition-transform shadow-lg" title="Download Image"><Download className="w-4 h-4" /></button>
-                                                </>
-                                            )}
-                                        </div>
+                                        {/* Corner Delete Button */}
+                                        <button 
+                                            onClick={(e) => handleDeleteSlot(slot.id, e)}
+                                            className="absolute top-1 right-1 p-1 bg-red-600/80 hover:bg-red-500 backdrop-blur-md rounded text-white opacity-0 group-hover:opacity-100 hover:scale-110 transition-all shadow-lg z-10"
+                                            title="Remove Frame"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
                                     </>
                                 ) : (
                                     <div className="w-full h-full bg-black/40 flex flex-col items-center justify-center gap-1 opacity-50">
                                         <span className="text-lg font-black text-white/20">{idx + 1}</span>
+                                        {/* Corner Delete Button for empty slots */}
+                                        <button 
+                                            onClick={(e) => handleDeleteSlot(slot.id, e)}
+                                            className="absolute top-1 right-1 p-1 bg-red-600/80 hover:bg-red-500 backdrop-blur-md rounded text-white opacity-0 group-hover:opacity-100 hover:scale-110 transition-all shadow-lg z-10"
+                                            title="Remove Empty Slot"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
                                     </div>
                                 )}
                                 <div className="absolute inset-x-0 bottom-0 bg-black/80 px-2 py-1 flex items-center justify-between backdrop-blur-sm">
-                                    <span className="text-[8px] font-black text-[#D4FF00]">A{idx + 1}</span>
+                                    <span className="text-[8px] font-black text-[#D4FF00]">{slot.isGrid ? 'GRID' : `A${shotSlots.filter(s => !s.isGrid).indexOf(slot) + 1}`}</span>
                                 </div>
                             </div>
                         ))}

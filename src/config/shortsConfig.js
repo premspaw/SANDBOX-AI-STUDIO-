@@ -3,7 +3,7 @@ export const SHORTS_COST = {
     image_nano_banana: 1,
     image_nano_banana_2: 2,
     image_nano_banana_pro: 5,
-    image_upscale_4k: 3,
+    image_upscale_4k: 2,
     image_grid_multishot: 2,
 
     // UGC
