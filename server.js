@@ -1908,11 +1908,19 @@ async function handleKieVeo(req, res) {
         console.log(`[VEO-KIE] Mode: ${generationType} | Model: ${kieModel} | Images: ${imageUrls?.length || 0}`);
 
         // ─── Build payload ────────────────────────────────────────
+        // Vertex AI & Veo strict durations: [4, 6, 8]
+        let validDuration = parseInt(duration) || 6;
+        if (![4, 6, 8].includes(validDuration)) {
+            if (validDuration <= 4) validDuration = 4;
+            else if (validDuration <= 6) validDuration = 6;
+            else validDuration = 8;
+        }
+
         const payload = {
             prompt,
             model: kieModel,
             generationType,
-            duration: duration,
+            duration: String(validDuration),
             includeAudio: includeAudio,
             aspect_ratio: aspect_ratio || "16:9",
             enableTranslation: false,
@@ -1980,7 +1988,7 @@ async function handleKieVeo(req, res) {
  */
 async function handleKling(req, res) {
     try {
-        const { prompt, firstFrame, lastFrame, duration, userId, aspect_ratio } = req.body;
+        const { prompt, firstFrame, lastFrame, duration, userId, aspect_ratio, model } = req.body;
         const apiKey = process.env.KLING_API_KEY;
         if (!apiKey) throw new Error("Kling API Key not configured.");
 
@@ -2122,7 +2130,15 @@ async function handleGoogle(req, res) {
             const hasRefImages = Array.isArray(referenceImages) && referenceImages.length > 0;
             const isHighRes = ['1080p', '4k'].includes(resolvedResolution);
             const requestedDuration = parseInt(duration) || 6;
-            const validDuration = requestedDuration;
+            
+            // Vertex AI 'veo' strict durations for image_to_video: [4, 6, 8]
+            let validDuration = requestedDuration;
+            if (![4, 6, 8].includes(validDuration)) {
+                if (validDuration <= 4) validDuration = 4;
+                else if (validDuration === 5) validDuration = 6;
+                else if (validDuration <= 6) validDuration = 6;
+                else validDuration = 8;
+            }
 
             // ─── Resolve images to base64 for Service Account REST API ────────────────
             const resolveToBase64 = async (src) => {
@@ -3851,7 +3867,8 @@ app.post('/api/ugc/preview-scene', async (req, res) => {
             keyframeBase64 = keyframeUrl; // raw base64
         }
 
-        const validDuration = [4, 6, 8].includes(Number(duration)) ? Number(duration) : 6;
+        const requestedDuration = parseInt(duration) || 6;
+        const validDuration = [4, 6, 8].includes(requestedDuration) ? requestedDuration : 6;
         const validAspectRatio = ['16:9', '9:16', '1:1'].includes(aspectRatio) ? aspectRatio : '9:16';
         const veoModel = 'veo-3.1-generate-preview';
         const veoEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${veoModel}:predictLongRunning`;

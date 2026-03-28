@@ -645,8 +645,9 @@ export const generateLipSyncVideo = async (image, prompt, bible = null, opts = {
         const { model = 'veo', duration = '4 Seconds', resolution = '1080p', aspect_ratio = '9:16' } = opts;
         const modelName = (model === 'veo-fast') ? 'veo-3.1-fast-generate-preview' : 'veo-3.1-generate-preview';
 
-        // Map duration string to seconds number
-        const durationSecs = parseInt(String(duration).replace(/\D/g, '')) || 4;
+        // Map duration string to seconds number and clamp to Veo valid durations
+        const requestedDuration = parseInt(String(duration).replace(/\D/g, '')) || 4;
+        const durationSecs = [4, 6, 8].includes(requestedDuration) ? requestedDuration : 6;
 
         if (typeof window !== 'undefined') {
             const isAlive = await checkBackend();
