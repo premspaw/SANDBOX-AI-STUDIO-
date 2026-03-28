@@ -496,13 +496,13 @@ const AI_MODELS = [
         modelId: 'veo-3.1-fast-generate-preview'
     },
     {
-        id: 'kling-2.6', name: 'Google Kling 2.6', provider: 'Kling', type: 'video',
+        id: 'kling-2.6', name: 'Kling 2.6', provider: 'Kling', type: 'video',
         description: 'V2.6 High-Performance Video Model',
         credits: 8, available: true, icon: Zap,
-        modelId: 'kling-2.6/video'
+        modelId: 'kling-2.6/image-to-video'
     },
     {
-        id: 'kling', name: 'Google Kling 3.0', provider: 'Kling', type: 'video',
+        id: 'kling', name: 'Kling 3.0', provider: 'Kling', type: 'video',
         description: 'V3.0 Ultra-High Fidelity Model',
         credits: 10, available: true, icon: Sparkles,
         modelId: 'kling-3.0/video'
@@ -1182,7 +1182,7 @@ const VideoNarrativeComponents = ({ mode, isNanoBanana, allRefItems, setShowRefB
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRefinePrompt(); }}
                         disabled={isPolishing}
                         className={cn("p-1 hover:bg-[#D4FF00]/10 rounded-md transition-all group/pen cursor-pointer", isPolishing && "opacity-50 cursor-wait")}
-                        title="AI Refine Prompt/Narrative"
+                        title="AI Refine Prompt/Narrative (1 Credit)"
                     >
                         <PenTool className={cn("w-3.5 h-3.5 text-[#D4FF00] group-hover/pen:scale-110 transition-transform", isPolishing && "animate-pulse")} />
                     </button>
@@ -1206,7 +1206,7 @@ const VideoNarrativeComponents = ({ mode, isNanoBanana, allRefItems, setShowRefB
                                 <button
                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRefinePrompt('subjectDescription'); }}
                                     className="p-1 hover:bg-[#D4FF00]/10 rounded transition-all group/pen cursor-pointer"
-                                    title="AI Refine Subject"
+                                    title="AI Refine Subject (1 Credit)"
                                 >
                                     <PenTool className="w-2.5 h-2.5 text-[#D4FF00]/40 group-hover/pen:text-[#D4FF00]" />
                                 </button>
@@ -1450,6 +1450,9 @@ export function PromptGenerator({ onUpscale }) {
         localStorage.setItem('prompt_generator_selected_model', selectedModel)
     }, [selectedModel])
 
+    const isNanoBanana = selectedModel === 'nano-banana' || selectedModel.includes('gemini') || selectedModel === 'nano-banana-2'
+    const isKling = ['kling', 'kling-2.6', 'kling-3.0', 'kling-2.1'].includes(selectedModel)
+
     useEffect(() => {
         const timeout = setTimeout(() => {
             localStorage.setItem('prompt_generator_selections', JSON.stringify(selections));
@@ -1555,6 +1558,20 @@ export function PromptGenerator({ onUpscale }) {
     const handleRefinePrompt = async (specificField = null) => {
         setIsPolishing(true)
         try {
+            // Cost check
+            const res = await spend('refine_prompt');
+            if (!res || !res.success) {
+                if (res?.reason === 'unauthenticated') {
+                    useAppStore.getState().setShowingAuthModal(true);
+                } else if (res?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+                    showToast("Insufficient Shorts! Redirecting to pricing...", "info");
+                    useAppStore.getState().setActiveTab('pricing');
+                } else {
+                    showToast("Refinement could not proceed: " + (res?.reason || "error"));
+                }
+                return;
+            }
+
             const fieldsToRefine = specificField ? [specificField] : (mode === 'video'
                 ? ['subjectDescription', 'actionDescription', 'contextDescription']
                 : ['subject'])
@@ -1568,6 +1585,8 @@ export function PromptGenerator({ onUpscale }) {
             }
         } catch (err) {
             console.error("Refinement failed:", err)
+            showToast("AI Refinement failed. Please try again.");
+            await refund('refine_prompt');
         } finally {
             setIsPolishing(false)
         }
@@ -1692,6 +1711,7 @@ export function PromptGenerator({ onUpscale }) {
     useEffect(() => {
         if (selectedModel === 'gemini-3-pro-image-preview') setSelections(p => ({ ...p, quality: ['1k', '2k'].includes(p.quality) ? p.quality : '2k' }))
         else if (selectedModel === 'gemini-2.5-flash-image') setSelections(p => ({ ...p, quality: '1k' }))
+        else if (isKling) setSelections(p => ({ ...p, duration: '5 Seconds' }))
     }, [selectedModel])
 
     // Removed automatic reference board population to follow "Session Only" rule.
@@ -1808,11 +1828,6 @@ export function PromptGenerator({ onUpscale }) {
         if (ap < 60) return 'f/5.6'; if (ap < 80) return 'f/8.0'
         return 'f/16'
     }
-
-    const isNanoBanana = selectedModel === 'nano-banana' || selectedModel.includes('gemini') || selectedModel === 'nano-banana-2'
-
-    const isKling = ['kling', 'kling-2.6', 'kling-3.0', 'kling-2.1'].includes(selectedModel)
-
 
     const handleTextChange = (field, e) => {
         const val = e.target.value
@@ -2121,9 +2136,10 @@ export function PromptGenerator({ onUpscale }) {
                     if (res?.reason === 'unauthenticated') {
                         useAppStore.getState().setShowingAuthModal(true);
                     } else if (res?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+                        showToast("Insufficient Shorts! Redirecting to pricing...", "info");
                         useAppStore.getState().setActiveTab('pricing');
                     } else {
-                        alert("Generation could not proceed: " + (res?.reason || "error"));
+                        showToast("Generation could not proceed: " + (res?.reason || "error"));
                     }
                     break;
                 }
@@ -2171,6 +2187,7 @@ export function PromptGenerator({ onUpscale }) {
                     userId,
                     model: AI_MODELS.find(m => m.id === selectedModel)?.modelId || selectedModel,
                     duration: (() => {
+                        if (isKling) return parseInt(selections.duration.split(' ')[0]) || 5;
                         const taggedRefs = getTaggedRefItems(finalPrompt).flatMap(i => [i.imageUrl]).filter(Boolean);
                         const mustBe8 = selections.lastFrame || taggedRefs.length > 0
                             || ['1080p', '2K', '2k'].includes(selections.resolution);
@@ -2183,6 +2200,11 @@ export function PromptGenerator({ onUpscale }) {
                     aspect_ratio: validRatio,
                     firstFrame: selections.firstFrame,
                     lastFrame: selections.lastFrame,
+                    multi_shots: isKling && (selections.timestampSegments?.length > 1),
+                    multi_prompt: isKling ? selections.timestampSegments?.map(s => ({
+                        prompt: s.description || finalPrompt,
+                        duration: Math.max(1, Math.min(12, parseInt(s.end - s.start) || 3))
+                    })) : [],
                     referenceImages: getTaggedRefItems(finalPrompt)
                         .flatMap(i => [i.imageUrl])
                         .filter(Boolean)
@@ -2268,9 +2290,10 @@ export function PromptGenerator({ onUpscale }) {
             if (res?.reason === 'unauthenticated') {
                 useAppStore.getState().setShowingAuthModal(true);
             } else if (res?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+                showToast("Insufficient Shorts! Redirecting to pricing...", "info");
                 useAppStore.getState().setActiveTab('pricing');
             } else {
-                alert("Upscale could not proceed: " + (res?.reason || "error"));
+                showToast("Upscale could not proceed: " + (res?.reason || "error"));
             }
             return;
         }
@@ -2368,9 +2391,10 @@ export function PromptGenerator({ onUpscale }) {
             if (res?.reason === 'unauthenticated') {
                 useAppStore.getState().setShowingAuthModal(true);
             } else if (res?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+                showToast("Insufficient Shorts! Redirecting to pricing...", "info");
                 useAppStore.getState().setActiveTab('pricing');
             } else {
-                alert("Upscale could not proceed: " + (res?.reason || "error"));
+                showToast("Upscale could not proceed: " + (res?.reason || "error"));
             }
             return;
         }
@@ -2596,9 +2620,10 @@ DO NOT add new objects or change the scene. Enhance only.
             if (spendRes?.reason === 'unauthenticated') {
                 useAppStore.getState().setShowingAuthModal(true)
             } else if (spendRes?.reason === 'insufficient_funds' || useAppStore.getState().userShorts <= 0) {
+                showToast("Insufficient Shorts! Redirecting to pricing...", "info");
                 useAppStore.getState().setActiveTab('pricing')
             } else {
-                alert("Upscale could not proceed: " + (spendRes?.reason || 'error'))
+                showToast("Upscale could not proceed: " + (spendRes?.reason || 'error'))
             }
             return
         }
@@ -2996,28 +3021,6 @@ DO NOT add new objects or change the scene. Enhance only.
                                     )}
                                 </div>
 
-                                {/* VERTICAL DIVIDER & NEW SCENE */}
-                                <div className="shrink-0 w-px h-10 bg-white/10 mx-2 self-center" />
-
-                                <div
-                                    onClick={() => {
-                                        setSelections(p => ({
-                                            ...p,
-                                            subjectDescription: '',
-                                            actionDescription: '',
-                                            contextDescription: '',
-                                            firstFrame: null,
-                                            lastFrame: null,
-                                            timestampSegments: [{ id: Date.now(), start: 0, end: 2, description: '' }]
-                                        }));
-                                    }}
-                                    className="shrink-0 w-20 h-full rounded-lg border-2 border-dashed border-white/10 hover:border-[#D4FF00]/40 flex items-center justify-center cursor-pointer transition-all group"
-                                >
-                                    <div className="flex flex-col items-center gap-0.5">
-                                        <ArrowRight className="w-3 h-3 text-white/20 group-hover:text-[#D4FF00] transition-colors" />
-                                        <span className="text-[6px] font-bold text-white/20 uppercase group-hover:text-[#D4FF00]">New Scene</span>
-                                    </div>
-                                </div>
                             </>
                         )}
 
@@ -3146,7 +3149,7 @@ DO NOT add new objects or change the scene. Enhance only.
                                             <div key={ctrl.key} className="flex-1 min-w-[110px]">
                                                 <label className="text-[10px] font-bold text-gray-500 mb-1 block uppercase tracking-wider">{ctrl.label}</label>
                                                 <select value={val} onChange={e => updateVideoSetting(ctrl.key, e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white">
-                                                    {(ctrl.key === 'duration' && selectedModel === 'kling' ? ['5 Seconds', '10 Seconds'] : ctrl.options).map(o => <option key={o} value={o} className="bg-[#111]">{o}</option>)}
+                                                    {(ctrl.key === 'duration' && isKling ? ['5 Seconds', '10 Seconds'] : ctrl.options).map(o => <option key={o} value={o} className="bg-[#111]">{o}</option>)}
                                                 </select>
                                             </div>
                                         )
@@ -3571,7 +3574,7 @@ DO NOT add new objects or change the scene. Enhance only.
                                 </button>
                                 <button onClick={runAiUpscale} disabled={upscaling}
                                     className="flex-2 py-3 px-8 rounded-xl bg-[#D4FF00] hover:bg-white text-black text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-all disabled:opacity-50 min-w-[200px]">
-                                    {upscaling ? <><Sparkles className="w-4 h-4 animate-spin" /> Generating 2K...</> : <><Sparkles className="w-4 h-4" /> Generate 2K Upscale</>}
+                                    {upscaling ? <><Sparkles className="w-4 h-4 animate-spin" /> Generating 2K...</> : <><Sparkles className="w-4 h-4" /> Generate 2K Upscale (2 Credits)</>}
                                 </button>
                                 <button onClick={() => { setSelections(p => ({ ...p, referenceImage: upscaledImage })); setUpscaledImage(null) }}
                                     className="flex-1 py-3 rounded-xl bg-purple-500/20 hover:bg-purple-500/40 text-purple-300 text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-all border border-purple-500/20">

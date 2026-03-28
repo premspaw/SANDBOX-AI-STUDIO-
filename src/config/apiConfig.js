@@ -57,6 +57,14 @@ export const resolveUrl = (url) => {
     if (!url) return '';
     if (typeof url !== 'string') return url;
     
+    const isVideo = url.toLowerCase().split('?')[0].endsWith('.mp4') || 
+                    url.toLowerCase().split('?')[0].endsWith('.webm') ||
+                    url.toLowerCase().split('?')[0].endsWith('.mov');
+
+    if (isVideo && url.startsWith('http') && !url.includes('localhost') && !url.includes('storage.googleapis.com') && !url.includes('/api/proxy/asset')) {
+        return getApiUrl(`/api/proxy/asset?url=${encodeURIComponent(url)}`);
+    }
+
     if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:'))
         return url;
         

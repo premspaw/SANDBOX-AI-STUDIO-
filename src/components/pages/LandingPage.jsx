@@ -3,7 +3,7 @@
  * Final merged version with Subject Overlays and Smooth Transitions.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { LANDING_ASSETS as INITIAL_ASSETS } from '../../config/landingAssets';
 import { getApiUrl } from '../../config/apiConfig';
@@ -350,7 +350,7 @@ function VCell({ cell, style = {} }) {
 // ═══════════════════════════════════════════════════════════════
 function UGCCard({ card, assets, index }) {
   const [hovered, setHovered] = useState(false);
-  const videoSrc = assets?.ugcGallery && assets.ugcGallery[index]?.src;
+  const videoSrc = assets?.ugcAssets && assets.ugcAssets[index]?.src;
 
   return (
     <div
@@ -776,6 +776,12 @@ export default function LandingPage({ onEnter, onPricing }) {
   const [isMuted, setIsMuted] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const videoRef = useRef(null);
+
+  // Memoize the hero video source so it stays stable across re-renders
+  const heroSrc = useMemo(() => {
+    const raw = isMobile ? assets.heroBackground : (assets.heroBackgroundDesktop || assets.heroBackground);
+    return resolveAsset(raw);
+  }, [assets.heroBackground, assets.heroBackgroundDesktop, isMobile]);
   
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 1024);
@@ -784,13 +790,50 @@ export default function LandingPage({ onEnter, onPricing }) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  // On mount — force autoplay
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = true;
+    video.play().catch(console.warn);
+  }, []);
+
   useEffect(() => {
     const fetchAssets = async () => {
       try {
         const response = await fetch(getApiUrl('/api/get-landing-assets'));
         const data = await response.json();
         if (data && Object.keys(data).length > 0) {
-          setAssets(data);
+          setAssets(prev => {
+            // Helper to protect GCS entries in a list
+            const protectGCS = (listKey) => {
+              const current = prev[listKey] || [];
+              const fetched = data[listKey] || [];
+              // Merge slot by slot: GCS always wins. If DB has nothing, current wins.
+              const maxLen = Math.max(current.length, fetched.length);
+              const merged = [];
+              for (let i = 0; i < maxLen; i++) {
+                if (current[i]?.src?.includes('storage.googleapis')) {
+                  merged[i] = current[i];
+                } else {
+                  merged[i] = fetched[i] || current[i];
+                }
+              }
+              return merged;
+            };
+
+            return {
+              ...data,
+              heroBackground: prev.heroBackground,
+              heroBackgroundDesktop: prev.heroBackgroundDesktop,
+              foregroundSubject: prev.foregroundSubject,
+              pipelineDemo: prev.pipelineDemo,
+              ugcAssets: protectGCS('ugcAssets'),
+              productAssets: protectGCS('productAssets'),
+              cinemaAssets: protectGCS('cinemaAssets'),
+              gallery: protectGCS('gallery')
+            };
+          });
         }
       } catch (err) {
         console.warn("[LandingPage] Failed to fetch dynamic assets, using initial config.");
@@ -804,10 +847,8 @@ export default function LandingPage({ onEnter, onPricing }) {
   const toggleMute = () => {
     const video = videoRef.current;
     if (!video) return;
-    const next = !isMuted;
-    video.muted = next;   // true = muted, false = unmuted
-    if (!next) video.volume = 1;
-    setIsMuted(next);
+    video.muted = !video.muted; // true = muted, false = unmuted
+    setIsMuted(video.muted);
   };
 
   useEffect(() => {
@@ -884,14 +925,15 @@ export default function LandingPage({ onEnter, onPricing }) {
               <video
                 ref={videoRef}
                 autoPlay muted loop playsInline preload="auto"
-                src={resolveAsset(assets.heroBackground)}
+                crossOrigin="anonymous"
+                src={heroSrc}
                 style={{
                   position: 'absolute',
                   top: 0, left: 0,
                   width: '100%',
                   height: '100%',
-                  objectFit: 'cover',
-                  objectPosition: 'center',
+                  objectFit: 'contain',
+                  objectPosition: 'right center',
                   opacity: 1,
                 }}
               />
@@ -1321,6 +1363,8 @@ function StackVideo({ src, objectFit = 'cover', objectPosition = 'center' }) {
         muted={isMuted}
         loop
         playsInline
+        preload="auto"
+        crossOrigin="anonymous"
         src={src}
         style={{ width: '100%', height: '100%', objectFit, objectPosition }}
       />
@@ -1427,6 +1471,8 @@ function MobileStackSection({ assets }) {
   const productCards = [
     { tag: 'MACRO DETAIL', name: 'TEXTURE SHOT' },
     { tag: 'HERO SHOT', name: 'FULL EDITORIAL' },
+    { tag: 'LIFESTYLE', name: 'BRAND STORY' },
+    { tag: 'CAMPAIGN', name: 'SOCIAL EDIT' },
   ];
 
   return (
@@ -1447,7 +1493,7 @@ function MobileStackSection({ assets }) {
           {ugcCards.map((card, i) => (
             <div key={i} style={videoCardStyle}>
               {ugcVideos[i]?.src ? (
-                <video autoPlay muted loop playsInline
+                <video autoPlay muted loop playsInline preload="auto" crossOrigin="anonymous"
                   src={ugcVideos[i].src}
                   style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
                 />
@@ -1472,19 +1518,19 @@ function MobileStackSection({ assets }) {
       <div style={{ ...sectionStyle, background: T.bg2 }}>
         <SectionEye>PRODUCT STUDIO</SectionEye>
         <div style={headingStyle}>
-          DROP A PRODUCT. <span style={{ color: T.lime }}>GET A SHOOT.</span>
+          DROP A PRODUCT OR WARDROBE. <span style={{ color: T.lime }}>GET A SHOOT.</span>
         </div>
         <p style={{
           fontFamily: "'Syne',sans-serif", fontSize: 14, lineHeight: 1.6,
           color: 'rgba(240,237,232,0.35)', marginBottom: 8,
         }}>
-          One photo → full editorial. Every angle, every format.
+          One product photo → complete advertisement campaign. Every angle, every format.
         </p>
-        <div style={{ ...videoGridStyle, gridTemplateColumns: '1fr 1fr' }}>
+        <div style={{ ...videoGridStyle, gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)' }}>
           {productCards.map((card, i) => (
             <div key={i} style={{ ...videoCardStyle, aspectRatio: i === 1 ? '3/4' : '9/16' }}>
               {productVideos[i]?.src ? (
-                <video autoPlay muted loop playsInline
+                <video autoPlay muted loop playsInline preload="auto" crossOrigin="anonymous"
                   src={productVideos[i].src}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
@@ -1516,7 +1562,7 @@ function MobileStackSection({ assets }) {
           aspectRatio: '16/9', background: T.bg2, marginTop: 20,
         }}>
           {cinemaVideo?.src ? (
-            <video autoPlay muted loop playsInline
+            <video autoPlay muted loop playsInline preload="auto" crossOrigin="anonymous"
               src={cinemaVideo.src}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
@@ -1797,20 +1843,21 @@ function StackSection({ assets, isMobile }) {
             lineHeight: 1.8, color: 'rgba(240,237,232,0.3)',
             maxWidth: 300, textAlign: 'right'
           }}>
-            One product photo generates a complete editorial shoot — every angle, every lighting setup, every format. No studio. No photographer.
+            One product photo generates a complete advertisement campaign in seconds. No studio. No photographer.
           </p>
         </div>
 
         {/* 3 Product Videos - mix of portrait + landscape */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : '1fr 1.4fr 1fr',
+          gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)',
           gap: 3, flex: 1, minHeight: 0,
         }}>
           {[
             { tag: 'MACRO DETAIL', name: 'TEXTURE SHOT', meta: '1:1 · CLOSE-UP' },
             { tag: 'HERO SHOT', name: 'FULL EDITORIAL', meta: '4:5 · CAMPAIGN' },
             { tag: 'LIFESTYLE', name: 'IN-USE SCENE', meta: '9:16 · SOCIAL' },
+            { tag: 'CAMPAIGN', name: 'REELS EDIT', meta: '9:16 · STORIES' },
           ].map((card, i) => (
             <div
               key={i}
@@ -1818,6 +1865,7 @@ function StackSection({ assets, isMobile }) {
                 background: T.bg,
                 position: 'relative', overflow: 'hidden',
                 borderRadius: 4,
+                flex: 1,
               }}
             >
               {productVideos[i]?.src ? (

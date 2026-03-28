@@ -78,10 +78,15 @@ import * as productService from './services/productService.js';
 import * as cacheService from './services/cacheService.js';
 import { GoogleAuth } from 'google-auth-library';
 
+import { Storage } from '@google-cloud/storage';
+
 // ─────────────────────────────────────────────────────────────
-// VERTEX AI AUTH via Service Account (for Veo 3.1 Video Gen)
-// Uses the zerolen service account JSON key for Bearer tokens
+// VERTEX AI & GCS AUTH via Service Account
 // ─────────────────────────────────────────────────────────────
+const GCS_KEY_PATH = path.join(__dirname, 'src', 'components', 'canvas', 'gen-lang-client-0438096272-2caf3e3dbd1d.json');
+const storage = new Storage({ keyFilename: GCS_KEY_PATH });
+const BUCKET_NAME = 'zerolensbucket_1';
+
 const VERTEX_KEY_PATH = path.join(__dirname, 'gen-lang-client-0438096272-veo.json');
 const VERTEX_PROJECT_ID = 'gen-lang-client-0438096272';
 const VERTEX_LOCATION = process.env.GOOGLE_LOCATION || 'us-central1';
@@ -338,7 +343,7 @@ console.log(`[SERVER] Google API key configured: ${process.env.GOOGLE_API_KEY ? 
 console.log(`[SERVER] Kling API key configured: ${process.env.KLING_API_KEY ? 'YES' : 'NO'}`);
 
 // Storage Base URL for GCS Assets
-const storageBase = `https://storage.googleapis.com/${process.env.GCS_BUCKET_NAME || 'ai-cinemastudio-assets-569815811058'}`;
+const storageBase = `https://storage.googleapis.com/${process.env.GCS_BUCKET_NAME || 'zerolensbucket_1'}`;
 
 // Middleware
 app.use(cors());
@@ -1892,22 +1897,36 @@ async function handleKling(req, res) {
         const image_urls = [imgUrl];
         if (tailUrl) image_urls.push(tailUrl);
 
-        // Always use Kling 3.0 per the latest API spec
-        const payload = {
-            model: "kling-3.0/video",
-            input: {
-                prompt: prompt,
-                image_urls: image_urls,
-                sound: req.body.includeAudio || false,
-                duration: String(duration || "5"),
-                aspect_ratio: aspect_ratio || "16:9",
-                mode: "pro", // Default to high resolution for Director Studio
-                multi_shots: false,
-                multi_prompt: [] // Required by schema even if multi_shots is false
-            }
-        };
+        // ── KLING-SPECIFIC PAYLOAD ──────────────────────────────
+        const modelId = model || "kling-3.0/video";
+        const isKling26 = modelId.includes('kling-2.6');
+        
+        let payload = { model: modelId, input: {} };
 
-        console.log(`[KLING-3.0] Creating task:`, JSON.stringify(payload, null, 2));
+        if (isKling26) {
+           // Kling 2.6 Schema: input: { prompt, image_urls, sound, duration }
+           payload.input = {
+               prompt: prompt,
+               image_urls: [image_urls[0]].filter(Boolean), // max 1 for 2.6
+               sound: req.body.includeAudio || false,
+               duration: String(duration || "5")
+           };
+        } else {
+           // Kling 3.0 Schema: input: { prompt, sound, duration, aspect_ratio, mode, multi_shots, multi_prompt, image_urls, kling_elements }
+           payload.input = {
+               prompt: prompt,
+               image_urls: image_urls,
+               sound: req.body.includeAudio || false,
+               duration: String(duration || "5"),
+               aspect_ratio: aspect_ratio || "16:9",
+               mode: req.body.mode || "pro",
+               multi_shots: req.body.multi_shots || false,
+               multi_prompt: req.body.multi_prompt || [],
+               kling_elements: req.body.kling_elements || []
+           };
+        }
+
+        console.log(`[KIE-API] Creating task:`, JSON.stringify(payload, null, 2));
         const createResp = await fetch("https://api.kie.ai/api/v1/jobs/createTask", {
             method: 'POST',
             headers: {
@@ -1937,7 +1956,7 @@ async function handleKling(req, res) {
             if (pollData.code !== 200) throw new Error(`Kling Polling Failed: ${pollData.msg}`);
 
             const state = pollData.data.state;
-            console.log(`[KLING-POLL] ${state} (${attempts})`);
+            console.log(`[KIE-POLL] ${state} (${attempts})`);
 
             if (state === 'success') {
                 isDone = true;
@@ -3616,7 +3635,28 @@ app.get('/api/get-landing-assets', async (req, res) => {
     };
 
     try {
-        // 1. Try Supabase first
+        // 1. Try local landingAssets.js first (to bypass Supabase billing issues)
+        try {
+            const filePath = path.join(__dirname, 'src', 'config', 'landingAssets.js');
+            if (fs.existsSync(filePath)) {
+                let content = fs.readFileSync(filePath, 'utf8');
+                const jsonMatch = content.match(/export const LANDING_ASSETS = (\{[\s\S]*\});/);
+                if (jsonMatch) {
+                    try {
+                        const objectStr = jsonMatch[1];
+                        const parsed = new Function('return ' + objectStr)();
+                        console.log("[SERVER] Extracted landing assets from local JS file (Priority 1).");
+                        return res.json(parsed);
+                    } catch (parseErr) {
+                        console.warn("[SERVER] Local file JS evaluation failed:", parseErr.message);
+                    }
+                }
+            }
+        } catch (fileErr) {
+            console.warn("[SERVER] Local config fetch failed:", fileErr.message);
+        }
+
+        // 2. Fallback to Supabase
         if (supabase) {
             try {
                 const { data, error } = await supabase
@@ -3626,32 +3666,12 @@ app.get('/api/get-landing-assets', async (req, res) => {
                     .single();
 
                 if (!error && data?.setting_value) {
-                    console.log("[SERVER] Fetched landing assets from Supabase.");
+                    console.log("[SERVER] Fetched landing assets from Supabase (Priority 2).");
                     return res.json(data.setting_value);
                 }
             } catch (supaErr) {
                 console.warn("[SERVER] Supabase landing assets fetch exception:", supaErr.message);
             }
-        }
-
-        // 2. Fallback to local landingAssets.js
-        try {
-            const filePath = path.join(__dirname, 'src', 'config', 'landingAssets.js');
-            if (fs.existsSync(filePath)) {
-                const content = fs.readFileSync(filePath, 'utf8');
-                const jsonMatch = content.match(/export const LANDING_ASSETS = (\{[\s\S]*\});/);
-                if (jsonMatch) {
-                    try {
-                        const parsed = JSON.parse(jsonMatch[1]);
-                        console.log("[SERVER] Extracted landing assets from local file.");
-                        return res.json(parsed);
-                    } catch (parseErr) {
-                        console.warn("[SERVER] Local file JSON parse failed:", parseErr.message);
-                    }
-                }
-            }
-        } catch (fileErr) {
-            console.warn("[SERVER] Local fallback failed:", fileErr.message);
         }
 
         // 3. Final Fallback
@@ -3665,50 +3685,7 @@ app.get('/api/get-landing-assets', async (req, res) => {
 });
 
 
-// Update Landing Page Assets Configuration
-app.get('/api/proxy/asset', async (req, res) => {
-    try {
-        const { url } = req.query;
-        if (!url) return res.status(400).send('URL is required');
-
-        // Pass along range headers to support HTML5 video seeking/streaming
-        const options = {};
-        if (req.headers.range) {
-            options.headers = { 'Range': req.headers.range };
-        }
-
-        const response = await fetch(url, options);
-        if (!response.ok && response.status !== 206) throw new Error(`Failed to fetch asset: ${response.statusText}`);
-
-        // Forward type and dimensions
-        res.set('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
-        res.set('Content-Length', response.headers.get('content-length'));
-        res.set('Accept-Ranges', 'bytes'); 
-
-        // Support partial content range for video chunks
-        if (response.status === 206) {
-            res.status(206);
-            if (response.headers.get('content-range')) {
-                res.set('Content-Range', response.headers.get('content-range'));
-            }
-        }
-
-        response.body.pipe(res);
-
-        // Handle mid-stream crashes
-        response.body.on('error', (err) => {
-             console.error('[PROXY-STREAM-ERR]', err.message);
-             if (!res.headersSent) {
-                 res.status(500).send('Stream crashed');
-             } else {
-                 res.end();
-             }
-        });
-    } catch (error) {
-        console.error('[PROXY-ERR]', error.message);
-        res.status(500).send('Proxy failure');
-    }
-});
+// Proxy endpoint for remote assets moved to line 4236 for comprehensive support
 
 app.post('/api/update-landing-assets', async (req, res) => {
     try {
@@ -4254,6 +4231,9 @@ app.get('/api/proxy/asset', async (req, res) => {
         const acceptRanges = response.headers.get('accept-ranges');
         if (acceptRanges) res.setHeader('Accept-Ranges', acceptRanges);
 
+        // Prevent caching issues for large/piped assets
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+
         // Handle Range requests for video players
         if (req.headers.range) {
             res.setHeader('Content-Range', response.headers.get('content-range') || '');
@@ -4411,9 +4391,7 @@ app.get('/api/landing-assets-library', async (req, res) => {
 
 app.post('/api/landing-assets-upload', async (req, res) => {
     try {
-        if (!supabase) return res.status(503).json({ error: 'Supabase not configured' });
-
-        const { base64, fileName, mimeType } = req.body;
+        const { base64, fileName, mimeType, category } = req.body;
         if (!base64 || !fileName) return res.status(400).json({ error: 'Missing base64 or fileName' });
 
         const buffer = Buffer.from(
@@ -4421,20 +4399,34 @@ app.post('/api/landing-assets-upload', async (req, res) => {
             'base64'
         );
 
-        const { data, error } = await supabase.storage
-            .from('assets')
-            .upload(fileName, buffer, { contentType: mimeType || 'image/jpeg', upsert: true });
+        // Upload to Google Cloud Storage (for better streaming performance)
+        console.log(`[GCS-UPLOAD] Attempting to upload ${fileName} to ${BUCKET_NAME}...`);
+        const bucket = storage.bucket(BUCKET_NAME);
+        const file = bucket.file(fileName);
 
-        if (error) throw error;
+        await file.save(buffer, {
+            metadata: {
+                contentType: mimeType || 'video/mp4',
+                cacheControl: 'public, max-age=31536000',
+            },
+            resumable: false
+        });
 
-        const { data: { publicUrl } } = supabase.storage
-            .from('assets')
-            .getPublicUrl(fileName);
+        const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${fileName}`;
+        console.log(`[GCS-UPLOAD] ✅ Success! URL: ${publicUrl}`);
 
-        console.log(`[ASSET-UPLOAD] ✅ ${fileName} → ${publicUrl}`);
-        res.json({ success: true, url: publicUrl, path: data.path });
+        // Also save reference to library if Supabase is available
+        if (supabase) {
+            await supabase.from('landing_video_assets').insert([{
+                url: publicUrl,
+                title: fileName.split('.')[0],
+                category: category || 'gallery'
+            }]).catch(err => console.warn("[DB-LOG-ERR]", err.message));
+        }
+
+        res.json({ success: true, url: publicUrl, path: fileName });
     } catch (err) {
-        console.error('[ASSET-UPLOAD]', err);
+        console.error('[GCS-UPLOAD-ERR]', err);
         res.status(500).json({ error: err.message });
     }
 });

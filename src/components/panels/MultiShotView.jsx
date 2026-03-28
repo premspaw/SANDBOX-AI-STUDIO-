@@ -651,7 +651,7 @@ Output only raw visual photographs.`;
                                             className={cn("p-3 bg-fuchsia-600 hover:bg-fuchsia-500 rounded-xl text-white shadow-xl group flex items-center justify-center gap-2 transition-all", (upscaling || activeSlot.loading) && "opacity-50 cursor-not-allowed")}
                                         >
                                             <Sparkles className={cn("w-4 h-4 md:w-5 md:h-5", (upscaling || activeSlot.loading) && "animate-pulse")} />
-                                            <span className="text-[10px] font-black uppercase md:w-0 overflow-hidden md:group-hover:w-auto transition-all whitespace-nowrap">{(upscaling || activeSlot.loading) ? 'Upscaling...' : 'Upscale 2K'}</span>
+                                            <span className="text-[10px] font-black uppercase md:w-0 overflow-hidden md:group-hover:w-auto transition-all whitespace-nowrap">{(upscaling || activeSlot.loading) ? 'Upscaling...' : 'Upscale 2K (2 Credits)'}</span>
                                         </button>
                                         <button onClick={() => sendToVideo(activeSlot, 'first')} className="p-3 bg-cyan-500 hover:bg-cyan-400 rounded-xl text-white shadow-xl group flex items-center justify-center gap-2 transition-all">
                                             <Play className="w-4 h-4 md:w-5 md:h-5" />

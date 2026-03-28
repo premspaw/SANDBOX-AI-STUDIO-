@@ -27,4 +27,8 @@ export const SHORTS_COST = {
     // Identity & Forge
     identity_kit: 15,
     movie_matrix: 10,
+
+    // AI Refinement
+    refine_prompt: 1,
 };
+

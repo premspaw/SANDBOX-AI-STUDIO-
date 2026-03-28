@@ -9,7 +9,7 @@ const getAIConfig = () => {
         '';
         
     const isToken = apiKey.startsWith('AQ.') || apiKey.startsWith('ya29.');
-    const projectId = (typeof process !== 'undefined' ? process.env.GOOGLE_PROJECT_ID : null) || 'ai-cinemastudio-569815811058';
+    const projectId = (typeof process !== 'undefined' ? process.env.GOOGLE_PROJECT_ID : null) || 'gen-lang-client-0438096272';
     const location = (typeof process !== 'undefined' ? process.env.GOOGLE_LOCATION : null) || 'us-central1';
     
     const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://sandbox-ai-studio.up.railway.app';

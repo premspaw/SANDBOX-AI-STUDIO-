@@ -1,5 +1,5 @@
 {
-  "name": "ai-cinemastudio",
+  "name": "cinemai",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -20,6 +20,7 @@
     "@fal-ai/client": "^1.9.4",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
+    "@google-cloud/storage": "^7.19.0",
     "@google-cloud/text-to-speech": "^6.4.0",
     "@google/genai": "^1.42.0",
     "@google/generative-ai": "^0.24.1",
