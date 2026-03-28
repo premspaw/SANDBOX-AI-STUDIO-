@@ -78,13 +78,15 @@ export const saveStoryboardItem = async (characterId, imageUrl, orderIndex) => {
  */
 export const saveGeneratedAsset = async (data, type = 'image', name = null) => {
     try {
+        const { data: { user } } = await supabase.auth.getUser();
         const response = await fetch(getApiUrl('/api/save-asset'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                imageData: data, // Could be image or video dataUrl
+                imageData: data,
                 fileName: name,
-                type: type
+                type: type,
+                userId: user?.id
             })
         });
         const result = await response.json();

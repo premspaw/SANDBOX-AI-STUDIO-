@@ -61,7 +61,10 @@ export const resolveUrl = (url) => {
                     url.toLowerCase().split('?')[0].endsWith('.webm') ||
                     url.toLowerCase().split('?')[0].endsWith('.mov');
 
-    if (isVideo && url.startsWith('http') && !url.includes('localhost') && !url.includes('storage.googleapis.com') && !url.includes('/api/proxy/asset')) {
+    // ✅ FIX: Route ALL external video URLs through the backend proxy.
+    // This prevents ERR_CACHE_OPERATION_NOT_SUPPORTED which happens when the browser
+    // tries to cache GCS/Supabase videos with incompatible response headers.
+    if (isVideo && url.startsWith('http') && !url.includes('localhost') && !url.includes('/api/proxy/asset')) {
         return getApiUrl(`/api/proxy/asset?url=${encodeURIComponent(url)}`);
     }
 

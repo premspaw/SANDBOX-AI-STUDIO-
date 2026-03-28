@@ -195,8 +195,7 @@ function CharacterKitCard({ character, onDirectorsCut, onDelete, onSelectReferen
 export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab: setAppTab }) {
     const [activeTab, setActiveTab] = useState('images');
     const [viewMode, setViewMode] = useState('grid');
-    const [isConnectedToDrive, setIsConnectedToDrive] = useState(false);
-    const { cachedAssets, cachedAssetsUserId, setCachedAssets } = useAppStore();
+    const [isConnectedToDrive, setIsConnectedToDrive] = useState(false);    const { cachedAssets, cachedAssetsUserId, setCachedAssets, userProfile } = useAppStore();
     const [assets, setAssets] = useState({
         images: [],
         videos: [],
@@ -211,53 +210,53 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
     const [isNeuralSearch, setIsNeuralSearch] = useState(false);
 
     const fetchAssets = async (force = false) => {
-        if (!force && cachedAssets) {
+        // Resolve user early for cache verification
+        let targetUser = userProfile;
+        if (!targetUser) {
+           const { data: { user: authUser } } = await supabase.auth.getUser();
+           targetUser = authUser;
+        }
+
+        if (!force && cachedAssets && cachedAssetsUserId === targetUser?.id) {
             setAssets(cachedAssets);
             setLoading(false);
             return;
         }
 
-        console.log("AssetsLibrary: fetchAssets starting [PARALLEL_PROXY_MODE]...");
+        console.log(`AssetsLibrary: fetchAssets starting for User ${targetUser?.id}...`);
         setLoading(true);
         const sharedImages = [];
         const sharedVideos = [];
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
+            if (!targetUser) {
                 setAssets({
                     images: [],
                     videos: [],
                     models: [],
                     upscaled: [],
                     characters: [],
+                    landing: [],
+                    templates: []
                 });
                 setLoading(false);
                 return;
             }
 
-            // 1. Fetch images from assets table for current user only
-            const { data: dbAssets, error: imgError } = await supabase
-                .from("assets")
-                .select("*")
-                .eq("user_id", user.id)
-                .order("created_at", { ascending: false });
+            // 1. Fetch images & videos via Proxy/Backend (IPv4 Fix)
+            const response = await fetch(getApiUrl(`/api/list-assets?userId=${targetUser.id}`));
+            const data = await response.json();
+            
+            if (!response.ok) throw new Error(data.error || "Failed to fetch assets");
+            const dbImages = data.images || [];
+            const dbVideos = data.videos || [];
+            const dbUpscaled = data.upscaled || [];
 
-            if (imgError) console.error("Images error:", imgError.message);
+            // 2. Fetch characters via Proxy (IPv4 Fix)
+            const charResponse = await fetch(getApiUrl(`/api/list-characters?userId=${targetUser.id}`));;
+            const charData = await charResponse.json();
+            const dbCharacters = charData.characters || [];
 
-            // --- Categorize DB Assets into Images vs Videos (Using 'type' field or fallback to regex) ---
-            const dbImages = (dbAssets || []).filter(a => a.type === 'image' || (!a.type && !a?.url?.match(/\.(mp4|webm|mov)$/i)));
-            const dbVideos = (dbAssets || []).filter(a => a.type === 'video' || (!a.type && a?.url?.match(/\.(mp4|webm|mov)$/i)));
-
-            // 2. Fetch characters from CHARACTERS table for current user only
-            const { data: dbCharacters, error: charError } = await supabase
-                .from("characters")
-                .select("*")
-                .eq("user_id", user.id)
-                .order("timestamp", { ascending: false });
-
-            if (charError) console.error("Characters error:", charError.message);
-
-            console.log("Found characters:", dbCharacters?.length ?? 0);
+            console.log(`Found: ${dbImages.length} images, ${dbVideos.length} videos, ${dbUpscaled.length} upscaled assets`);
 
             // 3. Normalize characters to match your UI card format
             const normalizedCharacters = (dbCharacters || []).map(c => {
@@ -276,7 +275,6 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     rawData: c
                 };
             });
-
 
             // --- LOCAL MIRROR MERGE (Emergency Fallback, per-user scoped) ---
             let localCharacters = [];
@@ -315,18 +313,18 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
             });
 
             const newAssets = {
-                images: [...sharedImages, ...dbImages],
-                videos: [...sharedVideos, ...dbVideos],
+                images: dbImages,
+                videos: dbVideos,
+                upscaled: dbUpscaled,
                 models: [
                     { id: 'm1', name: 'GPT Image 1.5', type: 'Native', size: 'N/A', date: 'Active' },
                     { id: 'm2', name: 'Flux Pro', type: 'Replicate', size: 'N/A', date: 'Active' },
                 ],
-                upscaled: [],
                 characters: finalCharacters,
             };
 
             setAssets(newAssets);
-            setCachedAssets(newAssets);
+            setCachedAssets(newAssets, targetUser?.id);
             console.log("AssetsLibrary: State updated successfully via Direct Supabase + Local Merge.");
 
         } catch (err) {

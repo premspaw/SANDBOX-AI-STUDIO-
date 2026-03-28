@@ -83,11 +83,43 @@ import { Storage } from '@google-cloud/storage';
 // ─────────────────────────────────────────────────────────────
 // VERTEX AI & GCS AUTH via Service Account
 // ─────────────────────────────────────────────────────────────
-const GCS_KEY_PATH = path.join(__dirname, 'src', 'components', 'canvas', 'gen-lang-client-0438096272-2caf3e3dbd1d.json');
-const storage = new Storage({ keyFilename: GCS_KEY_PATH });
-const BUCKET_NAME = 'zerolensbucket_1';
 
-const VERTEX_KEY_PATH = path.join(__dirname, 'gen-lang-client-0438096272-veo.json');
+// Helper to load credentials from Env or File (Root then Nested)
+function getCredentials(fileName, envKey) {
+    if (process.env[envKey]) {
+        try {
+            let cleanJson = process.env[envKey];
+            if (cleanJson.startsWith("'") && cleanJson.endsWith("'")) cleanJson = cleanJson.slice(1, -1);
+            const credentials = JSON.parse(cleanJson);
+            if (credentials.private_key) credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+            return credentials;
+        } catch (e) {
+            console.error(`[AUTH] Failed to parse ${envKey}:`, e.message);
+        }
+    }
+
+    const paths = [
+        path.join(__dirname, fileName),
+        path.join(__dirname, 'src', 'components', 'canvas', fileName)
+    ];
+
+    for (const p of paths) {
+        if (fs.existsSync(p)) {
+            console.log(`[AUTH] ✅ Loading credentials from: ${p}`);
+            return p; // Storage SDK accepts path string, GoogleAuth needs path in keyFile
+        }
+    }
+    return null;
+}
+
+const GCS_KEY = getCredentials('gen-lang-client-0438096272-2caf3e3dbd1d.json', 'GCS_CREDENTIALS_JSON');
+const storage = new Storage({ 
+    ...(typeof GCS_KEY === 'string' ? { keyFilename: GCS_KEY } : { credentials: GCS_KEY })
+});
+
+const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'zerolensbucket_1';
+
+const VERTEX_KEY = getCredentials('gen-lang-client-0438096272-veo.json', 'GOOGLE_APPLICATION_CREDENTIALS_JSON');
 const VERTEX_PROJECT_ID = 'gen-lang-client-0438096272';
 const VERTEX_LOCATION = process.env.GOOGLE_LOCATION || 'us-central1';
 
@@ -113,25 +145,17 @@ const getVertexToken = async () => {
                 ]
             };
 
-            // First priority: Read safely from Environment Vars (Railway safe)
-            if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-                let cleanJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-                if (cleanJson.startsWith("'") && cleanJson.endsWith("'")) cleanJson = cleanJson.slice(1, -1);
-                
-                const credentials = JSON.parse(cleanJson);
-                if (credentials.private_key) credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
-                
-                authOptions.credentials = credentials;
-            } 
-            // Second priority: Local file paths
-            else if (fs.existsSync(VERTEX_KEY_PATH)) {
-                authOptions.keyFile = VERTEX_KEY_PATH;
+            if (VERTEX_KEY) {
+                if (typeof VERTEX_KEY === 'string') {
+                    authOptions.keyFile = VERTEX_KEY;
+                } else {
+                    authOptions.credentials = VERTEX_KEY;
+                }
+                _vertexAuth = new GoogleAuth(authOptions);
             } else {
-                console.warn(`[VERTEX_AUTH] No valid authentication found! Missing env var or file: ${VERTEX_KEY_PATH}`);
+                console.warn(`[VERTEX_AUTH] No valid authentication found! Missing credentials.`);
                 return null;
             }
-
-            _vertexAuth = new GoogleAuth(authOptions);
         }
 
         const client = await _vertexAuth.getClient();
@@ -148,16 +172,9 @@ const getVertexToken = async () => {
     }
 };
 
-// Log on startup whether any authentication channel works
-if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-    console.log(`[VERTEX_AUTH] ✅ Service account loaded via ENV mapping!`);
-    getVertexToken().catch(() => {});
-} else if (fs.existsSync(VERTEX_KEY_PATH)) {
-    console.log(`[VERTEX_AUTH] ✅ Service account key found locally: ${VERTEX_KEY_PATH}`);
-    getVertexToken().catch(() => {});
-} else {
-    console.warn(`[VERTEX_AUTH] ⚠️  No Google service account identified dynamically or at: ${VERTEX_KEY_PATH}`);
-}
+// Initial Token Check
+getVertexToken().catch(() => {});
+
 
 let _geminiClient = null;
 const getGeminiClient = () => {
@@ -350,7 +367,23 @@ const app = express();
 app.set('trust proxy', 1);
 
 app.get('/api/health-check', (req, res) => {
-    res.json({ status: 'ready', version: '1.0.9', timestamp: new Date().toISOString() });
+    res.json({ 
+        status: 'ready', 
+        supabase: !!supabase,
+        bucket: BUCKET_NAME,
+        version: '1.1.0', 
+        timestamp: new Date().toISOString() 
+    });
+});
+app.get('/api/supabase-status', async (req, res) => {
+    if (!supabase) return res.status(500).json({ error: 'Supabase client not initialized' });
+    try {
+        const { count, error } = await supabase.from('assets').select('*', { count: 'exact', head: true });
+        if (error) throw error;
+        res.json({ connection: 'ok', total_assets: count });
+    } catch (err) {
+        res.status(500).json({ connection: 'failed', error: err.message });
+    }
 });
 app.get('/api/ping', (req, res) => res.json({ message: 'pong', timestamp: new Date().toISOString() }));
 const httpServer = http.createServer(app);
@@ -797,49 +830,53 @@ app.post('/api/save-asset', async (req, res) => {
             return res.status(400).json({ error: "Invalid request: missing JSON body or Content-Type header." });
         }
 
-        const { imageData, fileName, type = 'image', userId } = req.body;
+        const { imageData } = req.body;
+        const userId = req.body.userId || req.body.user_id;
+        const type = req.body.type || 'image';
+        const fileName = req.body.fileName || `asset_${Date.now()}.png`;
         
         if (!imageData) throw new Error("No asset data provided");
 
         // ✅ If it's already a GCS URL — just save to DB, skip upload
-        if (imageData.startsWith('https://storage.googleapis.com/')) {
-            console.log('[SAVE-ASSET] Already a GCS URL, saving to DB only');
+        if (imageData.startsWith('https://storage.googleapis.com/') || (imageData.startsWith('http') && !imageData.includes('localhost'))) {
+            const isGCS = imageData.startsWith('https://storage.googleapis.com/');
+            console.log(`[SAVE-ASSET] ${isGCS ? 'GCS' : 'Public'} URL detected, saving to DB only`);
             
             const name = fileName || `asset_${Date.now()}`;
+            let dbInsertedId = `asset_${Date.now()}`;
             
             if (supabase && userId) {
-                const { error } = await supabase.from('assets').insert([{
-                    name,
-                    type,
+                console.log(`[DB-SAVE] Attempting insert for User: ${userId}, Type: ${type}`);
+                
+                // Ensure the object keys match your Supabase table columns exactly
+                const { data: insertedData, error: dbError } = await supabase.from('assets').insert([{
+                    name: fileName || `asset_${Date.now()}`,
+                    type: type,
                     url: imageData,
-                    user_id: userId,
+                    user_id: userId, // Ensure this matches 'cec79985...' from your logs
                     created_at: new Date().toISOString()
-                }]);
-                if (error) console.error('[DB-INSERT]', error.message);
+                }]).select();
+
+                if (dbError) {
+                    // 🚨 CHECK YOUR TERMINAL/RAILWAY LOGS FOR THIS:
+                    console.error("CRITICAL DATABASE ERROR:", dbError.message, dbError.details);
+                    // CRITICAL: Return the error so the frontend knows the save failed
+                    return res.status(500).json({ success: false, error: dbError.message });
+                }
+                
+                console.log('[DB-INSERT_SUCCESS] ✅ Asset Saved to DB');
+                dbInsertedId = insertedData[0].id;
+            } else {
+                console.warn("[SAVE-ASSET] ⚠️ Skipping DB insert: supabase init?", !!supabase, "userId?", !!userId);
             }
 
             return res.json({
                 success: true,
                 path: imageData,
                 url: imageData,
+                id: dbInsertedId,
                 name
             });
-        }
-
-        // ✅ If it's already any public HTTP URL — same thing
-        if (imageData.startsWith('http') && !imageData.includes('localhost')) {
-            console.log('[SAVE-ASSET] Public URL detected, saving to DB only');
-            const name = fileName || `asset_${Date.now()}`;
-            
-            if (supabase && userId) {
-                await supabase.from('assets').insert([{
-                    name, type, url: imageData,
-                    user_id: userId,
-                    created_at: new Date().toISOString()
-                }]).catch(e => console.warn('[DB]', e.message));
-            }
-
-            return res.json({ success: true, path: imageData, url: imageData, name });
         }
 
         // For Base64 uploads
@@ -880,10 +917,14 @@ app.post('/api/save-asset', async (req, res) => {
                 }])
                 .select();
             if (dbError) {
-                console.error("[SERVER] Supabase DB Insert Error:", dbError.message);
-            } else if (dbData && dbData[0]) {
+                console.error("❌ [SERVER] Supabase DB Insert Error:", dbError.message, dbError.details);
+                // Log full error for deep debugging
+                console.dir(dbError);
+            } else if (dbData && dbData.length > 0) {
                 insertedId = dbData[0].id;
-                console.log(`[GCS-DB-SAVE] Success:`, insertedId);
+                console.log(`✅ [GCS-DB-SAVE] Success:`, insertedId);
+            } else {
+                console.warn("⚠️ [SERVER] Supabase DB Insert returned NO DATA. Falling back to temporary ID.");
             }
         }
 
@@ -2534,74 +2575,46 @@ async function uploadToDrive(filePath, fileName) {
 }
 
 // --- ASSET MANAGEMENT ---
-// --- ASSET MANAGEMENT ---
 app.get('/api/list-assets', async (req, res) => {
+    const { userId } = req.query;
+    if (!userId || userId === 'null' || userId === 'undefined' || userId === '') {
+        return res.json({ images: [], videos: [] });
+    }
+
+    // Use your existing forced-IPv4 helper to ensure results return
     try {
-        const { userId } = req.query;
-        let allImages = [];
-        if (!userId || userId === 'null' || userId === 'undefined' || userId === '') {
+        // --- SCHEMA DISCOVERY (Debug only) ---
+        const schemaCheck = await supabaseRestGet('assets?select=*&limit=1');
+        if (schemaCheck && schemaCheck[0]) {
+            console.log("[SERVER] Database Schema Keys:", Object.keys(schemaCheck[0]));
+        } else {
+            console.log("[SERVER] Database Schema Check: Table 'assets' appears empty or inaccessible.");
+        }
+
+        const query = `assets?user_id=eq.${userId}&select=*&order=created_at.desc`;
+        console.log(`[SERVER] Querying assets for userId: ${userId} with Query: ${query}`);
+        const data = await supabaseRestGet(query);
+        
+        if (!data || !Array.isArray(data)) {
+            console.warn(`[SERVER] No array data for user ${userId}. Raw:`, data);
             return res.json({ images: [], videos: [], upscaled: [] });
         }
-        if (supabase) {
-            console.log("[SERVER] Checking Supabase for assets (IPv4)...");
-            try {
-                const query = `assets?user_id=eq.${userId}&select=*&order=created_at.desc&limit=100`;
-                const data = await supabaseRestGet(query);
-                const dbFormatted = data.map(a => ({
-                    id: a.id,
-                    type: a.type || 'image',
-                    url: a.url || (a.path ? `${storageBase}/${a.path}` : ''),
-                    name: a.name || (a.type === 'video' ? 'AI Video' : 'AI Asset'),
-                    date: a.created_at ? new Date(a.created_at).toISOString().split('T')[0] : 'Today',
-                    timestamp: a.created_at ? new Date(a.created_at).getTime() : 0,
-                    size: a.size || 'N/A'
-                }));
-                allImages = [...allImages, ...dbFormatted.filter(a => a.type === 'image')];
-                const allVideos = dbFormatted.filter(a => a.type === 'video');
-                console.log(`[SERVER] ✅ Found ${dbFormatted.length} assets from Supabase.`);
 
-                const unique = Array.from(new Map(allImages.map(img => [img.url, img])).values());
-                return res.json({
-                    images: unique.sort((a, b) => b.timestamp - a.timestamp),
-                    videos: allVideos.sort((a, b) => b.timestamp - a.timestamp),
-                    upscaled: []
-                });
-            } catch (err) {
-                console.warn("[SERVER] Supabase Assets Fetch failed:", err.message);
-            }
-        }
-
-        try {
-            const assetsDir = path.join(__dirname, '..', 'public', 'assets', 'generations');
-            if (fs.existsSync(assetsDir)) {
-                // Async file reading to avoid blocking event loop
-                const files = await fs.promises.readdir(assetsDir);
-                // Limit local files processing to recent 50 to avoid massive I/O
-                const imageFiles = files.filter(f => /\.(png|jpg|jpeg|webp)$/i.test(f)).slice(0, 50);
-
-                const statsPromises = imageFiles.map(async (f) => {
-                    const stat = await fs.promises.stat(path.join(assetsDir, f));
-                    return {
-                        id: `local_${f}`,
-                        type: 'image',
-                        url: `/assets/generations/${f}`,
-                        name: f,
-                        date: stat.mtime.toISOString().split('T')[0],
-                        timestamp: stat.mtime.getTime(),
-                        size: (stat.size / (1024 * 1024)).toFixed(1) + ' MB'
-                    };
-                });
-
-                const local = await Promise.all(statsPromises);
-                allImages = [...allImages, ...local];
-            }
-        } catch (e) { console.warn("[SERVER] Local assets read skipped:", e.message) }
-
-        const unique = Array.from(new Map(allImages.map(img => [img.url, img])).values());
-        res.json({ images: unique.sort((a, b) => b.timestamp - a.timestamp), videos: [], upscaled: [] });
-    } catch (error) {
-        console.error('List Assets Error:', error);
-        res.status(500).json({ error: error.message });
+        console.log(`[SERVER] Found ${data.length} total assets for user ${userId}`);
+        
+        const response = {
+            images: data.filter(a => (a.type || '').toLowerCase() === 'image'),
+            videos: data.filter(a => (a.type || '').toLowerCase() === 'video'),
+            upscaled: data.filter(a => {
+                const t = (a.type || '').toLowerCase();
+                return ['upscale', 'upscaled', '2k', '4k', 'hd'].some(term => t.includes(term));
+            })
+        };
+        
+        res.json(response);
+    } catch (err) {
+        console.error('List Assets Error:', err);
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -4320,6 +4333,43 @@ app.get('/api/landing-assets-library', async (req, res) => {
         res.json({ assets: allAssets });
     } catch (err) {
         console.error('[ASSET-LIBRARY]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Generic upload for user assets (e.g. cropped angles from Multi-Shot)
+app.post('/api/upload-media', async (req, res) => {
+    try {
+        const { base64, userId, type, folder = 'crops' } = req.body;
+        if (!base64 || !userId) return res.status(400).json({ error: 'Missing base64 data or userId' });
+
+        const ext = 'jpg';
+        const fileName = `${folder}/${userId}/crop_${Date.now()}.${ext}`;
+        const buffer = Buffer.from(base64.split(',')[1], 'base64');
+
+        // 1. Upload to GCS
+        const bucket = storage.bucket(BUCKET_NAME);
+        const file = bucket.file(fileName);
+        await file.save(buffer, {
+            metadata: { contentType: 'image/jpeg', cacheControl: 'public, max-age=31536000' },
+            resumable: false
+        });
+
+        const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${fileName}`;
+
+        // 2. Save to DB under the current user
+        if (supabase) {
+            await supabase.from('assets').insert([{
+                name: `crop_${Date.now()}`,
+                type: type || 'image',
+                url: publicUrl,
+                user_id: userId
+            }]);
+        }
+
+        res.json({ success: true, url: publicUrl });
+    } catch (err) {
+        console.error('[UPLOAD-MEDIA-ERROR]', err);
         res.status(500).json({ error: err.message });
     }
 });

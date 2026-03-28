@@ -790,13 +790,25 @@ export default function LandingPage({ onEnter, onPricing }) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // On mount — force autoplay
+  // On mount — force autoplay with safety check
   useEffect(() => {
+    let isMounted = true;
     const video = videoRef.current;
-    if (!video) return;
-    video.muted = true;
-    video.play().catch(console.warn);
-  }, []);
+    
+    if (video && heroSrc) {
+      video.muted = true;
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          if (error.name !== 'AbortError') {
+            console.warn("[LandingPage] Autoplay failed:", error);
+          }
+        });
+      }
+    }
+
+    return () => { isMounted = false; };
+  }, [heroSrc]);
 
   useEffect(() => {
     const fetchAssets = async () => {

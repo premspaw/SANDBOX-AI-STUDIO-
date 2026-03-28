@@ -56,6 +56,8 @@ export const useAppStore = create((set, get) => ({
         });
         // Clear local storage surgical traces if any
         localStorage.removeItem('hidden_filmstrip_frames');
+        localStorage.removeItem('recent_filmstrip_frames');
+        localStorage.removeItem('active_image_frame_id');
     },
 
     // Director Settings

@@ -57,6 +57,8 @@ function App() {
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
           setUser(session.user)
+          // ✅ CRITICAL: Ensure profile is loaded into Store for persistence to work
+          useAppStore.getState().fetchUserProfile(session.user.id);
         }
       }
       setAuthChecked(true)
@@ -77,7 +79,14 @@ function App() {
           if (!session || (currentUserId && nextUserId && currentUserId !== nextUserId)) {
             useAppStore.getState().clearSession()
           }
-          setUser(session?.user || null)
+          
+          if (session?.user) {
+            setUser(session.user)
+            // ✅ CRITICAL: Ensure profile is loaded into Store on auth change
+            useAppStore.getState().fetchUserProfile(session.user.id);
+          } else {
+            setUser(null)
+          }
         }
       )
       return () => subscription.unsubscribe()

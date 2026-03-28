@@ -1371,9 +1371,41 @@ export function PromptGenerator({ onUpscale }) {
         } catch (e) { return defaults; }
     });
 
-    const [frames, setFrames] = useState([]);
+    // 🛰️ PERSISTENCE FIX: Load frames from local cache to prevent empty UI on refresh
+    const [frames, setFrames] = useState(() => {
+        try {
+            const saved = localStorage.getItem('persistent_filmstrip');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                return parsed.map(f => ({ ...f, loading: false }));
+            }
+            return [];
+        } catch (e) { return []; }
+    });
+
     const isLoadingRef = useRef(false);
     const hasFetched = useRef(false);
+
+    // ✅ PERSISTENCE: Save frame metadata to localStorage whenever the list changes
+    useEffect(() => {
+        const framesToCache = frames
+            .filter(f => f.url && !f.url.startsWith('data:')) // Only cache permanent URLs (GCS/Supabase)
+            .map(f => ({
+                id: f.id,
+                url: f.url,
+                thumb: f.thumb,
+                type: f.type,
+                model: f.model,
+                prompt: f.prompt,
+                assetId: f.assetId,
+                assetPath: f.assetPath
+            }))
+            .slice(0, 20); // Keep it light
+        
+        if (framesToCache.length > 0) {
+            localStorage.setItem('persistent_filmstrip', JSON.stringify(framesToCache));
+        }
+    }, [frames]);
 
     const [activeFrameId, setActiveFrameId] = useState(() => localStorage.getItem('active_image_frame_id') || null)
 
@@ -1418,20 +1450,41 @@ export function PromptGenerator({ onUpscale }) {
     const [activeStorySlotId, setActiveStorySlotId] = useState(() => localStorage.getItem('active_story_slot_id') || 'sb-1');
     const [activeShotSlotId, setActiveShotSlotId] = useState(() => localStorage.getItem('active_shot_slot_id') || 'ms-1');
 
+    // Safe Storage Wrappers (Filtered to avoid 5MB limit)
+    const sanitizeForStorage = (slots) => {
+        if (!Array.isArray(slots)) return "[]";
+        return JSON.stringify(slots.map(s => {
+            // If the URL is a massive Base64 string, don't persist it to localStorage
+            // This prevents QuotaExceededError crashes.
+            if (s.url && s.url.startsWith('data:image')) {
+                return { ...s, url: null, base64Removed: true };
+            }
+            return s;
+        }));
+    };
+
     useEffect(() => {
-        localStorage.setItem('storyboard_slots', JSON.stringify(storyboardSlots))
+        try {
+            localStorage.setItem('storyboard_slots', sanitizeForStorage(storyboardSlots))
+        } catch (e) { console.warn('[STORAGE] storyboard_slots quota exceeded'); }
     }, [storyboardSlots])
 
     useEffect(() => {
-        localStorage.setItem('multi_shot_slots', JSON.stringify(shotSlots))
+        try {
+            localStorage.setItem('multi_shot_slots', sanitizeForStorage(shotSlots))
+        } catch (e) { console.warn('[STORAGE] multi_shot_slots quota exceeded'); }
     }, [shotSlots])
 
     useEffect(() => {
-        localStorage.setItem('active_story_slot_id', activeStorySlotId)
+        try {
+            localStorage.setItem('active_story_slot_id', activeStorySlotId)
+        } catch (e) { }
     }, [activeStorySlotId])
 
     useEffect(() => {
-        localStorage.setItem('active_shot_slot_id', activeShotSlotId)
+        try {
+            localStorage.setItem('active_shot_slot_id', activeShotSlotId)
+        } catch (e) { }
     }, [activeShotSlotId])
 
     useEffect(() => {
@@ -1544,12 +1597,31 @@ export function PromptGenerator({ onUpscale }) {
     const startFrameInputRef = useRef(null)
     const endFrameInputRef = useRef(null)
 
-    const handleFrameUpload = (e, field) => {
+    const handleFrameUpload = async (e, field) => {
         const file = e.target.files?.[0]
         if (!file) return
+        
+        // Indicate loading
+        setSelections(p => ({ ...p, [field]: 'loading' }));
+
         const reader = new FileReader()
-        reader.onloadend = () => {
-            setSelections(p => ({ ...p, [field]: reader.result }))
+        reader.onloadend = async () => {
+            const base64 = reader.result;
+            try {
+                // ✅ OPTIMIZATION: Upload reference image to GCS immediately
+                // This converts a huge Base64 string into a small URL string.
+                // This fixes the "vanishing reference" bug by making it persist in LocalStorage easily.
+                const assetData = await saveAsset(base64, `ref_${Date.now()}`, 'image');
+                if (assetData?.url) {
+                    setSelections(p => ({ ...p, [field]: assetData.url }));
+                    console.log(`[REF_UPLOAD] Success: ${field} = ${assetData.url}`);
+                } else {
+                    setSelections(p => ({ ...p, [field]: base64 })); // Fallback
+                }
+            } catch (err) {
+                console.warn("[REF_UPLOAD] Upload failed, falling back to local base64", err);
+                setSelections(p => ({ ...p, [field]: base64 }));
+            }
         }
         reader.readAsDataURL(file)
         e.target.value = ''
@@ -1741,7 +1813,7 @@ export function PromptGenerator({ onUpscale }) {
             const store = useAppStore.getState();
             const cached = store.cachedAssets;
             if (cached) {
-                const allCached = [...(cached.images || []), ...(cached.videos || [])];
+                const allCached = [...(cached.images || []), ...(cached.videos || []), ...(cached.upscaled || [])];
                 if (allCached.length > 0) {
                     const recentFrames = allCached
                         .filter(a => !hiddenIds.includes(a.id))
@@ -1768,44 +1840,35 @@ export function PromptGenerator({ onUpscale }) {
                 }
             }
 
-            // --- Fallback: lightweight DB query (narrow select) ---
-            const { data: assets, error } = await supabase
-                .from('assets')
-                .select('id, url, type, model, created_at')
-                .eq('user_id', userProfile.id)
-                .order('created_at', { ascending: false })
-                .limit(MAX_FRAMES);
+            // --- Proxy Fetch: Use backend API (IPv4 Fix) ---
+            console.log('[CHECK] Requesting assets for User ID via Proxy:', userProfile?.id);
+            const response = await fetch(getApiUrl(`/api/list-assets?userId=${userProfile.id}`));
+            const data = await response.json();
 
-            if (error) {
-                console.error('[PromptGenerator] Supabase error loading assets:', error.message);
+            if (!response.ok) {
+                console.error('[PROXY_FETCH_FAIL]:', data.error);
+                showToast(`Persistence Error: ${data.error}`);
                 return;
             }
 
-            if (assets && assets.length > 0) {
-                console.log(`[PromptGenerator] Found ${assets.length} historical frames.`);
-                const recentFrames = assets
-                    .filter(a => !hiddenIds.includes(a.id)) // Surgical curation: filter out hidden ones
-                    .map(a => ({
-                        id: a.id,
-                        assetId: a.id,
-                        url: a.url,
-                        assetPath: a.url,
-                        type: a.type || 'image',
-                        model: a.model || 'Historical',
-                        loading: false
-                    }))
+            // ✅ FLATTEN THE OBJECT INTO A SINGLE ARRAY
+            const allAssets = [
+                ...(data.images || []),
+                ...(data.videos || []),
+                ...(data.upscaled || [])
+            ];
 
-                setFrames(prev => {
-                    const sessionIds = new Set(prev.map(f => f.id));
-                    const newHistorical = recentFrames.filter(f => !sessionIds.has(f.id));
-                    if (newHistorical.length === 0) return prev;
-                    const merged = [...prev, ...newHistorical];
-                    // Set activeFrameId synchronously inside the same batch
-                    if (!activeFrameId && merged.length > 0) {
-                        setTimeout(() => setActiveFrameId(merged[0].id), 0); // defer after render
-                    }
-                    return merged;
-                });
+            if (allAssets.length > 0) {
+                console.log(`[PromptGenerator] Found ${allAssets.length} historical frames.`);
+                const historicalFrames = allAssets.map(a => ({
+                    id: a.id,
+                    url: a.url,
+                    type: a.type || 'image',
+                    model: 'Historical',
+                    loading: false
+                }));
+                // Using simplistic setFrames as requested
+                setFrames(historicalFrames);
             } else {
                 console.log('[PromptGenerator] No historical frames found in DB.');
             }
@@ -1913,10 +1976,9 @@ export function PromptGenerator({ onUpscale }) {
             const ext = type === 'video' ? 'mp4' : 'png';
             const fileName = `flare_${slot}_${Date.now()}.${ext}`;
             const { data: { user } } = await supabase.auth.getUser();
+            console.log(`[SAVE_ATTEMPT] Target: ${slot}. User: ${user?.id || 'ANONYMOUS'}`);
 
             // 1. PRE-CHECK: Is this already a remote URL? 
-            // If it starts with http, it's already hosted (e.g. Supabase or external AI URL)
-            // We only need to tell the DB about it, not re-send the binary data.
             const isRemote = url.startsWith('http');
 
             const payload = {
@@ -2008,10 +2070,12 @@ export function PromptGenerator({ onUpscale }) {
 
                     // 1) Save to Supabase Storage (Middleman)
                     const assetData = await saveAsset(resultUrl, frameId, isVideoJob ? 'video' : 'image');
+                    const dbId = assetData?.id || `db_${Date.now()}`;
 
-                    // 2) Update the specific Frame in UI
+                    // 2) Update the specific Frame in UI - Essential: Convert to permanent DB ID
                     setFrames(prev => prev.map(f => f.id === frameId ? {
                         ...f,
+                        id: dbId, // 🛰️ ID Transform
                         url: resultUrl,
                         assetPath: assetData?.path,
                         assetId: assetData?.id,
@@ -2019,25 +2083,32 @@ export function PromptGenerator({ onUpscale }) {
                         loading: false
                     } : f));
 
+                    // ✅ PERSISTENCE FIX: Update selection pointer
+                    if (activeFrameId === frameId) {
+                        setActiveFrameId(dbId);
+                        localStorage.setItem('active_image_frame_id', dbId);
+                    }
+
                     // 2b) Update specific trays based on origin
                     if (targetTray === 'storyboard' && setStoryboardSlots) {
                         setStoryboardSlots(prev => prev.map(s => s.id === frameId ? {
                             ...s,
+                            id: dbId,
                             url: resultUrl,
                             thumb: assetData?.thumb,
                             loading: false
                         } : s));
+                        if (activeStorySlotId === frameId) setActiveStorySlotId(dbId);
                     } else if (setShotSlots) {
                         setShotSlots(prev => prev.map(s => s.id === frameId ? {
                             ...s,
+                            id: dbId,
                             url: resultUrl,
                             thumb: assetData?.thumb, // ✅ Store thumbnail for performance!
                             loading: false
                         } : s));
+                        if (activeShotSlotId === frameId) setActiveShotSlotId(dbId);
                     }
-
-                    // 3) Optional: If this was a 2K upscale, make it the active view
-                    setActiveFrameId(frameId);
 
                     setQueueStatus("Generation Complete");
                     return;
@@ -2246,11 +2317,29 @@ export function PromptGenerator({ onUpscale }) {
                                     thumb: assetData.thumb, // ✅ Keep sync!
                                     loading: false
                                 } : f))
-                                // Ensure shotSlots is also updated if active
+                                
+                                // ✅ PERSISTENCE FIX: Update the frame index to uses the DB ID instead of local frame-xxx
+                                // This prevents the "disappearing image" bug after refresh because IDs will match the DB.
+                                if (activeFrameId === newFrameId) {
+                                    setActiveFrameId(assetData.id);
+                                    localStorage.setItem('active_image_frame_id', assetData.id);
+                                }
+                                
+                                // Update all state trackers that might be using the local ID
+                                setFrames(prev => prev.map(f => f.id === newFrameId ? { ...f, id: assetData.id } : f));
+
                                 if (setShotSlots) {
                                   setShotSlots(prev => prev.map(s => s.id === newFrameId ? { 
-                                      ...s, url: resultUrl, thumb: assetData.thumb, loading: false 
+                                      ...s, 
+                                      id: assetData.id, // Transform to permanent DB ID
+                                      url: resultUrl, 
+                                      thumb: assetData.thumb, 
+                                      loading: false 
                                   } : s));
+                                }
+
+                                if (typeof activeShotSlotId !== 'undefined' && activeShotSlotId === newFrameId && typeof setActiveShotSlotId !== 'undefined') {
+                                    setActiveShotSlotId(assetData.id);
                                 }
                             }
                         })

@@ -454,33 +454,59 @@ Output only raw visual photographs.`;
         canvas.height = targetH;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, (col * cellW) + insetX, (row * cellH) + insetY, targetW, targetH, 0, 0, targetW, targetH);
-
-        const croppedUrl = canvas.toDataURL('image/jpeg', 0.9);
+        const croppedUrlBase64 = canvas.toDataURL('image/jpeg', 0.9);
         const shotNumber = (row * 3) + col + 1;
         const type = detectSubjectType(subject);
         const angleDesc = activePreset === 'cinematic_arc' 
             ? CINEMATIC_ARC_DESC[shotNumber - 1] 
             : ANGLE_PRESETS[type][shotNumber - 1];
 
+        // 1. Create temporary local slot with loading state
+        const tempId = `ms-angle-${Date.now()}`;
         const newSlot = {
-            id: `ms-angle-${Date.now()}`,
+            id: tempId,
             prompt: subject ? `${subject}. Perspective: ${angleDesc}` : `${angleDesc} extracted from grid`,
-            loading: false,
-            url: croppedUrl,
+            loading: true,
+            url: croppedUrlBase64, // local preview
             isGrid: false
         };
-
         setShotSlots(prev => [...prev, newSlot]);
-        setActiveSlotId(newSlot.id);
+        setActiveSlotId(tempId);
 
-        setFrames(prev => [...prev, {
-            id: `ms-frame-crop-${Date.now()}`,
-            url: croppedUrl,
-            type: 'image',
-            model: 'multishot-crop',
-            loading: false,
-            prompt: `Extracted Angle ${shotNumber}`
-        }]);
+        // 2. Perform background upload for persistence
+        const uploadToCloud = async () => {
+            try {
+                const { id: userId } = useAppStore.getState().userProfile || {};
+                const res = await fetch(getApiUrl('/api/upload-media'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        base64: croppedUrlBase64,
+                        userId: userId,
+                        type: 'image',
+                        folder: `users/${userId}/crops`
+                    })
+                });
+                const data = await res.json();
+                if (data.url) {
+                    setShotSlots(prev => prev.map(s => s.id === tempId ? { ...s, url: data.url, loading: false } : s));
+                    setFrames(prev => [...prev, {
+                        id: `ms-frame-crop-${Date.now()}`,
+                        url: data.url,
+                        type: 'image',
+                        model: 'multishot-crop',
+                        loading: false,
+                        prompt: `Extracted Angle ${shotNumber}`
+                    }]);
+                }
+            } catch (err) {
+                console.error("Crop upload failed:", err);
+                // Keep local base64 if upload fails, but it might hit quota later
+                setShotSlots(prev => prev.map(s => s.id === tempId ? { ...s, loading: false } : s));
+            }
+        };
+
+        uploadToCloud();
     };
 
     // Recompute overlay position on image load and window resize
