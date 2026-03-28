@@ -1509,78 +1509,63 @@ app.post('/api/generate-image', async (req, res) => {
  * Falls back to a base64 data URI if Supabase is unavailable.
  */
 async function uploadVideoToSupabase(videoBuffer, userId) {
-    const name = `veo_${userId || 'anon'}_${Date.now()}.mp4`;
-    const subPath = `videos/${name}`;
-    
-    if (supabase) {
-        try {
-            const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('assets')
-                .upload(subPath, videoBuffer, { contentType: 'video/mp4', upsert: true });
-            
-            if (!uploadError) {
-                const { data } = supabase.storage.from('assets').getPublicUrl(subPath);
-                if (data?.publicUrl) {
-                    console.log(`[VEO-PROD] Video uploaded to Supabase: ${data.publicUrl}`);
-                    // Also save metadata to DB
-                    const insertData = {
-                        name, type: 'video', path: subPath,
-                        url: data.publicUrl,
-                        size: (videoBuffer.length / (1024 * 1024)).toFixed(2) + ' MB',
-                        created_at: new Date().toISOString()
-                    };
-                    if (userId) insertData.user_id = userId;
-                    await supabase.from('assets').insert([insertData]);
-                    return data.publicUrl;
-                }
-            } else {
-                console.warn('[VEO-PROD] Supabase upload error:', uploadError.message);
-            }
-        } catch (e) {
-            console.warn('[VEO-PROD] Supabase upload exception:', e.message);
-        }
+  const name = `veo_${userId || 'anon'}_${Date.now()}.mp4`;
+  const filePath = `users/${userId || 'anon'}/generated/${name}`;
+
+  try {
+    const bucket = storage.bucket(BUCKET_NAME);
+    const file = bucket.file(filePath);
+    await file.save(videoBuffer, {
+      metadata: { contentType: 'video/mp4', cacheControl: 'public, max-age=31536000' },
+      resumable: false
+    });
+    const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${filePath}`;
+    console.log(`[GCS] Video uploaded: ${publicUrl}`);
+
+    // Save URL reference to Supabase DB only (no file storage)
+    if (supabase && userId) {
+      await supabase.from('assets').insert([{
+        name, type: 'video', url: publicUrl,
+        user_id: userId, created_at: new Date().toISOString()
+      }]).catch(e => console.warn('[DB]', e.message));
     }
-    // Fallback: return as base64 data URI (browser-playable but not saveable)
-    console.warn('[VEO-PROD] Falling back to base64 data URI');
+    return publicUrl;
+  } catch (err) {
+    console.error('[GCS-VIDEO-ERR]', err.message);
     return `data:video/mp4;base64,${videoBuffer.toString('base64')}`;
+  }
 }
 
 /**
  * Uploads an image buffer to Supabase Storage and returns the public URL.
  */
 async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg') {
-    const ext = mimeType.split('/')[1] || 'jpg';
-    const name = `gen_${userId || 'anon'}_${Date.now()}.${ext}`;
-    const subPath = `generated/${name}`;
-    
-    if (supabase) {
-        try {
-            const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('assets')
-                .upload(subPath, imageBuffer, { contentType: mimeType, upsert: true });
-            
-            if (!uploadError) {
-                const { data } = supabase.storage.from('assets').getPublicUrl(subPath);
-                if (data?.publicUrl) {
-                    console.log(`[IMAGE-PROD] Image uploaded to Supabase: ${data.publicUrl}`);
-                    // Also save metadata to DB
-                    const insertData = {
-                        name, type: 'image', path: subPath,
-                        url: data.publicUrl,
-                        size: (imageBuffer.length / 1024).toFixed(2) + ' KB',
-                        created_at: new Date().toISOString()
-                    };
-                    if (userId) insertData.user_id = userId;
-                    await supabase.from('assets').insert([insertData]);
-                    return data.publicUrl;
-                }
-            }
-        } catch (e) {
-            console.warn('[IMAGE-PROD] Supabase upload exception:', e.message);
-        }
+  const ext = mimeType.split('/')[1] || 'jpg';
+  const name = `gen_${userId || 'anon'}_${Date.now()}.${ext}`;
+  const filePath = `users/${userId || 'anon'}/generated/${name}`;
+
+  try {
+    const bucket = storage.bucket(BUCKET_NAME);
+    const file = bucket.file(filePath);
+    await file.save(imageBuffer, {
+      metadata: { contentType: mimeType, cacheControl: 'public, max-age=31536000' },
+      resumable: false
+    });
+    const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${filePath}`;
+    console.log(`[GCS] Image uploaded: ${publicUrl}`);
+
+    // Save URL reference to Supabase DB only
+    if (supabase && userId) {
+      await supabase.from('assets').insert([{
+        name, type: 'image', url: publicUrl,
+        user_id: userId, created_at: new Date().toISOString()
+      }]).catch(e => console.warn('[DB]', e.message));
     }
-    // Fallback
+    return publicUrl;
+  } catch (err) {
+    console.error('[GCS-IMAGE-ERR]', err.message);
     return `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
+  }
 }
 
 /**
@@ -1717,17 +1702,17 @@ async function resolveToPublicUrl(imgData, userId) {
         const name = `ref_${Date.now()}.${ext}`;
         const subPath = `refs/${name}`;
         
-        if (supabase) {
-            const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('assets')
-                .upload(subPath, buffer, { contentType: mimeType, upsert: true });
-            
-            if (!uploadError) {
-                const { data } = supabase.storage.from('assets').getPublicUrl(subPath);
-                return data?.publicUrl;
-            } else {
-                throw new Error(`Supabase Asset Upload Failed: ${uploadError.message || JSON.stringify(uploadError)}`);
-            }
+        try {
+            const refPath = `users/${userId || 'anon'}/refs/${name}`;
+            const bucket = storage.bucket(BUCKET_NAME);
+            const file = bucket.file(refPath);
+            await file.save(buffer, {
+                metadata: { contentType: mimeType, cacheControl: 'public, max-age=31536000' },
+                resumable: false
+            });
+            return `https://storage.googleapis.com/${BUCKET_NAME}/${refPath}`;
+        } catch (e) {
+            throw e;
         }
     } catch (e) {
         throw e; // Bubble up instead of returning null
