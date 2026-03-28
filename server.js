@@ -106,18 +106,32 @@ const getVertexToken = async () => {
 
     try {
         if (!_vertexAuth) {
-            if (!fs.existsSync(VERTEX_KEY_PATH)) {
-                console.warn(`[VERTEX_AUTH] Key file not found at: ${VERTEX_KEY_PATH}`);
-                return null;
-            }
-            _vertexAuth = new GoogleAuth({
-                keyFile: VERTEX_KEY_PATH,
+            let authOptions = {
                 scopes: [
                     'https://www.googleapis.com/auth/cloud-platform',
                     'https://www.googleapis.com/auth/generative-language'
                 ]
+            };
 
-            });
+            // First priority: Read safely from Environment Vars (Railway safe)
+            if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+                let cleanJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+                if (cleanJson.startsWith("'") && cleanJson.endsWith("'")) cleanJson = cleanJson.slice(1, -1);
+                
+                const credentials = JSON.parse(cleanJson);
+                if (credentials.private_key) credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+                
+                authOptions.credentials = credentials;
+            } 
+            // Second priority: Local file paths
+            else if (fs.existsSync(VERTEX_KEY_PATH)) {
+                authOptions.keyFile = VERTEX_KEY_PATH;
+            } else {
+                console.warn(`[VERTEX_AUTH] No valid authentication found! Missing env var or file: ${VERTEX_KEY_PATH}`);
+                return null;
+            }
+
+            _vertexAuth = new GoogleAuth(authOptions);
         }
 
         const client = await _vertexAuth.getClient();
@@ -134,13 +148,15 @@ const getVertexToken = async () => {
     }
 };
 
-// Log on startup whether the key file exists
-if (fs.existsSync(VERTEX_KEY_PATH)) {
-    console.log(`[VERTEX_AUTH] ✅ Service account key found: ${VERTEX_KEY_PATH}`);
-    // Pre-warm the token
+// Log on startup whether any authentication channel works
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+    console.log(`[VERTEX_AUTH] ✅ Service account loaded via ENV mapping!`);
+    getVertexToken().catch(() => {});
+} else if (fs.existsSync(VERTEX_KEY_PATH)) {
+    console.log(`[VERTEX_AUTH] ✅ Service account key found locally: ${VERTEX_KEY_PATH}`);
     getVertexToken().catch(() => {});
 } else {
-    console.warn(`[VERTEX_AUTH] ⚠️  No service account key at: ${VERTEX_KEY_PATH}`);
+    console.warn(`[VERTEX_AUTH] ⚠️  No Google service account identified dynamically or at: ${VERTEX_KEY_PATH}`);
 }
 
 let _geminiClient = null;
