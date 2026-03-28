@@ -777,44 +777,101 @@ app.post('/api/forge/generate', async (req, res) => {
 // Save Asset (Universal for Image/Video, Local/Remote)
 app.post('/api/save-asset', async (req, res) => {
     try {
-        const { imageData, fileName, type, userId, isUrlOnly } = req.body;
-        
-        if (!userId) throw new Error('Unauthorized asset save attempt.');
-
-        let publicUrl = imageData; 
-        let path = `generated/${fileName}`;
-
-        // If not already a URL and we have base64 data, upload to Supabase
-        if (!isUrlOnly && imageData && imageData.startsWith('data:')) {
-            console.log(`[STORAGE] Decoding and uploading ${type} to Supabase: ${fileName}`);
-            const base64Str = imageData.split(',')[1];
-            
-            if (!supabase) throw new Error('Supabase not configured locally.');
-
-            const { data, error } = await supabase.storage
-                .from('assets') 
-                .upload(fileName, decode(base64Str), {
-                    contentType: type === 'video' ? 'video/mp4' : 'image/png',
-                    upsert: true
-                });
-
-            if (error) throw error;
-
-            const { data: { publicUrl: supabaseUrl } } = supabase.storage
-                .from('assets')
-                .getPublicUrl(fileName);
-            
-            publicUrl = supabaseUrl;
-            path = data.path;
+        if (!req.body || typeof req.body !== 'object') {
+            return res.status(400).json({ error: "Invalid request: missing JSON body or Content-Type header." });
         }
 
-        res.json({ 
-            success: true, 
-            path: path, 
-            url: publicUrl,
-            id: `asset_${Date.now()}` 
-        });
+        const { imageData, fileName, type = 'image', userId } = req.body;
+        
+        if (!imageData) throw new Error("No asset data provided");
 
+        // ✅ If it's already a GCS URL — just save to DB, skip upload
+        if (imageData.startsWith('https://storage.googleapis.com/')) {
+            console.log('[SAVE-ASSET] Already a GCS URL, saving to DB only');
+            
+            const name = fileName || `asset_${Date.now()}`;
+            
+            if (supabase && userId) {
+                const { error } = await supabase.from('assets').insert([{
+                    name,
+                    type,
+                    url: imageData,
+                    user_id: userId,
+                    created_at: new Date().toISOString()
+                }]);
+                if (error) console.error('[DB-INSERT]', error.message);
+            }
+
+            return res.json({
+                success: true,
+                path: imageData,
+                url: imageData,
+                name
+            });
+        }
+
+        // ✅ If it's already any public HTTP URL — same thing
+        if (imageData.startsWith('http') && !imageData.includes('localhost')) {
+            console.log('[SAVE-ASSET] Public URL detected, saving to DB only');
+            const name = fileName || `asset_${Date.now()}`;
+            
+            if (supabase && userId) {
+                await supabase.from('assets').insert([{
+                    name, type, url: imageData,
+                    user_id: userId,
+                    created_at: new Date().toISOString()
+                }]).catch(e => console.warn('[DB]', e.message));
+            }
+
+            return res.json({ success: true, path: imageData, url: imageData, name });
+        }
+
+        // For Base64 uploads
+        let publicUrl = imageData; 
+        const ext = type === 'video' ? 'mp4' : 'png';
+        const mimeType = type === 'video' ? 'video/mp4' : 'image/png';
+        const name = fileName || `gen_${userId || 'anon'}_${Date.now()}.${ext}`;
+        let gcsPath = `users/${userId || 'anon'}/generated/${name}`;
+
+        if (imageData.startsWith('data:')) {
+            const base64Str = imageData.split(',')[1];
+            const buffer = Buffer.from(base64Str, 'base64');
+            
+            try {
+                // Upload natively to GCS! (Relies on the updated storageService)
+                const gcsUrl = await storageService.uploadToGCS(buffer, gcsPath, mimeType);
+                if (gcsUrl) {
+                    publicUrl = gcsUrl;
+                    console.log(`[STORAGE] Uploaded ${type} to GCS: ${publicUrl}`);
+                }
+            } catch (gcsErr) {
+                console.error(`[SERVER] GCS Upload failed:`, gcsErr.message);
+                throw gcsErr;
+            }
+        }
+
+        // Save DB Reference
+        let insertedId = `asset_${Date.now()}`;
+        if (supabase && userId) {
+            const { data: dbData, error: dbError } = await supabase
+                .from('assets')
+                .insert([{
+                    name,
+                    type,
+                    url: publicUrl,
+                    user_id: userId,
+                    created_at: new Date().toISOString()
+                }])
+                .select();
+            if (dbError) {
+                console.error("[SERVER] Supabase DB Insert Error:", dbError.message);
+            } else if (dbData && dbData[0]) {
+                insertedId = dbData[0].id;
+                console.log(`[GCS-DB-SAVE] Success:`, insertedId);
+            }
+        }
+
+        res.json({ success: true, path: gcsPath, url: publicUrl, id: insertedId });
     } catch (err) {
         console.error('[BACKEND_SAVE_ERROR]:', err);
         res.status(500).json({ error: err.message });
@@ -2639,104 +2696,6 @@ app.delete('/api/delete-character/:id', async (req, res) => {
 });
 
 
-app.post('/api/save-asset', async (req, res) => {
-    try {
-        const { imageData, fileName, type = 'image', userId } = req.body;
-        if (!imageData) throw new Error("No asset data provided");
-
-        const extension = type === 'video' ? 'mp4' : 'png';
-        const mimeType = type === 'video' ? 'video/mp4' : 'image/png';
-        const name = fileName || `gen_${Date.now()}.${extension}`;
-
-        // Handle URL vs base64
-        let buffer;
-        if (imageData.startsWith('http://') || imageData.startsWith('https://')) {
-            const response = await fetch(imageData);
-            if (!response.ok) throw new Error(`Failed to fetch asset URL: ${response.status}`);
-            const arrayBuffer = await response.arrayBuffer();
-            buffer = Buffer.from(arrayBuffer);
-        } else {
-            const base64Data = imageData.includes('base64,') ? imageData.split(',')[1] : imageData;
-            buffer = Buffer.from(base64Data, 'base64');
-        }
-        const sizeMB = (buffer.length / (1024 * 1024)).toFixed(2) + ' MB';
-
-        let publicUrl = null;
-
-        // Initialize insertData early to avoid Scope/ReferenceErrors
-        const insertData = {
-            name: name,
-            type: type,
-            path: name,
-            url: null, // Will be set below
-            size: sizeMB,
-            created_at: new Date().toISOString()
-        };
-        if (userId) insertData.user_id = userId;
-
-        // Try Supabase Storage (Best approach for serverless/hosting)
-        if (supabase) {
-            try {
-                const subPath = `${type}s/${name}`;
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('assets')
-                    .upload(subPath, buffer, { contentType: mimeType, upsert: true });
-
-                if (uploadError) throw uploadError;
-
-                const { data } = supabase.storage
-                    .from('assets')
-                    .getPublicUrl(subPath);
-
-                if (data?.publicUrl) publicUrl = data.publicUrl;
-                console.log(`[SERVER] Uploaded ${type} to Supabase Storage: ${publicUrl}`);
-            } catch (supaErr) {
-                console.warn("[SERVER] Supabase Storage Failed (ensure 'assets' bucket exists and is public!):", supaErr.message);
-            }
-        }
-
-        // Fallback to GCS if configured and Supabase failed
-        if (!publicUrl) {
-            try {
-                const gcsUrl = await storageService.uploadToGCS(buffer, name, mimeType);
-                if (gcsUrl) publicUrl = gcsUrl;
-                console.log(`[SERVER] Uploaded ${type} to GCS: ${publicUrl}`);
-            } catch (gcsErr) {
-                console.error("[SERVER] GCS Upload Error:", gcsErr);
-            }
-        }
-
-        // Final URL resolution
-        insertData.url = publicUrl || `/assets/generations/${name}`;
-
-        // Save metadata to Supabase DB (Maintain consistency)
-        if (supabase) {
-            const { data: dbData, error: dbError } = await supabase
-                .from('assets')
-                .insert([insertData])
-                .select();
-
-            if (dbError) console.error("Supabase DB Insert Error:", dbError);
-            else if (dbData && dbData[0]) insertData.id = dbData[0].id;
-        }
-
-        if (!publicUrl) {
-            console.warn("[SERVER] WARNING: No cloud storage configured. Returning local fallback URL. Images will break on server scale/restart.");
-        }
-
-        res.json({
-            success: true,
-            id: insertData.id,
-            path: publicUrl || `/assets/${type}s/${name}`,
-            name: name,
-            type: type
-        });
-    } catch (error) {
-        console.error('Save Asset Error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
 // --- AUTO-RETENTION POLICY: 15 DAYS ---
 setInterval(async () => {
     if (!supabase) return;
@@ -2787,38 +2746,13 @@ app.post('/api/proxy/upload', async (req, res) => {
 
         const safeCharId = (characterId || 'unknown').replace(/[^a-zA-Z0-9]/g, '_');
         const safeSlot = (slot || 'asset').replace(/[^a-zA-Z0-9]/g, '_');
-        const filePath = `influencers/${safeCharId}/${safeSlot}_${Date.now()}.${extension}`;
+        const filePath = `users/characters/${safeCharId}/${safeSlot}_${Date.now()}.${extension}`;
 
         const buffer = Buffer.from(data, 'base64');
 
-        // Attempt Upload to GCS first
-        let publicUrl = null;
-        try {
-            publicUrl = await storageService.uploadToGCS(buffer, filePath, mimeType);
-        } catch (gcsErr) {
-            console.warn(`[SERVER] GCS Upload failed (${gcsErr.message}). Falling back to local filesystem...`);
-        }
-
-        // --- LOCAL FALLBACK IF GCS FAILS ---
-        if (!publicUrl) {
-            const publicDir = path.join(__dirname, 'public', 'assets', 'characters');
-            if (!fs.existsSync(publicDir)) {
-                fs.mkdirSync(publicDir, { recursive: true });
-            }
-
-            // Clean up IDs for safe filename (redundant check but safe)
-            const fallbackCharId = (characterId || 'unknown').replace(/[^a-zA-Z0-9]/g, '_');
-            const fallbackSlot = (slot || 'asset').replace(/[^a-zA-Z0-9]/g, '_');
-
-            const localFileName = `${fallbackSlot}_${fallbackCharId}_${Date.now()}.${extension}`;
-            const localPath = path.join(publicDir, localFileName);
-
-            fs.writeFileSync(localPath, buffer);
-            console.log(`[SERVER] Image saved locally to ${localPath}`);
-
-            // Generate localhost URL
-            publicUrl = `http://localhost:${port}/assets/characters/${localFileName}`;
-        }
+        // Upload to GCS — no fallback to localhost
+        const publicUrl = await storageService.uploadToGCS(buffer, filePath, mimeType);
+        console.log(`[PROXY-UPLOAD] ✅ GCS: ${publicUrl}`);
 
         // We skip recording in the 'assets' table here because if the table is missing or 
         // the schema is wrong, it causes the entire character saving flow to fail.

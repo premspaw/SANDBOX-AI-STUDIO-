@@ -1,14 +1,37 @@
 import dotenv from 'dotenv';
-import fetch from 'node-fetch';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { Storage } from '@google-cloud/storage';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const API_KEY = process.env.GOOGLE_API_KEY || process.env.API_KEY;
-const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'ai-cinemastudio-assets-569815811058';
+const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'zerolensbucket_1';
+
+let storageOptions = {};
+try {
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+        // Handle properly if wrapped in quotes
+        let cleanJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+        if (cleanJson.startsWith("'") && cleanJson.endsWith("'")) {
+            cleanJson = cleanJson.slice(1, -1);
+        }
+        const credentials = JSON.parse(cleanJson);
+        if (credentials.private_key) {
+            credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+        }
+        storageOptions.credentials = credentials;
+    }
+} catch (e) {
+    console.error('[GCS] Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON:', e.message);
+}
+
+const storage = new Storage(storageOptions);
+const bucket = storage.bucket(BUCKET_NAME);
+
+const toPublicUrl = (fileName) => 
+    `https://storage.googleapis.com/${BUCKET_NAME}/${fileName.split('/').map(encodeURIComponent).join('/')}`;
 
 /**
  * Upload a binary asset to Google Cloud Storage
@@ -20,7 +43,6 @@ export const uploadToGCS = async (data, fileName, contentType = 'image/png') => 
     try {
         console.log(`[GCS] Uploading ${fileName} to bucket ${BUCKET_NAME}...`);
 
-        // Prepare buffer
         let buffer;
         if (typeof data === 'string' && data.startsWith('data:')) {
             buffer = Buffer.from(data.split(',')[1], 'base64');
@@ -30,33 +52,21 @@ export const uploadToGCS = async (data, fileName, contentType = 'image/png') => 
             buffer = data;
         }
 
-        // Upload using JSON API (Simple Upload)
-        const isToken = API_KEY.startsWith('AQ.') || API_KEY.startsWith('ya29.');
-        const url = `https://storage.googleapis.com/upload/storage/v1/b/${BUCKET_NAME}/o?uploadType=media&name=${encodeURIComponent(fileName)}${isToken ? '' : `&key=${API_KEY}`}`;
-        
-        const headers = {
-            'Content-Type': contentType,
-            'Content-Length': buffer.length
-        };
-        if (isToken) headers['Authorization'] = `Bearer ${API_KEY}`;
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: headers,
-            body: buffer
+        const file = bucket.file(fileName);
+        await file.save(buffer, {
+            contentType: contentType,
+            resumable: false,
+            metadata: {
+                cacheControl: 'public, max-age=31536000'
+            }
         });
 
-        const result = await response.json();
-        if (result.error) {
-            console.error("[GCS] Upload Error Detail:", JSON.stringify(result.error, null, 2));
-            throw new Error(`GCS API Reject: ${JSON.stringify(result.error)}`);
-        }
-
-        console.log(`[GCS] Successfully uploaded ${fileName}`);
-        return `https://storage.googleapis.com/${BUCKET_NAME}/${fileName}`;
+        const url = toPublicUrl(fileName);
+        console.log(`[GCS] ✅ Uploaded: ${url}`);
+        return url;
     } catch (err) {
         console.error("[GCS] Upload Failed:", err);
-        throw err; // Let it bubble up to server.js instead of returning null
+        throw err;
     }
 };
 
@@ -65,7 +75,7 @@ export const uploadToGCS = async (data, fileName, contentType = 'image/png') => 
  * @param {string} fileName 
  */
 export const getPublicUrl = (fileName) => {
-    return `https://storage.googleapis.com/${BUCKET_NAME}/${fileName}`;
+    return toPublicUrl(fileName);
 };
 
 /**
@@ -73,23 +83,13 @@ export const getPublicUrl = (fileName) => {
  */
 export const listAssetsGCS = async (prefix = '') => {
     try {
-        const isToken = API_KEY.startsWith('AQ.') || API_KEY.startsWith('ya29.');
-        const url = `https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o?prefix=${encodeURIComponent(prefix)}${isToken ? '' : `&key=${API_KEY}`}`;
-        
-        const headers = {};
-        if (isToken) headers['Authorization'] = `Bearer ${API_KEY}`;
-
-        const response = await fetch(url, { headers });
-        const data = await response.json();
-
-        if (data.error) throw new Error(data.error.message);
-
-        return (data.items || []).map(item => ({
-            id: item.id,
-            name: item.name,
-            url: `https://storage.googleapis.com/${BUCKET_NAME}/${item.name}`,
-            size: (parseInt(item.size) / (1024 * 1024)).toFixed(2) + ' MB',
-            date: item.updated.split('T')[0]
+        const [files] = await bucket.getFiles({ prefix });
+        return files.map(file => ({
+            id: file.id,
+            name: file.name,
+            url: toPublicUrl(file.name),
+            size: (parseInt(file.metadata.size || 0) / (1024 * 1024)).toFixed(2) + ' MB',
+            date: file.metadata.updated?.split('T')[0]
         }));
     } catch (err) {
         console.error("[GCS] List Failed:", err);

@@ -1066,7 +1066,7 @@ export default function LandingPage({ onEnter, onPricing }) {
 
       {/* ══════ SCROLL STACK ══════ */}
       {isMobile
-        ? <MobileStackSection assets={assets} />
+        ? <MobileStackSection assets={assets} isMobile={isMobile} />
         : <StackSection assets={assets} isMobile={false} />
       }
 
@@ -1404,7 +1404,7 @@ function StackVideo({ src, objectFit = 'cover', objectPosition = 'center' }) {
 // PATCH 4: STACK SECTION — replace with mobile version
 // ─────────────────────────────────────────────────────────────
 
-function MobileStackSection({ assets }) {
+function MobileStackSection({ assets, isMobile }) {
   const ugcVideos = assets?.ugcAssets || [];
   const productVideos = assets?.productAssets || [];
   const cinemaVideo = assets?.cinemaAssets?.[0];

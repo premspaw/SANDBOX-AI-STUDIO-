@@ -123,11 +123,16 @@ function App() {
     pricing: <PricingPage />,
   }
 
-  const containerClassName = FULL_HEIGHT_TABS.has(activeTab) ? 'h-full' : 'p-4'
+  const getContainerClass = () => {
+    if (activeTab === 'settings' || activeTab === 'pricing') {
+      return 'h-full w-full overflow-y-auto'
+    }
+    return FULL_HEIGHT_TABS.has(activeTab) ? 'h-full' : 'p-4'
+  }
 
   return (
     <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
-      <div className={containerClassName}>
+      <div className={getContainerClass()}>
         {tabComponents[activeTab] ?? null}
       </div>
 
