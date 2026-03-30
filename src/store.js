@@ -24,8 +24,10 @@ export const useAppStore = create((set, get) => ({
     isAssetsLoading: false,
     isShowingAuthModal: false,
     activeTab: 'home',
+    isMuted: true,
 
     setActiveTab: (val) => set({ activeTab: val }),
+    setIsMuted: (val) => set({ isMuted: val }),
     setShowingAuthModal: (val) => set({ isShowingAuthModal: val }),
 
     clearSession: () => {

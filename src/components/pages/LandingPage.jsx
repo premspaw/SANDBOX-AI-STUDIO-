@@ -8,6 +8,7 @@ import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { LANDING_ASSETS as INITIAL_ASSETS } from '../../config/landingAssets';
 import { getApiUrl } from '../../config/apiConfig';
 import BrandLogo from '../common/BrandLogo';
+import { useAppStore } from '../../store';
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────
 const T = {
@@ -666,77 +667,83 @@ function AnimatedStats({ isMobile }) {
       <div ref={ref} style={{
         background: T.bg2, borderTop: `1px solid ${T.gray}`,
         borderBottom: `1px solid ${T.gray}`,
-        display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)'
+        display: 'grid', gridTemplateColumns: 'repeat(4,1fr)'
       }}>
         {/* $100 → $5 */}
         <div style={{
-          padding: isMobile ? '24px 16px' : '44px 48px',
+          padding: isMobile ? '12px 6px' : '44px 48px',
           borderRight: `1px solid ${T.gray}`,
-          borderBottom: isMobile ? `1px solid ${T.gray}` : 'none',
-          display: 'flex', flexDirection: 'column', gap: 8
+          display: 'flex', flexDirection: 'column', gap: isMobile ? 4 : 8,
+          alignItems: isMobile ? 'center' : 'flex-start',
+          textAlign: isMobile ? 'center' : 'left'
         }}>
           <div style={{
-            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 32 : 56,
+            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 20 : 56,
             letterSpacing: '0.02em', color: T.lime, lineHeight: 1
           }}>
             <AnimatedCounter start={100} end={5} prefix="$" duration={2200} />
           </div>
           <div style={{
-            fontFamily: "'DM Mono',monospace", fontSize: isMobile ? 8 : 9,
-            letterSpacing: '0.3em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
+            fontFamily: "'DM Mono',monospace", fontSize: isMobile ? 6 : 9,
+            letterSpacing: '0.15em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
           }}>
-            Full ad video cost
+            Video Cost
           </div>
         </div>
 
         {/* 5hr → 5min */}
         <div style={{
-          padding: isMobile ? '24px 16px' : '44px 48px',
-          borderRight: isMobile ? 'none' : `1px solid ${T.gray}`,
-          borderBottom: isMobile ? `1px solid ${T.gray}` : 'none',
-          display: 'flex', flexDirection: 'column', gap: 8
+          padding: isMobile ? '12px 6px' : '44px 48px',
+          borderRight: `1px solid ${T.gray}`,
+          display: 'flex', flexDirection: 'column', gap: isMobile ? 4 : 8,
+          alignItems: isMobile ? 'center' : 'flex-start',
+          textAlign: isMobile ? 'center' : 'left'
         }}>
           <div style={{
-            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 32 : 56,
+            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 20 : 56,
             letterSpacing: '0.02em', color: T.lime, lineHeight: 1
           }}>
             <AnimatedTimeStat duration={2500} />
           </div>
           <div style={{
-            fontFamily: "'DM Mono',monospace", fontSize: isMobile ? 8 : 9,
-            letterSpacing: '0.3em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
+            fontFamily: "'DM Mono',monospace", fontSize: isMobile ? 6 : 9,
+            letterSpacing: '0.15em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
           }}>
-            Average generation time
+            Gen Time
           </div>
         </div>
 
         {/* ZERO → CREW */}
         <div style={{
-          padding: isMobile ? '24px 16px' : '44px 48px',
+          padding: isMobile ? '12px 6px' : '44px 48px',
           borderRight: `1px solid ${T.gray}`,
-          display: 'flex', flexDirection: 'column', gap: 8
+          display: 'flex', flexDirection: 'column', gap: isMobile ? 4 : 8,
+          alignItems: isMobile ? 'center' : 'flex-start',
+          textAlign: isMobile ? 'center' : 'left'
         }}>
           <div style={{
-            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 32 : 56,
+            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 20 : 56,
             letterSpacing: '0.02em', color: T.lime, lineHeight: 1
           }}>
             ZERO
           </div>
           <div style={{
-            fontFamily: "'DM Mono',monospace", fontSize: isMobile ? 8 : 9,
-            letterSpacing: '0.3em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
+            fontFamily: "'DM Mono',monospace", fontSize: isMobile ? 6 : 9,
+            letterSpacing: '0.15em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
           }}>
-            Crew. No team needed.
+            No Crew
           </div>
         </div>
 
         {/* ∞ pulsing */}
         <div style={{
-          padding: isMobile ? '24px 16px' : '44px 48px',
-          display: 'flex', flexDirection: 'column', gap: 8
+          padding: isMobile ? '12px 6px' : '44px 48px',
+          display: 'flex', flexDirection: 'column', gap: isMobile ? 4 : 8,
+          alignItems: isMobile ? 'center' : 'flex-start',
+          textAlign: isMobile ? 'center' : 'left'
         }}>
           <div style={{
-            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 32 : 56,
+            fontFamily: "'Bebas Neue',sans-serif", fontSize: isMobile ? 20 : 56,
             letterSpacing: '0.02em', color: T.lime, lineHeight: 1
           }}>
             <motion.span
@@ -756,10 +763,10 @@ function AnimatedStats({ isMobile }) {
             </motion.span>
           </div>
           <div style={{
-            fontFamily: "'DM Mono',monospace", fontSize: isMobile ? 8 : 9,
-            letterSpacing: '0.3em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
+            fontFamily: "'DM Mono',monospace", fontSize: isMobile ? 6 : 9,
+            letterSpacing: '0.15em', color: 'rgba(240,237,232,0.25)', textTransform: 'uppercase'
           }}>
-            Creative variations possible
+            Variations
           </div>
         </div>
       </div>
@@ -773,7 +780,7 @@ function AnimatedStats({ isMobile }) {
 // ═══════════════════════════════════════════════════════════════
 export default function LandingPage({ onEnter, onPricing }) {
   const [assets, setAssets] = useState(INITIAL_ASSETS);
-  const [isMuted, setIsMuted] = useState(true);
+  const { isMuted, setIsMuted } = useAppStore();
   const [isMobile, setIsMobile] = useState(false);
   const videoRef = useRef(null);
 
@@ -809,6 +816,13 @@ export default function LandingPage({ onEnter, onPricing }) {
 
     return () => { isMounted = false; };
   }, [heroSrc]);
+
+  // Sync video muted state with store
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
 
   useEffect(() => {
     const fetchAssets = async () => {
@@ -857,10 +871,7 @@ export default function LandingPage({ onEnter, onPricing }) {
   const VCELLS = (assets.gallery && assets.gallery.length > 0) ? assets.gallery : (INITIAL_ASSETS.gallery || []);
 
   const toggleMute = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.muted = !video.muted; // true = muted, false = unmuted
-    setIsMuted(video.muted);
+    setIsMuted(!isMuted);
   };
 
   useEffect(() => {
@@ -893,7 +904,7 @@ export default function LandingPage({ onEnter, onPricing }) {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         style={{
-          position: 'fixed', bottom: isMobile ? 30 : 40, right: isMobile ? 24 : 40, zIndex: 1000,
+          position: 'fixed', bottom: isMobile ? 86 : 40, right: isMobile ? 20 : 40, zIndex: 1000,
           background: isMuted ? 'rgba(5,5,5,0.8)' : T.lime,
           border: `1px solid ${isMuted ? 'rgba(240,237,232,0.1)' : 'transparent'}`,
           borderRadius: 4, padding: isMobile ? '8px 12px' : '10px 16px',
@@ -952,8 +963,8 @@ export default function LandingPage({ onEnter, onPricing }) {
               <div style={{
                 position: 'absolute', inset: 0, zIndex: 1,
                 background: isMobile
-                  ? 'linear-gradient(to bottom, rgba(5,5,5,0.3) 0%, rgba(5,5,5,0.75) 60%, rgba(5,5,5,0.95) 100%)'
-                  : 'linear-gradient(to right, rgba(5,5,5,0.92) 0%, rgba(5,5,5,0.4) 50%, transparent 80%)',
+                  ? 'linear-gradient(to bottom, rgba(5,5,5,0.1) 0%, rgba(5,5,5,0.4) 60%, rgba(5,5,5,0.7) 100%)'
+                  : 'linear-gradient(to right, rgba(5,5,5,0.6) 0%, rgba(5,5,5,0.15) 50%, transparent 90%)',
                 pointerEvents: 'none',
               }} />
             </>
@@ -1185,7 +1196,7 @@ export default function LandingPage({ onEnter, onPricing }) {
         <Reveal>
           <h2 style={{
             fontFamily: "'Bebas Neue',sans-serif",
-            fontSize: isMobile ? 56 : 'clamp(64px,10vw,140px)', lineHeight: 0.9,
+            fontSize: isMobile ? 38 : 'clamp(64px,10vw,140px)', lineHeight: 0.95,
             letterSpacing: '-0.01em', marginBottom: 40, position: 'relative', zIndex: 1
           }}>
             ZERO CREW. ZERO STUDIO.<br />
@@ -1385,11 +1396,11 @@ function StackVideo({ src, objectFit = 'cover', objectPosition = 'center' }) {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         style={{
-          position: 'absolute', top: 20, right: 20, zIndex: 30,
+          position: 'absolute', top: 12, right: 12, zIndex: 30,
           background: isMuted ? 'rgba(0,0,0,0.6)' : T.lime,
           color: isMuted ? T.white : '#000',
           border: `1px solid ${isMuted ? 'rgba(255,255,255,0.15)' : 'transparent'}`,
-          borderRadius: '50%', width: 36, height: 36,
+          borderRadius: '50%', width: 32, height: 32,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', backdropFilter: 'blur(12px)',
           boxShadow: isMuted ? 'none' : `0 0 25px ${T.lime}88`
@@ -1505,9 +1516,10 @@ function MobileStackSection({ assets, isMobile }) {
           {ugcCards.map((card, i) => (
             <div key={i} style={videoCardStyle}>
               {ugcVideos[i]?.src ? (
-                <video autoPlay muted loop playsInline preload="auto" crossOrigin="anonymous"
+                <StackVideo 
                   src={ugcVideos[i].src}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
+                  objectFit="cover"
+                  objectPosition="center top"
                 />
               ) : (
                 <div style={{
@@ -1542,9 +1554,9 @@ function MobileStackSection({ assets, isMobile }) {
           {productCards.map((card, i) => (
             <div key={i} style={{ ...videoCardStyle, aspectRatio: i === 1 ? '3/4' : '9/16' }}>
               {productVideos[i]?.src ? (
-                <video autoPlay muted loop playsInline preload="auto" crossOrigin="anonymous"
+                <StackVideo 
                   src={productVideos[i].src}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  objectFit="cover"
                 />
               ) : (
                 <div style={{
@@ -1574,10 +1586,7 @@ function MobileStackSection({ assets, isMobile }) {
           aspectRatio: '16/9', background: T.bg2, marginTop: 20,
         }}>
           {cinemaVideo?.src ? (
-            <video autoPlay muted loop playsInline preload="auto" crossOrigin="anonymous"
-              src={cinemaVideo.src}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
+            <StackVideo src={cinemaVideo.src} />
           ) : (
             <div style={{
               position: 'absolute', inset: 0,
