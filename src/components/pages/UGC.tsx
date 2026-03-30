@@ -9,6 +9,7 @@ import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store';
+import { useShorts } from '../../hooks/useShorts';
 import {
   DndContext,
   closestCenter,
@@ -110,6 +111,12 @@ const uint8ArrayToBase64 = (uint8Array: Uint8Array): string => {
     index += CHUNK_SIZE;
   }
   return btoa(result);
+};
+
+const ensureDataUri = (str: string | null | undefined): string => {
+  if (!str) return '';
+  if (str.startsWith('http') || str.startsWith('data:') || str.startsWith('blob:') || str.length < 50) return str;
+  return `data:image/jpeg;base64,${str}`;
 };
 
 const fileToBase64 = (file: File | Blob): Promise<string> => {
@@ -938,6 +945,7 @@ const VIDEO_STYLES: Record<string, { name: string; icon: string; description: st
 };
 
 export default function UGC() {
+  const { spend, refund } = useShorts();
   const userProfile = useAppStore(state => state.userProfile as { role?: string } | null);
   const isGlobalAdmin = userProfile?.role === 'admin';
 
@@ -1394,7 +1402,7 @@ export default function UGC() {
       if (!user) return;
 
       const { data, error } = await supabase
-        .from('generated_assets')
+        .from('assets')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
@@ -1403,7 +1411,7 @@ export default function UGC() {
         const historyGallery: GalleryItem[] = data.map((item: any) => ({
           id: item.id,
           type: item.asset_type as 'image' | 'video',
-          url: item.public_url,
+          url: ensureDataUri(item.public_url),
           prompt: item.prompt
         }));
 
@@ -1777,6 +1785,21 @@ export default function UGC() {
    */
   const generateMontageVideo = async (option: any) => {
     if (!productImg && !characterImg && !montageGeneratedImg) return;
+
+    const unitCost = getCurrentCost(true);
+    if (useAppStore.getState().userShorts < unitCost && useAppStore.getState().userProfile?.role !== 'admin') {
+      showToast(`Insufficient Credits: You need ${unitCost} Shorts.`, 'error');
+      useAppStore.getState().setActiveTab('pricing');
+      return;
+    }
+
+    const spendRes = await spend('veo_fast', unitCost);
+    if (!spendRes || !spendRes.success) {
+      showToast("Insufficient Shorts! Redirecting to pricing...", "error");
+      useAppStore.getState().setActiveTab('pricing');
+      return;
+    }
+
     setIsGeneratingVideo(true);
     setVideoProgressMsg(`Animating ${option.title} Montage...`);
     try {
@@ -1872,6 +1895,7 @@ export default function UGC() {
         showToast('Veo returned no video. The prompt may have been filtered. Try rephrasing.', 'error');
       }
     } catch (e) {
+      refund('veo_fast', unitCost);
       handleApiError(e, 'Montage video generation');
     }
     setIsGeneratingVideo(false);
@@ -2830,7 +2854,32 @@ Return ONLY a valid JSON object with the following structure:
     setIsRegeneratingImage(false);
   };
 
+  const getCurrentCost = (isMontage = false) => {
+    const duration = isMontage ? parseInt(montageDuration) : parseInt(durationSeconds);
+    const audioOn = isMontage ? montageAudioEnabled : includeAudio;
+    
+    let costPerSec = audioOn ? 17.43 : 11.62;
+    if (videoResolution === '4K') {
+       costPerSec = audioOn ? 40.67 : 34.86;
+    }
+    return Math.ceil(costPerSec * duration);
+  };
+
   const generateVideo = async (overridePrompt?: string, referenceImageUrl?: string) => {
+    const unitCost = getCurrentCost(false);
+    if (useAppStore.getState().userShorts < unitCost && useAppStore.getState().userProfile?.role !== 'admin') {
+      showToast(`Insufficient Credits: You need ${unitCost} Shorts.`, 'error');
+      useAppStore.getState().setActiveTab('pricing');
+      return;
+    }
+
+    const spendRes = await spend('veo_fast', unitCost);
+    if (!spendRes || !spendRes.success) {
+      showToast("Insufficient Shorts! Redirecting to pricing...", "error");
+      useAppStore.getState().setActiveTab('pricing');
+      return;
+    }
+
     setIsGeneratingVideo(true);
     setVideoError('');
     setVideoProgressMsg('Initializing Veo Engine...');
@@ -2966,6 +3015,7 @@ Return ONLY a valid JSON object with the following structure:
         showToast('No video generated. Try rephrasing your prompt.', 'error');
       }
     } catch (e: any) {
+      refund('veo_fast', unitCost);
       handleApiError(e, "Video generation");
       const errMsg = e.message || JSON.stringify(e);
       if (errMsg.includes("Requested entity was not found")) {
@@ -3716,7 +3766,7 @@ Return ONLY a valid JSON object with the following structure:
 
                                         {/* Credit hint */}
                                         <p className="text-[7px] font-mono text-gray-600 uppercase tracking-wider mb-2">
-                                          {montageAudioEnabled ? '🔊 Audio ON — costs more credits' : '🔇 Muted — saves credits'} &nbsp;·&nbsp; {montageDuration}s clip
+                                          {montageAudioEnabled ? '🔊 Audio ON — costs more credits' : '🔇 Muted — saves credits'} &nbsp;·&nbsp; {montageDuration}s clip ({getCurrentCost(true)} Shorts)
                                         </p>
 
                                         <button
@@ -3725,7 +3775,7 @@ Return ONLY a valid JSON object with the following structure:
                                           className="w-full py-2 bg-[#c8f135] text-black font-black text-[10px] uppercase tracking-widest rounded-lg hover:bg-[#d9ff4d] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                         >
                                           {isGeneratingVideo ? <Loader2 size={13} className="animate-spin" /> : <Video size={13} />}
-                                          {isGeneratingVideo ? (videoProgressMsg || 'Generating...') : (montageGeneratedImg ? 'Animate Reference → Video' : 'Produce Montage Video')}
+                                          {isGeneratingVideo ? (videoProgressMsg || 'Generating...') : (montageGeneratedImg ? `Animate Reference → Video (${getCurrentCost(true)} Shorts)` : `Produce Montage Video (${getCurrentCost(true)} Shorts)`)}
                                         </button>
                                       </div>
                                     </div>
@@ -3966,7 +4016,7 @@ Return ONLY a valid JSON object with the following structure:
                               {scenes[activeSceneIndex]?.isApproved ? (
                                 <>
                                   <PlayCircle size={20} fill="currentColor" />
-                                  <span className="text-sm font-black uppercase tracking-[0.1em]">Produce Scene {activeSceneIndex + 1}</span>
+                                  <span className="text-sm font-black uppercase tracking-[0.1em]">Produce Scene {activeSceneIndex + 1} ({getCurrentCost(false)} Shorts)</span>
                                 </>
                               ) : (
                                 <>

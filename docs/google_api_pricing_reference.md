@@ -70,3 +70,34 @@ For high-volume, non-time-critical processing (up to 24-hour turnaround), Google
 
 ### 🚀 ZeroLens Margin Strategy using Batch Mode
 By utilizing Vertex AI's Batch Inference, ZeroLens can process 1080p Veo videos for **₹4.15/sec** instead of ₹8.30/sec. This 50% technical saving guarantees that the platform maintains a highly profitable margin even across the most aggressive "Unlimited" subscriptions.
+
+---
+
+## ZeroLens Pricing to Users
+
+| Model Tier | Resolution | Feature | Base Cost (INR) | Your Charge to User (+40%) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Veo 3.1 Fast** | 720p/1080p | Video Only | ₹8.30 / sec | **₹11.62 / sec** |
+| **Veo 3.1 Fast** | 720p/1080p | Video + Audio | ₹12.45 / sec | **₹17.43 / sec** |
+| **Veo 3.1 Fast** | 4K | Video Only | ₹24.90 / sec | **₹34.86 / sec** |
+| **Veo 3.1 Fast** | 4K | Video + Audio | ₹29.05 / sec | **₹40.67 / sec** |
+| **Veo 3.1 Standard** | 720p/1080p | Video Only | ₹16.60 / sec | **₹23.24 / sec** |
+| **Veo 3.1 Standard** | 720p/1080p | Video + Audio | ₹33.20 / sec | **₹46.48 / sec** |
+| **Veo 3.1 Standard** | 4K | Video Only | ₹33.20 / sec | **₹46.48 / sec** |
+| **Veo 3.1 Standard** | 4K | Video + Audio | ₹49.80 / sec | **₹69.72 / sec** |
+
+### 🎬 Example: Charging for an 8-Second Video
+
+Here is how much you will charge your users for an 8-second generation compared to your raw API cost:
+
+*   **Veo 3.1 Fast (1080p, Video Only):**
+    *   **You Pay:** ₹66.40
+    *   **User Pays:** ₹92.96 _(Profit: ₹26.56)_
+
+*   **Veo 3.1 Fast (1080p, with Audio):**
+    *   **You Pay:** ₹99.60
+    *   **User Pays:** ₹139.44 _(Profit: ₹39.84)_
+
+*   **Veo 3.1 Standard (4K, with Audio):**
+    *   **You Pay:** ₹398.40
+    *   **User Pays:** ₹557.76 _(Profit: ₹159.36)_

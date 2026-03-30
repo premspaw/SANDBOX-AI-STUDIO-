@@ -31,6 +31,13 @@ import { LANDING_ASSETS } from '../../config/landingAssets';
 
 const API = API_BASE_URL;
 
+const ensureDataUri = (str) => {
+    if (!str || typeof str !== 'string') return str;
+    if (str.startsWith('http') || str.startsWith('data:') || str.startsWith('blob:') || str.length < 50) return str;
+    // If it looks like base64 but missing prefix
+    return `data:image/jpeg;base64,${str}`;
+};
+
 // --- Character Kit Card Component ---
 function CharacterKitCard({ character, onDirectorsCut, onDelete, onSelectReference, compact }) {
     const [confirmDelete, setConfirmDelete] = useState(false);
@@ -71,9 +78,9 @@ function CharacterKitCard({ character, onDirectorsCut, onDelete, onSelectReferen
     const hasKit = Object.values(kitImages).some(v => v);
 
     return (
-        <div className={`group relative bg-[#050505] border ${isDeleting ? 'border-red-500/30 opacity-50' : 'border-white/5'} rounded-[2rem] overflow-hidden hover:border-[#bef264]/30 transition-all duration-700 shadow-2xl flex flex-col`}>
+        <div className={`group relative bg-[#050505] border ${isDeleting ? 'border-red-500/30 opacity-50' : 'border-white/5'} rounded-xl overflow-hidden hover:border-[#bef264]/40 transition-all duration-500 shadow-xl flex flex-col aspect-[4/5] w-full`}>
             {/* Anchor Hero Image */}
-            <div className="relative aspect-[3/4] overflow-hidden bg-black">
+            <div className="absolute inset-0 bg-black">
                 {character.anchorImage ? (
                     <img
                         src={resolveUrl(character.anchorImage)}
@@ -81,110 +88,64 @@ function CharacterKitCard({ character, onDirectorsCut, onDelete, onSelectReferen
                         loading="lazy"
                         decoding="async"
                         onError={(e) => { e.target.style.display = 'none'; }}
-                        className="w-full h-full object-cover brightness-75 group-hover:brightness-100 group-hover:scale-105 transition-all duration-1000"
+                        className="w-full h-full object-cover brightness-75 group-hover:brightness-100 group-hover:scale-110 transition-transform duration-700"
                     />
                 ) : (
                     <div className="w-full h-full bg-gradient-to-br from-[#bef264]/10 to-black flex items-center justify-center">
-                        <User className="w-20 h-20 text-white/10" />
+                        <User className="w-10 h-10 text-white/10" />
                     </div>
                 )}
+            </div>
 
-                <div className="absolute top-4 left-4 flex flex-col gap-2">
-                    <div className="bg-[#bef264] text-black text-[8px] font-black px-3 py-1.5 rounded-full uppercase tracking-[0.2em] w-fit">
-                        IDENTITY_KIT
-                    </div>
-                    {kitImages.matrix && (
-                        <div className="bg-black/80 backdrop-blur-md border border-[#bef264]/50 text-[#bef264] text-[7px] font-black px-2 py-1 rounded-lg uppercase tracking-widest flex items-center gap-1 w-fit shadow-xl">
-                            <Lock size={8} />
-                            Locked
-                        </div>
-                    )}
+            {/* Top Badges */}
+            <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
+                <div className="bg-[#bef264] text-black text-[7px] font-black px-2 py-1 rounded-full uppercase tracking-[0.1em] w-fit shadow-md">
+                    IDENTITY
                 </div>
+                {kitImages.matrix && (
+                    <div className="bg-black/80 backdrop-blur-md border border-[#bef264]/50 text-[#bef264] text-[6px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-widest flex items-center gap-1 w-fit">
+                        <Lock size={6} /> Matrix
+                    </div>
+                )}
+            </div>
 
-                {/* DELETE button */}
+            {/* Persistent Bottom Name Overlay */}
+            <div className="absolute bottom-0 inset-x-0 p-3 pt-8 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10 pointer-events-none">
+                <p className="text-[10px] font-black uppercase text-white truncate drop-shadow-md tracking-wider">
+                    {character.name}
+                </p>
+                <p className="text-[7px] text-white/50 font-mono uppercase mt-0.5 drop-shadow-sm">
+                    {character.visualStyle}
+                </p>
+            </div>
+
+            {/* Action CTA Overlay on Hover */}
+            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3 z-20">
+                {onSelectReference ? (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onSelectReference(character.url, character); }}
+                        className="w-10 h-10 bg-purple-500 hover:scale-110 active:scale-95 rounded-full text-white flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.5)] border border-purple-400/50 transition-all"
+                        title="Use as Reference"
+                    >
+                        <ImagePlus size={16} />
+                    </button>
+                ) : (
+                    <button
+                        onClick={onDirectorsCut}
+                        className="w-10 h-10 bg-[#bef264] hover:scale-110 active:scale-95 rounded-full text-black flex items-center justify-center shadow-[0_0_20px_rgba(190,242,100,0.5)] transition-all"
+                        title="Open in Director's Cut"
+                    >
+                        <Clapperboard size={16} />
+                    </button>
+                )}
+                
                 <button
                     onClick={handleDelete}
                     disabled={isDeleting}
-                    className={`absolute top-4 right-4 p-2 rounded-full backdrop-blur-xl transition-all duration-300 z-10 ${confirmDelete
-                        ? 'bg-red-500 text-white scale-110 shadow-[0_0_20px_rgba(239,68,68,0.5)]'
-                        : 'bg-black/50 text-white/40 opacity-0 group-hover:opacity-100 hover:bg-red-500/80 hover:text-white'
-                        }`}
-                    title={confirmDelete ? 'Click again to confirm delete' : 'Delete character'}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all border ${confirmDelete ? 'bg-red-500 text-white border-red-400 scale-110 shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 'bg-red-500/80 text-white border-red-400/50 hover:bg-red-500 hover:scale-110'}`}
+                    title={confirmDelete ? 'Confirm Delete' : 'Delete'}
                 >
-                    <Trash2 size={14} />
-                </button>
-                {confirmDelete && (
-                    <div className="absolute top-14 right-2 bg-red-500 text-white text-[7px] font-black px-2 py-1 rounded-lg uppercase tracking-wider z-10 animate-pulse">
-                        TAP AGAIN TO CONFIRM
-                    </div>
-                )}
-
-                {/* Hover CTA overlay */}
-                <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col items-center justify-center gap-4 p-6">
-                    {onSelectReference ? (
-                        <>
-                            <p className="text-[8px] text-white/40 uppercase tracking-widest font-black text-center">Use for Generation</p>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onSelectReference(character.url, character); }}
-                                className="bg-purple-500 text-white py-3 px-8 rounded-full font-black uppercase text-[10px] tracking-[0.2em] flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_rgba(168,85,247,0.5)] border border-purple-400/50"
-                            >
-                                <ImagePlus size={14} />
-                                SELECT
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            <p className="text-[8px] text-white/40 uppercase tracking-widest font-black text-center">Open in Director's Cut</p>
-                            <button
-                                onClick={onDirectorsCut}
-                                className="bg-[#bef264] text-black py-3 px-8 rounded-full font-black uppercase text-[10px] tracking-[0.2em] flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-[0_0_40px_rgba(190,242,100,0.5)]"
-                            >
-                                <Clapperboard size={14} />
-                                DIRECT
-                            </button>
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {/* Identity Kit Mini-Strip */}
-            {hasKit && (
-                <div className="grid grid-cols-6 gap-0.5 p-1.5 bg-black/40">
-                    {kitSlots.map(slot => (
-                        kitImages[slot.key] ? (
-                            <div key={slot.key} className="relative aspect-square overflow-hidden rounded-md group/slot">
-                                <img
-                                    src={resolveUrl(kitImages[slot.key])}
-                                    alt={slot.label}
-                                    loading="lazy"
-                                    decoding="async"
-                                    className="w-full h-full object-cover opacity-60 hover:opacity-100 transition-opacity"
-                                />
-                                <div className="absolute inset-0 flex items-end justify-center pb-0.5 opacity-0 group-hover/slot:opacity-100 transition-opacity">
-                                    <span className="text-[5px] text-white/70 font-mono font-black uppercase">{slot.label}</span>
-                                </div>
-                            </div>
-                        ) : (
-                            <div key={slot.key} className="aspect-square rounded-md bg-white/5 border border-white/5 flex items-center justify-center">
-                                <span className="text-[6px] text-white/10 font-mono uppercase">{slot.label}</span>
-                            </div>
-                        )
-                    ))}
-                </div>
-            )}
-
-            {/* Footer - Character Name */}
-            <div className="p-5 flex items-center justify-between bg-black/20">
-                <div className="overflow-hidden flex-1">
-                    <p className="text-[11px] font-black uppercase tracking-widest text-white/80 group-hover:text-[#bef264] transition-colors truncate">{character.name}</p>
-                    <p className="text-[8px] text-white/20 font-mono uppercase mt-1">{character.visualStyle} · {character.date}</p>
-                </div>
-                <button
-                    onClick={onDirectorsCut}
-                    className="ml-4 shrink-0 w-9 h-9 rounded-full border border-white/10 flex items-center justify-center text-white/30 hover:bg-[#bef264] hover:text-black hover:border-[#bef264] transition-all"
-                    title="Open in Director's Cut"
-                >
-                    <ChevronRight size={14} />
+                    <Trash2 size={16} />
                 </button>
             </div>
         </div>
@@ -192,8 +153,8 @@ function CharacterKitCard({ character, onDirectorsCut, onDelete, onSelectReferen
 }
 
 
-export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab: setAppTab }) {
-    const [activeTab, setActiveTab] = useState('images');
+export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab: setAppTab, defaultTab = 'images' }) {
+    const [activeTab, setActiveTab] = useState(defaultTab);
     const [viewMode, setViewMode] = useState('grid');
     const [isConnectedToDrive, setIsConnectedToDrive] = useState(false);    const { cachedAssets, cachedAssetsUserId, setCachedAssets, userProfile } = useAppStore();
     const [assets, setAssets] = useState({
@@ -207,7 +168,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
     });
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [isNeuralSearch, setIsNeuralSearch] = useState(false);
+
 
     const fetchAssets = async (force = false) => {
         // Resolve user early for cache verification
@@ -260,7 +221,8 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
 
             // 3. Normalize characters to match your UI card format
             const normalizedCharacters = (dbCharacters || []).map(c => {
-                const anchor = c.image || c.anchor_image || c.identity_kit?.anchor || c.identityKit?.anchor || '';
+                let anchor = c.image || c.anchor_image || c.identity_kit?.anchor || c.identityKit?.anchor || '';
+                anchor = ensureDataUri(anchor);
                 return {
                     id: c.id,
                     type: "character",
@@ -279,12 +241,13 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
             // --- LOCAL MIRROR MERGE (Emergency Fallback, per-user scoped) ---
             let localCharacters = [];
             try {
-                const vaultKey = `local_vault:${user.id}`;
+                const vaultKey = `local_vault:${targetUser.id}`;
                 const raw = localStorage.getItem(vaultKey);
                 if (raw) {
                     const parsed = JSON.parse(raw);
                     localCharacters = parsed.map(c => {
-                        const anchor = c.image || c.anchor_image || c.photo || c.identityKit?.anchor || c.identity_kit?.anchor || '';
+                        let anchor = c.image || c.anchor_image || c.photo || c.identityKit?.anchor || c.identity_kit?.anchor || '';
+                        anchor = ensureDataUri(anchor);
                         return {
                             id: c.id,
                             type: 'character',
@@ -534,23 +497,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
 
 
                     <div className="flex items-center gap-3 pb-4 w-full md:w-auto">
-                        {compact && (
-                            <button
-                                onClick={() => fetchAssets(true)}
-                                className="p-2 ml-2 hover:bg-[#bef264]/20 hover:text-[#bef264] rounded-xl text-white/40 border border-white/5 transition-all"
-                                title="Force Refresh"
-                            >
-                                <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-                            </button>
-                        )}
 
-                        <button
-                            onClick={() => setIsNeuralSearch(!isNeuralSearch)}
-                            className={`px-3 md:px-4 py-2 rounded-full border text-[8px] md:text-[9px] font-black transition-all flex items-center gap-2 whitespace-nowrap ${isNeuralSearch ? 'bg-[#bef264]/10 border-[#bef264]/40 text-[#bef264]' : 'bg-white/5 border-white/10 text-white/30'}`}
-                        >
-                            <Bot className="w-3.5 h-3.5" />
-                            {isNeuralSearch ? 'NEURAL_ON' : 'NEURAL_OFF'}
-                        </button>
                     </div>
                 </div>
 
@@ -611,7 +558,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                             }
 
                             return (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                                <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-3">
                                     {filteredChars.map(char => (
                                         <CharacterKitCard
                                             key={char.id}
@@ -648,12 +595,12 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                         <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Sector_Null // No_Assets_Located</span>
                     </div>
                 ) : (
-                    <div className={activeTab === 'images'
+                    <div className={['images', 'videos'].includes(activeTab)
                         ? "grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-0.5 md:gap-1.5"
                         : "grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-8"
                     }>
                         {assets[activeTab].map(item => (
-                            <div key={item.id} className={`group relative surface-glass border border-white/5 overflow-hidden transition-all duration-700 shadow-2xl ${activeTab === 'images' ? 'rounded-md hover:border-[#bef264]/60' : 'rounded-[2.5rem] hover:border-[#bef264]/40'}`}>
+                            <div key={item.id} className={`group relative surface-glass border border-white/5 overflow-hidden transition-all duration-700 shadow-2xl ${['images', 'videos'].includes(activeTab) ? 'rounded-md hover:border-[#bef264]/60' : 'rounded-[2.5rem] hover:border-[#bef264]/40'}`}>
                                 {item.type === 'video' ? (
                                     <div className="aspect-[4/5] bg-black relative flex items-center justify-center group/video">
                                         <video
@@ -669,7 +616,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className={`${activeTab === 'images' ? 'aspect-square' : 'aspect-[4/5]'} bg-[#050505] relative overflow-hidden`}>
+                                    <div className={`${['images', 'videos'].includes(activeTab) ? 'aspect-square' : 'aspect-[4/5]'} bg-[#050505] relative overflow-hidden`}>
                                         <img
                                             src={resolveUrl(item.url)}
                                             alt={item.name}
@@ -680,20 +627,20 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                                 )}
 
                                 {/* Action Overlay */}
-                                <div className={`absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center ${activeTab === 'images' ? 'gap-2' : 'gap-4'}`}>
+                                <div className={`absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center ${['images', 'videos'].includes(activeTab) ? 'gap-2' : 'gap-4'}`}>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); onSelectReference?.(item.url, item); }}
-                                        className={`${activeTab === 'images' ? 'w-8 h-8' : 'w-14 h-14'} bg-[#bef264] hover:scale-110 active:scale-95 rounded-full text-black flex items-center justify-center shadow-[0_0_40px_rgba(190,242,100,0.6)] transition-all`}
+                                        className={`${['images', 'videos'].includes(activeTab) ? 'w-8 h-8' : 'w-14 h-14'} bg-[#bef264] hover:scale-110 active:scale-95 rounded-full text-black flex items-center justify-center shadow-[0_0_40px_rgba(190,242,100,0.6)] transition-all`}
                                         title="Use as Reference"
                                     >
-                                        <ImagePlus className={activeTab === 'images' ? 'w-4 h-4' : 'w-7 h-7'} />
+                                        <ImagePlus className={['images', 'videos'].includes(activeTab) ? 'w-4 h-4' : 'w-7 h-7'} />
                                     </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleDeleteAsset(item.id, activeTab); }}
-                                        className={`${activeTab === 'images' ? 'w-8 h-8' : 'w-14 h-14'} bg-red-500/80 hover:bg-red-500 hover:scale-110 active:scale-95 rounded-full text-white backdrop-blur-md flex items-center justify-center transition-all border border-red-400/50`}
+                                        className={`${['images', 'videos'].includes(activeTab) ? 'w-8 h-8' : 'w-14 h-14'} bg-red-500/80 hover:bg-red-500 hover:scale-110 active:scale-95 rounded-full text-white backdrop-blur-md flex items-center justify-center transition-all border border-red-400/50`}
                                         title="Delete Permanently"
                                     >
-                                        <Trash2 className={activeTab === 'images' ? 'w-3.5 h-3.5' : 'w-6 h-6'} />
+                                        <Trash2 className={['images', 'videos'].includes(activeTab) ? 'w-3.5 h-3.5' : 'w-6 h-6'} />
                                     </button>
                                 </div>
 
@@ -704,7 +651,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                                 )}
 
                                 {/* Exclude text details in phone gallery mode */}
-                                {activeTab !== 'images' && (
+                                {!['images', 'videos'].includes(activeTab) && (
                                     <div className="p-8">
                                         <div className="text-xs font-black uppercase tracking-widest text-white/90 group-hover:text-[#bef264] transition-colors truncate">{item.name}</div>
                                         <div className="flex items-center justify-between mt-4 text-[9px] font-mono text-white/10 font-bold uppercase tracking-widest">

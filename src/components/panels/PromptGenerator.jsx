@@ -4,8 +4,8 @@ import {
     Copy, Sparkles, Video, Aperture, Sun, Palette, Camera, Focus,
     Smartphone, Film, Upload, X, Image as ImageIcon, Type, Layers,
     ArrowRight, Edit, ImagePlus, MonitorPlay, Mic, Clock,
-    ChevronDown, ChevronUp, ChevronRight, Settings, Zap, Maximize2, Download, RefreshCw, Lock, FastForward, PenTool, Grid, LayoutGrid, Music,
-    Users, Map, Package, Plus
+    ChevronDown, ChevronUp, ChevronRight, Settings, Zap, Maximize, Maximize2, Download, RefreshCw, Lock, FastForward, PenTool, Grid, LayoutGrid, Music,
+    Users, Map, Package, Plus, Save, Square, Timer
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { AssetsLibrary } from './AssetsLibrary'
@@ -243,7 +243,7 @@ const CAMERA_MODELS = [
 
 const LIGHTING_STYLES = [
     {
-        id: 'none', label: 'None (Default)',
+        id: 'none', label: 'Default',
         narrative: 'natural, balanced lighting'
     },
     {
@@ -353,20 +353,20 @@ const COMPOSITION_PROMPTS = {
 }
 
 const ASPECT_RATIOS = [
-    { id: '16:9', label: '16:9 (Cinematic)' },
-    { id: '9:16', label: '9:16 (Mobile/Reel)' },
-    { id: '1:1', label: '1:1 (Square)' },
-    { id: '4:3', label: '4:3 (TV)' },
-    { id: '3:4', label: '3:4 (Portrait)' },
-    { id: '3:2', label: '3:2 (Photography)' },
-    { id: '2:3', label: '2:3 (Vertical Photo)' },
-    { id: '4:5', label: '4:5 (Instagram)' },
-    { id: '5:4', label: '5:4 (Display)' },
-    { id: '21:9', label: '21:9 (Ultra Wide)' },
-    { id: '1:4', label: '1:4 (Tall Banner)' },
-    { id: '4:1', label: '4:1 (Wide Banner)' },
-    { id: '1:8', label: '1:8 (Skyscraper)' },
-    { id: '8:1', label: '8:1 (Leaderboard)' },
+    { id: '16:9', label: '16:9' },
+    { id: '9:16', label: '9:16' },
+    { id: '1:1', label: '1:1' },
+    { id: '4:3', label: '4:3' },
+    { id: '3:4', label: '3:4' },
+    { id: '3:2', label: '3:2' },
+    { id: '2:3', label: '2:3' },
+    { id: '4:5', label: '4:5' },
+    { id: '5:4', label: '5:4' },
+    { id: '21:9', label: '21:9' },
+    { id: '1:4', label: '1:4' },
+    { id: '4:1', label: '4:1' },
+    { id: '1:8', label: '1:8' },
+    { id: '8:1', label: '8:1' },
 ]
 
 // Maps angle IDs → narrative shot type phrases for Gemini
@@ -448,12 +448,46 @@ const FSTOP_NARRATIVES = {
     '16': 'with a deep depth of field (f/11), ensuring every detail from foreground to background is in sharp focus',
 }
 
+const REF_CATEGORIES = [
+    { id: 'characters', label: 'Characters', desc: 'Multiple Allowed', icon: Users, color: 'text-blue-400' },
+    { id: 'locations', label: 'Location', desc: 'One Location', icon: Map, color: 'text-green-400' },
+    { id: 'wardrobes', label: 'Wardrobe', desc: 'One Wardrobe Ref', icon: Package, color: 'text-orange-400' },
+    { id: 'props', label: 'Props', desc: 'Multiple Props', icon: Plus, color: 'text-yellow-400' },
+    { id: 'moods', label: 'Mood/Style', desc: 'One Mood Ref', icon: Sparkles, color: 'text-purple-400' }
+]
+
 const PRO_LIGHTING_TRANSFORMS = [
-    { id: 'none', label: 'No Transform' },
-    { id: 'day_to_night', label: 'Day ➔ Night', narrative: 'Transform this daytime scene into a deep nighttime environment with moonlight or artificial urban lighting.' },
-    { id: 'night_to_day', label: 'Night ➔ Day', narrative: 'Transform this nighttime scene into a bright, sunlit daytime environment.' },
-    { id: 'sunrise', label: 'Cold Sunrise', narrative: 'Apply a cold, blue-hour sunrise light with high-contrast morning shadows.' },
-    { id: 'sunset', label: 'Deep Sunset', narrative: 'Apply a rich, fiery sunset palette with long silhouettes and glowing highlights.' },
+    { id: 'none', label: 'No Transform', category: 'Basic' },
+    { id: 'cinematic', label: 'Cinematic', category: 'Basic' },
+    
+    // Natural
+    { id: 'morning_sun', label: 'Morning Sun', category: 'Natural', narrative: 'soft morning sunlight streaming through a window.' },
+    { id: 'overcast', label: 'Overcast', category: 'Natural', narrative: 'diffused overcast daylight with soft, even shadows.' },
+    { id: 'moonlight', label: 'Moonlight', category: 'Natural', narrative: 'pale, ethereal moonlight casting soft silvery glows and deep shadows.' },
+    
+    // Artificial
+    { id: 'fireplace', label: 'Fireplace', category: 'Artificial', narrative: 'warm, flickering glow from a fireplace casting orange highlights.' },
+    { id: 'candlelight', label: 'Candlelight', category: 'Artificial', narrative: 'intimate, flickering candlelight with warm, dancing shadows.' },
+    { id: 'fluorescent', label: 'Fluorescent', category: 'Artificial', narrative: 'harsh, cold fluorescent office lighting with clinical clarity.' },
+    { id: 'neon_pulsating', label: 'Neon Pulsating', category: 'Artificial', narrative: 'vibrant, pulsating neon sign lighting in electric colors.' },
+    
+    // Cinematic
+    { id: 'rembrandt', label: 'Rembrandt', category: 'Cinematic', narrative: 'classic Rembrandt lighting with a small triangle of light on the cheek.' },
+    { id: 'film_noir', label: 'Film Noir', category: 'Cinematic', narrative: 'film noir aesthetic with deep, high-contrast shadows and stark highlights.' },
+    { id: 'high_key', label: 'High-Key', category: 'Cinematic', narrative: 'bright, cheerful high-key lighting for an upbeat, optimistic mood.' },
+    { id: 'low_key', label: 'Low-Key', category: 'Cinematic', narrative: 'dark, mysterious low-key lighting with moody shadows.' },
+    
+    // Specific Effects
+    { id: 'volumetric', label: 'Volumetric', category: 'Effects', narrative: 'volumetric lighting creating visible, atmospheric light rays.' },
+    { id: 'silhouette', label: 'Silhouette', category: 'Effects', narrative: 'backlit lighting to create a sharp, dramatic silhouette.' },
+    { id: 'golden_hour', label: 'Golden Hour', category: 'Effects', narrative: 'warm, rich golden hour glow with long, soft shadows.' },
+    { id: 'side_lighting', label: 'Side Light', category: 'Effects', narrative: 'dramatic side lighting that emphasizes texture and form.' },
+    
+    // Transforms
+    { id: 'day_to_night', label: 'Day ➔ Night', category: 'Transforms', narrative: 'Transform this daytime scene into a deep nighttime environment with moonlight or artificial urban lighting.' },
+    { id: 'night_to_day', label: 'Night ➔ Day', category: 'Transforms', narrative: 'Transform this nighttime scene into a bright, sunlit daytime environment.' },
+    { id: 'sunrise', label: 'Cold Sunrise', category: 'Transforms', narrative: 'Apply a cold, blue-hour sunrise light with high-contrast morning shadows.' },
+    { id: 'sunset', label: 'Deep Sunset', category: 'Transforms', narrative: 'Apply a rich, fiery sunset palette with long silhouettes and glowing highlights.' },
 ]
 
 const PRO_FOCUS_CONTROLS = [
@@ -485,7 +519,7 @@ const AI_MODELS = [
     },
     {
         id: 'veo', name: 'Google Veo 3.1', provider: 'Google', type: 'video',
-        description: 'Ultra-high definition video generation (Preview)',
+        description: 'Native 2K High-Definition video generation (Preview)',
         credits: 5, available: true, icon: Video,
         modelId: 'veo-3.1-generate-preview'
     },
@@ -535,14 +569,14 @@ const CAMERA_MOVEMENT = [
 ]
 
 const SPEED_RAMP_CURVES = {
-    "Linear": [[0, 60], [25, 45], [50, 30], [75, 15], [100, 0]],
-    "Impact": [[0, 60], [10, 5], [25, 5], [60, 20], [100, 0]],
-    "Drift": [[0, 60], [40, 55], [70, 30], [90, 5], [100, 0]],
-    "Smooth": [[0, 60], [25, 40], [50, 20], [75, 10], [100, 0]],
-    "Snap": [[0, 60], [5, 2], [30, 2], [50, 25], [100, 0]],
-    "Viral": [[0, 60], [15, 10], [30, 50], [60, 10], [100, 0]],
-    "Cinematic": [[0, 60], [30, 50], [60, 20], [85, 5], [100, 0]],
-}
+    "Linear (Standard)": [[0, 50], [50, 50], [100, 50]],
+    "Impact": [[0, 60], [20, 10], [40, 10], [70, 50], [100, 60]],
+    "Cinematic": [[0, 50], [50, 50], [100, 50]],
+    "Ramp In": [[0, 60], [40, 60], [80, 20], [100, 10]],
+    "Ramp Out": [[0, 10], [20, 20], [60, 60], [100, 60]],
+    "Snap": [[0, 60], [10, 10], [40, 10], [60, 60], [80, 10], [100, 10]],
+    "Viral": [[0, 10], [30, 60], [50, 10], [70, 60], [100, 10]],
+};
 
 const VIDEO_CONTROLS = [
     {
@@ -552,12 +586,23 @@ const VIDEO_CONTROLS = [
     },
     {
         key: "speedRamp", label: "SPEED RAMP",
-        options: ["Linear", "Impact", "Drift", "Smooth", "Snap", "Viral", "Cinematic"],
-        default: "Cinematic"
+        options: ["Linear (Standard)", "Impact", "Cinematic", "Ramp In", "Ramp Out", "Snap", "Viral"],
+        default: "Linear (Standard)"
     },
     {
-        key: "emotion", label: "EMOTION",
-        options: ["Neutral", "Tense", "Calm", "Epic", "Intimate", "Melancholic", "Triumphant", "Desperate", "Menacing"],
+        key: "emotion", label: "TONE",
+        options: [
+            "Neutral",
+            "Happy / Joyful",
+            "Sad / Melancholy",
+            "Suspenseful / Tense",
+            "Peaceful / Serene",
+            "Epic / Grandiose",
+            "Futuristic / Sci-Fi",
+            "Vintage / Retro",
+            "Romantic",
+            "Horror"
+        ],
         default: "Neutral"
     },
     {
@@ -576,14 +621,52 @@ const VIDEO_CONTROLS = [
         default: "1080p"
     },
     {
-        key: "fps", label: "FPS",
-        options: ["24fps — Cinematic", "30fps — Standard", "60fps — Smooth"],
-        default: "24fps — Cinematic"
+        key: "lens", label: "LENS",
+        options: [
+            "Default",
+            "Wide-Angle Lens",
+            "Telephoto Lens",
+            "Shallow Depth of Field",
+            "Deep Depth of Field",
+            "Lens Flare",
+            "Rack Focus",
+            "Fisheye Lens",
+            "Vertigo Effect"
+        ],
+        default: "Default"
     },
     {
         key: "aspectRatio", label: "RATIO",
-        options: ["16:9 — Cinematic", "9:16 — Reels", "1:1 — Feed", "4:5 — Portrait"],
-        default: "16:9 — Cinematic"
+        options: ["16:9", "9:16", "1:1", "4:5"],
+        default: "16:9"
+    },
+    {
+        key: "pacing", label: "PACING",
+        options: ["None", "slow-motion", "fast-paced action", "time-lapse"],
+        default: "None"
+    },
+    {
+        key: "artisticStyle", label: "ART STYLE",
+        options: [
+            "Photorealistic",
+            "Cinematic Film",
+            "Japanese Anime",
+            "Classic Disney Animation",
+            "Pixar 3D Animation",
+            "Claymation",
+            "Stop-Motion",
+            "Cel-Shaded Animation",
+            "Van Gogh Style",
+            "Surrealist Painting",
+            "Impressionistic",
+            "Art Deco",
+            "Bauhaus Aesthetic",
+            "Graphic Novel",
+            "Watercolor Painting",
+            "Charcoal Sketch",
+            "Blueprint Schematic"
+        ],
+        default: "Photorealistic"
     },
     {
         key: "audio", label: "AUDIO",
@@ -811,16 +894,37 @@ const buildStandardPrompt = (selections, getFStop) => {
 /**
  * Video prompt builder for Veo.
  * Gemini Veo also benefits from narrative language.
+ * Now includes support for categorized references from the @Ref Board.
  */
-const buildVideoPrompt = (selections, selectedModel) => {
+const buildVideoPrompt = (selections, selectedModel, refBoard = { characters: [], locations: [], wardrobes: [], props: [], moods: [] }) => {
+    // Helper to extract tagged references from text
+    const getTaggedRefs = (text) => {
+        const mentions = ((text || '').match(/@(\w+)/g) || []).map(m => m.slice(1).toLowerCase());
+        const allItems = [
+            ...refBoard.characters.map(i => ({ ...i, category: 'character' })),
+            ...refBoard.locations.map(i => ({ ...i, category: 'location' })),
+            ...refBoard.wardrobes.map(i => ({ ...i, category: 'wardrobe' })),
+            ...refBoard.props.map(i => ({ ...i, category: 'prop' })),
+            ...refBoard.moods.map(i => ({ ...i, category: 'mood' })),
+        ];
+        return allItems.filter(item => mentions.some(m => item.name?.toLowerCase().replace(/\s+/g, '') === m || item.name?.toLowerCase().includes(m)));
+    };
+
     // ─── Resolve UI selections into narratives ───────────────────────────
     const cam = CAMERA_MODELS.find(c => c.id === selections.camera) || CAMERA_MODELS[0]
     const artStyle = ART_STYLES.find(s => s.id === selections.style)
     const lighting = LIGHTING_STYLES.find(l => l.id === selections.lighting)
 
-    const subject = (selections.subjectDescription || selections.subject || '').trim() || 'the subject'
+    const subject = (selections.subject || selections.subjectDescription || '').trim() || 'the subject'
     const action = (selections.actionDescription || '').trim()
     const context = (selections.contextDescription || '').trim()
+
+    // ── AUTO-DETECT VEO MODE ─────────────────────────────────────────────
+    const hasFirstFrame = !!(selections.firstFrame && selections.firstFrame !== 'loading');
+    const hasLastFrame = !!(selections.lastFrame && selections.lastFrame !== 'loading');
+    const isFirstAndLastFrame = hasFirstFrame && hasLastFrame;
+    const isImageToVideo = hasFirstFrame && !hasLastFrame;
+    const isTextToVideo = !hasFirstFrame && !hasLastFrame;
 
     // ── [1] CINEMATOGRAPHY: Camera shot + movement ──────────────────────
     const movement = selections.cameraMovement || 'Static Shot'
@@ -828,73 +932,80 @@ const buildVideoPrompt = (selections, selectedModel) => {
 
     // Map speed ramp to cinematic language
     const speedRampMap = {
-        'Cinematic': 'with a smooth, cinematic tempo',
-        'Slow Motion': 'in dramatic slow motion',
-        'Fast Cut': 'with intense fast-cut pacing',
-        'Time Lapse': 'as a sweeping time-lapse',
-        'Hyperlapse': 'as a dynamic hyperlapse',
-        'Ramp Up': 'starting slow then ramping to full speed',
-        'Ramp Down': 'starting at speed then gracefully decelerating',
-    }
-    const speedNarrative = speedRampMap[selections.speedRamp] || 'at a cinematic pace'
+        "Impact": "Use an aggressive speed ramp: start slow, snap to high-speed during the impact, then return to slow-motion.",
+        "Cinematic": "Capture in 120fps slow-motion for a dreamlike, high-end cinematic feel.",
+        "Ramp In": "Start the shot in extreme slow-motion then rapidly accelerate the time-scale into real-time.",
+        "Ramp Out": "Start in real-time then gracefully decelerate into a frozen-time slow-motion finish.",
+        "Snap": "Use rhythmic time-mapping, snapping between fast and slow motion to highlight key movements.",
+        "Viral": "Dynamic TikTok-style speed ramping with high-energy velocity shifts."
+    };
+    const speedNarrative = speedRampMap[selections.speedRamp] || "at a steady, natural cinematic pace.";
 
-    const cameraClause = movement === 'Static Shot'
-        ? `${shotAngle ? shotAngle + ', ' : ''}static, locked-off framing`
-        : (() => {
-            const movementObj = CAMERA_MOVEMENT.find(m => m.label === movement);
-            const narrative = movementObj?.desc || movement;
-            return `${narrative}${shotAngle ? ' from a ' + shotAngle.toLowerCase() : ''}`;
-        })();
+    const cameraMovementMap = {
+        'Static Shot':      'Camera holds completely still.',
+        'Pan Left':         'Camera slowly pans left.',
+        'Pan Right':        'Camera slowly pans right.',
+        'Dolly In':         'Camera slowly pushes in toward the subject.',
+        'Dolly Out':        'Camera slowly pulls back to reveal the scene.',
+        '180° Arc Left':    'Camera performs a smooth 180-degree arc to the left around the subject.',
+        '180° Arc Right':   'Camera performs a smooth 180-degree arc to the right around the subject.',
+        'Tilt Up':          'Camera tilts upward.',
+        'Tilt Down':        'Camera tilts downward.',
+        'Handheld':         'Handheld camera with natural organic movement.',
+        'Drone Rise':       'Camera ascends vertically like a drone.',
+        'Drone Fall':       'Camera descends vertically.',
+    };
+    const cameraClause = cameraMovementMap[movement] || 'Camera holds steady.';
 
-    // ── [2] SUBJECT ──────────────────────────────────────────────────────
-    // ── [3] ACTION ───────────────────────────────────────────────────────
+    // ── [2] SUBJECT + ACTION + CONTEXT ───────────────────────────────────
     const actionClause = action ? `, ${action}` : ''
-
-    // ── [4] CONTEXT: Environment + lighting ──────────────────────────────
     const contextClause = context ? `, set in ${context}` : ''
     const lightingNarrative = lighting?.narrative || lighting?.label?.toLowerCase() || 'cinematic lighting'
-
-    // ── [5] STYLE & AMBIANCE ─────────────────────────────────────────────
     const styleNarrative = artStyle?.narrative || artStyle?.label?.toLowerCase() || 'photorealistic'
 
-    // Emotion tag (Veo 3.1 supports this natively)
-    const emotion = selections.emotion && selections.emotion !== 'Neutral'
-        ? ` Emotion: ${selections.emotion}.`
+    // Tone / Mood tag
+    const toneNarrativeMap = {
+        'Happy / Joyful':       'Bright, vibrant, cheerful, uplifting and whimsical tone — visual warmth and joyful energy throughout.',
+        'Sad / Melancholy':     'Somber, muted colors, slow pace and poignant atmosphere — wistful and emotionally heavy tone.',
+        'Suspenseful / Tense':  'Dark, shadowy, with a palpable sense of unease and thrilling tension — every frame feels dangerous.',
+        'Peaceful / Serene':    'Calm, tranquil, soft and meditative atmosphere — gentle and unhurried visual pacing.',
+        'Epic / Grandiose':     'Sweeping, majestic, dramatic and awe-inspiring tone — cinematic grandeur at maximum scale.',
+        'Futuristic / Sci-Fi':  'Sleek, metallic, neon-lit and technological atmosphere — alternating between dystopian dread and utopian wonder.',
+        'Vintage / Retro':      'Sepia-toned, grainy film aesthetic with era-specific visual cues — nostalgic and warmly aged.',
+        'Romantic':             'Soft focus, warm colors and intimate framing — a tender, emotionally close atmosphere.',
+        'Horror':               'Dark, unsettling and eerie atmosphere with shadows and dread — deeply unnerving visual tension.',
+    };
+    const emotion = (selections.emotion && selections.emotion !== 'Neutral' && toneNarrativeMap[selections.emotion])
+        ? ` Tone: ${toneNarrativeMap[selections.emotion]}`
         : ''
 
-    // ── AUDIO LAYER (Veo 3.1 audio guide) ───────────────────────────────
+    // ── AUDIO LAYER (Veo 3.1) ────────────────────────────────────────────
     const audioLines = []
     const audioActive = selections.audioActive || {}
     const audioPrompts = selections.audioPrompts || {}
-
-    // Only build audio lines if the main audio toggle is ON
     if (selections.audio === 'On') {
         if (audioActive.dialogue) {
             if (audioPrompts.dialogue) audioLines.push(`A voice says, "${audioPrompts.dialogue}".`)
             else if (selections.dialogue && selections.dialogue !== 'Off') audioLines.push(`Dialogue: ${selections.dialogue}.`)
         }
-
-        if (audioActive.sfx && audioPrompts.sfx) {
-            audioLines.push(`SFX: ${audioPrompts.sfx}.`)
-        }
-
+        if (audioActive.sfx && audioPrompts.sfx) audioLines.push(`SFX: ${audioPrompts.sfx}.`)
         if (audioActive.ambient) {
             if (audioPrompts.ambient) audioLines.push(`Ambient noise: ${audioPrompts.ambient}.`)
             else audioLines.push('Ambient noise: natural, immersive soundscape.')
         }
-
-        if (audioActive.music && audioPrompts.music) {
-            audioLines.push(`Music: ${audioPrompts.music}.`)
-        }
+        if (audioActive.music && audioPrompts.music) audioLines.push(`Music: ${audioPrompts.music}.`)
     }
 
-    // ── FRAME REFERENCE ──────────────────────────────────────────────────
-    const frameRef = []
-    if (selections.firstFrame) frameRef.push('starting from the provided first frame')
-    if (selections.lastFrame) frameRef.push('transitioning to the provided last frame')
-    const frameClause = frameRef.length > 0 ? ` [Frame refs: ${frameRef.join(' and ')}].` : ''
+    // ── AMBIANCE LAYER (Color, Atmosphere, Texture) ──────────────────────
+    const ambianceLines = []
+    const ambianceActive = selections.ambianceActive || {}
+    const ambiancePrompts = selections.ambiancePrompts || {}
+    if (ambianceActive.color && ambiancePrompts.color) ambianceLines.push(`Color Palette: ${ambiancePrompts.color}.`)
+    if (ambianceActive.atmosphere && ambiancePrompts.atmosphere) ambianceLines.push(`Atmospheric Effects: ${ambiancePrompts.atmosphere}.`)
+    if (ambianceActive.texture && ambiancePrompts.texture) ambianceLines.push(`Textural Qualities: ${ambiancePrompts.texture}.`)
+    const ambianceNarrative = ambianceLines.length > 0 ? ` Ambiance: ${ambianceLines.join(' ')}` : ''
 
-    // ── TIMESTAMP PROMPTING (multi-shot) ─────────────────────────────────
+    // ── TIMESTAMP SEGMENTS (multi-shot) ──────────────────────────────────
     const segments = selections.timestampSegments || []
     const hasTimestamps = segments.length > 1 && segments.some(s => s.description?.trim())
     let timestampBlock = ''
@@ -905,27 +1016,129 @@ const buildVideoPrompt = (selections, selectedModel) => {
             .join('\n')
     }
 
-    // ── Assemble final Veo 3.1 prompt ────────────────────────────────────
-    // Formula: [Cinematography], [Subject], [Action], [Context]. [Style & Ambiance]. [Audio]. [Frame refs].
-    const core = `${cameraClause}, ${subject}${actionClause}${contextClause}.`
-    const style = ` ${styleNarrative} aesthetic, ${lightingNarrative}, ${speedNarrative}.`
+    // ── MODE-SPECIFIC PREAMBLE ────────────────────────────────────────────
+    let modePreamble = ''
+    
+    // Detect references for "Ingredients" style prompting early
+    const allNarrativeText = (selections.subject || '') + ' ' + (selections.subjectDescription || '') + ' ' + (selections.actionDescription || '') + ' ' + (selections.contextDescription || '');
+    const tagged = getTaggedRefs(allNarrativeText);
+    const hasIngredients = tagged.length > 0;
 
-    // Remove "Recorded on..." for I2V/Interpolation as the source image already defines the visual baseline
-    // The user explicitly requested to remove this when images are used.
-    const camera = (selections.firstFrame || selections.lastFrame || selections.referenceImage)
-        ? ''
-        : ` Recorded on ${cam.label} for maximum cinematic realism.`
+    if (hasIngredients) {
+        // Suppression: No interpolation preamble if we have ingredients
+        modePreamble = ''; 
+    } else if (isFirstAndLastFrame) {
+        // Veo 3.1 "First and Last Frame" interpolation mode
+        modePreamble = `The camera performs a smooth ${movement !== 'Static Shot' ? cameraMovementMap[movement]?.replace('Camera ', '').replace('.', '') || 'arc shot' : 'transition'}, ` +
+            `starting with the provided start frame and seamlessly ending on the provided end frame. `
+    } else if (isImageToVideo) {
+        // Veo 3.1 Image-to-Video: animate the source image
+        modePreamble = `Animate this image. `
+    }
 
-    // Audio directions are only appended if the main Audio toggle is set to "On"
+    // Text-to-video: no preamble, just the structured prompt below
+
+    // ── ASSEMBLE FINAL VEO 3.1 PROMPT ────────────────────────────────────
+    // Formula: [References Preamble] + [Cinematography] + [Subject] + [Action] + [Context] + [Style & Ambiance]
+    
+    let ingredientsPreamble = '';
+    if (hasIngredients) {
+        const refsFormatted = tagged.map(i => {
+            const label = i.category?.replace(/s$/, '') || 'Reference';
+            const capLabel = label.charAt(0).toUpperCase() + label.slice(1);
+            return `${capLabel} @${i.name}`;
+        }).join(', ');
+        ingredientsPreamble = `Using the provided images for ${refsFormatted}, `;
+    }
+
+    // Fix: If modePreamble already contains the camera movement (interpolation mode), 
+    // don't repeat the cameraClause to avoid "performs a smooth performs a smooth"
+    const cinematography = (isFirstAndLastFrame && !hasIngredients) ? '' : `${cameraClause} `
+    const core = `${ingredientsPreamble}${modePreamble}${cinematography}${subject}${actionClause}${contextClause}.`
+
+    // ── LENS / OPTICAL EFFECTS ────────────────────────────────────────────
+    const lensNarrativeMap = {
+        'Wide-Angle Lens':        'Shot with a wide-angle lens that captures a broader field of view, exaggerating perspective and creating a grand sense of scale.',
+        'Telephoto Lens':         'Shot with a telephoto lens that narrows the field of view compresses perspective, making distant subjects appear closer and beautifully isolated.',
+        'Shallow Depth of Field': 'Shallow depth of field with only a narrow plane in sharp focus — the background dissolves into smooth, creamy bokeh.',
+        'Deep Depth of Field':    'Deep depth of field keeping everything in sharp focus from the immediate foreground to the distant background.',
+        'Lens Flare':             'Cinematic lens flare streaks and starbursts as bright light directly strikes the lens, creating a dramatic, cinematic atmosphere.',
+        'Rack Focus':             'Rack focus technique shifting from one subject to another within a single continuous shot, guiding the viewer\'s attention.',
+        'Fisheye Lens':           'Fisheye lens effect with extreme barrel distortion creating a circular, panoramic wide-angle image of the scene.',
+        'Vertigo Effect':         'Vertigo effect (dolly zoom): camera dollies while simultaneously zooming in the opposite direction, creating a dramatic, disorienting background perspective shift.',
+    };
+    const lensNarrative = lensNarrativeMap[selections.lens] ? ` Lens: ${lensNarrativeMap[selections.lens]}` : '';
+
+    // ── ARTISTIC STYLE ────────────────────────────────────────────
+    const artisticStyleNarrativeMap = {
+        'Photorealistic':           'ultra-realistic rendering with 8K camera-level fidelity, true-to-life textures and lighting.',
+        'Cinematic Film':           'cinematic film look shot on 35mm film with anamorphic widescreen lens flares and grain.',
+        'Japanese Anime':           'high-quality Japanese anime style with clean line-art, vibrant cel-shading and expressive characters.',
+        'Classic Disney Animation': 'classic Disney hand-drawn animation style with fluid, expressive motion and warm, painterly backgrounds.',
+        'Pixar 3D Animation':       'Pixar-like 3D CGI animation with subsurface scattering, expressive characters and richly detailed environments.',
+        'Claymation':               'claymation style with visible fingerprint texture, tactile clay surfaces and organic stop-motion charm.',
+        'Stop-Motion':              'stop-motion animation aesthetic with deliberate frame-by-frame movement and handcrafted physical materials.',
+        'Cel-Shaded Animation':     'cel-shaded animation with bold outlines, flat color fills and a stylized graphic-novel energy.',
+        'Van Gogh Style':           'in the expressive style of Van Gogh — swirling brushstrokes, vivid impasto color and emotional intensity.',
+        'Surrealist Painting':      'surrealist painting aesthetic with dreamlike imagery, unexpected juxtapositions and melting, impossible forms.',
+        'Impressionistic':          'impressionistic style with loose, dappled brushwork capturing light and atmosphere over sharp detail.',
+        'Art Deco':                 'Art Deco design aesthetic with geometric symmetry, bold gold and black palettes, and elegant stylized forms.',
+        'Bauhaus Aesthetic':        'Bauhaus aesthetic emphasizing functional minimalism, primary colors, geometric shapes and rational composition.',
+        'Graphic Novel':            'gritty graphic novel illustration with high-contrast inking, dramatic shadows and kinetic panel energy.',
+        'Watercolor Painting':      'watercolor painting coming to life with soft bleeding pigment, wet edges and translucent layered washes.',
+        'Charcoal Sketch':          'charcoal sketch animation with rough textured strokes, deep blacks and expressive gestural mark-making.',
+        'Blueprint Schematic':      'blueprint schematic style with white technical line-art on deep engineering blue, precise and architectural.',
+    };
+    const artisticStyle = selections.artisticStyle && selections.artisticStyle !== 'Photorealistic'
+        ? ` Artistic Style: ${artisticStyleNarrativeMap[selections.artisticStyle] || selections.artisticStyle}.`
+        : ' ultra-realistic rendering with 8K photographic fidelity.';
+
+    const pacingMap = {
+        'slow-motion': 'Shot in extreme slow-motion for a dreamlike, graceful feel.',
+        'fast-paced action': 'High-energy, fast-paced action editing style with rapid visual pacing.',
+        'time-lapse': 'Captured as an accelerated time-lapse, compressing long periods of time into a single dynamic segment.'
+    }
+    const pacingNarrative = pacingMap[selections.pacing] ? ` Pacing: ${pacingMap[selections.pacing]}` : ''
+
+    const style = ` ${styleNarrative} aesthetic, ${lightingNarrative}, ${speedNarrative}.${pacingNarrative}`
+
+    // Camera credit only for text-to-video
+    const cameraCreditLine = isTextToVideo
+        ? ` Recorded on ${cam.label} for maximum cinematic realism.`
+        : ''
+
     const audio = (audioLines.length > 0 && selectedModel !== 'veo-fast' && selections.audio === 'On')
         ? ' ' + audioLines.join(' ')
         : ''
 
-    // ── Pro Lighting Transforms (Legacy) ───────────────────────────────
     const transform = PRO_LIGHTING_TRANSFORMS.find(t => t.id === selections.lightingTransform)
     const transformNarrative = (transform && transform.id !== 'none') ? ` Lighting Transform: ${transform.narrative}` : ''
 
-    return (core + style + camera + emotion + transformNarrative + audio + frameClause + timestampBlock).trim()
+    const finalPrompt = `${core}${style}${emotion}${ambianceNarrative}${lensNarrative}${artisticStyle}${transformNarrative}${cameraCreditLine}${audio}${timestampBlock}`
+
+    // ── REFERENCE BOARD INTEGRATION ────────────────────────────────────
+    const refBlock = (() => {
+        if (tagged.length === 0) return '';
+
+        const lines = [];
+        const chars = tagged.filter(i => i.category === 'characters' || i.category === 'character');
+        const locs = tagged.filter(i => i.category === 'locations' || i.category === 'location');
+        const wards = tagged.filter(i => i.category === 'wardrobes' || i.category === 'wardrobe');
+        const props = tagged.filter(i => i.category === 'props' || i.category === 'prop');
+        const moods = tagged.filter(i => i.category === 'moods' || i.category === 'mood');
+
+        if (chars.length > 0) lines.push(`Characters: ${chars.map(c => '@' + c.name).join(', ')}`);
+        if (locs.length > 0) lines.push(`Location Reference: ${locs.map(l => '@' + l.name).join(', ')}`);
+        if (wards.length > 0) lines.push(`Wardrobe Reference: ${wards.map(w => '@' + w.name).join(', ')}`);
+        if (props.length > 0) lines.push(`Key Props: ${props.map(p => '@' + p.name).join(', ')}`);
+        if (moods.length > 0) lines.push(`Visual Style/Mood: ${moods.map(m => '@' + m.name).join(', ')}`);
+
+        return lines.length > 0 ? '\n\nReferences Definitions:\n' + lines.join('\n') : '';
+    })();
+
+    const negativeClause = ' Avoid: sudden transitions.';
+
+    return (core + style + cameraCreditLine + emotion + lensNarrative + artisticStyle + transformNarrative + audio + negativeClause + timestampBlock + refBlock).trim()
 }
 
 // ─────────────────────────────────────────────
@@ -1092,22 +1305,24 @@ const KlingAudioMode = () => (
     </div>
 )
 
-const TimestampMultiShot = ({ selections, setSelections }) => (
+const TimestampMultiShot = ({ selections, setSelections, setShowRefBoard, allRefItems, setMentionSearch, setMentionField, setMentionCursorPos }) => (
     <div className="w-1/3 shrink-0 h-full">
         <div className="h-full bg-white/5 border border-white/10 rounded-xl p-2 flex flex-col overflow-hidden">
             <div className="flex items-center justify-between mb-2">
                 <label className="text-[10px] font-bold text-[#AADD00] uppercase tracking-widest flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5" /> Veo Sequence Builder
                 </label>
-                <button
-                    onClick={() => setSelections(p => ({
-                        ...p,
-                        timestampSegments: [...(p.timestampSegments || []), { id: Date.now(), start: 0, end: 2, description: '' }]
-                    }))}
-                    className="px-1.5 py-0.5 bg-[#AADD00]/10 hover:bg-[#AADD00]/20 border border-[#AADD00]/20 rounded text-[#AADD00] text-[8px] font-black uppercase transition-all"
-                >
-                    + Add Segment
-                </button>
+                <div className="flex items-center gap-1.5">
+                    <button
+                        onClick={() => setSelections(p => ({
+                            ...p,
+                            timestampSegments: [...(p.timestampSegments || []), { id: Date.now(), start: 0, end: 2, description: '' }]
+                        }))}
+                        className="px-1.5 py-0.5 bg-[#AADD00]/10 hover:bg-[#AADD00]/20 border border-[#AADD00]/20 rounded text-[#AADD00] text-[8px] font-black uppercase transition-all"
+                    >
+                        + Add Segment
+                    </button>
+                </div>
             </div>
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar min-h-[40px]">
                 {(selections.timestampSegments || []).map((seg, idx) => (
@@ -1153,12 +1368,25 @@ const TimestampMultiShot = ({ selections, setSelections }) => (
                         </div>
                         <textarea
                             value={seg.description}
-                            onChange={(e) => setSelections(p => ({
-                                ...p,
-                                timestampSegments: p.timestampSegments.map((s, i) => i === idx ? { ...s, description: e.target.value } : s)
-                            }))}
-                            placeholder="Veo 3.1 sequence action or shot description..."
-                            className="w-full bg-white/5 border border-white/5 rounded p-1 text-[10px] text-white/80 placeholder:text-white/10 focus:outline-none resize-none h-8 custom-scrollbar"
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                setSelections(p => ({
+                                    ...p,
+                                    timestampSegments: p.timestampSegments.map((s, i) => i === idx ? { ...s, description: val } : s)
+                                }));
+                                // @ mention detection for character tagging
+                                const cursor = e.target.selectionStart || 0;
+                                const match = val.slice(0, cursor).match(/@(\w*)$/);
+                                if (match && setMentionSearch) {
+                                    setMentionSearch(match[1].toLowerCase());
+                                    setMentionCursorPos && setMentionCursorPos(cursor);
+                                    setMentionField && setMentionField(`seg_desc_${idx}`);
+                                } else if (setMentionSearch) {
+                                    setMentionSearch(null);
+                                }
+                            }}
+                            placeholder="Type @ to tag a character, or describe the shot..."
+                            className="w-full bg-white/5 border border-white/5 rounded p-1 text-[10px] text-white/80 placeholder:text-white/20 focus:outline-none resize-none h-8 custom-scrollbar"
                         />
                     </div>
                 ))}
@@ -1173,7 +1401,7 @@ const TimestampMultiShot = ({ selections, setSelections }) => (
     </div>
 )
 
-const VideoNarrativeComponents = ({ mode, isNanoBanana, allRefItems, setShowRefBoard, selections, handleTextChange, mentionSearch, setMentionSearch, mentionField, selectMention, textareaRef, handleRefinePrompt, isPolishing }) => (
+const VideoNarrativeComponents = ({ mode, isNanoBanana, isVeo, allRefItems, setShowRefBoard, selections, handleTextChange, mentionSearch, setMentionSearch, mentionField, selectMention, textareaRef, handleRefinePrompt, isPolishing, setStagedRefBoard, refBoard }) => (
     <div className={cn("h-full", mode === 'video' ? "w-2/3" : "flex-1")}>
         <div className="bg-white/5 border border-white/10 rounded-xl p-2 h-full flex-1 flex flex-col">
             <label className="w-full text-[10px] font-bold text-[#D4FF00] uppercase tracking-widest flex items-center mb-2">
@@ -1191,79 +1419,22 @@ const VideoNarrativeComponents = ({ mode, isNanoBanana, allRefItems, setShowRefB
                 </div>
                 <div className="ml-auto flex items-center gap-2">
                     <span className="text-gray-600 font-normal normal-case tracking-normal text-[9px] hidden sm:block">Type @ to tag a character</span>
-                    <button onClick={() => setShowRefBoard(true)} className="flex items-center gap-1 px-2 py-1 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 rounded-lg text-purple-400 transition-all font-sans normal-case tracking-normal">
+                    <button onClick={() => { setStagedRefBoard({ ...refBoard }); setShowRefBoard(true) }} className={cn("flex items-center gap-1 px-2 py-1 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 rounded-lg text-purple-400 transition-all font-sans normal-case tracking-normal")}>
                         <span className="text-[11px] font-black">@</span><span className="text-[9px] font-bold hidden sm:block">Refs</span>
                         {allRefItems.length > 0 && <span className="w-3.5 h-3.5 rounded-full bg-purple-500 text-white text-[7px] font-black flex items-center justify-center">{allRefItems.length}</span>}
                     </button>
                 </div>
             </label>
             <div className="relative flex-1 flex flex-col min-h-[40px]">
-                {mode === 'video' ? (
-                    <div className="grid grid-cols-3 gap-2 h-full">
-                        <div className="flex flex-col h-full">
-                            <div className="flex items-center justify-between mb-1">
-                                <span className="text-[8px] font-bold text-white/30 uppercase">Subject</span>
-                                <button
-                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRefinePrompt('subjectDescription'); }}
-                                    className="p-1 hover:bg-[#D4FF00]/10 rounded transition-all group/pen cursor-pointer"
-                                    title="AI Refine Subject (1 Credit)"
-                                >
-                                    <PenTool className="w-2.5 h-2.5 text-[#D4FF00]/40 group-hover/pen:text-[#D4FF00]" />
-                                </button>
-                            </div>
-                            <textarea
-                                value={selections.subjectDescription}
-                                onChange={(e) => handleTextChange('subjectDescription', e)}
-                                placeholder="Who or what..."
-                                className="w-full bg-black/40 border border-white/5 rounded-lg p-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none resize-none flex-1 custom-scrollbar"
-                            />
-                        </div>
-                        <div className="flex flex-col h-full">
-                            <div className="flex items-center justify-between mb-1">
-                                <span className="text-[8px] font-bold text-white/30 uppercase">Action</span>
-                                <button
-                                    onClick={(e) => { e.preventDefault(); handleRefinePrompt('actionDescription'); }}
-                                    className="p-1 hover:bg-[#D4FF00]/10 rounded transition-all group/pen"
-                                    title="AI Refine Action"
-                                >
-                                    <PenTool className="w-2.5 h-2.5 text-[#D4FF00]/40 group-hover/pen:text-[#D4FF00]" />
-                                </button>
-                            </div>
-                            <textarea
-                                value={selections.actionDescription}
-                                onChange={(e) => handleTextChange('actionDescription', e)}
-                                placeholder="What is happening..."
-                                className="w-full bg-black/40 border border-white/5 rounded-lg p-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none resize-none flex-1 custom-scrollbar"
-                            />
-                        </div>
-                        <div className="flex flex-col h-full">
-                            <div className="flex items-center justify-between mb-1">
-                                <span className="text-[8px] font-bold text-white/30 uppercase">Context</span>
-                                <button
-                                    onClick={(e) => { e.preventDefault(); handleRefinePrompt('contextDescription'); }}
-                                    className="p-1 hover:bg-[#D4FF00]/10 rounded transition-all group/pen"
-                                    title="AI Refine Context"
-                                >
-                                    <PenTool className="w-2.5 h-2.5 text-[#D4FF00]/40 group-hover/pen:text-[#D4FF00]" />
-                                </button>
-                            </div>
-                            <textarea
-                                value={selections.contextDescription}
-                                onChange={(e) => handleTextChange('contextDescription', e)}
-                                placeholder="Environment/Lighting..."
-                                className="w-full bg-black/40 border border-white/5 rounded-lg p-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none resize-none flex-1 custom-scrollbar"
-                            />
-                        </div>
-                    </div>
-                ) : (
-                    <textarea
-                        ref={textareaRef}
-                        value={selections.subject}
-                        onChange={(e) => handleTextChange('subject', e)}
-                        placeholder={isNanoBanana ? "Describe your scene..." : "Describe your cinematic vision..."}
-                        className="w-full bg-black/40 border border-purple-500/10 rounded-lg p-2 text-sm text-white placeholder:text-gray-600 focus:outline-none resize-none flex-1 custom-scrollbar"
-                    />
-                )}
+                <textarea
+                    ref={textareaRef}
+                    value={isVeo ? (selections.subject || '') : (mode === 'video' ? (selections.subjectDescription || '') : (selections.subject || ''))}
+                    onChange={(e) => handleTextChange(isVeo ? 'subject' : (mode === 'video' ? 'subjectDescription' : 'subject'), e)}
+                    placeholder={isVeo
+                        ? "1. Who or what?  •  2. What is happening?  •  3. Environment, Lighting & Style?"
+                        : (isNanoBanana ? "Describe your scene..." : "Describe your cinematic vision...")}
+                    className="w-full bg-black/40 border border-white/5 rounded-lg p-2 text-sm text-white placeholder:text-gray-600 focus:outline-none resize-none flex-1 custom-scrollbar"
+                />
 
                 {mentionSearch !== null && (
                     <div className={cn(
@@ -1324,19 +1495,34 @@ const VideoNarrativeComponents = ({ mode, isNanoBanana, allRefItems, setShowRefB
 )
 
 const ProLighting = ({ selections, setSelections }) => (
-    <div className="flex-1 min-w-[140px]">
-        <label className="text-[10px] font-bold text-yellow-500 mb-1 block uppercase tracking-wider flex items-center gap-1.5">
-            <Sun className="w-3 h-3" /> Pro Lighting
-        </label>
-        <select
-            value={selections.lightingTransform}
-            onChange={e => setSelections(p => ({ ...p, lightingTransform: e.target.value }))}
-            className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white"
-        >
-            {PRO_LIGHTING_TRANSFORMS.map(t => (
-                <option key={t.id} value={t.id} className="bg-[#111]">{t.label}</option>
-            ))}
-        </select>
+    <div className="flex flex-col items-start shrink-0">
+        <span className="text-[8px] font-black text-gray-600 uppercase tracking-[0.15em] mb-0.5 px-1 flex items-center gap-1">
+            <Sun className="w-1.5 h-1.5" /> Lighting
+        </span>
+        <div className="relative">
+            <select
+                value={selections.lighting === 'cinematic' ? 'cinematic' : selections.lightingTransform}
+                onChange={e => {
+                    const val = e.target.value;
+                    if (val === 'cinematic') {
+                        setSelections(p => ({ ...p, lighting: 'cinematic', lightingTransform: 'none' }));
+                    } else {
+                        setSelections(p => ({ ...p, lightingTransform: val, lighting: val === 'none' ? 'none' : p.lighting }));
+                    }
+                }}
+                className="appearance-none bg-white/[0.06] hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-full pl-3 pr-6 py-1 text-[10px] font-semibold text-white transition-all cursor-pointer focus:outline-none focus:border-white/30 truncate"
+                style={{ width: '90px' }}
+            >
+                {['Basic', 'Natural', 'Artificial', 'Cinematic', 'Effects', 'Transforms'].map(cat => (
+                    <optgroup key={cat} label={cat} className="bg-[#111] text-gray-400">
+                        {PRO_LIGHTING_TRANSFORMS.filter(t => t.category === cat).map(t => (
+                            <option key={t.id} value={t.id} className="bg-[#111] text-white">{t.label}</option>
+                        ))}
+                    </optgroup>
+                ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-white/30 pointer-events-none" />
+        </div>
     </div>
 )
 
@@ -1359,6 +1545,9 @@ export function PromptGenerator({ onUpscale }) {
             subjectDescription: '', actionDescription: '', contextDescription: '',
             audioActive: { dialogue: false, sfx: false, ambient: false, music: false },
             audioPrompts: { dialogue: '', sfx: '', ambient: '', music: '' },
+            ambianceActive: { color: false, atmosphere: false, texture: false },
+            ambiancePrompts: { color: '', atmosphere: '', texture: '' },
+            pacing: 'None',
             duration: "4 Seconds", resolution: "1080p",
             searchGrounding: false, lightingTransform: 'none', focusPoint: 'none',
             multishotMode: 'single',
@@ -1505,6 +1694,7 @@ export function PromptGenerator({ onUpscale }) {
 
     const isNanoBanana = selectedModel === 'nano-banana' || selectedModel.includes('gemini') || selectedModel === 'nano-banana-2'
     const isKling = ['kling', 'kling-2.6', 'kling-3.0', 'kling-2.1'].includes(selectedModel)
+    const isVeo = (selectedModel === 'veo' || selectedModel === 'veo-fast')
 
     useEffect(() => {
         const timeout = setTimeout(() => {
@@ -1513,36 +1703,28 @@ export function PromptGenerator({ onUpscale }) {
         return () => clearTimeout(timeout);
     }, [selections]);
 
+    // ✅ Technical Cleanup: Remove any legacy "Upscaling to 2K" text sticking in user's browser
+    useEffect(() => {
+        const cleanup = (prev) => {
+            let changed = false;
+            const update = { ...prev };
+            ['subject', 'subjectDescription'].forEach(key => {
+                if (update[key]?.includes('Upscaling to 2K')) {
+                    update[key] = '';
+                    changed = true;
+                }
+            });
+            return changed ? update : prev;
+        };
+        setSelections(p => cleanup(p));
+    }, []);
+
     const [leftPreviewId, setLeftPreviewId] = useState(null)
     const [rightPreviewId, setRightPreviewId] = useState(null)
     const [renderTarget, setRenderTarget] = useState('center')
     const MAX_FRAMES = 20
 
-    const removeFrame = async (id) => {
-        setFrames(prev => {
-            const frameToDelete = prev.find(f => f.id === id)
-            if (!frameToDelete) return prev
-
-            // Save to "hidden" list in localStorage so it persists after refresh without deleting from DB
-            try {
-                const hidden = JSON.parse(localStorage.getItem('hidden_filmstrip_frames') || '[]')
-                if (!hidden.includes(id)) {
-                    hidden.push(id)
-                    localStorage.setItem('hidden_filmstrip_frames', JSON.stringify(hidden))
-                }
-            } catch (e) { console.error("Failed to update hidden frames:", e) }
-
-            const updated = prev.filter(f => f.id !== id)
-            if (id === activeFrameId) {
-                if (updated.length > 0) setActiveFrameId(updated[0].id)
-                else setActiveFrameId(null)
-            }
-            if (leftPreviewId === id) setLeftPreviewId(null)
-            if (rightPreviewId === id) setRightPreviewId(null)
-
-            return updated
-        })
-    }
+    const [showGallery, setShowGallery] = useState(false)
 
     const gridImgRef = useRef(null)
 
@@ -1564,11 +1746,10 @@ export function PromptGenerator({ onUpscale }) {
     const handleMainFilmStripScroll = (e) => {
         scrollPositions.current[mode] = e.target.scrollLeft;
     };
-
-    const [showGallery, setShowGallery] = useState(false)
     const [galleryTab, setGalleryTab] = useState('recent') // recent | library
     const [isLoading, setIsLoading] = useState(false)
     const [showAnglesModal, setShowAnglesModal] = useState(false)
+    const [activeDropdown, setActiveDropdown] = useState(null) // 'ratio', 'dur', 'res'
 
     const [mentionSearch, setMentionSearch] = useState(null)
     const [mentionCursorPos, setMentionCursorPos] = useState(0)
@@ -1580,7 +1761,57 @@ export function PromptGenerator({ onUpscale }) {
     const [isUploadingAngle, setIsUploadingAngle] = useState(null)
     const angleFileRef = useRef(null)
 
-    const [refBoard, setRefBoard] = useState({ characters: [], locations: [], wardrobes: [], props: [], moods: [] })
+    // ── REFERENCE BOARD PERSISTENCE ────────────────────────────────────
+    const loadRefBoard = (m) => {
+        try {
+            const saved = localStorage.getItem(`refBoard_${m}`)
+            return saved ? JSON.parse(saved) : { characters: [], locations: [], wardrobes: [], props: [], moods: [] }
+        } catch (e) {
+            console.error(`Failed to load refBoard for ${m}:`, e)
+            return { characters: [], locations: [], wardrobes: [], props: [], moods: [] }
+        }
+    }
+
+    const handleRefUpload = async (e) => {
+        const file = e.target.files?.[0]
+        if (!file || !activeRefUploadCategory) return
+        
+        setIsUploadingRef(true)
+        const reader = new FileReader()
+        reader.onloadend = async () => {
+            const base64 = reader.result;
+            try {
+                const assetData = await saveAsset(base64, `ref_${Date.now()}`, 'image');
+                const url = assetData?.url || base64;
+                const defaultName = `Ref_${Date.now().toString().slice(-4)}`;
+                const customName = prompt(`Enter a name for this ${activeRefUploadCategory.replace(/s$/, '')} (e.g., riya):`, "");
+                const finalName = (customName?.trim() || defaultName).replace(/\s+/g, '');
+
+                const newItem = {
+                    id: crypto.randomUUID(),
+                    name: finalName,
+                    category: activeRefUploadCategory,
+                    imageUrl: url
+                };
+                addRefItem(newItem);
+            } catch (err) {
+                console.error("Ref upload failed:", err);
+            } finally {
+                setIsUploadingRef(false);
+            }
+        }
+        reader.readAsDataURL(file)
+        e.target.value = ''
+    }
+
+    const [imageRefBoard, setImageRefBoard] = useState(() => loadRefBoard('image'))
+    const [videoRefBoard, setVideoRefBoard] = useState(() => loadRefBoard('video'))
+    const [stagedRefBoard, setStagedRefBoard] = useState({ characters: [], locations: [], wardrobes: [], props: [], moods: [] })
+
+    // Active board based on mode
+    const refBoard = mode === 'video' ? videoRefBoard : imageRefBoard
+    const setRefBoard = mode === 'video' ? setVideoRefBoard : setImageRefBoard
+
     const [showRefBoard, setShowRefBoard] = useState(false)
     const [showLibPicker, setShowLibPicker] = useState(false)
     const [libPickerTarget, setLibPickerTarget] = useState(null)
@@ -1674,11 +1905,18 @@ export function PromptGenerator({ onUpscale }) {
     ]
 
     const addRefItem = (item) => {
-        const category = item.category + 's'
-        setRefBoard(prev => ({ ...prev, [category]: [...prev[category], item] }))
+        const categoryKey = item.category.endsWith('s') ? item.category : item.category + 's'
+        const singleAllowed = ['locations', 'wardrobes', 'moods']
+        setStagedRefBoard(prev => {
+            const currentList = prev[categoryKey] || []
+            if (singleAllowed.includes(categoryKey)) {
+                return { ...prev, [categoryKey]: [item] }
+            }
+            return { ...prev, [categoryKey]: [...currentList, item] }
+        })
     }
     const renameRefItem = (id, newName) => {
-        setRefBoard(prev => {
+        setStagedRefBoard(prev => {
             const updated = {}
             for (const [key, arr] of Object.entries(prev)) {
                 updated[key] = arr.map(i => i.id === id ? { ...i, name: newName } : i)
@@ -1688,70 +1926,28 @@ export function PromptGenerator({ onUpscale }) {
     }
 
     const removeRefItem = (id) => {
-        setRefBoard(prev => {
+        setStagedRefBoard(prev => {
             const updated = {}
             for (const [key, arr] of Object.entries(prev)) { updated[key] = arr.filter(i => i.id !== id) }
             return updated
         })
     }
+
+    const handleSaveRefBoard = () => {
+        setRefBoard(stagedRefBoard)
+        localStorage.setItem(`refBoard_${mode}`, JSON.stringify(stagedRefBoard))
+        setShowRefBoard(false)
+        showToast("Reference Board Saved")
+    }
+
+    const handleCancelRefBoard = () => {
+        setShowRefBoard(false)
+        setShowLibPicker(false)
+    }
+
     const getTaggedRefItems = (text) => {
         const mentions = ((text || '').match(/@(\w+)/g) || []).map(m => m.slice(1).toLowerCase())
         return allRefItems.filter(item => mentions.some(m => item.name?.toLowerCase().replace(/\s+/g, '') === m || item.name?.toLowerCase().includes(m)))
-    }
-
-    const handleRefUpload = (e) => {
-        const file = e.target.files?.[0]
-        const target = e.target
-        if (file && activeRefUploadCategory) {
-            const fileName = file.name.split('.')[0]
-            const categoryLabel = activeRefUploadCategory.replace(/s$/, '')
-
-            // Slight delay to ensure prompt appears clearly after file dialog closes
-            setTimeout(() => {
-                const customName = window.prompt(`Enter a name for this ${categoryLabel}:`, fileName)
-                if (customName === null) {
-                    target.value = ''
-                    return
-                }
-
-                const reader = new FileReader()
-                reader.onloadend = () => {
-                    const img = new Image()
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas')
-                        let width = img.width
-                        let height = img.height
-                        const maxDimension = 1024
-                        if (width > maxDimension || height > maxDimension) {
-                            if (width > height) {
-                                height = Math.round((height * maxDimension) / width)
-                                width = maxDimension
-                            } else {
-                                width = Math.round((width * maxDimension) / height)
-                                height = maxDimension
-                            }
-                        }
-                        canvas.width = width
-                        canvas.height = height
-                        const ctx = canvas.getContext('2d')
-                        ctx.drawImage(img, 0, 0, width, height)
-                        const compressedData = canvas.toDataURL('image/jpeg', 0.8)
-
-                        const newItem = {
-                            id: crypto.randomUUID(),
-                            name: (customName || fileName).replace(/\s+/g, ''),
-                            category: categoryLabel,
-                            imageUrl: compressedData,
-                            isMatrix: false
-                        }
-                        addRefItem(newItem)
-                        target.value = ''
-                    }
-                    img.src = reader.result
-                }
-                reader.readAsDataURL(file)
-            }, 100)
-        }
     }
 
     // ── Zustand store ──────────────────────────────────────────────────
@@ -1907,10 +2103,26 @@ export function PromptGenerator({ onUpscale }) {
     }
 
     const selectMention = (item) => {
+        // Handle segment description fields: mentionField = 'seg_desc_N'
+        if (mentionField?.startsWith('seg_desc_')) {
+            const segIdx = parseInt(mentionField.split('_')[2]);
+            const mentionName = item.name.replace(/\s+/g, '');
+            setSelections(p => ({
+                ...p,
+                timestampSegments: (p.timestampSegments || []).map((s, i) => {
+                    if (i !== segIdx) return s;
+                    const text = s.description || '';
+                    const before = text.slice(0, mentionCursorPos).replace(/@\w*$/, '')
+                    const after = text.slice(mentionCursorPos)
+                    return { ...s, description: `${before}@${mentionName} ${after}` };
+                })
+            }));
+            setMentionSearch(null);
+            return;
+        }
         const text = selections[mentionField] || ''
         const before = text.slice(0, mentionCursorPos).replace(/@\w*$/, '')
         const after = text.slice(mentionCursorPos)
-        // Auto-format name to be mention-friendly (no spaces)
         const mentionName = item.name.replace(/\s+/g, '')
         const newText = `${before}@${mentionName} ${after}`
         setSelections(p => ({ ...p, [mentionField]: newText }))
@@ -1959,7 +2171,7 @@ export function PromptGenerator({ onUpscale }) {
     }, [selections.lens])
 
     const generatedPrompt = mode === 'video'
-        ? buildVideoPrompt(selections, selectedModel)
+        ? buildVideoPrompt(selections, selectedModel, refBoard)
         : selectedModel === 'gemini-3-pro-image-preview' ? buildNanoBananaProPrompt(selections)
             : (selectedModel === 'nano-banana' || selectedModel === 'nano-banana-2' || selectedModel.includes('gemini')) ? buildNanoBananaPrompt(selections, getFStop)
                 : buildStandardPrompt(selections, getFStop)
@@ -2016,6 +2228,91 @@ export function PromptGenerator({ onUpscale }) {
         }
     };
 
+    const takeScreenshot = async (previewSlot) => {
+        const video = document.getElementById(`video-preview-${previewSlot}`);
+        if (!video) {
+            showToast('Video player not ready');
+            return;
+        }
+
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const dataUrl = canvas.toDataURL('image/png');
+            const result = await saveAsset(dataUrl, `shot_${previewSlot}`, 'image');
+            
+            if (result) {
+                const newFrame = {
+                    id: result.id,
+                    assetId: result.id,
+                    url: result.url,
+                    assetPath: result.url,
+                    type: 'image',
+                    model: 'Shot',
+                    loading: false
+                };
+                setFrames(prev => [newFrame, ...prev]);
+                showToast('Frame extracted');
+            }
+        } catch (err) {
+            console.error('Screenshot error:', err);
+            showToast('Extraction failed');
+        }
+    };
+    const permanentlyDeleteAsset = async (assetId) => {
+        try {
+            const res = await fetch(getApiUrl(`/api/delete-asset/${assetId}`), { method: 'DELETE' });
+            if (!res.ok) throw new Error('Backend deletion failed');
+            return true;
+        } catch (err) {
+            console.error('[DELETE_ERR]', err);
+            return false;
+        }
+    };
+
+    const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
+    const removeFrame = async (id) => {
+        // If it's a permanent asset (historical or saved), require double-confirm
+        const frame = frames.find(f => f.id === id);
+        
+        // If not already confirming this frame, show toast and set state
+        if (deleteConfirmId !== id) {
+            setDeleteConfirmId(id);
+            showToast("Tap again to delete permanently", 3000);
+            setTimeout(() => setDeleteConfirmId(null), 3000);
+            return;
+        }
+
+        // Second click: Proceed with deletion
+        try {
+            // 1. Permanent backend deletion if it has a DB ID
+            if (frame && frame.assetId) {
+                const success = await permanentlyDeleteAsset(frame.assetId);
+                if (!success) {
+                    showToast("Failed to delete from cloud. Hide only.");
+                }
+            }
+
+            // 2. Local cleanup
+            setFrames(prev => prev.filter(f => f.id !== id));
+            if (activeFrameId === id) setActiveFrameId(null);
+            
+            // 3. Update hidden cache for this session
+            const currentHidden = JSON.parse(localStorage.getItem('hidden_filmstrip_frames') || '[]');
+            localStorage.setItem('hidden_filmstrip_frames', JSON.stringify([...currentHidden, id]));
+            
+            setDeleteConfirmId(null);
+            showToast("Asset deleted permanently");
+        } catch (err) {
+            console.error("Remove frame failed:", err);
+        }
+    };
+
     const updateVideoSetting = (key, val) => {
         setSelections(p => { let u = { ...p, [key]: val }; if (key === 'dialogue' && val !== 'Off' && val !== 'Ambient Only') u.audio = 'On'; return u })
     }
@@ -2028,11 +2325,12 @@ export function PromptGenerator({ onUpscale }) {
     };
 
     const SpeedRampCurve = ({ name, active }) => {
-        const pts = (SPEED_RAMP_CURVES[name] || SPEED_RAMP_CURVES.Linear).map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0] * 0.8},${p[1]}`).join(' ')
+        const curve = SPEED_RAMP_CURVES[name] || SPEED_RAMP_CURVES["Linear (Standard)"] || [[0, 50], [100, 50]];
+        const pts = curve.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0] * 0.8},${p[1]}`).join(' ')
         return (<svg width="80" height="62" viewBox="0 0 80 62" className="mx-auto"><path d={pts} fill="none" stroke={active ? '#84CC16' : '#333'} strokeWidth={active ? 2 : 1} strokeLinecap="round" strokeLinejoin="round" /></svg>)
     }
 
-    const pollJobStatus = async (jobId, frameId, costKey, jobType = 'image', targetTray = null) => {
+    const pollJobStatus = async (jobId, frameId, costKey, jobType = 'image', targetTray = null, unitCost = null) => {
         const isVideoJob = jobType === 'video';
         const maxWaitMs = isVideoJob ? 3 * 60 * 1000 : 1 * 60 * 1000;
         const pollIntervalMs = isVideoJob ? 3000 : 2000;
@@ -2136,7 +2434,7 @@ export function PromptGenerator({ onUpscale }) {
             const message = err?.message || '';
             const timedOut = message.toLowerCase().includes('taking longer than usual') || message.toLowerCase().includes('timed out');
             if (!timedOut) {
-                await refund(costKey);
+                await refund(costKey, unitCost);
             }
             console.error('Polling error:', err);
             let msg = message;
@@ -2162,28 +2460,61 @@ export function PromptGenerator({ onUpscale }) {
     const getCurrentCost = () => {
         const shotCount = (mode === 'image' && selections.multishotMode === 'triple') ? 3 : 1;
         let costKey = 'image_nano_banana';
+        let unitCost = 0;
 
         if (mode === 'video') {
-            if (isKling) costKey = 'kling';
-            else costKey = selectedModel === 'veo-fast' ? 'veo_fast' : 'veo_full';
+            const isFast = selectedModel === 'veo-fast';
+            const audioLayersActive = Object.values(selections.audioActive || {}).some(v => v === true);
+            // In Fast mode, we only count audio if layers are explicitly added or if audio is forced 'On'
+            const hasAudio = selections.audio === 'On' || audioLayersActive;
+            const isHighRes = selections.resolution === '2K' || selections.resolution === '4K';
+            
+            let durSec = (parseInt((selections.duration || "4s").split(' ')[0]) || 4);
+            
+            if (!isKling) {
+                // Veo 3.1 Image-to-Video (End Frame) interpolation REQUIRES 8 seconds
+                const mustBe8 = !!selections.lastFrame;
+                if (mustBe8) durSec = 8;
+                
+                costKey = isFast ? 'veo_fast' : 'veo_full';
+                let costPerSec = 0;
+                if (isFast) {
+                     if (isHighRes) costPerSec = hasAudio ? 40.67 : 34.86;
+                     else costPerSec = hasAudio ? 17.43 : 11.62;
+                } else {
+                     if (isHighRes) costPerSec = hasAudio ? 69.72 : 46.48;
+                     else costPerSec = hasAudio ? 46.48 : 23.24;
+                }
+                unitCost = Math.ceil(costPerSec * durSec);
+            } else {
+                costKey = 'kling';
+                const isPro = selectedModel === 'kling' || selectedModel === 'kling-3.0';
+                let costPerSec = 0;
+                if (isPro) {
+                    costPerSec = hasAudio ? 23.24 : 15.69;
+                } else {
+                    costPerSec = hasAudio ? 17.43 : 11.62;
+                }
+                unitCost = Math.ceil(costPerSec * durSec);
+            }
         } else if (mode === 'multishot' && selections.multishotMode === 'multiple') {
             costKey = 'image_grid_multishot';
+            unitCost = SHORTS_COST[costKey] || 0;
         } else {
-            // Mapping for modern image models
             if (selectedModel === 'nano-banana-pro' || selectedModel === 'gemini-3-pro-image-preview') costKey = 'image_nano_banana_pro';
             else if (selectedModel === 'nano-banana-2' || selectedModel.includes('3.1-flash')) costKey = 'image_nano_banana_2';
             else if (selectedModel === 'gemini-2.0-flash-exp-image-generation') costKey = 'image_nano_banana';
+            unitCost = SHORTS_COST[costKey] || 0;
         }
 
-        const unitCost = SHORTS_COST[costKey] || 0;
         return { costKey, unitCost, totalCost: unitCost * shotCount, shotCount };
-    }
+    };
 
     const generateImage = async () => {
         if (isLoading) return;
         setIsLoading(true);
 
-        const { costKey, totalCost, shotCount } = getCurrentCost();
+        const { costKey, totalCost, shotCount, unitCost } = getCurrentCost();
         
         // Final sanity check for credits upfront
         if (useAppStore.getState().userShorts < totalCost && useAppStore.getState().userProfile?.role !== 'admin') {
@@ -2202,7 +2533,7 @@ export function PromptGenerator({ onUpscale }) {
                 if (frames.length + i >= MAX_FRAMES) { alert('Frame limit reached (50). Clear some frames.'); break; }
 
                 // Deduct shorts for each iteration
-                const res = await spend(costKey);
+                const res = await spend(costKey, unitCost);
                 if (!res || !res.success) {
                     if (res?.reason === 'unauthenticated') {
                         useAppStore.getState().setShowingAuthModal(true);
@@ -2259,9 +2590,7 @@ export function PromptGenerator({ onUpscale }) {
                     model: AI_MODELS.find(m => m.id === selectedModel)?.modelId || selectedModel,
                     duration: (() => {
                         if (isKling) return parseInt(selections.duration.split(' ')[0]) || 5;
-                        const taggedRefs = getTaggedRefItems(finalPrompt).flatMap(i => [i.imageUrl]).filter(Boolean);
-                        const mustBe8 = selections.lastFrame || taggedRefs.length > 0
-                            || ['1080p', '2K', '2k'].includes(selections.resolution);
+                        const mustBe8 = !!selections.lastFrame;
                         return mustBe8 ? 8 : (parseInt(selections.duration.split(' ')[0]) || 4);
                     })(),
                     resolution: (() => {
@@ -2269,14 +2598,14 @@ export function PromptGenerator({ onUpscale }) {
                         return raw === '4K' ? '4k' : raw.toLowerCase();
                     })(),
                     aspect_ratio: validRatio,
-                    firstFrame: selections.firstFrame,
-                    lastFrame: selections.lastFrame,
+                    firstFrame: taggedItems.length > 0 ? null : selections.firstFrame,
+                    lastFrame: taggedItems.length > 0 ? null : selections.lastFrame,
                     multi_shots: isKling && (selections.timestampSegments?.length > 1),
                     multi_prompt: isKling ? selections.timestampSegments?.map(s => ({
                         prompt: s.description || finalPrompt,
                         duration: Math.max(1, Math.min(12, parseInt(s.end - s.start) || 3))
                     })) : [],
-                    referenceImages: getTaggedRefItems(finalPrompt)
+                    referenceImages: taggedItems
                         .flatMap(i => [i.imageUrl])
                         .filter(Boolean)
                         .slice(0, 3)
@@ -2302,7 +2631,7 @@ export function PromptGenerator({ onUpscale }) {
 
                 if (data.jobId) {
                     if (shotCount === 1) setQueueStatus("Sending to AI Engine...")
-                    pollJobStatus(data.jobId, newFrameId, costKey, mode === 'video' ? 'video' : 'image')
+                    pollJobStatus(data.jobId, newFrameId, costKey, mode === 'video' ? 'video' : 'image', null, unitCost)
                 } else {
                     if (userId) fetchBalance(userId);
                     const resultUrl = data.url || data.videoUrl
@@ -2495,7 +2824,7 @@ export function PromptGenerator({ onUpscale }) {
         // This makes the preview section respond within 1 render frame (<16ms)
         const placeholderSlot = {
             id: newId,
-            prompt: 'Upscaling to 2K...',
+            prompt: '',
             loading: true,
             url: null,
             isGrid: false,
@@ -2509,7 +2838,7 @@ export function PromptGenerator({ onUpscale }) {
             setActiveShotSlotId(newId);
         }
         // Also push a loading frame so the main film strip shows it
-        setFrames(prev => [...prev, { id: newId, url: null, type: 'image', prompt: 'Upscaling...', loading: true }]);
+        setFrames(prev => [...prev, { id: newId, url: null, type: 'image', prompt: '', loading: true }]);
         setActiveFrameId(newId);
 
         try {
@@ -2752,7 +3081,7 @@ DO NOT add new objects or change the scene. Enhance only.
             if (!response.ok) throw new Error(data.error || 'Upscale request failed')
 
             if (data.jobId) {
-                setQueueStatus("Upscaling to 2K... 30-45 seconds.")
+                setQueueStatus("Enhancing resolution... 30-45 seconds.")
                 pollJobStatus(data.jobId, frameId, 'image_upscale_4k', 'image')
             } else if (data.url) {
                 await handleUpscaleSuccess(data.url, frameId)
@@ -2916,22 +3245,25 @@ DO NOT add new objects or change the scene. Enhance only.
                             className={cn("shrink-0 md:flex-1 h-32 md:h-full min-w-0 rounded-2xl surface-glass overflow-hidden relative flex items-center justify-center border-2 transition-all cursor-pointer",
                                 renderTarget === 'left' ? "border-[#D4FF00] shadow-[0_0_20px_rgba(212,255,0,0.4)]" : "border-transparent hover:border-white/10")}>
                             {(() => {
-                                const isImageLike = mode === 'image' || mode === 'multishot';
-                                const leftFrame = frames.find(f => f.id === leftPreviewId && (isImageLike ? (f.type === 'image' || f.type === 'multishot') : f.type === mode))
+                                const leftFrame = frames.find(f => f.id === leftPreviewId)
                                 if (leftFrame && leftFrame.url) return (
                                     <div className="relative w-full h-full group">
                                         {leftFrame.type === 'video' ? (
-                                            <video src={resolveUrl(leftFrame.url)} controls loop muted className="w-full h-full object-contain" />
+                                            <video id="video-preview-left" src={resolveUrl(leftFrame.url)} controls loop crossOrigin="anonymous" className="w-full h-full object-contain" onClick={(e) => e.stopPropagation()} />
                                         ) : (
-                                            <img src={resolveUrl(leftFrame.url)} alt="Left Preview" className="w-full h-full object-contain" />
+                                            <img src={resolveUrl(leftFrame.url)} alt="Left Preview" crossOrigin="anonymous" className="w-full h-full object-contain" />
                                         )}
-                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
-                                            <button onClick={() => setZoomState({ url: leftFrame.url, isOpen: true, slot: leftFrame.id, isEditing: false })} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"><Maximize2 className="w-4 h-4" /></button>
-                                            <button onClick={(e) => { e.stopPropagation(); downloadImage(leftFrame.url); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"><Download className="w-4 h-4" /></button>
-                                            <button onClick={() => setSelections(p => ({ ...p, referenceImage: leftFrame.url }))} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
-                                            <button onClick={() => setLeftPreviewId(null)} className="p-2 bg-red-500/30 hover:bg-red-500/50 rounded-lg text-white" title="Unpin"><X className="w-4 h-4" /></button>
+                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2 z-20 pointer-events-none">
+                                            <button onClick={() => setZoomState({ url: leftFrame.url, isOpen: true, slot: leftFrame.id, isEditing: false })} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white pointer-events-auto"><Maximize2 className="w-4 h-4" /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); downloadImage(leftFrame.url); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white pointer-events-auto"><Download className="w-4 h-4" /></button>
+                                            {leftFrame.type === 'video' ? (
+                                                <button onClick={(e) => { e.stopPropagation(); takeScreenshot('left'); }} className="px-2 py-1.5 bg-[#D4FF00] hover:bg-white rounded text-black text-[9px] font-black uppercase pointer-events-auto flex items-center gap-1" title="Capture Frame"><Camera className="w-3 h-3" /> Shot</button>
+                                            ) : (
+                                                <button onClick={() => setSelections(p => ({ ...p, referenceImage: leftFrame.url }))} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white pointer-events-auto" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
+                                            )}
+                                            <button onClick={() => setLeftPreviewId(null)} className="p-2 bg-red-500/30 hover:bg-red-500/50 rounded-lg text-white pointer-events-auto" title="Unpin"><X className="w-4 h-4" /></button>
                                         </div>
-                                        <div className="absolute top-2 left-2 px-2 py-0.5 bg-[#D4FF00]/80 text-black text-[7px] font-black uppercase rounded-md">Left</div>
+                                        <div className="absolute top-2 left-2 px-2 py-0.5 bg-[#D4FF00]/80 text-black text-[7px] font-black uppercase rounded-md pointer-events-none">Left</div>
                                     </div>
                                 )
                                 return (
@@ -2948,7 +3280,7 @@ DO NOT add new objects or change the scene. Enhance only.
                         <div onClick={() => setRenderTarget('center')}
                             className={cn("flex-[2] md:flex-1 min-h-[300px] md:min-h-0 min-w-0 rounded-2xl surface-glass overflow-hidden relative flex items-center justify-center border-2 transition-all cursor-pointer",
                                 renderTarget === 'center' ? "border-[#D4FF00] shadow-[0_0_20px_rgba(212,255,0,0.4)]" : "border-transparent hover:border-white/10")}>
-                            {activeFrame && (mode === 'video' ? activeFrame.type === 'video' : (activeFrame.type === 'image' || activeFrame.type === 'multishot')) ? (
+                            {activeFrame ? (
                                 <div className="relative w-full h-full flex items-center justify-center">
                                     {activeFrame.loading ? (
                                         <div className="flex flex-col items-center gap-3">
@@ -2965,7 +3297,7 @@ DO NOT add new objects or change the scene. Enhance only.
                                     ) : activeFrame.url ? (
                                         <div className="relative w-full h-full group">
                                             {activeFrame.type === 'video' ? (
-                                                <video src={resolveUrl(activeFrame.url)} controls autoPlay loop muted className="w-full h-full object-contain" />
+                                                <video id="video-preview-center" src={resolveUrl(activeFrame.url)} controls autoPlay loop muted crossOrigin="anonymous" className="w-full h-full object-contain" onClick={(e) => e.stopPropagation()} />
                                             ) : (
                                                 <div className="relative w-full h-full flex items-center justify-center">
                                                     <img ref={activeFrame.type === 'multishot' ? gridImgRef : null} src={resolveUrl(activeFrame.url)} alt="Generated" className="w-full h-full object-contain" crossOrigin="anonymous" />
@@ -3004,7 +3336,11 @@ DO NOT add new objects or change the scene. Enhance only.
                                                     </button>
                                                 )}
 
-                                                <button onClick={() => setSelections(p => ({ ...p, referenceImage: activeFrame.url }))} className="p-2 bg-cyan-500/20 hover:bg-cyan-400 text-cyan-400 hover:text-black rounded-lg pointer-events-auto transition-all" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
+                                                {activeFrame.type === 'video' ? (
+                                                    <button onClick={(e) => { e.stopPropagation(); takeScreenshot('center'); }} className="px-2 py-1.5 bg-[#D4FF00] hover:bg-white rounded text-black text-[9px] font-black uppercase pointer-events-auto flex items-center gap-1" title="Capture Frame"><Camera className="w-3 h-3" /> Shot</button>
+                                                ) : (
+                                                    <button onClick={() => setSelections(p => ({ ...p, referenceImage: activeFrame.url }))} className="p-2 bg-cyan-500/20 hover:bg-cyan-400 text-cyan-400 hover:text-black rounded-lg pointer-events-auto transition-all" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
+                                                )}
 
                                                 {(activeFrame.type === 'image' || activeFrame.type === 'multishot') && (
                                                     <>
@@ -3032,22 +3368,25 @@ DO NOT add new objects or change the scene. Enhance only.
                             className={cn("shrink-0 md:flex-1 h-32 md:h-full min-w-0 rounded-2xl surface-glass overflow-hidden relative flex items-center justify-center border-2 transition-all cursor-pointer",
                                 renderTarget === 'right' ? "border-[#D4FF00] shadow-[0_0_20px_rgba(212,255,0,0.4)]" : "border-transparent hover:border-white/10")}>
                             {(() => {
-                                const isImageLike = mode === 'image' || mode === 'multishot';
-                                const rightFrame = frames.find(f => f.id === rightPreviewId && (isImageLike ? (f.type === 'image' || f.type === 'multishot') : f.type === mode))
+                                const rightFrame = frames.find(f => f.id === rightPreviewId)
                                 if (rightFrame && rightFrame.url) return (
                                     <div className="relative w-full h-full group">
                                         {rightFrame.type === 'video' ? (
-                                            <video src={resolveUrl(rightFrame.url)} controls loop muted className="w-full h-full object-contain" />
+                                            <video id="video-preview-right" src={resolveUrl(rightFrame.url)} controls loop crossOrigin="anonymous" className="w-full h-full object-contain" onClick={(e) => e.stopPropagation()} />
                                         ) : (
-                                            <img src={resolveUrl(rightFrame.url)} alt="Right Preview" className="w-full h-full object-contain" />
+                                            <img src={resolveUrl(rightFrame.url)} alt="Right Preview" crossOrigin="anonymous" className="w-full h-full object-contain" />
                                         )}
-                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
-                                            <button onClick={() => setZoomState({ url: rightFrame.url, isOpen: true, slot: rightFrame.id, isEditing: false })} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"><Maximize2 className="w-4 h-4" /></button>
-                                            <button onClick={(e) => { e.stopPropagation(); downloadImage(rightFrame.url); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white"><Download className="w-4 h-4" /></button>
-                                            <button onClick={() => setSelections(p => ({ ...p, referenceImage: rightFrame.url }))} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
-                                            <button onClick={() => setRightPreviewId(null)} className="p-2 bg-red-500/30 hover:bg-red-500/50 rounded-lg text-white" title="Unpin"><X className="w-4 h-4" /></button>
+                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2 z-20 pointer-events-none">
+                                            <button onClick={() => setZoomState({ url: rightFrame.url, isOpen: true, slot: rightFrame.id, isEditing: false })} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white pointer-events-auto"><Maximize2 className="w-4 h-4" /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); downloadImage(rightFrame.url); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white pointer-events-auto"><Download className="w-4 h-4" /></button>
+                                            {rightFrame.type === 'video' ? (
+                                                <button onClick={(e) => { e.stopPropagation(); takeScreenshot('right'); }} className="px-2 py-1.5 bg-[#D4FF00] hover:bg-white rounded text-black text-[9px] font-black uppercase pointer-events-auto flex items-center gap-1" title="Capture Frame"><Camera className="w-3 h-3" /> Shot</button>
+                                            ) : (
+                                                <button onClick={() => setSelections(p => ({ ...p, referenceImage: rightFrame.url }))} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white pointer-events-auto" title="Set as Ref"><ImagePlus className="w-4 h-4" /></button>
+                                            )}
+                                            <button onClick={() => setRightPreviewId(null)} className="p-2 bg-red-500/30 hover:bg-red-500/50 rounded-lg text-white pointer-events-auto" title="Unpin"><X className="w-4 h-4" /></button>
                                         </div>
-                                        <div className="absolute top-2 right-2 px-2 py-0.5 bg-purple-500/80 text-white text-[7px] font-black uppercase rounded-md">Right</div>
+                                        <div className="absolute top-2 right-2 px-2 py-0.5 bg-purple-500/80 text-white text-[7px] font-black uppercase rounded-md pointer-events-none">Right</div>
                                     </div>
                                 )
                                 return (
@@ -3110,6 +3449,18 @@ DO NOT add new objects or change the scene. Enhance only.
                                     )}
                                 </div>
 
+                                {/* MODE INDICATOR — slim vertical line only */}
+                                {(() => {
+                                    const hasFirst = !!(selections.firstFrame && selections.firstFrame !== 'loading');
+                                    const hasLast = !!(selections.lastFrame && selections.lastFrame !== 'loading');
+                                    const colorClass = (hasFirst && hasLast)
+                                        ? 'bg-purple-500'
+                                        : hasFirst
+                                            ? 'bg-[#D4FF00]'
+                                            : 'bg-white/10';
+                                    return <div className={`shrink-0 h-full w-1 rounded-full ${colorClass} transition-all`} />;
+                                })()}
+
                             </>
                         )}
 
@@ -3123,12 +3474,14 @@ DO NOT add new objects or change the scene. Enhance only.
                         )}
                         {frames.filter(frame => {
                             const isImageLike = mode === 'image' || mode === 'multishot';
-                            return isImageLike ? (frame.type === 'image' || frame.type === 'multishot') : frame.type === mode;
+                            if (isImageLike) return (frame.type === 'image' || frame.type === 'multishot');
+                            if (mode === 'video') return (frame.type === 'video' || frame.model === 'Shot');
+                            return frame.type === mode;
                         }).map(frame => (
                             <div key={frame.id} className={cn("shrink-0 w-20 h-full rounded-lg overflow-hidden cursor-pointer transition-all border-2 relative group/strip", activeFrameId === frame.id ? "border-[#D4FF00] shadow-[0_0_10px_#D4FF00]" : "border-transparent hover:border-white/20")}>
                                 <div onClick={() => setActiveFrameId(frame.id)} className="w-full h-full">
                                     {frame.loading ? <div className="w-full h-full bg-black/40 flex items-center justify-center"><Sparkles className="w-3 h-3 text-[#D4FF00] animate-spin" /></div>
-                                        : frame.url ? (frame.type === 'video' ? <video src={frame.url} muted preload="metadata" className="w-full h-full object-cover" /> : <img src={frame.thumb || frame.url} loading="lazy" decoding="async" className="w-full h-full object-cover" />)
+                                        : frame.url ? (frame.type === 'video' ? <video src={frame.url} muted preload="metadata" crossOrigin="anonymous" className="w-full h-full object-cover" /> : <img src={frame.thumb || frame.url} loading="lazy" decoding="async" className="w-full h-full object-cover" />)
                                             : <div className="w-full h-full bg-black/40 flex items-center justify-center"><X className="w-3 h-3 text-red-500/50" /></div>}
                                 </div>
 
@@ -3154,13 +3507,16 @@ DO NOT add new objects or change the scene. Enhance only.
 
             {/* ─── SETTINGS PANEL ──────────────────────────────────────── */}
             {(mode === 'image' || mode === 'video') && (
-                <div className={cn("shrink-0 surface-glass rounded-2xl p-2 md:pb-4 relative z-30 transition-shadow", mentionSearch !== null && "shadow-[0_0_50px_rgba(0,0,0,0.5)]")} style={{ maxHeight: '40vh' }}>
+                <div className={cn("shrink-0 surface-glass rounded-2xl p-2 md:pb-4 relative z-30 transition-all", 
+                    mentionSearch !== null && "shadow-[0_0_50px_rgba(0,0,0,0.5)]",
+                    (showSpeedPanel || mentionSearch !== null || activeDropdown !== null) ? "overflow-visible" : "overflow-hidden"
+                )} style={{ maxHeight: '40vh' }}>
                     <div className={cn(
                         "pr-2 pb-16 space-y-2 custom-scrollbar overflow-x-visible",
-                        mentionSearch !== null ? "overflow-y-visible" : "overflow-y-auto max-h-[calc(40vh-16px)]"
+                        (mentionSearch !== null || showSpeedPanel || activeDropdown !== null) ? "overflow-y-visible" : "overflow-y-auto max-h-[calc(40vh-16px)]"
                     )}>
                         <div className="flex flex-col md:flex-row gap-2 items-stretch min-h-[84px] relative">
-                            {mode === 'video' && (isKling ? <KlingShotBuilder selections={selections} setSelections={setSelections} /> : <TimestampMultiShot selections={selections} setSelections={setSelections} />)}
+                            {mode === 'video' && (isKling ? <KlingShotBuilder selections={selections} setSelections={setSelections} /> : <TimestampMultiShot selections={selections} setSelections={setSelections} setShowRefBoard={setShowRefBoard} allRefItems={allRefItems} setMentionSearch={setMentionSearch} setMentionField={setMentionField} setMentionCursorPos={setMentionCursorPos} />)}
 
                             {isKling ? (
                                 <KlingCharacterLayer
@@ -3176,6 +3532,7 @@ DO NOT add new objects or change the scene. Enhance only.
                                 <VideoNarrativeComponents
                                     mode={mode}
                                     isNanoBanana={isNanoBanana}
+                                    isVeo={isVeo}
                                     allRefItems={allRefItems}
                                     setShowRefBoard={setShowRefBoard}
                                     selections={selections}
@@ -3187,117 +3544,338 @@ DO NOT add new objects or change the scene. Enhance only.
                                     textareaRef={textareaRef}
                                     handleRefinePrompt={handleRefinePrompt}
                                     isPolishing={isPolishing}
+                                    setStagedRefBoard={setStagedRefBoard}
+                                    refBoard={refBoard}
                                 />
                             )}
 
-                            <button onClick={generateImage} disabled={isLoading}
-                                className={cn("w-full md:w-52 shrink-0 rounded-[20px] flex flex-col items-center justify-center gap-1 transition-all shadow-[0_10px_30px_rgba(212,255,0,0.15)] active:scale-95 h-20",
-                                    isLoading ? "bg-white/5 cursor-not-allowed" : "bg-[#D4FF00] hover:bg-white hover:shadow-[0_0_30px_rgba(212,255,0,0.3)]")}>
-                                <Zap className={cn("w-6 h-6 text-black", isLoading && "animate-pulse")} />
-                                <span className="text-sm font-black text-black uppercase tracking-tighter">
-                                    {isLoading ? 'Computing...' : mode === 'video' ? 'Generate Video' : 'Generate Image'}
-                                </span>
-                                {!isLoading && (() => {
-                                    const { totalCost } = getCurrentCost();
-                                    return (
-                                        <span className="text-[10px] font-bold text-black/60 flex items-center gap-1 uppercase tracking-widest mt-0.5">
-                                            <Film className="w-3 h-3" /> {totalCost} Shorts
-                                        </span>
-                                    )
-                                })()}
-                            </button>
+
+                            <div className="shrink-0 flex flex-col gap-1.5 w-full md:w-52">
+                                <button onClick={generateImage} disabled={isLoading}
+                                    className={cn("w-full rounded-[20px] flex flex-col items-center justify-center gap-1 transition-all shadow-[0_10px_30px_rgba(212,255,0,0.15)] active:scale-95 h-20",
+                                        isLoading ? "bg-white/5 cursor-not-allowed" : "bg-[#D4FF00] hover:bg-white hover:shadow-[0_0_30px_rgba(212,255,0,0.3)]")}
+                                >
+                                    <Zap className={cn("w-6 h-6 text-black", isLoading && "animate-pulse")} />
+                                    <span className="text-sm font-black text-black uppercase tracking-tighter">
+                                        {isLoading ? 'Computing...' : mode === 'video' ? 'Generate Video' : 'Generate Image'}
+                                    </span>
+                                    {!isLoading && (() => {
+                                        const { totalCost } = getCurrentCost();
+                                        return (
+                                            <span className="text-[10px] font-bold text-black/60 flex items-center gap-1 uppercase tracking-widest mt-0.5">
+                                                <Film className="w-3 h-3" /> {totalCost} Shorts
+                                            </span>
+                                        )
+                                    })()}
+                                </button>
+                            </div>
                         </div>
                         {mode === 'video' ? (
                             <div className="space-y-1">
-                                <div className="flex flex-wrap gap-2">
-                                    <div className="flex-1 min-w-[105px]">
-                                        <label className="text-[10px] font-bold text-gray-500 mb-1 block uppercase tracking-wider">Engine</label>
-                                        <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white">
-                                            {filteredModels.map(m => <option key={m.id} value={m.id} disabled={!m.available}>{m.name}{m.available ? '' : ' — Soon'}</option>)}
-                                        </select>
-                                    </div>
-                                    {VIDEO_CONTROLS.filter(c => !['audio', 'dialogue'].includes(c.key)).map(ctrl => {
-                                        const val = selections[ctrl.key]
-                                        if (ctrl.key === 'speedRamp') return (
-                                            <div key={ctrl.key} className="relative flex-1 min-w-[110px]">
-                                                <label className="text-[10px] font-bold text-gray-500 mb-1 block uppercase tracking-wider">{ctrl.label}</label>
-                                                <button onClick={() => setShowSpeedPanel(!showSpeedPanel)} className={cn("w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white flex justify-between items-center", showSpeedPanel ? "bg-white/10 border-white/30" : "hover:bg-white/10")}><span>{val}</span><ChevronDown className="w-3 h-3 opacity-30" /></button>
-                                                {showSpeedPanel && (
-                                                    <div className="absolute bottom-full left-0 mb-3 z-[150] bg-[#0d0d0d] border border-white/10 rounded-2xl p-4 w-[320px] grid grid-cols-3 gap-2 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
-                                                        {ctrl.options.map(opt => (
-                                                            <div key={opt} onClick={() => { updateVideoSetting('speedRamp', opt); setShowSpeedPanel(false) }} className={cn("p-2 rounded-xl border cursor-pointer text-center", val === opt ? "bg-[#D4FF00]/10 border-[#D4FF00]/40" : "bg-white/5 border-white/5 hover:border-white/20")}>
-                                                                <SpeedRampCurve name={opt} active={val === opt} />
-                                                                <div className={cn("text-[8px] mt-2 uppercase font-black", val === opt ? "text-[#D4FF00]" : "text-white/30")}>{opt}</div>
+                                {/* ── COMPACT PILL CONTROL BAR ───────────────────────────────── */}
+                                <div className="relative z-[100]">
+                                    <div
+                                        className="flex items-center gap-1.5 overflow-visible pb-1"
+                                    >
+                                        {/* ENGINE PILL */}
+                                        <div className="flex flex-col items-start shrink-0">
+                                            <span className="text-[8px] font-black text-gray-600 uppercase tracking-[0.15em] mb-0.5 px-1 flex items-center gap-1">
+                                                <Zap className="w-1.5 h-1.5" /> Engine
+                                            </span>
+                                            <div className="relative">
+                                                <select
+                                                    value={selectedModel}
+                                                    onChange={e => setSelectedModel(e.target.value)}
+                                                    className="appearance-none bg-white/[0.06] hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-full pl-3 pr-6 py-1 text-[10px] font-semibold text-white transition-all cursor-pointer focus:outline-none focus:border-white/30"
+                                                    style={{ minWidth: 0 }}
+                                                >
+                                                    {filteredModels.map(m => <option key={m.id} value={m.id} disabled={!m.available} className="bg-[#111]">{m.name}{m.available ? '' : ' ·'}</option>)}
+                                                </select>
+                                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-white/30 pointer-events-none" />
+                                            </div>
+                                        </div>
+
+                                        {/* DIVIDER */}
+                                        <div className="w-px h-6 bg-white/8 shrink-0" />
+
+                                        {/* VIDEO CONTROL PILLS */}
+                                        {VIDEO_CONTROLS.filter(c => !['audio', 'dialogue'].includes(c.key)).map(ctrl => {
+                                            const val = selections[ctrl.key]
+
+                                            // Icon mapping for "Evolved" pill bar
+                                            const ctrlIcons = {
+                                                'cameraMovement': Video,
+                                                'speedRamp': FastForward,
+                                                'emotion': Sun,
+                                                'lens': Camera,
+                                                'artisticStyle': Sparkles,
+                                                'audio': Mic,
+                                                'duration': Timer,
+                                                'resolution': Maximize,
+                                                'aspectRatio': Square,
+                                                'pacing': Clock,
+                                            }
+                                            const Icon = ctrlIcons[ctrl.key]
+
+                                            if (ctrl.key === 'speedRamp') return (
+                                                <div key={ctrl.key} className="relative z-[150] flex flex-col items-start shrink-0">
+                                                    <span className="text-[8px] font-black text-gray-600 uppercase tracking-[0.15em] mb-0.5 px-1 flex items-center gap-1">
+                                                        {Icon && <Icon className="w-1.5 h-1.5" />} {ctrl.label}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => setShowSpeedPanel(!showSpeedPanel)}
+                                                        className={cn(
+                                                            "flex items-center gap-1 border rounded-full pl-3 pr-2 py-1 text-[10px] font-semibold text-white transition-all",
+                                                            showSpeedPanel
+                                                                ? "bg-white/15 border-white/30"
+                                                                : "bg-white/[0.06] hover:bg-white/10 border-white/10 hover:border-white/20"
+                                                        )}
+                                                    >
+                                                        <span className="whitespace-nowrap">{val}</span>
+                                                        <ChevronDown className="w-2.5 h-2.5 text-white/30 shrink-0" />
+                                                    </button>
+                                                    {showSpeedPanel && (
+                                                        <div className="absolute bottom-full left-0 mb-3 z-[500] bg-[#0d0d0d] border border-white/10 rounded-2xl p-4 w-[320px] max-w-[90vw] grid grid-cols-3 gap-2 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
+                                                            {ctrl.options.map(opt => (
+                                                                <div
+                                                                    key={opt}
+                                                                    onClick={() => { updateVideoSetting('speedRamp', opt); setShowSpeedPanel(false) }}
+                                                                    className={cn("p-2 rounded-xl border cursor-pointer text-center", val === opt ? "bg-[#D4FF00]/10 border-[#D4FF00]/40" : "bg-white/5 border-white/5 hover:border-white/20")}
+                                                                >
+                                                                    <SpeedRampCurve name={opt} active={val === opt} />
+                                                                    <div className={cn("text-[8px] mt-2 uppercase font-black", val === opt ? "text-[#D4FF00]" : "text-white/30")}>{opt}</div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )
+
+                                            const options = ctrl.key === 'lighting'
+                                                ? ["Default", "Cinematic", "Natural Daylight", "Neon Cyberpunk", "Golden Hour", "Studio Pro", "Chiaroscuro"]
+                                                : ctrl.key === 'duration' && isKling
+                                                    ? ['5 Seconds', '10 Seconds']
+                                                    : ctrl.options
+
+                                            const displayVal = ctrl.key === 'duration'
+                                                ? val?.replace(' Seconds', 's')
+                                                : val;
+
+                                            // Pills with long option texts get capped so they don't bloat the bar
+                                            const isWidePill = ['emotion', 'artisticStyle', 'lens'].includes(ctrl.key)
+                                            const isDurationLocked = ctrl.key === 'duration' && !isKling && !!selections.lastFrame;
+
+                                            return (
+                                                <div key={ctrl.key} className="flex flex-col items-start shrink-0">
+                                                    <span className={cn("text-[8px] font-black uppercase tracking-[0.15em] mb-0.5 px-1 flex items-center gap-1", 
+                                                        isDurationLocked ? "text-[#D4FF00]" : "text-gray-600")}>
+                                                        {Icon && <Icon className="w-1.5 h-1.5" />} 
+                                                        {ctrl.label} {isDurationLocked && "(8s Locked)"}
+                                                    </span>
+                                                    <div className="relative" style={isWidePill ? { maxWidth: '92px' } : {}}>
+                                                        <select
+                                                            disabled={isDurationLocked}
+                                                            value={isDurationLocked ? "8 Seconds" : val}
+                                                            onChange={e => updateVideoSetting(ctrl.key, e.target.value)}
+                                                            className={cn(
+                                                                "appearance-none bg-white/[0.06] hover:bg-white/10 border transition-all cursor-pointer focus:outline-none focus:border-white/30 rounded-full pl-3 pr-6 py-1 text-[10px] font-semibold text-white",
+                                                                isDurationLocked ? "border-[#D4FF00]/40 opacity-80 cursor-not-allowed" : "border-white/10 hover:border-white/20"
+                                                            )}
+                                                            style={{ minWidth: 0, width: isWidePill ? '92px' : 'auto' }}
+                                                        >
+                                                            {options.map(o => <option key={o} value={o} className="bg-[#111]">{ctrl.key === 'duration' ? o.replace(' Seconds', 's') : o}</option>)}
+                                                        </select>
+                                                        {!isDurationLocked && <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-white/30 pointer-events-none" />}
+                                                        {isDurationLocked && <Lock className="absolute right-2 top-1/2 -translate-y-1/2 w-2 h-2 text-[#D4FF00] pointer-events-none" />}
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+
+                                        {/* DIVIDER */}
+                                        <div className="w-px h-6 bg-white/8 shrink-0" />
+
+                                        {/* PRO LIGHTING / KLING AUDIO */}
+                                        <div className="shrink-0 flex items-center gap-1.5">
+                                            {isKling ? <KlingAudioMode /> : <ProLighting selections={selections} setSelections={setSelections} />}
+                                            
+                                            
+                                            {/* AUDIO DIRECTION BUTTON (Converted to Pill) */}
+                                            <div className="flex flex-col items-start shrink-0">
+                                                <span className="text-[8px] font-black text-transparent select-none mb-0.5 px-1 flex items-center gap-1">
+                                                    <Mic className="w-1.5 h-1.5 opacity-0" /> Audio
+                                                </span>
+                                                <div className="relative">
+                                                    <button
+                                                    onClick={() => setActiveDropdown(activeDropdown === 'audio' ? null : 'audio')}
+                                                    className={cn("h-7 px-3 bg-purple-500/5 hover:bg-purple-500/10 border rounded-full flex items-center gap-2 transition-all group shrink-0",
+                                                        activeDropdown === 'audio' ? "border-purple-500 bg-purple-500/20" : "border-white/10 hover:border-white/20")}
+                                                >
+                                                    <Mic className={cn("w-3.5 h-3.5 transition-colors", activeDropdown === 'audio' ? "text-[#D4FF00]" : "text-purple-400")} />
+                                                    <span className={cn("text-[9px] font-black uppercase tracking-widest transition-colors", activeDropdown === 'audio' ? "text-white" : "text-purple-400/60 group-hover:text-purple-400")}>Audio Layer</span>
+                                                </button>
+
+                                                {activeDropdown === 'audio' && (
+                                                    <div className="absolute bottom-full right-0 mb-3 z-[500] bg-[#0a0a0a]/95 backdrop-blur-3xl border border-white/10 rounded-2xl p-4 w-[480px] shadow-[0_30px_60px_rgba(0,0,0,0.8)] border-purple-500/20">
+                                                        <div className="flex items-center justify-between mb-4 px-1">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center">
+                                                                    <Mic className="w-4 h-4 text-purple-400" />
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[11px] font-black text-white uppercase tracking-widest">Multi-Track Audio Engine</p>
+                                                                    <p className="text-[8px] font-bold text-white/30 uppercase tracking-tighter mt-0.5">Veo 3.1 & Kling 3.0 Synced</p>
+                                                                </div>
                                                             </div>
-                                                        ))}
+                                                            <div className="flex items-center gap-2 px-2.5 py-1.5 bg-[#D4FF00]/10 border border-[#D4FF00]/20 rounded-xl">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-[#D4FF00] animate-pulse" />
+                                                                <span className="text-[9px] font-black text-[#D4FF00] uppercase tracking-tighter">Live Monitor</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            {[
+                                                                { id: 'dialogue', label: 'Dialogue', icon: Mic, placeholder: 'What they say...' },
+                                                                { id: 'sfx', label: 'SFX', icon: Zap, placeholder: 'Crunch, bang, splash...' },
+                                                                { id: 'ambient', label: 'Ambient', icon: Sun, placeholder: 'Rain, wind, crowd...' },
+                                                                { id: 'music', label: 'Music', icon: Music, placeholder: 'Genre, mood, instruments...' }
+                                                            ].map(item => (
+                                                                <div key={item.id} className={cn("space-y-2 group transition-all p-3 rounded-2xl border bg-black/40",
+                                                                    selections.audioActive?.[item.id] ? "border-purple-500/30 ring-1 ring-purple-500/10" : "border-white/5")}>
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <item.icon className={cn("w-3.5 h-3.5", selections.audioActive?.[item.id] ? "text-purple-400" : "text-white/20")} />
+                                                                            <span className={cn("text-[10px] font-black uppercase tracking-widest", selections.audioActive?.[item.id] ? "text-white" : "text-white/20")}>{item.label}</span>
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setSelections(p => ({
+                                                                                    ...p,
+                                                                                    audioActive: { ...p.audioActive, [item.id]: !p.audioActive?.[item.id] }
+                                                                                }))
+                                                                            }}
+                                                                            className={cn("w-6 h-3.5 rounded-full relative transition-all border shrink-0",
+                                                                                selections.audioActive?.[item.id] ? "bg-purple-600 border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.4)]" : "bg-white/10 border-white/10")}
+                                                                        >
+                                                                            <div className={cn("absolute top-0.5 w-2 h-2 rounded-full bg-white transition-all shadow-sm",
+                                                                                selections.audioActive?.[item.id] ? "right-0.5" : "left-0.5")} />
+                                                                        </button>
+                                                                    </div>
+                                                                    {selections.audioActive?.[item.id] && (
+                                                                        <textarea
+                                                                            value={selections.audioPrompts?.[item.id] || ''}
+                                                                            onChange={(e) => setSelections(p => ({
+                                                                                ...p,
+                                                                                audioPrompts: { ...p.audioPrompts, [item.id]: e.target.value }
+                                                                            }))}
+                                                                            placeholder={item.placeholder}
+                                                                            className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-[10px] text-white/90 placeholder:text-white/15 focus:outline-none focus:border-purple-500/40 resize-none h-16 custom-scrollbar transition-all"
+                                                                            onClick={e => e.stopPropagation()}
+                                                                        />
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
-                                        )
-                                        return (
-                                            <div key={ctrl.key} className="flex-1 min-w-[110px]">
-                                                <label className="text-[10px] font-bold text-gray-500 mb-1 block uppercase tracking-wider">{ctrl.label}</label>
-                                                <select value={val} onChange={e => updateVideoSetting(ctrl.key, e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white">
-                                                    {(ctrl.key === 'duration' && isKling ? ['5 Seconds', '10 Seconds'] : ctrl.options).map(o => <option key={o} value={o} className="bg-[#111]">{o}</option>)}
-                                                </select>
+                                        </div>
+
+                                            {/* AMBIANCE LAYER BUTTON (New) */}
+                                            <div className="flex flex-col items-start shrink-0">
+                                                <span className="text-[8px] font-black text-transparent select-none mb-0.5 px-1 flex items-center gap-1">
+                                                    <Palette className="w-1.5 h-1.5 opacity-0" /> Ambiance
+                                                </span>
+                                                <div className="relative">
+                                                    <button
+                                                    onClick={() => setActiveDropdown(activeDropdown === 'ambiance' ? null : 'ambiance')}
+                                                    className={cn("h-7 px-3 bg-[#D4FF00]/5 hover:bg-[#D4FF00]/10 border rounded-full flex items-center gap-2 transition-all group shrink-0",
+                                                        activeDropdown === 'ambiance' ? "border-[#D4FF00] bg-[#D4FF00]/20" : "border-white/10 hover:border-white/20")}
+                                                >
+                                                    <Palette className={cn("w-3.5 h-3.5 transition-colors", activeDropdown === 'ambiance' ? "text-white" : "text-[#D4FF00]/60 group-hover:text-[#D4FF00]")} />
+                                                    <span className={cn("text-[9px] font-black uppercase tracking-widest transition-colors", activeDropdown === 'ambiance' ? "text-[#D4FF00]" : "text-white/30 group-hover:text-white")}>Ambiance Layer</span>
+                                                </button>
+
+                                                {activeDropdown === 'ambiance' && (
+                                                    <div className="absolute bottom-full right-0 mb-3 z-[500] bg-[#0a0a0a]/95 backdrop-blur-3xl border border-white/10 rounded-2xl p-4 w-[500px] shadow-[0_30px_60px_rgba(0,0,0,0.8)] border-[#D4FF00]/20">
+                                                        <div className="flex items-center justify-between mb-4 px-1">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 rounded-full bg-[#D4FF00]/20 border border-[#D4FF00]/40 flex items-center justify-center">
+                                                                    <Palette className="w-4 h-4 text-[#D4FF00]" />
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[11px] font-black text-white uppercase tracking-widest">Atmospheric Ambiance Engine</p>
+                                                                    <p className="text-[8px] font-bold text-white/30 uppercase tracking-tighter mt-0.5">High-Fidelity Environmental Control</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-1 gap-3">
+                                                            {[
+                                                                { id: 'color', label: 'Color Palette', icon: Palette, placeholder: 'e.g., monochromatic black and white, warm autumnal oranges...', examples: ['monochromatic B&W', 'tropical colors', 'earthy tones', 'futuristic blue & silver'] },
+                                                                { id: 'atmosphere', label: 'Atmospheric Effects', icon: Sun, placeholder: 'e.g., thick fog rolling, heat haze shimmering, magical glowing particles...', examples: ['thick fog', 'swirling sand', 'falling snow', 'heat haze'] },
+                                                                { id: 'texture', label: 'Textural Qualities', icon: Aperture, placeholder: 'e.g., rough-hewn stone walls, smooth polished chrome, soft velvety fabric...', examples: ['rough stone', 'polished chrome', 'velvety fabric', 'dewdrops'] }
+                                                            ].map(item => (
+                                                                <div key={item.id} className={cn("space-y-2 group transition-all p-3 rounded-2xl border bg-black/40",
+                                                                    selections.ambianceActive?.[item.id] ? "border-[#D4FF00]/30 ring-1 ring-[#D4FF00]/10" : "border-white/5")}>
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <item.icon className={cn("w-3.5 h-3.5", selections.ambianceActive?.[item.id] ? "text-[#D4FF00]" : "text-white/20")} />
+                                                                            <span className={cn("text-[10px] font-black uppercase tracking-widest", selections.ambianceActive?.[item.id] ? "text-white" : "text-white/20")}>{item.label}</span>
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setSelections(p => ({
+                                                                                    ...p,
+                                                                                    ambianceActive: { ...p.ambianceActive, [item.id]: !p.ambianceActive?.[item.id] }
+                                                                                }))
+                                                                            }}
+                                                                            className={cn("w-6 h-3.5 rounded-full relative transition-all border shrink-0",
+                                                                                selections.ambianceActive?.[item.id] ? "bg-[#D4FF00] border-[#D4FF00] shadow-[0_0_10px_rgba(212,255,0,0.4)]" : "bg-white/10 border-white/10")}
+                                                                        >
+                                                                            <div className={cn("absolute top-0.5 w-2 h-2 rounded-full bg-black transition-all shadow-sm",
+                                                                                selections.ambianceActive?.[item.id] ? "right-0.5" : "left-0.5")} />
+                                                                        </button>
+                                                                    </div>
+                                                                    {selections.ambianceActive?.[item.id] && (
+                                                                        <div className="space-y-2">
+                                                                            <textarea
+                                                                                value={selections.ambiancePrompts?.[item.id] || ''}
+                                                                                onChange={(e) => setSelections(p => ({
+                                                                                    ...p,
+                                                                                    ambiancePrompts: { ...p.ambiancePrompts, [item.id]: e.target.value }
+                                                                                }))}
+                                                                                placeholder={item.placeholder}
+                                                                                className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-[10px] text-white/90 placeholder:text-white/15 focus:outline-none focus:border-[#D4FF00]/40 resize-none h-14 custom-scrollbar transition-all"
+                                                                                onClick={e => e.stopPropagation()}
+                                                                            />
+                                                                            <div className="flex flex-wrap gap-1">
+                                                                                {item.examples.map(ex => (
+                                                                                    <button
+                                                                                        key={ex}
+                                                                                        onClick={() => setSelections(p => ({
+                                                                                            ...p,
+                                                                                            ambiancePrompts: { ...p.ambiancePrompts, [item.id]: ex }
+                                                                                        }))}
+                                                                                        className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 border border-white/5 text-[8px] text-white/40 hover:text-white transition-all uppercase font-bold"
+                                                                                    >
+                                                                                        {ex}
+                                                                                    </button>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )
-                                    })}
-                                    {isKling ? <KlingAudioMode /> : <ProLighting selections={selections} setSelections={setSelections} />}
-
-                                </div>
-
-                                {/* EXCLUSIVE AUDIO DIRECTIONS PANEL for Video */}
-                                <div className="bg-white/5 border border-white/10 rounded-2xl p-3 mt-1">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <label className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                                            <Mic className="w-4 h-4" /> Audio Direction Layer
-                                        </label>
-                                        <div className="flex items-center gap-2 px-2 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-                                            <span className="text-[8px] font-black text-purple-400 uppercase tracking-tighter">Audio Engine</span>
-                                            <div className="w-1.5 h-1.5 rounded-full bg-[#D4FF00] animate-pulse" />
+                                        </div>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                                        {[
-                                            { id: 'dialogue', label: 'Dialogue', icon: Mic, placeholder: 'What they say...' },
-                                            { id: 'sfx', label: 'SFX', icon: Zap, placeholder: 'Crunch, bang, splash...' },
-                                            { id: 'ambient', label: 'Ambient', icon: Sun, placeholder: 'Rain, wind, crowd...' },
-                                            { id: 'music', label: 'Music', icon: Music, placeholder: 'Genre, mood, instruments...' }
-                                        ].map(item => (
-                                            <div key={item.id} className={cn("space-y-2 group transition-all p-2 rounded-xl border",
-                                                selections.audioActive?.[item.id] ? "bg-purple-500/5 border-purple-500/20" : "bg-black/20 border-white/5")}>
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <item.icon className={cn("w-3.5 h-3.5", selections.audioActive?.[item.id] ? "text-purple-400" : "text-white/20")} />
-                                                        <span className={cn("text-[9px] font-black uppercase tracking-wider", selections.audioActive?.[item.id] ? "text-white" : "text-white/20")}>{item.label}</span>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => setSelections(p => ({
-                                                            ...p,
-                                                            audioActive: { ...p.audioActive, [item.id]: !p.audioActive?.[item.id] }
-                                                        }))}
-                                                        className={cn("w-5 h-2.5 rounded-full relative transition-colors border",
-                                                            selections.audioActive?.[item.id] ? "bg-purple-500 border-purple-400 shadow-[0_0_5px_rgba(168,85,247,0.5)]" : "bg-white/10 border-white/10")}
-                                                    >
-                                                        <div className={cn("absolute top-px w-1.5 h-1.5 rounded-full bg-white transition-all", selections.audioActive?.[item.id] ? "right-0.5" : "left-0.5")} />
-                                                    </button>
-                                                </div>
-                                                <textarea
-                                                    value={selections.audioPrompts?.[item.id] || ''}
-                                                    onChange={(e) => setSelections(p => ({
-                                                        ...p,
-                                                        audioPrompts: { ...p.audioPrompts, [item.id]: e.target.value }
-                                                    }))}
-                                                    disabled={!selections.audioActive?.[item.id]}
-                                                    placeholder={item.placeholder}
-                                                    className={cn("w-full bg-black/40 border border-white/5 rounded-lg p-1.5 text-[9px] text-white placeholder:text-white/5 focus:outline-none resize-none h-12 custom-scrollbar transition-opacity",
-                                                        !selections.audioActive?.[item.id] && "opacity-20 pointer-events-none")}
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
                                 </div>
+
                             </div>
                         ) : (
                             <div className="flex flex-wrap md:flex-nowrap w-full gap-2">
@@ -3387,7 +3965,15 @@ DO NOT add new objects or change the scene. Enhance only.
                 zoomState.isOpen && (
                     <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-8">
                         <button onClick={() => setZoomState(p => ({ ...p, isOpen: false }))} className="absolute top-4 right-4 md:top-8 md:right-8 text-white/50 hover:text-white transition"><X className="w-6 h-6 md:w-8 md:h-8" /></button>
-                        {activeFrame?.type === 'video' ? <video src={resolveUrl(zoomState.url)} controls autoPlay loop className="max-w-full max-h-full rounded-2xl shadow-2xl" style={{ maxHeight: '85vh' }} /> : <img src={resolveUrl(zoomState.url)} className="max-w-full max-h-full rounded-2xl shadow-2xl" alt="Zoomed" />}
+                        {(() => {
+                            const zoomedFrame = frames.find(f => f.id === zoomState.slot);
+                            const isVideo = zoomedFrame ? zoomedFrame.type === 'video' : zoomState.url?.endsWith('.mp4');
+                            return isVideo ? (
+                                <video src={resolveUrl(zoomState.url)} controls autoPlay loop className="max-w-full max-h-full rounded-2xl shadow-2xl" style={{ maxHeight: '85vh' }} />
+                            ) : (
+                                <img src={resolveUrl(zoomState.url)} className="max-w-full max-h-full rounded-2xl shadow-2xl" alt="Zoomed" />
+                            );
+                        })()}
                         <div className="absolute bottom-6 md:bottom-12 flex gap-4 w-full justify-center px-4 md:w-auto">
                             <button onClick={() => setZoomState(p => ({ ...p, isOpen: false }))} className="flex-1 md:flex-none justify-center bg-white/10 hover:bg-white/20 border border-white/10 text-white px-6 py-3 md:py-2 rounded-full font-bold uppercase text-[10px] md:text-xs flex items-center gap-2 transition shadow-xl"><X className="w-4 h-4" /> Back</button>
                             <button onClick={() => setZoomState(p => ({ ...p, isEditing: true }))} className="flex-1 md:flex-none justify-center bg-[#D4FF00] text-black px-6 py-3 md:py-2 rounded-full font-bold uppercase text-[10px] md:text-xs flex items-center gap-2 hover:bg-white transition shadow-xl"><PenTool className="w-4 h-4" /> Edit</button>
@@ -3403,7 +3989,6 @@ DO NOT add new objects or change the scene. Enhance only.
                 )
             }
 
-            {/* ─── CAMERA ANGLES MODAL ─────────────────────────────────── */}
             {
                 showAnglesModal && (
                     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
@@ -3433,109 +4018,122 @@ DO NOT add new objects or change the scene. Enhance only.
                 )
             }
 
-            {/* ─── REF BOARD MODAL ──────────────────────────────────────── */}
             {
                 showRefBoard && (
                     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-                        <div onClick={() => { setShowRefBoard(false); setShowLibPicker(false) }} className="absolute inset-0 bg-black/85 backdrop-blur-lg" />
-                        <div className="relative w-full max-w-3xl bg-[#0e0e0e] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[88vh]">
+                        <div onClick={handleCancelRefBoard} className="absolute inset-0 bg-black/85 backdrop-blur-lg" />
+                        <div className="relative w-full max-w-3xl bg-[#0e0e0e] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+                            {/* Header */}
                             <div className="p-5 border-b border-white/5 flex items-center justify-between bg-white/[0.03] shrink-0">
                                 <div>
-                                    <h3 className="text-base font-black text-white flex items-center gap-2"><span className="text-purple-400 text-xl font-black">@</span> Reference Board</h3>
-                                    <p className="text-[8px] text-white/25 mt-0.5 uppercase tracking-wider">SESSION ONLY - PICK FROM LIBRARY - USE @NAME IN PROMPT TO TAG</p>
+                                    <h3 className="text-base font-black text-white flex items-center gap-2">
+                                        <span className="text-purple-400 text-xl font-black">@</span> {mode.toUpperCase()} REFERENCE BOARD
+                                    </h3>
+                                    <p className="text-[8px] text-white/25 mt-0.5 uppercase tracking-wider font-bold">MODE SPECIFIC - CHANGES MUST BE SAVED TO PERSIST</p>
                                 </div>
-                                <button onClick={() => { setShowRefBoard(false); setShowLibPicker(false) }} className="p-1.5 hover:bg-white/10 rounded-full transition-colors"><X className="w-5 h-5 text-gray-400" /></button>
+                                <button onClick={handleCancelRefBoard} className="p-1.5 hover:bg-white/10 rounded-full transition-colors">
+                                    <X className="w-5 h-5 text-gray-400" />
+                                </button>
                             </div>
 
-                            <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/5 shrink-0">
-                                <div className="flex items-center gap-3">
-                                    <button
-                                        onClick={() => setFaceConsistency(!faceConsistency)}
-                                        className={cn("w-10 h-6 rounded-full transition-colors relative", faceConsistency ? "bg-purple-500" : "bg-white/20")}
-                                    >
-                                        <div className={cn("w-4 h-4 bg-white rounded-full absolute top-1 transition-transform", faceConsistency ? "translate-x-5" : "translate-x-1")} />
-                                    </button>
-                                    <span className={cn("text-[10px] font-bold uppercase tracking-widest", faceConsistency ? "text-white" : "text-white/40")}>MAINTAIN FACE CONSISTENCY</span>
-                                </div>
-                                <span className="text-[8px] text-white/30 truncate">Adds explicit consistency directives to the prompt</span>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar min-h-[300px] flex flex-col gap-3">
-                                {[
-                                    { id: 'characters', label: 'CHARACTERS', desc: 'MULTIPLE ALLOWED', icon: Users, color: 'text-purple-400' },
-                                    { id: 'locations', label: 'LOCATION', desc: 'ONE LOCATION', icon: Map, color: 'text-[#AADD00]' },
-                                    { id: 'wardrobes', label: 'WARDROBE', desc: 'ONE WARDROBE REF', icon: Smartphone, color: 'text-indigo-400' },
-                                    { id: 'props', label: 'PROPS', desc: 'MULTIPLE PROPS', icon: Package, color: 'text-amber-600' },
-                                    { id: 'moods', label: 'MOOD/STYLE', desc: 'ONE MOOD REF', icon: Palette, color: 'text-rose-500' }
-                                ].map(category => (
-                                    <div key={category.id} className="bg-white/5 border border-white/5 rounded-2xl p-4 flex flex-col gap-3">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-4">
-                                                <category.icon className={cn("w-5 h-5", category.color)} />
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs font-black text-white uppercase tracking-[0.2em]">{category.label}</span>
-                                                    <span className="text-[8px] text-white/30 font-bold uppercase tracking-widest">{category.desc}</span>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => { setActiveRefUploadCategory(category.id); refUploadInputRef.current?.click() }}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-white transition-all text-[9px] font-bold uppercase"
-                                                >
-                                                    <Upload className="w-3 h-3" /> Upload
-                                                </button>
-                                                <button
-                                                    onClick={() => { setLibPickerTarget(category.id); setShowLibPicker(true) }}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-500/20 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 transition-all text-[9px] font-bold uppercase"
-                                                >
-                                                    <ImagePlus className="w-3 h-3" /> Library
-                                                </button>
-                                            </div>
+                            {/* Consistency Toggle */}
+                            <div className="p-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-2">
+                                        <div onClick={() => setFaceConsistency(!faceConsistency)} className={cn("w-10 h-5 rounded-full p-1 cursor-pointer transition-all duration-300 border", faceConsistency ? "bg-purple-500 border-purple-400" : "bg-white/10 border-white/10")}>
+                                            <div className={cn("w-3 h-3 bg-white rounded-full transition-all duration-300", faceConsistency ? "translate-x-5 shadow-[0_0_8px_white]" : "translate-x-0")} />
                                         </div>
-
-                                        <div className="mt-1">
-                                            {(!refBoard[category.id] || refBoard[category.id].length === 0) ? (
-                                                <p className="text-[9px] text-white/20 italic">Nothing staged yet.</p>
-                                            ) : (
-                                                <div className="flex flex-wrap gap-2">
-                                                    {refBoard[category.id].map(item => (
-                                                        <div key={item.id} className="relative w-12 h-12 rounded-lg overflow-hidden border border-white/10 group bg-black/20 shrink-0">
-                                                            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" />
-                                                            <div className="absolute inset-x-0 bottom-0 bg-black/80 px-1 py-0.5 backdrop-blur-sm border-t border-white/5">
-                                                                <p className="text-[6px] font-black text-[#D4FF00] uppercase truncate text-center">@{item.name}</p>
-                                                            </div>
-                                                            <button onClick={() => removeRefItem(item.id)} className="absolute top-0.5 right-0.5 p-0.5 bg-red-500/80 rounded border border-red-400 text-white opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-2 h-2" /></button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
+                                        <span className={cn("text-[10px] font-bold uppercase tracking-widest", faceConsistency ? "text-white" : "text-white/40")}>MAINTAIN FACE CONSISTENCY</span>
                                     </div>
-                                ))}
+                                    <span className="text-[8px] text-white/30 truncate mt-1">Adds explicit consistency directives to the prompt</span>
+                                </div>
                             </div>
 
+                            {/* Scrollable Content */}
+                            <div className="flex-1 overflow-y-auto p-5 custom-scrollbar bg-black/40">
+                                <div className="grid grid-cols-1 gap-4">
+                                    {REF_CATEGORIES.map(category => (
+                                        <div key={category.id} className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 flex flex-col gap-3">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    <category.icon className={cn("w-5 h-5", category.color)} />
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-black text-white uppercase tracking-[0.2em]">{category.label}</span>
+                                                        <span className="text-[8px] text-white/30 font-bold uppercase tracking-widest">{category.desc}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => { setActiveRefUploadCategory(category.id); refUploadInputRef.current?.click() }}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-white transition-all text-[9px] font-bold uppercase"
+                                                    >
+                                                        <Upload className="w-3 h-3" /> Upload
+                                                    </button>
+                                                    <button
+                                                        onClick={() => { setLibPickerTarget(category.id); setShowLibPicker(true) }}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-500/20 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 transition-all text-[9px] font-bold uppercase"
+                                                    >
+                                                        <ImagePlus className="w-3 h-3" /> Library
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-1">
+                                                {!stagedRefBoard[category.id] || stagedRefBoard[category.id].length === 0 ? (
+                                                    <p className="text-[9px] text-white/20 italic">Nothing staged yet.</p>
+                                                ) : (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {stagedRefBoard[category.id].map(item => (
+                                                            <div key={item.id} className="relative w-12 h-12 rounded-lg overflow-hidden border border-white/10 group bg-black/20 shrink-0">
+                                                                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" />
+                                                                <div className="absolute inset-x-0 bottom-0 bg-black/80 px-1 py-0.5 backdrop-blur-sm border-t border-white/5">
+                                                                    <p className="text-[6px] font-black text-[#D4FF00] uppercase truncate text-center">@{item.name}</p>
+                                                                </div>
+                                                                <button onClick={() => removeRefItem(item.id)} className="absolute top-0.5 right-0.5 p-0.5 bg-red-500/80 rounded border border-red-400 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <X className="w-2 h-2" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Footer */}
                             <div className="p-3 border-t border-white/5 bg-black/40 shrink-0 text-center">
-                                <span className="text-[9px] text-white/30 tracking-wide">Type <span className="text-purple-400 font-bold">@name</span> in the scene narrative to tag a ref image. Only tagged images are sent to Nano Banana.</span>
+                                <span className="text-[9px] text-white/30 tracking-wide font-medium">Type <span className="text-purple-400 font-bold">@name</span> in narrative to tag a ref. Only SAVED images are used.</span>
                             </div>
 
-                            <input
-                                type="file"
-                                ref={refUploadInputRef}
-                                className="hidden"
-                                accept="image/*"
-                                onChange={handleRefUpload}
-                            />
+                            <div className="p-4 border-t border-white/5 bg-white/[0.04] flex gap-3 shrink-0">
+                                <button
+                                    onClick={handleSaveRefBoard}
+                                    className="flex-3 flex-grow-[2] py-3.5 bg-purple-500 hover:bg-purple-600 rounded-xl text-white font-black uppercase text-xs tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Save className="w-4 h-4" /> Save Changes
+                                </button>
+                                <button
+                                    onClick={handleCancelRefBoard}
+                                    className="flex-1 py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/60 font-bold uppercase text-[10px] tracking-widest active:scale-95 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+
+                            <input type="file" ref={refUploadInputRef} className="hidden" accept="image/*" onChange={handleRefUpload} />
 
                             {showLibPicker && (
                                 <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
                                     <div onClick={() => setShowLibPicker(false)} className="absolute inset-0 bg-black/70 backdrop-blur-md" />
                                     <div className="relative w-full max-w-2xl bg-[#0e0e0e] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
                                         <div className="p-4 border-b border-white/5 flex items-center justify-between">
-                                            <h4 className="text-sm font-bold text-white uppercase tracking-widest">Select Reference</h4>
+                                            <h4 className="text-sm font-bold text-white uppercase tracking-widest">Select {libPickerTarget?.toUpperCase() || 'Reference'}</h4>
                                             <button onClick={() => setShowLibPicker(false)} className="p-1 hover:bg-white/10 rounded-full transition-colors"><X className="w-4 h-4 text-gray-400" /></button>
                                         </div>
                                         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                                            <AssetsLibrary onSelectReference={(url, item) => {
+                                            <AssetsLibrary compact={true} defaultTab={libPickerTarget === 'characters' ? 'matrix' : 'images'} onSelectReference={(url, item) => {
                                                 const name = (item.name || 'Reference').replace(/\s+/g, '');
                                                 const category = libPickerTarget?.replace(/s$/, '') || item.category || (item.isCharacter ? 'character' : 'mood');
                                                 addRefItem({
@@ -3610,16 +4208,20 @@ DO NOT add new objects or change the scene. Enhance only.
                                                     </div>
                                                 </div>
                                                 <button onClick={(e) => { e.stopPropagation(); removeFrame(frame.id) }}
-                                                    className="absolute top-2 right-2 p-1.5 bg-red-500/80 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-opacity z-20"
-                                                    title="Delete Frame">
+                                                    className={cn(
+                                                        "absolute top-2 right-2 p-1.5 rounded-lg text-white transition-all z-20 overflow-hidden flex items-center gap-1",
+                                                        deleteConfirmId === frame.id ? "bg-red-600 px-3 scale-110 shadow-lg" : "bg-red-500/80 opacity-0 group-hover:opacity-100"
+                                                    )}
+                                                    title={deleteConfirmId === frame.id ? "Confirm?" : "Delete Frame"}>
                                                     <X className="w-3 h-3" />
+                                                    {deleteConfirmId === frame.id && <span className="text-[7px] font-black uppercase">Confirm?</span>}
                                                 </button>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
                                     <div className="h-full bg-white/5 rounded-3xl overflow-hidden border border-white/10">
-                                        <AssetsLibrary onSelectReference={(url, item) => {
+                                        <AssetsLibrary defaultTab="images" onSelectReference={(url, item) => {
                                             const name = (item.name || 'Reference').replace(/\s+/g, '');
                                             const category = item.category || (item.isCharacter ? 'character' : 'mood');
                                             addRefItem({

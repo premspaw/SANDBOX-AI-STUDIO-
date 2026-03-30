@@ -22,6 +22,39 @@ import { useShorts } from '../../hooks/useShorts';
 
 const API = API_BASE_URL;
 
+/**
+ * Compresses base64 images to prevent large payload rejections by AI engines.
+ */
+const compressImage = (base64, maxWidth = 1024) => {
+    return new Promise((resolve) => {
+        if (!base64) return resolve(base64);
+        
+        let processedBase64 = base64;
+        // If it's raw base64 without prefix, try to add it
+        if (!base64.startsWith('data:')) {
+            if (base64.startsWith('9j/')) processedBase64 = 'data:image/jpeg;base64,' + base64;
+            else if (base64.startsWith('iVBORw0KGgo')) processedBase64 = 'data:image/png;base64,' + base64;
+            else if (base64.startsWith('R0lGODdh')) processedBase64 = 'data:image/gif;base64,' + base64;
+            else if (base64.startsWith('UklGR')) processedBase64 = 'data:image/webp;base64,' + base64;
+            else return resolve(base64); // Not a recognized image base64
+        }
+
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const scale = Math.min(1, maxWidth / Math.max(img.width, img.height));
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = () => resolve(processedBase64);
+        img.src = processedBase64;
+    });
+};
+
 function ScanningRing({ active }) {
     return (
         <div className="absolute inset-[-12px] pointer-events-none rounded-full">
@@ -257,27 +290,35 @@ export function ForgeView({ onComplete }) {
 
         try {
             const prompts = getIdentityPrompts(style);
+            
+            // ✅ Compress images before sending to prevent payload rejection by Gemini
+            const compressedFace = faceAnchor ? await compressImage(faceAnchor) : null;
+            const compressedCostume = costumeRef ? await compressImage(costumeRef) : null;
+            const compressedOrigin = origin ? await compressImage(origin) : null;
+
             // Use v2 Dual-Anchor logic if both images are present, fallback to origin
-            const references = (faceAnchor && costumeRef) ? [faceAnchor, costumeRef] : [origin || faceAnchor || costumeRef];
+            const references = (compressedFace && compressedCostume) 
+                ? [compressedFace, compressedCostume] 
+                : [compressedOrigin || compressedFace || compressedCostume].filter(Boolean);
 
-            const systemInstruction = (faceAnchor && costumeRef)
-                ? "You are a character consistency engine for film production. Image 1 is the SOLE FACE AUTHORITY. Image 2 is COSTUME AND BODY REFERENCE ONLY. You must generate exactly 7 panels in a (4 Top + 3 Bottom) layout at 2K resolution. Row 1 (4 panels): Front, Left Profile (nose points left), Right Profile (nose points right), Back. Row 2 (3 panels): Face Front Closeup, Face Left Profile (nose points left), Face Right Profile (nose points right). Identity match: 100%."
-                : undefined;
-
-            const matrixPrompt = (faceAnchor && costumeRef)
-                ? "IMAGE 1 = FACE IDENTITY. IMAGE 2 = BODY + COSTUME ONLY. Generate an exact 7-panel character sheet (4 top row, 3 bottom row) in 2K resolution on white seamless background. TOP ROW: Front, Side-Left (nose points left), Side-Right (nose points right), Back. BOTTOM ROW: Face Front Closeup, Face Left Profile (nose points left), Face Right Profile (nose points right). SKIN: Ultra-raw, visible pores, professional detail. Match face Image 1 and costume Image 2 exactly."
-                : prompts.matrix;
+            // Dynamically apply the selected style to the matrix prompt
+            const matrixPrompt = `${style} character design sheet. 
+Fictional character reference with 7 views on white background.
+Top row: front, left profile, right profile, back.
+Bottom row: face close-up front, face left profile, face right profile.
+Use provided reference images for visual consistency. 
+Clean studio videography lighting, cinematic masterpiece, professional quality.`;
 
             const response = await fetch(`${API}/api/forge/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prompt: matrixPrompt,
-                    system_instruction: systemInstruction,
                     references: references,
                     aspect_ratio: '16:9',
-                    modelEngine: 'nano-banana-pro',
-                    quality: '2k'
+                    modelEngine: 'nano-banana', // Most permissive model for character sheets
+                    quality: '1k',
+                    userId: useAppStore.getState().userProfile?.id // ensure Supabase RLS persistence
                 })
             });
             const data = await response.json();

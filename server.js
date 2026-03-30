@@ -42,7 +42,10 @@ globalThis.fetch = (url, options = {}) => {
                 'X-Goog-Api-Key': process.env.GOOGLE_API_KEY || options.headers['X-Goog-Api-Key']
             };
         }
-        console.log(`[FETCH_DEBUG] Final Referer: ${options.headers['Referer'] || options.headers['referer']}`);
+        const finalReferer = (typeof options.headers.get === 'function') 
+            ? options.headers.get('Referer') 
+            : (options.headers['Referer'] || options.headers['referer']);
+        console.log(`[FETCH_DEBUG] Final Referer: ${finalReferer}`);
     }
     return originalFetch(url, options);
 };
@@ -802,24 +805,45 @@ app.post('/api/suggest-dialogue', async (req, res) => {
 
 
 
-// Generate Character Image
+// Generate Character Image (Bypassing geminiService for direct REST stability using handleGoogle)
 app.post('/api/forge/generate', async (req, res) => {
     try {
-        const { prompt, references, aspect_ratio, resolution, identity_images, product_image, bible, duration, visualStyle } = req.body;
-        const result = await geminiService.generateCharacterImage({
-            prompt,
-            identity_images: identity_images || references,
-            product_image,
-            aspectRatio: aspect_ratio || '1:1',
-            resolution: resolution || '1K',
-            bible,
-            duration,
-            visualStyle
-        });
-        res.json({ url: result });
+        const { prompt, references, identity_images, aspect_ratio, modelEngine, quality, system_instruction, userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({ error: "Missing User ID. Cannot persist generated matrix." });
+        }
+
+        // We modify the request object to match what handleGoogle expects
+        const mockReq = {
+            body: {
+                prompt,
+                identity_images: references || identity_images,
+                userId,
+                model: modelEngine || 'nano-banana-pro',
+                quality: quality || '2k', // Matrix looks better in high res
+                aspect_ratio: aspect_ratio || '16:9',
+                system_instruction
+            }
+        };
+
+        console.log(`[FORGE_GEN] Calling handleGoogle for ${userId}`);
+
+        // Reuse handleGoogle logic to ensure it saves to Supabase correctly with user_id
+        await handleGoogle(mockReq, res);
+
     } catch (error) {
-        console.error('Forge Generation Error:', error);
-        res.status(500).json({ error: error.message });
+        console.error('[FORGE_GEN_ERROR] ❌:', error.message);
+        
+        // Log to dedicated error file
+        const errorLog = `[${new Date().toISOString()}] REST Forge Error: ${error.message}\n`;
+        fs.appendFileSync(path.join(__dirname, 'forge_errors.log'), errorLog);
+
+        res.status(500).json({ 
+            error: "Generation Failed",
+            message: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined 
+        });
     }
 });
 
@@ -1915,6 +1939,7 @@ async function handleKieVeo(req, res) {
             else if (validDuration <= 6) validDuration = 6;
             else validDuration = 8;
         }
+        console.log(`[VEO-KIE-WRAPPER] Requested duration: ${duration} → Valid: ${validDuration}`);
 
         const payload = {
             prompt,
@@ -2139,6 +2164,7 @@ async function handleGoogle(req, res) {
                 else if (validDuration <= 6) validDuration = 6;
                 else validDuration = 8;
             }
+            console.log(`[VEO] Requested duration: ${duration} → Valid: ${validDuration}`);
 
             // ─── Resolve images to base64 for Service Account REST API ────────────────
             const resolveToBase64 = async (src) => {
@@ -4196,6 +4222,12 @@ app.get('/api/proxy/asset', async (req, res) => {
         const acceptRanges = response.headers.get('accept-ranges');
         if (acceptRanges) res.setHeader('Accept-Ranges', acceptRanges);
 
+        // ✅ CORS Headers (Crucial for Canvas capture)
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Range, Origin');
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+
         // Prevent caching issues for large/piped assets
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
@@ -4429,6 +4461,56 @@ app.post('/api/landing-assets-upload', async (req, res) => {
         res.json({ success: true, url: publicUrl, path: fileName });
     } catch (err) {
         console.error('[GCS-UPLOAD-ERR]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/delete-asset/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ error: 'Asset ID required' });
+
+        if (!supabase) return res.status(500).json({ error: 'Database connection unavailable' });
+
+        // 1. Fetch asset metadata to get the URL/Path
+        const { data: asset, error: fetchError } = await supabase
+            .from('assets')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (fetchError || !asset) {
+            console.warn(`[DELETE-ASSET] Asset ${id} not found in DB.`);
+            return res.status(404).json({ error: 'Asset not found' });
+        }
+
+        // 2. Identify and Delete from GCS if it's a GCS URL
+        if (asset.url && asset.url.includes('storage.googleapis.com')) {
+            try {
+                const urlParts = asset.url.split(`${BUCKET_NAME}/`);
+                if (urlParts.length > 1) {
+                    const fileName = urlParts[1];
+                    console.log(`[DELETE-ASSET] Deleting file from GCS: ${fileName}`);
+                    await storage.bucket(BUCKET_NAME).file(fileName).delete();
+                }
+            } catch (gcsErr) {
+                console.warn(`[DELETE-ASSET] GCS deletion failed (file might already be gone):`, gcsErr.message);
+                // Continue to delete from DB anyway to keep state clean
+            }
+        }
+
+        // 3. Delete from Supabase
+        const { error: deleteError } = await supabase
+            .from('assets')
+            .delete()
+            .eq('id', id);
+
+        if (deleteError) throw deleteError;
+
+        console.log(`[DELETE-ASSET] ✅ Successfully deleted asset ${id}`);
+        res.json({ success: true, message: 'Asset deleted permanently' });
+    } catch (err) {
+        console.error('[DELETE-ASSET-ERROR]', err);
         res.status(500).json({ error: err.message });
     }
 });

@@ -65,7 +65,7 @@ export const resolveUrl = (url) => {
     // This prevents ERR_CACHE_OPERATION_NOT_SUPPORTED which happens when the browser
     // tries to cache GCS/Supabase videos with incompatible response headers.
     if (isVideo && url.startsWith('http') && !url.includes('localhost') && !url.includes('/api/proxy/asset')) {
-        return getApiUrl(`/api/proxy/asset?url=${encodeURIComponent(url)}`);
+        return getApiUrl(`/api/proxy/asset?url=${encodeURIComponent(url)}&cors=1`);
     }
 
     if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:'))

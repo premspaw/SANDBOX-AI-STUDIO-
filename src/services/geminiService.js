@@ -323,7 +323,7 @@ const resolveModelId = (id) => {
         // Use the 'latest' aliases – Google routes these to the newest 3.1 versions
         'nano-banana': 'gemini-2.5-flash-image', // Stable 2.5
         'nano-banana-2': 'gemini-3.1-flash-image-preview', 
-        'nano-banana-pro': 'gemini-3.1-pro-image-preview', // 3.0 was retired March 9th
+        'nano-banana-pro': 'gemini-3.1-pro-image', // 3.0 was retired March 9th
         'veo': 'veo-3.1-generate-preview',
         'veo-fast': 'veo-3.1-fast-generate-preview'
     };
@@ -341,14 +341,18 @@ export const generateCharacterImage = async (params) => {
             const refs = params.consistencyRefs || params.identity_images || params.references || [];
             const referenceParts = await Promise.all(refs.map(async (ref) => {
                 try {
+                    if (!ref) return null;
                     const compressed = await compressImageToMax1024(ref);
+                    // Robust base64 extraction (handles with or without data: prefix)
+                    const base64Data = compressed.includes(',') ? compressed.split(',')[1] : compressed;
                     return {
                         inlineData: { 
-                            data: compressed.split(',')[1], 
+                            data: base64Data, 
                             mimeType: "image/jpeg" 
                         }
                     };
                 } catch (e) {
+                    console.warn('[SDK] Reference processing failed:', e.message);
                     return null;
                 }
             }));
@@ -358,6 +362,9 @@ export const generateCharacterImage = async (params) => {
             
             const result = await client.models.generateContent({
                 model: engine,
+                systemInstruction: params.system_instruction ? {
+                    parts: [{ text: params.system_instruction }]
+                } : undefined,
                 contents: [{
                     role: 'user',
                     parts: [
@@ -371,23 +378,68 @@ export const generateCharacterImage = async (params) => {
                     imageConfig: {
                         aspectRatio: (params.aspectRatio || "16:9").replace('—', ':').split(' ')[0],
                         // Valid values in 2026: "1K", "2K", "4K"
-                        imageSize: (String(params.quality).toUpperCase() === '4K' || engine.includes('pro')) ? "4K" : "1K"
-                    }
+                        imageSize: (String(params.quality || params.resolution).toUpperCase() === '4K' || engine.includes('pro')) ? "4K" : 
+                                   (String(params.quality || params.resolution).toUpperCase() === '2K') ? "2K" : "1K"
+                    },
+                    safetySettings: [
+                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                    ]
                 }
             });
 
-            // 3. Defensively extract candidates
-            if (result.response && result.response.candidates && result.response.candidates.length > 0) {
-                const outputPart = result.response.candidates[0].content.parts.find(p => p.inlineData);
-                if (outputPart) {
-                    return `data:${outputPart.inlineData.mimeType};base64,${outputPart.inlineData.data}`;
-                }
+            // 3. Defensively extract candidates (Standardized async extraction)
+            const response = await (result.response || Promise.resolve(result));
+            
+            // LOG RAW DATA for debugging Internal 500s
+            console.log('[GEMINI-RAW-DEBUG]', JSON.stringify({
+                status: 'extracting',
+                model: engine,
+                candidatesCount: response.candidates?.length,
+                promptFeedback: response.promptFeedback,
+                usageMetadata: response.usageMetadata
+            }, null, 2));
+
+            // 1. Check for Safety Refusals first
+            if (response.promptFeedback?.blockReason) {
+                console.error(`[SDK] Blocked by Prompt Feedback: ${response.promptFeedback.blockReason}`);
+                throw new Error(`AI Safety Block: ${response.promptFeedback.blockReason}`);
             }
 
-            // If we reach here, it failed (could be safety filter or refusal)
-            const internalRefusal = result.response?.candidates?.[0]?.content?.parts?.find(p => p.text)?.text;
-            const refusalText = internalRefusal || (result.response?.text ? result.response.text() : "Safety Filter Blocked Output");
-            throw new Error(`AI Engine Refusal: ${refusalText}`);
+            // 1. Log the candidate for debugging
+            console.log("[SDK_DEBUG] Full Candidate:", JSON.stringify(response.candidates?.[0], null, 2));
+
+            // 2. SECURE EXTRACTION: Look for inlineData specifically
+            const candidate = response.candidates?.[0];
+            const parts = candidate?.content?.parts || [];
+
+            // Look for the part that contains 'inlineData' (the image)
+            const imagePart = parts.find(p => p.inlineData);
+
+            if (imagePart && imagePart.inlineData?.data) {
+                console.log("✅ Image data extracted successfully");
+                return `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
+            }
+
+            // 3. If it's a safety refusal
+            if (candidate?.finishReason === 'SAFETY') {
+                const safetyDetails = candidate.safetyRatings?.filter(r => r.probability !== 'NEGLIGIBLE');
+                console.error('[SDK] SAFETY REFUSAL:', safetyDetails);
+                throw new Error("AI Engine Refusal: Safety Filter Blocked Output");
+            }
+
+            // 4. Handle Text-only responses (Errors sent as text)
+            const textPart = parts.find(p => p.text);
+            if (textPart) {
+                console.warn('[SDK] Model returned text instead of image:', textPart.text);
+                throw new Error(`AI Engine Refusal: ${textPart.text}`);
+            }
+
+            // 5. Final Fallback
+            console.log('[GEMINI-FAIL-PREVIEW]', JSON.stringify(result, null, 2).substring(0, 1000));
+            throw new Error(`AI Engine Refusal: Unknown response structure or Model Busy (FinishReason: ${candidate?.finishReason || 'Unknown'})`);
 
         } catch (error) {
             // FALLBACK: If 3.1 fails, immediately try the stable 2.5 model

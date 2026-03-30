@@ -299,22 +299,33 @@ export default function DirectorStudio() {
 
     const getGenerationCost = () => {
         if (mediaType === 'image') return 2;
-        const isAudio = includeAudio;
+        const hasAudio = includeAudio;
         const dur = parseInt(duration) || 5;
+        const isHighRes = resolution === '2K' || resolution === '4K';
         
-        if (videoModel === "kling") {
-            return dur === 5 ? 5 : 10;
+        if (videoModel === 'kling') {
+            // Kling 3.0 Standard/Pro rates from pricing documentation
+            // (Assuming Standard for base, Pro can be detected if logic added later)
+            // For now using Standard baseline: ₹11.62/s (Video) | ₹17.43/s (Audio)
+            const costPerSec = hasAudio ? 17.43 : 11.62;
+            return Math.ceil(costPerSec * dur);
         }
 
-        if (videoModel === "veo3_fast") {
-            if (dur <= 4) return isAudio ? 65 : 43;
-            if (dur <= 6) return isAudio ? 98 : 65;
-            return isAudio ? 130 : 87; // 8s
+        // Veo 3.1 Fast vs Quality
+        const isFast = videoModel === 'veo3_fast';
+        const mustBe8 = !!lastFrameImg;
+        const finalDur = (isFast && mustBe8) ? 8 : dur;
+        
+        let costPerSec = 0;
+        if (isFast) {
+            if (isHighRes) costPerSec = hasAudio ? 40.67 : 34.86;
+            else costPerSec = hasAudio ? 17.43 : 11.62;
         } else {
-            if (dur <= 4) return isAudio ? 174 : 87;
-            if (dur <= 6) return isAudio ? 260 : 130;
-            return isAudio ? 347 : 174; // 8s
+            if (isHighRes) costPerSec = hasAudio ? 69.72 : 46.48;
+            else costPerSec = hasAudio ? 46.48 : 23.24;
         }
+        
+        return Math.ceil(costPerSec * finalDur);
     };
 
     const handleSelectKey = async () => {
@@ -588,7 +599,7 @@ export default function DirectorStudio() {
 
     const handleAnimateWithKling = async () => {
         if (!generatedVideoUrl) return;
-        const cost = 10; // Dedicated cost for standalone animate
+        const cost = getGenerationCost(); 
         if (!isAdmin && coins < cost) {
             const msg = `Insufficient shots! Kling animation requires ${cost} items.`;
             setError(msg);
@@ -914,8 +925,18 @@ export default function DirectorStudio() {
                                         </select>
                                     </div>
                                     <div className="bg-white/5 p-1.5 rounded-lg">
-                                        <span className="text-[7px] font-black uppercase text-white/20">Duration</span>
-                                        <select value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full bg-transparent text-[10px] font-bold border-none outline-none">
+                                        <div className="flex items-center justify-between mb-0.5">
+                                            <span className="text-[7px] font-black uppercase text-white/20">Duration</span>
+                                            {videoModel !== 'kling' && !!lastFrameImg && (
+                                                <span className="text-[7px] font-black text-[#AADD00] animate-pulse">8s Locked</span>
+                                            )}
+                                        </div>
+                                        <select 
+                                            disabled={videoModel !== 'kling' && !!lastFrameImg}
+                                            value={videoModel !== 'kling' && !!lastFrameImg ? "8" : duration} 
+                                            onChange={(e) => setDuration(e.target.value)} 
+                                            className={cn("w-full bg-transparent text-[10px] font-bold border-none outline-none", (videoModel !== 'kling' && !!lastFrameImg) && "text-[#AADD00] cursor-not-allowed")}
+                                        >
                                             {videoModel === 'kling' ? (
                                                 <>
                                                     <option value="5">5s Sequence</option>
@@ -967,8 +988,27 @@ export default function DirectorStudio() {
                                 </>
                             )}
                         </div>
-                        <div className="flex items-center justify-center mb-2 h-4">
-                             {/* Pricing text hidden as requested */}
+                        <div className="flex items-center justify-center mb-2 px-2">
+                             <div className="w-full p-2 bg-[#AADD00]/5 border border-[#AADD00]/10 rounded-xl flex items-center justify-between">
+                                 <div className="flex items-center gap-2">
+                                     <div className="w-1.5 h-1.5 rounded-full bg-[#AADD00] animate-pulse" />
+                                     <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Rate Estimate</span>
+                                 </div>
+                                 <div className="flex items-center gap-3">
+                                     <span className="text-[9px] font-black text-white/60">
+                                         {(() => {
+                                             const hasAudio = includeAudio;
+                                             const isKling = videoModel === 'kling';
+                                             if (isKling) return hasAudio ? "₹17.43/s" : "₹11.62/s";
+                                             const isFast = videoModel === 'veo3_fast';
+                                             const isHighRes = resolution === '2K' || resolution === '4K';
+                                             if (isFast) return isHighRes ? (hasAudio ? "₹40.67/s" : "₹34.86/s") : (hasAudio ? "₹17.43/s" : "₹11.62/s");
+                                             return isHighRes ? (hasAudio ? "₹69.72/s" : "₹46.48/s") : (hasAudio ? "₹46.48/s" : "₹23.24/s");
+                                         })()}
+                                     </span>
+                                     <span className="text-[8px] text-white/20 font-bold uppercase">Incl. 40% Margin</span>
+                                 </div>
+                             </div>
                         </div>
 
                         {error && <div className="text-red-400 text-[10px] p-2 bg-red-400/10 rounded-lg mb-2">{error}</div>}
