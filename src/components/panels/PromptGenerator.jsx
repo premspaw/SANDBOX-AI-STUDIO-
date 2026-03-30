@@ -3548,11 +3548,9 @@ DO NOT add new objects or change the scene. Enhance only.
                                     refBoard={refBoard}
                                 />
                             )}
-
-
                             <div className="shrink-0 flex flex-col gap-1.5 w-full md:w-52">
                                 <button onClick={generateImage} disabled={isLoading}
-                                    className={cn("w-full rounded-[20px] flex flex-col items-center justify-center gap-1 transition-all shadow-[0_10px_30px_rgba(212,255,0,0.15)] active:scale-95 h-20",
+                                    className={cn("w-full rounded-[20px] flex flex-col items-center justify-center gap-1 transition-all active:scale-95 h-20",
                                         isLoading ? "bg-white/5 cursor-not-allowed" : "bg-[#D4FF00] hover:bg-white hover:shadow-[0_0_30px_rgba(212,255,0,0.3)]")}
                                 >
                                     <Zap className={cn("w-6 h-6 text-black", isLoading && "animate-pulse")} />
@@ -3568,6 +3566,45 @@ DO NOT add new objects or change the scene. Enhance only.
                                         )
                                     })()}
                                 </button>
+
+                                {mode === 'video' && (
+                                    <div className="flex items-stretch mt-1">
+                                        {[
+                                            { label: 'RATIO', key: 'aspectRatio', options: ['16:9', '9:16', '1:1', '4:5'], display: v => v },
+                                            { label: 'DUR', key: 'duration', options: (isKling ? ['5 Seconds', '10 Seconds'] : ['4 Seconds', '6 Seconds', '8 Seconds']), display: v => v.replace(' Seconds', 'S') },
+                                            { label: 'RES', key: 'resolution', options: ['720p', '1080p', '2K'], display: v => v.toUpperCase() }
+                                        ].map((setting, idx) => {
+                                            const isLocked = setting.key === 'duration' && !isKling && !!selections.lastFrame;
+                                            return (
+                                                <div key={setting.key} className={cn(
+                                                    "flex-1 flex flex-col items-center justify-center py-0.5",
+                                                    idx > 0 && "border-l border-white/8"
+                                                )}>
+                                                    <span className={cn(
+                                                        "text-[5.5px] font-black uppercase tracking-[0.15em] leading-none",
+                                                        isLocked ? "text-[#D4FF00]/60" : "text-white/15"
+                                                    )}>
+                                                        {setting.label}
+                                                    </span>
+                                                    <select
+                                                        disabled={isLocked}
+                                                        value={isLocked ? "8 Seconds" : selections[setting.key]}
+                                                        onChange={e => updateVideoSetting(setting.key, e.target.value)}
+                                                        className={cn(
+                                                            "appearance-none bg-transparent text-center text-[9px] font-bold outline-none cursor-pointer w-full leading-tight",
+                                                            isLocked ? "text-[#D4FF00]" : "text-white/70"
+                                                        )}
+                                                        style={{ accentColor: '#D4FF00' }}
+                                                    >
+                                                        {setting.options.map(o => (
+                                                            <option key={o} value={o} className="bg-[#111]">{setting.display(o)}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         </div>
                         {mode === 'video' ? (
@@ -3599,7 +3636,7 @@ DO NOT add new objects or change the scene. Enhance only.
                                         <div className="w-px h-6 bg-white/8 shrink-0" />
 
                                         {/* VIDEO CONTROL PILLS */}
-                                        {VIDEO_CONTROLS.filter(c => !['audio', 'dialogue'].includes(c.key)).map(ctrl => {
+                                        {VIDEO_CONTROLS.filter(c => !['duration', 'resolution', 'aspectRatio', 'dialogue', 'audio'].includes(c.key)).map(ctrl => {
                                             const val = selections[ctrl.key]
 
                                             // Icon mapping for "Evolved" pill bar
@@ -3662,7 +3699,7 @@ DO NOT add new objects or change the scene. Enhance only.
                                                 : val;
 
                                             // Pills with long option texts get capped so they don't bloat the bar
-                                            const isWidePill = ['emotion', 'artisticStyle', 'lens'].includes(ctrl.key)
+                                            const isWidePill = ['emotion', 'artisticStyle', 'lens', 'pacing'].includes(ctrl.key)
                                             const isDurationLocked = ctrl.key === 'duration' && !isKling && !!selections.lastFrame;
 
                                             return (
@@ -3672,7 +3709,7 @@ DO NOT add new objects or change the scene. Enhance only.
                                                         {Icon && <Icon className="w-1.5 h-1.5" />} 
                                                         {ctrl.label} {isDurationLocked && "(8s Locked)"}
                                                     </span>
-                                                    <div className="relative" style={isWidePill ? { maxWidth: '92px' } : {}}>
+                                                    <div className="relative" style={isWidePill ? { maxWidth: '85px' } : {}}>
                                                         <select
                                                             disabled={isDurationLocked}
                                                             value={isDurationLocked ? "8 Seconds" : val}
@@ -3681,7 +3718,7 @@ DO NOT add new objects or change the scene. Enhance only.
                                                                 "appearance-none bg-white/[0.06] hover:bg-white/10 border transition-all cursor-pointer focus:outline-none focus:border-white/30 rounded-full pl-3 pr-6 py-1 text-[10px] font-semibold text-white",
                                                                 isDurationLocked ? "border-[#D4FF00]/40 opacity-80 cursor-not-allowed" : "border-white/10 hover:border-white/20"
                                                             )}
-                                                            style={{ minWidth: 0, width: isWidePill ? '92px' : 'auto' }}
+                                                            style={{ minWidth: 0, width: isWidePill ? '85px' : 'auto' }}
                                                         >
                                                             {options.map(o => <option key={o} value={o} className="bg-[#111]">{ctrl.key === 'duration' ? o.replace(' Seconds', 's') : o}</option>)}
                                                         </select>
