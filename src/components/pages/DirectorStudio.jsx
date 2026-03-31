@@ -4,11 +4,11 @@ import {
     Upload, Film, Sparkles, Loader2, Key, AlertCircle,
     Image as ImageIcon, Plus, Video, PlaySquare, ArrowLeft,
     Lightbulb, FileVideo, Layers, Copy, ArrowRight,
-    Coins, Pen, X, Maximize
+    Coins, Pen, X, Maximize, Zap, ChevronDown, Timer, Mic, Maximize2, Square
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store';
- 
+import { cn } from '../../lib/utils';
 import { saveGeneratedAsset } from "../../services/supabaseService.js";
 
 const VIDEO_PRESETS = [
@@ -896,120 +896,156 @@ export default function DirectorStudio() {
                         )}
                     </div>
 
-                    <div className="p-2 border-t border-[#1e1e24] bg-[#0a0a0a] space-y-2">
-                        {mediaType === 'video' && (
-                             <div className="flex items-center justify-between bg-white/5 p-1.5 rounded-lg">
-                                 <span className="text-[8px] font-black uppercase text-white/30">Compute Node</span>
-                                 <select value={veoProvider} onChange={(e) => setVeoProvider(e.target.value)} className="bg-transparent text-[10px] uppercase font-black cursor-pointer outline-none border-none">
-                                     <option value="kie" className="bg-[#0a0a0a]">KIE AI Network</option>
-                                     <option value="google" className="bg-[#0a0a0a]">Google Vertex API</option>
-                                 </select>
-                             </div>
-                        )}
-                        <div className={`grid ${mediaType === 'video' ? 'grid-cols-3' : 'grid-cols-2'} gap-1`}>
-                            {mediaType === 'video' ? (
-                                <>
-                                    <div className="bg-white/5 p-1.5 rounded-lg">
-                                        <span className="text-[7px] font-black uppercase text-white/20">Engine</span>
-                                        <select value={videoModel} onChange={(e) => setVideoModel(e.target.value)} className="w-full bg-transparent text-[10px] font-bold border-none outline-none">
-                                            <option value="veo3_fast" className="bg-[#0a0a0a]">Veo Fast</option>
-                                            <option value="veo3" className="bg-[#0a0a0a]">Veo Quality</option>
-                                            <option value="kling" className="bg-[#0a0a0a]">Kling 3.0</option>
-                                        </select>
+                    <div className="p-3 border-t border-[#1e1e24] bg-[#0a0a0a] space-y-4">
+                        {/* ── PILL-BASED CONTROL BARS ───────────────────────────────── */}
+                        <div className="space-y-3">
+                            {/* FIRST ROW: ENGINE & COMPUTE NODES */}
+                            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                                {mediaType === 'video' && (
+                                    <div className="flex flex-col items-start shrink-0">
+                                        <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5">
+                                            <Zap className="w-2 h-2 text-[#AADD00]" /> Node
+                                        </span>
+                                        <div className="relative">
+                                            <select
+                                                value={veoProvider}
+                                                onChange={(e) => setVeoProvider(e.target.value)}
+                                                className="appearance-none bg-white/[0.06] hover:bg-white/10 border border-white/10 hover:border-[#AADD00]/30 rounded-full pl-3 pr-7 py-1.5 text-[10px] font-bold text-white transition-all cursor-pointer focus:outline-none"
+                                            >
+                                                <option value="kie" className="bg-[#0a0a0a]">KIE Network</option>
+                                                <option value="google" className="bg-[#0a0a0a]">Vertex Cloud</option>
+                                            </select>
+                                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-white/20 pointer-events-none" />
+                                        </div>
                                     </div>
-                                    <div className="bg-white/5 p-1.5 rounded-lg">
-                                        <span className="text-[7px] font-black uppercase text-white/20">Aspect</span>
-                                        <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)} className="w-full bg-transparent text-[10px] font-bold border-none outline-none">
+                                )}
+
+                                {mediaType === 'video' && (
+                                    <div className="flex flex-col items-start shrink-0">
+                                        <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5">
+                                            <Video className="w-2 h-2 text-blue-400" /> Engine
+                                        </span>
+                                        <div className="relative">
+                                            <select
+                                                value={videoModel}
+                                                onChange={(e) => setVideoModel(e.target.value)}
+                                                className="appearance-none bg-white/[0.06] hover:bg-white/10 border border-white/10 hover:border-blue-400/30 rounded-full pl-3 pr-7 py-1.5 text-[10px] font-bold text-white transition-all cursor-pointer focus:outline-none"
+                                            >
+                                                <option value="veo3_fast" className="bg-[#0a0a0a]">Veo Fast</option>
+                                                <option value="veo3" className="bg-[#0a0a0a]">Veo Pro</option>
+                                                <option value="kling" className="bg-[#0a0a0a]">Kling 3.0</option>
+                                            </select>
+                                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-white/20 pointer-events-none" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* SECOND ROW: FORMAT & DURATION */}
+                            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                                <div className="flex flex-col items-start shrink-0">
+                                    <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5">
+                                        <Square className="w-2 h-2 text-purple-400" /> Ratio
+                                    </span>
+                                    <div className="relative">
+                                        <select
+                                            value={aspectRatio}
+                                            onChange={(e) => setAspectRatio(e.target.value)}
+                                            className="appearance-none bg-white/[0.06] hover:bg-white/10 border border-white/10 hover:border-purple-400/30 rounded-full pl-3 pr-7 py-1.5 text-[10px] font-bold text-white transition-all cursor-pointer focus:outline-none"
+                                        >
                                             <option value="16:9">16:9</option>
                                             <option value="9:16">9:16</option>
+                                            {mediaType === 'image' && <option value="1:1">1:1</option>}
                                         </select>
+                                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-white/20 pointer-events-none" />
                                     </div>
-                                    <div className="bg-white/5 p-1.5 rounded-lg">
-                                        <div className="flex items-center justify-between mb-0.5">
-                                            <span className="text-[7px] font-black uppercase text-white/20">Duration</span>
-                                            {videoModel !== 'kling' && !!lastFrameImg && (
-                                                <span className="text-[7px] font-black text-[#AADD00] animate-pulse">8s Locked</span>
-                                            )}
+                                </div>
+
+                                {mediaType === 'video' && (
+                                    <div className="flex flex-col items-start shrink-0">
+                                        <span className={cn("text-[8px] font-black uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5", 
+                                            (videoModel !== 'kling' && !!lastFrameImg) ? "text-[#AADD00]" : "text-white/30")}>
+                                            <Timer className="w-2 h-2" /> {videoModel !== 'kling' && !!lastFrameImg ? "FIXED" : "DUR"}
+                                        </span>
+                                        <div className="relative">
+                                            <select
+                                                disabled={videoModel !== 'kling' && !!lastFrameImg}
+                                                value={videoModel !== 'kling' && !!lastFrameImg ? "8" : duration}
+                                                onChange={(e) => setDuration(e.target.value)}
+                                                className={cn(
+                                                    "appearance-none bg-white/[0.06] border transition-all cursor-pointer focus:outline-none rounded-full pl-3 pr-7 py-1.5 text-[10px] font-bold",
+                                                    (videoModel !== 'kling' && !!lastFrameImg) 
+                                                        ? "border-[#AADD00]/40 text-[#AADD00] bg-[#AADD00]/5 cursor-not-allowed" 
+                                                        : "bg-white/[0.06] hover:bg-white/10 border-white/10 text-white"
+                                                )}
+                                            >
+                                                {videoModel === 'kling' ? (
+                                                    <>
+                                                        <option value="5">5s Seq</option>
+                                                        <option value="10">10s Cine</option>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <option value="4">4s Seq</option>
+                                                        <option value="6">6s Scr</option>
+                                                        <option value="8">8s Cine</option>
+                                                    </>
+                                                )}
+                                            </select>
+                                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-white/20 pointer-events-none" />
                                         </div>
-                                        <select 
-                                            disabled={videoModel !== 'kling' && !!lastFrameImg}
-                                            value={videoModel !== 'kling' && !!lastFrameImg ? "8" : duration} 
-                                            onChange={(e) => setDuration(e.target.value)} 
-                                            className={cn("w-full bg-transparent text-[10px] font-bold border-none outline-none", (videoModel !== 'kling' && !!lastFrameImg) && "text-[#AADD00] cursor-not-allowed")}
+                                    </div>
+                                )}
+
+                                <div className="flex flex-col items-start shrink-0">
+                                    <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5">
+                                        <Maximize2 className="w-2 h-2 text-emerald-400" /> Res
+                                    </span>
+                                    <div className="relative">
+                                        <select
+                                            value={resolution}
+                                            onChange={(e) => setResolution(e.target.value)}
+                                            className="appearance-none bg-white/[0.06] hover:bg-white/10 border border-white/10 hover:border-emerald-400/30 rounded-full pl-3 pr-7 py-1.5 text-[10px] font-bold text-white transition-all cursor-pointer focus:outline-none"
                                         >
-                                            {videoModel === 'kling' ? (
+                                            {mediaType === 'video' ? (
                                                 <>
-                                                    <option value="5">5s Sequence</option>
-                                                    <option value="10">10s Cinematic</option>
+                                                    <option value="720p">720p</option>
+                                                    <option value="1080p">1080p HD</option>
+                                                    <option value="4K">4K UHD</option>
                                                 </>
                                             ) : (
                                                 <>
-                                                    <option value="4">4s Sequence</option>
-                                                    <option value="6">6s Script</option>
-                                                    <option value="8">8s Cinematic</option>
+                                                    <option value="1K">1K HD</option>
+                                                    <option value="2K">2K QHD</option>
+                                                    <option value="4K">4K UHD</option>
                                                 </>
                                             )}
                                         </select>
+                                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-white/20 pointer-events-none" />
                                     </div>
-                                    <div className="bg-white/5 p-1.5 rounded-lg">
-                                        <span className="text-[7px] font-black uppercase text-white/20">Quality</span>
-                                        <select value={resolution} onChange={(e) => setResolution(e.target.value)} className="w-full bg-transparent text-[10px] font-bold border-none outline-none">
-                                            <option value="720p">720p</option>
-                                            <option value="1080p">1080p</option>
-                                            <option value="4K">4K UHD</option>
-                                        </select>
+                                </div>
+
+                                {mediaType === 'video' && (
+                                    <div className="flex flex-col items-start shrink-0">
+                                        <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5">
+                                            <Mic className="w-2 h-2 text-orange-400" /> Audio
+                                        </span>
+                                        <div className="relative">
+                                            <select
+                                                value={includeAudio ? "on" : "off"}
+                                                onChange={(e) => setIncludeAudio(e.target.value === "on")}
+                                                className="appearance-none bg-white/[0.06] hover:bg-white/10 border border-white/10 hover:border-orange-400/30 rounded-full pl-3 pr-7 py-1.5 text-[10px] font-bold text-white transition-all cursor-pointer focus:outline-none"
+                                            >
+                                                <option value="off">Off</option>
+                                                <option value="on">On</option>
+                                            </select>
+                                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-white/20 pointer-events-none" />
+                                        </div>
                                     </div>
-                                    <div className="bg-white/5 p-1.5 rounded-lg">
-                                        <span className="text-[7px] font-black uppercase text-white/20">Audio</span>
-                                        <select value={includeAudio ? "on" : "off"} onChange={(e) => setIncludeAudio(e.target.value === "on")} className="w-full bg-transparent text-[10px] font-bold border-none outline-none">
-                                            <option value="off" className="bg-[#0a0a0a]">No Sound</option>
-                                            <option value="on" className="bg-[#0a0a0a]">Generate Audio</option>
-                                        </select>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="bg-white/5 p-1.5 rounded-lg">
-                                        <span className="text-[7px] font-black uppercase text-white/20">Quality</span>
-                                        <select value={resolution} onChange={(e) => setResolution(e.target.value)} className="w-full bg-transparent text-[10px] font-bold border-none outline-none">
-                                            <option value="1K">1K HD</option>
-                                            <option value="2K">2K QHD</option>
-                                            <option value="4K">4K UHD</option>
-                                        </select>
-                                    </div>
-                                    <div className="bg-white/5 p-1.5 rounded-lg">
-                                        <span className="text-[7px] font-black uppercase text-white/20">Aspect</span>
-                                        <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)} className="w-full bg-transparent text-[10px] font-bold border-none outline-none">
-                                            <option value="16:9">16:9</option>
-                                            <option value="9:16">9:16</option>
-                                            <option value="1:1">1:1</option>
-                                        </select>
-                                    </div>
-                                </>
-                            )}
+                                )}
+                            </div>
                         </div>
-                        <div className="flex items-center justify-center mb-2 px-2">
-                             <div className="w-full p-2 bg-[#AADD00]/5 border border-[#AADD00]/10 rounded-xl flex items-center justify-between">
-                                 <div className="flex items-center gap-2">
-                                     <div className="w-1.5 h-1.5 rounded-full bg-[#AADD00] animate-pulse" />
-                                     <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Rate Estimate</span>
-                                 </div>
-                                 <div className="flex items-center gap-3">
-                                     <span className="text-[9px] font-black text-white/60">
-                                         {(() => {
-                                             const hasAudio = includeAudio;
-                                             const isKling = videoModel === 'kling';
-                                             if (isKling) return hasAudio ? "₹17.43/s" : "₹11.62/s";
-                                             const isFast = videoModel === 'veo3_fast';
-                                             const isHighRes = resolution === '2K' || resolution === '4K';
-                                             if (isFast) return isHighRes ? (hasAudio ? "₹40.67/s" : "₹34.86/s") : (hasAudio ? "₹17.43/s" : "₹11.62/s");
-                                             return isHighRes ? (hasAudio ? "₹69.72/s" : "₹46.48/s") : (hasAudio ? "₹46.48/s" : "₹23.24/s");
-                                         })()}
-                                     </span>
-                                     <span className="text-[8px] text-white/20 font-bold uppercase">Incl. 40% Margin</span>
-                                 </div>
-                             </div>
-                        </div>
+
 
                         {error && <div className="text-red-400 text-[10px] p-2 bg-red-400/10 rounded-lg mb-2">{error}</div>}
                         
@@ -1019,7 +1055,7 @@ export default function DirectorStudio() {
                             onClick={activeMode === 'director' ? (mediaType === 'video' ? handleGenerateDirector : handleGenerateImageDirector) : (mediaType === 'video' ? handleGenerateReplicator : handleGenerateImageReplicator)}
                             disabled={step === 'generating'}
                             className={`w-full relative py-4.5 rounded-xl font-black uppercase text-[12px] tracking-[0.2em] shadow-xl overflow-hidden transition-all h-[58px]
-                                ${step === 'generating' ? 'bg-white/5 text-white/20' : 'bg-[#AADD00] text-black shadow-[0_15px_30px_rgba(170,221,0,0.35)]'}
+                                ${step === 'generating' ? 'bg-white/5 text-white/20' : 'bg-[#AADD00] text-black shadow-[0_20px_40px_rgba(170,221,0,0.4)]'}
                             `}
                         >
                             {/* Shimmer Effect */}
@@ -1034,7 +1070,7 @@ export default function DirectorStudio() {
                                     </>
                                 ) : (
                                     <>
-                                        {mediaType === 'video' ? <Film size={14} /> : <PlaySquare size={14} />}
+                                        {mediaType === 'video' ? <Film size={14} /> : <ImageIcon size={14} />}
                                         <span className="flex items-center gap-2">
                                             GENERATE {mediaType.toUpperCase()}
                                             <span className="opacity-40 font-bold">•</span>
@@ -1047,6 +1083,7 @@ export default function DirectorStudio() {
                             </div>
                         </motion.button>
                     </div>
+
                 </motion.div>
 
                 {/* Right Panel */}
@@ -1103,7 +1140,8 @@ export default function DirectorStudio() {
                                                 </span>
                                             </div>
                                             <span className="text-[9px] font-bold text-white/20 uppercase">{aspectRatio} • {resolution}</span>
-                                        </div>                                        <div className="rounded-[2.5rem] overflow-hidden bg-black aspect-video border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.8)] relative group max-h-[50vh]">
+                                        </div>
+                                        <div className="rounded-[2.5rem] overflow-hidden bg-black aspect-video border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.8)] relative group max-h-[50vh]">
                                             {generatedVideoUrl.match(/\.(jpeg|jpg|png|webp|svg)($|\?)/i) || generatedVideoUrl.startsWith('data:image/') ? (
                                                 <img src={generatedVideoUrl} className="w-full h-full object-contain" />
                                             ) : (

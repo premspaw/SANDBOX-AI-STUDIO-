@@ -3582,7 +3582,7 @@ DO NOT add new objects or change the scene. Enhance only.
                                                 )}>
                                                     <span className={cn(
                                                         "text-[5.5px] font-black uppercase tracking-[0.15em] leading-none",
-                                                        isLocked ? "text-[#D4FF00]/60" : "text-white/15"
+                                                        isLocked ? "text-[#D4FF00]/60" : "text-[#D4FF00]"
                                                     )}>
                                                         {setting.label}
                                                     </span>

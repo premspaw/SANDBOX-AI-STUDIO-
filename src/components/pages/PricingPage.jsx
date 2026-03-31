@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { getApiUrl } from '../../config/apiConfig';
 
 const PricingPage = () => {
-    const [isYearly, setIsYearly] = useState(true);
+    const [isYearly, setIsYearly] = useState(false);
     const [loadingPlan, setLoadingPlan] = useState(null);
     const { fetchUserProfile, userProfile } = useAppStore();
 
@@ -58,6 +58,7 @@ const PricingPage = () => {
             monthlyPrice: 399,
             yearlyPrice: 319,
             description: "An affordable kickstart with a 6-Month setup value layout!",
+            image: "/pricing/starter.png",
             features: [
                 "250 Main Credits / month",
                 "Starter Character Creation",
@@ -76,15 +77,16 @@ const PricingPage = () => {
         },
         {
             name: "Influencer",
-            monthlyPrice: 799,
-            yearlyPrice: 639,
+            monthlyPrice: 1999,
+            yearlyPrice: 1599,
             description: "The choice for professional creators and growing visual brands.",
+            image: "/pricing/influencer.png",
             features: [
-                "600 Main Credits / month",
+                "1999 Main Credits / month",
                 "3 AI Character Creations",
                 "4 Concurrent Jobs",
-                "100 Kling 720p Videos (5s) OR",
-                "5 Veo 1080p Videos (8s)",
+                "32 Kling 720p Videos (5s) OR",
+                "21 Veo 1080p Videos (8s)",
                 "Batch Mode Support",
                 "Priority Support"
             ],
@@ -98,15 +100,18 @@ const PricingPage = () => {
         },
         {
             name: "Director",
-            monthlyPrice: 2500,
-            yearlyPrice: 1999,
+            monthlyPrice: 4999,
+            yearlyPrice: 3999,
+            period: "/3month",
+            yearlyText: "Billed ₹7,998 annually",
             description: "Maximum cinematic horsepower for Agencies and Power Users.",
+            image: "/pricing/director.png",
             features: [
-                "2000 Main Credits / month",
+                "4999 Main Credits / month",
                 "10 AI Character Creations",
                 "8 Concurrent Jobs",
-                "200 Kling 720p Videos (5s) OR",
-                "18 Veo 1080p Videos (8s)",
+                "80 Kling 720p Videos (5s) OR",
+                "53 Veo 1080p Videos (8s)",
                 "Unlimited Nano Banana Images",
                 "4K Export Support",
                 "24/7 Dedicated Support"
@@ -121,15 +126,18 @@ const PricingPage = () => {
         },
         {
             name: "Enterprise",
-            monthlyPrice: 5000,
-            yearlyPrice: 3999,
+            monthlyPrice: 9999,
+            yearlyPrice: 7999,
+            period: "/6month",
+            yearlyText: "Billed ₹15,998 annually",
             description: "Enterprise scalability for Commercial workflows and large volumes.",
+            image: "/pricing/enterprise.png",
             features: [
-                "5000 Main Credits / month",
+                "9999 Main Credits / month",
                 "Unlimited AI Characters",
                 "16 Concurrent Jobs",
-                "500 Kling 720p Videos (5s) OR",
-                "40 Veo 1080p Videos (8s)",
+                "161 Kling 720p Videos (5s) OR",
+                "107 Veo 1080p Videos (8s)",
                 "Multi-node Sync renders",
                 "Raw Source Assets exports",
                 "Custom visual model training"
@@ -163,15 +171,6 @@ const PricingPage = () => {
                     </h1>
                 </div>
 
-                {/* Toggle - Premium */}
-                <div className="flex items-center gap-3">
-                    <span className={cn("text-[10px] font-bold uppercase tracking-widest transition-colors duration-300", !isYearly ? "text-white" : "text-white/30")}>Monthly</span>
-                    <button onClick={() => setIsYearly(!isYearly)} className="relative w-12 h-6 bg-white/5 rounded-full border border-white/10 p-0.5 flex items-center transition-all duration-500 hover:border-[#D4FF00]/50 shadow-inner group">
-                        <motion.div animate={{ x: isYearly ? 24 : 0 }} className="w-5 h-5 bg-[#D4FF00] rounded-full shadow-[0_0_15px_rgba(212,255,0,0.8)] flex items-center justify-center group-hover:scale-105 transition-transform" />
-                    </button>
-                    <span className={cn("text-[10px] font-bold uppercase tracking-widest transition-colors duration-300", isYearly ? "text-white" : "text-white/30")}>Yearly</span>
-                    <div className="px-2 py-0.5 bg-[#D4FF00]/20 border border-[#D4FF00]/40 rounded-lg text-[9px] font-black text-[#D4FF00] uppercase tracking-wider animate-pulse shadow-[0_0_15px_rgba(212,255,0,0.1)]">Save 20%</div>
-                </div>
             </div>
 
             {/* Main Content Layout Grid - Stagger Layouts */}
@@ -212,12 +211,32 @@ const PricingPage = () => {
                                 </div>
                             </div>
 
+                            {plan.image && (
+                                <div className="mb-5 rounded-xl overflow-hidden aspect-[16/10] bg-white/[0.03] border border-white/5 relative group flex items-center justify-center">
+                                    <img 
+                                        src={plan.image} 
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                                        alt={plan.name}
+                                        onError={(e) => {
+                                            e.target.style.display = 'none';
+                                            e.target.parentElement.classList.add('bg-gradient-to-br', 'from-white/[0.05]', 'to-transparent');
+                                        }}
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                        <div className="px-3 py-1.5 bg-black/40 backdrop-blur-md rounded-lg border border-white/10 text-[8px] font-black uppercase tracking-widest text-white/60">
+                                            Preview
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="space-y-1 mb-5 shrink-0 pb-4 border-b border-white/5">
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-4xl font-black italic tracking-tighter text-white">₹{currentPrice}</span>
-                                    <span className="text-white/40 text-xs font-bold uppercase">/mo</span>
+                                    <span className="text-white/40 text-xs font-bold uppercase">{plan.period || "/mo"}</span>
                                 </div>
-                                {isYearly && <p className="text-[9px] text-[#D4FF00]/80 font-bold uppercase tracking-widest leading-none">Billed ₹{(plan.yearlyPrice * 12).toLocaleString()} annually</p>}
+                                {isYearly && <p className="text-[9px] text-[#D4FF00]/80 font-bold uppercase tracking-widest leading-none">{plan.yearlyText || `Billed ₹${(plan.yearlyPrice * 12).toLocaleString()} annually`}</p>}
                             </div>
 
                             <div className="flex-1 overflow-y-auto custom-scrollbar pr-3 space-y-2.5">
