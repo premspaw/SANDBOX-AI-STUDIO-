@@ -1529,13 +1529,13 @@ const ProLighting = ({ selections, setSelections }) => (
 export function PromptGenerator({ onUpscale }) {
     const [mode, setMode] = useState(() => localStorage.getItem('prompt_generator_mode') || 'image')
     const [previewTab, setPreviewTab] = useState('image')
-    const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('prompt_generator_selected_model') || 'nano-banana')
+    const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('prompt_generator_selected_model') || 'veo-fast')
     const [showCinematography, setShowCinematography] = useState(true)
     const [selections, setSelections] = useState(() => {
         const defaults = {
             camera: 'arri', angle: 'wide', lighting: 'cinematic', style: 'realistic',
             lens: '35mm', composition: 'none', focalLength: 35, aperture: 45,
-            aspectRatio: '16:9', subject: '', referenceImage: null, quality: '1k',
+            aspectRatio: '9:16', subject: '', referenceImage: null, quality: '1k',
             videoInputMode: 'text', referenceUsage: 'first_frame', referenceImageEnd: null,
             firstFrame: null, lastFrame: null, editInstruction: '',
             timestampSegments: [{ start: 0, end: 2, description: '' }],
@@ -1638,6 +1638,7 @@ export function PromptGenerator({ onUpscale }) {
     const [upscaledImage, setUpscaledImage] = useState(null)
     const [activeStorySlotId, setActiveStorySlotId] = useState(() => localStorage.getItem('active_story_slot_id') || 'sb-1');
     const [activeShotSlotId, setActiveShotSlotId] = useState(() => localStorage.getItem('active_shot_slot_id') || 'ms-1');
+    const [activeDropdown, setActiveDropdown] = useState(null);
 
     // Safe Storage Wrappers (Filtered to avoid 5MB limit)
     const sanitizeForStorage = (slots) => {
@@ -1722,7 +1723,7 @@ export function PromptGenerator({ onUpscale }) {
     const [leftPreviewId, setLeftPreviewId] = useState(null)
     const [rightPreviewId, setRightPreviewId] = useState(null)
     const [renderTarget, setRenderTarget] = useState('center')
-    const MAX_FRAMES = 20
+    const MAX_FRAMES = 25
 
     const [showGallery, setShowGallery] = useState(false)
 
@@ -1749,7 +1750,6 @@ export function PromptGenerator({ onUpscale }) {
     const [galleryTab, setGalleryTab] = useState('recent') // recent | library
     const [isLoading, setIsLoading] = useState(false)
     const [showAnglesModal, setShowAnglesModal] = useState(false)
-    const [activeDropdown, setActiveDropdown] = useState(null) // 'ratio', 'dur', 'res'
 
     const [mentionSearch, setMentionSearch] = useState(null)
     const [mentionCursorPos, setMentionCursorPos] = useState(0)
@@ -2024,10 +2024,11 @@ export function PromptGenerator({ onUpscale }) {
                         const sessionIds = new Set(prev.map(f => f.id));
                         const newHistorical = recentFrames.filter(f => !sessionIds.has(f.id));
                         if (newHistorical.length === 0) return prev;
-                        const merged = [...prev, ...newHistorical];
-                        // Set activeFrameId synchronously inside the same batch
+                        // Limit combined list to not exceed MAX_FRAMES
+                        const merged = [...prev, ...newHistorical].slice(0, MAX_FRAMES);
+                        // Set activeFrameId synchronously inside same batch
                         if (!activeFrameId && merged.length > 0) {
-                            setTimeout(() => setActiveFrameId(merged[0].id), 0); // defer after render
+                            setTimeout(() => setActiveFrameId(merged[0].id), 0);
                         }
                         return merged;
                     });
@@ -2255,7 +2256,11 @@ export function PromptGenerator({ onUpscale }) {
                     model: 'Shot',
                     loading: false
                 };
-                setFrames(prev => [newFrame, ...prev]);
+                // Respect frame limit: if at limit, remove the oldest (rightmost)
+                setFrames(prev => {
+                    const next = [newFrame, ...prev];
+                    return next.slice(0, MAX_FRAMES);
+                });
                 showToast('Frame extracted');
             }
         } catch (err) {
@@ -2530,7 +2535,9 @@ export function PromptGenerator({ onUpscale }) {
 
                 const modelInfo = AI_MODELS.find(m => m.id === selectedModel)
                 if (!modelInfo?.available) { alert(`${modelInfo?.name || 'This model'} is coming soon!`); break; }
-                if (frames.length + i >= MAX_FRAMES) { alert('Frame limit reached (50). Clear some frames.'); break; }
+                
+                // FIFO logic: If limit reached, oldest frames will be removed automatically
+                // in the setFrames call below to allow new generations.
 
                 // Deduct shorts for each iteration
                 const res = await spend(costKey, unitCost);
@@ -2547,7 +2554,13 @@ export function PromptGenerator({ onUpscale }) {
                 }
 
                 const newFrameId = `frame-${Date.now()}-${i}`
-                setFrames(prev => [...prev, { id: newFrameId, url: null, type: mode, model: selectedModel, prompt: generatedPrompt, aspectRatio: selections.aspectRatio, loading: true }])
+                setFrames(prev => {
+                    const newFrame = { id: newFrameId, url: null, type: mode, model: selectedModel, prompt: generatedPrompt, aspectRatio: selections.aspectRatio, loading: true };
+                    // Prepend new frame to LEFT so latest is always first
+                    const next = [newFrame, ...prev];
+                    // FIFO: keep only the most recent MAX_FRAMES
+                    return next.length > MAX_FRAMES ? next.slice(0, MAX_FRAMES) : next;
+                })
                 setActiveFrameId(newFrameId)
 
                 const isGoogleVideo = selectedModel === 'veo' || selectedModel === 'veo-fast' || selectedModel.startsWith('veo-3.1');
@@ -3567,42 +3580,176 @@ DO NOT add new objects or change the scene. Enhance only.
                                     })()}
                                 </button>
 
+                                {/* MODERN DROP-UP CONTROLS ROW */}
                                 {mode === 'video' && (
-                                    <div className="flex items-stretch mt-1">
-                                        {[
-                                            { label: 'RATIO', key: 'aspectRatio', options: ['16:9', '9:16', '1:1', '4:5'], display: v => v },
-                                            { label: 'DUR', key: 'duration', options: (isKling ? ['5 Seconds', '10 Seconds'] : ['4 Seconds', '6 Seconds', '8 Seconds']), display: v => v.replace(' Seconds', 'S') },
-                                            { label: 'RES', key: 'resolution', options: ['720p', '1080p', '2K'], display: v => v.toUpperCase() }
-                                        ].map((setting, idx) => {
-                                            const isLocked = setting.key === 'duration' && !isKling && !!selections.lastFrame;
-                                            return (
-                                                <div key={setting.key} className={cn(
-                                                    "flex-1 flex flex-col items-center justify-center py-0.5",
-                                                    idx > 0 && "border-l border-white/8"
-                                                )}>
-                                                    <span className={cn(
-                                                        "text-[5.5px] font-black uppercase tracking-[0.15em] leading-none",
-                                                        isLocked ? "text-[#D4FF00]/60" : "text-[#D4FF00]"
-                                                    )}>
-                                                        {setting.label}
-                                                    </span>
-                                                    <select
-                                                        disabled={isLocked}
-                                                        value={isLocked ? "8 Seconds" : selections[setting.key]}
-                                                        onChange={e => updateVideoSetting(setting.key, e.target.value)}
-                                                        className={cn(
-                                                            "appearance-none bg-transparent text-center text-[9px] font-bold outline-none cursor-pointer w-full leading-tight",
-                                                            isLocked ? "text-[#D4FF00]" : "text-white/70"
-                                                        )}
-                                                        style={{ accentColor: '#D4FF00' }}
+                                    <div className="flex items-center gap-2 overflow-visible py-2 border-t border-white/5 mt-2 relative z-40">
+                                        {/* ENGINE DROP-UP */}
+                                        <div className="relative">
+                                            <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5">
+                                                <Zap className="w-2 h-2 text-[#AADD00]" /> Engine
+                                            </span>
+                                            <button 
+                                                onClick={() => setActiveDropdown(activeDropdown === 'engine' ? null : 'engine')}
+                                                className={cn(
+                                                    "bg-white/[0.03] border border-white/5 px-4 py-1.5 rounded-full text-[9px] font-black uppercase text-white hover:bg-white/10 transition-all flex items-center gap-2",
+                                                    activeDropdown === 'engine' && "border-[#AADD00]/50 bg-[#AADD00]/5"
+                                                )}
+                                            >
+                                                {selectedModel === 'veo3_fast' ? 'Veo Fast' : selectedModel === 'veo-fast' ? 'Veo Fast' : selectedModel === 'veo' ? 'Veo Pro' : 'Kling'}
+                                                <ChevronDown className={cn("w-2.5 h-2.5 text-white/30 transition-transform", activeDropdown === 'engine' && "rotate-180")} />
+                                            </button>
+                                            <AnimatePresence>
+                                                {activeDropdown === 'engine' && (
+                                                    <motion.div 
+                                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                        className="absolute bottom-full left-0 mb-2 w-32 bg-[#141414] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-[100] p-1"
                                                     >
-                                                        {setting.options.map(o => (
-                                                            <option key={o} value={o} className="bg-[#111]">{setting.display(o)}</option>
+                                                        {filteredModels.map(m => (
+                                                            <button
+                                                                key={m.id}
+                                                                disabled={!m.available}
+                                                                onClick={() => { setSelectedModel(m.id); setActiveDropdown(null); }}
+                                                                className={cn(
+                                                                    "w-full text-left px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all",
+                                                                    selectedModel === m.id ? "bg-[#AADD00] text-black" : "text-white/60 hover:bg-white/5 hover:text-white",
+                                                                    !m.available && "opacity-30 cursor-not-allowed"
+                                                                )}
+                                                            >
+                                                                {m.name}
+                                                            </button>
                                                         ))}
-                                                    </select>
-                                                </div>
-                                            )
-                                        })}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+
+                                        {/* RATIO DROP-UP */}
+                                        <div className="relative">
+                                            <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5">
+                                                <Square className="w-2 h-2 text-purple-400" /> Ratio
+                                            </span>
+                                            <button 
+                                                onClick={() => setActiveDropdown(activeDropdown === 'ratio' ? null : 'ratio')}
+                                                className={cn(
+                                                    "bg-white/[0.03] border border-white/5 px-4 py-1.5 rounded-full text-[9px] font-black uppercase text-white hover:bg-white/10 transition-all flex items-center gap-2",
+                                                    activeDropdown === 'ratio' && "border-purple-500/50 bg-purple-500/5"
+                                                )}
+                                            >
+                                                {selections.aspectRatio}
+                                                <ChevronDown className={cn("w-2.5 h-2.5 text-white/30 transition-transform", activeDropdown === 'ratio' && "rotate-180")} />
+                                            </button>
+                                            <AnimatePresence>
+                                                {activeDropdown === 'ratio' && (
+                                                    <motion.div 
+                                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                        className="absolute bottom-full left-0 mb-2 w-32 bg-[#141414] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-[100] p-1"
+                                                    >
+                                                        {['16:9', '9:16', '1:1', '4:3'].map(opt => (
+                                                            <button
+                                                                key={opt}
+                                                                onClick={() => { updateVideoSetting('aspectRatio', opt); setActiveDropdown(null); }}
+                                                                className={cn(
+                                                                    "w-full text-left px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all",
+                                                                    selections.aspectRatio === opt ? "bg-purple-500 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
+                                                                )}
+                                                            >
+                                                                {opt}
+                                                            </button>
+                                                        ))}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+
+                                        {/* DURATION DROP-UP */}
+                                        <div className="relative">
+                                            <span className={cn("text-[8px] font-black uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5", 
+                                                (!isKling && !!selections.lastFrame) ? "text-[#AADD00]" : "text-white/30")}>
+                                                <Timer className="w-2 h-2" /> {!isKling && !!selections.lastFrame ? "FIXED" : "DUR"}
+                                            </span>
+                                            <button 
+                                                disabled={!isKling && !!selections.lastFrame}
+                                                onClick={() => setActiveDropdown(activeDropdown === 'duration' ? null : 'duration')}
+                                                className={cn(
+                                                    "bg-white/[0.03] border border-white/5 px-4 py-1.5 rounded-full text-[9px] font-black uppercase text-white hover:bg-white/10 transition-all flex items-center gap-2",
+                                                    activeDropdown === 'duration' && "border-[#AADD00]/50 bg-[#AADD00]/5",
+                                                    (!isKling && !!selections.lastFrame) && "opacity-50 cursor-not-allowed"
+                                                )}
+                                            >
+                                                {!isKling && !!selections.lastFrame ? '8s' : selections.duration.replace(' Seconds', 's')}
+                                                <ChevronDown className={cn("w-2.5 h-2.5 text-white/30 transition-transform", activeDropdown === 'duration' && "rotate-180")} />
+                                            </button>
+                                            <AnimatePresence>
+                                                {activeDropdown === 'duration' && (
+                                                    <motion.div 
+                                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                        className="absolute bottom-full left-0 mb-2 w-32 bg-[#141414] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-[100] p-1"
+                                                    >
+                                                        {(isKling 
+                                                            ? [{ id: '5 Seconds', label: '5s' }, { id: '10 Seconds', label: '10s' }]
+                                                            : [{ id: '4 Seconds', label: '4s' }, { id: '6 Seconds', label: '6s' }, { id: '8 Seconds', label: '8s' }]
+                                                        ).map(opt => (
+                                                            <button
+                                                                key={opt.id}
+                                                                onClick={() => { updateVideoSetting('duration', opt.id); setActiveDropdown(null); }}
+                                                                className={cn(
+                                                                    "w-full text-left px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all",
+                                                                    selections.duration === opt.id ? "bg-[#AADD00] text-black" : "text-white/60 hover:bg-white/5 hover:text-white"
+                                                                )}
+                                                            >
+                                                                {opt.label}
+                                                            </button>
+                                                        ))}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+
+                                        {/* RESOLUTION DROP-UP */}
+                                        <div className="relative">
+                                            <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5">
+                                                <Maximize2 className="w-2 h-2 text-emerald-400" /> Res
+                                            </span>
+                                            <button 
+                                                onClick={() => setActiveDropdown(activeDropdown === 'res' ? null : 'res')}
+                                                className={cn(
+                                                    "bg-white/[0.03] border border-white/5 px-4 py-1.5 rounded-full text-[9px] font-black uppercase text-white hover:bg-white/10 transition-all flex items-center gap-2",
+                                                    activeDropdown === 'res' && "border-emerald-500/50 bg-emerald-500/5"
+                                                )}
+                                            >
+                                                {selections.resolution.toUpperCase()}
+                                                <ChevronDown className={cn("w-2.5 h-2.5 text-white/30 transition-transform", activeDropdown === 'res' && "rotate-180")} />
+                                            </button>
+                                            <AnimatePresence>
+                                                {activeDropdown === 'res' && (
+                                                    <motion.div 
+                                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                        className="absolute bottom-full left-0 mb-2 w-32 bg-[#141414] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-[100] p-1"
+                                                    >
+                                                        {['720p', '1080p', '2K'].map(opt => (
+                                                            <button
+                                                                key={opt}
+                                                                onClick={() => { updateVideoSetting('resolution', opt); setActiveDropdown(null); }}
+                                                                className={cn(
+                                                                    "w-full text-left px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all",
+                                                                    selections.resolution === opt ? "bg-emerald-500 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
+                                                                )}
+                                                            >
+                                                                {opt.toUpperCase()}
+                                                            </button>
+                                                        ))}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -3614,23 +3761,7 @@ DO NOT add new objects or change the scene. Enhance only.
                                     <div
                                         className="flex items-center gap-1.5 overflow-visible pb-1"
                                     >
-                                        {/* ENGINE PILL */}
-                                        <div className="flex flex-col items-start shrink-0">
-                                            <span className="text-[8px] font-black text-gray-600 uppercase tracking-[0.15em] mb-0.5 px-1 flex items-center gap-1">
-                                                <Zap className="w-1.5 h-1.5" /> Engine
-                                            </span>
-                                            <div className="relative">
-                                                <select
-                                                    value={selectedModel}
-                                                    onChange={e => setSelectedModel(e.target.value)}
-                                                    className="appearance-none bg-white/[0.06] hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-full pl-3 pr-6 py-1 text-[10px] font-semibold text-white transition-all cursor-pointer focus:outline-none focus:border-white/30"
-                                                    style={{ minWidth: 0 }}
-                                                >
-                                                    {filteredModels.map(m => <option key={m.id} value={m.id} disabled={!m.available} className="bg-[#111]">{m.name}{m.available ? '' : ' ·'}</option>)}
-                                                </select>
-                                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-white/30 pointer-events-none" />
-                                            </div>
-                                        </div>
+                                        {/* ENGINE REMOVED - NOW IN DROP-UP ROW */}
 
                                         {/* DIVIDER */}
                                         <div className="w-px h-6 bg-white/8 shrink-0" />

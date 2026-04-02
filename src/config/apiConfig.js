@@ -57,25 +57,49 @@ export const resolveUrl = (url) => {
     if (!url) return '';
     if (typeof url !== 'string') return url;
     
+    // 1. Identify video for proxying
     const isVideo = url.toLowerCase().split('?')[0].endsWith('.mp4') || 
                     url.toLowerCase().split('?')[0].endsWith('.webm') ||
                     url.toLowerCase().split('?')[0].endsWith('.mov');
 
     // ✅ FIX: Route ALL external video URLs through the backend proxy.
-    // This prevents ERR_CACHE_OPERATION_NOT_SUPPORTED which happens when the browser
-    // tries to cache GCS/Supabase videos with incompatible response headers.
+    // This prevents ERR_CACHE_OPERATION_NOT_SUPPORTED in Chrome for GCS/Supabase
     if (isVideo && url.startsWith('http') && !url.includes('localhost') && !url.includes('/api/proxy/asset')) {
         return getApiUrl(`/api/proxy/asset?url=${encodeURIComponent(url)}&cors=1`);
     }
 
+    // 2. Already fully qualified or data/blob
     if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:'))
         return url;
         
-    // Handle raw base64 strings that might have been saved without prefix
-    if (url.startsWith('/9j/') || (url.length > 1000 && !url.includes('/'))) {
-        return `data:image/jpeg;base64,${url.startsWith('/') ? url.substring(1) : url}`;
+    // 3. Detect and prefix raw base64 image strings
+    // Patterns: 
+    // - /9j/ -> JPEG
+    // - iVBORw0KGgo -> PNG
+    // - R0lGOD -> GIF
+    // - UklGR -> WebP
+    const isLikelyBase64 = 
+        url.startsWith('/9j/') || 
+        url.startsWith('9j/') ||
+        url.startsWith('iVBORw0KGgo') ||
+        url.startsWith('R0lGOD') || 
+        url.startsWith('UklGR') ||
+        (url.length > 2000 && !url.includes(' ') && !url.includes('-'));
+
+    if (isLikelyBase64) {
+        if (url.startsWith('/9j/') || url.startsWith('9j/')) {
+            const cleanUrl = url.startsWith('/') ? url : '/' + url;
+            return `data:image/jpeg;base64,${cleanUrl}`;
+        }
+        if (url.startsWith('iVBORw0KGgo')) return `data:image/png;base64,${url}`;
+        if (url.startsWith('R0lGOD')) return `data:image/gif;base64,${url}`;
+        if (url.startsWith('UklGR')) return `data:image/webp;base64,${url}`;
+        
+        // Generic fallback for long strings
+        return `data:image/jpeg;base64,${url}`;
     }
     
+    // 4. Relative paths
     const path = url.startsWith('/') ? url : '/' + url;
     return `${API_BASE_URL}${path}`;
 };

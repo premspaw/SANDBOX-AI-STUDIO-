@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store';
 import { cn } from '../../lib/utils';
 import { saveGeneratedAsset } from "../../services/supabaseService.js";
+import { resolveUrl, getApiUrl } from "../../config/apiConfig";
 
 const VIDEO_PRESETS = [
     { name: "Orbit Reveal", prompt: "A cinematic eye-level full 360-degree orbit clockwise around the subject with soft backlighting and organic handheld camera shake. Motion is continuous and fluid." },
@@ -137,9 +138,10 @@ export default function DirectorStudio() {
     const [locationImg, setLocationImg] = useState(() => localStorage.getItem('director_location') || null);
     const [firstFrameImg, setFirstFrameImg] = useState(() => localStorage.getItem('director_first_frame') || null);
     const [lastFrameImg, setLastFrameImg] = useState(() => localStorage.getItem('director_last_frame') || null);
+    const [activeDropdown, setActiveDropdown] = useState(null);
     const [showAnimationPanel, setShowAnimationPanel] = useState(false);
     const [cameraShot, setCameraShot] = useState(CAMERA_SHOTS[0]);
-    const [aspectRatio, setAspectRatio] = useState('16:9');
+    const [aspectRatio, setAspectRatio] = useState('9:16');
     const [includeAudio, setIncludeAudio] = useState(false);
     const [prompt, setPrompt] = useState('An ultra-detailed cinematic shot of the Person wearing the Outfit, standing full-body posing in the Stage. Soft studio rim-lighting, highly realistic texture finish, 8k Resolution UHD.');
     const [extendPrompt, setExtendPrompt] = useState('The scene continues naturally.');
@@ -203,7 +205,7 @@ export default function DirectorStudio() {
     const [error, setError] = useState('');
     const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
     const [isSuggesting, setIsSuggesting] = useState(false);
-    const [videoModel, setVideoModel] = useState('veo'); // 'veo' | 'kling'
+    const [videoModel, setVideoModel] = useState('veo3_fast'); // 'veo' | 'veo3_fast' | 'kling'
     const [duration, setDuration] = useState('8');
 
     // Auto-set duration and provider when model changes
@@ -449,7 +451,7 @@ export default function DirectorStudio() {
 
                 if (!startBase64) {
                     setCustomLoadingMsg("Nano Banana 2 is drawing your scene image first...");
-                    const imgResponse = await fetch('http://localhost:3002/api/generate-image', {
+                    const imgResponse = await fetch(getApiUrl('/api/generate-image'), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -465,7 +467,7 @@ export default function DirectorStudio() {
                     setCustomLoadingMsg("Kling 2.6 is animating dimensions...");
                 }
 
-                const response = await fetch('http://localhost:3002/api/generate-image', {
+                const response = await fetch(getApiUrl('/api/generate-image'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -894,158 +896,267 @@ export default function DirectorStudio() {
                                 </section>
                             </div>
                         )}
-                    </div>
-
-                    <div className="p-3 border-t border-[#1e1e24] bg-[#0a0a0a] space-y-4">
+                    </div>                    <div className="p-3 border-t border-[#1e1e24] bg-[#0a0a0a] space-y-4">
                         {/* ── PILL-BASED CONTROL BARS ───────────────────────────────── */}
                         <div className="space-y-3">
-                            {/* FIRST ROW: ENGINE & COMPUTE NODES */}
+                            {/* FIRST ROW: COMPUTE NODES */}
                             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
                                 {mediaType === 'video' && (
                                     <div className="flex flex-col items-start shrink-0">
                                         <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5">
                                             <Zap className="w-2 h-2 text-[#AADD00]" /> Node
                                         </span>
-                                        <div className="relative">
-                                            <select
-                                                value={veoProvider}
-                                                onChange={(e) => setVeoProvider(e.target.value)}
-                                                className="appearance-none bg-white/[0.06] hover:bg-white/10 border border-white/10 hover:border-[#AADD00]/30 rounded-full pl-3 pr-7 py-1.5 text-[10px] font-bold text-white transition-all cursor-pointer focus:outline-none"
-                                            >
-                                                <option value="kie" className="bg-[#0a0a0a]">KIE Network</option>
-                                                <option value="google" className="bg-[#0a0a0a]">Vertex Cloud</option>
-                                            </select>
-                                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-white/20 pointer-events-none" />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {mediaType === 'video' && (
-                                    <div className="flex flex-col items-start shrink-0">
-                                        <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5">
-                                            <Video className="w-2 h-2 text-blue-400" /> Engine
-                                        </span>
-                                        <div className="relative">
-                                            <select
-                                                value={videoModel}
-                                                onChange={(e) => setVideoModel(e.target.value)}
-                                                className="appearance-none bg-white/[0.06] hover:bg-white/10 border border-white/10 hover:border-blue-400/30 rounded-full pl-3 pr-7 py-1.5 text-[10px] font-bold text-white transition-all cursor-pointer focus:outline-none"
-                                            >
-                                                <option value="veo3_fast" className="bg-[#0a0a0a]">Veo Fast</option>
-                                                <option value="veo3" className="bg-[#0a0a0a]">Veo Pro</option>
-                                                <option value="kling" className="bg-[#0a0a0a]">Kling 3.0</option>
-                                            </select>
-                                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-white/20 pointer-events-none" />
+                                        <div className="flex items-center gap-1 bg-white/[0.03] border border-white/5 p-1 rounded-full">
+                                            {[
+                                                { id: 'kie', label: 'KIE Network' },
+                                                { id: 'google', label: 'Vertex Cloud' }
+                                            ].map(opt => (
+                                                <button
+                                                    key={opt.id}
+                                                    onClick={() => setVeoProvider(opt.id)}
+                                                    className={cn(
+                                                        "px-3 py-1 rounded-full text-[9px] font-black uppercase transition-all",
+                                                        veoProvider === opt.id 
+                                                            ? "bg-[#AADD00]/20 text-[#AADD00] border border-[#AADD00]/30 shadow-lg shadow-[#AADD00]/5" 
+                                                            : "text-white/30 hover:text-white/60"
+                                                    )}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
                                 )}
                             </div>
 
-                            {/* SECOND ROW: FORMAT & DURATION */}
-                            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-                                <div className="flex flex-col items-start shrink-0">
+                            {/* MODERN DROP-UP CONTROLS ROW */}
+                            <div className="flex items-center gap-2 overflow-visible py-2 relative z-40">
+                                {/* ENGINE DROP-UP */}
+                                <div className="relative">
+                                    <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5">
+                                        <Zap className="w-2 h-2 text-[#AADD00]" /> Engine
+                                    </span>
+                                    <button 
+                                        onClick={() => setActiveDropdown(activeDropdown === 'engine' ? null : 'engine')}
+                                        className={cn(
+                                            "bg-white/[0.03] border border-white/5 px-4 py-1.5 rounded-full text-[9px] font-black uppercase text-white hover:bg-white/10 transition-all flex items-center gap-2",
+                                            activeDropdown === 'engine' && "border-[#AADD00]/50 bg-[#AADD00]/5"
+                                        )}
+                                    >
+                                        {videoModel === 'veo3_fast' ? 'Veo Fast' : videoModel === 'veo' ? 'Veo 3.1' : 'Kling 3.0'}
+                                        <ChevronDown className={cn("w-2.5 h-2.5 text-white/30 transition-transform", activeDropdown === 'engine' && "rotate-180")} />
+                                    </button>
+                                    <AnimatePresence>
+                                        {activeDropdown === 'engine' && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                className="absolute bottom-full left-0 mb-2 w-32 bg-[#141414] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50 p-1"
+                                            >
+                                                {[
+                                                    { id: 'veo3_fast', label: 'Veo Fast' },
+                                                    { id: 'veo', label: 'Veo 3.1' },
+                                                    { id: 'kling', label: 'Kling 3.0' }
+                                                ].map(opt => (
+                                                    <button
+                                                        key={opt.id}
+                                                        onClick={() => { setVideoModel(opt.id); setActiveDropdown(null); }}
+                                                        className={cn(
+                                                            "w-full text-left px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all",
+                                                            videoModel === opt.id ? "bg-[#AADD00] text-black" : "text-white/60 hover:bg-white/5 hover:text-white"
+                                                        )}
+                                                    >
+                                                        {opt.label}
+                                                    </button>
+                                                ))}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+
+                                {/* RATIO DROP-UP */}
+                                <div className="relative">
                                     <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5">
                                         <Square className="w-2 h-2 text-purple-400" /> Ratio
                                     </span>
-                                    <div className="relative">
-                                        <select
-                                            value={aspectRatio}
-                                            onChange={(e) => setAspectRatio(e.target.value)}
-                                            className="appearance-none bg-white/[0.06] hover:bg-white/10 border border-white/10 hover:border-purple-400/30 rounded-full pl-3 pr-7 py-1.5 text-[10px] font-bold text-white transition-all cursor-pointer focus:outline-none"
-                                        >
-                                            <option value="16:9">16:9</option>
-                                            <option value="9:16">9:16</option>
-                                            {mediaType === 'image' && <option value="1:1">1:1</option>}
-                                        </select>
-                                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-white/20 pointer-events-none" />
-                                    </div>
+                                    <button 
+                                        onClick={() => setActiveDropdown(activeDropdown === 'ratio' ? null : 'ratio')}
+                                        className={cn(
+                                            "bg-white/[0.03] border border-white/5 px-4 py-1.5 rounded-full text-[9px] font-black uppercase text-white hover:bg-white/10 transition-all flex items-center gap-2",
+                                            activeDropdown === 'ratio' && "border-purple-500/50 bg-purple-500/5"
+                                        )}
+                                    >
+                                        {aspectRatio}
+                                        <ChevronDown className={cn("w-2.5 h-2.5 text-white/30 transition-transform", activeDropdown === 'ratio' && "rotate-180")} />
+                                    </button>
+                                    <AnimatePresence>
+                                        {activeDropdown === 'ratio' && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                className="absolute bottom-full left-0 mb-2 w-32 bg-[#141414] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50 p-1"
+                                            >
+                                                {[
+                                                    { id: '16:9', label: '16:9' },
+                                                    { id: '9:16', label: '9:16' },
+                                                    { id: '1:1', label: '1:1' },
+                                                    { id: '4:3', label: '4:3' }
+                                                ].map(opt => (
+                                                    <button
+                                                        key={opt.id}
+                                                        onClick={() => { setAspectRatio(opt.id); setActiveDropdown(null); }}
+                                                        className={cn(
+                                                            "w-full text-left px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all",
+                                                            aspectRatio === opt.id ? "bg-purple-500 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
+                                                        )}
+                                                    >
+                                                        {opt.label}
+                                                    </button>
+                                                ))}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
 
+                                {/* DURATION DROP-UP */}
                                 {mediaType === 'video' && (
-                                    <div className="flex flex-col items-start shrink-0">
+                                    <div className="relative">
                                         <span className={cn("text-[8px] font-black uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5", 
                                             (videoModel !== 'kling' && !!lastFrameImg) ? "text-[#AADD00]" : "text-white/30")}>
                                             <Timer className="w-2 h-2" /> {videoModel !== 'kling' && !!lastFrameImg ? "FIXED" : "DUR"}
                                         </span>
-                                        <div className="relative">
-                                            <select
-                                                disabled={videoModel !== 'kling' && !!lastFrameImg}
-                                                value={videoModel !== 'kling' && !!lastFrameImg ? "8" : duration}
-                                                onChange={(e) => setDuration(e.target.value)}
-                                                className={cn(
-                                                    "appearance-none bg-white/[0.06] border transition-all cursor-pointer focus:outline-none rounded-full pl-3 pr-7 py-1.5 text-[10px] font-bold",
-                                                    (videoModel !== 'kling' && !!lastFrameImg) 
-                                                        ? "border-[#AADD00]/40 text-[#AADD00] bg-[#AADD00]/5 cursor-not-allowed" 
-                                                        : "bg-white/[0.06] hover:bg-white/10 border-white/10 text-white"
-                                                )}
-                                            >
-                                                {videoModel === 'kling' ? (
-                                                    <>
-                                                        <option value="5">5s Seq</option>
-                                                        <option value="10">10s Cine</option>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <option value="4">4s Seq</option>
-                                                        <option value="6">6s Scr</option>
-                                                        <option value="8">8s Cine</option>
-                                                    </>
-                                                )}
-                                            </select>
-                                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-white/20 pointer-events-none" />
-                                        </div>
+                                        <button 
+                                            disabled={videoModel !== 'kling' && !!lastFrameImg}
+                                            onClick={() => setActiveDropdown(activeDropdown === 'duration' ? null : 'duration')}
+                                            className={cn(
+                                                "bg-white/[0.03] border border-white/5 px-4 py-1.5 rounded-full text-[9px] font-black uppercase text-white hover:bg-white/10 transition-all flex items-center gap-2",
+                                                activeDropdown === 'duration' && "border-[#AADD00]/50 bg-[#AADD00]/5",
+                                                (videoModel !== 'kling' && !!lastFrameImg) && "opacity-50 cursor-not-allowed"
+                                            )}
+                                        >
+                                            {videoModel !== 'kling' && !!lastFrameImg ? '8s' : `${duration}s`}
+                                            <ChevronDown className={cn("w-2.5 h-2.5 text-white/30 transition-transform", activeDropdown === 'duration' && "rotate-180")} />
+                                        </button>
+                                        <AnimatePresence>
+                                            {activeDropdown === 'duration' && (
+                                                <motion.div 
+                                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                    className="absolute bottom-full left-0 mb-2 w-32 bg-[#141414] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-[100] p-1"
+                                                >
+                                                    {(videoModel === 'kling' 
+                                                        ? [{ id: '5', label: '5s' }, { id: '10', label: '10s' }]
+                                                        : [{ id: '4', label: '4s' }, { id: '6', label: '6s' }, { id: '8', label: '8s' }]
+                                                    ).map(opt => (
+                                                        <button
+                                                            key={opt.id}
+                                                            onClick={() => { setDuration(opt.id); setActiveDropdown(null); }}
+                                                            className={cn(
+                                                                "w-full text-left px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all",
+                                                                duration === opt.id ? "bg-[#AADD00] text-black" : "text-white/60 hover:bg-white/5 hover:text-white"
+                                                            )}
+                                                        >
+                                                            {opt.label}
+                                                        </button>
+                                                    ))}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
                                 )}
 
-                                <div className="flex flex-col items-start shrink-0">
+                                {/* RESOLUTION DROP-UP */}
+                                <div className="relative">
                                     <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5">
                                         <Maximize2 className="w-2 h-2 text-emerald-400" /> Res
                                     </span>
-                                    <div className="relative">
-                                        <select
-                                            value={resolution}
-                                            onChange={(e) => setResolution(e.target.value)}
-                                            className="appearance-none bg-white/[0.06] hover:bg-white/10 border border-white/10 hover:border-emerald-400/30 rounded-full pl-3 pr-7 py-1.5 text-[10px] font-bold text-white transition-all cursor-pointer focus:outline-none"
-                                        >
-                                            {mediaType === 'video' ? (
-                                                <>
-                                                    <option value="720p">720p</option>
-                                                    <option value="1080p">1080p HD</option>
-                                                    <option value="4K">4K UHD</option>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <option value="1K">1K HD</option>
-                                                    <option value="2K">2K QHD</option>
-                                                    <option value="4K">4K UHD</option>
-                                                </>
-                                            )}
-                                        </select>
-                                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-white/20 pointer-events-none" />
-                                    </div>
+                                    <button 
+                                        onClick={() => setActiveDropdown(activeDropdown === 'res' ? null : 'res')}
+                                        className={cn(
+                                            "bg-white/[0.03] border border-white/5 px-4 py-1.5 rounded-full text-[9px] font-black uppercase text-white hover:bg-white/10 transition-all flex items-center gap-2",
+                                            activeDropdown === 'res' && "border-emerald-500/50 bg-emerald-500/5"
+                                        )}
+                                    >
+                                        {resolution}
+                                        <ChevronDown className={cn("w-2.5 h-2.5 text-white/30 transition-transform", activeDropdown === 'res' && "rotate-180")} />
+                                    </button>
+                                    <AnimatePresence>
+                                        {activeDropdown === 'res' && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                className="absolute bottom-full left-0 mb-2 w-32 bg-[#141414] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50 p-1"
+                                            >
+                                                {(mediaType === 'video' 
+                                                    ? [{ id: '720p', label: '720p' }, { id: '1080p', label: '1080p' }, { id: '4K', label: '4K' }]
+                                                    : [{ id: '1K', label: '1K' }, { id: '2K', label: '2K' }, { id: '4K', label: '4K' }]
+                                                ).map(opt => (
+                                                    <button
+                                                        key={opt.id}
+                                                        onClick={() => { setResolution(opt.id); setActiveDropdown(null); }}
+                                                        className={cn(
+                                                            "w-full text-left px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all",
+                                                            resolution === opt.id ? "bg-emerald-500 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
+                                                        )}
+                                                    >
+                                                        {opt.label}
+                                                    </button>
+                                                ))}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
 
+                                {/* AUDIO DROP-UP */}
                                 {mediaType === 'video' && (
-                                    <div className="flex flex-col items-start shrink-0">
+                                    <div className="relative">
                                         <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.18em] mb-1 px-1 flex items-center gap-1.5">
                                             <Mic className="w-2 h-2 text-orange-400" /> Audio
                                         </span>
-                                        <div className="relative">
-                                            <select
-                                                value={includeAudio ? "on" : "off"}
-                                                onChange={(e) => setIncludeAudio(e.target.value === "on")}
-                                                className="appearance-none bg-white/[0.06] hover:bg-white/10 border border-white/10 hover:border-orange-400/30 rounded-full pl-3 pr-7 py-1.5 text-[10px] font-bold text-white transition-all cursor-pointer focus:outline-none"
-                                            >
-                                                <option value="off">Off</option>
-                                                <option value="on">On</option>
-                                            </select>
-                                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-white/20 pointer-events-none" />
-                                        </div>
+                                        <button 
+                                            onClick={() => setActiveDropdown(activeDropdown === 'audio' ? null : 'audio')}
+                                            className={cn(
+                                                "bg-white/[0.03] border border-white/5 px-4 py-1.5 rounded-full text-[9px] font-black uppercase text-white hover:bg-white/10 transition-all flex items-center gap-2",
+                                                activeDropdown === 'audio' && "border-orange-500/50 bg-orange-500/5"
+                                            )}
+                                        >
+                                            {includeAudio ? 'On' : 'Off'}
+                                            <ChevronDown className={cn("w-2.5 h-2.5 text-white/30 transition-transform", activeDropdown === 'audio' && "rotate-180")} />
+                                        </button>
+                                        <AnimatePresence>
+                                            {activeDropdown === 'audio' && (
+                                                <motion.div 
+                                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                    className="absolute bottom-full left-0 mb-2 w-32 bg-[#141414] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-[100] p-1"
+                                                >
+                                                    {[
+                                                        { id: true, label: 'Audio On' },
+                                                        { id: false, label: 'Audio Off' }
+                                                    ].map(opt => (
+                                                        <button
+                                                            key={String(opt.id)}
+                                                            onClick={() => { setIncludeAudio(opt.id); setActiveDropdown(null); }}
+                                                            className={cn(
+                                                                "w-full text-left px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all",
+                                                                includeAudio === opt.id ? "bg-orange-500 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
+                                                            )}
+                                                        >
+                                                            {opt.label}
+                                                        </button>
+                                                    ))}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
                                 )}
                             </div>
                         </div>
-
 
                         {error && <div className="text-red-400 text-[10px] p-2 bg-red-400/10 rounded-lg mb-2">{error}</div>}
                         
@@ -1143,9 +1254,9 @@ export default function DirectorStudio() {
                                         </div>
                                         <div className="rounded-[2.5rem] overflow-hidden bg-black aspect-video border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.8)] relative group max-h-[50vh]">
                                             {generatedVideoUrl.match(/\.(jpeg|jpg|png|webp|svg)($|\?)/i) || generatedVideoUrl.startsWith('data:image/') ? (
-                                                <img src={generatedVideoUrl} className="w-full h-full object-contain" />
+                                                <img src={resolveUrl(generatedVideoUrl)} className="w-full h-full object-contain" />
                                             ) : (
-                                                <video src={generatedVideoUrl} controls autoPlay loop className="w-full h-full object-contain" />
+                                                <video src={resolveUrl(generatedVideoUrl)} controls autoPlay loop className="w-full h-full object-contain" />
                                             )}
                                             
                                             {/* Hover Overlay: Save & Discard */}
@@ -1289,10 +1400,10 @@ export default function DirectorStudio() {
                                                 }}
                                             >
                                                 {isImage ? (
-                                                    <img src={vid.url} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
+                                                    <img src={resolveUrl(vid.url)} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
                                                 ) : (
                                                     <video 
-                                                        src={vid.url} 
+                                                        src={resolveUrl(vid.url)} 
                                                         className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" 
                                                         muted 
                                                         loop 
@@ -1350,9 +1461,9 @@ export default function DirectorStudio() {
                                 className="relative w-full max-w-6xl aspect-video rounded-3xl overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.9)] border border-white/5"
                             >
                                 {generatedVideoUrl.match(/\.(jpeg|jpg|png|webp|svg)($|\?)/i) || generatedVideoUrl.startsWith('data:image/') ? (
-                                    <img src={generatedVideoUrl} className="w-full h-full object-contain" alt="Expanded preview" />
+                                    <img src={resolveUrl(generatedVideoUrl)} className="w-full h-full object-contain" alt="Expanded preview" />
                                 ) : (
-                                    <video src={generatedVideoUrl} controls autoPlay loop className="w-full h-full object-contain" />
+                                    <video src={resolveUrl(generatedVideoUrl)} controls autoPlay loop className="w-full h-full object-contain" />
                                 )}
                                 
                                 <div className="absolute bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl flex items-center gap-6">
