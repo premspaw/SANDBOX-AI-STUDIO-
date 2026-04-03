@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Copy, Sparkles, Video, Aperture, Sun, Palette, Camera, Focus,
     Smartphone, Film, Upload, X, Image as ImageIcon, Type, Layers,
