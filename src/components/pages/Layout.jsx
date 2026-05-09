@@ -12,6 +12,7 @@ const FULL_BLEED_TABS = new Set([
     'creator',
     'directors-cut',
     'creative-studio',
+    'marketing',
     'ugc',
     'assets',
     'admin',

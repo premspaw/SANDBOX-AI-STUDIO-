@@ -112,18 +112,46 @@ const safetySettings = [
 
 ---
 
-## 5. Token Management 📊
-*   **Gemini 1.5 Pro:** 2M tokens (Architecture-scale reasoning).
-*   **Gemini 1.5 Flash:** 1M tokens (High-speed orchestration).
-*   **Flash 8B:** Ultra-fast, low-cost for simple extraction tasks.
+## 5. Current Model Reference (2025/2026) 🤖
+
+### Text / Multimodal (generateContent)
+| Model ID | Use Case |
+|---|---|
+| `gemini-2.5-pro` | Best reasoning, complex tasks, 1M ctx |
+| `gemini-2.5-flash` | Fast + smart, best cost/perf balance |
+| `gemini-2.0-flash` | Stable, fast, multimodal default |
+| `gemini-2.0-flash-lite` | Cheapest, simple tasks |
+
+### Image Generation (generateContent with image output)
+| Model ID | Use Case |
+|---|---|
+| `gemini-2.0-flash-exp-image-generation` | Image gen via generateContent |
+| `imagen-3.0-generate-002` | Best image quality (Vertex AI only) |
+
+### Video Generation (Veo)
+| Model ID | Use Case |
+|---|---|
+| `veo-2.0-generate-001` | Text/image to video (Vertex AI) |
+| `veo-3.0-generate-preview` | Latest Veo 3 preview |
+
+### ⚠️ Deprecated — Do NOT use
+- ~~`gemini-1.5-pro`~~ → use `gemini-2.5-pro`
+- ~~`gemini-1.5-flash`~~ → use `gemini-2.5-flash`
+- ~~`gemini-2.0-flash-exp`~~ → use `gemini-2.0-flash`
+- ~~`gemini-1.5-flash-latest`~~ → use `gemini-2.0-flash`
+
+## 6. Token Management 📊
+*   **Gemini 2.5 Pro:** 1M tokens (Architecture-scale reasoning).
+*   **Gemini 2.5 Flash:** 1M tokens (High-speed orchestration).
+*   **Gemini 2.0 Flash Lite:** Ultra-fast, low-cost for simple extraction tasks.
 
 ---
 
-## 6. Implementation Checklist
+## 7. Implementation Checklist
 1. [ ] Use **System Instructions** for deterministic roles.
 2. [ ] Use **JSON Mode** for all data-driven nodes.
 3. [ ] Implement **Context Caching** for the Universe Bible.
 4. [ ] Utilize **Multimodal** inputs for visual consistency checks.
 5. [ ] Define **Safety Thresholds** to avoid unintended generation blocks.
 
-*Last Updated: ${new Date().toISOString()}*
+*Last Updated: May 2026 — Gemini 2.5 era*

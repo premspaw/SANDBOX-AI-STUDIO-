@@ -2,97 +2,167 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Storage } from '@google-cloud/storage';
+import { S3Client, PutObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'zerolensbucket_1';
+// ── Bucket / folder constants ────────────────────────────────────────────────
+const GCS_BUCKET   = process.env.GCS_BUCKET_NAME || 'zerolensbucket_1';
+const R2_BUCKET    = process.env.R2_BUCKET_NAME  || 'zerolensbucket-cdn';
 
+// Marketing assets live under marketing/ subfolder — no separate bucket needed.
+export const MARKETING_BUCKET = R2_BUCKET;   // R2 is now primary
+export const MARKETING_FOLDER = 'marketing';
+
+// Public CDN base — set GCS_CDN_BASE_URL=https://pub-xxx.r2.dev in .env
+const CDN_BASE = (process.env.GCS_CDN_BASE_URL || '').replace(/\/$/, '');
+
+// ── Cloudflare R2 client (S3-compatible) ─────────────────────────────────────
+const R2_CONFIGURED = !!(
+    process.env.R2_ACCOUNT_ID &&
+    process.env.R2_ACCESS_KEY_ID &&
+    process.env.R2_SECRET_ACCESS_KEY
+);
+
+let r2Client = null;
+if (R2_CONFIGURED) {
+    r2Client = new S3Client({
+        region: 'auto',
+        endpoint: process.env.R2_ENDPOINT ||
+            `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        credentials: {
+            accessKeyId:     process.env.R2_ACCESS_KEY_ID,
+            secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+        },
+    });
+    console.log('[R2] ✅ Cloudflare R2 client initialised — primary storage active');
+} else {
+    console.log('[R2] ⚠️  R2 not configured — falling back to GCS');
+}
+
+// ── Google Cloud Storage client (fallback) ───────────────────────────────────
 let storageOptions = {};
 try {
     if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-        // Handle properly if wrapped in quotes
         let cleanJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-        if (cleanJson.startsWith("'") && cleanJson.endsWith("'")) {
-            cleanJson = cleanJson.slice(1, -1);
-        }
+        if (cleanJson.startsWith("'") && cleanJson.endsWith("'")) cleanJson = cleanJson.slice(1, -1);
         const credentials = JSON.parse(cleanJson);
-        if (credentials.private_key) {
-            credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
-        }
+        if (credentials.private_key) credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
         storageOptions.credentials = credentials;
     }
 } catch (e) {
     console.error('[GCS] Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON:', e.message);
 }
+const gcsStorage = new Storage(storageOptions);
+const gcsBucket  = gcsStorage.bucket(GCS_BUCKET);
 
-const storage = new Storage(storageOptions);
-const bucket = storage.bucket(BUCKET_NAME);
+// ── URL builder ──────────────────────────────────────────────────────────────
+const toPublicUrl = (fileName, bucketName) => {
+    const encoded = fileName.split('/').map(encodeURIComponent).join('/');
+    if (CDN_BASE) return `${CDN_BASE}/${encoded}`;
+    if (r2Client)  return `https://${R2_BUCKET}.${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${encoded}`;
+    return `https://storage.googleapis.com/${bucketName || GCS_BUCKET}/${encoded}`;
+};
 
-const toPublicUrl = (fileName) => 
-    `https://storage.googleapis.com/${BUCKET_NAME}/${fileName.split('/').map(encodeURIComponent).join('/')}`;
+// ── toBuffer helper ───────────────────────────────────────────────────────────
+const toBuffer = (data) => {
+    if (typeof data === 'string' && data.startsWith('data:')) return Buffer.from(data.split(',')[1], 'base64');
+    if (typeof data === 'string') return Buffer.from(data, 'base64');
+    return data;
+};
 
 /**
- * Upload a binary asset to Google Cloud Storage
- * @param {Buffer|string} data - Buffer or base64 string
- * @param {string} fileName - Destination filename
- * @param {string} contentType - MIME type
+ * Upload a binary asset — R2 first, GCS fallback.
+ * @param {Buffer|string} data
+ * @param {string} fileName
+ * @param {string} contentType
+ * @param {string} targetBucket  - ignored when R2 is active (uses R2_BUCKET)
  */
-export const uploadToGCS = async (data, fileName, contentType = 'image/png') => {
-    try {
-        console.log(`[GCS] Uploading ${fileName} to bucket ${BUCKET_NAME}...`);
+export const uploadToGCS = async (data, fileName, contentType = 'image/png', targetBucket) => {
+    const buffer = toBuffer(data);
 
-        let buffer;
-        if (typeof data === 'string' && data.startsWith('data:')) {
-            buffer = Buffer.from(data.split(',')[1], 'base64');
-        } else if (typeof data === 'string') {
-            buffer = Buffer.from(data, 'base64');
-        } else {
-            buffer = data;
+    if (r2Client) {
+        try {
+            console.log(`[R2] Uploading ${fileName} → ${R2_BUCKET}...`);
+            await r2Client.send(new PutObjectCommand({
+                Bucket:       R2_BUCKET,
+                Key:          fileName,
+                Body:         buffer,
+                ContentType:  contentType,
+                CacheControl: 'public, max-age=31536000',
+            }));
+            const url = toPublicUrl(fileName);
+            console.log(`[R2] ✅ Uploaded: ${url}`);
+            return url;
+        } catch (err) {
+            console.error('[R2] Upload failed, falling back to GCS:', err.message);
         }
+    }
 
-        const file = bucket.file(fileName);
+    // GCS fallback
+    try {
+        const bkt  = targetBucket && targetBucket !== GCS_BUCKET
+            ? gcsStorage.bucket(targetBucket)
+            : gcsBucket;
+        console.log(`[GCS] Uploading ${fileName} → ${targetBucket || GCS_BUCKET}...`);
+        const file = bkt.file(fileName);
         await file.save(buffer, {
-            contentType: contentType,
+            contentType,
             resumable: false,
-            metadata: {
-                cacheControl: 'public, max-age=31536000'
-            }
+            metadata: { cacheControl: 'public, max-age=31536000' },
         });
-
-        const url = toPublicUrl(fileName);
+        const url = toPublicUrl(fileName, targetBucket || GCS_BUCKET);
         console.log(`[GCS] ✅ Uploaded: ${url}`);
         return url;
     } catch (err) {
-        console.error("[GCS] Upload Failed:", err);
+        console.error('[GCS] Upload Failed:', err);
         throw err;
     }
 };
 
 /**
- * Get public URL for a GCS asset
- * @param {string} fileName 
+ * Get public URL for any stored asset.
  */
-export const getPublicUrl = (fileName) => {
-    return toPublicUrl(fileName);
-};
+export const getPublicUrl = (fileName, bucketName) => toPublicUrl(fileName, bucketName);
 
 /**
- * List assets in the GCS bucket
+ * List assets (R2 first, GCS fallback).
  */
-export const listAssetsGCS = async (prefix = '') => {
+export const listAssetsGCS = async (prefix = '', targetBucket) => {
+    if (r2Client) {
+        try {
+            const res = await r2Client.send(new ListObjectsV2Command({
+                Bucket: R2_BUCKET,
+                Prefix: prefix,
+            }));
+            return (res.Contents || []).map(obj => ({
+                id:   obj.Key,
+                name: obj.Key,
+                url:  toPublicUrl(obj.Key),
+                size: ((obj.Size || 0) / (1024 * 1024)).toFixed(2) + ' MB',
+                date: obj.LastModified?.toISOString().split('T')[0],
+            }));
+        } catch (err) {
+            console.error('[R2] List failed, falling back to GCS:', err.message);
+        }
+    }
+
     try {
-        const [files] = await bucket.getFiles({ prefix });
+        const bkt = targetBucket && targetBucket !== GCS_BUCKET
+            ? gcsStorage.bucket(targetBucket)
+            : gcsBucket;
+        const [files] = await bkt.getFiles({ prefix });
         return files.map(file => ({
-            id: file.id,
+            id:   file.id,
             name: file.name,
-            url: toPublicUrl(file.name),
+            url:  toPublicUrl(file.name, targetBucket || GCS_BUCKET),
             size: (parseInt(file.metadata.size || 0) / (1024 * 1024)).toFixed(2) + ' MB',
-            date: file.metadata.updated?.split('T')[0]
+            date: file.metadata.updated?.split('T')[0],
         }));
     } catch (err) {
-        console.error("[GCS] List Failed:", err);
+        console.error('[GCS] List Failed:', err);
         return [];
     }
 };

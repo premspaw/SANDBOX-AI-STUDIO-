@@ -4,7 +4,6 @@ import "driver.js/dist/driver.css";
 import { motion, AnimatePresence } from 'motion/react';
 import { Upload, User, Box, FileText, Camera, Play, Pause, Wand2, Loader2, Volume2, VolumeX, Sparkles, Video, X, Scissors, Plus, Trash2, Save, ChevronRight, ChevronLeft, ChevronDown, Layout, AlertCircle, HelpCircle, Settings, SidebarClose, SidebarOpen, Download, ZoomIn, ZoomOut, GripVertical, Check, CheckCircle, BrainCircuit, Zap, ShieldCheck, Shield, MessageSquare, Clock, Activity, Maximize, Layers, Monitor, Search, Package, Droplets, Wind, Fingerprint, Lock, PlayCircle, RotateCcw } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
-import { GoogleGenAI, Modality, Type } from '@google/genai';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 import { supabase } from '../../lib/supabase';
@@ -28,8 +27,12 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers';
+import { getApiUrl } from '../../config/apiConfig';
+
 
 import * as pdfjsLib from 'pdfjs-dist';
+import PodcastStudio from './PodcastStudio';
+import { GoogleGenAI } from "@google/genai";
 
 // Use the worker file we copied to the public/ directory
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
@@ -193,20 +196,6 @@ const safeJsonParse = (text: string | undefined) => {
   }
 };
 
-const getApiKey = () => {
-  const env = (import.meta as any).env || {};
-  return (typeof process !== 'undefined' && process.env ? process.env.GEMINI_API_KEY : undefined) ||
-    (typeof process !== 'undefined' && process.env ? process.env.API_KEY : undefined) ||
-    env.VITE_GEMINI_API_KEY ||
-    env.VITE_GOOGLE_API_KEY ||
-    (typeof window !== 'undefined' && (window as any).process?.env?.GEMINI_API_KEY) ||
-    (typeof window !== 'undefined' && (window as any).process?.env?.API_KEY) || '';
-};
-
-const getAI = () => {
-  const apiKey = getApiKey();
-  return new GoogleGenAI({ apiKey });
-};
 
 const fileToGenerativePart = async (file: File) => {
   const base64EncodedDataPromise = new Promise<string>((resolve) => {
@@ -949,6 +938,21 @@ export default function UGC() {
   const userProfile = useAppStore(state => state.userProfile as { role?: string } | null);
   const isGlobalAdmin = userProfile?.role === 'admin';
 
+  const [activeTab, setActiveTab] = useState('ugc');
+
+  const getApiKey = () => {
+    return localStorage.getItem('GOOGLE_API_KEY') || (window as any).aistudio?.apiKey || '';
+  };
+
+  const getAI = () => {
+    const key = getApiKey();
+    if (!key) throw new Error("No API Key detected. Please provide a Gemini API Key in Settings.");
+    
+    return new GoogleGenAI({ 
+        apiKey: key
+    });
+  };
+
   const [dbSceneTemplates, setDbSceneTemplates] = useState(SCENE_TEMPLATES);
 
   useEffect(() => {
@@ -1663,13 +1667,12 @@ export default function UGC() {
   const analyzeProductForMontage = async (file: File) => {
     setIsGeneratingMontageOptions(true);
     try {
-      const ai = getAI();
       const imagePart = await fileToGenerativePart(file);
-      
-      const response = await withTimeout(ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [
-          { parts: [
+      const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parts: [
             imagePart,
             { text: `Identify this product and suggest 3 specific, high-performance montage video clip ideas for a UGC ad. 
             The product could be cosmetics (lipstick, mascara), hair care (gel, spray), skin care, or any consumer good.
@@ -1682,15 +1685,23 @@ export default function UGC() {
             3. A relevant Lucide icon name (e.g., "Sparkles", "Zap", "Fingerprint", "Droplets", "Wind", "Scissors").
             
             Return the result as a JSON array of objects with keys: id, title, prompt, icon.` }
-          ] }
-        ],
-        config: {
-          responseMimeType: "application/json",
-        }
-      }), 60000, "Montage analysis timed out. Please try again.");
+          ],
+          model: 'gemini-2.5-flash',
+          userId: undefined,
+          generationConfig: {
+            responseMimeType: "application/json"
+          }
+        })
+      });
 
-      const options = JSON.parse(response.text || '[]');
+      if (!response.ok) {
+        throw new Error(`Analysis failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const options = JSON.parse(data.text || '[]');
       setMontageOptions(options);
+
     } catch (e) {
       handleApiError(e, "Product analysis for montage");
     }
@@ -1793,7 +1804,7 @@ export default function UGC() {
       return;
     }
 
-    const spendRes = await spend('veo_fast', unitCost);
+    const spendRes = await spend('veo_fast', unitCost as any);
     if (!spendRes || !spendRes.success) {
       showToast("Insufficient Shorts! Redirecting to pricing...", "error");
       useAppStore.getState().setActiveTab('pricing');
@@ -1895,7 +1906,7 @@ export default function UGC() {
         showToast('Veo returned no video. The prompt may have been filtered. Try rephrasing.', 'error');
       }
     } catch (e) {
-      refund('veo_fast', unitCost);
+      refund('veo_fast', unitCost as any);
       handleApiError(e, 'Montage video generation');
     }
     setIsGeneratingVideo(false);
@@ -1974,10 +1985,10 @@ export default function UGC() {
       
       setAnalysisProgress('AI Analysis in Progress (Character & Dialogue)...');
       const ai = getAI();
-      const response = await withTimeout(ai.models.generateContent({
-        model: 'gemini-3.1-flash-preview',
-        contents: [{
-          role: 'user',
+      const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           parts: [
             { 
               inlineData: { 
@@ -1986,24 +1997,29 @@ export default function UGC() {
               } 
             },
             { text: 'Analyze this video reference. Focus EXCLUSIVELY on the main character/person. Ignore the background, environment, and lighting. \n\nTASK:\n1. Extract the EXACT sequence of physical actions and movements (e.g., "points at camera", "smiles", "gestures with left hand").\n2. Transcribe the EXACT dialogue/script being spoken (limit to the first 30 seconds).\n3. Summarize the character\'s tone and personality.\n\nProvide the result in JSON format with "characterActions", "script", and "toneSummary".' }
-          ]
-        }],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              characterActions: { type: Type.STRING, description: "Detailed sequence of physical movements and gestures." },
-              script: { type: Type.STRING, description: "The exact spoken dialogue (max 30 seconds)." },
-              toneSummary: { type: Type.STRING, description: "The character's energy and tone." }
-            },
-            required: ["characterActions", "script", "toneSummary"]
+          ],
+          model: 'gemini-2.5-flash',
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                characterActions: { type: "STRING" },
+                script: { type: "STRING" },
+                toneSummary: { type: "STRING" }
+              },
+              required: ["characterActions", "script", "toneSummary"]
+            }
           }
-        }
-      }), 90000, "Video analysis timed out. Please try again.");
+        })
+      });
 
-      setAnalysisProgress('Finalizing Results...');
-      const result = safeJsonParse(response.text);
+      if (!response.ok) {
+        throw new Error(`Video analysis failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const result = safeJsonParse(data.text);
       
       // Map the results to the existing state
       if (result.toneSummary) setUserPrompt(result.toneSummary);
@@ -2021,34 +2037,44 @@ export default function UGC() {
     if (!productImg) return;
     setIsAnalyzing(true);
     try {
-      const ai = getAI();
       const imagePart = await fileToGenerativePart(productImg.file);
-      const response = await withTimeout(ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [{ role: 'user', parts: [imagePart, { text: 'Analyze this product for a UGC ad. Provide a "productName", "productDetails" (concise description), and "tags" (array of keywords).' }] }],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              tags: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: "4-6 short descriptive keywords (e.g., 'Lipstick', 'Matte Finish', 'Gold Casing')"
+      const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parts: [imagePart, { text: 'Analyze this product for a UGC ad. Provide a "productName", "productDetails" (concise description), and "tags" (array of keywords).' }],
+          model: 'gemini-2.5-flash',
+          userId: undefined,
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                tags: {
+                  type: "ARRAY",
+                  items: { type: "STRING" },
+                  description: "4-6 short descriptive keywords (e.g., 'Lipstick', 'Matte Finish', 'Gold Casing')"
+                },
+                description: {
+                  type: "STRING",
+                  description: "A punchy 2-sentence description of the product's visual appeal and vibe."
+                }
               },
-              description: {
-                type: Type.STRING,
-                description: "A punchy 2-sentence description of the product's visual appeal and vibe."
-              }
-            },
-            required: ["tags", "description"]
+              required: ["tags", "description"]
+            }
           }
-        }
-      }), 60000, "Product analysis timed out. Please try again.");
+        })
+      });
 
-      const data = safeJsonParse(response.text);
-      if (data.tags) setProductTags(data.tags);
-      if (data.description) setProductDetails(data.description);
+      if (!response.ok) {
+        throw new Error(`Analysis failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const result = safeJsonParse(data.text);
+
+      if (result.tags) setProductTags(result.tags);
+      if (result.description) setProductDetails(result.description);
     } catch (e) {
       handleApiError(e, "Product analysis");
     }
@@ -2123,7 +2149,6 @@ export default function UGC() {
     if (!script) return;
     setIsExtractingPrompts(true);
     try {
-      const ai = getAI();
       const prompt = `You are an expert AI video prompt engineer for Veo 3.1. 
       I have a UGC script. I need you to break it down into scenes (approx 8 seconds each) and for each scene, provide:
       1. The dialogue (text being said).
@@ -2151,38 +2176,48 @@ export default function UGC() {
         ]
       }`;
 
-      const response = await withTimeout(ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              scenes: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    id: { type: Type.STRING },
-                    timestamp: { type: Type.STRING },
-                    label: { type: Type.STRING },
-                    dialogue: { type: Type.STRING },
-                    visualCue: { type: Type.STRING },
-                    visualPrompt: { type: Type.STRING }
-                  },
-                  required: ["id", "timestamp", "label", "dialogue", "visualCue", "visualPrompt"]
+      const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parts: [{ text: prompt }],
+          model: 'gemini-2.5-flash',
+          userId: undefined,
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                scenes: {
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      id: { type: "STRING" },
+                      timestamp: { type: "STRING" },
+                      label: { type: "STRING" },
+                      dialogue: { type: "STRING" },
+                      visualCue: { type: "STRING" },
+                      visualPrompt: { type: "STRING" }
+                    },
+                    required: ["id", "timestamp", "label", "dialogue", "visualCue", "visualPrompt"]
+                  }
                 }
-              }
-            },
-            required: ["scenes"]
+              },
+              required: ["scenes"]
+            }
           }
-        }
-      }), 15000, "Prompt extraction timed out. Please try again.");
+        })
+      });
 
-      const data = safeJsonParse(response.text);
-      if (data.scenes && Array.isArray(data.scenes)) {
-        const structuredScenes: Scene[] = data.scenes.map((s: any) => ({
+      if (!response.ok) {
+        throw new Error(`Extraction failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const result = safeJsonParse(data.text);
+      if (result.scenes && Array.isArray(result.scenes)) {
+        const structuredScenes: Scene[] = result.scenes.map((s: any) => ({
           id: s.id || Math.random().toString(36).substring(7),
           text: s.dialogue || '',
           prompt: s.visualPrompt || '',
@@ -2295,36 +2330,46 @@ Return ONLY a valid JSON object with the following structure:
   ]
 }`;
 
-      const response = await withTimeout(ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              script: { type: Type.STRING },
-              scenes: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    id: { type: Type.STRING },
-                    timestamp: { type: Type.STRING },
-                    label: { type: Type.STRING },
-                    dialogue: { type: Type.STRING },
-                    visualCue: { type: Type.STRING }
-                  },
-                  required: ["id", "timestamp", "label", "dialogue", "visualCue"]
+      const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parts: [{ text: prompt }],
+          model: 'gemini-2.5-flash',
+          userId: undefined,
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                script: { type: "STRING" },
+                scenes: {
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      id: { type: "STRING" },
+                      timestamp: { type: "STRING" },
+                      label: { type: "STRING" },
+                      dialogue: { type: "STRING" },
+                      visualCue: { type: "STRING" }
+                    },
+                    required: ["id", "timestamp", "label", "dialogue", "visualCue"]
+                  }
                 }
-              }
-            },
-            required: ["script", "scenes"]
+              },
+              required: ["script", "scenes"]
+            }
           }
-        }
-      }), 15000, "Script generation timed out. Please try again.");
+        })
+      });
 
-      const data = safeJsonParse(response.text);
+      if (!response.ok) {
+        throw new Error(`Script generation failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const result = safeJsonParse(data.text);
 
       if (data.script) {
         setScript(data.script);
@@ -2363,7 +2408,6 @@ Return ONLY a valid JSON object with the following structure:
     if (!script || scenes.length <= idx) return;
     setIsRegeneratingPart(true);
     try {
-      const ai = getAI();
       const prompt = `You are an expert UGC video editor refining a viral script. 
       CURRENT FULL SCRIPT:
       ${script}
@@ -2378,35 +2422,45 @@ Return ONLY a valid JSON object with the following structure:
         "newVisualCue": "A new visual action description for Veo 3.1"
       }`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              newDialogue: { type: Type.STRING },
-              newVisualCue: { type: Type.STRING }
-            },
-            required: ["newDialogue", "newVisualCue"]
+      const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parts: [{ text: prompt }],
+          model: 'gemini-2.5-flash',
+          userId: undefined,
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                newDialogue: { type: "STRING" },
+                newVisualCue: { type: "STRING" }
+              },
+              required: ["newDialogue", "newVisualCue"]
+            }
           }
-        }
+        })
       });
 
-      const data = safeJsonParse(response.text);
-      if (data.newDialogue) {
+      if (!response.ok) {
+        throw new Error(`Regeneration failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const result = safeJsonParse(data.text);
+      if (result.newDialogue) {
         setScenes(prev => {
           const updated = [...prev];
           updated[idx] = {
             ...updated[idx],
-            text: data.newDialogue,
-            prompt: data.newVisualCue || updated[idx].prompt,
-            visualCue: data.newVisualCue || updated[idx].visualCue
+            text: result.newDialogue,
+            prompt: result.newVisualCue || updated[idx].prompt,
+            visualCue: result.newVisualCue || updated[idx].visualCue
           };
 
           if (idx === activeSceneIndex) {
-            setVideoPrompt(data.newVisualCue || updated[idx].prompt);
+            setVideoPrompt(result.newVisualCue || updated[idx].prompt);
           }
 
           // Rebuild full script text to keep it in sync
@@ -2425,7 +2479,6 @@ Return ONLY a valid JSON object with the following structure:
     if (scenes.length <= idx) return;
     setIsRegeneratingPart(true);
     try {
-      const ai = getAI();
       const scene = scenes[idx];
       const prompt = `Analyze the following UGC script dialogue and generate a detailed visual prompt for a video generation model (like Veo 3.1).
       
@@ -2444,12 +2497,22 @@ Return ONLY a valid JSON object with the following structure:
       AVOID: 85mm lens, portrait mode, heavy bokeh, or 'fashion film' or 'cinematic' aesthetics. Keep it grounded, natural, and realistic.
       Return ONLY the visual prompt text (max 80 words).`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parts: [{ text: prompt }],
+          model: 'gemini-2.5-flash',
+          userId: undefined
+        })
       });
 
-      const newPrompt = response.text || '';
+      if (!response.ok) {
+        throw new Error(`Analysis failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const newPrompt = data.text || '';
       setVideoPrompt(newPrompt);
       setScenes(prev => prev.map((s, i) => i === idx ? { ...s, prompt: newPrompt } : s));
     } catch (e) {
@@ -2487,21 +2550,30 @@ Return ONLY a valid JSON object with the following structure:
     if (!script) return;
     setIsGeneratingAudio(true);
     try {
-      const ai = getAI();
       const spokenText = script.replace(/\[.*?\]/g, '').trim();
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: spokenText }] }],
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: voice },
+      const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: spokenText }] }],
+          model: "gemini-2.5-flash-preview-tts",
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: voice },
+              },
             },
-          },
-        },
+          }
+        })
       });
-      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+
+      if (!response.ok) {
+        throw new Error(`Voice generation failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const base64Audio = data.audio;
       if (base64Audio) {
         setAudioData(base64Audio);
         const url = createWavUrl(base64Audio);
@@ -2859,7 +2931,7 @@ Return ONLY a valid JSON object with the following structure:
     const audioOn = isMontage ? montageAudioEnabled : includeAudio;
     
     let costPerSec = audioOn ? 17.43 : 11.62;
-    if (videoResolution === '4K') {
+    if ((videoResolution as string) === '4K') {
        costPerSec = audioOn ? 40.67 : 34.86;
     }
     return Math.ceil(costPerSec * duration);
@@ -2873,7 +2945,7 @@ Return ONLY a valid JSON object with the following structure:
       return;
     }
 
-    const spendRes = await spend('veo_fast', unitCost);
+    const spendRes = await spend('veo_fast', unitCost as any);
     if (!spendRes || !spendRes.success) {
       showToast("Insufficient Shorts! Redirecting to pricing...", "error");
       useAppStore.getState().setActiveTab('pricing');
@@ -3015,7 +3087,7 @@ Return ONLY a valid JSON object with the following structure:
         showToast('No video generated. Try rephrasing your prompt.', 'error');
       }
     } catch (e: any) {
-      refund('veo_fast', unitCost);
+      refund('veo_fast', unitCost as any);
       handleApiError(e, "Video generation");
       const errMsg = e.message || JSON.stringify(e);
       if (errMsg.includes("Requested entity was not found")) {
@@ -3216,14 +3288,39 @@ Return ONLY a valid JSON object with the following structure:
             </span>
           </button>
 
-          <div className="w-full h-full max-w-[1600px] mx-auto">
-            {/* ── Master Production Dashboard ─────────────────────────────────────── */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+          {/* TAB SYSTEM */}
+          <div className="flex items-center gap-2 mb-6 max-w-[1600px] mx-auto">
+            <div className="flex items-center bg-black/40 border border-white/5 rounded-xl p-1 gap-1">
+              <button 
+                onClick={() => setActiveTab('ugc')}
+                className={`flex items-center gap-2 px-5 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'ugc' ? 'bg-[#c8f135] text-black shadow-[0_0_20px_rgba(200,241,53,0.3)]' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+              >
+                <Camera size={12} />
+                UGC Studio
+              </button>
+              <button 
+                onClick={() => setActiveTab('podcast')}
+                className={`flex items-center gap-2 px-5 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${activeTab === 'podcast' ? 'bg-[#c8f135] text-black shadow-[0_0_20px_rgba(200,241,53,0.3)]' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+              >
+                <Volume2 size={12} />
+                Podcast
+              </button>
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#c8f135] animate-pulse" />
+              <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Production Suite</span>
+            </div>
+          </div>
+
+          {activeTab === 'ugc' ? (
+            <div className="w-full h-full max-w-[1600px] mx-auto">
+              {/* ── Master Production Dashboard ─────────────────────────────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
 
               {/* Column 1: Asset Ingestion (Left | 3 cols) */}
-              <div id="tour-assets" className="lg:col-span-3 flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible gap-2 pb-4 lg:pb-0 custom-scrollbar order-2 lg:order-1 lg:space-y-2">
-                <Card title="Your Creator" icon={User} tooltip="Upload your photo to create your first influencer." className="min-w-[180px] lg:min-w-0 flex-shrink-0" contentClassName="p-0">
-                  <div className="relative group w-full h-28 lg:h-auto lg:aspect-[4/3] bg-[#050505] flex flex-col items-center justify-center cursor-pointer overflow-hidden border-b border-white/5">
+              <div id="tour-assets" className="lg:col-span-3 flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible gap-3 pb-4 lg:pb-0 custom-scrollbar order-2 lg:order-1">
+                <Card title="Creator" icon={User} tooltip="Upload your photo to create your first influencer." className="min-w-[180px] lg:min-w-0 flex-shrink-0" contentClassName="p-0">
+                  <div className="relative group w-full h-20 lg:h-auto lg:aspect-[5/3] bg-[#080808] flex flex-col items-center justify-center cursor-pointer overflow-hidden border-b border-white/5">
                     <input type="file" accept="image/*" onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleImageUpload(e, 'character')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                     {characterImg ? (
                       <>
@@ -3236,56 +3333,46 @@ Return ONLY a valid JSON object with the following structure:
                         </div>
                       </>
                     ) : (
-                      <div className="flex flex-col items-center gap-3 text-[#555] group-hover:text-[#c8f135] transition-colors">
-                        <Upload size={24} />
-                        <span className="font-sans text-[11px] font-bold tracking-wide text-[#999]">Upload your photo</span>
+                      <div className="flex flex-col items-center gap-2 text-[#555] group-hover:text-[#c8f135] transition-colors">
+                        <Upload size={16} />
+                        <span className="font-sans text-[9px] font-bold tracking-wide text-[#999]">Upload your photo</span>
                       </div>
                     )}
                   </div>
                 </Card>
 
-                <Card
-                  title=""
-                  className="min-w-[180px] lg:min-w-0 flex-shrink-0"
-                  contentClassName="p-0"
-                  action={
-                    <Button
-                      onClick={analyzeProduct}
-                      disabled={!productImg || isAnalyzing}
-                      loading={isAnalyzing}
-                      variant={productDetails ? 'ghost' : 'primary'}
-                      className="h-10 px-6 text-[11px] min-w-[180px] tracking-widest font-black"
-                    >
-                      {productDetails ? 'Re-Scan' : 'Scan'}
-                    </Button>
-                  }
-                >
+                <Card title="Product" icon={Package} tooltip="Upload your product photo so the AI can scan it." className="min-w-[180px] lg:min-w-0 flex-shrink-0" contentClassName="p-0">
                   <div className="flex flex-col h-full">
-                    <div className="relative group w-full h-28 lg:h-auto lg:aspect-[16/9] bg-[#050505] flex flex-col items-center justify-center cursor-pointer overflow-hidden border-b border-white/5">
+                    <div className="relative group w-full h-20 lg:h-auto lg:aspect-[5/3] bg-[#080808] flex flex-col items-center justify-center cursor-pointer overflow-hidden border-b border-white/5">
                       <input type="file" accept="image/*" onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleImageUpload(e, 'product')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                       {productImg ? (
                         <>
                           <img src={productImg.url} alt="Product" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                          <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/80 to-transparent flex justify-between items-end">
-                            <span className="bg-black/80 backdrop-blur-md text-[#c8f135] font-sans text-[10px] font-bold tracking-wide px-3 py-1.5 rounded-md border border-[#c8f135]/30 shadow-lg flex items-center gap-2">
+                          <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+                            <span className="bg-black/80 backdrop-blur-md text-[#c8f135] font-sans text-[10px] font-bold tracking-wide px-2 py-1 rounded-md border border-[#c8f135]/30 flex items-center gap-1.5 w-fit">
                               <span className="w-1.5 h-1.5 rounded-full bg-[#c8f135] animate-pulse" />
-                              Product Uploaded
+                              Uploaded
                             </span>
                           </div>
                         </>
                       ) : (
-                        <div className="flex flex-col items-center gap-3 text-[#555] group-hover:text-[#c8f135] transition-colors">
-                          <Upload size={24} />
-                          <span className="font-sans text-[11px] font-bold tracking-wide text-[#999]">Upload Product to Scan</span>
+                        <div className="flex flex-col items-center gap-2 text-[#555] group-hover:text-[#c8f135] transition-colors">
+                          <Upload size={16} />
+                          <span className="font-sans text-[9px] font-bold tracking-wide text-[#999]">Upload Product</span>
                         </div>
                       )}
+                    </div>
+                    <div className="p-3 bg-black/20">
+                      <Button onClick={analyzeProduct} disabled={!productImg || isAnalyzing} loading={isAnalyzing} variant={productDetails ? 'ghost' : 'primary'} className="w-full h-8 text-[9px]">
+                        {productDetails ? 'Re-Scan Product' : 'Scan Product'}
+                      </Button>
                     </div>
                   </div>
                 </Card>
 
-                <Card title="Video" icon={Video} tooltip="Upload a reference video to extract style, audio, and script." className="min-w-[180px] lg:min-w-0 flex-shrink-0" contentClassName="p-0">
+                <Card title="Reference Video" icon={Video} tooltip="Upload a reference video to extract style, audio, and script." className="min-w-[180px] lg:min-w-0 flex-shrink-0" contentClassName="p-0">
                   <div className="flex flex-col h-full">
-                    <div className="relative group w-full h-28 lg:h-auto lg:aspect-square bg-[#050505] flex flex-col items-center justify-center cursor-pointer overflow-hidden border-b border-white/5 lg:max-h-none">
+                    <div className="relative group w-full h-28 lg:h-auto lg:aspect-video bg-[#080808] flex flex-col items-center justify-center cursor-pointer overflow-hidden border-b border-white/5 lg:max-h-none">
                       <input type="file" accept="video/*" onChange={handleVideoUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                       {sourceVideo ? (
                         <>
@@ -3439,56 +3526,28 @@ Return ONLY a valid JSON object with the following structure:
 
               {/* Column 2: Cognitive Engine / Narrative (Center | 5 cols) */}
               <div id="tour-script" className="lg:col-span-5 space-y-3 order-3 lg:order-2">
-                <Card title="Your Product" icon={FileText} tooltip="Tell us about your product and make your script." contentClassName="p-4 gap-3">
-                  <div className="space-y-3">
-                    {/* Integrated Vision Output */}
-                    <div className="bg-black/40 border border-white/5 rounded-xl p-3 font-mono text-[9px] text-gray-400 leading-relaxed italic relative group">
-                      <div className="flex items-center gap-2 mb-1.5 opacity-50 group-hover:opacity-100 transition-opacity">
-                        <Wand2 size={10} className="text-[#c8f135]" />
-                        <span className="uppercase tracking-widest font-bold text-[8px]">Vision Analysis</span>
-                      </div>
-                      <div className="line-clamp-2 hover:line-clamp-none transition-all cursor-default">
-                        {productDetails || "Awaiting product scan..."}
-                      </div>
-                    </div>
+                <Card title="Product & Script" icon={FileText} tooltip="Tell us about your product and make your script." contentClassName="p-4 gap-4">
+                  <div className="space-y-4">
 
                     <div>
-                      <label className="text-[#999] font-sans font-bold text-[10px] tracking-wide mb-1 block uppercase">Creative Direction/Direct instructions</label>
+                      <label className="text-[#999] font-sans font-bold text-[10px] tracking-wide mb-1.5 block uppercase">Creative Direction</label>
                       <input
                         type="text"
                         value={userPrompt}
                         onChange={(e) => setUserPrompt(e.target.value)}
                         placeholder="e.g., Energetic demo with a focus on product durability..."
-                        className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-2 font-sans text-[11px] text-white focus:outline-none focus:border-[#c8f135] transition-colors"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Dropdown
-                        label="Voice Language"
-                        value={language}
-                        options={LANGUAGES}
-                        onChange={setLanguage}
-                        icon={Box}
-                      />
-                      <Dropdown
-                        label="Synthetic Voice"
-                        value={voice}
-                        options={VOICES}
-                        onChange={setVoice}
-                        icon={Volume2}
+                        className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-2.5 font-sans text-[11px] text-white focus:outline-none focus:border-[#c8f135] transition-colors"
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Dropdown label="Language" value={language} options={LANGUAGES} onChange={setLanguage} icon={Box} />
+                      <Dropdown label="Voice" value={voice} options={VOICES} onChange={setVoice} icon={Volume2} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Dropdown label="Duration" value={scriptDuration} options={['8 seconds', '16 seconds', '24 seconds', '36 seconds']} onChange={setScriptDuration} icon={Clock} />
                       <Dropdown
-                        label="Script Duration"
-                        value={scriptDuration}
-                        options={['8 seconds', '16 seconds', '24 seconds', '36 seconds']}
-                        onChange={setScriptDuration}
-                        icon={Clock}
-                      />
-                      <Dropdown
-                        label="Viral Script"
+                        label="Tone"
                         value={SCRIPT_TONES[selectedScriptTone]?.name}
                         options={Object.values(SCRIPT_TONES).map(t => t.name)}
                         onChange={(name) => {
@@ -3499,39 +3558,41 @@ Return ONLY a valid JSON object with the following structure:
                       />
                     </div>
 
+                    {/* Vision Analysis — collapsed info row */}
+                    {productDetails && (
+                      <div className="bg-black/30 border border-white/5 rounded-xl px-3 py-2 font-mono text-[9px] text-gray-500 leading-relaxed italic flex gap-2 items-start">
+                        <Wand2 size={10} className="text-[#c8f135] mt-0.5 flex-shrink-0" />
+                        <span className="line-clamp-2">{productDetails}</span>
+                      </div>
+                    )}
+
                     <div>
-                      <div className="flex justify-between items-center mb-1.5">
-                        <label className="text-[#999] font-sans font-bold text-[10px] tracking-wide block uppercase">Script Protocol</label>
-                        <div className="flex gap-2 items-center">
-                          <button onClick={generateScript} disabled={isGeneratingScript} className="text-[10px] font-sans font-bold tracking-wider px-3 py-1.5 rounded-lg bg-[#c8f135]/10 border border-[#c8f135]/20 text-[#c8f135] hover:bg-[#c8f135] hover:text-black transition-all">
-                            {isGeneratingScript ? 'Writing...' : 'Generate Script'}
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-[#999] font-sans font-bold text-[10px] tracking-wide uppercase">Script</label>
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={generateScript} disabled={isGeneratingScript} className="flex items-center gap-1.5 text-[9px] font-black tracking-widest px-3 py-1.5 rounded-lg bg-[#c8f135]/10 border border-[#c8f135]/20 text-[#c8f135] hover:bg-[#c8f135] hover:text-black transition-all">
+                            {isGeneratingScript ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                            {isGeneratingScript ? 'Writing...' : 'Generate'}
                           </button>
-                          {script && scenes.length > 0 && (
-                            <div className="flex gap-1.5 border-l border-white/10 pl-2 ml-1">
-                              {scenes.map((scene, idx) => (
-                                <button
-                                  key={idx}
-                                  onClick={() => regenerateScriptPart(idx, scene.label || 'SCENE')}
-                                  disabled={isRegeneratingPart}
-                                  className="text-[8px] font-bold tracking-widest px-2 py-1 rounded bg-white/5 border border-white/10 text-gray-400 hover:text-[#c8f135] hover:border-[#c8f135]/30 transition-all uppercase whitespace-nowrap"
-                                  title={`Regenerate ${scene.label || 'Scene'} `}
-                                >
-                                  {isRegeneratingPart ? '...' : `${scene.label || 'SCENE'} 🔄`}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                          <button onClick={analyzeScenes} disabled={!script} className="text-[10px] font-sans font-bold tracking-wider px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all disabled:opacity-30">
-                            Split Scenes
+                          <button onClick={analyzeScenes} disabled={!script} title="Split into scenes" className="flex items-center gap-1.5 text-[9px] font-black tracking-widest px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all disabled:opacity-30">
+                            <Scissors size={10} />
+                            Split
                           </button>
-                          <button 
-                            onClick={extractVisualPrompts} 
-                            disabled={!script || isGeneratingScript} 
-                            className="text-[10px] font-sans font-bold tracking-wider px-3 py-1.5 rounded-lg bg-[#c8f135]/10 border border-[#c8f135]/20 text-[#c8f135] hover:bg-[#c8f135]/20 transition-all disabled:opacity-30 flex items-center gap-1.5"
-                          >
-                            <Sparkles size={12} />
-                            Extract Prompts
+                          <button onClick={extractVisualPrompts} disabled={!script || isGeneratingScript} title="Extract visual prompts" className="flex items-center gap-1.5 text-[9px] font-black tracking-widest px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[#c8f135] hover:bg-[#c8f135]/10 transition-all disabled:opacity-30">
+                            <Wand2 size={10} />
+                            Prompts
                           </button>
+                          {script && scenes.length > 0 && scenes.map((scene, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => regenerateScriptPart(idx, scene.label || 'SCENE')}
+                              disabled={isRegeneratingPart}
+                              className="text-[8px] font-bold tracking-widest px-2 py-1.5 rounded bg-white/5 border border-white/10 text-gray-400 hover:text-[#c8f135] hover:border-[#c8f135]/30 transition-all uppercase whitespace-nowrap"
+                              title={`Regenerate ${scene.label || 'Scene'}`}
+                            >
+                              {isRegeneratingPart ? '...' : `↺ ${scene.label || 'S'}`}
+                            </button>
+                          ))}
                         </div>
                       </div>
                       <div className="relative">
@@ -3930,7 +3991,7 @@ Return ONLY a valid JSON object with the following structure:
                       </div>
 
                       <div className="flex justify-between items-center mb-1.5 gap-2">
-                        <label className="text-[#999] font-sans font-bold text-[10px] tracking-wide block uppercase truncate">Visual Prompt/Scene {activeSceneIndex + 1} Logic</label>
+                        <label className="text-[#999] font-sans font-bold text-[10px] tracking-wide block uppercase truncate">Scene {activeSceneIndex + 1} — Visual Prompt</label>
                         <div className="flex gap-1.5 flex-shrink-0">
                           <button
                             onClick={() => analyzeScenePrompt(activeSceneIndex)}
@@ -3953,7 +4014,7 @@ Return ONLY a valid JSON object with the following structure:
                       <div className="flex flex-col gap-3">
                         <div className="p-3 bg-black/60 rounded-xl border border-white/10 min-h-[80px] overflow-y-auto mb-1">
                           <div className="text-[10px] font-mono text-[#c8f135] uppercase tracking-widest mb-2 border-b border-[#c8f135]/10 pb-1 flex justify-between">
-                            <span>Script Dialogue</span>
+                            <span>Dialogue</span>
                             <span>{scenes[activeSceneIndex]?.timestamp}</span>
                           </div>
                           <p className="text-sm font-sans text-[#c8f135] leading-relaxed italic font-bold">
@@ -4031,23 +4092,20 @@ Return ONLY a valid JSON object with the following structure:
                       </div>
                     </div>
 
-                      <div className="flex gap-3 pt-2">
-                        <div className="flex-1 relative group">
-                          <input
-                            type="file"
-                            accept="audio/*"
-                            onChange={handleAudioUpload}
-                            className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                          />
-                          <Button variant="secondary" className="w-full py-3 text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
-                            <Upload size={12} /> Upload Voice
+                      <div className="pt-2 space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="relative group">
+                            <input type="file" accept="audio/*" onChange={handleAudioUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                            <Button variant="secondary" className="w-full py-2.5 text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
+                              <Upload size={11} /> Upload Voice
+                            </Button>
+                          </div>
+                          <Button onClick={generateVoice} disabled={!script || isGeneratingAudio} loading={isGeneratingAudio} variant="secondary" className="w-full py-2.5 text-[9px] font-black uppercase tracking-widest">
+                            Synthesize Audio
                           </Button>
                         </div>
-                        <Button onClick={generateVoice} disabled={!script || isGeneratingAudio} loading={isGeneratingAudio} variant="secondary" className="flex-1 py-3 text-[9px] font-black uppercase tracking-widest">
-                          Synthesize Audio
-                        </Button>
-                        <Button onClick={() => generateImage()} disabled={isGeneratingImage || !productDetails} loading={isGeneratingImage} variant="secondary" className="flex-1 py-3 text-[9px] font-black uppercase tracking-widest">
-                          Gen Reference
+                        <Button onClick={() => generateImage()} disabled={isGeneratingImage || !productDetails} loading={isGeneratingImage} variant="secondary" className="w-full py-2.5 text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
+                          <Camera size={11} /> Generate Influencer Reference
                         </Button>
                       </div>
 
@@ -4223,7 +4281,7 @@ Return ONLY a valid JSON object with the following structure:
                             />
                           </div>
 
-                          <Button onClick={generateImage} disabled={isGeneratingImage || !productDetails} loading={isGeneratingImage} className="w-full py-4 pointer-events-auto">Generate your Influencer</Button>
+                          <Button onClick={generateImage} disabled={isGeneratingImage || !productDetails} loading={isGeneratingImage} className="w-full py-3.5 pointer-events-auto">Generate Influencer</Button>
                         </div>
                       </>
                     ) : (
@@ -4528,6 +4586,11 @@ Return ONLY a valid JSON object with the following structure:
             )}
 
           </div>
+          ) : (
+            <div className="w-full max-w-[1600px] mx-auto pb-20">
+              <PodcastStudio />
+            </div>
+          )}
         </main>
       </div>
 

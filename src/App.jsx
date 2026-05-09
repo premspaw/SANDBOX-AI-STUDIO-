@@ -10,6 +10,7 @@ import { InfluencerStudio } from './components/panels/InfluencerStudio'
 import { ForgeView } from './components/panels/ForgeView'
 import { PlaygroundCanvas } from './components/canvas/PlaygroundCanvas'
 import { AssetManager } from './components/panels/AssetManager'
+import MarketingStudio from './components/pages/MarketingStudio'
 import SettingsPage from './components/pages/SettingsPage'
 import PricingPage from './components/pages/PricingPage'
 import { supabase } from './lib/supabase'
@@ -27,6 +28,7 @@ const FULL_HEIGHT_TABS = new Set([
   'creator',
   'directors-cut',
   'creative-studio',
+  'marketing',
   'ugc',
   'admin',
   'auth',
@@ -124,6 +126,7 @@ function App() {
     creator: <ForgeView onComplete={() => setActiveTab('directors-cut')} />,
     'directors-cut': <PlaygroundCanvas />,
     'creative-studio': <DirectorStudio />,
+    marketing: <MarketingStudio />,
     ugc: <UGC />,
     forge: <ForgeView onComplete={() => setActiveTab('directors-cut')} />,
     playground: <PlaygroundCanvas />,

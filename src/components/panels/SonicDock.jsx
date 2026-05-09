@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { Mic2, Music, Volume2, Zap, ChevronUp, ChevronDown, Sparkles, UserCheck, Loader2, Wand2, Users, Cloud, Camera, Clapperboard, MapPin, Cpu } from 'lucide-react';
+import { Zap, ChevronDown, Sparkles, UserCheck, Loader2, Clapperboard, Image as ImageIcon } from 'lucide-react';
 import { useAppStore } from '../../store';
 
 function DockItem({ tool, mouseX }) {
@@ -38,56 +38,14 @@ function DockItem({ tool, mouseX }) {
 export const SonicDock = () => {
     const store = useAppStore();
     const [isRetracted, setIsRetracted] = useState(true);
-    const [isRendering, setIsRendering] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
     const mouseX = useMotionValue(Infinity);
 
-    const handleSyncGrid = async () => {
-        const activeDialogueToIdentityEdges = store.edges.filter(edge =>
-            edge.source.startsWith('dialogue-') && (edge.target.startsWith('node-') || edge.target.startsWith('influencer-'))
-        );
-        if (activeDialogueToIdentityEdges.length === 0) {
-            window.toast("Neural Bridge Required: Connect a Dialogue Node to a Character Construct to render.");
-            return;
-        }
-        setIsRendering(true);
-        for (const edge of activeDialogueToIdentityEdges) {
-            const dialogueNode = store.nodes.find(n => n.id === edge.source);
-            const targetNode = store.nodes.find(n => n.id === edge.target);
-            if (dialogueNode && targetNode) {
-                const image = targetNode.data.image || targetNode.data.anchorImage;
-                if (!image) continue;
-                const videoNodeId = store.addVideoNode('', 'Synthesizing_LipSync...', {
-                    x: targetNode.position.x + 400,
-                    y: targetNode.position.y
-                });
-                import('../../services/geminiService').then(async (m) => {
-                    try {
-                        const videoUrl = await m.generateLipSyncVideo(image, dialogueNode.data.script, store.universeBible);
-                        if (videoUrl) store.updateNodeData(videoNodeId, { videoUrl, isOptimistic: false, label: 'Lip-Sync Render Output' });
-                    } catch (err) {
-                        console.error("LipSync synthesis error:", err);
-                    }
-                });
-            }
-        }
-        setTimeout(() => setIsRendering(false), 2000);
-    };
-
-    const [narrative, setNarrative] = useState('');
-    const [isAutoDirecting, setIsAutoDirecting] = useState(false);
-
     const tools = [
-        { id: 'voice', icon: Mic2, label: 'VOICE', desc: 'Dialogue', color: 'text-purple-400', bgColor: 'bg-purple-400/10', action: () => store.addDialogueNode() },
         { id: 'influencer', icon: UserCheck, label: 'CONSISTENCY', desc: 'Influencer', color: 'text-[#bef264]', bgColor: 'bg-[#bef264]/10', action: () => store.addInfluencerNode() },
-        { id: 'music', icon: Music, label: 'MUSIC', desc: 'Ambient', color: 'text-cyan-400', bgColor: 'bg-cyan-400/10', action: () => store.addMusicNode() },
-        { id: 'sfx', icon: Volume2, label: 'SFX', desc: 'Atmosphere', color: 'text-amber-400', bgColor: 'bg-amber-400/10', action: () => store.addSFXNode() },
-        { id: 'outfit', icon: Sparkles, label: 'OUTFIT', desc: 'Wardrobe', color: 'text-violet-400', bgColor: 'bg-violet-400/10', action: () => store.addWardrobeNode() },
-        { id: 'product', icon: Camera, label: 'PRODUCT', desc: 'Asset', color: 'text-emerald-400', bgColor: 'bg-emerald-400/10', action: () => store.addProductNode() },
-        { id: 'location', icon: MapPin, label: 'LOCATION', desc: 'Environment', color: 'text-cyan-400', bgColor: 'bg-cyan-400/10', action: () => store.addLocationNode() },
-        { id: 'story', icon: Clapperboard, label: 'AUTO STORY', desc: 'Shot Planner', color: 'text-violet-400', bgColor: 'bg-violet-400/10', action: () => store.addAutoStoryboardNode() },
-        { id: 'ugc-engine', icon: Cpu, label: 'AD ENGINE', desc: 'Ad Materializer', color: 'text-[#bef264]', bgColor: 'bg-[#bef264]/10', action: () => store.addUGCEngineNode() },
-        { id: 'veo', icon: Zap, label: 'VEO I2V', desc: 'Video Gen', color: 'text-orange-400', bgColor: 'bg-orange-400/10', action: () => store.addVeoI2VNode() },
+        { id: 'seedance', icon: Sparkles, label: 'SEEDANCE 2.0', desc: 'Omni-Ref', color: 'text-[#D4FF00]', bgColor: 'bg-[#D4FF00]/10', action: () => store.addSeedanceNode() },
+        { id: 'seedance15pro', icon: Clapperboard, label: 'SEEDANCE 1.5 PRO', desc: 'First/Last Frame', color: 'text-[#00F0FF]', bgColor: 'bg-[#00F0FF]/10', action: () => store.addSeedance15ProNode() },
+        { id: 'nano_banana', icon: ImageIcon, label: 'NANO BANANA 2', desc: 'Reasoning Image', color: 'text-[#F59E0B]', bgColor: 'bg-[#F59E0B]/10', action: () => store.addNanoBananaNode() },
     ];
 
     return (
@@ -141,22 +99,10 @@ export const SonicDock = () => {
                 {!isRetracted && <div className="w-px h-8 bg-white/10 mx-2" />}
 
                 <div className="flex items-center gap-2">
-                    <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        onClick={handleSyncGrid}
-                        className={`p-3 rounded-full ${isRendering ? 'bg-orange-500' : 'bg-[#bef264]'} text-black transition-all shadow-lg`}
-                    >
-                        {isRendering ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} fill="currentColor" />}
-                    </motion.button>
                     {!isRetracted && (
-                        <>
-                            <button onClick={() => setIsExpanded(true)} className="p-2.5 bg-white/5 rounded-full text-white/40 hover:text-[#bef264] border border-white/5">
-                                <Sparkles size={16} />
-                            </button>
-                            <button onClick={() => setIsRetracted(true)} className="p-2 text-white/20 hover:text-white">
-                                <ChevronDown size={18} />
-                            </button>
-                        </>
+                        <button onClick={() => setIsRetracted(true)} className="p-2 text-white/20 hover:text-white transition-colors">
+                            <ChevronDown size={18} />
+                        </button>
                     )}
                 </div>
             </motion.div>

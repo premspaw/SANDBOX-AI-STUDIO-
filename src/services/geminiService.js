@@ -19,28 +19,12 @@ const getAIConfig = () => {
 let _aiInstance = null;
 const getAI = () => {
     if (_aiInstance) return _aiInstance;
-    const { apiKey, origin } = getAIConfig();
+    const { apiKey } = getAIConfig();
     if (!apiKey) {
         throw new Error('[geminiService] GOOGLE_API_KEY is not set. Add it to your Railway service variables.');
     }
     _aiInstance = new GoogleGenAI({ 
-        apiKey,
-        headers: {
-            'Referer': origin,
-            'Origin': origin
-        },
-        fetchOptions: {
-            headers: {
-                'Referer': origin,
-                'Origin': origin
-            }
-        },
-        requestOptions: {
-            headers: {
-                'Referer': origin,
-                'Origin': origin
-            }
-        }
+        apiKey
     });
     return _aiInstance;
 };

@@ -11,6 +11,7 @@ import { useAppStore } from '../../store';
 import { cn } from '../../lib/utils';
 import { saveGeneratedAsset } from "../../services/supabaseService.js";
 import { resolveUrl, getApiUrl } from "../../config/apiConfig";
+import { supabase } from '../../lib/supabase';
 
 const VIDEO_PRESETS = [
     { name: "Orbit Reveal", prompt: "A cinematic eye-level full 360-degree orbit clockwise around the subject with soft backlighting and organic handheld camera shake. Motion is continuous and fluid." },
@@ -140,6 +141,7 @@ export default function DirectorStudio() {
     const [lastFrameImg, setLastFrameImg] = useState(() => localStorage.getItem('director_last_frame') || null);
     const [activeDropdown, setActiveDropdown] = useState(null);
     const [showAnimationPanel, setShowAnimationPanel] = useState(false);
+    const [cameraAngles, setCameraAngles] = useState([]);
     const [cameraShot, setCameraShot] = useState(CAMERA_SHOTS[0]);
     const [aspectRatio, setAspectRatio] = useState('9:16');
     const [includeAudio, setIncludeAudio] = useState(false);
@@ -243,6 +245,31 @@ export default function DirectorStudio() {
             }
         };
         checkKey();
+
+        // Fetch Camera Angles from Supabase
+        const fetchAngles = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('camera_angles')
+                    .select('*')
+                    .order('label', { ascending: true });
+                
+                if (error) throw error;
+                if (data && data.length > 0) {
+                    setCameraAngles(data);
+                    // Update initial shot if it's still default
+                    if (cameraShot === CAMERA_SHOTS[0]) {
+                        setCameraShot(data[0].label);
+                    }
+                } else {
+                    setCameraAngles(CAMERA_SHOTS.map(s => ({ id: s, label: s })));
+                }
+            } catch (err) {
+                console.warn("[DIRECTOR] Failed to fetch camera angles, using fallback:", err.message);
+                setCameraAngles(CAMERA_SHOTS.map(s => ({ id: s, label: s })));
+            }
+        };
+        fetchAngles();
     }, [storeApiKey]);
 
     useEffect(() => {
@@ -842,7 +869,11 @@ export default function DirectorStudio() {
                                                 {mediaType === 'video' ? 'Camera Rig' : 'Camera Angle'}
                                             </label>
                                             <select value={cameraShot} onChange={(e) => setCameraShot(e.target.value)} className="w-full bg-[#111113] border border-[#1e1e24] rounded-xl px-2 py-3 text-xs text-[#d0d0dd]">
-                                                {CAMERA_SHOTS.map(shot => <option key={shot} value={shot} className="bg-[#0a0a0a]">{shot}</option>)}
+                                                {cameraAngles.map(angle => (
+                                                    <option key={angle.id} value={angle.label} className="bg-[#0a0a0a]">
+                                                        {angle.label}
+                                                    </option>
+                                                ))}
                                             </select>
                                         </div>
                                     )}

@@ -69,6 +69,7 @@ import fs from 'fs';
 import * as geminiService from './src/services/geminiService.js';
 import * as audioService from './services/audioService.js';
 import * as storageService from './services/storageService.js';
+import { MARKETING_BUCKET, MARKETING_FOLDER } from './services/storageService.js';
 import * as workspaceService from './services/workspaceService.js';
 import * as visionService from './services/visionService.js';
 import * as vectorService from './services/vectorService.js';
@@ -389,6 +390,66 @@ app.get('/api/supabase-status', async (req, res) => {
     }
 });
 app.get('/api/ping', (req, res) => res.json({ message: 'pong', timestamp: new Date().toISOString() }));
+
+app.get('/api/list-gemini-models', async (req, res) => {
+    const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'GOOGLE_API_KEY not set' });
+    try {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?pageSize=100&key=${apiKey}`, { signal: AbortSignal.timeout(10000) });
+        const data = await r.json();
+        const models = (data.models || []).map(m => ({
+            name: m.name,
+            displayName: m.displayName,
+            supportedMethods: m.supportedGenerationMethods
+        }));
+        res.json({ total: models.length, models });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/ping-vertex', async (req, res) => {
+    const results = { timestamp: new Date().toISOString(), checks: {} };
+
+    // 1. Check Google API Key via Gemini models list
+    const googleApiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+    results.checks.google_api_key_present = !!googleApiKey;
+    if (googleApiKey) {
+        try {
+            const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${googleApiKey}`, { signal: AbortSignal.timeout(8000) });
+            const data = await r.json();
+            results.checks.gemini_api = r.ok ? { status: 'ok', models_count: data.models?.length ?? 0 } : { status: 'error', code: r.status, message: data.error?.message };
+        } catch (e) {
+            results.checks.gemini_api = { status: 'error', message: e.message };
+        }
+    }
+
+    // 2. Check Vertex AI access token
+    try {
+        const token = await getVertexToken();
+        results.checks.vertex_access_token = token ? { status: 'ok', token_preview: token.slice(0, 20) + '...' } : { status: 'error', message: 'No token returned' };
+
+        // 3. Ping Vertex AI endpoint
+        if (token) {
+            const projectId = VERTEX_PROJECT_ID;
+            const location = VERTEX_LOCATION;
+            const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/gemini-2.0-flash-001`;
+            const r = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
+            const text = await r.text();
+            try {
+                const data = JSON.parse(text);
+                results.checks.vertex_api = r.ok ? { status: 'ok', project: projectId, location, model: data.name } : { status: 'error', code: r.status, message: data.error?.message };
+            } catch (_) {
+                results.checks.vertex_api = { status: 'error', code: r.status, message: `Non-JSON response: ${text.slice(0, 100)}` };
+            }
+        }
+    } catch (e) {
+        results.checks.vertex_access_token = { status: 'error', message: e.message };
+    }
+
+    const allOk = Object.values(results.checks).every(c => !c.status || c.status === 'ok');
+    res.status(allOk ? 200 : 207).json(results);
+});
 const httpServer = http.createServer(app);
 const port = process.env.PORT || 3002;
 console.log(`[SERVER] Google API key configured: ${process.env.GOOGLE_API_KEY ? 'YES' : 'NO'}`);
@@ -694,7 +755,7 @@ app.post('/api/refine-narrative', async (req, res) => {
         };
 
         console.log(`[BACKEND] Refining narrative for ${type} using AI Studio (Gemini 2.5)...`);
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
         
         const resp = await fetch(url, {
             method: 'POST',
@@ -759,7 +820,7 @@ app.post('/api/suggest-dialogue', async (req, res) => {
 
         if (apiKey && apiKey.startsWith('AIza')) {
             console.log(`[BACKEND] Suggesting dialogue via AI Studio REST (Gemini 2.5)...`);
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
             const resp = await fetch(url, {
                 method: 'POST',
                 headers: headers,
@@ -774,7 +835,7 @@ app.post('/api/suggest-dialogue', async (req, res) => {
             textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
         } else {
             console.log(`[BACKEND] Suggesting dialogue via Vertex AI Bearer...`);
-            const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/gemini-1.5-flash:generateContent`;
+            const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/gemini-1.5-flash-latest:generateContent`;
             const resp = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -797,6 +858,148 @@ app.post('/api/suggest-dialogue', async (req, res) => {
     } catch (error) {
         console.error('BACKEND DIALOGUE ERROR:', error);
         res.status(500).json({ error: error.message, alternatives: [] });
+    }
+});
+
+// Marketing Templates — stored in existing `assets` table with type='marketing_template'
+// Metadata (name, prompt, aspect, category) packed into the `name` field as JSON string
+const sbH = () => ({
+    'Content-Type': 'application/json',
+    'apikey': (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '').trim(),
+    'Authorization': `Bearer ${(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '').trim()}`,
+    'Prefer': 'return=representation'
+});
+const sbAssetsUrl = () => `${(process.env.VITE_SUPABASE_URL || '').trim()}/rest/v1/assets`;
+
+app.get('/api/marketing/templates', async (req, res) => {
+    try {
+        const r = await fetch(`${sbAssetsUrl()}?type=eq.marketing_template&order=created_at.desc`, { headers: sbH() });
+        if (!r.ok) { const t = await r.text(); throw new Error(t); }
+        const data = await r.json();
+        const rows = data.map(row => {
+            let meta = {};
+            try { meta = JSON.parse(row.name); } catch (_) { meta = { name: row.name }; }
+            const imgUrl = row.url.startsWith('http')
+                ? `http://localhost:3002/api/proxy-image?url=${encodeURIComponent(row.url)}`
+                : row.url;
+            return { id: row.id, name: meta.name || row.name, image_url: imgUrl, prompt: meta.prompt || '', aspect: meta.aspect || '16/9', category: meta.category || 'other' };
+        });
+        res.json(rows);
+    } catch (err) {
+        console.error('[MARKETING-TEMPLATES-GET]', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/marketing/templates', async (req, res) => {
+    // Stored in localStorage on client; DB sync pending schema cache fix
+    res.json({ success: true, storage: 'localStorage' });
+});
+
+app.delete('/api/marketing/templates/:id', async (req, res) => {
+    res.json({ success: true });
+});
+
+// Image proxy — fetches R2/GCS images server-side and returns with CORS headers
+// Usage: /api/proxy-image?url=https://pub-xxx.r2.dev/path/to/image.png
+app.get('/api/proxy-image', async (req, res) => {
+    try {
+        const { url } = req.query;
+        if (!url) return res.status(400).json({ error: 'url param required' });
+        const r = await fetch(url);
+        if (!r.ok) return res.status(r.status).send('Upstream error');
+        const contentType = r.headers.get('content-type') || 'image/png';
+        res.set({
+            'Content-Type': contentType,
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'public, max-age=31536000',
+        });
+        const buf = await r.arrayBuffer();
+        res.send(Buffer.from(buf));
+    } catch (err) {
+        console.error('[PROXY-IMAGE]', err.message);
+        res.status(500).send('Proxy error');
+    }
+});
+
+// Marketing: Upload reference image to GCS marketing bucket
+app.post('/api/marketing/upload-reference', async (req, res) => {
+    try {
+        const { image, userId } = req.body;
+        if (!image) return res.status(400).json({ error: 'Image is required' });
+
+        const mimeMatch = image.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+        const ext = mimeType.split('/')[1] || 'jpg';
+        const buffer = Buffer.from(image.split(',')[1], 'base64');
+        const fileName = `${MARKETING_FOLDER}/reference/${userId || 'anon'}/ref_${Date.now()}.${ext}`;
+
+        const r2Url = await storageService.uploadToGCS(buffer, fileName, mimeType, MARKETING_BUCKET);
+        const proxyUrl = `http://localhost:3002/api/proxy-image?url=${encodeURIComponent(r2Url)}`;
+        console.log(`[MARKETING] Reference image stored: ${r2Url}`);
+        res.json({ url: proxyUrl, r2Url, success: true, storage: 'R2', bucket: MARKETING_BUCKET, folder: `${MARKETING_FOLDER}/reference` });
+    } catch (err) {
+        console.error('[MARKETING-REF-UPLOAD-ERR]', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Marketing AI: Analyze food image to extract recipe data
+app.post('/api/marketing/analyze-image', async (req, res) => {
+    try {
+        const { image } = req.body;
+        if (!image) return res.status(400).json({ error: "Image is required" });
+
+        const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+        const prompt = `Analyze this food image and provide a detailed recipe infographic JSON.
+        If you identify the dish, provide its specific ingredients, steps, and meta data.
+        
+        Return ONLY valid JSON in this format:
+        {
+          "dish_name": "Name of the dish",
+          "dish_presentation": "Short description of how it looks",
+          "ingredients": [{ "name": "Ingredient Name", "quantity": "Quantity" }],
+          "steps": ["Step 1", "Step 2"],
+          "meta": { "calories": "xxx kcal", "time": "xx min", "servings": 4 }
+        }`;
+
+        const isToken = apiKey.startsWith('AQ.') || apiKey.startsWith('ya29.');
+        const projectId = process.env.GOOGLE_PROJECT_ID || 'gen-lang-client-0438096272';
+        const location = process.env.GOOGLE_LOCATION || 'us-central1';
+
+        let url;
+        let headers = { 'Content-Type': 'application/json', 'Referer': 'http://localhost:5173/' };
+
+        if (isToken) {
+            url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/gemini-1.5-flash:generateContent`;
+            headers['Authorization'] = `Bearer ${apiKey}`;
+        } else {
+            url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        }
+        
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({
+                contents: [{
+                    parts: [
+                        { text: prompt },
+                        { inline_data: { mime_type: "image/jpeg", data: image.split(',')[1] || image } }
+                    ]
+                }]
+            })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error?.message || `AI Error ${resp.status}`);
+        
+        const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        const recipeData = JSON.parse(textContent.match(/\{[\s\S]*\}/)?.[0] || "{}");
+        
+        res.json(recipeData);
+    } catch (error) {
+        console.error('MARKETING ANALYSIS ERROR:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -1542,6 +1745,96 @@ Output ONLY the raw prompt text ready for the video model. No preamble, no label
     }
 });
 
+/**
+ * Generic UGC Analysis Endpoint
+ * Proxies Gemini API calls for product and video analysis.
+ * Supports image and text inputs.
+ */
+app.post('/api/ai/analyze-ugc', async (req, res) => {
+    try {
+        const { parts, model: modelAlias = 'gemini-2.5-flash', generationConfig, userId } = req.body;
+        
+        // Map aliases to real model names
+        const modelMapping = {
+            'nano-banana': 'gemini-2.5-flash-image',
+            'nano-banana-2': 'gemini-2.5-flash-image',
+            'nano-banana-pro': 'gemini-3-pro-image-preview',
+            'nano-banana-pro-preview': 'nano-banana-pro-preview',
+            'gemini': 'gemini-2.5-flash',
+            'gemini-2.0-flash': 'gemini-2.5-flash',
+            'gemini-3.1-flash-image-preview': 'gemini-3.1-flash-image-preview',
+            'gemini-3-pro-image-preview': 'gemini-3-pro-image-preview',
+            'gemini-1.5-flash-latest': 'gemini-2.5-flash',
+            'gemini-1.5-flash': 'gemini-2.5-flash',
+            'gemini-1.5-pro-latest': 'gemini-2.5-flash',
+            'gemini-1.5-pro': 'gemini-2.5-flash',
+        };
+        const model = modelMapping[modelAlias] || modelAlias;
+        
+        if (!parts || !Array.isArray(parts)) {
+            return res.status(400).json({ error: "Missing 'parts' array in request body." });
+        }
+
+        console.log(`[UGC-ANALYZE] Model: ${model}, User: ${userId || 'anon'}`);
+
+        // Format parts for the SDK
+        const formattedParts = await Promise.all(parts.map(async (part) => {
+            if (part.inlineData) return part;
+            if (part.text) return part;
+            if (part.url) {
+                // Fetch and convert to inlineData
+                const resp = await fetch(part.url);
+                const ab = await resp.arrayBuffer();
+                const mime = resp.headers.get('content-type') || 'image/png';
+                return { inlineData: { mimeType: mime, data: Buffer.from(ab).toString('base64') } };
+            }
+            return part;
+        }));
+
+        const gemini = getGeminiClient();
+        const result = await gemini.models.generateContent({
+            model: model,
+            contents: [{
+                role: 'user',
+                parts: formattedParts
+            }],
+            ...(generationConfig && { config: generationConfig })
+        });
+
+        // New SDK: result.text is a string property (not a function)
+        const responseText = typeof result.text === 'string'
+            ? result.text
+            : result.text?.()
+            ?? result.response?.text?.()
+            ?? result.candidates?.[0]?.content?.parts?.[0]?.text;
+        const responseAudio = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+        
+        if (!responseText && !responseAudio) {
+            console.error("[UGC-ANALYZE-ERR] Empty response from Gemini:", JSON.stringify(result, null, 2));
+            throw new Error("Empty response from AI engine.");
+        }
+
+        res.json({ text: responseText, audio: responseAudio });
+
+    } catch (error) {
+        console.error("[UGC-ANALYZE-ERROR] ❌ Full error:", JSON.stringify(error, null, 2));
+        console.error("[UGC-ANALYZE-ERROR] ❌ Message:", error.message);
+        console.error("[UGC-ANALYZE-ERROR] ❌ Status:", error.status, "Code:", error.code);
+        
+        // Handle specific error codes
+        if (error.message?.includes('403') || error.message?.includes('permission')) {
+             return res.status(403).json({ error: "PERMISSION_DENIED", message: error.message });
+        }
+        if (error.message?.includes('429') || error.message?.includes('quota')) {
+             return res.status(429).json({ error: "QUOTA_EXCEEDED", message: "API Quota exceeded." });
+        }
+
+        res.status(500).json({ error: error.message || "Analysis Failed" });
+    }
+});
+
+
+
 // Generate Image (Multi-Model Support)
 app.post('/api/generate-image', async (req, res) => {
 
@@ -1616,6 +1909,11 @@ app.post('/api/generate-image', async (req, res) => {
                 return await handleGoogle(req, res);
 
             case 'openai':
+            case 'gpt-image-2':
+            case 'gpt-image-2-2026-04-21':
+            case 'gpt-4.1-mini':
+                return await handleOpenAI(req, res);
+
             case 'replicate':
             case 'runway':
             case 'pika':
@@ -1675,24 +1973,24 @@ async function uploadVideoToSupabase(videoBuffer, userId) {
 }
 
 /**
- * Uploads an image buffer to Supabase Storage and returns the public URL.
+ * Uploads an image buffer to GCS and returns the public/CDN URL.
+ * @param {Buffer} imageBuffer
+ * @param {string} userId
+ * @param {string} mimeType
+ * @param {string} targetBucket  - defaults to MARKETING_BUCKET for marketing images
+ * @param {string} folder        - sub-folder path inside bucket
  */
-async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg') {
+async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg', targetBucket = MARKETING_BUCKET, folder = `${MARKETING_FOLDER}/generated`) {
   const ext = mimeType.split('/')[1] || 'jpg';
   const name = `gen_${userId || 'anon'}_${Date.now()}.${ext}`;
-  const filePath = `users/${userId || 'anon'}/generated/${name}`;
+  const filePath = `${folder}/${userId || 'anon'}/${name}`;
 
   try {
-    const bucket = storage.bucket(BUCKET_NAME);
-    const file = bucket.file(filePath);
-    await file.save(imageBuffer, {
-      metadata: { contentType: mimeType, cacheControl: 'public, max-age=31536000' },
-      resumable: false
-    });
-    const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${filePath}`;
-    console.log(`[GCS] Image uploaded: ${publicUrl}`);
+    // Upload to GCS marketing bucket (CDN-ready via storageService)
+    const publicUrl = await storageService.uploadToGCS(imageBuffer, filePath, mimeType, targetBucket);
+    console.log(`[MARKETING-GCS] Image uploaded: ${publicUrl}`);
 
-    // Save URL reference to Supabase DB only
+    // Save URL reference to Supabase DB only (no file stored in Supabase)
     if (supabase && userId) {
       await supabase.from('assets').insert([{
         name, type: 'image', url: publicUrl,
@@ -2111,6 +2409,168 @@ async function handleKling(req, res) {
     }
 }
 
+// Handler for OpenAI Models (GPT Image 2 via dedicated Images API or Responses API)
+async function handleOpenAI(req, res) {
+    try {
+        const { model, prompt, userId, quality = 'medium', size = '1024x1536' } = req.body;
+        const apiKey = process.env.OPENAI_API_KEY;
+        if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
+
+        // 1. Robust Prompt Construction (Finalizing for high-fidelity infographics)
+        let finalPromptText = prompt;
+        let isInfographic = false;
+
+        try {
+            // Attempt to parse structured prompt if it's a JSON string from MarketingStudio
+            const parsed = typeof prompt === 'string' && prompt.startsWith('{') ? JSON.parse(prompt) : prompt;
+            
+            if (parsed && (parsed.goal || parsed.subject)) {
+                isInfographic = parsed.mode === 'detailed_infographic';
+                
+                // Construct a rich natural language prompt following VEO3/GPT-IMAGE guidelines
+                finalPromptText = `Task: ${parsed.goal || "Create a professional marketing asset"}\n` +
+                                 `Subject: ${parsed.subject}\n` +
+                                 `Aesthetic: ${parsed.scene}\n` +
+                                 `Composition: ${parsed.details?.composition || "Professional studio product photography"}\n` +
+                                 `Quality: ${parsed.details?.visual_quality || "8K, photorealistic"}`;
+                
+                if (parsed.details?.recipe_context) {
+                    const ctx = parsed.details.recipe_context;
+                    finalPromptText += `\n\nINFOGRAPHIC DATA TO INCLUDE:\n` +
+                                     `- Dish Name: ${ctx.name}\n` +
+                                     `- Ingredients: ${ctx.ingredients?.map(i => `${i.quantity} ${i.name}`).join(', ')}\n` +
+                                     `- Method: ${ctx.steps?.join(' ')}\n` +
+                                     `- Stats: ${ctx.meta?.calories || 'N/A'}, ${ctx.meta?.time || 'N/A'}, ${ctx.meta?.servings || 'N/A'} servings.`;
+                }
+
+                if (parsed.constraints && Array.isArray(parsed.constraints)) {
+                    finalPromptText += `\n\nSTRICT CONSTRAINTS: ${parsed.constraints.join(', ')}`;
+                }
+            }
+        } catch (e) {
+            console.warn("[OPENAI] Prompt parsing failed, using raw prompt string.", e.message);
+        }
+
+        // 2. Routing Logic
+        // Use Responses API for infographics or conversational tasks
+        const useResponsesApi = isInfographic || model?.includes('responses') || model?.includes('gpt-5');
+        const targetModel = (model === 'gpt-image-2-2026-04-21' || !model) ? 'gpt-image-2' : model;
+        
+        console.log(`[OPENAI] Routing to ${useResponsesApi ? 'RESPONSES' : 'IMAGES'} API | Model: ${targetModel} | User: ${userId}`);
+
+        if (useResponsesApi) {
+            // --- OPENAI RESPONSES API ---
+            // Note: This API is designed for conversational interaction with tools
+            const resp = await fetch('https://api.openai.com/v1/responses', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-5", // Mainline model for the Responses tool
+                    input: finalPromptText,
+                    tools: [{
+                        type: "image_generation",
+                        input_fidelity: "high", // High fidelity for recipe details
+                        action: "generate",
+                        config: {
+                            size: size,
+                            quality: quality === 'high' ? 'high' : 'medium'
+                        }
+                    }]
+                })
+            });
+
+            const data = await resp.json();
+            if (!resp.ok) {
+                console.error("[OPENAI-RESPONSES-ERR] ❌:", JSON.stringify(data, null, 2));
+                // Fallback to standard Images API if Responses API fails or is unavailable
+                console.log("[OPENAI] Falling back to standard Images API...");
+                return await handleOpenAIStandard(targetModel, finalPromptText, size, quality, userId, apiKey, res);
+            }
+
+            // Extract the generated image from the output parts
+            const imagePart = data.output?.find(o => o.type === 'image');
+            const imageData = imagePart?.image?.b64_json || imagePart?.image?.url;
+            
+            if (!imageData) {
+                console.warn("[OPENAI] Responses API returned no image, falling back...");
+                return await handleOpenAIStandard(targetModel, finalPromptText, size, quality, userId, apiKey, res);
+            }
+
+            let buffer;
+            if (imageData.startsWith('http')) {
+                const imgFetch = await fetch(imageData);
+                const ab = await imgFetch.arrayBuffer();
+                buffer = Buffer.from(ab);
+            } else {
+                buffer = Buffer.from(imageData, 'base64');
+            }
+
+            const finalUrl = await uploadImageToSupabase(buffer, userId);
+            return res.json({ url: finalUrl, imageUrl: finalUrl, success: true });
+
+        } else {
+            return await handleOpenAIStandard(targetModel, finalPromptText, size, quality, userId, apiKey, res);
+        }
+    } catch (err) {
+        console.error('[OPENAI-HANDLER-ERR] ❌:', err.message);
+        res.status(500).json({ error: err.message, success: false });
+    }
+}
+
+/**
+ * Standard OpenAI Images API Helper
+ */
+async function handleOpenAIStandard(targetModel, prompt, size, quality, userId, apiKey, res) {
+    const isGptImage = targetModel.includes('gpt-image') || targetModel.includes('gpt-5');
+    const payload = {
+        model: targetModel,
+        prompt: prompt,
+        n: 1,
+        size: size,
+        quality: isGptImage 
+            ? (quality === 'high' ? 'high' : (quality === 'low' ? 'low' : 'medium'))
+            : (quality === 'high' ? 'hd' : 'standard')
+    };
+
+    // Note: response_format: "b64_json" is often problematic with newer models in certain regions/tiers
+    // We'll rely on the default (URL) and fetch it ourselves to ensure stability.
+    
+    const response = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+        console.error("[OPENAI-IMAGES-ERR] ❌:", JSON.stringify(data, null, 2));
+        throw new Error(data.error?.message || "OpenAI Images API Error");
+    }
+
+    const imageUrl = data.data?.[0]?.url || data.data?.[0]?.b64_json;
+    if (!imageUrl) {
+        throw new Error("No image data returned from OpenAI Generations.");
+    }
+
+    let buffer;
+    if (imageUrl.startsWith('http')) {
+        const imgFetch = await fetch(imageUrl);
+        const ab = await imgFetch.arrayBuffer();
+        buffer = Buffer.from(ab);
+    } else {
+        buffer = Buffer.from(imageUrl, 'base64');
+    }
+
+    const finalUrl = await uploadImageToSupabase(buffer, userId);
+    return res.json({ url: finalUrl, imageUrl: finalUrl, success: true });
+}
+
 // Handler for Google Models (Nano Banana Native Gen & Veo Video)
 async function handleGoogle(req, res) {
     try {
@@ -2334,10 +2794,12 @@ async function handleGoogle(req, res) {
             // --- IMAGE BRANCH (NANO BANANA) ---
             const modelMapping = {
                 'nano-banana': 'gemini-2.5-flash-image',
-                'nano-banana-2': 'gemini-3.1-flash-image-preview',
+                'nano-banana-2': 'gemini-2.5-flash-image',
                 'nano-banana-pro': 'gemini-3-pro-image-preview',
-                'nano-banana-pro-preview': 'gemini-3-pro-image-preview',
-                'gemini': 'gemini-2.5-flash-image'
+                'nano-banana-pro-preview': 'nano-banana-pro-preview',
+                'gemini': 'gemini-2.5-flash-image',
+                'gemini-3.1-flash-image-preview': 'gemini-3.1-flash-image-preview',
+                'gemini-3-pro-image-preview': 'gemini-3-pro-image-preview'
             };
 
             const modelNameRaw = modelMapping[targetModel] || (targetModel.startsWith('gemini-') ? targetModel : 'gemini-2.5-flash-image');
@@ -2399,17 +2861,20 @@ async function handleGoogle(req, res) {
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent?key=${apiKey}`;
             
             const referer = 'http://localhost:5173/';
+            const isImageGenModel = modelName.includes('image-generation') || modelName.includes('imagen') || modelName.includes('image-preview') || modelName.includes('flash-image') || modelName.includes('nano-banana-pro-preview');
             const requestBody = {
                 contents: [{
                     role: 'user',
                     parts: contentParts
                 }],
                 generationConfig: {
-                    responseModalities: ["IMAGE"],
-                    imageConfig: {
-                        aspectRatio: validRatio,
-                        imageSize: isPro ? imageSize : "1K"
-                    }
+                    responseModalities: ["IMAGE", "TEXT"],
+                    ...(isImageGenModel ? {
+                        imageConfig: {
+                            aspectRatio: validRatio,
+                            imageSize: isPro ? imageSize : "1K"
+                        }
+                    } : {})
                 }
             };
 

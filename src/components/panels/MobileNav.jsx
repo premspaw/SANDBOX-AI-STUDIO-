@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, Camera, Users, FolderOpen, Settings, MoreHorizontal, X, LogOut, Shield, Zap, Sparkles, Clapperboard, Video } from 'lucide-react';
+import { Bot, Camera, Users, FolderOpen, Settings, MoreHorizontal, X, LogOut, Shield, Zap, Sparkles, Clapperboard, Video, Megaphone } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useShorts } from '../../hooks/useShorts';
@@ -13,6 +13,7 @@ export function MobileNav({ activeTab, setActiveTab }) {
 
     const mainNavItems = [
         { id: 'creative-studio', label: 'Studio', icon: Video },
+        { id: 'marketing', label: 'Marketing', icon: Megaphone },
         { id: 'ugc', label: 'UGC', icon: Sparkles },
         ...(isAdmin ? [{ id: 'influencer', label: 'Influencer', icon: Users }] : []),
         { id: 'prompt', label: 'Prompt', icon: Bot },

@@ -312,3 +312,39 @@ option {
 img {
   content-visibility: auto; /* helps lazy render of large image lists */
 }
+
+/* ── Kill React Flow white selection/focus outline on ALL nodes ── */
+.react-flow__node:focus,
+.react-flow__node:focus-visible,
+.react-flow__node.selected,
+.react-flow__node.selected:focus,
+.react-flow__node.selected:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Fix default node styles exposing white borders */
+.react-flow__node {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.react-flow__node.selected {
+    box-shadow: none !important;
+}
+
+.react-flow__node-output,
+.react-flow__node-input,
+.react-flow__node-default {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+/* ── Output node edges — ensure they render above nodes ── */
+.react-flow__edge.react-flow__edge-neural {
+  z-index: 9999 !important;
+}
+

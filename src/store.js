@@ -340,41 +340,6 @@ export const useAppStore = create((set, get) => ({
         }
     },
 
-    addDialogueNode: (position = { x: 100, y: 100 }) => {
-        const id = `dialogue-${Date.now()}`;
-        const newNode = {
-            id,
-            type: 'dialogue',
-            position,
-            data: {
-                script: 'Enter dialogue script...',
-                label: 'VOICE_TRACK',
-                onDelete: (id) => get().deleteNode(id)
-            }
-        };
-        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
-        return id;
-    },
-
-    addUGCEngineNode: (position = { x: 500, y: 500 }) => {
-        const id = `ugc-engine-${Date.now()}`;
-        const newNode = {
-            id,
-            type: 'ugcEngine',
-            position,
-            data: {
-                label: 'UGC_AD_ENGINE',
-                status: 'IDLE',
-                synergy: null,
-                script: null,
-                scenes: [],
-                onDelete: (id) => get().deleteNode(id)
-            }
-        };
-        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
-        return id;
-    },
-
     addInfluencerNode: (position = { x: 200, y: 200 }) => {
         const id = `influencer-${Date.now()}`;
         const { activeCharacter, anchorImage } = get();
@@ -415,20 +380,76 @@ export const useAppStore = create((set, get) => ({
         return id;
     },
 
-    addVideoNode: (videoUrl, label, aspectRatio, position = { x: 300, y: 300 }) => {
-        const id = `video-${Date.now()}`;
+    addSeedanceNode: (position = { x: 700, y: 400 }) => {
+        const id = `seedance-${Date.now()}`;
         const newNode = {
             id,
-            type: 'video',
+            type: 'seedance',
             position,
             data: {
-                videoUrl,
-                label,
-                aspectRatio,
+                label: 'SEEDANCE_2.0',
                 onDelete: (id) => get().deleteNode(id)
             }
         };
         set({ nodes: [...get().nodes, newNode], activeNodeId: id });
+        return id;
+    },
+
+    addSeedance15ProNode: (position = { x: 700, y: 400 }) => {
+        const id = `seedance15pro-${Date.now()}`;
+        const newNode = {
+            id,
+            type: 'seedance15pro',
+            position,
+            data: {
+                label: 'SEEDANCE_1.5_PRO',
+                onDelete: (id) => get().deleteNode(id)
+            }
+        };
+        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
+        return id;
+    },
+
+    addNanoBananaNode: (position = { x: 700, y: 400 }) => {
+        const id = `banana-${Date.now()}`;
+        const newNode = {
+            id,
+            type: 'nano_banana',
+            position,
+            data: {
+                label: 'NANO_BANANA_2',
+                onDelete: (id) => get().deleteNode(id)
+            }
+        };
+        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
+        return id;
+    },
+
+    addOutputNode: ({ sourceId, url, model = 'OUTPUT', position }) => {
+        const id = `output-${Date.now()}`;
+        const newNode = {
+            id,
+            type: 'generated_output',
+            position,
+            data: {
+                url,
+                model,
+                onDelete: (id) => get().deleteNode(id)
+            }
+        };
+        
+        const newEdge = {
+            id: `e-${sourceId}-${id}`,
+            source: sourceId,
+            target: id,
+            type: 'neural'
+        };
+
+        set({ 
+            nodes: [...get().nodes, newNode], 
+            edges: [...get().edges, newEdge],
+            activeNodeId: id 
+        });
         return id;
     },
 
@@ -586,311 +607,12 @@ export const useAppStore = create((set, get) => ({
         }
     },
 
-
     updateNodeData: (nodeId, newData) => {
         set((state) => ({
             nodes: state.nodes.map((node) =>
                 node.id === nodeId ? { ...node, data: { ...node.data, ...newData } } : node
             ),
         }));
-    },
-
-    addCameraNode: (position = { x: 300, y: 300 }) => {
-        const id = `camera-${Date.now()}`;
-        const newNode = {
-            id,
-            type: 'camera',
-            position,
-            data: {
-                label: 'CAMERA_UNIT',
-                movement: 'PHASE_SHIFT',
-                onDelete: (id) => get().deleteNode(id)
-            }
-        };
-        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
-        return id;
-    },
-
-    addLightingNode: (position = { x: 400, y: 400 }) => {
-        const id = `lighting-${Date.now()}`;
-        const newNode = {
-            id,
-            type: 'lighting',
-            position,
-            data: {
-                label: 'ATMOSPHERE_FX',
-                lighting: 'NEURAL_GLOW',
-                onDelete: (id) => get().deleteNode(id)
-            }
-        };
-        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
-        return id;
-    },
-
-    addSFXNode: (position = { x: 500, y: 500 }) => {
-        const id = `sfx-${Date.now()}`;
-        const newNode = {
-            id,
-            type: 'sfx',
-            position,
-            data: {
-                label: 'SFX_TRIGGER',
-                effect: 'CINEMATIC_BOOM',
-                onDelete: (id) => get().deleteNode(id)
-            }
-        };
-        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
-        return id;
-    },
-
-    addAmbientNode: (position = { x: 600, y: 600 }) => {
-        const id = `ambient-${Date.now()}`;
-        const newNode = {
-            id,
-            type: 'ambient',
-            position,
-            data: {
-                label: 'AMBIENT_LAYER',
-                atmosphere: 'CYBERPUNK_CITY',
-                onDelete: (id) => get().deleteNode(id)
-            }
-        };
-        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
-        return id;
-    },
-
-    addMusicNode: (position = { x: 700, y: 700 }) => {
-        const id = `music-${Date.now()}`;
-        const newNode = {
-            id,
-            type: 'music',
-            position,
-            data: {
-                label: 'MUSIC_CORE',
-                style: 'SYNTHWAVE_DRIVE',
-                onDelete: (id) => get().deleteNode(id)
-            }
-        };
-        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
-        return id;
-    },
-
-    addUGCPipelineNode: (position = { x: 400, y: 400 }) => {
-        const id = `ugc-${Date.now()}`;
-        const newNode = {
-            id,
-            type: 'ugcPipeline',
-            position,
-            data: {
-                label: 'UGC_PIPELINE',
-                hookScript: '',
-                hookStyle: 'PATTERN_INTERRUPT',
-                avatarStyle: 'TALKING_HEAD',
-                captionStyle: 'KINETIC_BOLD',
-                niche: 'lifestyle',
-                pipelineComplete: false,
-                onDelete: (id) => get().deleteNode(id)
-            }
-        };
-        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
-        return id;
-    },
-
-    addWardrobeNode: (position = { x: 100, y: 500 }) => {
-        const id = `wardrobe-${Date.now()}`;
-        const newNode = {
-            id,
-            type: 'wardrobe',
-            position,
-            data: {
-                label: 'WARDROBE_LOCK',
-                wardrobeProfile: null,
-                status: 'IDLE',
-                onDelete: (id) => get().deleteNode(id)
-            }
-        };
-        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
-        return id;
-    },
-
-    addProductNode: (position = { x: 200, y: 500 }) => {
-        const id = `product-${Date.now()}`;
-        const newNode = {
-            id,
-            type: 'product',
-            position,
-            data: {
-                label: 'PRODUCT_SCAN',
-                productProfile: null,
-                status: 'IDLE',
-                onDelete: (id) => get().deleteNode(id)
-            }
-        };
-        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
-        return id;
-    },
-
-    addLocationNode: (position = { x: 400, y: 400 }) => {
-        const id = `location-${Date.now()}`;
-        const newNode = {
-            id,
-            type: 'location',
-            position,
-            data: {
-                label: 'LOCATION_SCAN',
-                locationProfile: null,
-                status: 'IDLE',
-                onDelete: (id) => get().deleteNode(id)
-            }
-        };
-        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
-        return id;
-    },
-
-    addAutoStoryboardNode: (position = { x: 400, y: 200 }) => {
-        const id = `storyboard-${Date.now()}`;
-        const newNode = {
-            id,
-            type: 'autoStoryboard',
-            position,
-            data: {
-                label: 'AUTO_STORYBOARD',
-                scenes: [],
-                storyboardPrompt: '',
-                onDelete: (id) => get().deleteNode(id)
-            }
-        };
-        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
-        return id;
-    },
-
-    addVeoI2VNode: (position = { x: 600, y: 500 }) => {
-        const id = `veo-i2v-${Date.now()}`;
-        const newNode = {
-            id,
-            type: 'veoI2V',
-            position,
-            data: {
-                label: 'VEO_I2V_ENGINE',
-                inputImage: null,
-                videoUrl: null,
-                motionPrompt: '',
-                onDelete: (id) => get().deleteNode(id)
-            }
-        };
-        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
-        return id;
-    },
-
-    spawnSequence: (sequenceNodes) => {
-        const { addDialogueNode, addInfluencerNode, addVideoNode, addCameraNode, addLightingNode, addSFXNode, addAmbientNode, addMusicNode, addUGCPipelineNode, addWardrobeNode, addProductNode, addAutoStoryboardNode, addVeoI2VNode, addLocationNode, edges } = get();
-        const basePos = { x: 100, y: 100 };
-        const newEdges = [...edges];
-        const createdMap = {};
-
-        // Horizontal spacing for logical flow
-        const X_OFFSET = 350;
-        const Y_OFFSET = 80;
-
-        sequenceNodes.forEach((nodeDef, index) => {
-            const position = {
-                x: basePos.x + (index * X_OFFSET),
-                y: basePos.y + (index * Y_OFFSET)
-            };
-            let newNodeId;
-
-            if (nodeDef.type === 'influencer' || nodeDef.type === 'identity') {
-                newNodeId = addInfluencerNode(position);
-            } else if (nodeDef.type === 'dialogue') {
-                newNodeId = addDialogueNode(position);
-                get().updateNodeData(newNodeId, {
-                    label: nodeDef.label,
-                    script: nodeDef.script || nodeDef.text
-                });
-            } else if (nodeDef.type === 'video') {
-                newNodeId = addVideoNode(null, nodeDef.label || 'PRODUCTION_OUTLET', position);
-            } else if (nodeDef.type === 'camera') {
-                newNodeId = addCameraNode(position);
-                get().updateNodeData(newNodeId, {
-                    label: nodeDef.label,
-                    movement: nodeDef.movement
-                });
-            } else if (nodeDef.type === 'lighting') {
-                newNodeId = addLightingNode(position);
-                get().updateNodeData(newNodeId, {
-                    label: nodeDef.label,
-                    lighting: nodeDef.atmosphere || nodeDef.lighting
-                });
-            } else if (nodeDef.type === 'sfx') {
-                newNodeId = addSFXNode(position);
-                get().updateNodeData(newNodeId, {
-                    label: nodeDef.label,
-                    effect: nodeDef.effect
-                });
-            } else if (nodeDef.type === 'ambient') {
-                newNodeId = addAmbientNode(position);
-                get().updateNodeData(newNodeId, {
-                    label: nodeDef.label,
-                    atmosphere: nodeDef.atmosphere
-                });
-            } else if (nodeDef.type === 'music') {
-                newNodeId = addMusicNode(position);
-                get().updateNodeData(newNodeId, {
-                    label: nodeDef.label,
-                    style: nodeDef.style
-                });
-            } else if (nodeDef.type === 'ugcPipeline') {
-                newNodeId = addUGCPipelineNode(position);
-            } else if (nodeDef.type === 'wardrobe') {
-                newNodeId = addWardrobeNode(position);
-            } else if (nodeDef.type === 'product') {
-                newNodeId = addProductNode(position);
-            } else if (nodeDef.type === 'autoStoryboard') {
-                newNodeId = addAutoStoryboardNode(position);
-            } else if (nodeDef.type === 'veoI2V') {
-                newNodeId = addVeoI2VNode(position);
-                get().updateNodeData(newNodeId, {
-                    label: nodeDef.label,
-                    hookScript: nodeDef.hookScript || '',
-                    niche: nodeDef.niche
-                });
-            } else if (nodeDef.type === 'location') {
-                newNodeId = addLocationNode(position);
-            }
-
-            if (newNodeId) {
-                createdMap[nodeDef.id] = newNodeId;
-                get().updateNodeData(newNodeId, { label: nodeDef.label });
-
-                // Handle semantic connections if specified in the definition
-                if (nodeDef.connectTo && createdMap[nodeDef.connectTo]) {
-                    newEdges.push({
-                        id: `e-${createdMap[nodeDef.connectTo]}-${newNodeId}`,
-                        source: createdMap[nodeDef.connectTo],
-                        target: newNodeId,
-                        type: 'waveform',
-                        animated: true,
-                        style: { stroke: '#bef264', strokeWidth: 2 }
-                    });
-                } else if (index > 0) {
-                    // Fallback: Connect to the previous node in the sequence to ensure a chain
-                    const prevNodeDef = sequenceNodes[index - 1];
-                    const prevInternalId = createdMap[prevNodeDef.id];
-                    if (prevInternalId) {
-                        newEdges.push({
-                            id: `auto-e-${prevInternalId}-${newNodeId}`,
-                            source: prevInternalId,
-                            target: newNodeId,
-                            type: 'waveform',
-                            animated: true,
-                            style: { stroke: '#bef264', strokeWidth: 2 }
-                        });
-                    }
-                }
-            }
-        });
-
-        set({ edges: newEdges });
     },
 }));
 

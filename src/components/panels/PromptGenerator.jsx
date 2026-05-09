@@ -1609,6 +1609,13 @@ export function PromptGenerator({ onUpscale }) {
     }, [activeFrameId]);
 
     const [queueStatus, setQueueStatus] = useState("Initializing...")
+    const [, setTick] = useState(0);
+    useEffect(() => {
+        const hasLoading = frames.some(f => f.loading && f.startedAt);
+        if (!hasLoading) return;
+        const t = setInterval(() => setTick(n => n + 1), 1000);
+        return () => clearInterval(t);
+    }, [frames]);
 
     // ─────────────────────────────────────────────
     // PERSISTENCE STATE for Storyboard / Multi Shot
@@ -2447,7 +2454,7 @@ export function PromptGenerator({ onUpscale }) {
             
             // Graceful UI handling: stop loaders in all relevant trays
             showToast(`AI Engine Status: ${msg}`);
-            setFrames(prev => prev.map(f => f.id === frameId ? { ...f, loading: false, error: true } : f));
+            setFrames(prev => prev.map(f => f.id === frameId ? { ...f, loading: false, error: msg || true } : f));
             
             if (targetTray === 'storyboard' && setStoryboardSlots) {
                 setStoryboardSlots(prev => prev.map(s => s.id === frameId ? { ...s, loading: false, error: true } : s));
@@ -2555,7 +2562,7 @@ export function PromptGenerator({ onUpscale }) {
 
                 const newFrameId = `frame-${Date.now()}-${i}`
                 setFrames(prev => {
-                    const newFrame = { id: newFrameId, url: null, type: mode, model: selectedModel, prompt: generatedPrompt, aspectRatio: selections.aspectRatio, loading: true };
+                    const newFrame = { id: newFrameId, url: null, type: mode, model: selectedModel, prompt: generatedPrompt, aspectRatio: selections.aspectRatio, loading: true, startedAt: Date.now() };
                     // Prepend new frame to LEFT so latest is always first
                     const next = [newFrame, ...prev];
                     // FIFO: keep only the most recent MAX_FRAMES
@@ -3490,12 +3497,31 @@ DO NOT add new objects or change the scene. Enhance only.
                             if (isImageLike) return (frame.type === 'image' || frame.type === 'multishot');
                             if (mode === 'video') return (frame.type === 'video' || frame.model === 'Shot');
                             return frame.type === mode;
-                        }).map(frame => (
-                            <div key={frame.id} className={cn("shrink-0 w-20 h-full rounded-lg overflow-hidden cursor-pointer transition-all border-2 relative group/strip", activeFrameId === frame.id ? "border-[#D4FF00] shadow-[0_0_10px_#D4FF00]" : "border-transparent hover:border-white/20")}>
-                                <div onClick={() => setActiveFrameId(frame.id)} className="w-full h-full">
-                                    {frame.loading ? <div className="w-full h-full bg-black/40 flex items-center justify-center"><Sparkles className="w-3 h-3 text-[#D4FF00] animate-spin" /></div>
-                                        : frame.url ? (frame.type === 'video' ? <video src={frame.url} muted preload="metadata" crossOrigin="anonymous" className="w-full h-full object-cover" /> : <img src={frame.thumb || frame.url} loading="lazy" decoding="async" className="w-full h-full object-cover" />)
-                                            : <div className="w-full h-full bg-black/40 flex items-center justify-center"><X className="w-3 h-3 text-red-500/50" /></div>}
+                        }).map(frame => {
+                            const isTimedOut = frame.loading && frame.startedAt && (Date.now() - frame.startedAt > 30000);
+                            const errorMsg = frame.error || (isTimedOut ? 'Timed out' : null);
+                            return (
+                            <div key={frame.id} className={cn("shrink-0 w-20 h-full rounded-lg overflow-hidden cursor-pointer transition-all border-2 relative group/strip", activeFrameId === frame.id ? "border-[#D4FF00] shadow-[0_0_10px_#D4FF00]" : errorMsg ? "border-red-500/40" : "border-transparent hover:border-white/20")}>
+                                <div onClick={() => { if (isTimedOut) setFrames(prev => prev.map(f => f.id === frame.id ? { ...f, loading: false, error: errorMsg } : f)); else setActiveFrameId(frame.id); }} className="w-full h-full">
+                                    {isTimedOut ? (
+                                        <div className="w-full h-full bg-red-950/60 flex flex-col items-center justify-center gap-0.5 p-1">
+                                            <X className="w-3 h-3 text-red-400" />
+                                            <span className="text-[5px] text-red-400 font-bold text-center leading-tight uppercase">Timed out</span>
+                                        </div>
+                                    ) : frame.loading ? (
+                                        <div className="w-full h-full bg-black/40 flex flex-col items-center justify-center gap-0.5">
+                                            <Sparkles className="w-3 h-3 text-[#D4FF00] animate-spin" />
+                                        </div>
+                                    ) : errorMsg ? (
+                                        <div className="w-full h-full bg-red-950/60 flex flex-col items-center justify-center gap-0.5 p-1" title={typeof errorMsg === 'string' ? errorMsg : 'Error'}>
+                                            <X className="w-3 h-3 text-red-400" />
+                                            <span className="text-[5px] text-red-400 font-bold text-center leading-tight uppercase line-clamp-2">{typeof errorMsg === 'string' ? errorMsg.slice(0, 30) : 'Error'}</span>
+                                        </div>
+                                    ) : frame.url ? (
+                                        frame.type === 'video' ? <video src={frame.url} muted preload="metadata" crossOrigin="anonymous" className="w-full h-full object-cover" /> : <img src={frame.thumb || frame.url} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full bg-black/40 flex items-center justify-center"><X className="w-3 h-3 text-red-500/50" /></div>
+                                    )}
                                 </div>
 
                                 <button onClick={(e) => { e.stopPropagation(); removeFrame(frame.id) }}
@@ -3511,7 +3537,7 @@ DO NOT add new objects or change the scene. Enhance only.
                                     </div>
                                 )}
                             </div>
-                        ))}
+                        )})}
                     </div>
                 </div>
             )}

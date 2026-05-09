@@ -1,30 +1,17 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import ReactFlow, {
     Background,
     Controls,
-    Panel,
-    addEdge,
-    useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store';
 import IdentityNode from '../nodes/IdentityNode';
-import DialogueNode from '../nodes/DialogueNode';
-import VideoNode from '../nodes/VideoNode';
 import InfluencerNode from '../nodes/InfluencerNode';
-import CameraNode from '../nodes/CameraNode';
-import LightingNode from '../nodes/LightingNode';
-import SFXNode from '../nodes/SFXNode';
-import AmbientNode from '../nodes/AmbientNode';
-import MusicNode from '../nodes/MusicNode';
-import UGCPipelineNode from '../nodes/UGCPipelineNode';
-import UGCEngineNode from '../nodes/UGCEngineNode';
-import WardrobeNode from '../nodes/WardrobeNode';
-import ProductNode from '../nodes/ProductNode';
-import AutoStoryboardNode from '../nodes/AutoStoryboardNode';
-import VeoI2VNode from '../nodes/VeoI2VNode';
-import LocationNode from '../nodes/LocationNode';
+import SeedanceNode from '../nodes/SeedanceNode';
+import Seedance15ProNode from '../nodes/Seedance15ProNode';
+import NanoBananaNode from '../nodes/NanoBananaNode';
+import OutputNode from '../nodes/OutputNode';
 import NeuralEdge from '../edges/NeuralEdge';
 import DirectorHUD from '../panels/DirectorHUD';
 import PromptBuilder from '../panels/PromptBuilder';
@@ -34,21 +21,11 @@ import { FocusOverlay } from './FocusOverlay';
 
 const nodeTypes = {
     identity: IdentityNode,
-    dialogue: DialogueNode,
-    video: VideoNode,
     influencer: InfluencerNode,
-    camera: CameraNode,
-    lighting: LightingNode,
-    sfx: SFXNode,
-    ambient: AmbientNode,
-    music: MusicNode,
-    ugcPipeline: UGCPipelineNode,
-    ugcEngine: UGCEngineNode,
-    wardrobe: WardrobeNode,
-    product: ProductNode,
-    autoStoryboard: AutoStoryboardNode,
-    veoI2V: VeoI2VNode,
-    location: LocationNode,
+    seedance: SeedanceNode,
+    seedance15pro: Seedance15ProNode,
+    nano_banana: NanoBananaNode,
+    generated_output: OutputNode,
 };
 
 const edgeTypes = {
@@ -97,7 +74,10 @@ export const PlaygroundCanvas = () => {
                     size={1}
                     style={{ opacity: 0.03 }}
                 />
-                <Controls className="!bg-zinc-900/80 !border-white/10 !rounded-xl !shadow-2xl" />
+                <Controls 
+                    position="bottom-right"
+                    className="!bg-zinc-900/80 !border-white/10 !rounded-none !m-0 !shadow-2xl" 
+                />
             </ReactFlow>
 
             {/* VIEWPORT CONTROLS */}
@@ -116,12 +96,6 @@ export const PlaygroundCanvas = () => {
 
             {/* DIRECTOR HUD PANEL */}
             <DirectorHUD />
-
-            {/* NEURAL STATUS OVERLAY */}
-            <div className="absolute top-6 left-6 p-4 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 pointer-events-none">
-                <div className="w-2 h-2 rounded-full bg-[#bef264] animate-pulse" />
-                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">Neural_Canvas_Lock_v4</span>
-            </div>
         </div>
     );
 };
