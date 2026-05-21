@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Storage } from '@google-cloud/storage';
-import { S3Client, PutObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -126,6 +126,33 @@ export const uploadToGCS = async (data, fileName, contentType = 'image/png', tar
  * Get public URL for any stored asset.
  */
 export const getPublicUrl = (fileName, bucketName) => toPublicUrl(fileName, bucketName);
+
+/**
+ * Read a file from R2 as a string (for JSON/text files).
+ */
+export const readFromR2 = async (fileName) => {
+    if (!r2Client) throw new Error('R2 not configured');
+    const res = await r2Client.send(new GetObjectCommand({
+        Bucket: R2_BUCKET,
+        Key: fileName,
+    }));
+    const chunks = [];
+    for await (const chunk of res.Body) chunks.push(chunk);
+    return Buffer.concat(chunks).toString('utf-8');
+};
+
+/**
+ * Upload a JSON/text file to R2.
+ */
+export const writeToR2 = async (fileName, content, contentType = 'application/json') => {
+    if (!r2Client) throw new Error('R2 not configured');
+    await r2Client.send(new PutObjectCommand({
+        Bucket: R2_BUCKET,
+        Key: fileName,
+        Body: Buffer.from(content, 'utf-8'),
+        ContentType: contentType,
+    }));
+};
 
 /**
  * List assets (R2 first, GCS fallback).

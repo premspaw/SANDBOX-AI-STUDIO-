@@ -3,6 +3,10 @@ import { applyNodeChanges, applyEdgeChanges, addEdge } from 'reactflow';
 import { getApiUrl } from './config/apiConfig';
 import { supabase } from './lib/supabase';
 
+const _profileCache = {};
+const _profileCacheAt = {};
+const PROFILE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export const useAppStore = create((set, get) => ({
     // Character Info
     name: 'UNNAMED_CONSTRUCT',
@@ -485,6 +489,12 @@ export const useAppStore = create((set, get) => ({
 
     fetchUserProfile: async (userId) => {
         try {
+            const now = Date.now();
+            if (_profileCache[userId] && (now - (_profileCacheAt[userId] || 0)) < PROFILE_CACHE_TTL) {
+                set({ userProfile: _profileCache[userId], userShorts: _profileCache[userId].shorts_balance ?? 50 });
+                return;
+            }
+
             const { data: authData } = await supabase.auth.getUser();
             const authUser = authData?.user;
 
@@ -526,6 +536,8 @@ export const useAppStore = create((set, get) => ({
             }
 
             if (data) {
+                _profileCache[userId] = data;
+                _profileCacheAt[userId] = Date.now();
                 set({ userProfile: data, userShorts: data.shorts_balance ?? 50 });
             }
         } catch (err) {
@@ -539,17 +551,18 @@ export const useAppStore = create((set, get) => ({
             if (!user) return;
             userId = user.id;
         }
-
+        const cached = _profileCache[userId];
+        if (cached) {
+            set({ userShorts: cached.shorts_balance ?? cached.credits ?? 50 });
+            return;
+        }
         try {
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from('profiles')
                 .select('shorts_balance')
                 .eq('id', userId)
                 .single();
-
-            if (data && data.shorts_balance !== undefined) {
-                set({ userShorts: data.shorts_balance });
-            }
+            if (data) set({ userShorts: data.shorts_balance ?? 50 });
         } catch (err) {
             console.error('Store: Fetch balance failed', err);
         }

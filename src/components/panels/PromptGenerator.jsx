@@ -500,12 +500,6 @@ const PRO_FOCUS_CONTROLS = [
 // AI MODEL CONFIGURATION
 const AI_MODELS = [
     {
-        id: 'nano-banana', name: 'Nano Banana', provider: 'Google', type: 'image',
-        description: 'Gemini 3.1 Flash Image — blazing fast native generation',
-        credits: 1, available: true, icon: Zap,
-        modelId: 'gemini-3.1-flash-image-preview'
-    },
-    {
         id: 'nano-banana-2', name: 'Nano Banana 2', provider: 'Google', type: 'image',
         description: 'Gemini 3.1 Flash Image — high quality refinement',
         credits: 2, available: true, icon: Sparkles,
@@ -1529,7 +1523,10 @@ const ProLighting = ({ selections, setSelections }) => (
 export function PromptGenerator({ onUpscale }) {
     const [mode, setMode] = useState(() => localStorage.getItem('prompt_generator_mode') || 'image')
     const [previewTab, setPreviewTab] = useState('image')
-    const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('prompt_generator_selected_model') || 'veo-fast')
+    const [selectedModel, setSelectedModel] = useState(() => {
+        const saved = localStorage.getItem('prompt_generator_selected_model') || 'veo-fast';
+        return saved === 'nano-banana' ? 'nano-banana-2' : saved;
+    })
     const [showCinematography, setShowCinematography] = useState(true)
     const [selections, setSelections] = useState(() => {
         const defaults = {
@@ -1700,13 +1697,25 @@ export function PromptGenerator({ onUpscale }) {
         localStorage.setItem('prompt_generator_selected_model', selectedModel)
     }, [selectedModel])
 
-    const isNanoBanana = selectedModel === 'nano-banana' || selectedModel.includes('gemini') || selectedModel === 'nano-banana-2'
+    const isNanoBanana = selectedModel === 'nano-banana-2' || selectedModel === 'nano-banana-pro' || selectedModel.includes('gemini')
     const isKling = ['kling', 'kling-2.6', 'kling-3.0', 'kling-2.1'].includes(selectedModel)
     const isVeo = (selectedModel === 'veo' || selectedModel === 'veo-fast')
 
     useEffect(() => {
         const timeout = setTimeout(() => {
-            localStorage.setItem('prompt_generator_selections', JSON.stringify(selections));
+            try {
+                // Strip base64 blobs before saving — only keep remote URLs to avoid quota errors
+                const safe = {
+                    ...selections,
+                    referenceImage: selections.referenceImage?.startsWith('data:') ? null : selections.referenceImage,
+                    referenceImageEnd: selections.referenceImageEnd?.startsWith('data:') ? null : selections.referenceImageEnd,
+                    firstFrame: selections.firstFrame?.startsWith('data:') ? null : selections.firstFrame,
+                    lastFrame: selections.lastFrame?.startsWith('data:') ? null : selections.lastFrame,
+                };
+                localStorage.setItem('prompt_generator_selections', JSON.stringify(safe));
+            } catch (e) {
+                console.warn('[STORAGE] prompt_generator_selections quota exceeded — skipping save');
+            }
         }, 500);
         return () => clearTimeout(timeout);
     }, [selections]);
@@ -1903,23 +1912,39 @@ export function PromptGenerator({ onUpscale }) {
     }
 
     // Flat list of all refBoard items for @mention autocomplete
+    // Merge live refBoard + staged so newly added items are immediately available
+    const IdMap = window.Map; // avoid collision with lucide-react Map icon
+    const mergedBoard = {
+        characters: [...new IdMap([...refBoard.characters, ...stagedRefBoard.characters].map(i => [i.id, i])).values()],
+        locations:  [...new IdMap([...refBoard.locations,  ...stagedRefBoard.locations ].map(i => [i.id, i])).values()],
+        wardrobes:  [...new IdMap([...refBoard.wardrobes,  ...stagedRefBoard.wardrobes ].map(i => [i.id, i])).values()],
+        props:      [...new IdMap([...refBoard.props,      ...stagedRefBoard.props     ].map(i => [i.id, i])).values()],
+        moods:      [...new IdMap([...refBoard.moods,      ...stagedRefBoard.moods     ].map(i => [i.id, i])).values()],
+    }
     const allRefItems = [
-        ...refBoard.characters.map(i => ({ ...i, category: 'character', prefix: 'char' })),
-        ...refBoard.locations.map(i => ({ ...i, category: 'location', prefix: 'loc' })),
-        ...refBoard.wardrobes.map(i => ({ ...i, category: 'wardrobe', prefix: 'ward' })),
-        ...refBoard.props.map(i => ({ ...i, category: 'prop', prefix: 'prop' })),
-        ...refBoard.moods.map(i => ({ ...i, category: 'mood', prefix: 'mood' })),
+        ...mergedBoard.characters.map(i => ({ ...i, category: 'character', prefix: 'char' })),
+        ...mergedBoard.locations.map(i => ({ ...i, category: 'location', prefix: 'loc' })),
+        ...mergedBoard.wardrobes.map(i => ({ ...i, category: 'wardrobe', prefix: 'ward' })),
+        ...mergedBoard.props.map(i => ({ ...i, category: 'prop', prefix: 'prop' })),
+        ...mergedBoard.moods.map(i => ({ ...i, category: 'mood', prefix: 'mood' })),
     ]
 
     const addRefItem = (item) => {
         const categoryKey = item.category.endsWith('s') ? item.category : item.category + 's'
         const singleAllowed = ['locations', 'wardrobes', 'moods']
-        setStagedRefBoard(prev => {
+        const updater = (prev) => {
             const currentList = prev[categoryKey] || []
             if (singleAllowed.includes(categoryKey)) {
                 return { ...prev, [categoryKey]: [item] }
             }
             return { ...prev, [categoryKey]: [...currentList, item] }
+        }
+        setStagedRefBoard(updater)
+        // Also commit to live refBoard immediately so @tags resolve during generation
+        setRefBoard(prev => {
+            const updated = updater(prev)
+            localStorage.setItem(`refBoard_${mode}`, JSON.stringify(updated))
+            return updated
         })
     }
     const renameRefItem = (id, newName) => {
@@ -1984,8 +2009,7 @@ export function PromptGenerator({ onUpscale }) {
     }, [mode, selectedModel])
 
     useEffect(() => {
-        if (selectedModel === 'gemini-3-pro-image-preview') setSelections(p => ({ ...p, quality: ['1k', '2k'].includes(p.quality) ? p.quality : '2k' }))
-        else if (selectedModel === 'gemini-2.5-flash-image') setSelections(p => ({ ...p, quality: '1k' }))
+        if (selectedModel === 'nano-banana-pro' || selectedModel === 'gemini-3-pro-image-preview') setSelections(p => ({ ...p, quality: ['1k', '2k'].includes(p.quality) ? p.quality : '2k' }))
         else if (isKling) setSelections(p => ({ ...p, duration: '5 Seconds' }))
     }, [selectedModel])
 
@@ -2033,9 +2057,12 @@ export function PromptGenerator({ onUpscale }) {
                         if (newHistorical.length === 0) return prev;
                         // Limit combined list to not exceed MAX_FRAMES
                         const merged = [...prev, ...newHistorical].slice(0, MAX_FRAMES);
-                        // Set activeFrameId synchronously inside same batch
-                        if (!activeFrameId && merged.length > 0) {
-                            setTimeout(() => setActiveFrameId(merged[0].id), 0);
+                        // Sync activeFrameId — if stored ID no longer exists, point to first valid frame
+                        const storedId = localStorage.getItem('active_image_frame_id');
+                        const idExists = storedId && merged.some(f => f.id === storedId);
+                        if (!idExists && merged.length > 0) {
+                            const first = merged.find(f => f.url && !f.loading) || merged[0];
+                            setTimeout(() => setActiveFrameId(first.id), 0);
                         }
                         return merged;
                     });
@@ -2180,15 +2207,45 @@ export function PromptGenerator({ onUpscale }) {
 
     const generatedPrompt = mode === 'video'
         ? buildVideoPrompt(selections, selectedModel, refBoard)
-        : selectedModel === 'gemini-3-pro-image-preview' ? buildNanoBananaProPrompt(selections)
-            : (selectedModel === 'nano-banana' || selectedModel === 'nano-banana-2' || selectedModel.includes('gemini')) ? buildNanoBananaPrompt(selections, getFStop)
+        : (selectedModel === 'nano-banana-pro' || selectedModel === 'gemini-3-pro-image-preview') ? buildNanoBananaProPrompt(selections)
+            : (selectedModel === 'nano-banana-2' || selectedModel.includes('gemini')) ? buildNanoBananaPrompt(selections, getFStop)
                 : buildStandardPrompt(selections, getFStop)
 
     const copyPrompt = () => navigator.clipboard.writeText(generatedPrompt)
 
-    const downloadImage = (url) => {
+    const downloadImage = async (url, filename) => {
         if (!url) return;
-        window.open(url, '_blank');
+        const name = filename || `flare-gen-${Date.now()}.png`;
+        try {
+            if (url.startsWith('data:')) {
+                // base64 — convert to blob directly
+                const res = await fetch(url);
+                const blob = await res.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(blobUrl);
+            } else {
+                // Remote URL — fetch as blob to force download (avoids open-in-tab)
+                const res = await fetch(url);
+                const blob = await res.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(blobUrl);
+            }
+        } catch (err) {
+            // Fallback: open in new tab so user can manually save
+            window.open(url, '_blank');
+        }
     }
 
     const saveAsset = async (url, slot, type = 'image') => {
@@ -2515,7 +2572,7 @@ export function PromptGenerator({ onUpscale }) {
         } else {
             if (selectedModel === 'nano-banana-pro' || selectedModel === 'gemini-3-pro-image-preview') costKey = 'image_nano_banana_pro';
             else if (selectedModel === 'nano-banana-2' || selectedModel.includes('3.1-flash')) costKey = 'image_nano_banana_2';
-            else if (selectedModel === 'gemini-2.0-flash-exp-image-generation') costKey = 'image_nano_banana';
+            else costKey = 'image_nano_banana_2';
             unitCost = SHORTS_COST[costKey] || 0;
         }
 
@@ -2644,10 +2701,17 @@ export function PromptGenerator({ onUpscale }) {
                     duration: selections.duration, userId
                 }
 
+                console.log('[GEN] Calling endpoint:', endpoint, 'model:', selectedModel)
                 const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-                const data = await response.json()
-
-                if (!response.ok) throw new Error(data.message || data.error || 'Generation failed')
+                let data
+                try {
+                    data = await response.json()
+                } catch (jsonErr) {
+                    const raw = await response.text().catch(() => '(unreadable)')
+                    throw new Error(`Server returned non-JSON (status ${response.status}): ${raw.slice(0, 200)}`)
+                }
+                console.log('[GEN] Response:', response.status, data)
+                if (!response.ok) throw new Error(data.message || data.error || `Server error ${response.status}`)
 
                 if (data.jobId) {
                     if (shotCount === 1) setQueueStatus("Sending to AI Engine...")
@@ -2655,6 +2719,7 @@ export function PromptGenerator({ onUpscale }) {
                 } else {
                     if (userId) fetchBalance(userId);
                     const resultUrl = data.url || data.videoUrl
+                    if (!resultUrl) throw new Error('AI engine returned an empty frame.')
                     if (resultUrl) {
                         setFrames(prev => prev.map(f => f.id === newFrameId ? { ...f, url: resultUrl, loading: false } : f))
                         saveAsset(resultUrl, newFrameId, mode === 'video' ? 'video' : 'image').then(assetData => {
@@ -2669,10 +2734,14 @@ export function PromptGenerator({ onUpscale }) {
                                 
                                 // ✅ PERSISTENCE FIX: Update the frame index to uses the DB ID instead of local frame-xxx
                                 // This prevents the "disappearing image" bug after refresh because IDs will match the DB.
-                                if (activeFrameId === newFrameId) {
-                                    setActiveFrameId(assetData.id);
-                                    localStorage.setItem('active_image_frame_id', assetData.id);
-                                }
+                                // Use functional update to avoid stale closure — always remap newFrameId → assetData.id
+                                setActiveFrameId(prev => {
+                                    if (prev === newFrameId) {
+                                        localStorage.setItem('active_image_frame_id', assetData.id);
+                                        return assetData.id;
+                                    }
+                                    return prev;
+                                });
                                 
                                 // Update all state trackers that might be using the local ID
                                 setFrames(prev => prev.map(f => f.id === newFrameId ? { ...f, id: assetData.id } : f));
@@ -2698,10 +2767,16 @@ export function PromptGenerator({ onUpscale }) {
                 if (shotCount > 1 && i < shotCount - 1) await new Promise(r => setTimeout(r, 800));
             }
         } catch (err) {
-            console.error('Generation error:', err)
-            let msg = err.message
-            if (msg.toLowerCase().includes('safety system')) msg = "Creative Block: The AI's safety filters flagged this prompt."
-            alert(`AI Engine Status: ${msg}`)
+            const msg = err?.message || err?.error || (typeof err === 'string' ? err : JSON.stringify(err)) || 'Unknown error'
+            console.error('Generation error:', msg, err)
+            const display = msg.toLowerCase().includes('safety system')
+                ? "Creative Block: The AI's safety filters flagged this prompt."
+                : msg
+            showToast(`Generation failed: ${display}`, 'error')
+            // Stop all spinning frames that were started in this generation
+            setFrames(prev => prev.map(f =>
+                f.loading && f.startedAt ? { ...f, loading: false, error: display } : f
+            ))
         } finally {
             setIsLoading(false)
             setQueueStatus("Initializing...")
@@ -2978,7 +3053,9 @@ DO NOT add new objects or change the scene. Enhance only.
     }
 
     const filteredModels = AI_MODELS.filter(m => m.type === (mode === 'multishot' ? 'image' : mode))
-    const activeFrame = frames.find(f => f.id === activeFrameId) || null
+    const activeFrame = frames.find(f => f.id === activeFrameId)
+        || frames.find(f => f.url && !f.loading && (mode === 'video' ? f.type === 'video' : (f.type === 'image' || f.type === 'multishot')))
+        || null
     // Props bridging for onUpscale (new clean API) + legacy window hook fallback
     const promptGeneratorBridgeProps = (typeof window !== 'undefined' && window.__PROMPTGENERATOR_PROPS__) ? window.__PROMPTGENERATOR_PROPS__ : {}
     const triggerExternalUpscale = async (frame) => {
@@ -3287,10 +3364,10 @@ DO NOT add new objects or change the scene. Enhance only.
                                     </div>
                                 )
                                 return (
-                                    <div className="flex flex-col items-center gap-2 opacity-20">
-                                        <ImageIcon className="w-8 h-8 text-white" />
-                                        <p className="text-[9px] font-bold text-white uppercase">Scene Left</p>
-                                        <p className="text-[7px] text-white/60">Click "L" on a scene</p>
+                                    <div className="flex flex-col items-center gap-2">
+                                        <ImageIcon className={cn("w-8 h-8", renderTarget === 'left' ? "text-[#D4FF00]" : "text-white opacity-20")} />
+                                        <p className={cn("text-[9px] font-bold uppercase", renderTarget === 'left' ? "text-[#D4FF00]" : "text-white opacity-20")}>Scene Left</p>
+                                        <p className={cn("text-[7px]", renderTarget === 'left' ? "text-white/80" : "text-white/30 opacity-20")}>{renderTarget === 'left' ? 'Now click a filmstrip frame' : 'Click panel, then pick a frame'}</p>
                                     </div>
                                 )
                             })()}
@@ -3410,10 +3487,10 @@ DO NOT add new objects or change the scene. Enhance only.
                                     </div>
                                 )
                                 return (
-                                    <div className="flex flex-col items-center gap-2 opacity-20">
-                                        <ImageIcon className="w-8 h-8 text-white" />
-                                        <p className="text-[9px] font-bold text-white uppercase">Scene Right</p>
-                                        <p className="text-[7px] text-white/60">Click "R" on a scene</p>
+                                    <div className="flex flex-col items-center gap-2">
+                                        <ImageIcon className={cn("w-8 h-8", renderTarget === 'right' ? "text-purple-400" : "text-white opacity-20")} />
+                                        <p className={cn("text-[9px] font-bold uppercase", renderTarget === 'right' ? "text-purple-400" : "text-white opacity-20")}>Scene Right</p>
+                                        <p className={cn("text-[7px]", renderTarget === 'right' ? "text-white/80" : "text-white/30 opacity-20")}>{renderTarget === 'right' ? 'Now click a filmstrip frame' : 'Click panel, then pick a frame'}</p>
                                     </div>
                                 )
                             })()}
@@ -3502,7 +3579,12 @@ DO NOT add new objects or change the scene. Enhance only.
                             const errorMsg = frame.error || (isTimedOut ? 'Timed out' : null);
                             return (
                             <div key={frame.id} className={cn("shrink-0 w-20 h-full rounded-lg overflow-hidden cursor-pointer transition-all border-2 relative group/strip", activeFrameId === frame.id ? "border-[#D4FF00] shadow-[0_0_10px_#D4FF00]" : errorMsg ? "border-red-500/40" : "border-transparent hover:border-white/20")}>
-                                <div onClick={() => { if (isTimedOut) setFrames(prev => prev.map(f => f.id === frame.id ? { ...f, loading: false, error: errorMsg } : f)); else setActiveFrameId(frame.id); }} className="w-full h-full">
+                                <div onClick={() => {
+                                    if (isTimedOut) { setFrames(prev => prev.map(f => f.id === frame.id ? { ...f, loading: false, error: errorMsg } : f)); return; }
+                                    if (renderTarget === 'left') { setLeftPreviewId(frame.id); return; }
+                                    if (renderTarget === 'right') { setRightPreviewId(frame.id); return; }
+                                    setActiveFrameId(frame.id);
+                                }} className="w-full h-full">
                                     {isTimedOut ? (
                                         <div className="w-full h-full bg-red-950/60 flex flex-col items-center justify-center gap-0.5 p-1">
                                             <X className="w-3 h-3 text-red-400" />

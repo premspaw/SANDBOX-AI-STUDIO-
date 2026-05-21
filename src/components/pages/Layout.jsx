@@ -19,6 +19,7 @@ const FULL_BLEED_TABS = new Set([
     'auth',
     'settings',
     'pricing',
+    'brand-voice',
 ]);
 
 export function Layout({ children, activeTab, setActiveTab }) {

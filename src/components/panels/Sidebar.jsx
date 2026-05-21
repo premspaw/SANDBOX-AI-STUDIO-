@@ -1,4 +1,5 @@
-import { Bot, Clapperboard, Settings, ChevronLeft, ChevronRight, Camera, FolderOpen, Users, Shield, Video, Sparkles, Coins, CreditCard, LayoutDashboard, Image, Megaphone, User } from 'lucide-react'
+import { Bot, Clapperboard, Settings, ChevronLeft, ChevronRight, Camera, FolderOpen, Users, Shield, Video, Sparkles, Coins, CreditCard, LayoutDashboard, Image, Megaphone, User, Mic2 } from 'lucide-react'
+
 import logo from '../../assets/acs-icon.svg'
 import BrandLogo from '../common/BrandLogo'
 import { cn } from '../../lib/utils'
@@ -7,6 +8,24 @@ import { useAppStore } from '../../store'
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useShorts } from '../../hooks/useShorts'
+
+const MarketingIcon = ({ className }) => (
+    <img
+        src="https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/icons/d869646a-ba2d-4f19-89e4-72262b0126cb.png"
+        alt="Marketing"
+        className={className}
+        style={{ objectFit: 'contain', minWidth: '35px', minHeight: '35px', width: '35px', height: '35px' }}
+    />
+)
+
+const UGCIcon = ({ className }) => (
+    <img
+        src="https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/icons/66db2e86-0223-41f7-9577-b923ef69dd16.png"
+        alt="UGC Engine"
+        className={className}
+        style={{ objectFit: 'contain', minWidth: '35px', minHeight: '35px', width: '35px', height: '35px' }}
+    />
+)
 
 function SidebarNavItem({ item, activeTab, setActiveTab, isCollapsed, mouseY }) {
     const ref = useRef(null);
@@ -100,8 +119,10 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
         { id: 'prompt', label: 'Director Vision', icon: Image, color: 'text-purple-400', bgColor: 'bg-purple-400', hoverColor: 'group-hover/navitem:text-purple-400', glow: 'shadow-[0_0_15px_rgba(168,85,247,0.1)]' },
         { id: 'creator', label: 'Creator', icon: User, color: 'text-emerald-400', bgColor: 'bg-emerald-400', hoverColor: 'group-hover/navitem:text-emerald-400', glow: 'shadow-[0_0_15px_rgba(52,211,153,0.1)]' },
         { id: 'creative-studio', label: "Creative Studio", icon: Video, color: 'text-orange-400', bgColor: 'bg-orange-400', hoverColor: 'group-hover/navitem:text-orange-400', glow: 'shadow-[0_0_15px_rgba(251,146,60,0.1)]' },
-        { id: 'marketing', label: 'Marketing', icon: Megaphone, color: 'text-rose-400', bgColor: 'bg-rose-400', hoverColor: 'group-hover/navitem:text-rose-400', glow: 'shadow-[0_0_15px_rgba(251,113,133,0.1)]' },
-        { id: 'ugc', label: 'UGC Engine', icon: Sparkles, color: 'text-amber-400', bgColor: 'bg-amber-400', hoverColor: 'group-hover/navitem:text-amber-400', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.1)]' },
+        { id: 'marketing', label: 'Marketing', icon: MarketingIcon, color: 'text-rose-400', bgColor: 'bg-rose-400', hoverColor: 'group-hover/navitem:text-rose-400', glow: 'shadow-[0_0_15px_rgba(251,113,133,0.1)]' },
+        { id: 'ugc', label: 'UGC Engine', icon: UGCIcon, color: 'text-amber-400', bgColor: 'bg-amber-400', hoverColor: 'group-hover/navitem:text-amber-400', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.1)]' },
+        { id: 'brand-voice', label: 'Brand Voice', icon: Mic2, color: 'text-[#D4FF00]', bgColor: 'bg-[#D4FF00]', hoverColor: 'group-hover/navitem:text-[#D4FF00]', glow: 'shadow-[0_0_15px_rgba(212,255,0,0.15)]' },
+        { id: 'agent', label: 'ZeroLens AI', icon: Bot, color: 'text-violet-400', bgColor: 'bg-violet-400', hoverColor: 'group-hover/navitem:text-violet-400', glow: 'shadow-[0_0_15px_rgba(167,139,250,0.2)]' },
         { id: 'assets', label: 'Assets Library', icon: FolderOpen, color: 'text-[#AADD00]', bgColor: 'bg-[#AADD00]', hoverColor: 'group-hover/navitem:text-[#AADD00]', glow: 'shadow-[0_0_15px_rgba(96,165,250,0.1)]' },
         { id: 'settings', label: 'Settings', icon: Settings, color: 'text-neutral-300', bgColor: 'bg-neutral-300', hoverColor: 'group-hover/navitem:text-neutral-300', glow: 'shadow-[0_0_15px_rgba(163,163,163,0.4)]' },
         ...(isAdmin ? [

@@ -68,6 +68,12 @@ export const resolveUrl = (url) => {
         return getApiUrl(`/api/proxy/asset?url=${encodeURIComponent(url)}&cors=1`);
     }
 
+    // ✅ FIX: Route R2 image URLs through proxy to avoid CORS header issues
+    const isR2 = url.includes('r2.dev') || url.includes('r2.cloudflarestorage.com');
+    if (isR2 && !url.includes('/api/proxy/asset')) {
+        return getApiUrl(`/api/proxy/asset?url=${encodeURIComponent(url)}&cors=1`);
+    }
+
     // 2. Already fully qualified or data/blob
     if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:'))
         return url;

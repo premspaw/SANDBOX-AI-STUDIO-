@@ -96,6 +96,34 @@ const createWavUrl = b64 => {
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 
+const uploadToGCS = async (data, type, prompt = '') => {
+  try {
+    const API_BASE = window.API_URL || 'http://localhost:3002';
+    let base64 = data;
+    if (!data.startsWith('data:')) {
+      const res = await fetch(data);
+      const blob = await res.blob();
+      base64 = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
+    }
+    const res = await fetch(`${API_BASE}/api/upload-asset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: base64, type, prompt })
+    });
+    if (!res.ok) throw new Error(res.statusText);
+    const { url } = await res.json();
+    console.log('[PODCAST→GCS] Saved:', url);
+    return url;
+  } catch (err) {
+    console.warn('[PODCAST→GCS] Upload failed (non-blocking):', err.message);
+    return data;
+  }
+};
+
 // ─── SUB-COMPONENTS ───────────────────────────────────────────
 
 // Simple toast
@@ -419,6 +447,17 @@ export default function PodcastStudio() {
   const [title,     setTitle]    = useState('');
   const [topic,     setTopic]    = useState('');
 
+  // podcast setup
+  const [podcastLocation, setPodcastLocation] = useState('');
+
+  // image engine
+  const [imgEngine,   setImgEngine]   = useState('nb2'); // 'nb2' | 'gpt2'
+  const [gpt2Quality, setGpt2Quality] = useState('low'); // 'low' | 'medium' | 'high'
+
+  // gallery
+  const [gallery, setGallery] = useState([]);
+  const addToGallery = (item) => setGallery(prev => [item, ...prev].slice(0, 60));
+
   // dialogue
   const [lines, setLines] = useState([
     { id: uid(), hostId: 0, text: '', type: 'Intro',      audioUrl: null, videoUrl: null },
@@ -493,27 +532,64 @@ Return ONLY valid JSON: { "lines": [{ "hostId": 0, "text": "...", "type": "Intro
     if (!host.imgFile) return showToast('Upload a photo first', 'error');
     if (i === 0) setGenH0Img(true); else setGenH1Img(true);
     try {
-      const b64 = await fileToBase64(host.imgFile);
-      const res = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          parts: [
-            { inlineData: { mimeType: host.imgFile.type, data: b64 } },
-            { text: `This is the reference photo of "${host.name}". Generate a professional wide-angle shot of this EXACT person sitting in a high-end podcast room. Setting: ${theme.prompt}. The host should be sitting at a desk with a professional condenser microphone, looking natural and authentic. Style: cinematic photography, ultra-realistic, 8k, perfect lighting, depth of field. Match the person's face and features from the reference photo with 100% consistency.` }
-          ],
-          model: 'nano-banana-pro',
-          generationConfig: { imageConfig: { aspectRatio: aspect === '9:16' ? '9:16' : aspect === '16:9' ? '16:9' : '1:1' } }
-        })
-      });
-      if (!res.ok) throw new Error(res.status);
-      const data = await res.json();
-      if (data.imageData) {
-        updateHost(i, { generatedImg: `data:image/png;base64,${data.imageData}` });
-        showToast(`Host ${i + 1} AI portrait ready!`, 'success');
+      const locationDesc = podcastLocation.trim()
+        ? `Location/Setup: ${podcastLocation.trim()}.`
+        : '';
+      const combinedScene = `${theme.prompt}${locationDesc ? ' ' + locationDesc : ''}`;
+      const basePrompt = `This is the reference photo of "${host.name}". Generate a professional wide-angle portrait of this EXACT person sitting in a podcast setup. Setting: ${combinedScene}. The host should be at a desk with a professional condenser microphone, looking natural and authentic. Style: cinematic photography, ultra-realistic, 8k, perfect lighting, depth of field. Match the person's face and features from the reference photo with 100% consistency. No extra text, no watermarks.`;
+
+      if (imgEngine === 'gpt2') {
+        const b64DataUrl = await new Promise(res => {
+          const r = new FileReader();
+          r.onload = () => res(r.result);
+          r.readAsDataURL(host.imgFile);
+        });
+        const gptRes = await fetch(getApiUrl('/api/generate-image'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'gpt-image-2',
+            prompt: basePrompt,
+            quality: gpt2Quality,
+            size: aspect === '16:9' ? '1536x1024' : aspect === '1:1' ? '1024x1024' : '1024x1536',
+            image: b64DataUrl,
+          }),
+        });
+        if (!gptRes.ok) throw new Error(await gptRes.text());
+        const gptData = await gptRes.json();
+        const url = gptData.url || gptData.imageUrl;
+        if (url) {
+          updateHost(i, { generatedImg: url });
+          addToGallery({ id: Date.now().toString(), type: 'image', url, prompt: basePrompt });
+          showToast(`Host ${i + 1} AI portrait ready! (GPT Image 2)`, 'success');
+        } else {
+          updateHost(i, { generatedImg: host.imgUrl });
+          showToast('Using original photo as reference', 'info');
+        }
       } else {
-        // fallback — use original
-        updateHost(i, { generatedImg: host.imgUrl });
-        showToast('Using original photo as reference', 'info');
+        const b64 = await fileToBase64(host.imgFile);
+        const res = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            parts: [
+              { inlineData: { mimeType: host.imgFile.type, data: b64 } },
+              { text: basePrompt }
+            ],
+            model: 'nano-banana-pro',
+            generationConfig: { imageConfig: { aspectRatio: aspect === '9:16' ? '9:16' : aspect === '16:9' ? '16:9' : '1:1' } }
+          })
+        });
+        if (!res.ok) throw new Error(res.status);
+        const data = await res.json();
+        if (data.imageData) {
+          const imgDataUrl = `data:image/png;base64,${data.imageData}`;
+          updateHost(i, { generatedImg: imgDataUrl });
+          addToGallery({ id: Date.now().toString(), type: 'image', url: imgDataUrl, prompt: basePrompt });
+          showToast(`Host ${i + 1} AI portrait ready!`, 'success');
+          uploadToGCS(imgDataUrl, 'image', `Podcast host ${i + 1} portrait`);
+        } else {
+          updateHost(i, { generatedImg: host.imgUrl });
+          showToast('Using original photo as reference', 'info');
+        }
       }
     } catch (e) { handleErr(e, `Host ${i+1} image`); }
     if (i === 0) setGenH0Img(false); else setGenH1Img(false);
@@ -619,6 +695,7 @@ Return ONLY valid JSON: { "lines": [{ "hostId": 0, "text": "...", "type": "Intro
         setPreviewVideo(url);
         setMonitorMode('video');
         showToast(`Clip ready for line ${lineIdx + 1}!`, 'success');
+        uploadToGCS(url, 'video', lines[lineIdx]?.text || 'Podcast clip');
       } else {
         showToast('No video returned — try rephrasing', 'error');
         refund('veo_fast', cost);
@@ -675,6 +752,54 @@ Return ONLY valid JSON: { "lines": [{ "hostId": 0, "text": "...", "type": "Intro
               <div className="space-y-2.5">
                 <HostCard host={hosts[0]} idx={0} onChange={u => updateHost(0,u)} onGenerateImg={generateHostImg} isGenerating={genH0Img} />
                 <HostCard host={hosts[1]} idx={1} onChange={u => updateHost(1,u)} onGenerateImg={generateHostImg} isGenerating={genH1Img} />
+              </div>
+            </section>
+
+            {/* Podcast Setup — Location */}
+            <section>
+              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2.5 flex items-center gap-2">
+                <Globe size={10} className="text-[#c8f135]" /> Podcast Setup
+              </p>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-[8px] text-gray-600 uppercase tracking-widest mb-1">Location / Setting</p>
+                  <input
+                    type="text"
+                    value={podcastLocation}
+                    onChange={e => setPodcastLocation(e.target.value)}
+                    placeholder="e.g. near garden, rooftop café, home studio…"
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-2 text-[10px] text-white focus:outline-none focus:border-[#c8f135] transition-colors placeholder-gray-600"
+                  />
+                </div>
+                {/* Image Engine selector */}
+                <div>
+                  <p className="text-[8px] text-gray-600 uppercase tracking-widest mb-1">Image Engine</p>
+                  <div className="flex gap-1 p-1 bg-black/40 rounded-xl border border-white/5">
+                    <button
+                      onClick={() => setImgEngine('nb2')}
+                      className="flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
+                      style={imgEngine === 'nb2' ? { background: '#c8f135', color: '#000' } : { color: '#555' }}
+                    >NB2 (Google)</button>
+                    <button
+                      onClick={() => setImgEngine('gpt2')}
+                      className="flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
+                      style={imgEngine === 'gpt2' ? { background: '#00ffe0', color: '#000' } : { color: '#555' }}
+                    >GT2 (OpenAI)</button>
+                  </div>
+                </div>
+                {imgEngine === 'gpt2' && (
+                  <div>
+                    <p className="text-[8px] text-gray-600 uppercase tracking-widest mb-1">GPT Quality</p>
+                    <div className="flex gap-1 p-1 bg-black/40 rounded-xl border border-white/5">
+                      {['low','medium','high'].map(q => (
+                        <button key={q} onClick={() => setGpt2Quality(q)}
+                          className="flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
+                          style={gpt2Quality === q ? { background: '#00ffe0', color: '#000' } : { color: '#555' }}
+                        >{q}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -874,24 +999,6 @@ Return ONLY valid JSON: { "lines": [{ "hostId": 0, "text": "...", "type": "Intro
             )}
           </div>
 
-          {/* Mode tabs */}
-          <div className="flex p-1.5 gap-1 border-b border-white/5 flex-shrink-0 bg-black/10">
-            {[
-              { id: 'hosts', label: 'Hosts', icon: Users },
-              { id: 'video', label: 'Clip',  icon: Video  },
-            ].map(({ id, label, icon: Icon }) => (
-              <button key={id} onClick={() => setMonitorMode(id)}
-                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
-                style={monitorMode === id
-                  ? { background: '#c8f135', color: '#000' }
-                  : { color: '#555' }
-                }
-              >
-                <Icon size={10} /> {label}
-              </button>
-            ))}
-          </div>
-
           {/* Monitor display */}
           <div className="flex-1 relative overflow-hidden bg-[#050505]">
 
@@ -981,6 +1088,30 @@ Return ONLY valid JSON: { "lines": [{ "hostId": 0, "text": "...", "type": "Intro
               </div>
             )}
           </div>
+
+          {/* Gallery */}
+          {gallery.length > 0 && (
+            <div className="border-t border-white/5 flex-shrink-0">
+              <div className="px-4 py-2 flex items-center justify-between">
+                <span className="text-[8px] font-black uppercase tracking-[0.18em] text-gray-500 flex items-center gap-1.5">
+                  <Camera size={10} className="text-[#c8f135]" /> Generated ({gallery.length})
+                </span>
+                <button onClick={() => setGallery([])} className="text-[7px] text-gray-600 hover:text-red-400 transition-colors uppercase tracking-widest">Clear</button>
+              </div>
+              <div className="px-3 pb-3 grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: '#222 transparent' }}>
+                {gallery.map(item => (
+                  <div key={item.id} className="relative aspect-square rounded-lg overflow-hidden border border-white/10 group cursor-pointer"
+                    onClick={() => { if (item.url) { const a = document.createElement('a'); a.href = item.url; a.download = `podcast_img_${item.id}.png`; a.click(); } }}
+                  >
+                    <img src={item.url} className="w-full h-full object-cover" alt="" />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Download size={14} className="text-white" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Stats footer */}
           <div className="border-t border-white/5 p-4 flex-shrink-0 space-y-3 bg-black/20">

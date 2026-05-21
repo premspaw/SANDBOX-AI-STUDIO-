@@ -156,7 +156,8 @@ function CharacterKitCard({ character, onDirectorsCut, onDelete, onSelectReferen
 export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab: setAppTab, defaultTab = 'images' }) {
     const [activeTab, setActiveTab] = useState(defaultTab);
     const [viewMode, setViewMode] = useState('grid');
-    const [isConnectedToDrive, setIsConnectedToDrive] = useState(false);    const { cachedAssets, cachedAssetsUserId, setCachedAssets, userProfile } = useAppStore();
+    const [isConnectedToDrive, setIsConnectedToDrive] = useState(false);
+    const { cachedAssets, cachedAssetsUserId, setCachedAssets, userProfile } = useAppStore();
     const [assets, setAssets] = useState({
         images: [],
         videos: [],
@@ -387,13 +388,17 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         
         try {
             setLoading(true);
-            const ext = file.name.split('.').pop();
-            const fileName = `template_${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
-            const { error: uploadError } = await supabase.storage.from('ugc_assets').upload(fileName, file);
-            if (uploadError) throw uploadError;
-            const { data: urlData } = supabase.storage.from('ugc_assets').getPublicUrl(fileName);
+            const reader = new FileReader();
+            const base64 = await new Promise((res, rej) => { reader.onload = e => res(e.target.result); reader.onerror = rej; reader.readAsDataURL(file); });
+            const uploadResp = await fetch(getApiUrl('/api/upload-asset'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: base64, type: file.type.startsWith('video') ? 'video' : 'image', userId: userProfile?.id })
+            });
+            const uploadData = await uploadResp.json();
+            if (!uploadData.url) throw new Error('Upload failed');
             const { error: dbError } = await supabase.from('ugc_scene_templates').insert({
-                title, scene_context: context, prompt, img: urlData.publicUrl
+                title, scene_context: context, prompt, img: uploadData.url
             });
             if (dbError) throw dbError;
             alert('Template Uploaded successfully!');

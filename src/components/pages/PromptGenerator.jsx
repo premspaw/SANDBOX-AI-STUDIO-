@@ -509,7 +509,7 @@ export function PromptGenerator({ onUpscale }) {
     const saveToProject = async (url, slot) => {
         try {
             const fileName = `flare_${slot}_${Date.now()}.png`
-            const resp = await fetch('http://localhost:3001/api/save-asset', {
+            const resp = await fetch('http://localhost:3002/api/save-asset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ imageData: url, fileName })
@@ -556,6 +556,7 @@ export function PromptGenerator({ onUpscale }) {
                     ...prev,
                     [slot]: { url: data.url, assetPath, model: selectedModel, prompt: generatedPrompt, loading: false }
                 }))
+                setPreviewTab('image') // always show Dual View after generation
             }
         } catch (error) {
             console.error('Generation error:', error)
@@ -576,11 +577,11 @@ export function PromptGenerator({ onUpscale }) {
     // ── Preview Slot ─────────────────────────────────────────────────────
     const PreviewSlot = ({ slot, data }) => (
         <div
-            onClick={() => setActiveSlot(slot)}
+            onClick={() => { if (data.url || data.loading) setActiveSlot(slot) }}
             className={cn(
                 'relative flex-1 aspect-[16/9] rounded-xl overflow-hidden transition-all duration-300 group',
                 activeSlot === slot ? 'glow-border bg-white/10' : 'surface-glass',
-                !data.url ? 'bg-black/60' : ''
+                !data.url && !data.loading ? 'bg-black/60 cursor-default' : 'cursor-pointer'
             )}
         >
             <div className={cn(
@@ -628,9 +629,12 @@ export function PromptGenerator({ onUpscale }) {
                     </div>
                 </div>
             ) : (
-                <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 grayscale opacity-20 group-hover:opacity-40 transition-opacity">
-                    <Sparkles className="w-8 h-8 text-white mb-2" />
-                    <p className="text-[10px] font-bold text-white uppercase">Waiting for Input</p>
+                <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 pointer-events-none">
+                    <div className="w-16 h-16 rounded-full border border-white/10 flex items-center justify-center mb-4 opacity-20">
+                        <Sparkles className="w-7 h-7 text-white" />
+                    </div>
+                    <p className="text-[11px] font-black text-white/30 uppercase tracking-widest mb-1">Slot {slot}</p>
+                    <p className="text-[9px] text-white/15 uppercase tracking-wider">Hit Render to generate</p>
                 </div>
             )}
         </div>

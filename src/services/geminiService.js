@@ -741,74 +741,9 @@ export const generateLipSyncVideo = async (image, prompt, bible = null, opts = {
             payload.cachedContent = bible.cachedContentName;
         }
 
-        const { apiKey, isToken, projectId, location } = getAIConfig();
-        
-        // Dynamic Endpoint Selection: Gemini API (AI Studio) vs Vertex AI
-        const baseUrl = isToken 
-            ? `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google`
-            : `https://generativelanguage.googleapis.com/v1beta`;
-            
-        const method = isToken ? 'predict' : 'predictLongRunning';
-        const url = `${baseUrl}/models/${modelName}:${method}${isToken ? '' : `?key=${apiKey}`}`;
-        
-        const headers = { 'Content-Type': 'application/json' };
-        if (isToken) headers['Authorization'] = `Bearer ${apiKey}`;
-
-        console.log(`[STANDALONE] Requesting VEO via ${isToken ? 'Vertex AI' : 'Gemini API'}...`);
-
-        const initialResponse = await fetch(url, {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify(payload)
-        });
-
-        const initialData = await initialResponse.json();
-        if (initialData.error) throw new Error(initialData.error.message);
-
-        const operationName = initialData.name;
-        // Vertex AI returns full path, Gemini returns id-only sometimes. Be defensive.
-        const pollPath = operationName.includes('/') ? operationName : `models/${modelName}/operations/${operationName}`;
-        
-        let done = false;
-        let resultData = null;
-
-        while (!done) {
-            await new Promise(r => setTimeout(r, 5000));
-            const pollUrl = isToken 
-                ? `https://${location}-aiplatform.googleapis.com/v1/${pollPath}`
-                : `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${apiKey}`;
-                
-            const pollResponse = await fetch(pollUrl, {
-                headers: isToken ? { 'Authorization': `Bearer ${apiKey}` } : {}
-            });
-            const pollData = await pollResponse.json();
-            if (pollData.error) throw new Error(pollData.error.message);
-            if (pollData.done) {
-                resultData = pollData.response;
-                done = true;
-            }
-        }
-
-        // Use a generic finder or direct path since we know the structure usually includes generatedVideos
-        const videoUri = resultData?.generatedVideos?.[0]?.video?.uri || resultData?.predictions?.[0]?.uri;
-        if (!videoUri) return null;
-
-        const downloadUrl = isToken ? videoUri : `${videoUri}&key=${apiKey}`;
-        const videoResp = await fetch(downloadUrl, {
-            headers: isToken ? { 'Authorization': `Bearer ${apiKey}` } : {}
-        });
-
-        if (typeof window === 'undefined') {
-            const buffer = await videoResp.arrayBuffer();
-            return `data:video/mp4;base64,${Buffer.from(buffer).toString('base64')}`;
-        } else {
-            const blob = await videoResp.blob();
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.readAsDataURL(blob);
-            });
-        }
+        // Frontend now uses Google GenAI SDK directly (same as UGC page)
+        // This fallback should not be reached - backend proxy is preferred
+        throw new Error('Please use the frontend Google GenAI SDK for Veo video generation.');
 
     } catch (err) {
         console.error("Video generation failed:", err.message || err);

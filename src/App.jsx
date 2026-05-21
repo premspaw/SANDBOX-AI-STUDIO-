@@ -13,6 +13,8 @@ import { AssetManager } from './components/panels/AssetManager'
 import MarketingStudio from './components/pages/MarketingStudio'
 import SettingsPage from './components/pages/SettingsPage'
 import PricingPage from './components/pages/PricingPage'
+import BrandVoicePage from './components/pages/BrandVoicePage'
+import AgentPage from './components/pages/AgentPage'
 import { supabase } from './lib/supabase'
 import { initFaviconAnimation } from './utils/favicon'
 import { Toast } from './components/common/Toast'
@@ -34,6 +36,8 @@ const FULL_HEIGHT_TABS = new Set([
   'auth',
   'settings',
   'pricing',
+  'brand-voice',
+  'agent',
 ])
 
 function App() {
@@ -133,10 +137,12 @@ function App() {
     admin: <AssetManager />,
     settings: <SettingsPage />,
     pricing: <PricingPage />,
+    'brand-voice': <BrandVoicePage />,
+    'agent': <AgentPage />,
   }
 
   const getContainerClass = () => {
-    if (activeTab === 'settings' || activeTab === 'pricing') {
+    if (activeTab === 'settings' || activeTab === 'pricing' || activeTab === 'brand-voice') {
       return 'h-full w-full overflow-y-auto'
     }
     return FULL_HEIGHT_TABS.has(activeTab) ? 'h-full' : 'p-4'

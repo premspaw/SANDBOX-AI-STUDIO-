@@ -17,6 +17,10 @@ import compression from 'compression';
 
 import nodeFetch from 'node-fetch';
 import { decode } from 'base64-arraybuffer';
+import multer from 'multer';
+import { generateCarousel as generateCarouselHTML } from './services/carouselGenerator.js';
+import { readFileSync, rmSync } from 'fs';
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 // -------------------------------------------------------------
 // GLOBAL HEADERS INJECTOR (For Restricted API Keys)
@@ -81,6 +85,7 @@ import * as moodBoardService from './services/moodBoardService.js';
 import * as productService from './services/productService.js';
 import * as cacheService from './services/cacheService.js';
 import { GoogleAuth } from 'google-auth-library';
+import OpenAI from 'openai';
 
 import { Storage } from '@google-cloud/storage';
 
@@ -179,6 +184,21 @@ const getVertexToken = async () => {
 // Initial Token Check
 getVertexToken().catch(() => {});
 
+// ── OpenAI SDK + Raw Helper ──────────────────────────────────────────────────
+const OPENAI_API_KEY = () => process.env.OPENAI_API_KEY;
+const getOpenAIClient = () => new OpenAI({ apiKey: OPENAI_API_KEY() });
+const openaiChat = async (messages, model = 'gpt-4o', jsonMode = false) => {
+    const apiKey = OPENAI_API_KEY();
+    if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({ model, messages, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}) })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error?.message || 'OpenAI chat error');
+    return data.choices?.[0]?.message?.content;
+};
 
 let _geminiClient = null;
 const getGeminiClient = () => {
@@ -871,19 +891,31 @@ const sbH = () => ({
 });
 const sbAssetsUrl = () => `${(process.env.VITE_SUPABASE_URL || '').trim()}/rest/v1/assets`;
 
+let _templatesCache = null;
+let _templatesCacheAt = 0;
+const TEMPLATES_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+const _assetsCache = {};
+const _assetsCacheAt = {};
+const ASSETS_CACHE_TTL = 2 * 60 * 1000; // 2 minutes
+
 app.get('/api/marketing/templates', async (req, res) => {
     try {
+        const now = Date.now();
+        if (_templatesCache && (now - _templatesCacheAt) < TEMPLATES_CACHE_TTL) {
+            return res.json(_templatesCache);
+        }
         const r = await fetch(`${sbAssetsUrl()}?type=eq.marketing_template&order=created_at.desc`, { headers: sbH() });
         if (!r.ok) { const t = await r.text(); throw new Error(t); }
         const data = await r.json();
         const rows = data.map(row => {
             let meta = {};
             try { meta = JSON.parse(row.name); } catch (_) { meta = { name: row.name }; }
-            const imgUrl = row.url.startsWith('http')
-                ? `http://localhost:3002/api/proxy-image?url=${encodeURIComponent(row.url)}`
-                : row.url;
+            const imgUrl = row.url;
             return { id: row.id, name: meta.name || row.name, image_url: imgUrl, prompt: meta.prompt || '', aspect: meta.aspect || '16/9', category: meta.category || 'other' };
         });
+        _templatesCache = rows;
+        _templatesCacheAt = now;
         res.json(rows);
     } catch (err) {
         console.error('[MARKETING-TEMPLATES-GET]', err.message);
@@ -892,12 +924,244 @@ app.get('/api/marketing/templates', async (req, res) => {
 });
 
 app.post('/api/marketing/templates', async (req, res) => {
-    // Stored in localStorage on client; DB sync pending schema cache fix
-    res.json({ success: true, storage: 'localStorage' });
+    try {
+        const { id, name, image_url, prompt, aspect, category, user_id } = req.body;
+        if (!supabase) return res.json({ success: true, storage: 'localStorage' });
+        const meta = JSON.stringify({ name, prompt, aspect, category });
+        const { error } = await supabase.from('assets').insert([{
+            name: meta,
+            url: image_url,
+            type: 'marketing_template',
+            user_id: (user_id && user_id !== 'user_sandbox') ? user_id : null,
+            created_at: new Date().toISOString()
+        }]);
+        if (error) throw error;
+        _templatesCache = null;
+        res.json({ success: true, storage: 'supabase' });
+    } catch (err) {
+        console.error('[MARKETING-TEMPLATE-SAVE]', err.message);
+        res.json({ success: true, storage: 'localStorage' }); // fallback gracefully
+    }
 });
 
 app.delete('/api/marketing/templates/:id', async (req, res) => {
-    res.json({ success: true });
+    try {
+        if (supabase) {
+            await supabase.from('assets').delete().eq('id', req.params.id);
+            _templatesCache = null;
+        }
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[MARKETING-TEMPLATE-DELETE]', err.message);
+        res.json({ success: true });
+    }
+});
+
+// ── ZeroLens AI Agent Memory — per-user persistent storage in R2 ─────────────
+app.get('/api/agent/memory', async (req, res) => {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    try {
+        const text = await storageService.readFromR2(`agent-memory/${userId}.json`);
+        res.json(JSON.parse(text));
+    } catch (err) {
+        if (err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {
+            return res.json({ memories: [], updatedAt: null });
+        }
+        console.error('[Agent Memory GET]', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/agent/memory', async (req, res) => {
+    const { userId, memories } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    if (!Array.isArray(memories)) return res.status(400).json({ error: 'memories must be array' });
+    try {
+        const payload = JSON.stringify({ memories: memories.slice(-50), updatedAt: new Date().toISOString() });
+        await storageService.writeToR2(`agent-memory/${userId}.json`, payload);
+        res.json({ success: true, count: memories.length });
+    } catch (err) {
+        console.error('[Agent Memory POST]', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Carousel HTML → Playwright → Supabase PNG pipeline ───────────────────────
+app.post('/api/carousel/generate', async (req, res) => {
+    const { carouselData, userId } = req.body;
+    if (!carouselData?.brand || !carouselData?.slides) {
+        return res.status(400).json({ error: 'Missing carouselData.brand or carouselData.slides' });
+    }
+    let tmpDir = null;
+    try {
+        console.log('[Carousel] Starting HTML generation for', carouselData.brand.name);
+        const result = await generateCarouselHTML(carouselData);
+        tmpDir = result.tmpDir;
+        const uploadedSlides = [];
+        for (let i = 0; i < result.outputPaths.length; i++) {
+            const localPath = result.outputPaths[i];
+            const buffer = readFileSync(localPath);
+            const url = await uploadImageToSupabase(buffer, userId || 'anon');
+            uploadedSlides.push({ index: i, url, filename: `slide_${i + 1}.png` });
+            console.log(`[Carousel] Uploaded slide ${i + 1} → ${url}`);
+        }
+        res.json({
+            slides: uploadedSlides,
+            palette: result.palette,
+            fonts: { heading: result.fonts.heading, body: result.fonts.body },
+        });
+    } catch (err) {
+        console.error('[Carousel] Generation failed:', err);
+        res.status(500).json({ error: err.message || 'Carousel generation failed' });
+    } finally {
+        if (tmpDir) {
+            try { rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
+        }
+    }
+});
+
+// ── Hermes Agent Chat: General-purpose AI agent via OpenRouter Nemotron ──────
+app.post('/api/agent/chat', async (req, res) => {
+    try {
+        const { history, systemPrompt, memory = [] } = req.body;
+        if (!Array.isArray(history) || history.length === 0) {
+            return res.status(400).json({ error: 'history is required' });
+        }
+        const openaiKey = process.env.OPENAI_API_KEY;
+        if (!openaiKey) return res.status(500).json({ error: 'OPENAI_API_KEY not set' });
+
+        const memoryBlock = memory.length > 0
+            ? `\n\n[SESSION MEMORY]\n${memory.map((m, i) => `${i + 1}. ${m}`).join('\n')}`
+            : '';
+
+        const messages = [
+            { role: 'system', content: (systemPrompt || 'You are a helpful AI agent.') + memoryBlock },
+            ...history
+        ];
+
+        const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${openaiKey}`,
+            },
+            body: JSON.stringify({
+                model: 'gpt-4.1',
+                messages,
+                max_tokens: 4096,
+                temperature: 0.75,
+            })
+        });
+        const data = await resp.json();
+        if (!resp.ok) return res.status(resp.status).json({ error: data?.error?.message || 'OpenAI error' });
+        const text = data.choices?.[0]?.message?.content || '';
+        res.json({ text });
+    } catch (err) {
+        console.error('[Agent Chat]', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Carousel GPT Image 2: cinematic prompts → GPT Image 2 → R2 ───────────────
+app.post('/api/carousel/generate-images', async (req, res) => {
+    try {
+        const { prompts, userId, brand } = req.body;
+        if (!Array.isArray(prompts) || prompts.length === 0)
+            return res.status(400).json({ error: 'prompts array required' });
+
+        const safeId  = (userId || 'anon').replace(/[^a-z0-9_-]/gi, '');
+        const OpenAI  = (await import('openai')).default;
+        const openai  = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+        const slides = [];
+        for (let i = 0; i < prompts.length; i++) {
+            const { prompt, slideId } = prompts[i];
+            console.log(`[Carousel-GPT] Slide ${i + 1}/${prompts.length}: ${slideId}`);
+
+            const imgResp = await openai.images.generate({
+                model:   'gpt-image-2',
+                prompt:  prompt,
+                n:       1,
+                size:    '1024x1536',
+                quality: 'medium',
+            });
+
+            const b64 = imgResp.data?.[0]?.b64_json;
+            const url = imgResp.data?.[0]?.url;
+            let imageBuffer;
+            if (b64) {
+                imageBuffer = Buffer.from(b64, 'base64');
+            } else if (url) {
+                const r = await fetch(url);
+                imageBuffer = Buffer.from(await r.arrayBuffer());
+            } else {
+                throw new Error(`No image data for slide ${i}`);
+            }
+
+            const filename = `carousel/${safeId}/gpt_${safeId}_${Date.now()}_${i}.jpeg`;
+            const uploaded = await storageService.uploadToGCS(imageBuffer, filename, 'image/jpeg', MARKETING_BUCKET);
+            slides.push({ index: i, url: uploaded, filename: `slide_${i + 1}.png` });
+        }
+
+        res.json({ slides });
+    } catch (err) {
+        console.error('[Carousel-GPT]', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Carousel Chat: AI conversation to design Instagram carousel ──────────────
+app.post('/api/carousel/chat', async (req, res) => {
+    try {
+        const { history, systemPrompt } = req.body;
+        if (!Array.isArray(history) || history.length === 0) {
+            return res.status(400).json({ error: 'history is required' });
+        }
+        const OpenAI = (await import('openai')).default;
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const messages = [
+            { role: 'system', content: systemPrompt || 'You are a helpful carousel design assistant.' },
+            ...history.map(m => ({
+                role: m.role === 'model' ? 'assistant' : (m.role || 'user'),
+                content: m.content || m.parts?.[0]?.text || ''
+            }))
+        ];
+        const resp = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages,
+            max_tokens: 4096,
+            temperature: 0.8,
+        });
+        const text = resp.choices?.[0]?.message?.content || '';
+        res.json({ text });
+    } catch (err) {
+        console.error('[Carousel Chat]', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Recover marketing templates from R2 into Supabase DB
+app.post('/api/marketing/recover-from-r2', async (req, res) => {
+    try {
+        const files = await storageService.listAssetsGCS('marketing/reference/', MARKETING_BUCKET);
+        if (!files.length) return res.json({ recovered: 0, message: 'No files found in R2' });
+        let recovered = 0;
+        for (const file of files) {
+            if (!supabase) break;
+            const meta = JSON.stringify({ name: file.name.split('/').pop(), prompt: '', aspect: '16/9', category: 'food' });
+            const { error } = await supabase.from('assets').insert([{
+                name: meta, url: file.url, type: 'marketing_template',
+                user_id: null, created_at: new Date().toISOString()
+            }]);
+            if (error) console.warn('[RECOVER-ERR]', error.message);
+            if (!error) recovered++;
+        }
+        res.json({ recovered, total: files.length });
+    } catch (err) {
+        console.error('[MARKETING-RECOVER]', err.message);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Image proxy — fetches R2/GCS images server-side and returns with CORS headers
@@ -935,9 +1199,8 @@ app.post('/api/marketing/upload-reference', async (req, res) => {
         const fileName = `${MARKETING_FOLDER}/reference/${userId || 'anon'}/ref_${Date.now()}.${ext}`;
 
         const r2Url = await storageService.uploadToGCS(buffer, fileName, mimeType, MARKETING_BUCKET);
-        const proxyUrl = `http://localhost:3002/api/proxy-image?url=${encodeURIComponent(r2Url)}`;
         console.log(`[MARKETING] Reference image stored: ${r2Url}`);
-        res.json({ url: proxyUrl, r2Url, success: true, storage: 'R2', bucket: MARKETING_BUCKET, folder: `${MARKETING_FOLDER}/reference` });
+        res.json({ url: r2Url, r2Url, success: true, storage: 'R2', bucket: MARKETING_BUCKET, folder: `${MARKETING_FOLDER}/reference` });
     } catch (err) {
         console.error('[MARKETING-REF-UPLOAD-ERR]', err.message);
         res.status(500).json({ error: err.message });
@@ -1233,41 +1496,48 @@ const adminUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const adminKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const supabaseAdmin = (adminUrl && adminKey) ? createClient(adminUrl, adminKey) : null;
 
+async function mirrorCharacterImageToGCS({ characterId, imageUrl, imageName }) {
+    if (!supabaseAdmin) {
+        const err = new Error('Supabase admin client is not configured');
+        err.status = 503;
+        throw err;
+    }
+    if (!characterId || !imageUrl) {
+        const err = new Error('characterId and imageUrl are required');
+        err.status = 400;
+        throw err;
+    }
+
+    const imgResp = await fetch(imageUrl);
+    if (!imgResp.ok) throw new Error(`Could not fetch image: HTTP ${imgResp.status}`);
+    const buffer = Buffer.from(await imgResp.arrayBuffer());
+    const contentType = imgResp.headers.get('content-type') || 'image/jpeg';
+    const ext = contentType.includes('png') ? 'png' : 'jpg';
+    const fileName = `characters/${imageName || characterId}_${Date.now()}.${ext}`;
+
+    const BUCKET = process.env.GCS_BUCKET_NAME || 'ai-cinemastudio-assets-569815811058';
+    const gcsUri = `gs://${BUCKET}/${fileName}`;
+    await storageService.uploadToGCS(buffer, fileName, contentType);
+
+    const { error: dbError } = await supabaseAdmin
+        .from('characters')
+        .update({ gcs_uri: gcsUri })
+        .eq('id', characterId);
+
+    if (dbError) {
+        console.warn('[mirror-to-gcs] DB update warning:', dbError.message);
+    }
+
+    console.log(`[mirror-to-gcs] ✅ ${characterId} → ${gcsUri}`);
+    return { success: true, gcs_uri: gcsUri };
+}
+
 app.post('/api/characters/mirror-to-gcs', async (req, res) => {
     try {
-        const { characterId, imageUrl, imageName } = req.body;
-        if (!characterId || !imageUrl) {
-            return res.status(400).json({ error: 'characterId and imageUrl are required' });
-        }
-
-        // Fetch the image from Supabase/wherever
-        const imgResp = await fetch(imageUrl);
-        if (!imgResp.ok) throw new Error(`Could not fetch image: HTTP ${imgResp.status}`);
-        const buffer = await imgResp.buffer();
-        const contentType = imgResp.headers.get('content-type') || 'image/jpeg';
-        const ext = contentType.includes('png') ? 'png' : 'jpg';
-        const fileName = `characters/${imageName || characterId}_${Date.now()}.${ext}`;
-
-        // Upload to GCS
-        const BUCKET = process.env.GCS_BUCKET_NAME || 'ai-cinemastudio-assets-569815811058';
-        const gcsUri = `gs://${BUCKET}/${fileName}`;
-        await storageService.uploadToGCS(buffer, fileName, contentType);
-
-        // Save gcs_uri back to Supabase characters table
-        const { error: dbError } = await supabaseAdmin
-            .from('characters')
-            .update({ gcs_uri: gcsUri })
-            .eq('id', characterId);
-
-        if (dbError) {
-            console.warn('[mirror-to-gcs] DB update warning:', dbError.message);
-        }
-
-        console.log(`[mirror-to-gcs] ✅ ${characterId} → ${gcsUri}`);
-        res.json({ success: true, gcs_uri: gcsUri });
+        res.json(await mirrorCharacterImageToGCS(req.body));
     } catch (err) {
         console.error('[mirror-to-gcs] Error:', err);
-        res.status(500).json({ error: err.message });
+        res.status(err.status || 500).json({ error: err.message });
     }
 });
 
@@ -1293,12 +1563,11 @@ app.post('/api/characters/ensure-gcs', async (req, res) => {
             const imgUrl = char.anchor_image || char.image;
             if (!imgUrl) continue;
             try {
-                const mirrorResp = await fetch(`http://localhost:3002/api/characters/mirror-to-gcs`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ characterId: char.id, imageUrl: imgUrl, imageName: char.name?.replace(/\s+/g, '_') })
+                const mirrorData = await mirrorCharacterImageToGCS({
+                    characterId: char.id,
+                    imageUrl: imgUrl,
+                    imageName: char.name?.replace(/\s+/g, '_')
                 });
-                const mirrorData = await mirrorResp.json();
                 results.push({ id: char.id, name: char.name, ...mirrorData });
             } catch (e) {
                 results.push({ id: char.id, name: char.name, error: e.message });
@@ -1514,23 +1783,36 @@ app.get('/api/job-status/:jobId', async (req, res) => {
 
 // --- Credit System Helper ---
 async function consumeCredits(userId, cost) {
-    if (!supabase) return true; // Bypass safely if no DB
-
-    // Bypass for unauthenticated users in local development
-    if (!userId) {
-        console.warn("[CREDIT_SYSTEM] No userId provided. Bypassing credit check.");
+    if (!supabase) {
+        if (process.env.NODE_ENV === 'production') {
+            const err = new Error('Credit system is unavailable');
+            err.status = 503;
+            throw err;
+        }
         return true;
     }
 
-    // 1. Deduct Balance (Atomic RPC call)
+    if (!userId) {
+        if (process.env.NODE_ENV !== 'production') {
+            return true; // Dev mode: skip auth/credit check
+        }
+        const err = new Error('Sign in required to generate paid assets');
+        err.status = 401;
+        throw err;
+    }
+
     const { error } = await supabase.rpc('deduct_credits', { p_user_id: userId, p_cost: cost });
     
     if (error) {
         if (error.message?.includes('Insufficient credits')) {
-            console.warn(`[CREDIT_SYSTEM] Insufficient credits for user ${userId}. Bypassing for development.`);
-            return true;
+            const err = new Error('Insufficient credits');
+            err.status = 402;
+            throw err;
         }
-        console.warn("[SERVER] Profile/Credit check issue, allowing bypass for user:", userId, error.message);
+        console.warn("[SERVER] Profile/Credit check issue for user:", userId, error.message);
+        const err = new Error('Unable to deduct credits');
+        err.status = 500;
+        throw err;
     }
     return true;
 }
@@ -1673,7 +1955,7 @@ Action: ${prompt || "modify the highlighted area as requested"}`;
 
     } catch (error) {
         console.error("Edit Image Route Error:", error);
-        res.status(500).json({ error: error.message });
+        res.status(error.status || 500).json({ error: error.message });
     }
 });
 
@@ -1835,12 +2117,75 @@ app.post('/api/ai/analyze-ugc', async (req, res) => {
 
 
 
+// Upload Asset to GCS (used by UGC page instead of Supabase)
+app.get('/api/ugc/assets/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        if (!userId || !supabase) return res.json({ assets: [] });
+
+        const now = Date.now();
+        const cacheKey = `ugc_${userId}`;
+        if (_assetsCache[cacheKey] && (now - _assetsCacheAt[cacheKey]) < ASSETS_CACHE_TTL) {
+            return res.json(_assetsCache[cacheKey]);
+        }
+
+        const { data, error } = await supabase
+            .from('assets')
+            .select('id, name, type, url, prompt, created_at')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(200);
+
+        if (error) { console.warn('[ASSETS-FETCH]', error.message); return res.json({ assets: [] }); }
+        const result = { assets: data || [] };
+        _assetsCache[cacheKey] = result;
+        _assetsCacheAt[cacheKey] = now;
+        res.json(result);
+    } catch (err) {
+        console.error('[ASSETS-FETCH-ERR]', err.message);
+        res.json({ assets: [] });
+    }
+});
+
+app.post('/api/upload-asset', async (req, res) => {
+    try {
+        const { data, type, userId, prompt } = req.body;
+        if (!data) return res.status(400).json({ error: 'No data provided' });
+
+        const mimeType = type === 'video' ? 'video/mp4' : 'image/png';
+        const ext = type === 'video' ? 'mp4' : 'png';
+        const folder = `ugc/${type}s`;
+        const name = `ugc_${userId || 'anon'}_${Date.now()}.${ext}`;
+        const filePath = `${folder}/${name}`;
+
+        const buffer = Buffer.from(data.replace(/^data:[^;]+;base64,/, ''), 'base64');
+        const publicUrl = await storageService.uploadToGCS(buffer, filePath, mimeType);
+
+        if (supabase && userId) {
+            const { error: dbError } = await supabase.from('assets').insert([{
+                name, type, url: publicUrl,
+                user_id: userId, prompt: prompt || '',
+                created_at: new Date().toISOString()
+            }]);
+            if (dbError) console.warn('[DB]', dbError.message);
+            delete _assetsCache[`ugc_${userId}`];
+            delete _assetsCache[`list_${userId}`];
+        }
+
+        console.log(`[UGC-UPLOAD] ✅ ${type} saved to GCS: ${publicUrl}`);
+        res.json({ url: publicUrl });
+    } catch (err) {
+        console.error('[UGC-UPLOAD-ERR]', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Generate Image (Multi-Model Support)
 app.post('/api/generate-image', async (req, res) => {
 
     try {
         const { model, prompt, aspect_ratio, image, resolution, userId } = req.body;
-        console.log(`[SERVER] Received generation request for model: ${model}`);
+        console.log(`[SERVER] Received generation request for model: ${model} | ratio: ${aspect_ratio || req.body.aspectRatio || 'n/a'} | size: ${req.body.size || 'n/a'}`);
 
         // Credit Check
         let cost = 1; // Default
@@ -1850,7 +2195,7 @@ app.post('/api/generate-image', async (req, res) => {
         if (model === 'veo-fast' || model === 'veo3_fast' || model === 'veo-3.1-fast-generate-preview') cost = 3;
         if (model === 'kling' || model?.includes('kling-3.0') || model?.includes('kling/') || model === 'runway' || model === 'pika') cost = 10; // Future-proofing
 
-        // await consumeCredits(userId, cost); // Bypassing for sandbox testing as requested
+        await consumeCredits(userId, cost);
 
         const targetModel = model || req.body.modelEngine;
         const isVeo = targetModel === 'veo' || targetModel === 'veo-fast' || targetModel?.includes('veo-3.1') || targetModel?.includes('veo3');
@@ -1931,7 +2276,7 @@ app.post('/api/generate-image', async (req, res) => {
         }
     } catch (error) {
         console.error('Generation error:', error);
-        res.status(500).json({
+        res.status(error.status || 500).json({
             error: 'AI Engineering Error',
             message: error.message || 'An unexpected error occurred during generation.'
         });
@@ -1992,10 +2337,11 @@ async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg
 
     // Save URL reference to Supabase DB only (no file stored in Supabase)
     if (supabase && userId) {
-      await supabase.from('assets').insert([{
+      const { error: dbError } = await supabase.from('assets').insert([{
         name, type: 'image', url: publicUrl,
         user_id: userId, created_at: new Date().toISOString()
-      }]).catch(e => console.warn('[DB]', e.message));
+      }]);
+      if (dbError) console.warn('[DB]', dbError.message);
     }
     return publicUrl;
   } catch (err) {
@@ -2412,9 +2758,10 @@ async function handleKling(req, res) {
 // Handler for OpenAI Models (GPT Image 2 via dedicated Images API or Responses API)
 async function handleOpenAI(req, res) {
     try {
-        const { model, prompt, userId, quality = 'medium', size = '1024x1536' } = req.body;
+        const { model, prompt, userId, quality = 'medium', size = '1024x1536', image, secondImage, aspect_ratio } = req.body;
         const apiKey = process.env.OPENAI_API_KEY;
         if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
+        console.log(`[OPENAI] Request ratio: ${aspect_ratio || 'n/a'} | size: ${size}`);
 
         // 1. Robust Prompt Construction (Finalizing for high-fidelity infographics)
         let finalPromptText = prompt;
@@ -2456,7 +2803,7 @@ async function handleOpenAI(req, res) {
         const useResponsesApi = isInfographic || model?.includes('responses') || model?.includes('gpt-5');
         const targetModel = (model === 'gpt-image-2-2026-04-21' || !model) ? 'gpt-image-2' : model;
         
-        console.log(`[OPENAI] Routing to ${useResponsesApi ? 'RESPONSES' : 'IMAGES'} API | Model: ${targetModel} | User: ${userId}`);
+        console.log(`[OPENAI] Routing to ${useResponsesApi ? 'RESPONSES' : 'IMAGES'} API | Model: ${targetModel} | User: ${userId} | hasImage: ${!!image} | imageLen: ${image ? image.length : 0}`);
 
         if (useResponsesApi) {
             // --- OPENAI RESPONSES API ---
@@ -2487,16 +2834,16 @@ async function handleOpenAI(req, res) {
                 console.error("[OPENAI-RESPONSES-ERR] ❌:", JSON.stringify(data, null, 2));
                 // Fallback to standard Images API if Responses API fails or is unavailable
                 console.log("[OPENAI] Falling back to standard Images API...");
-                return await handleOpenAIStandard(targetModel, finalPromptText, size, quality, userId, apiKey, res);
+                return await handleOpenAIStandard(targetModel, finalPromptText, size, quality, userId, apiKey, res, image);
             }
 
             // Extract the generated image from the output parts
             const imagePart = data.output?.find(o => o.type === 'image');
             const imageData = imagePart?.image?.b64_json || imagePart?.image?.url;
-            
+
             if (!imageData) {
                 console.warn("[OPENAI] Responses API returned no image, falling back...");
-                return await handleOpenAIStandard(targetModel, finalPromptText, size, quality, userId, apiKey, res);
+                return await handleOpenAIStandard(targetModel, finalPromptText, size, quality, userId, apiKey, res, image);
             }
 
             let buffer;
@@ -2512,7 +2859,7 @@ async function handleOpenAI(req, res) {
             return res.json({ url: finalUrl, imageUrl: finalUrl, success: true });
 
         } else {
-            return await handleOpenAIStandard(targetModel, finalPromptText, size, quality, userId, apiKey, res);
+            return await handleOpenAIStandard(targetModel, finalPromptText, size, quality, userId, apiKey, res, image, secondImage);
         }
     } catch (err) {
         console.error('[OPENAI-HANDLER-ERR] ❌:', err.message);
@@ -2521,50 +2868,172 @@ async function handleOpenAI(req, res) {
 }
 
 /**
- * Standard OpenAI Images API Helper
+ * Uses Gemini Flash to analyze an uploaded food image (base64) and return
+ * a rich structured description for use in GPT Image 2 prompts.
  */
-async function handleOpenAIStandard(targetModel, prompt, size, quality, userId, apiKey, res) {
-    const isGptImage = targetModel.includes('gpt-image') || targetModel.includes('gpt-5');
+async function analyzeImageWithGemini(base64Image) {
+    const googleApiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+    if (!googleApiKey) throw new Error('GOOGLE_API_KEY not configured');
+
+    let base64Data, mimeType;
+
+    if (base64Image.startsWith('data:')) {
+        // Already a base64 data URL
+        base64Data = base64Image.replace(/^data:[^;]+;base64,/, '');
+        const mimeMatch = base64Image.match(/^data:([^;]+);base64,/);
+        mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    } else if (base64Image.startsWith('http')) {
+        // Cloud URL — fetch and convert to base64
+        console.log(`[GEMINI-VISION] Fetching image from URL: ${base64Image.slice(0, 100)}`);
+        const imgResp = await fetch(base64Image, {
+            headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'image/*' }
+        });
+        console.log(`[GEMINI-VISION] URL fetch status: ${imgResp.status} ${imgResp.statusText}`);
+        if (!imgResp.ok) throw new Error(`Failed to fetch image from URL (${imgResp.status}): ${base64Image.slice(0, 80)}`);
+        const arrayBuf = await imgResp.arrayBuffer();
+        console.log(`[GEMINI-VISION] Fetched ${arrayBuf.byteLength} bytes`);
+        if (arrayBuf.byteLength < 100) throw new Error(`Image URL returned empty/tiny response (${arrayBuf.byteLength} bytes)`);
+        base64Data = Buffer.from(arrayBuf).toString('base64');
+        mimeType = imgResp.headers.get('content-type')?.split(';')[0] || 'image/jpeg';
+    } else {
+        // Raw base64 without data URL prefix
+        base64Data = base64Image;
+        mimeType = 'image/jpeg';
+    }
+
+    const analysisPrompt = `You are a food stylist and culinary expert. Analyze this food photo in detail and describe:
+1. The exact dish name and cuisine type
+2. All visible ingredients, garnishes, and toppings
+3. Plating style (bowl, plate, rustic board, etc.)
+4. Colors and textures (crispy, saucy, steaming, etc.)
+5. Background and props (table surface, fabric, lighting mood)
+6. Overall mood and aesthetic (cozy, fine dining, street food, etc.)
+
+Return ONLY a single dense descriptive paragraph (no bullet points, no headers) that could be used as a visual prompt for an AI image generator. Be specific about colors, textures, and atmosphere.`;
+
     const payload = {
-        model: targetModel,
-        prompt: prompt,
-        n: 1,
-        size: size,
-        quality: isGptImage 
-            ? (quality === 'high' ? 'high' : (quality === 'low' ? 'low' : 'medium'))
-            : (quality === 'high' ? 'hd' : 'standard')
+        contents: [{
+            parts: [
+                { inline_data: { mime_type: mimeType, data: base64Data } },
+                { text: analysisPrompt }
+            ]
+        }],
+        generationConfig: { responseModalities: ['TEXT'] }
     };
 
-    // Note: response_format: "b64_json" is often problematic with newer models in certain regions/tiers
-    // We'll rely on the default (URL) and fetch it ourselves to ensure stability.
-    
+    const resp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+    );
+
+    const data = await resp.json();
+    const description = data?.candidates?.[0]?.content?.parts?.find(p => p.text)?.text || '';
+    console.log(`[GEMINI-VISION] Food analysis: ${description.slice(0, 200)}...`);
+    return description.trim();
+}
+
+/**
+ * Standard OpenAI Images API Helper
+ */
+async function handleOpenAIStandard(targetModel, prompt, size, quality, userId, apiKey, res, image = null, secondImage = null) {
+    // Normalise model — always force gpt-image-2
+    const model = 'gpt-image-2';
+    const qualityVal = quality === 'high' ? 'high' : quality === 'low' ? 'low' : 'medium';
+
+    // gpt-image-2 accepts 'auto' or any resolution: multiples of 16, max edge 3840, ratio ≤ 3:1
+    const validSizes = ['auto','1024x1024','1536x1024','1024x1536','1792x1024','1024x1792','2048x2048','2048x1152','1536x2048','2048x1536','3840x2160','2160x3840'];
+    const imageSize = validSizes.includes(size) ? size : 'auto';
+
+    if (image) {
+        // ── EDIT MODE: /images/edits with gpt-image-2 (image array, SDK) ──
+        // Per official docs: client.images.edit(model="gpt-image-2", image=[open(...)], prompt=...)
+        let imageBuffer;
+        if (image.startsWith('http://') || image.startsWith('https://')) {
+            // image is a CDN/R2 URL — fetch it
+            console.log('[OPENAI] image is URL, fetching bytes from:', image.slice(0, 80));
+            const imgResp = await fetch(image);
+            if (!imgResp.ok) throw new Error(`Failed to fetch image URL: ${imgResp.status}`);
+            imageBuffer = Buffer.from(await imgResp.arrayBuffer());
+        } else {
+            const base64Data = image.replace(/^data:[^;]+;base64,/, '');
+            if (!base64Data || base64Data.length < 100) throw new Error('Invalid image data');
+            imageBuffer = Buffer.from(base64Data, 'base64');
+        }
+
+        // Detect mime type from magic bytes
+        let mimeType = 'image/png', fileExt = 'png';
+        if (imageBuffer[0] === 0xFF && imageBuffer[1] === 0xD8) { mimeType = 'image/jpeg'; fileExt = 'jpg'; }
+
+        console.log(`[OPENAI] EDIT mode — gpt-image-2 /images/edits, size: ${imageSize}, quality: ${qualityVal}, bytes: ${imageBuffer.length}`);
+
+        const openai = getOpenAIClient();
+        const { toFile } = await import('openai');
+        const imageFile = await toFile(new Blob([imageBuffer], { type: mimeType }), `image.${fileExt}`, { type: mimeType });
+
+        // Build image array — add second image (logo) if provided
+        const imageArray = [imageFile];
+        if (secondImage) {
+            let secondBuffer;
+            if (secondImage.startsWith('http://') || secondImage.startsWith('https://')) {
+                const sResp = await fetch(secondImage);
+                if (!sResp.ok) throw new Error(`Failed to fetch secondImage URL: ${sResp.status}`);
+                secondBuffer = Buffer.from(await sResp.arrayBuffer());
+            } else {
+                const b64Second = secondImage.replace(/^data:[^;]+;base64,/, '');
+                secondBuffer = Buffer.from(b64Second, 'base64');
+            }
+            let secondMime = 'image/png', secondExt = 'png';
+            if (secondBuffer[0] === 0xFF && secondBuffer[1] === 0xD8) { secondMime = 'image/jpeg'; secondExt = 'jpg'; }
+            const secondFile = await toFile(new Blob([secondBuffer], { type: secondMime }), `logo.${secondExt}`, { type: secondMime });
+            imageArray.push(secondFile);
+            console.log(`[OPENAI] Two-image edit — main: ${imageBuffer.length}b, logo: ${secondBuffer.length}b`);
+        }
+
+        console.log(`[OPENAI] Calling images.edit with ${imageArray.length} image(s)…`);
+        const editTimeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('GPT Image 2 edit timed out after 120s')), 120_000)
+        );
+        const sdkResult = await Promise.race([
+            openai.images.edit({ model, prompt, image: imageArray, size: imageSize, quality: qualityVal, n: 1 }),
+            editTimeout
+        ]);
+
+        const b64 = sdkResult.data?.[0]?.b64_json;
+        if (!b64) throw new Error('GPT Image 2 edits returned no image data');
+        const buffer = Buffer.from(b64, 'base64');
+        const finalUrl = await uploadImageToSupabase(buffer, userId);
+        return res.json({ url: finalUrl, imageUrl: finalUrl, success: true });
+    }
+
+    // ── GENERATE MODE: /images/generations (text-to-image, no image input) ──
+    console.log(`[OPENAI] GENERATE mode — gpt-image-2, size: ${imageSize}, quality: ${qualityVal}`);
+    console.log(`[OPENAI] Prompt preview: ${prompt.slice(0, 200)}...`);
+
     const response = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify(payload)
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({ model, prompt, n: 1, size: imageSize, quality: qualityVal })
     });
 
     const data = await response.json();
     if (!response.ok) {
-        console.error("[OPENAI-IMAGES-ERR] ❌:", JSON.stringify(data, null, 2));
-        throw new Error(data.error?.message || "OpenAI Images API Error");
+        console.error("[OPENAI-GPT-IMAGE-2-ERR] ❌:", JSON.stringify(data, null, 2));
+        throw new Error(data.error?.message || "GPT Image 2 API Error");
     }
 
-    const imageUrl = data.data?.[0]?.url || data.data?.[0]?.b64_json;
-    if (!imageUrl) {
-        throw new Error("No image data returned from OpenAI Generations.");
-    }
+    // Extract b64 — edits returns data[0].b64_json, generations returns data[0].b64_json or url
+    const b64 = data.data?.[0]?.b64_json;
+    const imageUrlFallback = data.data?.[0]?.url;
 
     let buffer;
-    if (imageUrl.startsWith('http')) {
-        const imgFetch = await fetch(imageUrl);
+    if (b64) {
+        buffer = Buffer.from(b64, 'base64');
+    } else if (imageUrlFallback) {
+        const imgFetch = await fetch(imageUrlFallback);
         const ab = await imgFetch.arrayBuffer();
         buffer = Buffer.from(ab);
     } else {
-        buffer = Buffer.from(imageUrl, 'base64');
+        throw new Error("GPT Image 2 returned no image data.");
     }
 
     const finalUrl = await uploadImageToSupabase(buffer, userId);
@@ -2591,7 +3060,11 @@ async function handleGoogle(req, res) {
         // 3. Universal Aspect Ratio Cleaner
         const rawRatio = aspect_ratio || aspectRatio || "16:9";
         const cleanRatio = String(rawRatio).split(/[\s—–-]/)[0].trim();
-        const validRatio = ['16:9', '9:16', '1:1', '4:3', '3:4'].includes(cleanRatio) ? cleanRatio : '16:9';
+        // All ratios supported by gemini-3.1-flash-image-preview (superset)
+        const allValidRatios = ['16:9','9:16','1:1','4:3','3:4','3:2','2:3','4:5','5:4','21:9','1:4','4:1','1:8','8:1'];
+        // gemini-2.5-flash-image only supports these 10
+        const flash25ValidRatios = ['16:9','9:16','1:1','4:3','3:4','3:2','2:3','4:5','5:4','21:9'];
+        const validRatio = allValidRatios.includes(cleanRatio) ? cleanRatio : '16:9';
 
         // --- VIDEO BRANCH ---
         if (isVeo) {
@@ -2792,18 +3265,20 @@ async function handleGoogle(req, res) {
 
         } else {
             // --- IMAGE BRANCH (NANO BANANA) ---
+            const imageBranchStartedAt = Date.now();
             const modelMapping = {
-                'nano-banana': 'gemini-2.5-flash-image',
-                'nano-banana-2': 'gemini-2.5-flash-image',
-                'nano-banana-pro': 'gemini-3-pro-image-preview',
-                'nano-banana-pro-preview': 'nano-banana-pro-preview',
-                'gemini': 'gemini-2.5-flash-image',
+                'nano-banana':              'gemini-2.5-flash-image',
+                'nano-banana-2':            'gemini-3.1-flash-image-preview',
+                'nano-banana-pro':          'gemini-3-pro-image-preview',
+                'nano-banana-pro-preview':  'gemini-3-pro-image-preview',
+                'gemini':                   'gemini-3.1-flash-image-preview',
+                'gemini-2.5-flash-image':   'gemini-2.5-flash-image',
                 'gemini-3.1-flash-image-preview': 'gemini-3.1-flash-image-preview',
-                'gemini-3-pro-image-preview': 'gemini-3-pro-image-preview'
+                'gemini-3-pro-image-preview':     'gemini-3-pro-image-preview'
             };
 
-            const modelNameRaw = modelMapping[targetModel] || (targetModel.startsWith('gemini-') ? targetModel : 'gemini-2.5-flash-image');
-            const modelName = modelNameRaw.startsWith('models/') ? modelNameRaw : `models/${modelNameRaw}`;
+            let modelNameRaw = modelMapping[targetModel] || (targetModel.startsWith('gemini-') ? targetModel : 'gemini-3.1-flash-image-preview');
+            let modelName = modelNameRaw.startsWith('models/') ? modelNameRaw : `models/${modelNameRaw}`;
             // Resolve Image Size from user input
             let imageSize = "1K";
             const effectiveQuality = (quality || resolution || "").toLowerCase();
@@ -2823,27 +3298,33 @@ async function handleGoogle(req, res) {
             const { images = [], references = [], consistencyRefs = [], image: baseImage, product_image, identity_images = [], referenceImages = [] } = req.body || {};
             const combinedRefs = [...(images || []), ...(references || []), ...(identity_images || []), ...(consistencyRefs || []), ...(referenceImages || []), product_image, baseImage].filter(Boolean);
             const inputImages = Array.from(new Set(combinedRefs)); // De-duplicate
+            if (targetModel === 'nano-banana-2' && inputImages.length >= 2 && imageSize === '1K') {
+                modelNameRaw = 'gemini-2.5-flash-image';
+                modelName = 'models/gemini-2.5-flash-image';
+                console.warn(`[IMAGEN-REST] Multi-reference Nano Banana 2 request detected (${inputImages.length} refs). Using ${modelName} to avoid 3.1 timeout.`);
+            }
 
+            const resolveStartedAt = Date.now();
             const httpContentParts = await Promise.all(inputImages.map(async (img) => {
                 try {
                     const resolved = await resolveImageForGemini(img);
                     return resolved ? { inlineData: { data: resolved.data, mimeType: resolved.mimeType } } : null;
                 } catch (e) { return null; }
             })).then(parts => parts.filter(Boolean));
+            console.log(`[TIMING] Image refs resolved in ${Date.now() - resolveStartedAt}ms (${httpContentParts.length} inline, ${gcsContentParts.length} gcs)`);
 
-            const biblePrefix = bible ? `### NEURAL_UNIVERSE_BIBLE_CONTEXT\n${Object.entries(bible.characters || {}).map(([id, char]) => `- ${char.name}: ${char.backstory?.substring(0, 50)}...`).join('\n')}\nINSTRUCTIONS: Maintain consistency.\n\n` : "";
-
+            // For image gen: keep prompt clean — no markdown headers or bible context (triggers IMAGE_OTHER refusals)
             const contentParts = [];
             
             if (gcsContentParts.length > 0 || httpContentParts.length > 0) {
-                 contentParts.push({ text: "### REFERENCE IMAGES PROVIDED BY USER:\nBelow are reference assets loaded by the user (such as character features, clothing styles, or environment/stage details). Integrates these visual concepts faithfully into the layout of the generated output image." });
+                 contentParts.push({ text: "Reference images are provided below. Use them to match the visual style, character appearance, and clothing in the generated image." });
                  contentParts.push(...gcsContentParts, ...httpContentParts);
-                 contentParts.push({ text: "### MAIN SCENE DIRECTION:\n" });
             } else {
                  contentParts.push(...gcsContentParts, ...httpContentParts);
             }
             
-            contentParts.push({ text: biblePrefix + prompt.replace(/--ar\s+\d+:\d+/g, '').trim() });
+            const cleanPrompt = prompt.replace(/--ar\s+\d+:\d+/g, '').replace(/###[^\n]*/g, '').trim();
+            contentParts.push({ text: cleanPrompt });
 
             console.log(`[BACKEND] contentParts total: ${contentParts.length}`);
             contentParts.forEach((p, idx) => {
@@ -2851,51 +3332,102 @@ async function handleGoogle(req, res) {
                 if (type === 'inlineData') {
                     console.log(`  - Part [${idx}]: type=${type} (size: ${Math.round(p.inlineData.data.length / 1024)} KB)`);
                 } else {
-                    console.log(`  - Part [${idx}]: type=${type} (${p.text?.substring(0, 50)}...)`);
+                    console.log(`  - Part [${idx}]: type=${type} ("${p.text?.substring(0, 100)}")`);
                 }
             });
 
 
             // MANUAL REST API CALL (Bypasses SDK header stripping)
             const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent?key=${apiKey}`;
             
             const referer = 'http://localhost:5173/';
-            const isImageGenModel = modelName.includes('image-generation') || modelName.includes('imagen') || modelName.includes('image-preview') || modelName.includes('flash-image') || modelName.includes('nano-banana-pro-preview');
+            // gemini-2.5-flash-image uses responseFormat WITHOUT imageSize
+            // gemini-3.1-flash-image-preview and gemini-3-pro-image-preview use responseFormat WITH imageSize
+            const isGemini3Model = modelName.includes('3.1-flash-image-preview') || modelName.includes('3-pro-image-preview');
+            const isImageGenModel = isGemini3Model || modelName.includes('2.5-flash-image') || modelName.includes('flash-image') || modelName.includes('image-preview');
+            // For gemini-2.5-flash-image, clamp unsupported ratios to nearest valid
+            const effectiveRatio = (!isGemini3Model && !flash25ValidRatios.includes(validRatio))
+                ? (validRatio.startsWith('1:') ? '1:1' : validRatio.startsWith('4:1') ? '16:9' : '16:9')
+                : validRatio;
+
+            if (
+                targetModel === 'nano-banana-2' &&
+                inputImages.length >= 2 &&
+                effectiveRatio !== '9:16' &&
+                process.env.OPENAI_API_KEY
+            ) {
+                const openAISize = effectiveRatio === '16:9' ? '1536x1024' : effectiveRatio === '1:1' ? '1024x1024' : '1024x1536';
+                console.warn(`[IMAGEN-REST] ${effectiveRatio} requested with multi-reference NB2. Routing to GPT Image 2 for exact output size ${openAISize}.`);
+                const fallbackReq = {
+                    ...req,
+                    body: {
+                        ...req.body,
+                        model: 'gpt-image-2',
+                        prompt: cleanPrompt,
+                        quality: req.body.gpt2Quality || 'low',
+                        size: openAISize,
+                        aspect_ratio: effectiveRatio,
+                        image: inputImages[0],
+                        secondImage: inputImages[1]
+                    }
+                };
+                return await handleOpenAI(fallbackReq, res);
+            }
+            // Inject aspect ratio into prompt — REST API does not accept imageConfig/responseFormat fields
+            const ratioDescMap = {
+                '16:9':  'wide landscape 16:9 aspect ratio',
+                '9:16':  'tall portrait 9:16 aspect ratio',
+                '1:1':   'square 1:1 aspect ratio',
+                '4:3':   '4:3 aspect ratio',
+                '3:4':   'portrait 3:4 aspect ratio',
+                '3:2':   '3:2 aspect ratio',
+                '2:3':   'portrait 2:3 aspect ratio',
+                '4:5':   'portrait 4:5 aspect ratio',
+                '5:4':   '5:4 aspect ratio',
+                '21:9':  'ultra-wide cinematic 21:9 aspect ratio',
+                '1:4':   'extremely tall vertical 1:4 aspect ratio',
+                '4:1':   'extremely wide horizontal 4:1 aspect ratio',
+                '1:8':   'extremely tall vertical strip 1:8 aspect ratio',
+                '8:1':   'extremely wide horizontal strip 8:1 aspect ratio',
+            };
+            const ratioHint = ratioDescMap[effectiveRatio] || `${effectiveRatio} aspect ratio`;
+            // Append ratio hint to the last text part
+            const contentPartsWithRatio = [...contentParts];
+            const lastTextIdx = contentPartsWithRatio.map(p => !!p.text).lastIndexOf(true);
+            if (lastTextIdx >= 0) {
+                contentPartsWithRatio[lastTextIdx] = {
+                    ...contentPartsWithRatio[lastTextIdx],
+                    text: contentPartsWithRatio[lastTextIdx].text + ` [Output must be ${ratioHint}]`
+                };
+            }
+
             const requestBody = {
                 contents: [{
                     role: 'user',
-                    parts: contentParts
+                    parts: contentPartsWithRatio
                 }],
                 generationConfig: {
-                    responseModalities: ["IMAGE", "TEXT"],
-                    ...(isImageGenModel ? {
-                        imageConfig: {
-                            aspectRatio: validRatio,
-                            imageSize: isPro ? imageSize : "1K"
-                        }
-                    } : {})
+                    responseModalities: ["IMAGE", "TEXT"]
                 }
             };
 
-            console.log(`[IMAGEN-REST] Requesting: ${modelName} | Ratio: ${validRatio} | Size: ${isPro ? imageSize : "1K"}`);
-            
-            const urlObj = new URL(apiUrl);
             const postData = JSON.stringify(requestBody);
-            
-            const options = {
-                hostname: urlObj.hostname,
-                path: urlObj.pathname + urlObj.search,
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Content-Length': Buffer.byteLength(postData),
-                    'Referer': 'http://localhost:5173/',
-                    'X-Goog-Api-Key': apiKey
-                }
-            };
 
-            const result = await new Promise((resolve, reject) => {
+            const requestGoogleImage = (requestModelName, timeoutMs) => new Promise((resolve, reject) => {
+                const requestApiUrl = `https://generativelanguage.googleapis.com/v1beta/${requestModelName}:generateContent?key=${apiKey}`;
+                const urlObj = new URL(requestApiUrl);
+                const options = {
+                    hostname: urlObj.hostname,
+                    path: urlObj.pathname + urlObj.search,
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Content-Length': Buffer.byteLength(postData),
+                        'Referer': referer,
+                        'X-Goog-Api-Key': apiKey
+                    }
+                };
+
                 const req = https.request(options, (res) => {
                     let data = '';
                     res.on('data', (chunk) => data += chunk);
@@ -2920,14 +3452,36 @@ async function handleGoogle(req, res) {
                     console.error("[IMAGEN-REST-ERR] Network Error:", e.message);
                     reject(e);
                 });
-                req.setTimeout(180000, () => {
-                    console.error("[IMAGEN-REST-ERR] Request Timeout (180s)");
+                req.setTimeout(timeoutMs, () => {
+                    const seconds = Math.round(timeoutMs / 1000);
+                    console.error(`[IMAGEN-REST-ERR] Request Timeout (${seconds}s)`);
                     req.destroy();
-                    reject(new Error("Imagen API Request Timeout (180s)"));
+                    const timeoutError = new Error(`Imagen API Request Timeout (${seconds}s)`);
+                    timeoutError.code = 'GOOGLE_IMAGE_TIMEOUT';
+                    reject(timeoutError);
                 });
                 req.write(postData);
                 req.end();
             });
+
+            let activeModelName = modelName;
+            let googleStartedAt = Date.now();
+            let result;
+            try {
+                const primaryTimeoutMs = modelName.includes('3.1-flash-image-preview') ? 90000 : 180000;
+                console.log(`[IMAGEN-REST] Requesting: ${modelName} | Ratio: ${validRatio} | Size: ${isPro ? imageSize : "1K"} | Timeout: ${Math.round(primaryTimeoutMs / 1000)}s`);
+                result = await requestGoogleImage(modelName, primaryTimeoutMs);
+                console.log(`[TIMING] Google image response in ${Date.now() - googleStartedAt}ms`);
+            } catch (primaryError) {
+                const canUseFastFallback = modelName.includes('3.1-flash-image-preview');
+                if (!canUseFastFallback) throw primaryError;
+
+                activeModelName = 'models/gemini-2.5-flash-image';
+                googleStartedAt = Date.now();
+                console.warn(`[IMAGEN-REST] ${modelName} failed or timed out (${primaryError.message}). Retrying with ${activeModelName}...`);
+                result = await requestGoogleImage(activeModelName, 180000);
+                console.log(`[TIMING] Google image fallback response in ${Date.now() - googleStartedAt}ms`);
+            }
             
             // SAFE EXTRACTION LOGIC (using result directly)
             const candidates = result.candidates || [];
@@ -2936,15 +3490,80 @@ async function handleGoogle(req, res) {
 
             if (!outputPart) {
                 const safetyFeedback = result.promptFeedback;
-                console.error("[AI_BLOCK]", JSON.stringify(result, null, 2));
-                throw new Error(safetyFeedback ? "Content safety block triggered." : "AI engine returned an empty frame.");
+                const textPart = candidate?.content?.parts?.find(p => p.text);
+                const finishReason = candidate?.finishReason;
+                console.error("[AI_BLOCK] finishReason:", finishReason, "| safetyFeedback:", JSON.stringify(safetyFeedback));
+
+                if (finishReason === 'IMAGE_OTHER' && inputImages.length > 0 && process.env.OPENAI_API_KEY) {
+                    console.warn(`[AI_BLOCK] Google declined multi-reference image. Retrying through GPT Image 2 with ${Math.min(inputImages.length, 2)} reference image(s)...`);
+                    const fallbackReq = {
+                        ...req,
+                        body: {
+                            ...req.body,
+                            model: 'gpt-image-2',
+                            prompt: cleanPrompt,
+                            quality: req.body.gpt2Quality || 'low',
+                            size: effectiveRatio === '16:9' ? '1536x1024' : effectiveRatio === '1:1' ? '1024x1024' : '1024x1536',
+                            image: inputImages[0],
+                            secondImage: inputImages[1]
+                        }
+                    };
+                    return await handleOpenAI(fallbackReq, res);
+                }
+
+                // IMAGE_OTHER = model refused but not safety — auto-retry with stable fallback model
+                if (finishReason === 'IMAGE_OTHER' && !activeModelName.includes('2.5-flash-image')) {
+                    console.warn("[AI_BLOCK] IMAGE_OTHER detected — retrying with gemini-2.5-flash-image fallback...");
+                    const fallbackModelName = 'models/gemini-2.5-flash-image';
+                    const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/${fallbackModelName}:generateContent?key=${apiKey}`;
+                    const fallbackUrlObj = new URL(fallbackUrl);
+                    const fallbackResult = await new Promise((resolve, reject) => {
+                        const freq = https.request({
+                            hostname: fallbackUrlObj.hostname,
+                            path: fallbackUrlObj.pathname + fallbackUrlObj.search,
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData), 'Referer': 'http://localhost:5173/', 'X-Goog-Api-Key': apiKey }
+                        }, (fres) => {
+                            let fd = '';
+                            fres.on('data', c => fd += c);
+                            fres.on('end', () => {
+                                try { resolve(JSON.parse(fd)); } catch(e) { reject(new Error('Fallback parse error')); }
+                            });
+                        });
+                        freq.on('error', reject);
+                        freq.setTimeout(120000, () => { freq.destroy(); reject(new Error('Fallback timeout')); });
+                        freq.write(postData);
+                        freq.end();
+                    });
+                    const fallbackCandidate = (fallbackResult.candidates || [])[0];
+                    const fallbackPart = fallbackCandidate?.content?.parts?.find(p => p.inlineData);
+                    if (fallbackPart) {
+                        console.log("[AI_BLOCK] Fallback succeeded with gemini-2.0-flash-exp-image-generation ✅");
+                        const fallbackUrl2 = await uploadImageToSupabase(Buffer.from(fallbackPart.inlineData.data, 'base64'), userId, fallbackPart.inlineData.mimeType);
+                        if (!fallbackUrl2) throw new Error("Fallback model returned success but upload failed.");
+                        return res.json({ url: fallbackUrl2 });
+                    }
+                    const fallbackFinishReason = (fallbackResult.candidates || [])[0]?.finishReason;
+                    console.error("[AI_BLOCK] Fallback also failed. finishReason:", fallbackFinishReason, JSON.stringify(fallbackResult).slice(0, 300));
+                }
+
+                const errMsg = safetyFeedback?.blockReason
+                    ? `Content blocked: ${safetyFeedback.blockReason}`
+                    : finishReason === 'SAFETY'
+                    ? 'Creative Block: The AI safety filters flagged this prompt. Try rephrasing it.'
+                    : finishReason === 'IMAGE_OTHER'
+                    ? 'The AI declined to generate this image. Try: simplifying the prompt, removing brand/celebrity names, or switching to Nano Banana model.'
+                    : `AI engine returned an empty frame. finishReason: ${finishReason || 'unknown'}`;
+                throw new Error(errMsg);
             }
 
+            const uploadStartedAt = Date.now();
             const finalUrl = await uploadImageToSupabase(
                 Buffer.from(outputPart.inlineData.data, 'base64'),
                 userId,
                 outputPart.inlineData.mimeType
             );
+            console.log(`[TIMING] Image upload/db save in ${Date.now() - uploadStartedAt}ms`);
 
             console.log(`[BACKEND] uploadImageToSupabase result: ${finalUrl ? finalUrl.substring(0, 50) + '...' : 'null'}`);
 
@@ -2952,6 +3571,7 @@ async function handleGoogle(req, res) {
                 throw new Error("The AI model returned success but no image parity was extracted from the response.");
             }
             
+            console.log(`[TIMING] Total image request in ${Date.now() - imageBranchStartedAt}ms`);
             return res.json({ url: finalUrl });
         }
     } catch (error) {
@@ -2978,21 +3598,13 @@ async function handleGoogle(req, res) {
 app.post('/api/canvas/copy', async (req, res) => {
     try {
         const { intent, tone, projectType } = req.body;
-
         const systemPrompt = `You are a professional marketing copywriter. Create short, bold poster copy for a ${projectType}. Tone: ${tone}. Rules: Headline max 6 words, Subtext max 10 words, CTA max 3 words. Return JSON only with keys: headline, subtext, cta.`;
-
-        const completion = await openai.chat.completions.create({
-            messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: intent }
-            ],
-            model: "gpt-4o",
-            response_format: { type: "json_object" },
-        });
-
-        const result = JSON.parse(completion.choices[0].message.content);
+        const content = await openaiChat([
+            { role: "system", content: systemPrompt },
+            { role: "user", content: intent }
+        ], "gpt-4o", true);
+        const result = JSON.parse(content);
         res.json(result);
-
     } catch (error) {
         console.error('OpenAI Copy Error:', error);
         res.status(500).json({ error: error.message });
@@ -3003,22 +3615,18 @@ app.post('/api/canvas/copy', async (req, res) => {
 app.post('/api/canvas/image', async (req, res) => {
     try {
         const { prompt, width, height } = req.body;
-
-        // Map size (gpt-image supports 1024x1024, 1024x1536, 1536x1024)
         let size = "1024x1024";
-        if (width > height) size = "1536x1024"; // Landscape
-        else if (height > width) size = "1024x1536"; // Portrait
-
-        const response = await openai.images.generate({
-            model: "gpt-image-1.5",
-            prompt: `Professional poster background, no text, ${prompt}`,
-            n: 1,
-            size: size,
-            quality: "high"
+        if (width > height) size = "1536x1024";
+        else if (height > width) size = "1024x1536";
+        const apiKey = OPENAI_API_KEY();
+        const resp = await fetch('https://api.openai.com/v1/images/generations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+            body: JSON.stringify({ model: "dall-e-3", prompt: `Professional poster background, no text, ${prompt}`, n: 1, size, quality: "hd" })
         });
-
-        res.json({ url: response.data[0].url });
-
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error?.message || 'Image gen failed');
+        res.json({ url: data.data?.[0]?.url });
     } catch (error) {
         console.error('OpenAI Image Error:', error);
         res.status(500).json({ error: error.message });
@@ -3029,37 +3637,73 @@ app.post('/api/canvas/image', async (req, res) => {
 app.post('/api/canvas/analyze', async (req, res) => {
     try {
         const { context, url, brandName, projectType } = req.body;
-
         const systemPrompt = `You are an expert Creative Director. Analyze the request for a "${projectType}".
         Input Context: "${context}"
         Reference URL: "${url || 'None'}"
         Brand: "${brandName || 'Generic'}"
-
-        Produce a comprehensive Design Plan in JSON format:
-        {
-            "theme": "Short style name (e.g. Cyberpunk, Minimal)",
-            "visualDirection": "Detailed prompt for DALL-E background generation (no text in image)",
-            "headline": "Catchy headline (max 6 words)",
-            "subtext": "Persuasive subtext (max 12 words)",
-            "cta": "Strong Call to Action",
-            "suggestedPalette": ["#hex", "#hex", "#hex"]
-        }`;
-
-        const completion = await openai.chat.completions.create({
-            messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: "Create the plan." }
-            ],
-            model: "gpt-4o",
-            response_format: { type: "json_object" },
-        });
-
-        const result = JSON.parse(completion.choices[0].message.content);
+        Produce a comprehensive Design Plan in JSON format with keys: theme, visualDirection, headline, subtext, cta, suggestedPalette.`;
+        const content = await openaiChat([
+            { role: "system", content: systemPrompt },
+            { role: "user", content: "Create the plan." }
+        ], "gpt-4o", true);
+        const result = JSON.parse(content);
         res.json(result);
-
     } catch (error) {
         console.error('Analyst Error:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// ── Marketing Studio: GPT-4o Prompt Generation ────────────────────────────
+app.post('/api/marketing/generate-prompt', async (req, res) => {
+    try {
+        const { category, recipeData, medicalData, specialIngredients, brandColors, selectedStyle, referenceImage } = req.body;
+        const isMedical = category === 'medical';
+
+        const systemPrompt = `You are an expert marketing prompt engineer. Given business inputs, generate a JSON prompt object for an AI image generator.
+        Return ONLY valid JSON matching this structure:
+        {
+            "goal": string,
+            "mode": "premium_product_ad" | "detailed_infographic",
+            "scene": string (lighting, mood, background description),
+            "subject": string,
+            "details": {
+                "composition": string,
+                "visual_quality": string
+            },
+            "constraints": string[]
+        }`;
+
+        let userContext = '';
+        if (isMedical) {
+            userContext = `Create a professional medical clinic marketing asset.
+            Clinic: ${medicalData.clinic_name || 'Medical Clinic'}
+            Doctor: ${medicalData.doctor_name || ''}
+            Specialization: ${medicalData.specialization || ''}
+            Services: ${medicalData.services || ''}
+            Tagline: ${medicalData.tagline || ''}
+            Style: ${selectedStyle}`;
+        } else {
+            userContext = `Create a marketing asset for a food/restaurant business.
+            Dish: ${recipeData.dish_name || ''}
+            Presentation: ${recipeData.dish_presentation || 'Modern editorial plating'}
+            Ingredients: ${recipeData.ingredients?.map(i => `${i.quantity} ${i.name}`).join(', ') || ''}
+            Steps: ${recipeData.steps?.join(' | ') || ''}
+            Stats: ${recipeData.meta?.calories || ''} cal, ${recipeData.meta?.time || ''}, ${recipeData.meta?.servings || ''} servings
+            Special Ingredients: ${specialIngredients?.join(', ') || 'None'}
+            Style: ${selectedStyle}`;
+        }
+
+        const content = await openaiChat([
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userContext + `\nBrand Colors: ${brandColors?.join(', ')}\nReference image provided: ${referenceImage ? 'Yes' : 'No'}` }
+        ], "gpt-4o", true);
+
+        const parsed = JSON.parse(content);
+        res.json({ prompt: parsed, raw: content });
+    } catch (err) {
+        console.error('[MARKETING-PROMPT-ERR]', err);
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -3088,18 +3732,14 @@ app.get('/api/list-assets', async (req, res) => {
         return res.json({ images: [], videos: [] });
     }
 
-    // Use your existing forced-IPv4 helper to ensure results return
     try {
-        // --- SCHEMA DISCOVERY (Debug only) ---
-        const schemaCheck = await supabaseRestGet('assets?select=*&limit=1');
-        if (schemaCheck && schemaCheck[0]) {
-            console.log("[SERVER] Database Schema Keys:", Object.keys(schemaCheck[0]));
-        } else {
-            console.log("[SERVER] Database Schema Check: Table 'assets' appears empty or inaccessible.");
+        const now = Date.now();
+        const cacheKey = `list_${userId}`;
+        if (_assetsCache[cacheKey] && (now - _assetsCacheAt[cacheKey]) < ASSETS_CACHE_TTL) {
+            return res.json(_assetsCache[cacheKey]);
         }
 
         const query = `assets?user_id=eq.${userId}&select=*&order=created_at.desc`;
-        console.log(`[SERVER] Querying assets for userId: ${userId} with Query: ${query}`);
         const data = await supabaseRestGet(query);
         
         if (!data || !Array.isArray(data)) {
@@ -3118,6 +3758,8 @@ app.get('/api/list-assets', async (req, res) => {
             })
         };
         
+        _assetsCache[cacheKey] = response;
+        _assetsCacheAt[cacheKey] = Date.now();
         res.json(response);
     } catch (err) {
         console.error('List Assets Error:', err);
@@ -3543,27 +4185,292 @@ app.post('/api/ugc/video', async (req, res) => {
         const modelCredits = model === 'veo-fast' ? 3 : 5;
         await consumeCredits(userId, modelCredits);
 
-        console.log(`Generating UGC Video for script: "${script.substring(0, 30)}..." [model=${model}, dur=${duration}, res=${resolution}, ratio=${aspect_ratio}]`);
-        const videoDataUrl = await geminiService.generateLipSyncVideo(image, script, bible, { duration, resolution, model, aspect_ratio });
+        console.log(`[Video API] Starting generation: model=${model}, dur=${duration}, res=${resolution}, ratio=${aspect_ratio}`);
+        console.log(`[Video API] Script preview: "${script.substring(0, 50)}..."`);
+        console.log(`[Video API] Image provided: ${image ? (image.substring(0, 50) + '...') : 'NONE'}`);
 
-        if (!videoDataUrl) throw new Error("Video generation failed (returned null)");
+        // Get OAuth2 token from service account for Vertex AI
+        const vertexToken = await getVertexToken();
+        if (!vertexToken) {
+            throw new Error('Failed to get Vertex AI authentication token. Check GOOGLE_APPLICATION_CREDENTIALS_JSON env var.');
+        }
 
+        // Call Veo via Vertex AI using backend service account
+        const modelName = (model === 'veo-fast') ? 'veo-3.1-fast-generate-preview' : 'veo-3.1-generate-preview';
+        const requestedDuration = parseInt(String(duration).replace(/\D/g, '')) || 6;
+        const durationSecs = [4, 6, 8].includes(requestedDuration) ? requestedDuration : 6;
+
+        // Convert image to base64 if it's a URL
+        let imageBase64, imageMime;
+        if (image.startsWith('data:')) {
+            const [meta, data] = image.split(',');
+            imageBase64 = data;
+            imageMime = meta.split(':')[1]?.split(';')[0] || 'image/png';
+        } else {
+            // Fetch from URL
+            console.log(`[Video API] Fetching image from URL: ${image.substring(0, 80)}...`);
+            const imgResp = await fetch(image);
+            if (!imgResp.ok) throw new Error(`Failed to fetch image: ${imgResp.status}`);
+            const imgBuffer = await imgResp.arrayBuffer();
+            imageMime = imgResp.headers.get('content-type') || 'image/png';
+            imageBase64 = Buffer.from(imgBuffer).toString('base64');
+        }
+
+        const payload = {
+            instances: [{
+                prompt: script,
+                image: { bytesBase64Encoded: imageBase64, mimeType: imageMime }
+            }],
+            parameters: {
+                sampleCount: 1,
+                aspectRatio: aspect_ratio || "9:16",
+                durationSeconds: durationSecs,
+            }
+        };
+
+        const url = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelName}:predict`;
+
+        console.log(`[Video API] Calling Vertex AI: ${url}`);
+        const initialResponse = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${vertexToken}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const initialData = await initialResponse.json();
+        if (initialData.error) throw new Error(initialData.error.message);
+
+        const operationName = initialData.name;
+        if (!operationName) throw new Error('No operation name returned from Vertex AI');
+
+        const pollPath = operationName.includes('/') ? operationName : `projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/operations/${operationName}`;
+
+        // Poll for completion
+        let done = false;
+        let resultData = null;
+        let attempts = 0;
+        const maxAttempts = 60; // 5 minutes max
+
+        while (!done && attempts < maxAttempts) {
+            await new Promise(r => setTimeout(r, 5000));
+            attempts++;
+
+            const pollUrl = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/${pollPath}`;
+            const pollResponse = await fetch(pollUrl, {
+                headers: { 'Authorization': `Bearer ${vertexToken}` }
+            });
+            const pollData = await pollResponse.json();
+            
+            if (pollData.error) throw new Error(pollData.error.message);
+            if (pollData.done) {
+                resultData = pollData.response;
+                done = true;
+            }
+            console.log(`[Video API] Polling... attempt ${attempts}`);
+        }
+
+        if (!done) throw new Error('Video generation timed out after 5 minutes');
+
+        const videoUri = resultData?.generatedVideos?.[0]?.video?.uri || resultData?.predictions?.[0]?.uri;
+        if (!videoUri) throw new Error('No video URI in response');
+
+        // Download video and return as data URL
+        const downloadUrl = `${videoUri}&key=${vertexToken}`;
+        const videoResp = await fetch(downloadUrl);
+        if (!videoResp.ok) throw new Error(`Failed to download video: ${videoResp.status}`);
+        
+        const videoBuffer = await videoResp.arrayBuffer();
+        const videoDataUrl = `data:video/mp4;base64,${Buffer.from(videoBuffer).toString('base64')}`;
+
+        console.log(`[Video API] Success - video generated (${videoBuffer.byteLength} bytes)`);
         res.json({ url: videoDataUrl });
     } catch (error) {
-        console.error('UGC Video Error:', error);
-        res.status(500).json({ error: error.message });
+        console.error('[Video API] Error:', error);
+        console.error('[Video API] Stack:', error.stack);
+        res.status(error.status || 500).json({ error: error.message || 'Connection error', details: error.stack });
     }
 });
 
 app.post('/api/ugc/speech', async (req, res) => {
     try {
-        const { text, voice } = req.body;
-        const audioData = await geminiService.synthesizeSpeech(text, voice);
-        if (!audioData) throw new Error("Speech synthesis failed");
+        const {
+            text, voice = 'Kore',
+            multiSpeaker = false,
+            host1Voice = 'Aoede', host2Voice = 'Puck',
+            host1Name = 'Speaker 1', host2Name = 'Speaker 2',
+            podcastScene = '', podcastDirectorNote = '',
+        } = req.body;
+        if (!text) return res.status(400).json({ error: 'No text provided' });
 
-        res.json({ audio: `data:audio/mp3;base64,${audioData}` });
+        const namedVoices = ['Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede', 'Zephyr', 'Orion',
+            'Leda', 'Orus', 'Perseus', 'Castor', 'Pollux', 'Cetus', 'Aquila', 'Rigel',
+            'Spica', 'Algieba', 'Despina', 'Erinome', 'Algenib', 'Rasalghul'];
+
+        const gemini = getGeminiClient();
+
+        if (multiSpeaker) {
+            // ── Multi-speaker TTS — build full structured prompt per Gemini TTS guide ──
+            const s1 = host1Name || 'Speaker 1';
+            const s2 = host2Name || 'Speaker 2';
+            const v1 = namedVoices.includes(host1Voice) ? host1Voice : 'Aoede';
+            const v2 = namedVoices.includes(host2Voice) ? host2Voice : 'Puck';
+
+            // Normalize labels HOST 1 / HOST 2 → host names
+            const transcript = text
+                .replace(/HOST 1\s*:/gi, `${s1}:`)
+                .replace(/HOST 2\s*:/gi, `${s2}:`)
+                .trim();
+
+            // ── Build structured TTS prompt ───────────────────────────────────
+            const sceneBlock = podcastScene
+                ? `## THE SCENE\n${podcastScene}`
+                : `## THE SCENE\nA professional podcast studio with warm lighting, microphones, and a relaxed conversational atmosphere.`;
+
+            const directorBlock = podcastDirectorNote
+                ? `### DIRECTOR'S NOTES\n${podcastDirectorNote}`
+                : `### DIRECTOR'S NOTES\nStyle: Natural, conversational, and engaging.\nPace: Relaxed but energetic. Allow natural pauses between speakers.\nTone: Warm, authentic, friendly banter between two hosts.`;
+
+            const structuredPrompt = `# AUDIO PROFILE
+## Host Cast
+- ${s1} (Speaker 1): Engaging podcast host with a natural, warm delivery.
+- ${s2} (Speaker 2): Co-host bringing energy, reactions, and follow-up questions.
+
+${sceneBlock}
+
+${directorBlock}
+
+### TRANSCRIPT
+${transcript}`;
+
+            console.log(`[UGC-SPEECH] Multi-speaker TTS — ${s1}(${v1}) & ${s2}(${v2})`);
+
+            const result = await gemini.models.generateContent({
+                model: 'gemini-3.1-flash-tts-preview',
+                contents: [{ role: 'user', parts: [{ text: structuredPrompt }] }],
+                config: {
+                    responseModalities: ['AUDIO'],
+                    speechConfig: {
+                        multiSpeakerVoiceConfig: {
+                            speakerVoiceConfigs: [
+                                {
+                                    speaker: s1,
+                                    voiceConfig: { prebuiltVoiceConfig: { voiceName: v1 } },
+                                },
+                                {
+                                    speaker: s2,
+                                    voiceConfig: { prebuiltVoiceConfig: { voiceName: v2 } },
+                                },
+                            ],
+                        },
+                    },
+                },
+            });
+
+            const audioData = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+            if (!audioData) throw new Error("Multi-speaker TTS failed — no audio returned");
+            return res.json({ audio: `data:audio/wav;base64,${audioData}` });
+        }
+
+        // ── Single-speaker TTS (UGC mode) ────────────────────────────────────
+        const voiceName = namedVoices.includes(voice) ? voice : 'Kore';
+        console.log(`[UGC-SPEECH] Single-speaker TTS — voice: ${voiceName}`);
+
+        const result = await gemini.models.generateContent({
+            model: 'gemini-2.5-flash-preview-tts',
+            contents: [{ role: 'user', parts: [{ text }] }],
+            config: {
+                responseModalities: ['AUDIO'],
+                speechConfig: {
+                    voiceConfig: {
+                        prebuiltVoiceConfig: { voiceName },
+                    },
+                },
+            },
+        });
+
+        const audioData = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+        if (!audioData) throw new Error("Speech synthesis failed — no audio returned");
+
+        res.json({ audio: `data:audio/wav;base64,${audioData}` });
     } catch (error) {
-        console.error('UGC Speech Error:', error);
+        console.error('UGC Speech Error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================================
+// VOICE SAMPLE ANALYSIS — transcribe + extract speaking style
+// ============================================================
+
+// Supported audio MIME types Gemini can process inline
+const SUPPORTED_AUDIO_MIMES = new Set([
+    'audio/mp3', 'audio/mpeg', 'audio/wav', 'audio/wave', 'audio/x-wav',
+    'audio/ogg', 'audio/flac', 'audio/aac', 'audio/m4a', 'audio/x-m4a',
+    'audio/webm', 'video/mp4', 'video/webm', 'video/quicktime',
+]);
+
+app.post('/api/ugc/analyze-voice', upload.single('audio'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'No audio file uploaded' });
+
+        const rawMime = req.file.mimetype || 'audio/mpeg';
+        // Normalise browser MIME quirks
+        const mimeType = rawMime === 'audio/mp4' ? 'video/mp4'
+            : rawMime === 'audio/x-m4a' ? 'audio/m4a'
+            : rawMime;
+
+        if (!SUPPORTED_AUDIO_MIMES.has(mimeType)) {
+            return res.status(415).json({ error: `Unsupported file type: ${mimeType}. Upload MP3, WAV, M4A, OGG, FLAC, or MP4.` });
+        }
+
+        const audioBase64 = req.file.buffer.toString('base64');
+        const gemini = getGeminiClient();
+
+        const audioPart = { inlineData: { mimeType, data: audioBase64 } };
+
+        // ── Step 1: Transcribe ────────────────────────────────────────────────
+        console.log(`[UGC-VOICE] Transcribing ${req.file.originalname} (${mimeType}, ${(req.file.size / 1024).toFixed(0)} KB)`);
+        const transcribeResult = await gemini.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{ role: 'user', parts: [audioPart, { text: 'Transcribe this audio exactly as spoken. Output only the transcript text, no labels or formatting.' }] }],
+        });
+        const transcript = transcribeResult.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+        // ── Step 2: Extract vocal style from transcript ───────────────────────
+        console.log(`[UGC-VOICE] Transcript (${transcript.length} chars) — extracting style…`);
+        const styleResult = await gemini.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{
+                role: 'user',
+                parts: [
+                    audioPart,
+                    {
+                        text: `You are a voice coach analysing a speaker's unique delivery style.
+
+Listen to the recording and return a single compact paragraph (max 70 words) describing:
+1. Pace & rhythm (fast / slow / varied, pauses, rushing)
+2. Tone & energy (warm, dry, enthusiastic, calm, sarcastic, etc.)
+3. Sentence structure (short punchy lines, run-ons, filler words like "like", "you know", "right")
+4. Any distinctive accent, slang, or verbal habits
+
+Output ONLY the style description — no preamble, no headings.`,
+                    },
+                ],
+            }],
+        });
+        const style = styleResult.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+        if (!transcript && !style) {
+            return res.status(422).json({ error: 'Could not extract content from audio — ensure the file contains clear speech.' });
+        }
+
+        console.log(`[UGC-VOICE] Done — transcript: ${transcript.slice(0, 60)}… | style: ${style.slice(0, 60)}…`);
+        res.json({ transcript, style });
+    } catch (error) {
+        console.error('[UGC-VOICE] Error:', error.message);
         res.status(500).json({ error: error.message });
     }
 });
@@ -4978,6 +5885,13 @@ app.delete('/api/delete-asset/:id', async (req, res) => {
         console.error('[DELETE-ASSET-ERROR]', err);
         res.status(500).json({ error: err.message });
     }
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('[UNCAUGHT EXCEPTION] Server kept alive:', err.message);
+});
+process.on('unhandledRejection', (reason) => {
+    console.error('[UNHANDLED REJECTION] Server kept alive:', reason?.message || reason);
 });
 
 httpServer.listen(port, '0.0.0.0', () => {

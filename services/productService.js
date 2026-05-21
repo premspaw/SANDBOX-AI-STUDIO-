@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import fs from 'fs';
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+const getApiKey = () => process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || '';
 
 /**
  * Core product analysis logic using Gemini 2.5 Flash
@@ -44,27 +44,40 @@ export async function analyzeProductItem(image, broadcast) {
         required: ["productName", "category", "description", "materials", "colors", "vibe", "lightingSuggestion", "recommendedCameraShot", "labels"]
     };
 
-    // Using gemini-2.5-flash with STRUCTURED OUTPUT schemas
-    const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        generationConfig: {
-            responseMimeType: 'application/json',
-            responseSchema: schema
-        }
-    }, {
-        headers: {
-            'Referer': 'http://localhost:5173/',
-            'Origin': 'http://localhost:5173'
-        }
-    });
+    const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash'];
+    let text = '';
+    let lastErr = null;
 
-    const result = await model.generateContent([
-        { inlineData: { mimeType, data: base64Data } },
-        { text: "Analyze this product image. Extract all details according to the schema for a high-end commercial video production." }
-    ]);
+    for (const modelName of modelsToTry) {
+        try {
+            const genAI = new GoogleGenerativeAI(getApiKey());
+            const model = genAI.getGenerativeModel({
+                model: modelName,
+                generationConfig: {
+                    responseMimeType: 'application/json',
+                    responseSchema: schema
+                }
+            }, {
+                headers: {
+                    'Referer': 'http://localhost:5173/',
+                    'Origin': 'http://localhost:5173'
+                }
+            });
+            const result = await model.generateContent([
+                { inlineData: { mimeType, data: base64Data } },
+                { text: "Analyze this product image. Extract all details according to the schema for a high-end commercial video production." }
+            ]);
+            const response = await result.response;
+            text = response.text();
+            console.log(`[ProductService] Using model: ${modelName}`);
+            break;
+        } catch (err) {
+            console.error(`[ProductService] Model ${modelName} failed:`, err.message);
+            lastErr = err;
+        }
+    }
 
-    const response = await result.response;
-    const text = response.text();
+    if (!text) throw lastErr || new Error('All models failed');
 
     try {
         const parsed = JSON.parse(text);

@@ -516,6 +516,7 @@ export default function DirectorStudio() {
                     setPlaygroundVideos(prev => [{ url: downloadLink, prompt, id: Date.now() }, ...prev]);
                     setStep('done');
                     setCustomLoadingMsg('');
+                    uploadToGCS(downloadLink, 'video', prompt);
                 } else {
                     throw new Error(data.error || "Failed to generate Kling video.");
                 }
@@ -555,6 +556,7 @@ export default function DirectorStudio() {
                 if (typeof addVideoNode === "function") { addVideoNode(downloadLink, prompt, aspectRatio || "16:9"); }
                 setPlaygroundVideos(prev => [{ url: downloadLink, prompt, id: Date.now() }, ...prev]);
                 setStep('done');
+                uploadToGCS(downloadLink, 'video', prompt);
             } else if (data.jobId) {
                 let completed = false;
                 while (!completed) {
@@ -567,6 +569,7 @@ export default function DirectorStudio() {
                          setPlaygroundVideos(prev => [{ url: statusData.url, prompt, id: Date.now() }, ...prev]);
                          setStep('done');
                          completed = true;
+                         uploadToGCS(statusData.url, 'video', prompt);
                     } else if (statusData.status === 'error') {
                          throw new Error(statusData.error || "Async Status Error");
                     }
@@ -620,6 +623,7 @@ export default function DirectorStudio() {
             setGeneratedVideoUrl(imgData.url);
             setPlaygroundVideos(prev => [{ url: imgData.url, prompt: finalPrompt, id: Date.now(), type: 'image' }, ...prev]);
             setStep('done');
+            uploadToGCS(imgData.url, 'image', finalPrompt);
         } catch (err) {
             setError(formatError(err));
             setStep('idle');
@@ -659,6 +663,7 @@ export default function DirectorStudio() {
                 setGeneratedVideoUrl(downloadLink);
                 setPlaygroundVideos(prev => [{ url: downloadLink, prompt: prompt, id: Date.now(), type: 'video' }, ...prev]);
                 setStep('done');
+                uploadToGCS(downloadLink, 'video', prompt);
             } else {
                 throw new Error("Failed to animate.");
             }
@@ -717,6 +722,36 @@ export default function DirectorStudio() {
             setSourceVideoUrl(URL.createObjectURL(selected));
             setStep('idle');
             setGeneratedVideoUrl('');
+        }
+    };
+
+    const uploadToGCS = async (url, type, promptText) => {
+        try {
+            let base64;
+            if (url.startsWith('data:')) {
+                base64 = url;
+            } else {
+                const res = await fetch(url);
+                const blob = await res.blob();
+                base64 = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.readAsDataURL(blob);
+                });
+            }
+            const API_BASE = window.API_URL || 'http://localhost:3002';
+            const res = await fetch(`${API_BASE}/api/upload-asset`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: base64, type, prompt: promptText })
+            });
+            if (!res.ok) throw new Error(res.statusText);
+            const { url: gcsUrl } = await res.json();
+            console.log('[DIRECTOR→GCS] Saved:', gcsUrl);
+            return gcsUrl;
+        } catch (err) {
+            console.warn('[DIRECTOR→GCS] Upload failed (non-blocking):', err.message);
+            return url;
         }
     };
 
