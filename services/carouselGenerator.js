@@ -89,6 +89,68 @@ function buildPalette(primaryHex) {
   };
 }
 
+// ─── Layout Intelligence Layer ───────────────────────────────────────────────
+
+function getHeadlineSize(text) {
+  const len = (text || '').length;
+  if (len < 20) return 96;
+  if (len < 35) return 80;
+  if (len < 50) return 66;
+  if (len < 65) return 54;
+  return 48;
+}
+
+function getHeadlineWidth(text) {
+  const len = (text || '').length;
+  if (len < 25) return '62%';
+  if (len < 45) return '74%';
+  return '86%';
+}
+
+function getEyebrowSpacing(headlineSize) {
+  if (headlineSize >= 80) return '28px';
+  if (headlineSize >= 66) return '24px';
+  return '20px';
+}
+
+function getBodySpacing(headlineSize) {
+  if (headlineSize >= 80) return '40px';
+  if (headlineSize >= 66) return '34px';
+  return '28px';
+}
+
+function clampWords(text, maxWords) {
+  const words = (text || '').trim().split(/\s+/);
+  if (words.length <= maxWords) return text;
+  return words.slice(0, maxWords).join(' ') + '…';
+}
+
+function clampChars(text, maxChars) {
+  const t = (text || '').trim();
+  if (t.length <= maxChars) return t;
+  return t.slice(0, maxChars).trim() + '…';
+}
+
+function analyzeSlideComposition({ headline, body, type }) {
+  const hSize = getHeadlineSize(headline);
+  const hWidth = getHeadlineWidth(headline);
+  const eyebrowGap = getEyebrowSpacing(hSize);
+  const bodyGap = getBodySpacing(hSize);
+
+  // Text constraints
+  const constrainedHeadline = clampWords(clampChars(headline, 55), 12);
+  const constrainedBody = clampChars(body, 120);
+
+  return {
+    headlineSize: hSize,
+    headlineWidth: hWidth,
+    eyebrowGap,
+    bodyGap,
+    constrainedHeadline,
+    constrainedBody,
+  };
+}
+
 // ─── Font pairings ────────────────────────────────────────────────────────────
 
 const FONT_PAIRINGS = {
@@ -116,18 +178,18 @@ function getFonts(style) {
 // Refs: Monocle · FT Weekend · NYT Magazine
 // Posture: serif display · sans body · no shadows · hairline borders only
 const CW = {
-  dark:       '#211A14',   // ink (OKLch 20% 0.018 70)
+  dark:       '#211A14',
   darkSurf:   '#2C2219',
-  light:      '#F7F4F0',   // paper (OKLch 98% 0.004 95)
+  light:      '#F7F4F0',
   lightAlt:   '#EDE8E2',
   paper:      '#F7F4F0',
-  paperMuted: 'rgba(247,244,240,0.58)',
-  paperDim:   'rgba(247,244,240,0.28)',
+  paperMuted: 'rgba(247,244,240,0.72)',   // stronger body contrast
+  paperDim:   'rgba(247,244,240,0.38)',
   ink:        '#211A14',
-  inkMuted:   'rgba(33,26,20,0.52)',
-  inkDim:     'rgba(33,26,20,0.28)',
+  inkMuted:   'rgba(33,26,20,0.62)',
+  inkDim:     'rgba(33,26,20,0.32)',
   border:     'rgba(33,26,20,0.12)',
-  borderDark: 'rgba(247,244,240,0.10)',
+  borderDark: 'rgba(247,244,240,0.12)',
 };
 
 // ─── Slide primitives ─────────────────────────────────────────────────────────
@@ -136,11 +198,11 @@ function progressBar(index, total, palette, isLight = false) {
   const pct   = ((index + 1) / total) * 100;
   const track = isLight ? CW.border : CW.borderDark;
   const label = isLight ? CW.inkDim  : CW.paperDim;
-  return `<div style="position:absolute;bottom:0;left:0;right:0;padding:14px 32px 18px;display:flex;align-items:center;gap:12px;border-top:1px solid ${track};">
-  <div style="flex:1;height:1px;background:${track};overflow:hidden;">
+  return `<div style="position:absolute;bottom:18px;left:72px;display:flex;align-items:center;gap:10px;">
+  <div style="width:100px;height:1px;opacity:0.25;background:${track};overflow:hidden;border-radius:1px;">
     <div style="height:100%;width:${pct.toFixed(1)}%;background:${palette.BRAND_PRIMARY};"></div>
   </div>
-  <span style="font-size:9px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:${label};font-family:var(--font-body);">${index + 1}&thinsp;/&thinsp;${total}</span>
+  <span style="font-size:8px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:${label};font-family:var(--font-body);">${String(index + 1).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span>
 </div>`;
 }
 
@@ -156,13 +218,19 @@ function swipeArrow(isLight = false) {
 
 
 function buildSlide({ index, total, bg, content, palette, isLast, isLight = false, usesGradient = false }) {
-  const background = usesGradient ? palette.GRADIENT : (bg || palette.SLIDE_BG);
-  const grain = `<svg style="position:absolute;inset:0;width:100%;height:100%;opacity:0.04;mix-blend-mode:${isLight ? 'multiply' : 'overlay'};pointer-events:none;" xmlns="http://www.w3.org/2000/svg"><filter id="gr"><feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="4" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#gr)"/></svg>`;
+  const baseGradient = usesGradient ? palette.GRADIENT : (bg || palette.SLIDE_BG);
+  // Layered gradient: radial highlight + base gradient for depth
+  const background = `${baseGradient}`;
+  const grain = `<svg style="position:absolute;inset:0;width:100%;height:100%;opacity:0.035;mix-blend-mode:${isLight ? 'multiply' : 'overlay'};pointer-events:none;" xmlns="http://www.w3.org/2000/svg"><filter id="gr"><feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="4" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#gr)"/></svg>`;
+  const radial = `<div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 80% 60% at 30% 20%, rgba(255,255,255,0.06) 0%, transparent 55%);"></div>`;
   const bar = progressBar(index, total, palette, isLight);
   const arrow = isLast ? '' : swipeArrow(isLight);
-  return `<div class="slide" style="background:${background};position:relative;width:420px;height:525px;flex-shrink:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;padding:0 36px 52px;">
+  return `<div class="slide" style="background:${background};position:relative;width:420px;height:525px;flex-shrink:0;overflow:hidden;">
   ${grain}
-  ${content}
+  ${radial}
+  <div style="position:absolute;inset:0;padding:90px 72px 70px 72px;display:flex;flex-direction:column;justify-content:space-between;">
+    ${content}
+  </div>
   ${bar}
   ${arrow}
 </div>`;
@@ -172,16 +240,21 @@ function buildSlide({ index, total, bg, content, palette, isLast, isLight = fals
 
 function slide_Hero({ brand, palette, total }) {
   const { BRAND_PRIMARY } = palette;
-  const handle = brand.handle ? brand.handle.replace(/^@/, '') : brand.name.toLowerCase().replace(/\s+/g, '');
+  const comp = analyzeSlideComposition({ headline: brand.hook, body: brand.subhook, type: 'hero' });
 
   const content = `
-    <div style="display:flex;flex-direction:column;">
-      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid ${CW.borderDark};padding-bottom:14px;margin-bottom:26px;">
-        <span style="font-size:9px;font-weight:600;letter-spacing:0.20em;text-transform:uppercase;color:${CW.paperDim};font-family:var(--font-body);">${brand.name}</span>
-        <span style="font-size:9px;font-weight:600;letter-spacing:0.20em;text-transform:uppercase;color:${BRAND_PRIMARY};font-family:var(--font-body);">${brand.tag || 'Issue 01'}</span>
+    <div style="display:flex;flex-direction:column;height:100%;">
+      <!-- TOP: brand line -->
+      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid ${CW.borderDark};padding-bottom:12px;">
+        <span style="font-size:8px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:${CW.paperDim};font-family:var(--font-body);">${brand.name}</span>
+        <span style="font-size:8px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:${BRAND_PRIMARY};font-family:var(--font-body);">${brand.tag || 'Issue 01'}</span>
       </div>
-      <h1 style="font-family:var(--font-heading);font-size:52px;font-weight:900;line-height:0.92;letter-spacing:-0.01em;color:${CW.paper};margin:0 0 22px 0;max-width:92%;">${brand.hook}</h1>
-      <p style="font-family:var(--font-body);font-size:14px;line-height:1.52;color:${CW.paperMuted};margin:0;max-width:80%;">${brand.subhook}</p>
+      <!-- CENTER: headline -->
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+        <h1 style="font-family:var(--font-heading);font-size:${comp.headlineSize}px;font-weight:900;line-height:0.90;letter-spacing:-0.015em;color:${CW.paper};margin:0;max-width:${comp.headlineWidth};">${comp.constrainedHeadline}</h1>
+      </div>
+      <!-- BOTTOM: subhook -->
+      <p style="font-family:var(--font-body);font-size:13px;line-height:1.55;color:${CW.paperMuted};margin:0;max-width:82%;">${comp.constrainedBody}</p>
     </div>`;
 
   return buildSlide({ index: 0, total, isLast: false, palette, content, usesGradient: true });
@@ -190,15 +263,21 @@ function slide_Hero({ brand, palette, total }) {
 function slide_Problem({ slide, palette, index, total }) {
   const { BRAND_PRIMARY } = palette;
   const points = slide.points || [];
+  const comp = analyzeSlideComposition({ headline: slide.headline, body: slide.body, type: 'problem' });
 
   const content = `
-    <div style="display:flex;flex-direction:column;">
-      <p style="font-size:9px;font-weight:600;letter-spacing:0.20em;text-transform:uppercase;color:${BRAND_PRIMARY};font-family:var(--font-body);margin:0 0 18px 0;">The Problem</p>
-      <h2 style="font-family:var(--font-heading);font-size:46px;font-weight:900;line-height:0.93;letter-spacing:-0.01em;color:${CW.paper};margin:0 0 22px 0;max-width:92%;">${slide.headline}</h2>
-      <div style="display:flex;flex-direction:column;gap:0;border-top:1px solid ${CW.borderDark};">
-        ${points.map(p => `<div style="padding:10px 0;border-bottom:1px solid ${CW.borderDark};display:flex;align-items:center;gap:10px;"><span style="font-size:11px;color:${CW.paperDim};font-family:var(--font-body);text-decoration:line-through;">${p}</span></div>`).join('')}
+    <div style="display:flex;flex-direction:column;height:100%;">
+      <!-- TOP: eyebrow -->
+      <p style="font-size:8px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:${BRAND_PRIMARY};font-family:var(--font-body);margin:0;">The Problem</p>
+      <!-- CENTER: headline -->
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+        <h2 style="font-family:var(--font-heading);font-size:${comp.headlineSize}px;font-weight:900;line-height:0.90;letter-spacing:-0.015em;color:${CW.paper};margin:0;max-width:${comp.headlineWidth};">${comp.constrainedHeadline}</h2>
       </div>
-      ${slide.body ? `<p style="font-family:var(--font-body);font-size:14px;line-height:1.52;color:${CW.paperMuted};margin:16px 0 0 0;max-width:80%;">${slide.body}</p>` : ''}
+      <!-- BOTTOM: points + body -->
+      <div style="display:flex;flex-direction:column;gap:0;border-top:1px solid ${CW.borderDark};">
+        ${points.slice(0,3).map(p => `<div style="padding:8px 0;border-bottom:1px solid ${CW.borderDark};"><span style="font-size:11px;color:${CW.paperDim};font-family:var(--font-body);text-decoration:line-through;">${clampChars(p, 45)}</span></div>`).join('')}
+      </div>
+      ${comp.constrainedBody ? `<p style="font-family:var(--font-body);font-size:13px;line-height:1.55;color:${CW.paperMuted};margin:10px 0 0 0;max-width:82%;">${comp.constrainedBody}</p>` : ''}
     </div>`;
 
   return buildSlide({ index, total, isLast: false, palette, content, usesGradient: true });
@@ -206,13 +285,20 @@ function slide_Problem({ slide, palette, index, total }) {
 
 function slide_Solution({ slide, palette, index, total }) {
   const { BRAND_PRIMARY } = palette;
+  const comp = analyzeSlideComposition({ headline: slide.headline, body: slide.body, type: 'solution' });
+  const quote = slide.quote ? clampChars(slide.quote, 100) : '';
 
   const content = `
-    <div style="display:flex;flex-direction:column;">
-      <p style="font-size:9px;font-weight:600;letter-spacing:0.20em;text-transform:uppercase;color:${BRAND_PRIMARY};font-family:var(--font-body);margin:0 0 18px 0;">The Solution</p>
-      <h2 style="font-family:var(--font-heading);font-size:46px;font-weight:900;line-height:0.93;letter-spacing:-0.01em;color:${CW.ink};margin:0 0 20px 0;max-width:92%;">${slide.headline}</h2>
-      ${slide.quote ? `<div style="border-left:2px solid ${BRAND_PRIMARY};padding-left:16px;margin-bottom:16px;"><p style="font-family:var(--font-heading);font-size:15px;font-style:italic;line-height:1.48;color:${CW.inkMuted};margin:0;">&ldquo;${slide.quote}&rdquo;</p></div>` : ''}
-      <p style="font-family:var(--font-body);font-size:14px;line-height:1.52;color:${CW.inkMuted};margin:0;max-width:80%;">${slide.body || ''}</p>
+    <div style="display:flex;flex-direction:column;height:100%;">
+      <!-- TOP: eyebrow -->
+      <p style="font-size:8px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:${BRAND_PRIMARY};font-family:var(--font-body);margin:0;">The Solution</p>
+      <!-- CENTER: headline -->
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+        <h2 style="font-family:var(--font-heading);font-size:${comp.headlineSize}px;font-weight:900;line-height:0.90;letter-spacing:-0.015em;color:${CW.paper};margin:0;max-width:${comp.headlineWidth};">${comp.constrainedHeadline}</h2>
+      </div>
+      <!-- BOTTOM: quote + body -->
+      ${quote ? `<div style="border-left:2px solid ${BRAND_PRIMARY};padding-left:14px;margin-bottom:10px;"><p style="font-family:var(--font-heading);font-size:14px;font-style:italic;line-height:1.50;color:${CW.paperMuted};margin:0;">&ldquo;${quote}&rdquo;</p></div>` : ''}
+      <p style="font-family:var(--font-body);font-size:13px;line-height:1.55;color:${CW.paperMuted};margin:0;max-width:82%;">${comp.constrainedBody}</p>
     </div>`;
 
   return buildSlide({ index, total, isLast: false, palette, content, usesGradient: true });
@@ -220,19 +306,25 @@ function slide_Solution({ slide, palette, index, total }) {
 
 function slide_Features({ slide, palette, index, total }) {
   const { BRAND_PRIMARY } = palette;
-  const features = slide.features || [];
+  const features = (slide.features || []).slice(0, 3);
+  const comp = analyzeSlideComposition({ headline: slide.headline, body: '', type: 'features' });
 
   const content = `
-    <div style="display:flex;flex-direction:column;">
-      <p style="font-size:9px;font-weight:600;letter-spacing:0.20em;text-transform:uppercase;color:${BRAND_PRIMARY};font-family:var(--font-body);margin:0 0 16px 0;">What You Get</p>
-      <h2 style="font-family:var(--font-heading);font-size:40px;font-weight:900;line-height:0.93;letter-spacing:-0.01em;color:${CW.ink};margin:0 0 20px 0;max-width:92%;">${slide.headline}</h2>
-      <div style="display:flex;flex-direction:column;border-top:1px solid ${CW.border};">
+    <div style="display:flex;flex-direction:column;height:100%;">
+      <!-- TOP: eyebrow -->
+      <p style="font-size:8px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:${BRAND_PRIMARY};font-family:var(--font-body);margin:0;">What You Get</p>
+      <!-- CENTER: headline -->
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+        <h2 style="font-family:var(--font-heading);font-size:${comp.headlineSize}px;font-weight:900;line-height:0.90;letter-spacing:-0.015em;color:${CW.paper};margin:0;max-width:${comp.headlineWidth};">${comp.constrainedHeadline}</h2>
+      </div>
+      <!-- BOTTOM: feature list -->
+      <div style="display:flex;flex-direction:column;border-top:1px solid ${CW.borderDark};">
         ${features.map((f, i) => `
-        <div style="display:flex;align-items:baseline;gap:14px;padding:11px 0;border-bottom:1px solid ${CW.border};">
-          <span style="font-size:9px;font-weight:700;letter-spacing:0.12em;color:${BRAND_PRIMARY};min-width:20px;font-family:var(--font-body);">${String(i + 1).padStart(2,'0')}</span>
+        <div style="display:flex;align-items:baseline;gap:12px;padding:9px 0;border-bottom:1px solid ${CW.borderDark};">
+          <span style="font-size:8px;font-weight:800;letter-spacing:0.10em;color:${BRAND_PRIMARY};min-width:18px;font-family:var(--font-body);">${String(i + 1).padStart(2,'0')}</span>
           <div>
-            <div style="font-size:13px;font-weight:600;color:${CW.ink};font-family:var(--font-body);line-height:1.3;">${f.title}</div>
-            <div style="font-size:12px;color:${CW.inkMuted};font-family:var(--font-body);line-height:1.4;margin-top:2px;">${f.desc}</div>
+            <div style="font-size:12px;font-weight:700;color:${CW.paper};font-family:var(--font-body);line-height:1.3;">${clampChars(f.title, 30)}</div>
+            <div style="font-size:11px;color:${CW.paperDim};font-family:var(--font-body);line-height:1.4;margin-top:1px;">${clampChars(f.desc, 50)}</div>
           </div>
         </div>`).join('')}
       </div>
@@ -243,17 +335,23 @@ function slide_Features({ slide, palette, index, total }) {
 
 function slide_Details({ slide, palette, index, total }) {
   const { BRAND_PRIMARY } = palette;
-  const points = slide.points || [];
+  const points = (slide.points || []).slice(0, 4);
+  const comp = analyzeSlideComposition({ headline: slide.headline, body: '', type: 'details' });
 
   const content = `
-    <div style="display:flex;flex-direction:column;">
-      <p style="font-size:9px;font-weight:600;letter-spacing:0.20em;text-transform:uppercase;color:${BRAND_PRIMARY};font-family:var(--font-body);margin:0 0 16px 0;">The Details</p>
-      <h2 style="font-family:var(--font-heading);font-size:42px;font-weight:900;line-height:0.93;letter-spacing:-0.01em;color:${CW.paper};margin:0 0 22px 0;max-width:92%;">${slide.headline}</h2>
+    <div style="display:flex;flex-direction:column;height:100%;">
+      <!-- TOP: eyebrow -->
+      <p style="font-size:8px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:${BRAND_PRIMARY};font-family:var(--font-body);margin:0;">The Details</p>
+      <!-- CENTER: headline -->
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+        <h2 style="font-family:var(--font-heading);font-size:${comp.headlineSize}px;font-weight:900;line-height:0.90;letter-spacing:-0.015em;color:${CW.paper};margin:0;max-width:${comp.headlineWidth};">${comp.constrainedHeadline}</h2>
+      </div>
+      <!-- BOTTOM: bullet points -->
       <div style="display:flex;flex-direction:column;border-top:1px solid ${CW.borderDark};">
         ${points.map(p => `
-        <div style="display:flex;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px solid ${CW.borderDark};">
-          <div style="width:3px;height:3px;border-radius:50%;background:${BRAND_PRIMARY};flex-shrink:0;margin-top:6px;"></div>
-          <p style="font-size:13px;color:${CW.paperMuted};font-family:var(--font-body);margin:0;line-height:1.48;">${p}</p>
+        <div style="display:flex;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid ${CW.borderDark};">
+          <div style="width:3px;height:3px;border-radius:50%;background:${BRAND_PRIMARY};flex-shrink:0;margin-top:5px;"></div>
+          <p style="font-size:12px;color:${CW.paperMuted};font-family:var(--font-body);margin:0;line-height:1.50;">${clampChars(p, 55)}</p>
         </div>`).join('')}
       </div>
     </div>`;
@@ -263,19 +361,25 @@ function slide_Details({ slide, palette, index, total }) {
 
 function slide_HowTo({ slide, palette, index, total }) {
   const { BRAND_PRIMARY } = palette;
-  const steps = slide.steps || [];
+  const steps = (slide.steps || []).slice(0, 3);
+  const comp = analyzeSlideComposition({ headline: slide.headline, body: '', type: 'howto' });
 
   const content = `
-    <div style="display:flex;flex-direction:column;">
-      <p style="font-size:9px;font-weight:600;letter-spacing:0.20em;text-transform:uppercase;color:${BRAND_PRIMARY};font-family:var(--font-body);margin:0 0 16px 0;">How It Works</p>
-      <h2 style="font-family:var(--font-heading);font-size:42px;font-weight:900;line-height:0.93;letter-spacing:-0.01em;color:${CW.ink};margin:0 0 20px 0;max-width:92%;">${slide.headline}</h2>
-      <div style="display:flex;flex-direction:column;border-top:1px solid ${CW.border};">
+    <div style="display:flex;flex-direction:column;height:100%;">
+      <!-- TOP: eyebrow -->
+      <p style="font-size:8px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:${BRAND_PRIMARY};font-family:var(--font-body);margin:0;">How It Works</p>
+      <!-- CENTER: headline -->
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+        <h2 style="font-family:var(--font-heading);font-size:${comp.headlineSize}px;font-weight:900;line-height:0.90;letter-spacing:-0.015em;color:${CW.paper};margin:0;max-width:${comp.headlineWidth};">${comp.constrainedHeadline}</h2>
+      </div>
+      <!-- BOTTOM: steps -->
+      <div style="display:flex;flex-direction:column;border-top:1px solid ${CW.borderDark};">
         ${steps.map((step, i) => `
-        <div style="display:flex;align-items:baseline;gap:16px;padding:12px 0;border-bottom:1px solid ${CW.border};">
-          <span style="font-family:var(--font-heading);font-size:22px;font-weight:900;color:${BRAND_PRIMARY};min-width:32px;line-height:1;letter-spacing:-0.02em;">${String(i + 1).padStart(2, '0')}</span>
+        <div style="display:flex;align-items:baseline;gap:12px;padding:9px 0;border-bottom:1px solid ${CW.borderDark};">
+          <span style="font-family:var(--font-heading);font-size:18px;font-weight:900;color:${BRAND_PRIMARY};min-width:28px;line-height:1;letter-spacing:-0.02em;">${String(i + 1).padStart(2, '0')}</span>
           <div>
-            <div style="font-size:13px;font-weight:600;color:${CW.ink};font-family:var(--font-body);line-height:1.3;">${step.title}</div>
-            <div style="font-size:12px;color:${CW.inkMuted};font-family:var(--font-body);line-height:1.4;margin-top:2px;">${step.desc}</div>
+            <div style="font-size:12px;font-weight:700;color:${CW.paper};font-family:var(--font-body);line-height:1.3;">${clampChars(step.title, 28)}</div>
+            <div style="font-size:11px;color:${CW.paperDim};font-family:var(--font-body);line-height:1.4;margin-top:1px;">${clampChars(step.desc, 50)}</div>
           </div>
         </div>`).join('')}
       </div>
@@ -287,16 +391,22 @@ function slide_HowTo({ slide, palette, index, total }) {
 function slide_CTA({ brand, palette, total, ctaText }) {
   const { BRAND_PRIMARY } = palette;
   const handle = brand.handle ? brand.handle.replace(/^@/, '') : brand.name.toLowerCase().replace(/\s+/g, '');
+  const comp = analyzeSlideComposition({ headline: brand.ctaHeadline || 'Ready to begin?', body: brand.ctaBody, type: 'cta' });
 
   const content = `
-    <div style="display:flex;flex-direction:column;">
-      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid ${CW.border};padding-bottom:14px;margin-bottom:26px;">
-        <span style="font-size:9px;font-weight:600;letter-spacing:0.20em;text-transform:uppercase;color:${CW.inkDim};font-family:var(--font-body);">${brand.name}</span>
-        <span style="font-size:9px;font-weight:600;letter-spacing:0.20em;text-transform:uppercase;color:${CW.inkDim};font-family:var(--font-body);">@${handle}</span>
+    <div style="display:flex;flex-direction:column;height:100%;">
+      <!-- TOP: brand line -->
+      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid ${CW.borderDark};padding-bottom:12px;">
+        <span style="font-size:8px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:${CW.paperDim};font-family:var(--font-body);">${brand.name}</span>
+        <span style="font-size:8px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:${CW.paperDim};font-family:var(--font-body);">@${handle}</span>
       </div>
-      <h2 style="font-family:var(--font-heading);font-size:50px;font-weight:900;line-height:0.92;letter-spacing:-0.01em;color:${CW.ink};margin:0 0 20px 0;max-width:92%;">${brand.ctaHeadline || 'Ready to begin?'}</h2>
-      <p style="font-family:var(--font-body);font-size:14px;line-height:1.52;color:${CW.inkMuted};margin:0 0 28px 0;max-width:78%;">${brand.ctaBody || ''}</p>
-      <div style="display:inline-flex;align-items:center;padding:11px 26px;background:${BRAND_PRIMARY};color:#fff;font-weight:600;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;font-family:var(--font-body);">
+      <!-- CENTER: headline -->
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+        <h2 style="font-family:var(--font-heading);font-size:${comp.headlineSize}px;font-weight:900;line-height:0.90;letter-spacing:-0.015em;color:${CW.paper};margin:0;max-width:${comp.headlineWidth};">${comp.constrainedHeadline}</h2>
+      </div>
+      <!-- BOTTOM: body + CTA -->
+      <p style="font-family:var(--font-body);font-size:13px;line-height:1.55;color:${CW.paperMuted};margin:0 0 16px 0;max-width:78%;">${comp.constrainedBody}</p>
+      <div style="display:inline-flex;align-self:flex-start;align-items:center;padding:10px 24px;background:${BRAND_PRIMARY};color:#0a0a0a;font-weight:800;font-size:11px;letter-spacing:0.10em;text-transform:uppercase;font-family:var(--font-body);border-radius:2px;">
         ${ctaText || 'Get Started'}
       </div>
     </div>`;

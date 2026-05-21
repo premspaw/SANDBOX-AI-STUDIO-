@@ -98,15 +98,19 @@ ${brandBlock}
 6. CTA — what action drives the last slide? (e.g. "DM us", "Book a call", "Shop now", "Follow for more")
 
 ## COPY QUALITY RULES — CRITICAL
-- brand.hook: Stop-the-scroll. Bold claim, surprising stat, or provocative question. Max 8 words. Zero fluff.
-- brand.subhook: One sentence that earns the swipe. Specific, not generic.
+- brand.hook: Stop-the-scroll. Bold claim, surprising stat, or provocative question. MAX 8 WORDS. Zero fluff.
+- brand.subhook: One sentence that earns the swipe. MAX 120 CHARS. Specific, not generic.
 - brand.tag: 2-3 word pill label. E.g. "NEW DROP", "PRO TIP", "CASE STUDY", "MUST READ"
-- Problem slide: Name the real pain. Language your audience uses internally.
-- Solution slide: Make the transformation feel inevitable. Quote = something a senior expert would say.
-- Features: Title = benefit (not a label). Desc = proof or specificity.
-- Details: Real, specific points. Never buzzwords.
-- How-to steps: Action verbs. Clear outcomes.
-- brand.ctaHeadline: Create urgency or curiosity. Never "Get started today."
+- Problem slide.headline: MAX 12 WORDS, MAX 55 CHARS. Name the real pain. Language your audience uses internally.
+- Problem slide.body: MAX 120 CHARS.
+- Solution slide.headline: MAX 12 WORDS, MAX 55 CHARS. Make transformation feel inevitable.
+- Solution slide.quote: MAX 100 CHARS. Something a senior expert would say.
+- Solution slide.body: MAX 120 CHARS.
+- Features: Only 3 items max. Title = benefit, MAX 30 CHARS. Desc = proof, MAX 50 CHARS.
+- Details: Only 4 points max. Each point MAX 55 CHARS. Real, specific. Never buzzwords.
+- How-to: Only 3 steps max. Title = action verb, MAX 28 CHARS. Desc = outcome, MAX 50 CHARS.
+- brand.ctaHeadline: Create urgency or curiosity. MAX 12 WORDS, MAX 55 CHARS. Never "Get started today."
+- brand.ctaBody: MAX 120 CHARS.
 - ctaText: 2-4 words max.
 - If user gives a color name (not hex), convert it yourself: "warm gold"→#D4AF37, "cobalt blue"→#0047AB, "electric teal"→#00CED1, "deep navy"→#0A1628, etc.
 
