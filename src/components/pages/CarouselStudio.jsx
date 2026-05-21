@@ -74,6 +74,7 @@ function buildSystemPrompt(typeId, brandVoice) {
 ${brandVoice.words?.filter(Boolean).length ? `- Keywords: ${brandVoice.words.filter(Boolean).join(', ')}` : ''}
 ${brandVoice.whatTheyDo ? `- What They Do: ${brandVoice.whatTheyDo}` : ''}
 ${brandVoice.address ? `- Location: ${brandVoice.address}` : ''}
+${brandVoice.brandColor ? `- Brand Color: ${brandVoice.brandColor} (use this exact hex in the brand.color field)` : ''}
 ${brandVoice.instagramHandle ? `- Instagram: ${brandVoice.instagramHandle}` : ''}
 ${brandVoice.website ? `- Website: ${brandVoice.website}` : ''}
 ` : '';
@@ -171,6 +172,16 @@ export default function CarouselStudio({ userId }) {
     const [useBrandVoice, setUseBrandVoice] = useState(!!brandVoice?.brandName);
 
     const bottomRef = useRef(null);
+
+    // Map brandVoice flat keys → carousel brand object keys
+    const normalizeBrand = (bv, fallback = {}) => ({
+        ...fallback,
+        name: bv?.brandName || fallback.name,
+        color: bv?.brandColor || fallback.color,
+        whatTheyDo: bv?.whatTheyDo || fallback.whatTheyDo,
+        instagramHandle: bv?.instagramHandle,
+        website: bv?.website,
+    });
 
     // Sync session cache
     useEffect(() => { _s.selectedType = selectedType; }, [selectedType]);
@@ -373,7 +384,7 @@ export default function CarouselStudio({ userId }) {
                     prompt:   buildVisualPrompt({
                         carouselType: selectedType,
                         slideId:      slide.id,
-                        brand:        { ...data.brand, ...(useBrandVoice ? brandVoice : {}) },
+                        brand:        normalizeBrand(useBrandVoice ? brandVoice : null, data.brand),
                         slideContent: { ...slide, _index: i },
                     }),
                 }));
@@ -385,10 +396,14 @@ export default function CarouselStudio({ userId }) {
             } else {
                 // ── HTML Render path: carouselGenerator → Playwright
                 setGenStatus('Rendering slides with Playwright…');
+                const normalizedData = {
+                    ...data,
+                    brand: normalizeBrand(useBrandVoice ? brandVoice : null, data.brand),
+                };
                 const resp = await fetch(getApiUrl('/api/carousel/generate'), {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body:    JSON.stringify({ carouselData: data, userId }),
+                    body:    JSON.stringify({ carouselData: normalizedData, userId }),
                 });
                 const result = await resp.json();
                 if (!resp.ok) throw new Error(result?.error || `Server error ${resp.status}`);

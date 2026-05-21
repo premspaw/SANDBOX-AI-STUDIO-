@@ -34,18 +34,59 @@ function hslToHex(h, s, l) {
   return '#' + [f(0), f(8), f(4)].map(x => Math.round(x * 255).toString(16).padStart(2, '0')).join('');
 }
 
+const PRESET_PALETTES = [
+  { name: 'gold',        SLIDE_BG: '#0A0800', BRAND_PRIMARY: '#D4AF37', BRAND_DARK: '#8B6914', BRAND_LIGHT: '#F0D060', FEEL: 'Luxury, finance, personal brand' },
+  { name: 'electric-blue', SLIDE_BG: '#050A14', BRAND_PRIMARY: '#0EA5E9', BRAND_DARK: '#0047AB', BRAND_LIGHT: '#7DD3FC', FEEL: 'Tech, SaaS, AI tools' },
+  { name: 'lime',        SLIDE_BG: '#080A06', BRAND_PRIMARY: '#C8F135', BRAND_DARK: '#5A7A00', BRAND_LIGHT: '#E8FF80', FEEL: 'Creator tools, bold, energetic' },
+  { name: 'coral',       SLIDE_BG: '#0F0804', BRAND_PRIMARY: '#FF6B35', BRAND_DARK: '#CC3D00', BRAND_LIGHT: '#FFB347', FEEL: 'Food, lifestyle, coaching' },
+  { name: 'purple',      SLIDE_BG: '#08040F', BRAND_PRIMARY: '#A855F7', BRAND_DARK: '#5B21B6', BRAND_LIGHT: '#D8B4FE', FEEL: 'Spirituality, wellness, beauty' },
+  { name: 'teal',        SLIDE_BG: '#030F0F', BRAND_PRIMARY: '#00CED1', BRAND_DARK: '#006B6E', BRAND_LIGHT: '#67E8F9', FEEL: 'Healthcare, fintech, modern agency' },
+  { name: 'rose',        SLIDE_BG: '#0F0408', BRAND_PRIMARY: '#F43F5E', BRAND_DARK: '#9F1239', BRAND_LIGHT: '#FDA4AF', FEEL: 'Fashion, beauty, women\'s brand' },
+  { name: 'emerald',     SLIDE_BG: '#040F08', BRAND_PRIMARY: '#10B981', BRAND_DARK: '#065F46', BRAND_LIGHT: '#6EE7B7', FEEL: 'Sustainability, health, money' },
+  { name: 'silver',      SLIDE_BG: '#080808', BRAND_PRIMARY: '#E2E8F0', BRAND_DARK: '#374151', BRAND_LIGHT: '#F1F5F9', FEEL: 'Minimal, architecture, high-end' },
+  { name: 'amber',       SLIDE_BG: '#0C0800', BRAND_PRIMARY: '#F59E0B', BRAND_DARK: '#92400E', BRAND_LIGHT: '#FCD34D', FEEL: 'Food, coffee, hospitality' },
+];
+
+function hexToRgb(hex) {
+  const h = hex.startsWith('#') ? hex : `#${hex}`;
+  return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+}
+
+function rgbDistance(a, b) {
+  return Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2);
+}
+
 function buildPalette(primaryHex) {
-  const hex = primaryHex?.startsWith('#') ? primaryHex : `#${primaryHex || '6366f1'}`;
-  const [h, s, l] = hexToHsl(hex);
-  const SLIDE_BG      = hslToHex(h, Math.min(s * 0.35, 25), 7);
-  const BRAND_PRIMARY = hex;
-  const BRAND_LIGHT   = hslToHex(h, Math.min(s + 10, 100), Math.min(l + 22, 88));
-  const BRAND_DARK    = hslToHex(h, Math.min(s + 5, 100),  Math.max(l - 28, 12));
-  const GRADIENT      = `linear-gradient(155deg, ${BRAND_DARK} 0%, ${BRAND_PRIMARY} 55%, ${BRAND_LIGHT} 100%)`;
-  const DIVIDER       = 'rgba(255,255,255,0.08)';
-  const TEXT_BODY     = 'rgba(255,255,255,0.58)';
-  const TEXT_HEAD     = '#ffffff';
-  return { SLIDE_BG, BRAND_PRIMARY, BRAND_LIGHT, BRAND_DARK, GRADIENT, DIVIDER, TEXT_BODY, TEXT_HEAD };
+  const inputHex = (primaryHex?.startsWith('#') ? primaryHex : `#${primaryHex}`).toLowerCase();
+  const inputRgb = hexToRgb(inputHex);
+
+  // Exact match shortcut
+  const exact = PRESET_PALETTES.find(p => p.BRAND_PRIMARY.toLowerCase() === inputHex);
+  if (exact) {
+    return {
+      ...exact,
+      GRADIENT: `linear-gradient(155deg, ${exact.BRAND_DARK} 0%, ${exact.BRAND_PRIMARY} 55%, ${exact.BRAND_LIGHT} 100%)`,
+      DIVIDER: 'rgba(255,255,255,0.08)',
+      TEXT_BODY: 'rgba(255,255,255,0.58)',
+      TEXT_HEAD: '#ffffff',
+    };
+  }
+
+  // Find closest by RGB distance
+  let closest = PRESET_PALETTES[0];
+  let minDist = Infinity;
+  for (const p of PRESET_PALETTES) {
+    const d = rgbDistance(inputRgb, hexToRgb(p.BRAND_PRIMARY));
+    if (d < minDist) { minDist = d; closest = p; }
+  }
+
+  return {
+    ...closest,
+    GRADIENT: `linear-gradient(155deg, ${closest.BRAND_DARK} 0%, ${closest.BRAND_PRIMARY} 55%, ${closest.BRAND_LIGHT} 100%)`,
+    DIVIDER: 'rgba(255,255,255,0.08)',
+    TEXT_BODY: 'rgba(255,255,255,0.58)',
+    TEXT_HEAD: '#ffffff',
+  };
 }
 
 // ─── Font pairings ────────────────────────────────────────────────────────────

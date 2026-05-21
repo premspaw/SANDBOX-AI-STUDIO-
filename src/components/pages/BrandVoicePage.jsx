@@ -37,6 +37,7 @@ export default function BrandVoicePage() {
     const [words, setWords] = useState(['', '', ''])
     const [address, setAddress] = useState('')
     const [whatTheyDo, setWhatTheyDo] = useState('')
+    const [brandColor, setBrandColor] = useState('')
     const [instagramHandle, setInstagramHandle] = useState('')
     const [website, setWebsite] = useState('')
     const [saving, setSaving] = useState(false)
@@ -53,6 +54,7 @@ export default function BrandVoicePage() {
         if (bv.words) setWords(bv.words.length === 3 ? bv.words : [...bv.words, '', '', ''].slice(0, 3))
         if (bv.address) setAddress(bv.address)
         if (bv.whatTheyDo) setWhatTheyDo(bv.whatTheyDo)
+        if (bv.brandColor) setBrandColor(bv.brandColor)
         if (bv.instagramHandle) setInstagramHandle(bv.instagramHandle)
         if (bv.website) setWebsite(bv.website)
     }, [userProfile])
@@ -62,12 +64,13 @@ export default function BrandVoicePage() {
     const doneWords = words.filter(w => w.trim().length > 0).length === 3
     const doneAddress = address.trim().length > 0
     const doneWhatTheyDo = whatTheyDo.trim().length > 10
+    const doneBrandColor = /^#([0-9A-Fa-f]{6})$/.test(brandColor.trim())
     const doneInstagram = instagramHandle.trim().length > 0
     const doneWebsite = website.trim().length > 0
     const allDone = doneBrandName && doneLogo && doneWords && doneAddress && doneWhatTheyDo
 
-    const completedCount = [doneBrandName, doneLogo, doneWords, doneAddress, doneWhatTheyDo, doneInstagram, doneWebsite].filter(Boolean).length
-    const totalFields = 7
+    const completedCount = [doneBrandName, doneLogo, doneWords, doneAddress, doneWhatTheyDo, doneBrandColor, doneInstagram, doneWebsite].filter(Boolean).length
+    const totalFields = 8
     const progress = (completedCount / totalFields) * 100
 
     const handleLogoUpload = async (e) => {
@@ -111,7 +114,7 @@ export default function BrandVoicePage() {
     const handleSave = async () => {
         if (!userProfile?.id) return
         setSaving(true)
-        const payload = { brandName, logoUrl, words, address, whatTheyDo, instagramHandle, website }
+        const payload = { brandName, logoUrl, words, address, whatTheyDo, brandColor, instagramHandle, website }
         try {
             const { error } = await supabase.from('profiles').update({
                 brand_voice: payload
@@ -253,6 +256,20 @@ export default function BrandVoicePage() {
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-[#D4FF00]/50 transition-colors resize-none"
                     />
                     <p className="text-[10px] text-white/20 mt-1 text-right">{whatTheyDo.length} chars</p>
+                </FieldRow>
+
+                {/* Brand Color */}
+                <FieldRow label="Brand Color" hint="Hex code for your primary brand color (#D4AF37, #0EA5E9, #C8F135, etc.)" done={doneBrandColor}>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg border border-white/10 shrink-0" style={{ backgroundColor: /^#([0-9A-Fa-f]{6})$/.test(brandColor) ? brandColor : 'transparent' }} />
+                        <input
+                            type="text"
+                            value={brandColor}
+                            onChange={e => setBrandColor(e.target.value)}
+                            placeholder="e.g. #D4AF37"
+                            className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-[#D4FF00]/50 transition-colors font-mono"
+                        />
+                    </div>
                 </FieldRow>
 
                 {/* Instagram Handle */}
