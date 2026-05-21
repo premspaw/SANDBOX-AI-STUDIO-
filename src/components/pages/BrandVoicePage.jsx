@@ -259,8 +259,8 @@ export default function BrandVoicePage() {
                 </FieldRow>
 
                 {/* Brand Color */}
-                <FieldRow label="Brand Color" hint="Hex code for your primary brand color (#D4AF37, #0EA5E9, #C8F135, etc.)" done={doneBrandColor}>
-                    <div className="flex items-center gap-3">
+                <FieldRow label="Brand Color" hint="Hex code for your primary brand color — pick a preset or type your own" done={doneBrandColor}>
+                    <div className="flex items-center gap-3 mb-3">
                         <div className="w-10 h-10 rounded-lg border border-white/10 shrink-0" style={{ backgroundColor: /^#([0-9A-Fa-f]{6})$/.test(brandColor) ? brandColor : 'transparent' }} />
                         <input
                             type="text"
@@ -269,6 +269,30 @@ export default function BrandVoicePage() {
                             placeholder="e.g. #D4AF37"
                             className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-[#D4FF00]/50 transition-colors font-mono"
                         />
+                    </div>
+                    <div className="grid grid-cols-5 gap-2">
+                        {[
+                            { hex: '#D4AF37', label: 'Gold', feel: 'Luxury' },
+                            { hex: '#0EA5E9', label: 'Blue', feel: 'Tech' },
+                            { hex: '#C8F135', label: 'Lime', feel: 'Bold' },
+                            { hex: '#FF6B35', label: 'Coral', feel: 'Food' },
+                            { hex: '#A855F7', label: 'Purple', feel: 'Wellness' },
+                            { hex: '#00CED1', label: 'Teal', feel: 'Fintech' },
+                            { hex: '#F43F5E', label: 'Rose', feel: 'Fashion' },
+                            { hex: '#10B981', label: 'Emerald', feel: 'Health' },
+                            { hex: '#E2E8F0', label: 'Silver', feel: 'Minimal' },
+                            { hex: '#F59E0B', label: 'Amber', feel: 'Coffee' },
+                        ].map(c => (
+                            <button
+                                key={c.hex}
+                                onClick={() => setBrandColor(c.hex)}
+                                className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-all ${brandColor === c.hex ? 'border-[#D4FF00]/60 bg-[#D4FF00]/10' : 'border-white/5 hover:border-white/20 bg-white/[0.02]'}`}
+                            >
+                                <div className="w-7 h-7 rounded-md border border-white/10" style={{ backgroundColor: c.hex }} />
+                                <span className="text-[9px] font-bold text-white/50 uppercase tracking-wider">{c.label}</span>
+                                <span className="text-[8px] text-white/25">{c.feel}</span>
+                            </button>
+                        ))}
                     </div>
                 </FieldRow>
 
