@@ -1,21 +1,23 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { Layout } from './components/pages/Layout'
-import { PromptGenerator } from './components/panels/PromptGenerator'
-import { AssetsLibrary } from './components/panels/AssetsLibrary'
-import LandingPage from './components/pages/LandingPage'
-import AuthPage from './components/pages/AuthPage'
-import DirectorStudio from './components/pages/DirectorStudio'
-import UGC from './components/pages/UGC'
-import { InfluencerStudio } from './components/panels/InfluencerStudio'
-import { ForgeView } from './components/panels/ForgeView'
-import { PlaygroundCanvas } from './components/canvas/PlaygroundCanvas'
-import { AssetManager } from './components/panels/AssetManager'
-import MarketingStudio from './components/pages/MarketingStudio'
-import SettingsPage from './components/pages/SettingsPage'
-import PricingPage from './components/pages/PricingPage'
-import BrandVoicePage from './components/pages/BrandVoicePage'
-import AgentPage from './components/pages/AgentPage'
 import { supabase } from './lib/supabase'
+
+// Lazy load heavy studio components to improve initial load performance
+const PromptGenerator = lazy(() => import('./components/panels/PromptGenerator').then(m => ({ default: m.PromptGenerator })));
+const AssetsLibrary = lazy(() => import('./components/panels/AssetsLibrary').then(m => ({ default: m.AssetsLibrary })));
+const LandingPage = lazy(() => import('./components/pages/LandingPage'));
+const AuthPage = lazy(() => import('./components/pages/AuthPage'));
+const DirectorStudio = lazy(() => import('./components/pages/DirectorStudio'));
+const UGC = lazy(() => import('./components/pages/UGC'));
+const InfluencerStudio = lazy(() => import('./components/panels/InfluencerStudio').then(m => ({ default: m.InfluencerStudio })));
+const ForgeView = lazy(() => import('./components/panels/ForgeView').then(m => ({ default: m.ForgeView })));
+const PlaygroundCanvas = lazy(() => import('./components/canvas/PlaygroundCanvas').then(m => ({ default: m.PlaygroundCanvas })));
+const AssetManager = lazy(() => import('./components/panels/AssetManager').then(m => ({ default: m.AssetManager })));
+const MarketingStudio = lazy(() => import('./components/pages/MarketingStudio'));
+const SettingsPage = lazy(() => import('./components/pages/SettingsPage'));
+const PricingPage = lazy(() => import('./components/pages/PricingPage'));
+const BrandVoicePage = lazy(() => import('./components/pages/BrandVoicePage'));
+const AgentPage = lazy(() => import('./components/pages/AgentPage'));
 import { initFaviconAnimation } from './utils/favicon'
 import { Toast } from './components/common/Toast'
 import { useAppStore } from './store'
@@ -151,7 +153,14 @@ function App() {
   return (
     <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
       <div className={getContainerClass()}>
-        {tabComponents[activeTab] ?? null}
+        <Suspense fallback={
+          <div className="h-full w-full flex flex-col items-center justify-center bg-black gap-4">
+            <div className="w-12 h-12 border-4 border-lime-400/20 border-t-lime-400 rounded-full animate-spin" />
+            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-lime-400/60 animate-pulse">Initializing Studio...</div>
+          </div>
+        }>
+          {tabComponents[activeTab] ?? null}
+        </Suspense>
       </div>
 
       {isRecoveringPassword && (
