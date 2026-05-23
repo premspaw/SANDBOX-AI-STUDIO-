@@ -51,6 +51,7 @@ function App() {
   const isAdmin = userProfile?.role === 'admin'
   const isShowingAuthModal = useAppStore(state => state.isShowingAuthModal);
   const setShowingAuthModal = useAppStore(state => state.setShowingAuthModal);
+  const showToast = useAppStore(state => state.showToast);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -169,14 +170,14 @@ function App() {
             <button 
                onClick={async () => {
                    if (!newPassword || newPassword.length < 6) {
-                       alert("Password must be at least 6 characters!");
+                       showToast("Password must be at least 6 characters!", "error");
                        return;
                    }
                    const { error } = await supabase.auth.updateUser({ password: newPassword });
                    if (error) { 
-                       alert(error.message); 
+                       showToast(error.message, "error");
                    } else { 
-                       alert("Password updated successfully!"); 
+                       showToast("Password updated successfully!", "success");
                        setIsRecoveringPassword(false);
                        setNewPassword('');
                    }
@@ -202,6 +203,7 @@ function App() {
             <button 
               onClick={() => setShowingAuthModal(false)}
               className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors z-[100]"
+              aria-label="Close authentication modal"
             >
               <X className="w-5 h-5" />
             </button>
