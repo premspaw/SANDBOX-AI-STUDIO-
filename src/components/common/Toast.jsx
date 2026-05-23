@@ -38,6 +38,7 @@ export function Toast() {
                     <button
                         onClick={hideToast}
                         className="p-1.5 rounded-full hover:bg-white/10 transition-colors relative z-10 bg-white/5 active:scale-95"
+                        aria-label="Dismiss notification"
                     >
                         <X className="w-4 h-4 text-white/50 hover:text-white" />
                     </button>

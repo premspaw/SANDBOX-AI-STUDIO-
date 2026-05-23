@@ -363,8 +363,9 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                                         exit={{ opacity: 0, height: 0 }}
                                         style={{ display: 'flex', flexDirection: 'column', gap: 8, overflow: 'hidden' }}
                                     >
-                                        <label style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em', opacity: 0.3 }}>FULL_NAME</label>
+                                        <label htmlFor="fullName" style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em', opacity: 0.3 }}>FULL_NAME</label>
                                         <input
+                                            id="fullName"
                                             type="text"
                                             value={fullName}
                                             onChange={(e) => setFullName(e.target.value)}
@@ -376,8 +377,9 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                             </AnimatePresence>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                <label style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em', opacity: 0.3 }}>EMAIL_ADDRESS</label>
+                                <label htmlFor="email" style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em', opacity: 0.3 }}>EMAIL_ADDRESS</label>
                                 <input
+                                    id="email"
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
@@ -390,10 +392,18 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                             {!isForgotPassword && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <label style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em', opacity: 0.3 }}>PASSWORD_KEY</label>
-                                        <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ background: 'none', border: 'none', color: T.lime, fontSize: 10, fontFamily: "'DM Mono',monospace", cursor: 'pointer', opacity: 0.6 }}>{showPassword ? 'HIDE' : 'SHOW'}</button>
+                                        <label htmlFor="password" style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em', opacity: 0.3 }}>PASSWORD_KEY</label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            style={{ background: 'none', border: 'none', color: T.lime, fontSize: 10, fontFamily: "'DM Mono',monospace", cursor: 'pointer', opacity: 0.6 }}
+                                            aria-label={showPassword ? "Hide password" : "Show password"}
+                                        >
+                                            {showPassword ? 'HIDE' : 'SHOW'}
+                                        </button>
                                     </div>
                                     <input
+                                        id="password"
                                         type={showPassword ? 'text' : 'password'}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
@@ -430,8 +440,9 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                                         exit={{ opacity: 0, height: 0 }}
                                         style={{ display: 'flex', flexDirection: 'column', gap: 8, overflow: 'hidden' }}
                                     >
-                                        <label style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em', opacity: 0.3 }}>CONFIRM_SECRET</label>
+                                        <label htmlFor="confirmPassword" style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em', opacity: 0.3 }}>CONFIRM_SECRET</label>
                                         <input
+                                            id="confirmPassword"
                                             type="password"
                                             value={confirmPassword}
                                             onChange={(e) => setConfirmPassword(e.target.value)}
