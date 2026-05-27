@@ -87,14 +87,6 @@ export const useAppStore = create((set, get) => ({
     currentWardrobe: '',
     currentProduct: { image: null, description: '', labels: [], colors: [] },
     currentLocation: null,
-    cachedAssets: null,
-    isAssetsLoading: false,
-
-    setCachedAssets: (payload) => {
-        if (!payload) return set({ cachedAssets: null, cachedAssetsUserId: null });
-        const { userId = null, ...assets } = payload;
-        set({ cachedAssets: assets, cachedAssetsUserId: userId });
-    },
 
     // React Flow State
     nodes: [],
@@ -158,7 +150,18 @@ export const useAppStore = create((set, get) => ({
     setCurrentProduct: (data) => set({ currentProduct: data }),
     setCurrentLocation: (location) => set({ currentLocation: location }),
     clearCurrentLocation: () => set({ currentLocation: null }),
-    setCachedAssets: (assets, userId = null) => set({ cachedAssets: assets, cachedAssetsUserId: userId }),
+    setCachedAssets: (assets, userId = null) => {
+        if (!assets) return set({ cachedAssets: null, cachedAssetsUserId: null });
+        // Handle both (assets, userId) and ({ userId, ...assets }) call patterns
+        if (userId) {
+            set({ cachedAssets: assets, cachedAssetsUserId: userId });
+        } else if (typeof assets === 'object' && 'userId' in assets) {
+            const { userId: id, ...rest } = assets;
+            set({ cachedAssets: rest, cachedAssetsUserId: id });
+        } else {
+            set({ cachedAssets: assets, cachedAssetsUserId: null });
+        }
+    },
     setIsAssetsLoading: (loading) => set({ isAssetsLoading: loading }),
 
     // Standalone / API Actions
@@ -620,13 +623,6 @@ export const useAppStore = create((set, get) => ({
         }
     },
 
-    updateNodeData: (nodeId, newData) => {
-        set((state) => ({
-            nodes: state.nodes.map((node) =>
-                node.id === nodeId ? { ...node, data: { ...node.data, ...newData } } : node
-            ),
-        }));
-    },
 }));
 
 if (typeof window !== 'undefined') {
