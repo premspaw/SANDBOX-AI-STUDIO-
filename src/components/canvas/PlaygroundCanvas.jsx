@@ -6,6 +6,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store';
+import { useShallow } from 'zustand/react/shallow';
 import IdentityNode from '../nodes/IdentityNode';
 import InfluencerNode from '../nodes/InfluencerNode';
 import SeedanceNode from '../nodes/SeedanceNode';
@@ -39,7 +40,24 @@ const defaultEdgeOptions = {
 };
 
 export const PlaygroundCanvas = () => {
-    const { nodes, edges, onNodesChange, onEdgesChange, onConnect, setState } = useAppStore();
+    // ⚡ Bolt Optimization: Use granular selectors with useShallow to prevent unnecessary re-renders.
+    // This component now only re-renders when nodes, edges, or relevant handlers change,
+    // rather than on every store update (e.g., toast messages, rendering status).
+    const {
+        nodes,
+        edges,
+        onNodesChange,
+        onEdgesChange,
+        onConnect,
+        setState
+    } = useAppStore(useShallow((state) => ({
+        nodes: state.nodes,
+        edges: state.edges,
+        onNodesChange: state.onNodesChange,
+        onEdgesChange: state.onEdgesChange,
+        onConnect: state.onConnect,
+        setState: state.setState
+    })));
 
     return (
         <div className="w-full h-full relative bg-[#050505] overflow-hidden">
