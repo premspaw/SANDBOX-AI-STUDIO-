@@ -3,18 +3,21 @@ import { Position } from 'reactflow';
 import { motion } from 'framer-motion';
 import { X, ShieldCheck, Activity } from 'lucide-react';
 import { useAppStore } from '../../store';
+import { useShallow } from 'zustand/react/shallow';
 import MagneticHandle from '../edges/MagneticHandle';
 
-export default memo(({ id, data }) => {
-    const edges = useAppStore(s => s.edges);
+const InfluencerNode = ({ id, data }) => {
+    // ⚡ Bolt: Move connection check into selector to avoid re-rendering on EVERY edge change
+    const { isTargetConnected, isSourceConnected } = useAppStore(useShallow(state => ({
+        isTargetConnected: state.edges.some(e => e.target === id),
+        isSourceConnected: state.edges.some(e => e.source === id)
+    })));
+
     const identity = data?.identityProfile;
     const anchorImg = identity?.anchors?.side || data.image || '';
     const fullImg = identity?.anchors?.full || '';
     const poseCount = identity?.poses?.length || 0;
     const isLocked = identity?.identityLock || false;
-
-    const isTargetConnected = edges.some(e => e.target === id);
-    const isSourceConnected = edges.some(e => e.source === id);
 
     return (
         <div className="relative group" style={{ zIndex: 1 }}>
@@ -121,4 +124,8 @@ export default memo(({ id, data }) => {
             />
         </div>
     );
-});
+};
+
+InfluencerNode.displayName = 'InfluencerNode';
+
+export default memo(InfluencerNode);

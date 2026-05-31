@@ -3,15 +3,21 @@ import { Position, useUpdateNodeInternals } from 'reactflow';
 import { motion } from 'framer-motion';
 import MagneticHandle from '../edges/MagneticHandle';
 import { Maximize2, Loader2, Search, X, Zap, ScanLine } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 
 import { useAppStore } from '../../store';
 
-export default memo(({ id, data }) => {
-    const { setFocusMode } = useAppStore();
+const IdentityNode = ({ id, data }) => {
+    // ⚡ Bolt: Granular selectors prevent re-rendering when unrelated store state changes
+    const setFocusMode = useAppStore(state => state.setFocusMode);
+
+    // ⚡ Bolt: Move connection check into selector to avoid re-rendering on EVERY edge change
+    const { isTargetConnected, isSourceConnected } = useAppStore(useShallow(state => ({
+        isTargetConnected: state.edges.some(e => e.target === id),
+        isSourceConnected: state.edges.some(e => e.source === id)
+    })));
+
     const updateNodeInternals = useUpdateNodeInternals();
-    const edges = useAppStore(s => s.edges);
-    const isTargetConnected = edges.some(e => e.target === id);
-    const isSourceConnected = edges.some(e => e.source === id);
 
     useEffect(() => {
         updateNodeInternals(id);
@@ -163,4 +169,8 @@ export default memo(({ id, data }) => {
             />
         </div>
     );
-});
+};
+
+IdentityNode.displayName = 'IdentityNode';
+
+export default memo(IdentityNode);

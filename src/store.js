@@ -23,9 +23,7 @@ export const useAppStore = create((set, get) => ({
     activeCharacter: null,
     userShorts: 50,
     userProfile: null,
-    cachedAssets: null,
     cachedAssetsUserId: null,
-    isAssetsLoading: false,
     isShowingAuthModal: false,
     activeTab: 'home',
     isMuted: true,
@@ -90,12 +88,6 @@ export const useAppStore = create((set, get) => ({
     cachedAssets: null,
     isAssetsLoading: false,
 
-    setCachedAssets: (payload) => {
-        if (!payload) return set({ cachedAssets: null, cachedAssetsUserId: null });
-        const { userId = null, ...assets } = payload;
-        set({ cachedAssets: assets, cachedAssetsUserId: userId });
-    },
-
     // React Flow State
     nodes: [],
     edges: [],
@@ -158,7 +150,11 @@ export const useAppStore = create((set, get) => ({
     setCurrentProduct: (data) => set({ currentProduct: data }),
     setCurrentLocation: (location) => set({ currentLocation: location }),
     clearCurrentLocation: () => set({ currentLocation: null }),
-    setCachedAssets: (assets, userId = null) => set({ cachedAssets: assets, cachedAssetsUserId: userId }),
+    setCachedAssets: (payload) => {
+        if (!payload) return set({ cachedAssets: null, cachedAssetsUserId: null });
+        const { userId = null, ...assets } = payload;
+        set({ cachedAssets: assets, cachedAssetsUserId: userId });
+    },
     setIsAssetsLoading: (loading) => set({ isAssetsLoading: loading }),
 
     // Standalone / API Actions
@@ -241,13 +237,6 @@ export const useAppStore = create((set, get) => ({
         return id;
     },
 
-    updateNodeData: (id, data) => {
-        set({
-            nodes: get().nodes.map(node =>
-                node.id === id ? { ...node, data: { ...node.data, ...data } } : node
-            )
-        });
-    },
     upscaleNodeImage: async (id, targetRes) => {
         const node = get().nodes.find(n => n.id === id);
         if (!node || !node.data.image) return;
@@ -620,6 +609,7 @@ export const useAppStore = create((set, get) => ({
         }
     },
 
+    // ⚡ Bolt: Use functional update to ensure state consistency and avoid stale closures
     updateNodeData: (nodeId, newData) => {
         set((state) => ({
             nodes: state.nodes.map((node) =>
