@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Camera, Sun, MapPin, Aperture,
@@ -9,9 +9,9 @@ import {
     Maximize, Terminal, Music, Volume2, Mic2, Target, ChevronLeft
 } from "lucide-react";
 import { useAppStore } from "../../store";
-import logo from "../../assets/acs-icon.svg";
+import { useShallow } from 'zustand/react/shallow';
 import BrandLogo from "../common/BrandLogo";
-import { generateCharacterImage, analyzeIdentity, generateDynamicAngles, buildConsistencyRefs, expandPrompt } from "../../services/geminiService";
+import { generateCharacterImage, generateDynamicAngles, buildConsistencyRefs, expandPrompt } from "../../services/geminiService";
 import { saveStoryboardItem, saveGeneratedAsset } from "../../services/supabaseService";
 import { HUD_CONFIG } from "../../config/hudConfig";
 import { useWebSocket } from "../../hooks/useWebSocket";
@@ -71,8 +71,43 @@ function ControlSelect({ label, icon: Icon, value, options, onChange }) {
 
 // --- MAIN DIRECTOR HUD ---
 
-export default function DirectorHUD() {
-    const store = useAppStore();
+const DirectorHUD = () => {
+    // ⚡ Bolt: Granular selectors to prevent unnecessary re-renders when unrelated store state changes
+    const store = useAppStore(useShallow(state => ({
+        activeCharacter: state.activeCharacter,
+        anchorImage: state.anchorImage,
+        wardrobeImage: state.wardrobeImage,
+        poseImage: state.poseImage,
+        actionScript: state.actionScript,
+        camera: state.camera,
+        lastGeneratedPrompt: state.lastGeneratedPrompt,
+        isRendering: state.isRendering,
+        isSyncing: state.isSyncing,
+        activeNodeId: state.activeNodeId,
+        nodes: state.nodes,
+        detailMatrix: state.detailMatrix,
+        currentProduct: state.currentProduct,
+        setWardrobeImage: state.setWardrobeImage,
+        setPoseImage: state.setPoseImage,
+        setMode: state.setMode,
+        setRepairSession: state.setRepairSession,
+        addNode: state.addNode,
+        updateNodeData: state.updateNodeData,
+        deleteNode: state.deleteNode,
+        purgeVault: state.purgeVault,
+        generateStoryboard: state.generateStoryboard,
+        syncCurrentSession: state.syncCurrentSession,
+        setState: state.setState,
+        // Existing code calls missing actions, we'll keep them as property access to avoid breakages if they are added later
+        addUGCPipelineNode: state.addUGCPipelineNode,
+        addUGCEngineNode: state.addUGCEngineNode,
+        addCameraNode: state.addCameraNode,
+        addLightingNode: state.addLightingNode,
+        addMusicNode: state.addMusicNode,
+        addSFXNode: state.addSFXNode,
+        addDialogueNode: state.addDialogueNode,
+    })));
+
     const [activeTab, setActiveTab] = useState('VISUAL');
     const [isCollapsed, setIsCollapsed] = useState(true);
     const [selectedPoseId, setSelectedPoseId] = useState(null);
@@ -623,11 +658,11 @@ export default function DirectorHUD() {
                         {/* Secondary Actions */}
                         <div className="flex gap-2 flex-wrap">
                             {[
-                                { label: 'CAM', icon: Camera, fn: () => store.addCameraNode() },
-                                { label: 'LIGHT', icon: Sun, fn: () => store.addLightingNode() },
-                                { label: 'MUSIC', icon: Music, fn: () => store.addMusicNode() },
-                                { label: 'SFX', icon: Volume2, fn: () => store.addSFXNode() },
-                                { label: 'VOICE', icon: Mic2, fn: () => store.addDialogueNode() },
+                                { label: 'CAM', icon: Camera, fn: () => store.addCameraNode?.() },
+                                { label: 'LIGHT', icon: Sun, fn: () => store.addLightingNode?.() },
+                                { label: 'MUSIC', icon: Music, fn: () => store.addMusicNode?.() },
+                                { label: 'SFX', icon: Volume2, fn: () => store.addSFXNode?.() },
+                                { label: 'VOICE', icon: Mic2, fn: () => store.addDialogueNode?.() },
                             ].map(btn => (
                                 <button
                                     key={btn.label}
@@ -679,4 +714,8 @@ export default function DirectorHUD() {
             </div>
         </motion.div>
     );
-}
+};
+
+DirectorHUD.displayName = 'DirectorHUD';
+
+export default memo(DirectorHUD);
