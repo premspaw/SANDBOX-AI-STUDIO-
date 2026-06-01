@@ -12,7 +12,7 @@ async function test() {
             userId: "agent-smoke-test-final"
         };
 
-        const resp = await nodeFetch('http://localhost:3009/api/generate-image', {
+        const resp = await nodeFetch('http://localhost:3002/api/generate-image', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
