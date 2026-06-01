@@ -6,12 +6,11 @@ import { Maximize2, Loader2, Search, X, Zap, ScanLine } from 'lucide-react';
 
 import { useAppStore } from '../../store';
 
-export default memo(({ id, data }) => {
-    const { setFocusMode } = useAppStore();
+const IdentityNode = memo(({ id, data }) => {
+    const setFocusMode = useAppStore(state => state.setFocusMode);
     const updateNodeInternals = useUpdateNodeInternals();
-    const edges = useAppStore(s => s.edges);
-    const isTargetConnected = edges.some(e => e.target === id);
-    const isSourceConnected = edges.some(e => e.source === id);
+    const isTargetConnected = useAppStore(s => s.edges.some(e => e.target === id));
+    const isSourceConnected = useAppStore(s => s.edges.some(e => e.source === id));
 
     useEffect(() => {
         updateNodeInternals(id);
@@ -164,3 +163,6 @@ export default memo(({ id, data }) => {
         </div>
     );
 });
+
+IdentityNode.displayName = 'IdentityNode';
+export default IdentityNode;

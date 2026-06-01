@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { Zap, ChevronDown, Sparkles, UserCheck, Loader2, Clapperboard, Image as ImageIcon } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../store';
 
 function DockItem({ tool, mouseX }) {
@@ -36,16 +37,22 @@ function DockItem({ tool, mouseX }) {
 }
 
 export const SonicDock = () => {
-    const store = useAppStore();
+    const { addInfluencerNode, addSeedanceNode, addSeedance15ProNode, addNanoBananaNode } = useAppStore(useShallow(state => ({
+        addInfluencerNode: state.addInfluencerNode,
+        addSeedanceNode: state.addSeedanceNode,
+        addSeedance15ProNode: state.addSeedance15ProNode,
+        addNanoBananaNode: state.addNanoBananaNode
+    })));
     const [isRetracted, setIsRetracted] = useState(true);
     const [isExpanded, setIsExpanded] = useState(false);
+    const [narrative, setNarrative] = useState('');
     const mouseX = useMotionValue(Infinity);
 
     const tools = [
-        { id: 'influencer', icon: UserCheck, label: 'CONSISTENCY', desc: 'Influencer', color: 'text-[#bef264]', bgColor: 'bg-[#bef264]/10', action: () => store.addInfluencerNode() },
-        { id: 'seedance', icon: Sparkles, label: 'SEEDANCE 2.0', desc: 'Omni-Ref', color: 'text-[#D4FF00]', bgColor: 'bg-[#D4FF00]/10', action: () => store.addSeedanceNode() },
-        { id: 'seedance15pro', icon: Clapperboard, label: 'SEEDANCE 1.5 PRO', desc: 'First/Last Frame', color: 'text-[#00F0FF]', bgColor: 'bg-[#00F0FF]/10', action: () => store.addSeedance15ProNode() },
-        { id: 'nano_banana', icon: ImageIcon, label: 'NANO BANANA 2', desc: 'Reasoning Image', color: 'text-[#F59E0B]', bgColor: 'bg-[#F59E0B]/10', action: () => store.addNanoBananaNode() },
+        { id: 'influencer', icon: UserCheck, label: 'CONSISTENCY', desc: 'Influencer', color: 'text-[#bef264]', bgColor: 'bg-[#bef264]/10', action: () => addInfluencerNode() },
+        { id: 'seedance', icon: Sparkles, label: 'SEEDANCE 2.0', desc: 'Omni-Ref', color: 'text-[#D4FF00]', bgColor: 'bg-[#D4FF00]/10', action: () => addSeedanceNode() },
+        { id: 'seedance15pro', icon: Clapperboard, label: 'SEEDANCE 1.5 PRO', desc: 'First/Last Frame', color: 'text-[#00F0FF]', bgColor: 'bg-[#00F0FF]/10', action: () => addSeedance15ProNode() },
+        { id: 'nano_banana', icon: ImageIcon, label: 'NANO BANANA 2', desc: 'Reasoning Image', color: 'text-[#F59E0B]', bgColor: 'bg-[#F59E0B]/10', action: () => addNanoBananaNode() },
     ];
 
     return (
