@@ -1,0 +1,3 @@
+## 2025-05-15 - Zustand Selector Optimization
+**Learning:** Using a full store subscription like `const store = useAppStore()` in large components (e.g., `DirectorHUD`) causes the component to re-render whenever ANY part of the store changes, even if the component doesn't use that specific state. React Flow components also benefit greatly from moving connectivity logic (`edges.some(...)`) into the selector to isolate re-renders.
+**Action:** Always use granular selectors with `useShallow` from `zustand/react/shallow` for large components or components that subscribe to frequently changing arrays like `edges`.

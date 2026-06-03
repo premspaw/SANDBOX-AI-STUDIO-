@@ -5,13 +5,15 @@ import MagneticHandle from '../edges/MagneticHandle';
 import { Maximize2, Loader2, Search, X, Zap, ScanLine } from 'lucide-react';
 
 import { useAppStore } from '../../store';
+import { useShallow } from 'zustand/react/shallow';
 
-export default memo(({ id, data }) => {
-    const { setFocusMode } = useAppStore();
+const IdentityNode = memo(({ id, data }) => {
+    const { setFocusMode, isTargetConnected, isSourceConnected } = useAppStore(useShallow(s => ({
+        setFocusMode: s.setFocusMode,
+        isTargetConnected: s.edges.some(e => e.target === id),
+        isSourceConnected: s.edges.some(e => e.source === id)
+    })));
     const updateNodeInternals = useUpdateNodeInternals();
-    const edges = useAppStore(s => s.edges);
-    const isTargetConnected = edges.some(e => e.target === id);
-    const isSourceConnected = edges.some(e => e.source === id);
 
     useEffect(() => {
         updateNodeInternals(id);
@@ -164,3 +166,6 @@ export default memo(({ id, data }) => {
         </div>
     );
 });
+
+IdentityNode.displayName = 'IdentityNode';
+export default IdentityNode;
