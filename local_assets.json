@@ -1,5 +1,23 @@
 [
   {
+    "id": "local_1780476730009_ft3lo",
+    "name": "upload_1780476727933.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1780476727933.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "created_at": "2026-06-03T08:52:10.009Z"
+  },
+  {
+    "id": "local_1780476623772_4krzk",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780476622598.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780476622598.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "created_at": "2026-06-03T08:50:23.772Z"
+  },
+  {
     "id": 106,
     "name": "{\"name\":\"2D TO 3D PLAN\",\"prompt\":\"Ultra-realistic 3D floor plan, top-down axonometric view with slight angle, based exactly on the provided 2D floor plan layout  PER THE PHOTO ATTACHED 2D PLANE, maintaining identical room positions, walls, doors, and proportions. Single-floor luxury layout with entrance at the bottom leading into a living room, followed by dining and kitchen areas, with two bedrooms on the right side, a shared bathroom between them, and pantry and utility spaces near the kitchen. Apply a high-end dark luxury material palette. All walls are finished in matte black or deep charcoal gray, creating a bold architectural contrast. Floors combine polished white marble in the main living, dining, and kitchen areas with warm herringbone wood flooring inside the bedrooms Furniture uses rich neutral tones with dark upholstery, layered fabrics, and subtle textures. Add brushed brass or muted gold accents for a premium feel. Lighting is warm and cinematic, with strong contrast: integrated cove lighting along walls, soft LED strips highlighting edges, warm ambient glow inside rooms and subtle reflections on marble surfaces. Ensure lighting enhances depth and creates a high-end hotel atmosphere. Walls are cut in dollhouse style (half-height) to reveal interiors clearly while emphasizing the dark wall finishes. Maintain clean geometry, sharp edges, and accurate proportions. Keep composition centered on a vertical 3:4 canvas with balanced margins. Include minimal, elegant room labels: LIVING ROOM, DINING, KITCHEN, BEDROOM 1, BEDROOM 2, BATHROOM, PANTRY, UTILITY as  PER THE PHOTO ATTACHED . No distortion, no clutter, no over-stylization. Clean, dramatic, high-contrast presentation, premium real estate style, portfolio-quality render. \\n<\",\"aspect\":\"9/16\",\"category\":\"realestate\"}",
     "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778751803613.jpeg",

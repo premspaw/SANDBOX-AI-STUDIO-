@@ -77,14 +77,14 @@ function CyclingLoadingText() {
   );
 }
 
-/* ─── ENGINE / ASPECT / DURATION OPTIONS ────────────────────── */
 const ENGINES = [
-  { id: 'veo3',       label: 'Veo 3.1',        icon: '🎬', desc: 'Google Preview — cinematic quality',   cost: 5 },
-  { id: 'veo3-fast',  label: 'Veo 3.1 Fast',   icon: '⚡', desc: 'Quick drafts — lower latency',         cost: 3 },
-  { id: 'veo3-qual',  label: 'Veo 3.1 Quality', icon: '💎', desc: 'Maximum fidelity — 4K output',         cost: 8 },
-  { id: 'omni',       label: 'Omni',            icon: '🌐', desc: 'Multi-modal fusion engine',             cost: 6 },
-  { id: 'omni-flash', label: 'Omni Flash',      icon: '✨', desc: 'Omni fast — rapid iteration',           cost: 4 },
-  { id: 'seedace',    label: 'Seedance 2.0',    icon: '🎯', desc: 'ByteDance — motion-controlled',        cost: 4 },
+  { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — cinematic quality', cost: 5 },
+  { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3.1 Fast',     icon: '⚡', desc: 'Google Fast — lower latency',         cost: 3 },
+  { id: 'veo-3.1-lite-generate-preview', label: 'Veo 3.1 Lite',     icon: '🍃', desc: 'Google Lite — rapid drafts',           cost: 2 },
+  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — ultra-fast generation',    cost: 4 },
+  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — motion-controlled',        cost: 4 },
+  { id: 'omni',                          label: 'Omni',            icon: '🌐', desc: 'Multi-modal fusion engine',             cost: 6 },
+  { id: 'omni-flash',                    label: 'Omni Flash',      icon: '✨', desc: 'Omni fast — rapid iteration',           cost: 4 },
 ];
 
 const IMAGE_ENGINES = [
@@ -1111,6 +1111,54 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  /* ─── ARK POLL ───────────────────────────────────────────── */
+  const pollArkTask = async (taskId, activePrompt, activeRatio) => {
+    setStatus('polling');
+    for (let i = 0; i < 120; i++) {
+      await new Promise(r => setTimeout(r, 6000));
+      const elapsed = (i + 1) * 6;
+      setPollMsg(`Rendering video... (${elapsed}s)`);
+
+      try {
+        const res = await fetch(getApiUrl(`/api/ark/status/${taskId}?userId=${userId}&aspectRatio=${activeRatio}`));
+        const json = await res.json();
+        const st = json.status;
+
+        if (st === 'completed') {
+          const url = json.url;
+          if (url) {
+            setGallery(prev => [{
+              id: Date.now(),
+              type: 'video',
+              url: url,
+              prompt: activePrompt,
+              engine: 'Seedance Fast',
+              aspect: activeRatio,
+              ts: Date.now()
+            }, ...prev]);
+            setStatus('idle');
+            setPollMsg('');
+            refreshShorts();
+            return;
+          }
+        }
+
+        if (st === 'failed' || st === 'error') {
+          setStatus('error');
+          setErrorMsg(json.error || 'Seedance Fast generation failed.');
+          setPollMsg('');
+          return;
+        }
+      } catch (pollErr) {
+        console.warn('[Ark Poll]:', pollErr.message);
+        continue;
+      }
+    }
+    setStatus('error');
+    setErrorMsg('Video compilation timed out.');
+    setPollMsg('');
+  };
+
   /* ─── SEEDANCE POLL ──────────────────────────────────────── */
   const pollSeedanceTask = async (taskId, activePrompt, activeRatio) => {
     setStatus('polling');
@@ -1302,14 +1350,25 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
         referenceImages: reqRefImages
       };
     } else {
-      let targetModel = 'veo-3.1-generate-preview';
-      if (activeEngine === 'veo3-fast') targetModel = 'veo-3.1-fast-generate-preview';
-      else if (activeEngine === 'veo3-qual') targetModel = 'veo-3.1-generate-preview';
-      else if (activeEngine === 'omni') targetModel = 'veo-3.1-generate-preview';
+      let targetModel = activeEngine;
+      if (activeEngine === 'omni') targetModel = 'veo-3.1-generate-preview';
       else if (activeEngine === 'omni-flash') targetModel = 'veo-3.1-fast-generate-preview';
 
       const identity_images = taggedItems.map(item => item.imageUrl).filter(Boolean);
       const identity_gcs_uris = taggedItems.map(item => ({ name: item.name, uri: item.imageUrl }));
+
+      if (activeEngine === 'seedance-fast') {
+        return {
+          model: 'ep-20260603145826-n28jl',
+          prompt: compiled,
+          firstFrame: firstFrameImage || undefined,
+          lastFrame: lastFrameImage || undefined,
+          duration,
+          aspectRatio: activeRatio,
+          userId,
+          identity_images
+        };
+      }
 
       if (activeEngine === 'seedace') {
         const input = {
@@ -1468,23 +1527,15 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
       return;
     }
 
-    if (activeEngine !== 'seedace') {
+    if (activeEngine !== 'seedace' && activeEngine !== 'seedance-fast') {
       try {
-        let targetModel = 'veo-3.1-generate-preview';
-        let engineLabel = 'Veo 3.1';
+        let targetModel = activeEngine;
+        let engineLabel = ENGINES.find(e => e.id === activeEngine)?.label || 'Veo 3.1';
         
-        if (activeEngine === 'veo3-fast') {
-          targetModel = 'veo-3.1-fast-generate-preview';
-          engineLabel = 'Veo 3.1 Fast';
-        } else if (activeEngine === 'veo3-qual') {
+        if (activeEngine === 'omni') {
           targetModel = 'veo-3.1-generate-preview';
-          engineLabel = 'Veo 3.1 Quality';
-        } else if (activeEngine === 'omni') {
-          targetModel = 'veo-3.1-generate-preview';
-          engineLabel = 'Omni';
         } else if (activeEngine === 'omni-flash') {
           targetModel = 'veo-3.1-fast-generate-preview';
-          engineLabel = 'Omni Flash';
         }
 
         if (variationCount > 1) {
@@ -1544,6 +1595,37 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
         setPollMsg('');
         const label = ENGINES.find(e => e.id === activeEngine)?.label || 'Veo 3.1';
         setErrorMsg(err.message || `${label} engine failed.`);
+      }
+    } else if (activeEngine === 'seedance-fast') {
+      try {
+        if (variationCount > 1) {
+          throw new Error('Seedance Fast engine currently supports 1 generation at a time.');
+        }
+
+        const resp = await fetch(getApiUrl('/api/ark/generate'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: compiledPrompt,
+            firstFrame: firstFrameImage || undefined,
+            lastFrame: lastFrameImage || undefined,
+            duration,
+            aspectRatio: activeRatio,
+            userId,
+            identity_images
+          })
+        });
+
+        const json = await resp.json();
+        if (!resp.ok) throw new Error(json.error || 'Seedance Fast task initialization failed.');
+
+        const taskId = json.requestId;
+        if (!taskId) throw new Error('No task ID returned from Ark gateway.');
+
+        await pollArkTask(taskId, basePrompt, activeRatio);
+      } catch (err) {
+        setStatus('error');
+        setErrorMsg(err.message || 'Seedance Fast engine failed.');
       }
     } else {
       try {
@@ -2205,7 +2287,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                     type="button"
                     onClick={() => {
                       setActiveTab('video');
-                      setActiveEngine('veo3');
+                      setActiveEngine('veo-3.1-generate-preview');
                     }}
                     className={cn(
                       "flex flex-col items-center justify-center w-10 h-9 rounded-lg text-[7px] font-black uppercase tracking-wider transition-all",

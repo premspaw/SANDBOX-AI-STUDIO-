@@ -76,10 +76,6 @@ export default function createRouter(deps) {
             broadcastProgress(taskId, 1, 3, 'Veo 3.1 engine initializing...');
 
             let modelName = req.body.model || 'veo-3.1-generate-preview';
-            if (modelName === 'veo-3.1-fast-generate-preview') {
-                console.log('[VEO-I2V] ⚠️ Overriding veo-3.1-fast-generate-preview with veo-3.1-generate-preview due to quota limits');
-                modelName = 'veo-3.1-generate-preview';
-            }
             let operation;
 
             const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
@@ -323,6 +319,146 @@ export default function createRouter(deps) {
             res.json({ status: 'processing' });
         } catch (error) {
             console.error('[KLING-STATUS-ERR]', error);
+            res.status(500).json({ status: 'error', message: error.message });
+        }
+    });
+
+    // BytePlus Ark (Seedance Fast) Generation
+    router.post('/ark/generate', async (req, res) => {
+        try {
+            const { prompt, firstFrame, lastFrame, duration, aspectRatio, userId, identity_images } = req.body;
+            const apiKey = process.env.ARK_API_KEY;
+
+            if (!apiKey) throw new Error("Ark API Key not configured. Please add ARK_API_KEY to your environment.");
+
+            // Resolve images to public URLs
+            const resolvedImages = await Promise.all([
+                resolveToPublicUrl(firstFrame, userId),
+                resolveToPublicUrl(lastFrame, userId),
+                ...(Array.isArray(identity_images) ? identity_images.map(img => resolveToPublicUrl(img, userId)) : [])
+            ]);
+
+            const resolvedFirstFrame = resolvedImages[0];
+            const resolvedLastFrame = resolvedImages[1];
+            const resolvedIdentity = resolvedImages.slice(2).filter(Boolean);
+
+            const content = [
+                {
+                    type: "text",
+                    text: prompt
+                }
+            ];
+
+            // Add first frame image if present
+            if (resolvedFirstFrame) {
+                content.push({
+                    type: "image_url",
+                    image_url: { url: resolvedFirstFrame },
+                    role: "reference_image"
+                });
+            }
+
+            // Add last frame image if present
+            if (resolvedLastFrame) {
+                content.push({
+                    type: "image_url",
+                    image_url: { url: resolvedLastFrame },
+                    role: "reference_image"
+                });
+            }
+
+            // Add other identity/reference images
+            resolvedIdentity.forEach(url => {
+                // Avoid duplicating if already added as first/last frame
+                if (url !== resolvedFirstFrame && url !== resolvedLastFrame) {
+                    content.push({
+                        type: "image_url",
+                        image_url: { url },
+                        role: "reference_image"
+                    });
+                }
+            });
+
+            // Model ID from docs/seedance_fast.md
+            const model = req.body.model || "ep-20260603145826-n28jl"; 
+
+            const payload = {
+                model,
+                content,
+                generate_audio: false,
+                ratio: aspectRatio || "16:9",
+                duration: Number(duration) || 5,
+                watermark: false
+            };
+
+            console.log(`[ARK-ASYNC] Creating task with payload:`, JSON.stringify(payload, null, 2));
+
+            const createResp = await fetch("https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const createData = await createResp.json();
+            if (!createData.id) {
+                throw new Error(`Ark Task Creation Failed: ${JSON.stringify(createData)}`);
+            }
+
+            const taskId = createData.id;
+            console.log(`[ARK-ASYNC] Task Created: ${taskId}`);
+            res.json({ success: true, requestId: taskId });
+        } catch (error) {
+            console.error('[ARK-GEN-ERR]', error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // BytePlus Ark (Seedance Fast) Status Polling
+    router.get('/ark/status/:requestId', async (req, res) => {
+        try {
+            const { requestId } = req.params;
+            const { userId, aspectRatio = '16:9' } = req.query;
+            const apiKey = process.env.ARK_API_KEY;
+
+            if (!apiKey) throw new Error("Ark API Key missing.");
+
+            const pollResp = await fetch(`https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks/${requestId}`, {
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}` 
+                }
+            });
+            const pollData = await pollResp.json();
+
+            // Check response status
+            if (pollData.error) {
+                throw new Error(`Ark Polling Failed: ${pollData.error.message || JSON.stringify(pollData.error)}`);
+            }
+
+            const state = pollData.status; // succeeded, failed, processing, pending etc.
+            console.log(`[ARK-STATUS] ${requestId}: ${state}`);
+
+            if (state === 'succeeded') {
+                const finalUrl = pollData.content?.video_url;
+                if (!finalUrl) throw new Error("No result video URL found in succeeded task.");
+                
+                // Download and archive to Supabase
+                console.log(`[ARK-STATUS] Downloading video from: ${finalUrl}`);
+                const videoResp = await fetch(finalUrl);
+                const ab = await videoResp.arrayBuffer();
+                const supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio);
+                
+                return res.json({ status: 'completed', url: supabaseUrl });
+            } else if (state === 'failed') {
+                return res.json({ status: 'failed', error: pollData.error?.message || 'Generation failed' });
+            }
+
+            res.json({ status: 'processing' });
+        } catch (error) {
+            console.error('[ARK-STATUS-ERR]', error);
             res.status(500).json({ status: 'error', message: error.message });
         }
     });
