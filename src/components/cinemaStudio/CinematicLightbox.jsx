@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Loader2, Zap, Grid, Video, Image as ImageIcon, Pencil, Download, Trash2, Palette, Sparkles, Film } from 'lucide-react';
+import { X, Loader2, Zap, Grid, Video, Image as ImageIcon, Pencil, Download, Trash2, Palette, Sparkles, Film, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAppStore } from '../../store';
 import { resolveUrl } from '../../config/apiConfig';
@@ -419,9 +419,11 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                       const showToast = useAppStore.getState().showToast;
                       if (showToast) showToast("Set as First Frame (FF)!", "success");
                     }}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 hover:border-white/10 text-white/60 hover:text-white active:scale-[0.98] transition-all w-full"
+                    className="flex flex-col items-center justify-center p-3 rounded-xl border border-white/5 bg-zinc-900/40 hover:bg-fuchsia-500/[0.03] hover:border-fuchsia-500/30 text-white/70 hover:text-white transition-all active:scale-[0.98] w-full gap-1 group"
                   >
-                    <Video size={10} className="text-white/40" /> Use as FF
+                    <Video size={12} className="text-gray-400 group-hover:text-fuchsia-400 transition-colors" />
+                    <span className="text-[9px] font-black uppercase tracking-wider">Use as FF</span>
+                    <span className="text-[7px] text-gray-500 group-hover:text-gray-400 transition-colors">Start Keyframe</span>
                   </button>
 
                   <button
@@ -432,9 +434,11 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                       const showToast = useAppStore.getState().showToast;
                       if (showToast) showToast("Set as Last Frame (LF)!", "success");
                     }}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 hover:border-white/10 text-white/60 hover:text-white active:scale-[0.98] transition-all w-full"
+                    className="flex flex-col items-center justify-center p-3 rounded-xl border border-white/5 bg-zinc-900/40 hover:bg-cyan-500/[0.03] hover:border-cyan-500/30 text-white/70 hover:text-white transition-all active:scale-[0.98] w-full gap-1 group"
                   >
-                    <Video size={10} className="text-white/40" /> Use as LF
+                    <Video size={12} className="text-gray-400 group-hover:text-cyan-400 transition-colors" />
+                    <span className="text-[9px] font-black uppercase tracking-wider">Use as LF</span>
+                    <span className="text-[7px] text-gray-500 group-hover:text-gray-400 transition-colors">End Keyframe</span>
                   </button>
 
                   <button
@@ -445,9 +449,13 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                       const showToast = useAppStore.getState().showToast;
                       if (showToast) showToast("Set as Reference Style Guided Image!", "success");
                     }}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 hover:border-white/10 text-white/60 hover:text-white active:scale-[0.98] transition-all w-full col-span-2"
+                    className="flex items-center justify-center gap-3 p-3 rounded-xl border border-white/5 bg-zinc-900/40 hover:bg-[#c8f135]/[0.03] hover:border-[#c8f135]/30 text-white/70 hover:text-white transition-all active:scale-[0.98] w-full col-span-2 group"
                   >
-                    <ImageIcon size={10} className="text-white/40" /> Use as Style Reference
+                    <ImageIcon size={12} className="text-gray-400 group-hover:text-[#c8f135] transition-colors" />
+                    <div className="flex flex-col items-start justify-center gap-0.5">
+                      <span className="text-[9px] font-black uppercase tracking-wider">Use as Style Reference</span>
+                      <span className="text-[7px] text-gray-500 group-hover:text-gray-400 transition-colors">Apply visual DNA guide</span>
+                    </div>
                   </button>
                 </div>
               </div>
@@ -460,26 +468,44 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                 <div className="flex flex-col gap-2">
                   <button
                     onClick={() => setShowStoryboard(true)}
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 hover:text-emerald-300 active:scale-[0.99] transition-all w-full"
+                    className="flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-zinc-900/30 hover:bg-emerald-500/[0.02] hover:border-emerald-500/30 text-white/80 hover:text-white transition-all active:scale-[0.99] w-full text-left group"
                   >
-                    <Film size={11} className="text-emerald-400" />
-                    <span>Storyboard Console</span>
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500/20 group-hover:scale-105 transition-all shrink-0">
+                      <Film size={14} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10px] font-black uppercase tracking-wider block text-emerald-400 group-hover:text-emerald-300">Storyboard Console</span>
+                      <span className="text-[7.5px] text-gray-500 group-hover:text-gray-400 block mt-0.5 truncate">Compile, sequence & build full scenes</span>
+                    </div>
+                    <ChevronRight size={12} className="text-gray-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all shrink-0" />
                   </button>
 
                   <button
                     onClick={() => { setStoryEditInstruction(''); setShowEditStoryModal(true); }}
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20 hover:border-blue-500/40 text-blue-400 hover:text-blue-300 active:scale-[0.99] transition-all w-full"
+                    className="flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-zinc-900/30 hover:bg-blue-500/[0.02] hover:border-blue-500/30 text-white/80 hover:text-white transition-all active:scale-[0.99] w-full text-left group"
                   >
-                    <Palette size={11} className="text-blue-400" />
-                    <span>Narrative Edit Panel</span>
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/20 group-hover:scale-105 transition-all shrink-0">
+                      <Palette size={14} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10px] font-black uppercase tracking-wider block text-blue-400 group-hover:text-blue-300">Narrative Edit Panel</span>
+                      <span className="text-[7.5px] text-gray-500 group-hover:text-gray-400 block mt-0.5 truncate">Edit prompts & details via Gemini AI</span>
+                    </div>
+                    <ChevronRight size={12} className="text-gray-600 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all shrink-0" />
                   </button>
 
                   <button
                     onClick={() => setShowInpaint(true)}
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest bg-purple-500/5 hover:bg-purple-500/10 border border-purple-500/20 hover:border-purple-500/40 text-purple-400 hover:text-purple-300 active:scale-[0.99] transition-all w-full"
+                    className="flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-zinc-900/30 hover:bg-purple-500/[0.02] hover:border-purple-500/30 text-white/80 hover:text-white transition-all active:scale-[0.99] w-full text-left group"
                   >
-                    <Pencil size={11} className="text-purple-400" />
-                    <span>Inpaint Brush Editor</span>
+                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/20 group-hover:scale-105 transition-all shrink-0">
+                      <Pencil size={14} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10px] font-black uppercase tracking-wider block text-purple-400 group-hover:text-purple-300">Inpaint Brush Editor</span>
+                      <span className="text-[7.5px] text-gray-500 group-hover:text-gray-400 block mt-0.5 truncate">Modify parts of images with smart brush</span>
+                    </div>
+                    <ChevronRight size={12} className="text-gray-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all shrink-0" />
                   </button>
                 </div>
               </div>
