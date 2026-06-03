@@ -11,7 +11,7 @@ import {
   Sparkles, Video, Trash2, Camera, Film, Play, Loader2, X,
   Clapperboard, Image as ImageIcon, Send, Download, ChevronDown,
   ChevronUp, Settings2, Maximize2, Clock, Ratio, Zap, Eye, Users,
-  Pencil, Grid
+  Pencil, Grid, Tv
 } from 'lucide-react';
 import { useShorts } from '../../hooks/useShorts';
 import { useAppStore } from '../../store';
@@ -104,6 +104,12 @@ const ASPECT_OPTIONS = [
   { value: '16:9', label: 'Widescreen',  desc: 'YouTube, cinematic', w: 28, h: 16 },
   { value: '9:16', label: 'Portrait',    desc: 'Reels, TikTok, Shorts', w: 16, h: 28 },
   { value: '1:1',  label: 'Square',      desc: 'Instagram, social',   w: 22, h: 22 },
+];
+
+const RESOLUTION_OPTIONS = [
+  { value: '720p', label: '720p', desc: 'Standard definition — faster generation' },
+  { value: '1080p', label: '1080p', desc: 'Full HD — recommended quality' },
+  { value: '4k', label: '4K', desc: 'Ultra HD — cinematic sharpness' }
 ];
 
 const DURATION_OPTIONS = [
@@ -446,6 +452,7 @@ export default function CinematicStudio() {
   const [imageStyle, setImageStyle] = useState('cinematic');
   const [activeEngine, setActiveEngine] = useState('nano-banana-2');
   const [aspectRatio, setAspectRatio] = useState('16:9');
+  const [resolution, setResolution] = useState('1080p');
   const [variationCount, setVariationCount] = useState(1);
   const [duration, setDuration] = useState(5);
   const [camera, setCamera] = useState('arri');
@@ -1365,6 +1372,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
           lastFrame: lastFrameImage || undefined,
           duration,
           aspectRatio: activeRatio,
+          resolution,
           userId,
           identity_images
         };
@@ -1375,7 +1383,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
           prompt: compiled,
           aspect_ratio: activeRatio.replace(':', '/'),
           duration,
-          resolution: '720p',
+          resolution: resolution === '4k' ? '1080p' : resolution,
           generate_audio: false,
           web_search: false,
           identity_images,
@@ -1611,6 +1619,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
             lastFrame: lastFrameImage || undefined,
             duration,
             aspectRatio: activeRatio,
+            resolution,
             userId,
             identity_images
           })
@@ -1640,7 +1649,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
           prompt: compiledPrompt,
           aspect_ratio: activeRatio.replace(':', '/'),
           duration,
-          resolution: '720p',
+          resolution: resolution === '4k' ? '1080p' : resolution,
           generate_audio: false,
           web_search: false,
           identity_images,
@@ -2573,6 +2582,46 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                               <p className="text-[7.5px] text-gray-600">{opt.desc}</p>
                             </div>
                             {aspectRatio === opt.value && (
+                              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-[#c8f135] flex items-center justify-center shrink-0">
+                                <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              </motion.div>
+                            )}
+                          </motion.button>
+                        ))}
+                      </div>
+                    )}
+                  </UpwardDropdown>
+
+                  {/* RESOLUTION DROPDOWN */}
+                  <UpwardDropdown
+                    icon={<Tv size={9} />}
+                    label={resolution}
+                    accentColor="lime"
+                  >
+                    {(close) => (
+                      <div className="space-y-0.5 w-48">
+                        {RESOLUTION_OPTIONS.map((opt, i) => (
+                          <motion.button
+                            key={opt.value}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.04, type: 'spring', stiffness: 400, damping: 25 }}
+                            onClick={() => { setResolution(opt.value); close(); }}
+                            className={cn(
+                              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
+                              resolution === opt.value
+                                ? "bg-[#c8f135]/10 border border-[#c8f135]/25"
+                                : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                            )}
+                          >
+                            <div className="flex-1">
+                              <p className={cn(
+                                "text-[10px] font-black uppercase tracking-wider",
+                                resolution === opt.value ? "text-[#c8f135]" : "text-white/70"
+                              )}>{opt.label}</p>
+                              <p className="text-[7.5px] text-gray-600">{opt.desc}</p>
+                            </div>
+                            {resolution === opt.value && (
                               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-[#c8f135] flex items-center justify-center shrink-0">
                                 <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                               </motion.div>

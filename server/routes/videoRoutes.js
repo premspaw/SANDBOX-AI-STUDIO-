@@ -326,7 +326,7 @@ export default function createRouter(deps) {
     // BytePlus Ark (Seedance Fast) Generation
     router.post('/ark/generate', async (req, res) => {
         try {
-            const { prompt, firstFrame, lastFrame, duration, aspectRatio, userId, identity_images } = req.body;
+            const { prompt, firstFrame, lastFrame, duration, aspectRatio, userId, identity_images, resolution } = req.body;
             const apiKey = process.env.ARK_API_KEY;
 
             if (!apiKey) throw new Error("Ark API Key not configured. Please add ARK_API_KEY to your environment.");
@@ -388,6 +388,7 @@ export default function createRouter(deps) {
                 generate_audio: false,
                 ratio: aspectRatio || "16:9",
                 duration: Number(duration) || 5,
+                resolution: resolution || "720p",
                 watermark: false
             };
 
