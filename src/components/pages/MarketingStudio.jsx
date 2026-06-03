@@ -5,8 +5,8 @@ import { GoogleGenAI } from "@google/genai";
 import { cn } from '../../lib/utils';
 import { useShorts } from '../../hooks/useShorts';
 import { useAppStore } from '../../store';
+import { InpaintEditor } from '../common/InpaintEditor';
 import { getApiUrl } from '../../config/apiConfig';
-import CarouselStudio from './CarouselStudio';
 
 const LOADING_MESSAGES_DEFAULT = [
     "✨ Crafting your culinary masterpiece…",
@@ -103,7 +103,7 @@ const VIDEO_TEMPLATES = {
 };
 
 // ── Add-Template Modal ──────────────────────────────────────────────────────
-function AddTemplateModal({ category, onClose, onSave, userId }) {
+function AddTemplateModal({ category, onClose, onSave, userId, userEmail }) {
     const [name, setName]         = useState('');
     const [imageUrl, setImageUrl] = useState('');
     const [previewSrc, setPreviewSrc] = useState('');
@@ -134,7 +134,7 @@ function AddTemplateModal({ category, onClose, onSave, userId }) {
                 const resp = await fetch(getApiUrl('/api/marketing/upload-reference'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: base64, userId })
+                    body: JSON.stringify({ image: base64, userId, userEmail, isTemplate: true })
                 });
                 const data = await resp.json();
                 if (data.url) {
@@ -338,297 +338,11 @@ function AddTemplateModal({ category, onClose, onSave, userId }) {
 // ────────────────────────────────────────────────────────────────────────────
 
 // ── InpaintEditor ────────────────────────────────────────────────────────────
-function InpaintEditor({ imageUrl, onClose, onDone, userId }) {
-    const canvasRef = useRef(null);
-    const imgRef = useRef(null);
-    const [isDrawing, setIsDrawing] = useState(false);
-    const [tool, setTool] = useState('brush'); // 'brush' | 'eraser'
-    const [brushSize, setBrushSize] = useState(32);
-    const [instruction, setInstruction] = useState('');
-    const [model, setModel] = useState('gemini');
-    const [isEditing, setIsEditing] = useState(false);
-    const [history, setHistory] = useState([]);
-    const lastPos = useRef(null);
-    const [refImage, setRefImage] = useState(null); // extra reference image
-    const refInputRef = useRef(null);
-
-    const handleRefUpload = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => setRefImage(ev.target.result);
-        reader.readAsDataURL(file);
-    };
-
-    // Draw image onto canvas when it loads
-    const initCanvas = () => {
-        const canvas = canvasRef.current;
-        const img = imgRef.current;
-        if (!canvas || !img) return;
-        canvas.width = img.naturalWidth || img.width;
-        canvas.height = img.naturalHeight || img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        saveHistory();
-    };
-
-    const saveHistory = () => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        setHistory(prev => [...prev.slice(-10), canvas.toDataURL()]);
-    };
-
-    const undo = () => {
-        const canvas = canvasRef.current;
-        if (!canvas || history.length < 2) return;
-        const prev = history[history.length - 2];
-        const img = new window.Image();
-        img.onload = () => { const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); };
-        img.src = prev;
-        setHistory(h => h.slice(0, -1));
-    };
-
-    const clearMask = () => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-        setHistory([]);
-    };
-
-    const getPos = (e, canvas) => {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
-    };
-
-    const startDraw = (e) => {
-        e.preventDefault();
-        setIsDrawing(true);
-        const canvas = canvasRef.current;
-        const pos = getPos(e, canvas);
-        lastPos.current = pos;
-        draw(e);
-    };
-
-    const draw = (e) => {
-        e.preventDefault();
-        if (!isDrawing && e.type !== 'mousedown' && e.type !== 'touchstart') return;
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        const pos = getPos(e, canvas);
-        ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
-        ctx.strokeStyle = 'rgba(168,85,247,0.85)';
-        ctx.lineWidth = brushSize * (canvas.width / canvas.getBoundingClientRect().width);
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        ctx.moveTo(lastPos.current?.x ?? pos.x, lastPos.current?.y ?? pos.y);
-        ctx.lineTo(pos.x, pos.y);
-        ctx.stroke();
-        lastPos.current = pos;
-    };
-
-    const stopDraw = () => { if (isDrawing) { setIsDrawing(false); saveHistory(); } lastPos.current = null; };
-
-    const getMaskBase64 = () => {
-        const canvas = canvasRef.current;
-        if (!canvas) return null;
-        // Create white-on-black mask for Gemini
-        const mask = document.createElement('canvas');
-        mask.width = canvas.width;
-        mask.height = canvas.height;
-        const mctx = mask.getContext('2d');
-        mctx.fillStyle = 'black';
-        mctx.fillRect(0, 0, mask.width, mask.height);
-        mctx.globalCompositeOperation = 'source-over';
-        // Draw painted areas as white
-        const paintData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
-        const out = mctx.getImageData(0, 0, mask.width, mask.height);
-        for (let i = 0; i < paintData.data.length; i += 4) {
-            if (paintData.data[i + 3] > 10) {
-                out.data[i] = 255; out.data[i+1] = 255; out.data[i+2] = 255; out.data[i+3] = 255;
-            }
-        }
-        mctx.putImageData(out, 0, 0);
-        return mask.toDataURL('image/png');
-    };
-
-    const handleEdit = async () => {
-        if (!instruction.trim()) { alert('Please describe what to change in the marked area.'); return; }
-        const maskBase64 = getMaskBase64();
-        if (!maskBase64) return;
-        setIsEditing(true);
-        try {
-            let resultUrl = null;
-            if (model === 'gemini') {
-                const resp = await fetch(getApiUrl('/api/edit-image'), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ imageBase64: imageUrl, maskBase64, prompt: instruction + (refImage ? ' Reference image provided for style/content guidance.' : ''), referenceImage: refImage || undefined, userId })
-                });
-                const data = await resp.json();
-                if (!resp.ok) throw new Error(data.error || 'Gemini edit failed');
-                resultUrl = data.url || data.imageUrl || data.dataUrl;
-            } else {
-                // GPT Image 2 — send original image + optional ref as secondImage
-                const editPrompt = `Edit the image as follows: ${instruction}.${refImage ? ' Use the reference image as a style/content guide for the marked area.' : ''} Focus changes ONLY on the highlighted/masked region. Keep everything else exactly the same.`;
-                const resp = await fetch(getApiUrl('/api/generate-image'), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ model: 'gpt-image-2', prompt: editPrompt, image: imageUrl, secondImage: refImage || undefined, size: '1024x1024', quality: 'medium', userId })
-                });
-                const data = await resp.json();
-                if (!resp.ok) throw new Error(data.error || 'GPT edit failed');
-                resultUrl = data.url || data.imageUrl;
-            }
-            if (resultUrl) { onDone(resultUrl); onClose(); }
-            else throw new Error('No image returned');
-        } catch (err) {
-            alert('Edit failed: ' + err.message);
-        } finally {
-            setIsEditing(false);
-        }
-    };
-
-    return (
-        <AnimatePresence>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4"
-                onClick={e => e.target === e.currentTarget && onClose()}>
-                <motion.div initial={{ scale: 0.93, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.93, y: 20 }}
-                    className="relative w-full max-w-4xl bg-[#0e0e11] border border-white/10 rounded-2xl overflow-hidden flex flex-col shadow-2xl max-h-[95vh]">
-
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-[#0e0e11] flex-none">
-                        <div className="flex items-center gap-3">
-                            <Pencil className="w-4 h-4 text-purple-400" />
-                            <span className="font-black text-white text-sm uppercase tracking-wider">Brush Edit</span>
-                            <span className="text-[10px] text-white/30 uppercase tracking-widest">Paint the area · describe the change · hit Edit</span>
-                        </div>
-                        <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"><X className="w-4 h-4 text-white/60" /></button>
-                    </div>
-
-                    <div className="flex flex-1 overflow-hidden">
-                        {/* Canvas area */}
-                        <div className="flex-1 relative overflow-auto flex items-center justify-center bg-black/40 p-3">
-                            <div className="relative inline-block">
-                                <img ref={imgRef} src={imageUrl} alt="edit base" onLoad={initCanvas}
-                                    className="block rounded-xl max-w-full max-h-[70vh] object-contain" style={{ display: 'block' }} />
-                                <canvas ref={canvasRef}
-                                    className="absolute inset-0 rounded-xl"
-                                    style={{ width: '100%', height: '100%', cursor: tool === 'eraser' ? 'cell' : 'crosshair' }}
-                                    onMouseDown={startDraw} onMouseMove={e => isDrawing && draw(e)} onMouseUp={stopDraw} onMouseLeave={stopDraw}
-                                    onTouchStart={startDraw} onTouchMove={e => isDrawing && draw(e)} onTouchEnd={stopDraw}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Right controls */}
-                        <div className="w-60 flex-none border-l border-white/10 bg-[#111114] flex flex-col p-4 gap-4 overflow-y-auto">
-                            {/* Tools */}
-                            <div className="space-y-2">
-                                <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">Tool</p>
-                                <div className="flex gap-2">
-                                    <button onClick={() => setTool('brush')} className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${tool === 'brush' ? 'bg-purple-500 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
-                                        🖌 Brush
-                                    </button>
-                                    <button onClick={() => setTool('eraser')} className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${tool === 'eraser' ? 'bg-white/20 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
-                                        ◻ Erase
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Brush size */}
-                            <div className="space-y-2">
-                                <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">Brush Size: {brushSize}px</p>
-                                <input type="range" min={8} max={120} value={brushSize} onChange={e => setBrushSize(Number(e.target.value))}
-                                    className="w-full accent-purple-500" />
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex gap-2">
-                                <button onClick={undo} disabled={history.length < 2} className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-white/5 text-white/40 hover:bg-white/10 disabled:opacity-30 transition-all">↩ Undo</button>
-                                <button onClick={clearMask} className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-white/5 text-white/40 hover:bg-white/10 transition-all">✕ Clear</button>
-                            </div>
-
-                            {/* Reference Image Upload */}
-                            <div className="space-y-2">
-                                <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">Reference Image <span className="font-normal normal-case text-white/20">(optional)</span></p>
-                                {refImage ? (
-                                    <div className="relative rounded-xl overflow-hidden border border-lime-500/30 bg-white/5">
-                                        <img src={refImage} alt="ref" className="w-full max-h-24 object-cover" />
-                                        <button onClick={() => setRefImage(null)}
-                                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 hover:bg-red-500/80 flex items-center justify-center transition-colors">
-                                            <X className="w-3 h-3 text-white" />
-                                        </button>
-                                        <span className="absolute bottom-1 left-1 text-[8px] text-lime-300 bg-black/60 px-1.5 py-0.5 rounded font-bold uppercase">Ref ✓</span>
-                                    </div>
-                                ) : (
-                                    <button onClick={() => refInputRef.current?.click()}
-                                        className="w-full border-2 border-dashed border-white/15 hover:border-lime-400/40 rounded-xl py-3 flex items-center justify-center gap-2 text-[10px] text-white/30 hover:text-white/60 transition-all">
-                                        <Upload className="w-3.5 h-3.5" /> Upload Reference
-                                    </button>
-                                )}
-                                <input ref={refInputRef} type="file" accept="image/*" className="hidden" onChange={handleRefUpload} />
-                                <p className="text-[8px] text-white/15 leading-relaxed">Sent alongside the generated image to guide the AI on what to draw in the marked area.</p>
-                            </div>
-
-                            {/* Model */}
-                            <div className="space-y-2">
-                                <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">AI Model</p>
-                                <div className="flex flex-col gap-1.5">
-                                    <button onClick={() => setModel('gemini')} className={`py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all text-left px-3 ${model === 'gemini' ? 'bg-blue-500/20 border border-blue-400/40 text-blue-300' : 'bg-white/5 text-white/40 hover:bg-white/10 border border-transparent'}`}>
-                                        ✦ Gemini (Nano Banana 2)<br/><span className="text-[8px] font-normal normal-case opacity-60">Precise mask-based inpainting</span>
-                                    </button>
-                                    <button onClick={() => setModel('gpt')} className={`py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all text-left px-3 ${model === 'gpt' ? 'bg-purple-500/20 border border-purple-400/40 text-purple-300' : 'bg-white/5 text-white/40 hover:bg-white/10 border border-transparent'}`}>
-                                        ◈ GPT Image 2<br/><span className="text-[8px] font-normal normal-case opacity-60">Instruction-based regeneration</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Instruction */}
-                            <div className="space-y-2">
-                                <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">What to change</p>
-                                <textarea value={instruction} onChange={e => setInstruction(e.target.value)}
-                                    placeholder="e.g. Replace wall with brick texture, Add a window, Change color to blue…"
-                                    rows={4}
-                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80 placeholder:text-white/20 outline-none focus:border-purple-400/50 resize-none" />
-                            </div>
-
-                            {/* Submit */}
-                            <button onClick={handleEdit} disabled={isEditing || !instruction.trim()}
-                                className={`w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider transition-all ${isEditing || !instruction.trim() ? 'bg-white/5 text-white/20 cursor-not-allowed' : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:scale-[1.02] shadow-lg shadow-purple-500/20'}`}>
-                                {isEditing ? <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Editing…</span> : '✦ Apply Edit'}
-                            </button>
-                        </div>
-                    </div>
-                </motion.div>
-            </motion.div>
-        </AnimatePresence>
-    );
-}
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Helper to get API key (same pattern as UGC page)
-const getApiKey = () => {
-    return localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
-};
-
-// Helper to get GoogleGenAI instance (same pattern as UGC page)
-const getAI = () => {
-    const key = getApiKey();
-    if (!key) throw new Error("No API Key detected. Please provide a Gemini API Key in Settings.");
-    return new GoogleGenAI({ apiKey: key });
-};
 
 export default function MarketingStudio() {
     const userProfile = useAppStore(state => state.userProfile);
     const currentUserId = userProfile?.id || null;
     const isAdmin = userProfile?.email === 'premspaw@gmail.com';
-    const [studioMode, setStudioMode] = useState('image'); // 'image' | 'carousel'
     const [activeCategory, setActiveCategory] = useState('food');
     const [templateTab, setTemplateTab] = useState('image'); // 'image' | 'video'
     const [activeVideoCategory, setActiveVideoCategory] = useState('product');
@@ -760,11 +474,51 @@ export default function MarketingStudio() {
                         isCustom: true,
                     });
                 });
-                // Only overwrite if DB actually has rows — don't wipe localStorage with empty data
+                // Merge server templates with browser localStorage to protect saved templates on port changes
                 const hasRows = Object.values(grouped).some(arr => arr.length > 0);
                 if (hasRows) {
-                    setCustomTemplates(grouped);
-                    localStorage.setItem(LS_KEY, JSON.stringify(grouped));
+                    let localCached = { food: [], restaurant: [], realestate: [], medical: [], other: [] };
+                    try {
+                        const cached = localStorage.getItem(LS_KEY);
+                        if (cached) {
+                            const parsed = JSON.parse(cached);
+                            if (parsed && typeof parsed === 'object') {
+                                localCached = parsed;
+                            }
+                        }
+                    } catch (_) {}
+
+                    const merged = { food: [], restaurant: [], realestate: [], medical: [], other: [] };
+                    const categories = ['food', 'restaurant', 'realestate', 'medical', 'other'];
+                    
+                    categories.forEach(cat => {
+                        const dbTemplates = grouped[cat] || [];
+                        const localTemplates = localCached[cat] || [];
+                        
+                        const uniqueTemplates = [];
+                        const seenUrls = new Set();
+                        
+                        // DB templates take priority
+                        dbTemplates.forEach(t => {
+                            if (t.imageUrl && !seenUrls.has(t.imageUrl)) {
+                                seenUrls.add(t.imageUrl);
+                                uniqueTemplates.push(t);
+                            }
+                        });
+                        
+                        // Merge with local templates, retaining original prompts and names
+                        localTemplates.forEach(t => {
+                            if (t.imageUrl && !seenUrls.has(t.imageUrl)) {
+                                seenUrls.add(t.imageUrl);
+                                uniqueTemplates.push(t);
+                            }
+                        });
+                        
+                        merged[cat] = uniqueTemplates;
+                    });
+
+                    setCustomTemplates(merged);
+                    localStorage.setItem(LS_KEY, JSON.stringify(merged));
                 }
             })
             .catch(err => console.warn('[Templates] DB unavailable, using localStorage cache:', err))
@@ -1311,22 +1065,8 @@ export default function MarketingStudio() {
                     </h1>
                 </div>
                 <div className="w-px h-5 bg-white/10 flex-shrink-0" />
-                {/* Studio mode toggle */}
-                <div className="flex gap-1 flex-shrink-0">
-                    <button onClick={() => setStudioMode('image')}
-                        className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all',
-                            studioMode === 'image' ? 'bg-orange-500 text-white shadow-[0_0_12px_rgba(249,115,22,0.4)]' : 'text-white/40 hover:text-white/70 hover:bg-white/5 border border-white/10')}>
-                        <ImageIcon className="w-2.5 h-2.5" /> Image
-                    </button>
-                    <button onClick={() => setStudioMode('carousel')}
-                        className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all',
-                            studioMode === 'carousel' ? 'bg-gradient-to-r from-pink-500 to-orange-500 text-white shadow-[0_0_12px_rgba(236,72,153,0.4)]' : 'text-white/40 hover:text-white/70 hover:bg-white/5 border border-white/10')}>
-                        <LayoutGrid className="w-2.5 h-2.5" /> Carousel
-                    </button>
-                </div>
-                <div className="w-px h-5 bg-white/10 flex-shrink-0" />
-                {/* Filter Tabs — hidden in carousel mode */}
-                <div className={cn('flex gap-1.5 overflow-x-auto no-scrollbar flex-1', studioMode === 'carousel' && 'opacity-30 pointer-events-none')}>
+                {/* Filter Tabs */}
+                <div className="flex gap-1.5 overflow-x-auto no-scrollbar flex-1">
                     {CATEGORIES.map(cat => (
                         <button
                             key={cat.id}
@@ -1345,9 +1085,6 @@ export default function MarketingStudio() {
                 </div>
             </div>
 
-            {studioMode === 'carousel' ? (
-                <CarouselStudio userId={currentUserId} />
-            ) : (
             <div className="flex-1 flex overflow-hidden relative">
                 {/* Left Panel: Categories & Templates */}
                 <div className={cn(
@@ -1874,7 +1611,6 @@ export default function MarketingStudio() {
                     )}
                 </div>
             </div>
-            )}
         </div>
 
         {/* Zoom Lightbox */}
@@ -2060,6 +1796,7 @@ export default function MarketingStudio() {
             <AddTemplateModal
                 category={CATEGORIES.find(c => c.id === activeCategory)?.label || activeCategory}
                 userId={currentUserId}
+                userEmail={userProfile?.email}
                 onClose={() => setShowAddModal(false)}
                 onSave={handleAddTemplate}
             />

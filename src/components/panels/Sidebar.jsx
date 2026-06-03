@@ -1,4 +1,4 @@
-import { Bot, Clapperboard, Settings, ChevronLeft, ChevronRight, Camera, FolderOpen, Users, Shield, Video, Sparkles, Coins, CreditCard, LayoutDashboard, Image, Megaphone, User, Mic2 } from 'lucide-react'
+import { Robot, FilmSlate, GearSix, CaretLeft, CaretRight, FolderOpen, Users, ShieldCheck, VideoCamera, Coin, SquaresFour, Aperture, Megaphone, UserFocus, MicrophoneStage, UsersThree, ChatCircle } from '@phosphor-icons/react'
 
 import logo from '../../assets/acs-icon.svg'
 import BrandLogo from '../common/BrandLogo'
@@ -8,24 +8,6 @@ import { useAppStore } from '../../store'
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useShorts } from '../../hooks/useShorts'
-
-const MarketingIcon = ({ className }) => (
-    <img
-        src="https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/icons/d869646a-ba2d-4f19-89e4-72262b0126cb.png"
-        alt="Marketing"
-        className={className}
-        style={{ objectFit: 'contain', minWidth: '35px', minHeight: '35px', width: '35px', height: '35px' }}
-    />
-)
-
-const UGCIcon = ({ className }) => (
-    <img
-        src="https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/icons/66db2e86-0223-41f7-9577-b923ef69dd16.png"
-        alt="UGC Engine"
-        className={className}
-        style={{ objectFit: 'contain', minWidth: '35px', minHeight: '35px', width: '35px', height: '35px' }}
-    />
-)
 
 function SidebarNavItem({ item, activeTab, setActiveTab, isCollapsed, mouseY }) {
     const ref = useRef(null);
@@ -80,16 +62,19 @@ function SidebarNavItem({ item, activeTab, setActiveTab, isCollapsed, mouseY }) 
         >
             {/* Remove colored overlay as it is not aligned correctly */}
 
-            <item.icon className={cn(
-                "w-4.5 h-4.5 min-w-[18px] transition-all duration-300 z-10 shrink-0",
-                isActive ? item.color : `group-hover/navitem:rotate-12 ${item.hoverColor}`
-            )} />
+            <item.icon 
+                weight="duotone"
+                className={cn(
+                    "w-4.5 h-4.5 min-w-[18px] transition-all duration-300 z-10 shrink-0",
+                    isActive ? item.color : `group-hover/navitem:rotate-12 ${item.hoverColor}`
+                )} 
+            />
 
             <span className={cn(
                 "text-[11px] font-bold uppercase tracking-wider transition-all z-10 whitespace-nowrap",
                 isActive ? item.color : item.hoverColor,
-                isCollapsed 
-                    ? "opacity-0 -translate-x-2 pointer-events-none duration-150 delay-0 w-0 overflow-hidden" 
+                isCollapsed
+                    ? "opacity-0 -translate-x-2 pointer-events-none duration-150 delay-0 w-0 overflow-hidden"
                     : "opacity-100 translate-x-0 duration-200 delay-[220ms] ml-2"
             )}>
                 {item.label}
@@ -116,19 +101,22 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
     }, [activeTab, isCollapsed, toggleCollapse]);
 
     const navItems = [
-        { id: 'prompt', label: 'Director Vision', icon: Image, color: 'text-purple-400', bgColor: 'bg-purple-400', hoverColor: 'group-hover/navitem:text-purple-400', glow: 'shadow-[0_0_15px_rgba(168,85,247,0.1)]' },
-        { id: 'creator', label: 'Creator', icon: User, color: 'text-emerald-400', bgColor: 'bg-emerald-400', hoverColor: 'group-hover/navitem:text-emerald-400', glow: 'shadow-[0_0_15px_rgba(52,211,153,0.1)]' },
-        { id: 'creative-studio', label: "Creative Studio", icon: Video, color: 'text-orange-400', bgColor: 'bg-orange-400', hoverColor: 'group-hover/navitem:text-orange-400', glow: 'shadow-[0_0_15px_rgba(251,146,60,0.1)]' },
-        { id: 'marketing', label: 'Marketing', icon: MarketingIcon, color: 'text-rose-400', bgColor: 'bg-rose-400', hoverColor: 'group-hover/navitem:text-rose-400', glow: 'shadow-[0_0_15px_rgba(251,113,133,0.1)]' },
-        { id: 'ugc', label: 'UGC Engine', icon: UGCIcon, color: 'text-amber-400', bgColor: 'bg-amber-400', hoverColor: 'group-hover/navitem:text-amber-400', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.1)]' },
-        { id: 'brand-voice', label: 'Brand Voice', icon: Mic2, color: 'text-[#D4FF00]', bgColor: 'bg-[#D4FF00]', hoverColor: 'group-hover/navitem:text-[#D4FF00]', glow: 'shadow-[0_0_15px_rgba(212,255,0,0.15)]' },
-        { id: 'agent', label: 'ZeroLens AI', icon: Bot, color: 'text-violet-400', bgColor: 'bg-violet-400', hoverColor: 'group-hover/navitem:text-violet-400', glow: 'shadow-[0_0_15px_rgba(167,139,250,0.2)]' },
+        { id: 'avatar', label: 'Avatar Studio', icon: UserFocus, color: 'text-emerald-400', bgColor: 'bg-emerald-400', hoverColor: 'group-hover/navitem:text-emerald-400', glow: 'shadow-[0_0_15px_rgba(52,211,153,0.1)]' },
+        { id: 'living-avatar', label: 'Living Avatar', icon: ChatCircle, color: 'text-[#00FFFF]', bgColor: 'bg-[#00FFFF]', hoverColor: 'group-hover/navitem:text-[#00FFFF]', glow: 'shadow-[0_0_15px_rgba(0,255,255,0.15)]' },
+        { id: 'creative-studio', label: "Creative Studio", icon: VideoCamera, color: 'text-orange-400', bgColor: 'bg-orange-400', hoverColor: 'group-hover/navitem:text-orange-400', glow: 'shadow-[0_0_15px_rgba(251,146,60,0.1)]' },
+
+        { id: 'marketing', label: 'Marketing', icon: Megaphone, color: 'text-rose-400', bgColor: 'bg-rose-400', hoverColor: 'group-hover/navitem:text-rose-400', glow: 'shadow-[0_0_15px_rgba(251,113,133,0.1)]' },
+        { id: 'cinematic-studio', label: 'Cinema Studio', icon: FilmSlate, color: 'text-fuchsia-400', bgColor: 'bg-fuchsia-400', hoverColor: 'group-hover/navitem:text-fuchsia-400', glow: 'shadow-[0_0_15px_rgba(232,121,249,0.15)]' },
+        { id: 'carousel', label: 'Carousel Studio', icon: SquaresFour, color: 'text-pink-400', bgColor: 'bg-pink-400', hoverColor: 'group-hover/navitem:text-pink-400', glow: 'shadow-[0_0_15px_rgba(236,72,153,0.15)]' },
+        { id: 'ugc', label: 'UGC Engine', icon: UsersThree, color: 'text-amber-400', bgColor: 'bg-amber-400', hoverColor: 'group-hover/navitem:text-amber-400', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.1)]' },
+        { id: 'brand-voice', label: 'Brand Voice', icon: MicrophoneStage, color: 'text-[#D4FF00]', bgColor: 'bg-[#D4FF00]', hoverColor: 'group-hover/navitem:text-[#D4FF00]', glow: 'shadow-[0_0_15px_rgba(212,255,0,0.15)]' },
+        { id: 'agent', label: 'ZeroLens AI', icon: Robot, color: 'text-violet-400', bgColor: 'bg-violet-400', hoverColor: 'group-hover/navitem:text-violet-400', glow: 'shadow-[0_0_15px_rgba(167,139,250,0.2)]' },
         { id: 'assets', label: 'Assets Library', icon: FolderOpen, color: 'text-[#AADD00]', bgColor: 'bg-[#AADD00]', hoverColor: 'group-hover/navitem:text-[#AADD00]', glow: 'shadow-[0_0_15px_rgba(96,165,250,0.1)]' },
-        { id: 'settings', label: 'Settings', icon: Settings, color: 'text-neutral-300', bgColor: 'bg-neutral-300', hoverColor: 'group-hover/navitem:text-neutral-300', glow: 'shadow-[0_0_15px_rgba(163,163,163,0.4)]' },
+        { id: 'settings', label: 'Settings', icon: GearSix, color: 'text-neutral-300', bgColor: 'bg-neutral-300', hoverColor: 'group-hover/navitem:text-neutral-300', glow: 'shadow-[0_0_15px_rgba(163,163,163,0.4)]' },
         ...(isAdmin ? [
             { id: 'influencer', label: 'AI Influencer', icon: Users, color: 'text-[#bef264]', bgColor: 'bg-[#bef264]', hoverColor: 'group-hover/navitem:text-[#bef264]', glow: 'shadow-[0_0_15px_rgba(190,242,100,0.1)]' },
-            { id: 'directors-cut', label: "Director's Cut", icon: Clapperboard, color: 'text-cyan-400', bgColor: 'bg-cyan-400', hoverColor: 'group-hover/navitem:text-cyan-400', glow: 'shadow-[0_0_15px_rgba(34,211,238,0.1)]' },
-            { id: 'admin', label: 'Admin', icon: Shield, color: 'text-red-500', bgColor: 'bg-red-500', hoverColor: 'group-hover/navitem:text-red-500', glow: 'shadow-[0_0_15px_rgba(248,113,113,0.1)]' }
+            { id: 'directors-cut', label: "Director's Cut", icon: FilmSlate, color: 'text-cyan-400', bgColor: 'bg-cyan-400', hoverColor: 'group-hover/navitem:text-cyan-400', glow: 'shadow-[0_0_15px_rgba(34,211,238,0.1)]' },
+            { id: 'admin', label: 'Admin', icon: ShieldCheck, color: 'text-red-500', bgColor: 'bg-red-500', hoverColor: 'group-hover/navitem:text-red-500', glow: 'shadow-[0_0_15px_rgba(248,113,113,0.1)]' }
         ] : []),
     ]
 
@@ -161,15 +149,15 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                 isCollapsed ? "justify-center" : "justify-between"
             )}>
                 <button onClick={() => setActiveTab('home')} className="flex items-center gap-2 hover:opacity-80 transition-opacity focus:outline-none group">
-                    <BrandLogo 
-                        size={isCollapsed ? 28 : 42} 
-                        className={cn("transition-all duration-300 drop-shadow-[0_0_12px_rgba(212,255,0,0.4)]", isCollapsed ? "w-7 h-7" : "w-11 h-11")} 
+                    <BrandLogo
+                        size={isCollapsed ? 28 : 42}
+                        className={cn("transition-all duration-300 drop-shadow-[0_0_12px_rgba(212,255,0,0.4)]", isCollapsed ? "w-7 h-7" : "w-11 h-11")}
                     />
-                    
+
                     <div className={cn(
                         "flex flex-col items-start mt-1 transition-all overflow-hidden",
-                        isCollapsed 
-                            ? "opacity-0 w-0 -translate-x-2 duration-150 delay-0" 
+                        isCollapsed
+                            ? "opacity-0 w-0 -translate-x-2 duration-150 delay-0"
                             : "opacity-100 w-auto ml-2 translate-x-0 duration-200 delay-[220ms]"
                     )}>
                         <h1 className="text-[18px] font-black text-metallic tracking-tighter uppercase italic leading-none whitespace-nowrap">
@@ -203,18 +191,18 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                     onClick={toggleCollapse}
                     className="w-full relative flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground hover:text-white hover:bg-white/5 rounded-lg transition-colors justify-center min-h-[36px]"
                 >
-                    <ChevronRight className={cn(
+                    <CaretRight weight="bold" className={cn(
                         "w-5 h-5 absolute transition-all duration-300",
                         isCollapsed ? "opacity-100 scale-100 rotate-0" : "opacity-0 scale-0 rotate-180"
                     )} />
-                    
+
                     <div className={cn(
                         "flex items-center gap-2 overflow-hidden transition-all",
-                        isCollapsed 
-                            ? "opacity-0 w-0 -translate-x-2 duration-150 delay-0" 
+                        isCollapsed
+                            ? "opacity-0 w-0 -translate-x-2 duration-150 delay-0"
                             : "opacity-100 w-full translate-x-0 duration-200 delay-[220ms]"
                     )}>
-                        <ChevronLeft className="w-5 h-5 shrink-0" />
+                        <CaretLeft weight="bold" className="w-5 h-5 shrink-0" />
                         <span className="font-bold uppercase tracking-wider whitespace-nowrap">Collapse</span>
                     </div>
                 </button>
@@ -225,11 +213,11 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                         isCollapsed ? "justify-center" : "justify-between"
                     )}>
                         <div className="flex items-center gap-2 shrink-0">
-                            <Coins className="w-4 h-4 text-[#D4FF00]" />
+                            <Coin weight="duotone" className="w-4 h-4 text-[#D4FF00]" />
                             <div className={cn(
                                 "flex items-center gap-1.5 transition-all overflow-hidden",
-                                isCollapsed 
-                                    ? "opacity-0 w-0 -translate-x-2 duration-150 delay-0" 
+                                isCollapsed
+                                    ? "opacity-0 w-0 -translate-x-2 duration-150 delay-0"
                                     : "opacity-100 w-auto translate-x-0 duration-200 delay-[220ms]"
                             )}>
                                 <span className="text-[13px] font-black text-[#D4FF00]">{shorts}</span>
@@ -239,7 +227,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
 
                         {!isCollapsed && (
                             <button
-                                onClick={() => {}}
+                                onClick={() => { }}
                                 className="text-[8px] font-bold text-[#D4FF00] hover:text-white transition-all duration-200 delay-[250ms] whitespace-nowrap"
                             >
                                 + TOP UP

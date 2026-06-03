@@ -17,27 +17,30 @@ export const MARKETING_BUCKET = R2_BUCKET;   // R2 is now primary
 export const MARKETING_FOLDER = 'marketing';
 
 // Public CDN base — set GCS_CDN_BASE_URL=https://pub-xxx.r2.dev in .env
-const CDN_BASE = (process.env.GCS_CDN_BASE_URL || '').replace(/\/$/, '');
+const CDN_BASE = (process.env.GCS_CDN_BASE_URL || 'https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev').replace(/\/$/, '');
 
 // ── Cloudflare R2 client (S3-compatible) ─────────────────────────────────────
-const R2_CONFIGURED = !!(
-    process.env.R2_ACCOUNT_ID &&
-    process.env.R2_ACCESS_KEY_ID &&
-    process.env.R2_SECRET_ACCESS_KEY
-);
+// Hardcoded credentials for immediate use (env vars take precedence)
+const R2_ACCOUNT_ID     = process.env.R2_ACCOUNT_ID     || '4e88f062bf55477ce55ad23d8e7c6394';
+const R2_ACCESS_KEY_ID  = process.env.R2_ACCESS_KEY_ID || '6fed64d113e41fb3ad1115d06b7c7fdf';
+const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || '268f203df31be8aaf0c1a8c0e981beaf3d626cc2968c97cfe3865806c693e25c';
+const R2_ENDPOINT_URL   = process.env.R2_ENDPOINT || `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+
+const R2_CONFIGURED = !!(R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY);
 
 let r2Client = null;
 if (R2_CONFIGURED) {
     r2Client = new S3Client({
         region: 'auto',
-        endpoint: process.env.R2_ENDPOINT ||
-            `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        endpoint: R2_ENDPOINT_URL,
         credentials: {
-            accessKeyId:     process.env.R2_ACCESS_KEY_ID,
-            secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+            accessKeyId:     R2_ACCESS_KEY_ID,
+            secretAccessKey: R2_SECRET_ACCESS_KEY,
         },
     });
     console.log('[R2] ✅ Cloudflare R2 client initialised — primary storage active');
+    console.log('[R2] Bucket:', R2_BUCKET);
+    console.log('[R2] CDN Base:', CDN_BASE);
 } else {
     console.log('[R2] ⚠️  R2 not configured — falling back to GCS');
 }
@@ -62,7 +65,7 @@ const gcsBucket  = gcsStorage.bucket(GCS_BUCKET);
 const toPublicUrl = (fileName, bucketName) => {
     const encoded = fileName.split('/').map(encodeURIComponent).join('/');
     if (CDN_BASE) return `${CDN_BASE}/${encoded}`;
-    if (r2Client)  return `https://${R2_BUCKET}.${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${encoded}`;
+    if (r2Client)  return `https://${R2_BUCKET}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${encoded}`;
     return `https://storage.googleapis.com/${bucketName || GCS_BUCKET}/${encoded}`;
 };
 

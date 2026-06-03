@@ -87,8 +87,8 @@ export const useAppStore = create((set, get) => ({
     currentWardrobe: '',
     currentProduct: { image: null, description: '', labels: [], colors: [] },
     currentLocation: null,
-    cachedAssets: null,
-    isAssetsLoading: false,
+    // NOTE: cachedAssets and isAssetsLoading are declared once in the initial state block above.
+    // setCachedAssets is defined once below in the actions section.
 
     setCachedAssets: (payload) => {
         if (!payload) return set({ cachedAssets: null, cachedAssetsUserId: null });
@@ -158,7 +158,7 @@ export const useAppStore = create((set, get) => ({
     setCurrentProduct: (data) => set({ currentProduct: data }),
     setCurrentLocation: (location) => set({ currentLocation: location }),
     clearCurrentLocation: () => set({ currentLocation: null }),
-    setCachedAssets: (assets, userId = null) => set({ cachedAssets: assets, cachedAssetsUserId: userId }),
+    // ✅ setCachedAssets is defined once above in the UGC Studio State block (handles userId extraction)
     setIsAssetsLoading: (loading) => set({ isAssetsLoading: loading }),
 
     // Standalone / API Actions
@@ -241,13 +241,7 @@ export const useAppStore = create((set, get) => ({
         return id;
     },
 
-    updateNodeData: (id, data) => {
-        set({
-            nodes: get().nodes.map(node =>
-                node.id === id ? { ...node, data: { ...node.data, ...data } } : node
-            )
-        });
-    },
+    // ✅ updateNodeData is defined once at the bottom of this store (canonical version).
     upscaleNodeImage: async (id, targetRes) => {
         const node = get().nodes.find(n => n.id === id);
         if (!node || !node.data.image) return;
@@ -568,55 +562,80 @@ export const useAppStore = create((set, get) => ({
         }
     },
 
+    // ✅ S3 FIX: Credits are now mutated SERVER-SIDE only via /api/credits/* endpoints.
+    // The server verifies the JWT, checks balance, deducts/refunds, and writes the audit log.
+    // The frontend store ONLY does an optimistic UI update and reverts on failure.
     spendShorts: async (userId, amount, reason) => {
         const current = get().userShorts;
 
-        // Optimistic update
+        // Optimistic UI update — revert if server call fails
         set({ userShorts: current - amount });
 
         try {
-            // Deduct via RPC or direct update if permitted
-            const { error: updateError } = await supabase
-                .from('profiles')
-                .update({ shorts_balance: current - amount })
-                .eq('id', userId);
+            // Get the current session token to authenticate the server request
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) throw new Error('No active session');
 
-            if (updateError) throw updateError;
-
-            await supabase.from('shorts_transactions').insert({
-                user_id: userId,
-                amount: -amount,
-                action_type: reason,
-                created_at: new Date().toISOString()
+            const response = await fetch(getApiUrl('/api/credits/spend'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({ amount, reason })
             });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || `Server returned ${response.status}`);
+            }
+
+            // Sync store with server-confirmed balance
+            if (typeof data.newBalance === 'number') {
+                set({ userShorts: data.newBalance });
+            }
+
             return { success: true };
         } catch (err) {
-            // Revert on failure
+            // Revert optimistic update on failure
             console.error('Store: Spend failed', err);
             set({ userShorts: current });
-            return { success: false, reason: 'transaction_failed' };
+            return { success: false, reason: err.message || 'transaction_failed' };
         }
     },
 
     refundShorts: async (userId, amount, reason) => {
         const current = get().userShorts;
+        // Optimistic UI update
         set({ userShorts: current + amount });
 
         try {
-            await supabase
-                .from('profiles')
-                .update({ shorts_balance: current + amount })
-                .eq('id', userId);
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) throw new Error('No active session');
 
-            await supabase.from('shorts_transactions').insert({
-                user_id: userId,
-                amount,
-                action_type: `refund_${reason}`,
-                created_at: new Date().toISOString()
+            const response = await fetch(getApiUrl('/api/credits/refund'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({ amount, reason })
             });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || `Server returned ${response.status}`);
+            }
+
+            // Sync store with server-confirmed balance
+            if (typeof data.newBalance === 'number') {
+                set({ userShorts: data.newBalance });
+            }
         } catch (err) {
             console.error('Store: Refund failed', err);
-            set({ userShorts: current });
+            set({ userShorts: current }); // Revert on failure
         }
     },
 

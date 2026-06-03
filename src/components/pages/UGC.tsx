@@ -506,7 +506,13 @@ const ImageUploadBox = ({ image, onUpload, label }: any) => { return null; }; //
 
 
 const LANGUAGES = ['English', 'Hindi', 'Telugu', 'Tamil', 'Malayalam', 'Kannada'];
-const VOICES = ['Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede', 'Zephyr', 'Orion', 'Leda', 'Orus', 'Perseus', 'Castor', 'Pollux', 'Cetus', 'Aquila', 'Rigel', 'Spica', 'Algieba', 'Despina', 'Erinome', 'Algenib', 'Rasalghul'];
+const VOICES = [
+  'Achernar', 'Achird', 'Algenib', 'Algieba', 'Alnilam', 'Aoede', 'Autonoe', 
+  'Callirrhoe', 'Charon', 'Despina', 'Enceladus', 'Erinome', 'Fenrir', 
+  'Gacrux', 'Iapetus', 'Kore', 'Laomedeia', 'Leda', 'Orus', 'Puck', 
+  'Pulcherrima', 'Rasalgethi', 'Sadachbia', 'Sadaltager', 'Schedar', 
+  'Sulafat', 'Umbriel', 'Vindemiatrix', 'Zephyr', 'Zubenelgenubi'
+];
 
 const SCENE_TEMPLATES = [
   { id: 1, title: 'Park Walk', sceneContext: 'A lush park', prompt: 'A casual vlog-style video of a creator walking through a bright, lush park. The camera bobs slightly to simulate walking. Natural sunlight illuminating the face, a gentle breeze in the air.', img: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&q=80&w=150' },
@@ -1185,10 +1191,96 @@ const VIDEO_STYLES: Record<string, { name: string; icon: string; description: st
   }
 };
 
+const SCENE_STYLES: Record<string, { name: string; group: string; description: string; promptModifier: string }> = {
+  // Talking
+  normal_talking: {
+    name: "🎙️ Normal Talking",
+    group: "Talking",
+    description: "Direct-to-cam, relaxed lip-sync",
+    promptModifier: "direct-to-camera, relaxed lip-sync, creator talking directly to the camera in a natural environment"
+  },
+  walk_talk: {
+    name: "🚶 Walk & Talk",
+    group: "Talking",
+    description: "Creator walking while speaking, handheld vlog",
+    promptModifier: "handheld vlog style, creator walking while speaking to camera, natural background movement, slight camera bobbing"
+  },
+  reaction_shot: {
+    name: "😲 Reaction Shot",
+    group: "Talking",
+    description: "Wide-eyed surprise/delight reacting to product",
+    promptModifier: "wide-eyed surprise and delight reacting to product, expressive positive emotion, dynamic close-up"
+  },
+  mirror_selfie: {
+    name: "🪞 Mirror Selfie",
+    group: "Talking",
+    description: "Creator filming in mirror, tilted phone, casual",
+    promptModifier: "creator filming a mirror selfie, tilted phone visible, casual natural lighting, authentic home environment"
+  },
+  // Camera Cuts
+  fast_cut: {
+    name: "✂️ Fast Cut",
+    group: "Camera Cuts",
+    description: "Rapid angle switches every 1-2 sec, high energy",
+    promptModifier: "high energy video with fast cuts, rapid angle switches every 1 to 2 seconds, dynamic pacing"
+  },
+  dramatic_zoom: {
+    name: "🔍 Dramatic Zoom",
+    group: "Camera Cuts",
+    description: "Slow cinematic push-in zoom, suspense/hook",
+    promptModifier: "slow cinematic push-in zoom, dramatic camera push, creating suspense and hook effect, focused framing"
+  },
+  pov_shot: {
+    name: "👆 POV Shot",
+    group: "Camera Cuts",
+    description: "First-person view looking down at product in hand",
+    promptModifier: "first-person point-of-view POV shot, looking down at product in hands, hands interacting with product naturally"
+  },
+  // Product Focus
+  cinematic_b_roll: {
+    name: "🎥 Cinematic B-Roll",
+    group: "Product Focus",
+    description: "Slow-mo glide, bokeh, luxury reveal",
+    promptModifier: "slow-motion glide, cinematic b-roll, high quality bokeh, luxury product reveal, professional lighting"
+  },
+  close_up_detail: {
+    name: "🔬 Close-Up Detail",
+    group: "Product Focus",
+    description: "Extreme macro of product texture/color",
+    promptModifier: "extreme macro close-up detail, showing texture and color of product, sharp focus on details, cinematic depth"
+  },
+  unboxing: {
+    name: "📦 Unboxing",
+    group: "Product Focus",
+    description: "Overhead hands-opening reveal, surprise reaction",
+    promptModifier: "overhead shot of hands-opening reveal, unboxing experience, surprise and delight reaction"
+  },
+  before_after: {
+    name: "🔄 Before & After",
+    group: "Product Focus",
+    description: "Sequential transformation reveal with contrast",
+    promptModifier: "sequential before and after transformation reveal, clear contrast and transition, split screen or side-by-side style comparison"
+  },
+  // Educational
+  tutorial_step: {
+    name: "🎓 Tutorial Step",
+    group: "Educational",
+    description: "Instructional hold-and-point educational framing",
+    promptModifier: "instructional hold-and-point educational framing, step-by-step tutorial demo, clear actions and explanations"
+  },
+  dynamic_action: {
+    name: "⚡ Dynamic Action",
+    group: "Educational",
+    description: "Handheld physical demo, shaky energy",
+    promptModifier: "dynamic action, handheld physical demo, shaky high-energy camera movement, active product demonstration"
+  }
+};
+
+
 export default function UGC() {
   const { spend, refund } = useShorts();
   const userProfile = useAppStore(state => state.userProfile as { id?: string; role?: string } | null);
-  const currentUserId = userProfile?.id || null;
+  const currentUserId = userProfile?.id || 'local_user';
   const isGlobalAdmin = userProfile?.role === 'admin';
 
   const [activeTab, setActiveTab] = useState('ugc');
@@ -1336,6 +1428,7 @@ export default function UGC() {
   const [includeAudio, setIncludeAudio] = useState(true);
   const [videoResolution, setVideoResolution] = useState<'720p' | '1080p'>('720p');
   const [selectedVideoStyle, setSelectedVideoStyle] = useState<'calm' | 'energetic' | 'action' | 'professional' | 'casual' | 'storytelling'>('calm');
+  const [selectedSceneStyle, setSelectedSceneStyle] = useState<string>('normal_talking');
   const [isPerformanceStyleExpanded, setIsPerformanceStyleExpanded] = useState(false);
 
   const [renderMode, setRenderMode] = useState<'image' | 'video'>('image');
@@ -1631,7 +1724,8 @@ export default function UGC() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [attachedRefImage, setAttachedRefImage] = useState<string | null>(null);
   const [spokenDialog, setSpokenDialog] = useState<string>('');
-  const [splitScenes, setSplitScenes] = useState<{label: string; dialog: string}[]>([]);
+  const [splitScenes, setSplitScenes] = useState<{label: string; dialog: string; prompt: string; refImage?: string | null}[]>([]);
+  const [isGeneratingSplitPrompt, setIsGeneratingSplitPrompt] = useState(false);
   const [activeSplitTab, setActiveSplitTab] = useState(0);
   const [selectedPromptVariant, setSelectedPromptVariant] = useState(0);
   const [chatTab, setChatTab] = useState<'script' | 'video'>('script');
@@ -2450,7 +2544,9 @@ Avoid : [things to avoid] (Be sure to add - avoid excessive yellow in the photo,
           headers: { 'x-goog-api-key': apiKey },
         });
         const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
+        setVideoProgressMsg('Saving...');
+        const publicUrl = await uploadToSupabase(blob, 'video', option.prompt || option.title, currentUserId);
+        const url = publicUrl || URL.createObjectURL(blob);
         
         const newItem: TimelineItem = {
           id: Math.random().toString(36).substr(2, 9),
@@ -3276,6 +3372,50 @@ Return ONLY a valid JSON object:
     setIsRegeneratingPart(false);
   };
 
+  // Generates an AI visual prompt specifically for a split-scene tab
+  const generateSplitScenePrompt = async (tabIdx: number) => {
+    const sc = splitScenes[tabIdx];
+    if (!sc) return;
+    setIsGeneratingSplitPrompt(true);
+    try {
+      const styleInfo = VIDEO_STYLES[selectedVideoStyle];
+      const styleName = styleInfo?.name || 'UGC casual';
+      const styleModifier = styleInfo?.modifier || 'natural, authentic, relatable';
+      const aiPrompt = `You are an expert Veo 3.1 video prompt engineer for UGC (User-Generated Content) videos.
+
+DIALOGUE for this scene: "${sc.dialog}"
+PRODUCT / BRAND CONTEXT: ${productDetails || 'a consumer product'}
+VIDEO STYLE: ${styleName} — ${styleModifier}
+
+Generate a single detailed visual prompt (max 80 words) for this specific scene. The prompt must:
+1. Describe a natural, relatable UGC creator environment (living room, cafe, street, bedroom, etc.).
+2. Specify the creator's action, expression, and camera angle (prefer medium or wide shot).
+3. Include the creator speaking the dialogue naturally with authentic lip sync.
+4. If the product is wearable, the creator must be wearing or demonstrating it.
+5. Avoid: 85mm lens, heavy bokeh, cinematic/fashion aesthetics.
+
+Return ONLY the visual prompt text. No preamble, no extra text.`;
+
+      const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parts: [{ text: aiPrompt }],
+          model: 'gemini-2.5-flash',
+          userId: currentUserId
+        })
+      });
+      if (!response.ok) throw new Error(`Prompt gen failed: ${response.status}`);
+      const data = await response.json();
+      const newPrompt = (data.text || '').trim();
+      if (newPrompt) {
+        setSplitScenes(prev => prev.map((s, i) => i === tabIdx ? { ...s, prompt: newPrompt } : s));
+      }
+    } catch (e) {
+      console.error('[generateSplitScenePrompt]', e);
+    }
+    setIsGeneratingSplitPrompt(false);
+  };
 
 
 
@@ -3959,9 +4099,12 @@ Return ONLY a valid JSON object:
         const hasRef = !!imagePayload;
         promptText = `${podcastVisual}${podcastDialogue}${hasRef ? ' Animate naturally from the reference image. Keep host faces, microphones and product consistent.' : ''}${stylePrompt ? ` Style: ${stylePrompt}` : ''}`;
       } else {
+        const sceneStyleModifier = SCENE_STYLES[selectedSceneStyle]?.promptModifier;
+        const compiledStyle = [stylePrompt, sceneStyleModifier].filter(Boolean).join(', ');
+
         promptText = (overridePrompt || (scenes[activeSceneIndex]?.isApproved
           ? scenes[activeSceneIndex].prompt
-          : (videoPrompt || `A creator wearing or interacting with this product: ${productDetails}. If it's clothing, they MUST be wearing it.`))) + dialogue + (stylePrompt ? ` Style: ${stylePrompt}` : '') + lipSyncBooster + virtualCreatorPrompt + (activeRefImg || characterImg ? " IMPORTANT: Match the natural vibe, lighting, and aesthetic of the provided reference image perfectly." : "");
+          : (videoPrompt || `A creator wearing or interacting with this product: ${productDetails}. If it's clothing, they MUST be wearing it.`))) + dialogue + (compiledStyle ? ` Style: ${compiledStyle}.` : '') + lipSyncBooster + virtualCreatorPrompt + (activeRefImg || characterImg ? " IMPORTANT: Match the natural vibe, lighting, and aesthetic of the provided reference image perfectly." : "");
 
         if (activeRefImg) {
           let base64 = '';
@@ -4998,10 +5141,10 @@ Return ONLY a valid JSON object:
                       <p className="text-[8px] text-white/10 font-mono">Generate an image or video to get started</p>
                     </div>
                   ) : (
-                    <div className="p-2" style={{ columns: 5, columnGap: '4px' }}>
+                    <div className="p-2 grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
                       {/* Spinner tile while generating next */}
                       {isGeneratingVideo && (
-                        <div className="break-inside-avoid mb-1.5 rounded-lg border border-white/10 bg-white/3 flex flex-col items-center justify-center gap-2 aspect-[9/16]">
+                        <div className="w-full rounded-lg border border-white/10 bg-white/3 flex flex-col items-center justify-center gap-2 aspect-[9/16]">
                           <div className="relative w-7 h-7">
                             <div className="absolute inset-0 rounded-full border-2 border-t-[#c8f135] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
                             <Film className="absolute inset-0 m-auto w-3 h-3 text-[#c8f135]" />
@@ -5017,13 +5160,13 @@ Return ONLY a valid JSON object:
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.3 }}
-                            className="break-inside-avoid mb-1.5 relative group rounded-lg overflow-hidden cursor-pointer"
+                            className="relative group rounded-lg overflow-hidden cursor-pointer w-full aspect-[9/16]"
                             onClick={() => setGalleryExpandItem(item)}
                           >
                             {item.type === 'video' ? (
-                              <div className="w-full relative bg-black/60 aspect-[9/16] flex items-center justify-center">
+                              <div className="w-full h-full relative bg-black/60 flex items-center justify-center">
                                 <video src={item.url} className="w-full h-full object-cover" preload="metadata" playsInline />
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity duration-200">
                                   <div className="w-10 h-10 rounded-full bg-black/70 border border-white/30 flex items-center justify-center shadow-lg">
                                     <Play size={14} className="text-white fill-white ml-0.5" />
                                   </div>
@@ -5034,7 +5177,9 @@ Return ONLY a valid JSON object:
                                 </div>
                               </div>
                             ) : (
-                              <img src={item.url} alt={`gen-${idx}`} className="w-full block" />
+                              <div className="w-full h-full relative bg-black/60 flex items-center justify-center overflow-hidden">
+                                <img src={item.url} alt={`gen-${idx}`} className="w-full h-full object-cover" />
+                              </div>
                             )}
                             {/* NEW badge */}
                             {idx === 0 && (
@@ -5043,6 +5188,14 @@ Return ONLY a valid JSON object:
                             {/* Hover overlay */}
                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 z-10">
                               <div className="flex gap-1.5">
+                                {item.type === 'video' && (
+                                  <button title="Play" onClick={e => {
+                                    e.stopPropagation();
+                                    setGalleryExpandItem(item);
+                                  }} className="w-9 h-9 flex items-center justify-center bg-[#c8f135] hover:bg-[#b0d62a] text-black rounded-xl transition-all shadow-lg hover:scale-105 active:scale-95">
+                                    <Play size={14} className="fill-black ml-0.5" />
+                                  </button>
+                                )}
                                 <button title="Save" onClick={async e => {
                                   e.stopPropagation();
                                   const ext = item.type === 'video' ? 'mp4' : 'png';
@@ -5066,17 +5219,32 @@ Return ONLY a valid JSON object:
                                   </button>
                                 )}
                               </div>
-                              {item.type === 'image' && (
-                                <button title="Attach for video"
-                                  onClick={e => { e.stopPropagation(); setAttachedRefImage(item.url); showToast('Image attached — ready to make a video!', 'success'); }}
-                                  className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border transition-all shadow-lg text-[8px] font-black uppercase tracking-wider ${
-                                    attachedRefImage === item.url
-                                      ? 'bg-[#c8f135] text-black border-[#c8f135]'
-                                      : 'bg-black/80 hover:bg-[#c8f135]/20 hover:border-[#c8f135]/50 text-white hover:text-[#c8f135] border-white/20'
-                                  }`}>
-                                  <Plus size={10} /> {attachedRefImage === item.url ? 'Added' : 'Use for Video'}
-                                </button>
-                              )}
+                              {item.type === 'image' && (() => {
+                                const isAttachedToActiveScene = splitScenes.length > 0 && splitScenes[activeSplitTab]?.refImage === item.url;
+                                const isAttachedToGlobal = splitScenes.length === 0 && attachedRefImage === item.url;
+                                const isAdded = isAttachedToActiveScene || isAttachedToGlobal;
+                                
+                                return (
+                                  <button title="Attach for video"
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      if (splitScenes.length > 0) {
+                                        setSplitScenes(prev => prev.map((s, idx) => idx === activeSplitTab ? { ...s, refImage: item.url } : s));
+                                        showToast('Image attached to active scene!', 'success');
+                                      } else {
+                                        setAttachedRefImage(item.url);
+                                        showToast('Image attached — ready to make a video!', 'success');
+                                      }
+                                    }}
+                                    className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border transition-all shadow-lg text-[8px] font-black uppercase tracking-wider ${
+                                      isAdded
+                                        ? 'bg-[#c8f135] text-black border-[#c8f135]'
+                                        : 'bg-black/80 hover:bg-[#c8f135]/20 hover:border-[#c8f135]/50 text-white hover:text-[#c8f135] border-white/20'
+                                    }`}>
+                                    <Plus size={10} /> {isAdded ? 'Added' : 'Use for Video'}
+                                  </button>
+                                );
+                              })()}
                             </div>
                           </motion.div>
                         ))}
@@ -6102,11 +6270,9 @@ Return ONLY a valid JSON object:
                 style={{ overflow: 'hidden' }}
               >
 
-              {/* ════════════════ SCRIPT TAB ════════════════ */}
-              {chatTab === 'script' && <React.Fragment>
 
-              {/* Performance Montage preview layer — shown above textarea when output exists */}
-              {(generatedVideo || generatedImg) && (
+              {/* Performance Montage preview layer — shown globally when output exists and split scenes are not active */}
+              {(generatedVideo || generatedImg) && splitScenes.length === 0 && (
                 <div className="flex items-center gap-3 px-4 pt-3">
                   <div
                     className="relative shrink-0 rounded-xl overflow-hidden border border-[#1e1e24] bg-black cursor-pointer group/thumb"
@@ -6166,26 +6332,272 @@ Return ONLY a valid JSON object:
                   </button>
                 </div>
               )}
+ 
+              {/* Split scenes dialog panel — globally visible at top */}
+              {splitScenes.length > 0 && (() => {
+                const sc = splitScenes[activeSplitTab];
+                const customRef = sc?.refImage;
+                const fallbackRef = characterImg?.url;
+                const effectiveRefImage = customRef || fallbackRef;
+                const isCustomRef = !!customRef;
+                
+                return (
+                  <div className="mx-4 mt-2 bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-xl">
+                    {/* Tab headers */}
+                    <div className="flex border-b border-white/10">
+                      {splitScenes.map((sc, i) => (
+                        <button key={i} onClick={() => { setActiveSplitTab(i); setSelectedPromptVariant(0); }}
+                          className={`flex-1 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all ${
+                            activeSplitTab === i ? 'bg-[#c8f135]/15 text-[#c8f135] border-b-2 border-[#c8f135]' : 'text-white/30 hover:text-white/60'
+                          }`}>
+                          {sc.label}
+                        </button>
+                      ))}
+                      <button onClick={() => { setSplitScenes([]); setSpokenDialog(''); }} className="px-2 text-white/20 hover:text-white/50 transition-colors"><X size={9} /></button>
+                    </div>
+                    {/* Active scene: Dialogue + Controls */}
+                    <div className="p-3 space-y-2.5 relative">
 
-              {/* Split scenes dialog panel */}
-              {splitScenes.length > 0 && (
-                <div className="mx-4 mt-2 bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-                  {/* Tab headers */}
-                  <div className="flex border-b border-white/10">
-                    {splitScenes.map((sc, i) => (
-                      <button key={i} onClick={() => { setActiveSplitTab(i); setSelectedPromptVariant(0); }}
-                        className={`flex-1 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all ${
-                          activeSplitTab === i ? 'bg-[#c8f135]/15 text-[#c8f135] border-b-2 border-[#c8f135]' : 'text-white/30 hover:text-white/60'
-                        }`}>
-                        {sc.label}
-                      </button>
-                    ))}
-                    <button onClick={() => { setSplitScenes([]); setSpokenDialog(''); }} className="px-2 text-white/20 hover:text-white/50 transition-colors"><X size={9} /></button>
-                  </div>
-                  {/* Active scene dialog + prompt variant picker */}
-                  <div className="p-2.5 space-y-2">
-                    <p className="text-[9px] text-white/70 font-mono leading-relaxed">{splitScenes[activeSplitTab]?.dialog}</p>
+                      {/* Row 1: AI Style Selector + Generate Prompt → writes into bottom chat box */}
+                      <div className="flex items-center gap-2">
+                        {/* Style Dropdown Selector */}
+                        <div className="flex-1 relative">
+                          <select
+                            value={selectedSceneStyle}
+                            onChange={e => setSelectedSceneStyle(e.target.value)}
+                            className="w-full appearance-none bg-black/30 border border-white/5 hover:border-white/10 rounded-xl pl-7.5 pr-8 py-2 text-[8.5px] font-mono text-white/80 uppercase tracking-wider cursor-pointer transition-all focus:outline-none focus:border-[#c8f135]/30"
+                          >
+                            <optgroup label="🎙️ Talking" className="bg-[#0c0c0c] text-white/90">
+                              <option value="normal_talking">🎙️ Normal Talking</option>
+                              <option value="walk_talk">🚶 Walk & Talk</option>
+                              <option value="reaction_shot">😲 Reaction Shot</option>
+                              <option value="mirror_selfie">🪞 Mirror Selfie</option>
+                            </optgroup>
+                            <optgroup label="✂️ Camera Cuts" className="bg-[#0c0c0c] text-white/90">
+                              <option value="fast_cut">✂️ Fast Cut</option>
+                              <option value="dramatic_zoom">🔍 Dramatic Zoom</option>
+                              <option value="pov_shot">👆 POV Shot</option>
+                            </optgroup>
+                            <optgroup label="🎥 Product Focus" className="bg-[#0c0c0c] text-white/90">
+                              <option value="cinematic_b_roll">🎥 Cinematic B-Roll</option>
+                              <option value="close_up_detail">🔬 Close-Up Detail</option>
+                              <option value="unboxing">📦 Unboxing</option>
+                              <option value="before_after">🔄 Before & After</option>
+                            </optgroup>
+                            <optgroup label="🎓 Educational" className="bg-[#0c0c0c] text-white/90">
+                              <option value="tutorial_step">🎓 Tutorial Step</option>
+                              <option value="dynamic_action">⚡ Dynamic Action</option>
+                            </optgroup>
+                          </select>
+                          <Sparkles size={9} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
+                          <ChevronDown size={9} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                        </div>
 
+                        {/* AI Button */}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!sc) return;
+                            setIsGeneratingSplitPrompt(true);
+                            try {
+                              const styleInfo = SCENE_STYLES[selectedSceneStyle];
+                              const styleName = styleInfo?.name || 'Normal Talking';
+                              const styleModifier = styleInfo?.promptModifier || '';
+                              
+                              const urlToGenerativePart = async (url: string) => {
+                                try {
+                                  const res = await fetch(url);
+                                  const blob = await res.blob();
+                                  const base64 = await fileToBase64(blob);
+                                  const match = base64.match(/^data:([^;]+);base64,(.+)$/);
+                                  if (match) {
+                                    return {
+                                      inlineData: {
+                                        data: match[2],
+                                        mimeType: match[1]
+                                      }
+                                    };
+                                  }
+                                } catch (err) {
+                                  console.error('Failed to convert reference image to generative part:', err);
+                                }
+                                return null;
+                              };
+
+                              const parts = [];
+                              let imgPart = null;
+                              if (effectiveRefImage) {
+                                imgPart = await urlToGenerativePart(effectiveRefImage);
+                              }
+
+                              if (imgPart) {
+                                parts.push(imgPart);
+                              }
+
+                              const aiPrompt = effectiveRefImage
+                                ? `You are a Veo 3.1 image-to-video motion prompt engineer.
+We are converting a static reference image into video.
+DIALOGUE: "${sc.dialog}"
+PRODUCT / BRAND: ${productDetails || 'a consumer product'}
+VISUAL STYLE: ${styleName} — ${styleModifier}
+
+Write ONE motion prompt (max 80 words) for a Veo 3.1 video. Follow these rules strictly:
+1. DO NOT describe the environment, setting, background, location, lighting, outdoor/indoor scenes, or objects (e.g. do not say "living room", "field", "desk", "sunlit", "outdoor", "nature", "home office").
+2. DO NOT describe the person's appearance, gender, hair, face type, clothing, or age (e.g. do not say "young adult", "woman", "brown hair", "orange sweater", "creator (20s-30s)").
+3. Start the video directly from the static state of the provided reference image.
+4. Focus 100% ONLY on camera motion and actions: describe the camera panning, zooming, cuts/switches, the person speaking the dialogue with realistic lip-syncing/mouth movements, facial expression changes, and hand gestures or performance actions.
+5. Incorporate the visual characteristics of "${styleName}": "${styleModifier}".
+6. Return ONLY the final motion prompt text. No introductory or explanatory text.`
+                                : `You are a Veo 3.1 video prompt engineer for UGC ads.
+DIALOGUE: "${sc.dialog}"
+PRODUCT / BRAND: ${productDetails || 'a consumer product'}
+VISUAL STYLE: ${styleName} — ${styleModifier}
+
+Write ONE visual prompt (max 80 words) for a UGC creator scene that:
+1. Matches the exact dialogue and performance style above.
+2. Describes the environment, camera angle, creator action/expression.
+3. The creator speaks the dialogue naturally to camera (if style allows).
+4. Incorporates the visual characteristics of "${styleName}": "${styleModifier}".
+5. Avoids: 85mm lens, heavy bokeh, cinematic/fashion aesthetics.
+Return ONLY the prompt text, no preamble.`;
+
+                              parts.push({ text: aiPrompt });
+
+                              const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ parts, model: 'gemini-2.5-flash', userId: currentUserId })
+                              });
+                              if (response.ok) {
+                                const data = await response.json();
+                                const newPrompt = (data.text || '').trim();
+                                if (newPrompt) setVideoPrompt(newPrompt);
+                              }
+                            } catch (e) { console.error('[AI Prompt]', e); }
+                            setIsGeneratingSplitPrompt(false);
+                          }}
+                          disabled={isGeneratingSplitPrompt}
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[8px] font-black uppercase tracking-widest transition-all shrink-0 cursor-pointer ${
+                            isGeneratingSplitPrompt
+                              ? 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
+                              : 'bg-[#c8f135]/10 border-[#c8f135]/40 text-[#c8f135] hover:bg-[#c8f135]/20 hover:border-[#c8f135]/70 hover:shadow-[0_0_12px_rgba(200,241,53,0.15)]'
+                          }`}
+                        >
+                          {isGeneratingSplitPrompt
+                            ? <><Loader2 size={9} className="animate-spin" /><span>Generating…</span></>
+                            : <><Sparkles size={9} /><span>AI Prompt</span></>
+                          }
+                        </button>
+                      </div>
+
+                      {/* Row 2: Dialogue + Reference + Approve container */}
+                      <div className="flex gap-4 items-center justify-between bg-black/40 border border-white/5 rounded-xl p-3">
+                        {/* Left: Dialogue */}
+                        <div className="flex-1 text-[10.5px] text-white/80 leading-relaxed font-mono pr-2 text-left">
+                          {sc?.dialog}
+                        </div>
+
+                        {/* Right: Controls (Reference slot + Approve button) */}
+                        <div className="flex items-center gap-3 shrink-0">
+                          {/* Reference Image Slot */}
+                          {isCustomRef ? (
+                            <div className="flex items-center gap-2 px-2.5 py-1.5 bg-[#c8f135]/5 border border-[#c8f135]/20 rounded-xl relative animate-in fade-in duration-200">
+                              <img
+                                src={customRef}
+                                alt="Scene Ref"
+                                className="w-9 h-9 rounded-lg object-cover border border-[#c8f135]/40 shadow-md shrink-0"
+                              />
+                              <div className="flex flex-col text-left">
+                                <span className="text-[7.5px] font-black uppercase tracking-wider text-[#c8f135]">
+                                  Reference
+                                </span>
+                                <span className="text-[6px] font-mono uppercase tracking-tighter text-[#c8f135]/50">
+                                  Attached ✓
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setSplitScenes(prev => prev.map((s, idx) => idx === activeSplitTab ? { ...s, refImage: null } : s));
+                                }}
+                                className="w-4 h-4 bg-red-500/80 rounded-full flex items-center justify-center hover:bg-red-500 transition-colors shadow-lg cursor-pointer shrink-0 ml-0.5"
+                                title="Remove Custom Reference"
+                              >
+                                <X size={7} className="text-white" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-1.5 items-stretch">
+                              <label className="flex items-center gap-2 px-2.5 py-1.5 bg-white/3 border border-dashed border-white/10 hover:border-[#c8f135]/40 hover:bg-[#c8f135]/5 rounded-xl cursor-pointer transition-all text-left">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    try {
+                                      const base64 = await fileToBase64(file);
+                                      const dataUrl = `data:${file.type};base64,${base64}`;
+                                      setSplitScenes(prev => prev.map((s, idx) => idx === activeSplitTab ? { ...s, refImage: dataUrl } : s));
+                                    } catch (err) {
+                                      console.error(err);
+                                    }
+                                  }}
+                                />
+                                <Camera size={11} className="text-white/30 shrink-0" />
+                                <div className="flex flex-col">
+                                  <span className="text-[7.5px] font-black uppercase tracking-wider text-white/40">Add Ref</span>
+                                  <span className="text-[6px] font-mono text-white/20 uppercase tracking-tighter">Upload</span>
+                                </div>
+                              </label>
+                            </div>
+                          )}
+
+                          {/* Approve & Make Video Button */}
+                          <button
+                            onClick={() => {
+                              if (!sc) return;
+
+                              let finalPrompt = '';
+                              if (activeTab === 'podcast') {
+                                const sceneIdx = activeSplitTab;
+                                const baseVisual = scenes[sceneIdx]?.visualCue || 'Two-host podcast setup with Host 1 and Host 2 at microphones, natural studio lighting.';
+                                const variants = [
+                                  `Wide two-shot: ${baseVisual} Both hosts visible, relaxed posture, natural conversation. The hosts are speaking: "${sc.dialog}"`,
+                                  `Medium close-up on HOST 1: ${baseVisual} HOST 1 is speaking, HOST 2 slightly blurred in background, eye contact with camera. The hosts are speaking: "${sc.dialog}"`,
+                                  `Over-shoulder shot from behind HOST 2 looking at HOST 1: ${baseVisual} Dynamic conversational angle, product visible on desk. The hosts are speaking: "${sc.dialog}"`
+                                ];
+                                finalPrompt = variants[selectedPromptVariant] || variants[0];
+                              } else {
+                                // Use the bottom chat box videoPrompt as the single source of truth
+                                finalPrompt = [videoPrompt, sc.dialog].filter(Boolean).join(' ');
+                              }
+
+                              generateVideo(finalPrompt, effectiveRefImage || undefined);
+                            }}
+                            disabled={isGeneratingVideo}
+                            className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 cursor-pointer flex items-center gap-2 ${
+                              isGeneratingVideo
+                                ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
+                                : 'bg-[#c8f135]/10 border border-[#c8f135]/40 text-[#c8f135] hover:bg-[#c8f135]/20 hover:border-[#c8f135]/70 hover:shadow-[0_0_20px_rgba(200,241,53,0.15)] active:scale-[0.98]'
+                            }`}
+                          >
+                            {isGeneratingVideo ? (
+                              <>
+                                <Loader2 size={11} className="animate-spin text-white/50" />
+                                <span className="text-white/40">{videoProgressMsg || 'Rendering…'}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Check size={11} className="text-[#c8f135]" />
+                                <span>Approve &amp; Make Video</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                    {/* Camera Angle picker for podcast tab */}
                     {activeTab === 'podcast' && (() => {
                       const sceneIdx = activeSplitTab;
                       const baseVisual = scenes[sceneIdx]?.visualCue || 'Two-host podcast setup with Host 1 and Host 2 at microphones, natural studio lighting.';
@@ -6197,58 +6609,35 @@ Return ONLY a valid JSON object:
                         { label: '📐 Over-Shoulder', prompt: `Over-shoulder shot from behind HOST 2 looking at HOST 1: ${baseVisual} Dynamic conversational angle, product visible on desk. The hosts are speaking: "${dialogue}"` },
                       ];
                       return (
-                        <div className="space-y-1.5">
-                          <p className="text-[7px] text-white/30 font-black uppercase tracking-widest">Video Prompt — Pick Camera Angle</p>
-                          <div className="flex flex-col gap-1">
+                        <div className="space-y-1.5 pt-1.5 border-t border-white/5">
+                          <p className="text-[7px] text-white/30 font-black uppercase tracking-widest text-left">Pick Camera Angle</p>
+                          <div className="grid grid-cols-3 gap-2">
                             {variants.map((v, i) => (
                               <button
                                 key={i}
                                 onClick={() => setSelectedPromptVariant(i)}
-                                className={`text-left px-2.5 py-2 rounded-lg text-[8px] font-mono leading-relaxed transition-all border ${
+                                className={`text-left px-2.5 py-2 rounded-lg text-[8px] font-mono leading-tight transition-all border cursor-pointer ${
                                   selectedPromptVariant === i
                                     ? 'bg-[#c8f135]/15 border-[#c8f135]/50 text-[#c8f135]'
                                     : 'bg-white/3 border-white/8 text-white/40 hover:text-white/70 hover:border-white/20'
                                 }`}
                               >
-                                <span className="font-black mr-1.5">{v.label}</span>
-                                <span className="opacity-70 line-clamp-2">{v.prompt.substring(0, 90)}…</span>
+                                <span className="font-black block mb-0.5">{v.label}</span>
+                                <span className="opacity-60 block truncate">{v.prompt.substring(0, 45)}…</span>
                               </button>
                             ))}
                           </div>
-                          <button
-                            onClick={() => {
-                              const selected = variants[selectedPromptVariant];
-                              if (selected) generateVideo(selected.prompt);
-                            }}
-                            disabled={isGeneratingVideo}
-                            className="mt-1 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-[#c8f135]/15 border border-[#c8f135]/30 text-[#c8f135] text-[8px] font-black uppercase tracking-widest hover:bg-[#c8f135] hover:text-black transition-all disabled:opacity-30"
-                          >
-                            {isGeneratingVideo
-                              ? <><Loader2 size={9} className="animate-spin" />{videoProgressMsg || 'Rendering…'}</>
-                              : <><Film size={9} /> Make Video · {variants[selectedPromptVariant]?.label}</>}
-                          </button>
                         </div>
                       );
                     })()}
-
-                    {activeTab !== 'podcast' && (
-                      <button
-                        onClick={() => {
-                          const sc = splitScenes[activeSplitTab];
-                          if (!sc) return;
-                          generateVideo([videoPrompt, sc.dialog].filter(Boolean).join(' '));
-                        }}
-                        disabled={isGeneratingVideo}
-                        className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-[#c8f135]/15 border border-[#c8f135]/30 text-[#c8f135] text-[8px] font-black uppercase tracking-widest hover:bg-[#c8f135] hover:text-black transition-all disabled:opacity-30"
-                      >
-                        {isGeneratingVideo
-                          ? <><Loader2 size={9} className="animate-spin" />{videoProgressMsg || 'Rendering…'}</>
-                          : <><Check size={9} /> Approve {splitScenes[activeSplitTab]?.label} · Make Video</>}
-                      </button>
-                    )}
                   </div>
                 </div>
-              )}
+              );
+            })()}
+
+
+              {/* ════════════════ SCRIPT TAB ════════════════ */}
+              {chatTab === 'script' && <React.Fragment>
 
               {/* Attached reference image thumbnail */}
               {attachedRefImage && (
@@ -6305,25 +6694,69 @@ Return ONLY a valid JSON object:
                     generateVoice();
                     if (!script) return;
                     setSpokenDialog(script);
-                    // Parse script into scenes by [H:MM - H:MM] or [0:00 - 0:08] timestamps
+
+                    const parsed: {label: string; dialog: string; prompt: string; refImage?: string | null}[] = [];
+
+                    // ── Strategy 1: parse existing [0:00 - 0:08] timestamps in the script ──
                     const segmentRegex = /\[([\d:]+\s*[-–]\s*[\d:]+)\][^:]*:\s*([\s\S]*?)(?=\[|$)/gi;
-                    const parsed: {label: string; dialog: string}[] = [];
                     let m;
                     let idx = 0;
                     while ((m = segmentRegex.exec(script)) !== null) {
                       const timeRange = m[1].trim();
                       const text = m[2].trim();
-                      if (text) parsed.push({ label: `Scene ${++idx} [${timeRange}]`, dialog: text });
+                      if (text) {
+                        const matchingScene = scenes[idx];
+                        const defaultPrompt = matchingScene?.prompt || matchingScene?.visualCue || videoPrompt || '';
+                        parsed.push({ label: `Scene ${++idx} [${timeRange}]`, dialog: text, prompt: defaultPrompt });
+                      }
                     }
-                    // Fallback: split on double newline if no timestamps found
+
+                    // ── Strategy 2: chunk by 8-second speaking windows ──
                     if (parsed.length === 0) {
-                      script.split(/\n{2,}/).forEach((chunk, i) => {
-                        const t = chunk.trim();
-                        if (t) parsed.push({ label: `Scene ${i + 1}`, dialog: t });
-                      });
+                      // Strip scene labels, timestamps, speaker tags from raw script
+                      const cleanText = script
+                        .replace(/\[[^\]]+\]/g, '')           // remove [0:00-0:08] style timestamps
+                        .replace(/^(HOOK|PAYOFF|Scene\s+\d+|Host\s*\d*)\s*:/gim, '') // remove scene/speaker labels
+                        .replace(/\*\*[^*]+\*\*/g, '')        // strip markdown bold
+                        .replace(/\n{3,}/g, '\n\n')           // collapse triple+ newlines
+                        .trim();
+
+                      // Split into sentences/phrases first, then group into 8-sec chunks
+                      // Average speaking rate ≈ 2.2 words/sec → 8 sec ≈ 17-18 words per chunk
+                      const WORDS_PER_CHUNK = 18; // ~8 seconds at normal speaking pace
+                      const words = cleanText.split(/\s+/).filter(Boolean);
+
+                      if (words.length === 0) {
+                        // Nothing to split
+                      } else {
+                        let chunkStart = 0; // seconds
+                        let sceneNum = 1;
+                        for (let wi = 0; wi < words.length; wi += WORDS_PER_CHUNK) {
+                          const chunkWords = words.slice(wi, wi + WORDS_PER_CHUNK);
+                          const dialog = chunkWords.join(' ');
+                          const chunkEnd = chunkStart + 8;
+
+                          // Format time as M:SS
+                          const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+                          const label = `Scene ${sceneNum} [${fmt(chunkStart)} - ${fmt(chunkEnd)}]`;
+
+                          const matchingScene = scenes[sceneNum - 1];
+                          const defaultPrompt = matchingScene?.prompt || matchingScene?.visualCue || videoPrompt || '';
+                          parsed.push({ label, dialog, prompt: defaultPrompt });
+
+                          chunkStart = chunkEnd;
+                          sceneNum++;
+                        }
+                      }
                     }
-                    if (parsed.length > 0) { setSplitScenes(parsed); setActiveSplitTab(0); }
+
+                    if (parsed.length > 0) { 
+                      setSplitScenes(parsed); 
+                      setActiveSplitTab(0); 
+                      setChatTab('video'); // Shift to VIDEO tab automatically
+                    }
                   }}
+
                   disabled={!script || isGeneratingAudio}
                   className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${!script || isGeneratingAudio ? 'bg-white/5 text-white/20' : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10'}`}
                 >
@@ -6402,181 +6835,113 @@ Return ONLY a valid JSON object:
               )}
 
               {/* ════════════════ VIDEO TAB ════════════════ */}
-              {chatTab === 'video' && activeTab !== 'talking-head' && (
-                <div className="p-4 space-y-3">
+              {chatTab === 'video' && activeTab !== 'talking-head' && (() => {
+                const renderPills = (isMontageTextarea = false) => (
+                  <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-white/5 z-30 relative">
+                    {/* Mode Pill */}
+                    <div className="relative flex-shrink-0">
+                      <select
+                        value={videoGenMode === 'montage' ? 'veo_fast' : videoGenMode}
+                        onChange={e => setVideoGenMode(e.target.value as any)}
+                        className="appearance-none bg-white/5 border border-white/10 hover:border-white/20 rounded-xl pl-6 pr-5.5 py-1 text-[8px] font-black uppercase tracking-widest text-white/70 hover:text-white cursor-pointer transition-all font-sans"
+                      >
+                        <option value="veo_fast" className="bg-[#0c0c0c] text-white">⚡ VEO FAST</option>
+                        <option value="veo3" className="bg-[#0c0c0c] text-white">🎬 VEO 3</option>
+                      </select>
+                      <Zap size={9} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
+                      <ChevronDown size={9} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                    </div>
 
-                  {/* Model selector row */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[8px] font-black text-white/30 uppercase tracking-widest shrink-0">Mode</span>
-                    {([
-                      { id: 'veo_fast' as const, label: 'Veo Fast', sub: '~90s · 8sec', icon: Zap },
-                      { id: 'veo3'    as const, label: 'Veo 3',    sub: '~3min · HQ',  icon: Film },
-                      { id: 'montage' as const, label: 'Montage',  sub: 'AI clips',     icon: Sparkles },
-                    ] as {id:'veo_fast'|'veo3'|'montage', label:string, sub:string, icon:any}[]).map(m => (
-                      <button key={m.id} onClick={() => setVideoGenMode(m.id)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all ${
-                          videoGenMode === m.id
-                            ? 'bg-[#c8f135]/15 border-[#c8f135]/50 text-[#c8f135]'
-                            : 'bg-white/5 border-white/10 text-white/40 hover:text-white/70 hover:border-white/20'
-                        }`}>
-                        <m.icon size={10} />
-                        <span>{m.label}</span>
-                        <span className="text-[7px] opacity-50 normal-case font-mono">{m.sub}</span>
+                    {/* Aspect Ratio Pill */}
+                    <div className="relative flex-shrink-0">
+                      <select
+                        value={aspectRatio}
+                        onChange={e => setAspectRatio(e.target.value as any)}
+                        className="appearance-none bg-white/5 border border-white/10 hover:border-white/20 rounded-xl pl-6 pr-5.5 py-1 text-[8px] font-black uppercase tracking-widest text-white/70 hover:text-white cursor-pointer transition-all font-sans"
+                      >
+                        <option value="9:16" className="bg-[#0c0c0c] text-white">9:16</option>
+                        <option value="16:9" className="bg-[#0c0c0c] text-white">16:9</option>
+                        <option value="1:1" className="bg-[#0c0c0c] text-white">1:1</option>
+                      </select>
+                      <Layout size={9} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
+                      <ChevronDown size={9} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                    </div>
+
+                    {/* Shot Duration Pill */}
+                    <div className="relative flex-shrink-0">
+                      <select
+                        value={durationSeconds}
+                        onChange={e => setDurationSeconds(e.target.value as any)}
+                        className="appearance-none bg-white/5 border border-white/10 hover:border-white/20 rounded-xl pl-6 pr-5.5 py-1 text-[8px] font-black uppercase tracking-widest text-white/70 hover:text-white cursor-pointer transition-all font-sans"
+                      >
+                        <option value="4" className="bg-[#0c0c0c] text-white">4 SEC</option>
+                        <option value="6" className="bg-[#0c0c0c] text-white">6 SEC</option>
+                        <option value="8" className="bg-[#0c0c0c] text-white">8 SEC</option>
+                      </select>
+                      <Clock size={9} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
+                      <ChevronDown size={9} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                    </div>
+
+                    {/* From Script Pill Shortcut */}
+                    {script && !isMontageTextarea && (
+                      <button
+                        type="button"
+                        onClick={() => setVideoPrompt(script.replace(/\[[^\]]+\]/g, '').replace(/HOOK:|PAYOFF:|Scene \d+:/gi, '').trim())}
+                        className="px-2.5 py-1 rounded-xl border border-white/10 bg-white/5 text-white/50 hover:text-white/80 hover:border-white/20 transition-all flex items-center gap-1.5 flex-shrink-0"
+                      >
+                        <FileText size={9} />
+                        <span>From Script</span>
                       </button>
-                    ))}
+                    )}
                   </div>
+                );
 
-                  {/* Video prompt textarea */}
-                  {videoGenMode !== 'montage' && (
-                    <div className="relative">
-                      <textarea
-                        value={videoPrompt}
-                        onChange={e => setVideoPrompt(e.target.value)}
-                        rows={3}
-                        className="w-full bg-white/5 border border-[#1e1e24] rounded-xl px-3 py-2.5 text-[11px] text-white/90 placeholder-white/20 focus:outline-none focus:border-[#c8f135]/40 transition-colors resize-none leading-relaxed"
-                        placeholder={videoGenMode === 'veo_fast'
-                          ? 'Describe your video scene — Veo Fast generates an 8-sec clip…'
-                          : 'Describe your video scene — Veo 3 generates a high-quality clip…'}
-                      />
-                      {/* Generate from script shortcut */}
-                      {script && (
-                        <button
-                          onClick={() => setVideoPrompt(script.replace(/\[[^\]]+\]/g, '').replace(/HOOK:|PAYOFF:|Scene \d+:/gi, '').trim())}
-                          className="absolute bottom-2 right-2 px-2 py-1 rounded-lg bg-[#c8f135]/10 border border-[#c8f135]/20 text-[7px] font-black text-[#c8f135] uppercase tracking-widest hover:bg-[#c8f135]/20 transition-all"
-                        >
-                          From Script
-                        </button>
-                      )}
-                    </div>
-                  )}
+                return (
+                  <div className="p-4 space-y-3">
+                    {/* Top input zone: Textarea + Generate button */}
+                    <div className="flex gap-3 items-stretch">
+                      {/* Integrated Chat Box (Textarea + Pills inside) */}
+                      <div className="flex-1 flex flex-col bg-white/5 border border-[#1e1e24] focus-within:border-[#c8f135]/40 rounded-xl transition-all p-2.5 pb-2 justify-between">
+                        <textarea
+                          value={videoPrompt}
+                          onChange={e => setVideoPrompt(e.target.value)}
+                          rows={2}
+                          className="w-full bg-transparent border-0 text-[11px] text-white/90 placeholder-white/20 focus:outline-none resize-none leading-relaxed p-0.5 min-h-[48px] h-12"
+                          placeholder={videoGenMode === 'veo_fast'
+                            ? 'Describe your video scene — Veo Fast generates an 8-sec clip…'
+                            : 'Describe your video scene — Veo 3 generates a high-quality clip…'}
+                        />
+                        {renderPills(false)}
+                      </div>
 
-                  {/* ── Montage mode: show the full montage options panel ── */}
-                  {videoGenMode === 'montage' && (
-                    <div className="space-y-2">
+                      {/* Generate button on the right side */}
                       <button
-                        onClick={() => setShowVideoMontageOptions(!showVideoMontageOptions)}
-                        className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${showVideoMontageOptions ? 'bg-[#c8f135]/10 border-[#c8f135]/30' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                        onClick={() => generateVideo(videoPrompt || undefined)}
+                        disabled={isGeneratingVideo}
+                        className={`w-28 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all text-black font-black uppercase shrink-0`}
+                        style={{
+                          backgroundColor: isGeneratingVideo ? 'rgba(255,255,255,0.05)' : '#c8f135',
+                          color: isGeneratingVideo ? 'rgba(255,255,255,0.2)' : 'black',
+                          border: isGeneratingVideo ? '1px solid rgba(255,255,255,0.1)' : 'none'
+                        }}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className={`p-1.5 rounded-lg ${showVideoMontageOptions ? 'bg-[#c8f135] text-black' : 'bg-white/10 text-gray-400'}`}><Sparkles size={13} /></div>
-                          <div className="text-left">
-                            <p className={`text-[10px] font-black uppercase tracking-widest ${showVideoMontageOptions ? 'text-[#c8f135]' : 'text-white'}`}>Performance Montage</p>
-                            <p className="text-[8px] text-gray-500 font-mono uppercase tracking-tighter">AI-Generated Product Hooks</p>
-                          </div>
-                        </div>
-                        <ChevronDown size={14} className={`transition-transform duration-300 ${showVideoMontageOptions ? 'rotate-180 text-[#c8f135]' : 'text-gray-500'}`} />
-                      </button>
-
-                      {showVideoMontageOptions && (
-                        <div className="p-3 bg-black/40 border border-white/5 rounded-xl space-y-2 animate-in slide-in-from-top-2 duration-300">
-                          {isGeneratingMontageOptions ? (
-                            <div className="flex items-center gap-3 animate-pulse py-2">
-                              <div className="w-4 h-4 rounded-full bg-[#c8f135]/20 animate-ping" />
-                              <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Analyzing Product...</span>
-                            </div>
-                          ) : montageOptions.length > 0 ? (
-                            <div className="grid grid-cols-3 gap-2">
-                              {montageOptions.map((option, optI) => (
-                                <button key={`vt-opt-${optI}`}
-                                  onClick={() => { setSelectedMontageOption(option); setMontagePrompt(option.prompt); setIsMontageApproved(false); }}
-                                  disabled={isGeneratingVideo}
-                                  className={`flex flex-col gap-1.5 p-2.5 border rounded-xl transition-all text-left ${selectedMontageOption?.id === option.id ? 'bg-[#c8f135]/10 border-[#c8f135]/50 text-[#c8f135]' : 'bg-white/5 border-white/10 hover:border-[#c8f135]/30 text-white/60'}`}
-                                >
-                                  <span className="text-[9px] font-black uppercase tracking-wide truncate">{option.title}</span>
-                                  <span className="text-[7px] font-mono text-white/30">Performance Clip</span>
-                                </button>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-[8px] text-white/20 font-mono text-center py-3 uppercase tracking-widest">Upload a product image to generate montage options</p>
-                          )}
-
-                          {selectedMontageOption && (
-                            <div className="mt-2 space-y-2 p-3 bg-white/5 border border-white/10 rounded-xl">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[9px] font-black text-white uppercase tracking-widest">{selectedMontageOption.title}</span>
-                                <button onClick={() => setIsMontageApproved(!isMontageApproved)}
-                                  className={`flex items-center gap-1 px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${isMontageApproved ? 'bg-[#c8f135] text-black' : 'bg-white/10 text-gray-400 hover:bg-white/20'}`}>
-                                  {isMontageApproved && <Check size={10} />} {isMontageApproved ? 'Approved' : 'Approve'}
-                                </button>
-                              </div>
-                              <textarea value={montagePrompt} onChange={e => { setMontagePrompt(e.target.value); setIsMontageApproved(false); setMontageGeneratedImg(''); }}
-                                rows={2} className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-[11px] text-white focus:outline-none focus:border-[#c8f135] resize-none" />
-
-                              {/* Step 1: preview image */}
-                              {montageGeneratedImg ? (
-                                <div className="relative rounded-lg overflow-hidden border border-[#c8f135]/40 group/mimg">
-                                  <img src={montageGeneratedImg} alt="Reference" className="w-full max-h-[160px] object-cover" />
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-2">
-                                    <span className="text-[7px] font-mono text-[#c8f135] uppercase tracking-widest">✓ Reference Image Ready — now animate to video</span>
-                                  </div>
-                                  <button onClick={() => setMontageGeneratedImg('')} className="absolute top-1.5 right-1.5 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center hover:bg-red-500/80 transition-colors">
-                                    <X size={9} className="text-white" />
-                                  </button>
-                                </div>
-                              ) : isGeneratingMontageImg ? (
-                                <div className="flex items-center gap-2 py-2 animate-pulse">
-                                  <Loader2 size={11} className="animate-spin text-[#c8f135]" />
-                                  <span className="text-[8px] font-mono text-[#c8f135] uppercase tracking-widest">{montageImgProgressMsg || 'Generating preview...'}</span>
-                                </div>
-                              ) : null}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Generate button — two-step for montage */}
-                  {videoGenMode === 'montage' && selectedMontageOption ? (
-                    <div className="flex flex-col gap-1.5">
-                      {/* Step 1: Generate Image */}
-                      <button
-                        onClick={() => generateMontageReferenceImage({ ...selectedMontageOption, prompt: montagePrompt })}
-                        disabled={isGeneratingMontageImg || isGeneratingVideo || !isMontageApproved}
-                        className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
-                          isGeneratingMontageImg || !isMontageApproved ? 'bg-white/5 text-white/20 cursor-not-allowed'
-                          : montageGeneratedImg ? 'bg-white/10 text-white/60 border border-white/15 hover:bg-white/15'
-                          : 'bg-purple-600 text-white shadow-[0_4px_15px_rgba(147,51,234,0.3)] hover:brightness-110'
-                        }`}
-                      >
-                        {isGeneratingMontageImg
-                          ? <><Loader2 size={11} className="animate-spin" />{montageImgProgressMsg || 'Generating Image…'}</>
-                          : <><Camera size={11} />{montageGeneratedImg ? `Regenerate Image · ${getImageCost()} Shorts` : `Step 1 — Preview Image · ${getImageCost()} Shorts`}</>
-                        }
-                      </button>
-                      {/* Step 2: Animate to Video */}
-                      <button
-                        onClick={() => generateMontageVideo({ ...selectedMontageOption, prompt: montagePrompt })}
-                        disabled={!montageGeneratedImg || isGeneratingVideo || isGeneratingMontageImg}
-                        className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
-                          isGeneratingVideo ? 'bg-white/5 text-white/20 cursor-not-allowed'
-                          : !montageGeneratedImg ? 'bg-white/5 text-white/20 cursor-not-allowed'
-                          : 'bg-[#c8f135] text-black shadow-[0_4px_15px_rgba(200,241,53,0.3)] hover:brightness-110'
-                        }`}
-                      >
-                        {isGeneratingVideo
-                          ? <><Loader2 size={11} className="animate-spin" />{videoProgressMsg || 'Animating…'}</>
-                          : <><Film size={11} />{montageGeneratedImg ? 'Step 2 — Animate to Video' : 'Generate Image First ↑'}</>
-                        }
+                        {isGeneratingVideo ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin text-white/50" />
+                            <span className="text-[8px] text-white/50 font-mono tracking-wider">{videoProgressMsg || 'Generating…'}</span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-2 h-2 rounded-full bg-black animate-pulse" />
+                            <span className="text-[10px] tracking-widest mt-1">Generate</span>
+                            <span className="text-[8px] opacity-60 font-mono tracking-wider">({getCurrentCost(false)} S)</span>
+                          </>
+                        )}
                       </button>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => generateVideo(videoPrompt || undefined)}
-                      disabled={isGeneratingVideo}
-                      className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
-                        isGeneratingVideo ? 'bg-white/5 text-white/20' : 'bg-[#c8f135] text-black shadow-[0_4px_15px_rgba(200,241,53,0.3)] hover:brightness-110'
-                      }`}
-                    >
-                      {isGeneratingVideo
-                        ? <><Loader2 size={11} className="animate-spin" />{videoProgressMsg || 'Generating…'}</>
-                        : <><Film size={11} />{videoGenMode === 'veo_fast' ? `Veo 3 Fast · ${getCurrentCost(false)} Shorts` : `Veo 3 HQ · ${getCurrentCost(false)} Shorts`}</>
-                      }
-                    </button>
-                  )}
-                </div>
-              )}
+                  </div>
+                );
+              })()}
               </motion.div>{/* end collapsible body */}
             </motion.div>
           </div>

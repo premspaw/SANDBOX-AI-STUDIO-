@@ -1,157 +1,223 @@
-# Gemini API Mastery Cookbook 📘
+# Gemini API Mastery Cookbook 📘 (Gemini 3.1 & Veo 3.1 Era)
 
-This document serves as the "Master Lock" for Google Gemini API features, patterns, and implementations based on the official Gemini Cookbook. Use this as a reference for all AI orchestration in the Lunar Flare project.
+This document serves as the "Master Lock" for Google Gemini, Imagen 3, and Veo 3.1 API features, patterns, and production implementations. Use this as the definitive reference for all generative AI orchestration, multimodal video reasoning, and visual generation in the project.
 
 ---
 
-## 1. Multimodal Core 🌈
-Gemini is natively multimodal. Never treat inputs as separate entities.
+## 1. Multimodal Core & Generation 🌈
 
-### Image Understanding (I2T)
+Gemini models are natively multimodal. They process text, high-resolution images, audio streams, and continuous video files within a single unified context window.
+
+### 📸 Multimodal Image Reasoning (I2T)
+Send multiple images together to check stylistic consistency, compare design elements, or analyze character likeness.
 ```javascript
-// Pattern: Multi-Image Reference
-const result = await model.generateContent([
-  "Analyze these two frames for stylistic consistency:",
-  { inlineData: { data: base64_1, mimeType: 'image/png' } },
-  { inlineData: { data: base64_2, mimeType: 'image/png' } }
-]);
+// Pattern: Multi-Image Reference & Analysis
+import { GoogleGenAI } from '@google/genai';
+
+const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+const response = await ai.models.generateContent({
+  model: 'gemini-3.1-flash',
+  contents: [
+    "Analyze these two reference boards. Identify if the character outfit, hair color, and background lighting continuity match perfectly:",
+    { inlineData: { data: base64Frame1, mimeType: 'image/png' } },
+    { inlineData: { data: base64Frame2, mimeType: 'image/png' } }
+  ]
+});
+console.log(response.text);
 ```
 
-### Video Reasoning (V2T)
-*   **Capacity:** Up to 1 hour of video or 1M+ tokens.
-*   **Strategy:** Provide the video file and ask for temporal reasoning (timestamps).
+### 🎬 Video & Continuity Reasoning (V2T)
+*   **Context Window:** Up to 2 million tokens (equivalent to ~1 hour of high-definition video or whole codebases).
+*   **Strategy:** Pass the video uri from the File API for deep temporal/cinematographic analysis.
 ```javascript
-const prompt = "Find the exact moment the product appears and describe the lighting.";
-// Pass fileUri from File API
+const response = await ai.models.generateContent({
+  model: 'gemini-3.1-pro',
+  contents: [
+    { fileData: { fileUri: uploadedVideoUri, mimeType: 'video/mp4' } },
+    "Analyze the motion vector of this shot. Write a matching camera prompt that dollys out at the same velocity."
+  ]
+});
 ```
 
 ---
 
 ## 2. Advanced Orchestration 🏗️
 
-### System Instructions (Persona Locking)
-Always define the persona in the `systemInstruction` field, not the user prompt.
+### 👑 System Instructions (Persona Locking)
+Always define the AI agent's role and rules in the `systemInstruction` configuration parameters, rather than mixing it within the user prompt.
 ```javascript
-const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-pro",
-  systemInstruction: "You are an expert UGC Cinematographer. Your outputs must include camera metadata (lens, lighting, ISO)."
+const response = await ai.models.generateContent({
+  model: 'gemini-3.1-flash',
+  config: {
+    systemInstruction: "You are the project's Master Cinematographer. All scene descriptions must incorporate lens selections (e.g. 35mm, anamorphic), exact lighting setups (e.g. warm key, cool rim), and speed ramp metrics."
+  },
+  contents: "Write a high-end shot prompt for a neon cyberpunk street chase."
 });
 ```
 
-### Context Caching (Cost & Latency Optimization)
-Use for static, large datasets (e.g., the "Universe Bible").
+### ⚡ Context Caching (Cost & Latency Optimization)
+Use for static, large datasets (e.g., a "Character Likeness Profile", "Universe Art Style Bible", or "UGC Script templates").
 *   **Min Requirement:** 32,768 tokens.
-*   **TTL:** Default 1 hour (adjustable).
+*   **TTL:** Standard 1 hour (auto-renewable).
 ```javascript
-// Create cache via REST/SDK
-const cache = await googleAI.caching.create({
-  model: "models/gemini-1.5-pro-002",
-  ttlSeconds: 3600,
-  contents: [{ role: 'user', parts: [{ text: LARGE_CONTEXT_BIBLE }] }]
+// Build a context cache for rapid, cheap sub-second prompts
+const cache = await ai.caches.create({
+  model: 'gemini-3.1-flash',
+  config: {
+    displayName: 'Universe_Art_Style_Bible',
+    ttl: '3600s', // 1 hour
+    contents: [
+      { role: 'user', parts: [{ text: LORE_AND_STYLE_BIBLE_STRING }] }
+    ]
+  }
 });
 ```
 
 ---
 
-## 3. Tool Use & Agents 🛠️
+## 3. High-Quality Visual Engines 🎨
 
-### Function Calling
-Allow Gemini to interact with your local systems (e.g., Supabase, File System).
+The visual pipeline leverages Google's latest production models for image and video generation.
+
+### 🖼️ Image Generation (Imagen 3)
+*   **Model ID:** `gemini-3.1-flash-image-preview`
+*   **Features:** Photorealistic detailing, superior prompt adherence, advanced text rendering inside panels, and native multi-aspect ratio composition support.
 ```javascript
-const tools = [{
-  functionDeclarations: [{
-    name: "queryVault",
-    description: "Search the local Supabase asset library for video clips",
-    parameters: {
-      type: "OBJECT",
-      properties: {
-        query: { type: "string" },
-        tags: { type: "array", items: { type: "string" } }
-      }
-    }
-  }]
-}];
-```
-
-### Code Execution
-Gemini can generate and execute Python code internally to solve math or process data.
-```javascript
-const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-pro",
-  tools: [{ codeExecution: {} }]
-});
-```
-
----
-
-## 4. Safety & Formatting 🔒
-
-### Controlled Output (JSON Mode)
-Strictly enforce JSON responses for node updates.
-```javascript
-const generationConfig = {
-  responseMimeType: "application/json",
-  responseSchema: {
-    type: "OBJECT",
-    properties: {
-      scene_description: { type: "string" },
-      camera_angle: { type: "string" }
+const response = await ai.models.generateContent({
+  model: 'gemini-3.1-flash-image-preview',
+  contents: [
+    "A professional editorial reference sheet titled 'SHOT BOARD'. Sequential 12-shot storyboard layout. Cinematic color grading."
+  ],
+  config: {
+    responseModalities: ["IMAGE"],
+    imageConfig: {
+      aspectRatio: "16:9" // Options: '1:1', '16:9', '9:16'
     }
   }
-};
+});
 ```
 
-### Safety Settings
-Adjust thresholds for creative freedom in cinematography.
+### 📹 Video Generation (Veo 3.1)
+*   **Models:** `veo-3.1-generate-preview` (high fidelity) and `veo-3.1-fast-generate-preview` (instant preview).
+*   **Features:** First/Last frame conditioning (Image-to-Video), dynamic camera curves, and high-fidelity physics simulator.
+```javascript
+const operation = await ai.models.generateVideos({
+  model: 'veo-3.1-generate-preview',
+  prompt: 'A sweeping cinematic slow motion pan across a futuristic cityscape',
+  config: {
+    numberOfVideos: 1,
+    resolution: '1080p',
+    aspectRatio: '16:9',
+    durationSeconds: 5,
+    // Provide first frame buffer for Likeness Continuity (I2V)
+    firstFrame: { imageBytes: base64Frame, mimeType: 'image/jpeg' }
+  }
+});
+```
+
+---
+
+## 4. Tool Use & Connected Agents 🛠️
+
+### 🔍 Search Grounding (Live Google Search)
+Connect your prompts directly to live Google Search indices to ground generation in modern trends, active names, or real-time topics.
+```javascript
+const response = await ai.models.generateContent({
+  model: 'gemini-3.1-flash',
+  config: {
+    // Enable live Google search grounding
+    tools: [{ googleSearch: {} }]
+  },
+  contents: "What are the trending cyberpunk streetwear colors and jacket styles for this season?"
+});
+
+// Access search metadata sources & citations
+console.log(response.candidates[0].groundingMetadata);
+```
+
+### 💻 Dynamic Code Execution (Python Sandbox)
+Let Gemini write and run local Python code internally to calculate precise geometry, perform advanced data formatting, or calculate camera vector curves before returning a response.
+```javascript
+const response = await ai.models.generateContent({
+  model: 'gemini-3.1-flash',
+  config: {
+    tools: [{ codeExecution: {} }]
+  },
+  contents: "Generate a timeline list of 24 frames at 24fps with camera keyframes moving along a bezier curve."
+});
+```
+
+---
+
+## 5. Controlled Formatting & Safety 🔒
+
+### 📋 Strict Structured JSON Output
+Enforce strict schema validation on AI outputs. This prevents parsing errors during UI flow updates.
+```javascript
+const response = await ai.models.generateContent({
+  model: 'gemini-3.1-flash',
+  config: {
+    responseMimeType: "application/json",
+    responseSchema: {
+      type: "OBJECT",
+      properties: {
+        headline: { type: "STRING" },
+        subtext: { type: "STRING" },
+        cta: { type: "STRING" },
+        brandPaletteColors: {
+          type: "ARRAY",
+          items: { type: "STRING" }
+        }
+      },
+      required: ["headline", "subtext", "cta", "brandPaletteColors"]
+    }
+  },
+  contents: "Write poster copy for a new retro sports watch."
+});
+
+const result = JSON.parse(response.text);
+```
+
+### 🛡️ Safety Configurations
+Fine-tune threshold levels to ensure complex creative prompts (like cinematic battle staging or dramatic action shots) are never blocked by false positives.
 ```javascript
 const safetySettings = [
   { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-  { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" }
+  { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+  { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
 ];
 ```
 
 ---
 
-## 5. Current Model Reference (2025/2026) 🤖
+## 6. Current Model Reference (Gemini 3.1 Era) 🤖
 
-### Text / Multimodal (generateContent)
-| Model ID | Use Case |
-|---|---|
-| `gemini-2.5-pro` | Best reasoning, complex tasks, 1M ctx |
-| `gemini-2.5-flash` | Fast + smart, best cost/perf balance |
-| `gemini-2.0-flash` | Stable, fast, multimodal default |
-| `gemini-2.0-flash-lite` | Cheapest, simple tasks |
+### 💬 Text, Vision & Reasoning
+| Model ID | Context Limit | Target Use Case |
+|---|---|---|
+| `gemini-3.1-pro` | 2,000,000 | Architect-level reasoning, long video analysis, continuity audits. |
+| `gemini-3.1-flash` | 1,000,000 | Blazing fast default, structured JSON generator, live grounding. |
+| `gemini-3.0-flash` | 1,000,000 | Legacy flash engine. |
 
-### Image Generation (generateContent with image output)
-| Model ID | Use Case |
-|---|---|
-| `gemini-2.0-flash-exp-image-generation` | Image gen via generateContent |
-| `imagen-3.0-generate-002` | Best image quality (Vertex AI only) |
+### 🎨 Visual & Motion Generation
+| Model ID | Modality | Best Use Case |
+|---|---|---|
+| `gemini-3.1-flash-image-preview` | Image | High-fidelity multi-panel storyboards, reference boards, characters. |
+| `veo-3.1-generate-preview` | Video | High-end cinematic Image-to-Video previews (5s to 10s). |
+| `veo-3.1-fast-generate-preview` | Video | Fast-draft video simulations. |
 
-### Video Generation (Veo)
-| Model ID | Use Case |
-|---|---|
-| `veo-2.0-generate-001` | Text/image to video (Vertex AI) |
-| `veo-3.0-generate-preview` | Latest Veo 3 preview |
-
-### ⚠️ Deprecated — Do NOT use
-- ~~`gemini-1.5-pro`~~ → use `gemini-2.5-pro`
-- ~~`gemini-1.5-flash`~~ → use `gemini-2.5-flash`
-- ~~`gemini-2.0-flash-exp`~~ → use `gemini-2.0-flash`
-- ~~`gemini-1.5-flash-latest`~~ → use `gemini-2.0-flash`
-
-## 6. Token Management 📊
-*   **Gemini 2.5 Pro:** 1M tokens (Architecture-scale reasoning).
-*   **Gemini 2.5 Flash:** 1M tokens (High-speed orchestration).
-*   **Gemini 2.0 Flash Lite:** Ultra-fast, low-cost for simple extraction tasks.
+### ⚠️ Deprecated Models (Avoid in Production)
+*   ~~`gemini-1.5-pro`~~ $\rightarrow$ Upgrade to `gemini-3.1-pro`
+*   ~~`gemini-1.5-flash`~~ $\rightarrow$ Upgrade to `gemini-3.1-flash`
+*   ~~`gemini-2.5-flash-image`~~ $\rightarrow$ Upgrade to `gemini-3.1-flash-image-preview`
 
 ---
 
 ## 7. Implementation Checklist
-1. [ ] Use **System Instructions** for deterministic roles.
-2. [ ] Use **JSON Mode** for all data-driven nodes.
-3. [ ] Implement **Context Caching** for the Universe Bible.
-4. [ ] Utilize **Multimodal** inputs for visual consistency checks.
-5. [ ] Define **Safety Thresholds** to avoid unintended generation blocks.
+* [x] Enforce persona configurations using **System Instructions**.
+* [x] Set `responseMimeType: "application/json"` with strict `responseSchema` for structural UI nodes.
+* [x] Ground trend-based visual generation using **Google Search Grounding**.
+* [x] Harness **Context Caching** for static assets over 32k tokens to reduce billing costs by up to 80%.
+* [x] Use `gemini-3.1-flash-image-preview` for high-quality standard image generations.
 
-*Last Updated: May 2026 — Gemini 2.5 era*
+*Last Updated: May 2026 — Gemini 3.1 & Veo 3.1 Production Specs*

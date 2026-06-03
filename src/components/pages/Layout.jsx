@@ -5,14 +5,15 @@ import { MobileNav } from '../panels/MobileNav'
 
 const FULL_BLEED_TABS = new Set([
     'home',
-    'prompt',
     'influencer',
     'forge',
     'playground',
-    'creator',
+    'avatar',
+    'living-avatar',
     'directors-cut',
     'creative-studio',
     'marketing',
+    'carousel',
     'ugc',
     'assets',
     'admin',
@@ -20,6 +21,8 @@ const FULL_BLEED_TABS = new Set([
     'settings',
     'pricing',
     'brand-voice',
+    'agent',
+    'cinematic-studio',
 ]);
 
 export function Layout({ children, activeTab, setActiveTab }) {

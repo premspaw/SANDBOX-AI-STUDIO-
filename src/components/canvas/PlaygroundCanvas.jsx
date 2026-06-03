@@ -14,7 +14,6 @@ import NanoBananaNode from '../nodes/NanoBananaNode';
 import OutputNode from '../nodes/OutputNode';
 import NeuralEdge from '../edges/NeuralEdge';
 import DirectorHUD from '../panels/DirectorHUD';
-import PromptBuilder from '../panels/PromptBuilder';
 import { SonicDock } from '../panels/SonicDock';
 import { ViewportToggle } from './ViewportToggle';
 import { FocusOverlay } from './FocusOverlay';
@@ -90,9 +89,6 @@ export const PlaygroundCanvas = () => {
 
             {/* SONIC_DOCK: Audio & Identity Controller */}
             <SonicDock />
-
-            {/* PROMPT BUILDER PANEL */}
-            <PromptBuilder />
 
             {/* DIRECTOR HUD PANEL */}
             <DirectorHUD />

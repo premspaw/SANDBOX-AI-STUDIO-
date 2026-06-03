@@ -1,36 +1,79 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
+import { Bot } from 'lucide-react'
 import { Layout } from './components/pages/Layout'
-import { PromptGenerator } from './components/panels/PromptGenerator'
 import { AssetsLibrary } from './components/panels/AssetsLibrary'
 import LandingPage from './components/pages/LandingPage'
 import AuthPage from './components/pages/AuthPage'
 import DirectorStudio from './components/pages/DirectorStudio'
 import UGC from './components/pages/UGC'
 import { InfluencerStudio } from './components/panels/InfluencerStudio'
-import { ForgeView } from './components/panels/ForgeView'
 import { PlaygroundCanvas } from './components/canvas/PlaygroundCanvas'
 import { AssetManager } from './components/panels/AssetManager'
 import MarketingStudio from './components/pages/MarketingStudio'
+import CarouselStudio from './components/pages/CarouselStudio'
 import SettingsPage from './components/pages/SettingsPage'
 import PricingPage from './components/pages/PricingPage'
 import BrandVoicePage from './components/pages/BrandVoicePage'
 import AgentPage from './components/pages/AgentPage'
+import AvatarStudio from './components/pages/AvatarStudio'
+import LivingAvatar from './components/pages/LivingAvatar'
+import CinematicStudio from './components/cinemaStudio/CinematicStudio'
 import { supabase } from './lib/supabase'
 import { initFaviconAnimation } from './utils/favicon'
 import { Toast } from './components/common/Toast'
 import { useAppStore } from './store'
 import { X } from 'lucide-react'
 
+// Beautiful, futuristic stand-by placeholder for the new Avatar Studio
+function AvatarPlaceholder() {
+  return (
+    <div className="h-full w-full flex flex-col items-center justify-center bg-[#0a0a0a] text-white p-6 relative font-sans overflow-hidden">
+      {/* Background radial glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
+      
+      <div className="max-w-md w-full text-center space-y-6 z-10">
+        <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-xl shadow-emerald-950/50 animate-pulse">
+          <Bot className="w-10 h-10 text-white" />
+        </div>
+        
+        <div className="space-y-2">
+          <span className="text-[10px] font-black uppercase tracking-[0.25em] bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 px-3 py-1 rounded-full">
+            System Standby
+          </span>
+          <h2 className="text-3xl font-black italic uppercase tracking-tighter bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent mt-2">
+            Avatar Studio
+          </h2>
+          <p className="text-white/40 text-xs leading-relaxed max-w-sm mx-auto font-medium">
+            ForgeView has been successfully deleted. The system is fully primed and waiting for your command to create the new Avatar and Character Creator!
+          </p>
+        </div>
+        
+        {/* Futuristic Status Bar */}
+        <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-4 flex items-center justify-between text-left">
+          <div>
+            <p className="text-[9px] font-black uppercase text-white/20 tracking-wider">Awaiting Directives</p>
+            <p className="text-[11px] font-bold text-white/60 mt-0.5">Ready to execute blueprint</p>
+          </div>
+          <span className="flex h-2 w-2 relative">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const FULL_HEIGHT_TABS = new Set([
   'home',
-  'prompt',
   'influencer',
-  'forge',
   'playground',
-  'creator',
+  'avatar',
+  'living-avatar',
   'directors-cut',
   'creative-studio',
   'marketing',
+  'carousel',
   'ugc',
   'admin',
   'auth',
@@ -38,6 +81,7 @@ const FULL_HEIGHT_TABS = new Set([
   'pricing',
   'brand-voice',
   'agent',
+  'cinematic-studio',
 ])
 
 function App() {
@@ -101,8 +145,8 @@ function App() {
 
   const handleEnterStudio = () => {
     if (user) {
-      // Already logged in, go directly to creator
-      setActiveTab('creator')
+      // Already logged in, go directly to avatar creator
+      setActiveTab('avatar')
     } else {
       // Not logged in, show auth page
       setActiveTab('auth')
@@ -111,7 +155,7 @@ function App() {
 
   const handleAuthSuccess = (authUser) => {
     setUser(authUser)
-    setActiveTab('creator')
+    setActiveTab('avatar')
   }
 
   if (!authChecked) return null; // wait for session check
@@ -119,7 +163,6 @@ function App() {
   const tabComponents = {
     home: <LandingPage onEnter={handleEnterStudio} onPricing={() => setActiveTab('pricing')} />,
     auth: <AuthPage onAuthSuccess={handleAuthSuccess} />,
-    prompt: <PromptGenerator />,
     influencer: <InfluencerStudio setActiveTab={setActiveTab} />,
     assets: (
       <AssetsLibrary
@@ -127,19 +170,21 @@ function App() {
         onSelectReference={() => setActiveTab('influencer')}
       />
     ),
-    creator: <ForgeView onComplete={() => setActiveTab('directors-cut')} />,
+    avatar: <AvatarStudio />,
+    'living-avatar': <LivingAvatar />,
     'directors-cut': <PlaygroundCanvas />,
     'creative-studio': <DirectorStudio />,
     marketing: <MarketingStudio />,
+    carousel: <CarouselStudio userId={userProfile?.id} />,
     ugc: <UGC />,
-    forge: <ForgeView onComplete={() => setActiveTab('directors-cut')} />,
-    playground: <PlaygroundCanvas />,
     admin: <AssetManager />,
     settings: <SettingsPage />,
     pricing: <PricingPage />,
     'brand-voice': <BrandVoicePage />,
     'agent': <AgentPage />,
+    'cinematic-studio': <CinematicStudio />,
   }
+
 
   const getContainerClass = () => {
     if (activeTab === 'settings' || activeTab === 'pricing' || activeTab === 'brand-voice') {

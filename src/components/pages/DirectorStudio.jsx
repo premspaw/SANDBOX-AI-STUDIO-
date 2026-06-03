@@ -743,7 +743,12 @@ export default function DirectorStudio() {
             const res = await fetch(`${API_BASE}/api/upload-asset`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: base64, type, prompt: promptText })
+                body: JSON.stringify({
+                    data: base64,
+                    type,
+                    prompt: promptText,
+                    userId: useAppStore.getState().userProfile?.id || null
+                })
             });
             if (!res.ok) throw new Error(res.statusText);
             const { url: gcsUrl } = await res.json();

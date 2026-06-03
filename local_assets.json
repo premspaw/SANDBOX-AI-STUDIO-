@@ -1,0 +1,138 @@
+[
+  {
+    "id": 106,
+    "name": "{\"name\":\"2D TO 3D PLAN\",\"prompt\":\"Ultra-realistic 3D floor plan, top-down axonometric view with slight angle, based exactly on the provided 2D floor plan layout  PER THE PHOTO ATTACHED 2D PLANE, maintaining identical room positions, walls, doors, and proportions. Single-floor luxury layout with entrance at the bottom leading into a living room, followed by dining and kitchen areas, with two bedrooms on the right side, a shared bathroom between them, and pantry and utility spaces near the kitchen. Apply a high-end dark luxury material palette. All walls are finished in matte black or deep charcoal gray, creating a bold architectural contrast. Floors combine polished white marble in the main living, dining, and kitchen areas with warm herringbone wood flooring inside the bedrooms Furniture uses rich neutral tones with dark upholstery, layered fabrics, and subtle textures. Add brushed brass or muted gold accents for a premium feel. Lighting is warm and cinematic, with strong contrast: integrated cove lighting along walls, soft LED strips highlighting edges, warm ambient glow inside rooms and subtle reflections on marble surfaces. Ensure lighting enhances depth and creates a high-end hotel atmosphere. Walls are cut in dollhouse style (half-height) to reveal interiors clearly while emphasizing the dark wall finishes. Maintain clean geometry, sharp edges, and accurate proportions. Keep composition centered on a vertical 3:4 canvas with balanced margins. Include minimal, elegant room labels: LIVING ROOM, DINING, KITCHEN, BEDROOM 1, BEDROOM 2, BATHROOM, PANTRY, UTILITY as  PER THE PHOTO ATTACHED . No distortion, no clutter, no over-stylization. Clean, dramatic, high-contrast presentation, premium real estate style, portfolio-quality render. \\n<\",\"aspect\":\"9/16\",\"category\":\"realestate\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778751803613.jpeg",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-14T09:43:48.278+00:00"
+  },
+  {
+    "id": "tpl_rec_1779996382786_fuzy2",
+    "name": "{\"name\":\"AROMATIC CHICKEN BIRYANI\",\"prompt\":\"Capture a vibrant plate of chicken biryani, featuring fragrant basmati rice layered with tender, spiced chicken, garnished with fresh mint leaves. Use natural lighting for a warm glow, shot from a 45-degree angle on a rustic wooden surface, with a blurred background of subtle spices and garnishes. Adjust settings for a slight depth of field.\",\"aspect\":\"16/9\",\"category\":\"food\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778255940778.png",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-28T19:26:22.786Z"
+  },
+  {
+    "id": "tpl_rec_1779996382786_d76l9",
+    "name": "{\"name\":\"AROMA-INFUSED CHICKEN BIRYANI\",\"prompt\":\"Aromatic chicken biryani served in a wide, white bowl, topped with fresh mint leaves and golden-brown marinated chicken. Natural light enhances the vibrant colors at golden hour. Captured from a 45-degree angle, with a soft, rustic fabric underneath and subtle wooden background details, using a 50mm lens for a slightly shallow depth of field.\",\"aspect\":\"16/9\",\"category\":\"food\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778256458060.png",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-28T19:26:22.786Z"
+  },
+  {
+    "id": "tpl_rec_1779996382786_o679k",
+    "name": "{\"name\":\"AROMATIC CHICKEN BIRYANI\",\"prompt\":\"A vibrant bowl of Chicken Biryani, showcasing layered basmati rice and tender spiced chicken pieces, garnished with fresh mint. The scene is warm and inviting with golden hour lighting, shot at a 45-degree angle. The textured wooden surface contrasts with the dish, while soft bokeh highlights exotic spices in the background. Captured with a 50mm lens, shallow depth of field.\",\"aspect\":\"16/9\",\"category\":\"food\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778257536551.png",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-28T19:26:22.786Z"
+  },
+  {
+    "id": "tpl_rec_1779996382786_o6xco",
+    "name": "{\"name\":\"1778263620091\",\"prompt\":\"Beautiful food photography of gourmet dish, professional lighting, cinematic, 4K resolution, photorealistic\",\"aspect\":\"16/9\",\"category\":\"food\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778263620091.png",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-28T19:26:22.786Z"
+  },
+  {
+    "id": "tpl_rec_1779996382786_pryx1",
+    "name": "{\"name\":\"CLASSIC CHEESEBURGER\",\"prompt\":\"A vibrant cheeseburger plated on a dark ceramic dish. The burger is layered with a juicy beef patty, melted cheese, fresh vegetables including lettuce, tomato, and cucumber, topped with purple onion rings. Shot at a 45-degree angle during golden hour, with soft natural light highlighting the textures. Shallow depth of field, 85mm lens.\",\"aspect\":\"16/9\",\"category\":\"food\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778263987954.png",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-28T19:26:22.786Z"
+  },
+  {
+    "id": "tpl_rec_1779996382786_c5wrb",
+    "name": "{\"name\":\"INDULGENT SOUTH INDIAN PLATTER\",\"prompt\":\"A vibrant arrangement on a banana leaf showcasing steamed basmati rice, colorful curries, crispy papad, and creamy raita. The scene is lit with soft, natural light for an inviting feel, captured at a 45-degree angle using an 85mm lens to highlight textures. Dark wooden background adds warmth.\",\"aspect\":\"16/9\",\"category\":\"food\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778266686054.png",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-28T19:26:22.786Z"
+  },
+  {
+    "id": "tpl_rec_1779996382786_fgnfk",
+    "name": "{\"name\":\"AUTHENTIC FISH THALI\",\"prompt\":\"A traditional thali featuring a beautifully grilled fish atop a bed of fluffy white rice, accompanied by vibrant spiced curry and creamy dal. Captured in golden hour lighting, this image showcases a 45-degree angle from above on a rustic wooden surface, with lush greenery subtly blurred in the background. Use an 85mm lens for a warm, inviting feel.\",\"aspect\":\"16/9\",\"category\":\"food\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778323715126.png",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-28T19:26:22.786Z"
+  },
+  {
+    "id": "tpl_rec_1779996382786_cqq0e",
+    "name": "{\"name\":\"SOUTH INDIAN THALI\",\"prompt\":\"A vibrant South Indian thali featuring steamed rice, sambar, rasam, beans poriyal, and payasam, elegantly arranged on a banana leaf. Soft, warm lighting enhances the scene, with a 45-degree camera angle to capture the intricate details. A wooden table surface and a subtle textured background create an inviting atmosphere.\",\"aspect\":\"16/9\",\"category\":\"food\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778323883942.png",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-28T19:26:22.786Z"
+  },
+  {
+    "id": "tpl_rec_1779996382786_7sv95",
+    "name": "{\"name\":\"INDIAN THALI FEAST\",\"prompt\":\"A vibrant Indian thali featuring a variety of colorful curries, fluffy basmati rice, and warm roti, elegantly arranged on a brass plate. The scene is illuminated by soft golden hour lighting, with a shallow depth of field to accentuate the dish. Captured at a 45-degree angle on a rustic wooden table, with a blurred greenery background.\",\"aspect\":\"16/9\",\"category\":\"food\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778323990381.png",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-28T19:26:22.786Z"
+  },
+  {
+    "id": "tpl_rec_1779996382786_g7s6y",
+    "name": "{\"name\":\"INDIAN THALI FEAST\",\"prompt\":\"A vibrant Indian thali featuring fluffy basmati rice, colorful curries, and golden roti. Styled on a traditional silver platter, with fresh cilantro garnish. Warm, natural lighting enhances the rich hues, captured at a 45-degree angle. A wooden surface and soft blurred background provide a rustic touch. Shot with a 50mm lens, achieving a shallow depth of field.\",\"aspect\":\"16/9\",\"category\":\"food\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778324008865.png",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-28T19:26:22.786Z"
+  },
+  {
+    "id": "tpl_rec_1779996382786_ygm5z",
+    "name": "{\"name\":\"INDIAN THALI FEAST\",\"prompt\":\"An inviting thali platter filled with colorful curries, fluffy rice, naan, and chapati arranged on a rustic wooden surface. Warm, golden hour lighting enhances the vibrant colors of the dishes. Capture at a 45-degree angle with an 85mm lens to emphasize depth and detail in a cozy, atmospheric setting.\",\"aspect\":\"16/9\",\"category\":\"food\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778324346359.png",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-28T19:26:22.786Z"
+  },
+  {
+    "id": "tpl_rec_1779996382786_x204q",
+    "name": "{\"name\":\"MASALA CHAI ELIXIR\",\"prompt\":\"A clear glass mug filled with rich, creamy masala chai, set on a dark slate surface. Surrounding the mug are cinnamon sticks, star anise, and cardamom pods. Soft, warm lighting enhances the aromatic spices and steam rising above the cup, captured from a 45-degree angle with a 50mm lens, shallow depth of field.\",\"aspect\":\"16/9\",\"category\":\"food\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778325606051.png",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-28T19:26:22.786Z"
+  },
+  {
+    "id": "tpl_rec_1779996382786_8lidu",
+    "name": "{\"name\":\"SPICY FISH PLATTER\",\"prompt\":\"A beautifully plated dish featuring a crispy, spiced fish fry nestled beside fluffy steamed rice, vibrant veg dal, and rich paneer curry. Shot in moody studio side-light, 45-degree angle. The metallic plate rests on a dark surface, with hints of green chilies and lemon pickle adding pops of color. Use an 85mm lens with a shallow depth of field.\",\"aspect\":\"16/9\",\"category\":\"food\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778326036294.png",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-28T19:26:22.786Z"
+  },
+  {
+    "id": "tpl_rec_1779996382786_dop2x",
+    "name": "{\"name\":\"SOUTH INDIAN BREAKFAST PLATTER\",\"prompt\":\"A vibrant South Indian breakfast scene featuring a golden, crispy dosa, soft idli, medu vada, and colorful sambar on a banana leaf in a dark wooden plate. Captured in warm, golden hour light at a 45-degree angle, with shallow depth of field focusing on the textures. Rustic wooden background enhances the cozy feel.\",\"aspect\":\"16/9\",\"category\":\"food\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778326269562.png",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-28T19:26:22.786Z"
+  },
+  {
+    "id": "tpl_rec_1779996382786_okuw5",
+    "name": "{\"name\":\"1778329907473\",\"prompt\":\"Beautiful food photography of gourmet dish, professional lighting, cinematic, 4K resolution, photorealistic\",\"aspect\":\"16/9\",\"category\":\"food\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778329907473.png",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-28T19:26:22.786Z"
+  },
+  {
+    "id": "tpl_rec_1779996382786_g4ndu",
+    "name": "{\"name\":\"1778332357344\",\"prompt\":\"Beautiful food photography of gourmet dish, professional lighting, cinematic, 4K resolution, photorealistic\",\"aspect\":\"16/9\",\"category\":\"food\"}",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1778332357344.png",
+    "type": "marketing_template",
+    "user_id": "local_user",
+    "created_at": "2026-05-28T19:26:22.786Z"
+  }
+]

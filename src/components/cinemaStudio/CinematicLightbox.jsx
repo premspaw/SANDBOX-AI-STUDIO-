@@ -1,0 +1,573 @@
+import React, { useRef, useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { X, Loader2, Zap, Grid, Video, Image as ImageIcon, Pencil, Download, Trash2, Palette, Sparkles, Film } from 'lucide-react';
+import { cn } from '../../lib/utils';
+import { useAppStore } from '../../store';
+import { resolveUrl } from '../../config/apiConfig';
+
+export function CinematicLightbox({
+  lightboxItem,
+  setLightboxItem,
+  setGallery,
+  handleUpscale,
+  handleGenerateAnglesGrid,
+  handleDownload,
+  handleDeleteItem,
+  setShowInpaint,
+  setShowStoryboard,
+  upscalingItems,
+  setFirstFrameImage,
+  setFirstFramePreview,
+  setLastFrameImage,
+  setLastFramePreview,
+  userId
+}) {
+  // 3x3 Grid Overlay & Crop Interactive States
+  const gridImgRef = useRef(null);
+  const gridContainerRef = useRef(null);
+  const [overlayStyle, setOverlayStyle] = useState({});
+
+  // Edit Story States
+  const [showEditStoryModal, setShowEditStoryModal] = useState(false);
+  const [storyEditInstruction, setStoryEditInstruction] = useState('');
+  const [isEditingStory, setIsEditingStory] = useState(false);
+
+  // Edit Story Panel Handler using Gemini
+  const handleEditStory = async () => {
+    if (!storyEditInstruction.trim() || !lightboxItem?.url) return;
+    setIsEditingStory(true);
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) showToast("Regenerating image using Gemini...", "info");
+
+    try {
+      const spendResult = await useAppStore.getState().spendShorts(userId, 2, 'image_upscale_4k'); // deduct 2 credits for edit
+      if (!spendResult.success) {
+        setIsEditingStory(false);
+        setShowEditStoryModal(false);
+        if (spendResult.reason === 'unauthenticated') {
+          useAppStore.getState().setShowingAuthModal(true);
+        } else {
+          useAppStore.getState().setActiveTab('pricing');
+        }
+        return;
+      }
+
+      const prompt = `REGENERATE / EDIT IMAGE:
+Edit this image according to this brief/instruction: "${storyEditInstruction}".
+STRICT RULE: Keep the exact same subject identity, scene structure, lighting, and composition. Only apply the requested change. 
+[Subject and Context: ${lightboxItem.prompt || 'Cinematic photo'}]`;
+
+      const payload = {
+        model: 'gemini-3.1-flash-image-preview',
+        prompt: prompt,
+        aspect_ratio: lightboxItem.aspect || '16:9',
+        referenceImages: [lightboxItem.url],
+        userId
+      };
+
+      const resp = await fetch('http://localhost:3002/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.message || errData.error || "Regeneration failed");
+      }
+      const data = await resp.json();
+
+      if (data.url) {
+        const newItem = {
+          id: Date.now(),
+          type: 'image',
+          url: data.url,
+          prompt: `${lightboxItem.prompt} (Edited: ${storyEditInstruction})`,
+          engine: `${lightboxItem.engine} (Edited)`,
+          aspect: lightboxItem.aspect || "16:9",
+          ts: Date.now()
+        };
+
+        setGallery(prev => [newItem, ...prev]);
+        setLightboxItem(newItem);
+
+        if (showToast) showToast("Image successfully edited & saved to gallery!", "success");
+        setShowEditStoryModal(false);
+        setStoryEditInstruction('');
+      } else {
+        throw new Error("No URL returned from server.");
+      }
+    } catch (err) {
+      console.error("Regeneration failed:", err);
+      if (showToast) showToast(`Edit failed: ${err.message}`, "error");
+    } finally {
+      setIsEditingStory(false);
+    }
+  };
+
+  const getRenderedImageBounds = () => {
+    const img = gridImgRef.current;
+    const container = gridContainerRef.current;
+    if (!img || !container) return null;
+    const containerW = container.clientWidth;
+    const containerH = container.clientHeight;
+    const natW = img.naturalWidth;
+    const natH = img.naturalHeight;
+    if (!natW || !natH) return null;
+    const scale = Math.min(containerW / natW, containerH / natH);
+    const renderedW = natW * scale;
+    const renderedH = natH * scale;
+    const offsetX = (containerW - renderedW) / 2;
+    const offsetY = (containerH - renderedH) / 2;
+    return { offsetX, offsetY, renderedW, renderedH };
+  };
+
+  const updateOverlay = () => {
+    const bounds = getRenderedImageBounds();
+    if (bounds) {
+      setOverlayStyle({
+        position: 'absolute',
+        left: `${bounds.offsetX}px`,
+        top: `${bounds.offsetY}px`,
+        width: `${bounds.renderedW}px`,
+        height: `${bounds.renderedH}px`,
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (lightboxItem && lightboxItem.type === 'image') {
+      const timer = setTimeout(updateOverlay, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [lightboxItem]);
+
+  useEffect(() => {
+    window.addEventListener('resize', updateOverlay);
+    return () => window.removeEventListener('resize', updateOverlay);
+  }, []);
+
+  const handleCellClick = async (row, col) => {
+    const shotNumber = (row * 3) + col + 1;
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) showToast(`Extracting Angle ${shotNumber}...`, "info");
+
+    // Load secure CORS-safe proxied version in background to avoid browser canvas taint
+    const loadProxiedImage = () => {
+      return new Promise((resolve, reject) => {
+        const tempImg = new window.Image();
+        tempImg.crossOrigin = "anonymous";
+        tempImg.onload = () => resolve(tempImg);
+        tempImg.onerror = (err) => reject(new Error("Failed to load secure proxy image."));
+        tempImg.src = resolveUrl(lightboxItem.url);
+      });
+    };
+
+    try {
+      const img = await loadProxiedImage();
+      const cellW = img.naturalWidth / 3;
+      const cellH = img.naturalHeight / 3;
+      const canvas = document.createElement('canvas');
+      
+      // Slightly inset the crop to avoid black border artifacts
+      const insetX = cellW * 0.01;
+      const insetY = cellH * 0.01;
+      const targetW = cellW - (insetX * 2);
+      const targetH = cellH - (insetY * 2);
+
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, (col * cellW) + insetX, (row * cellH) + insetY, targetW, targetH, 0, 0, targetW, targetH);
+      const croppedUrlBase64 = canvas.toDataURL('image/jpeg', 0.9);
+
+      const resp = await fetch('http://localhost:3002/api/save-asset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          imageData: croppedUrlBase64, 
+          fileName: `crop_${Date.now()}.png`,
+          userId: userId
+        })
+      });
+      const data = await resp.json();
+      const url = data.url || data.path || croppedUrlBase64;
+      
+      const newItem = {
+        id: Date.now(),
+        type: 'image',
+        url: url,
+        prompt: `${lightboxItem.prompt ? lightboxItem.prompt.split('.')[0] : 'Subject'} - Extracted Angle ${shotNumber}`,
+        engine: `${lightboxItem.engine} (Angle ${shotNumber})`,
+        aspect: lightboxItem.aspect || "16:9",
+        ts: Date.now()
+      };
+
+      setGallery(prev => [newItem, ...prev]);
+      setLightboxItem(newItem);
+      if (showToast) showToast(`Angle ${shotNumber} successfully saved to gallery!`, "success");
+
+      // Auto-trigger 2K upscale / refinement immediately as a new image!
+      setTimeout(() => {
+        handleUpscale(newItem);
+      }, 300);
+    } catch (err) {
+      console.error("Crop save failed:", err);
+      // Fallback: try to crop from current DOM image directly
+      try {
+        const img = gridImgRef.current;
+        if (!img) throw new Error("Reference image not loaded.");
+        const cellW = img.naturalWidth / 3;
+        const cellH = img.naturalHeight / 3;
+        const canvas = document.createElement('canvas');
+        canvas.width = cellW;
+        canvas.height = cellH;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, col * cellW, row * cellH, cellW, cellH, 0, 0, cellW, cellH);
+        const croppedUrlBase64 = canvas.toDataURL('image/jpeg', 0.9);
+
+        const newItem = {
+          id: Date.now(),
+          type: 'image',
+          url: croppedUrlBase64,
+          prompt: `${lightboxItem.prompt ? lightboxItem.prompt.split('.')[0] : 'Subject'} - Extracted Angle ${shotNumber}`,
+          engine: `${lightboxItem.engine} (Angle ${shotNumber})`,
+          aspect: lightboxItem.aspect || "16:9",
+          ts: Date.now()
+        };
+        setGallery(prev => [newItem, ...prev]);
+        setLightboxItem(newItem);
+        if (showToast) showToast(`Angle ${shotNumber} extracted to gallery (session fallback).`, "success");
+
+        // Auto-trigger 2K upscale / refinement immediately as a new image on fallback!
+        setTimeout(() => {
+          handleUpscale(newItem);
+        }, 300);
+      } catch (fallbackErr) {
+        console.error("Fallback crop failed:", fallbackErr);
+        if (showToast) showToast("Extraction failed.", "error");
+      }
+    }
+  };
+
+  if (!lightboxItem) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4"
+      onClick={() => setLightboxItem(null)}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="relative max-w-5xl w-full max-h-[90vh] flex flex-col md:flex-row bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden shadow-2xl animate-glass-glow"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Close */}
+        <button
+          onClick={() => setLightboxItem(null)}
+          className="absolute top-3 right-3 z-50 w-8 h-8 bg-black/60 border border-white/10 rounded-full flex items-center justify-center text-white/60 hover:text-white transition-colors"
+        >
+          <X size={14} />
+        </button>
+
+        {/* Media Content Area (Left) */}
+        <div className="flex-1 bg-black flex items-center justify-center overflow-hidden relative min-h-[320px] md:min-h-[500px]">
+          {lightboxItem.type === 'image' ? (
+            <div ref={gridContainerRef} className="relative w-full h-full flex items-center justify-center p-4">
+              <img
+                src={lightboxItem.url}
+                alt={lightboxItem.prompt}
+                ref={gridImgRef}
+                onLoad={updateOverlay}
+                className={cn(
+                  "max-h-[75vh] object-contain shadow-2xl rounded-2xl bg-black/40",
+                  lightboxItem.aspect === '9:16' ? 'aspect-[9/16]' : lightboxItem.aspect === '1:1' ? 'aspect-square' : 'aspect-video w-full'
+                )}
+              />
+              {(lightboxItem.prompt?.includes('Grid') || lightboxItem.engine?.includes('Grid')) && overlayStyle.width && (
+                <div style={overlayStyle} className="z-10 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(200,241,53,0.15)]">
+                  <div className="w-full h-full grid grid-cols-3 grid-rows-3" style={{ pointerEvents: 'auto' }}>
+                    {[...Array(9)].map((_, i) => (
+                      <div key={i} onClick={() => handleCellClick(Math.floor(i / 3), i % 3)}
+                        className="cursor-pointer border border-white/5 transition-all flex items-center justify-center group/cell hover:bg-[#c8f135]/15 active:bg-[#c8f135]/30">
+                        <span className="text-[8px] font-black text-[#c8f135]/60 md:text-white/0 md:group-hover/cell:text-[#c8f135]/90 uppercase tracking-widest px-1.5 py-0.5 rounded bg-black/60 md:bg-transparent group-hover/cell:scale-110 transition-transform">
+                          {i + 1}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {upscalingItems[lightboxItem.id] && (
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-md z-30 flex flex-col items-center justify-center space-y-4 animate-fade-in">
+                  <Loader2 size={32} className="text-fuchsia-400 animate-spin" />
+                  <span className="text-sm font-black uppercase tracking-[0.3em] text-fuchsia-400 animate-pulse">Upscaling to 2K...</span>
+                  <span className="text-[10px] text-white/40 font-medium">Re-sketching fine photographic details & micro-textures</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <video
+              src={lightboxItem.url}
+              controls
+              autoPlay
+              loop
+              playsInline
+              className={cn(
+                "max-h-[75vh] object-contain shadow-2xl rounded-2xl",
+                lightboxItem.aspect === '9:16' ? 'aspect-[9/16]' : lightboxItem.aspect === '1:1' ? 'aspect-square' : 'aspect-video w-full'
+              )}
+            />
+          )}
+        </div>
+
+        {/* Meta & Right-side controls panel (Right) */}
+        <div className="w-full md:w-[340px] shrink-0 p-5 border-t md:border-t-0 md:border-l border-white/5 bg-zinc-950 flex flex-col justify-between overflow-y-auto custom-scrollbar gap-5">
+          <div className="space-y-4">
+            {/* Top Tags */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest bg-fuchsia-500/10 border border-fuchsia-500/25 text-fuchsia-400">
+                {lightboxItem.engine}
+              </span>
+              <span className="px-2 py-0.5 rounded-md text-[8px] font-mono bg-white/5 border border-white/5 text-white/40">
+                {lightboxItem.aspect}
+              </span>
+              <span className="text-[8px] font-mono text-gray-600 ml-auto">
+                {new Date(lightboxItem.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+
+            {/* Prompt Text display */}
+            <div className="space-y-1">
+              <label className="text-[8px] font-black text-gray-500 uppercase tracking-widest block">Generation Prompt</label>
+              <p className="text-[10px] text-white/70 leading-relaxed font-medium bg-black/40 border border-white/5 p-3 rounded-xl select-all font-mono">
+                "{lightboxItem.prompt}"
+              </p>
+            </div>
+
+            {/* Interactive hint for 3x3 sheets */}
+            {(lightboxItem.prompt?.includes('Grid') || lightboxItem.engine?.includes('Grid')) && (
+              <div className="p-3 bg-[#c8f135]/5 border border-[#c8f135]/15 rounded-xl text-[9px] leading-relaxed text-[#c8f135]/90 animate-pulse">
+                <span className="font-black uppercase tracking-wider block mb-0.5">💡 Interactive Extraction</span>
+                This is a 3x3 multi-angle grid. Click directly on any of the 9 cells on the left to extract it as a standalone high-fidelity image in your gallery.
+              </div>
+            )}
+          </div>
+
+          {/* Actions Button List */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-white/5 pb-1">
+              <span className="text-[8px] font-black text-white/40 uppercase tracking-widest block">Studio Controls</span>
+              <span className="text-[8px] font-mono text-white/20">Production Suite v1.2</span>
+            </div>
+
+            {/* CATEGORY 1: GENERATIVE REFINEMENTS */}
+            {lightboxItem.type === 'image' && (
+              <div className="space-y-2">
+                <div className="text-[7.5px] font-bold text-white/30 uppercase tracking-wider">Generative Refinements</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleUpscale(lightboxItem)}
+                    disabled={upscalingItems[lightboxItem.id]}
+                    className={cn(
+                      "flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border w-full",
+                      upscalingItems[lightboxItem.id]
+                        ? "bg-fuchsia-500/10 border-fuchsia-500/25 text-fuchsia-400 animate-pulse"
+                        : "bg-fuchsia-500/5 hover:bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-300 hover:text-fuchsia-200 active:scale-[0.98]"
+                    )}
+                  >
+                    {upscalingItems[lightboxItem.id] ? (
+                      <>
+                        <Loader2 size={10} className="animate-spin text-fuchsia-400" />
+                        <span>Refining...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap size={10} className="text-fuchsia-400 fill-fuchsia-400/20" />
+                        <span>Upscale 2K</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handleGenerateAnglesGrid(lightboxItem)}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-[#c8f135]/5 hover:bg-[#c8f135]/15 border border-[#c8f135]/20 hover:border-[#c8f135]/40 text-[#c8f135] active:scale-[0.98] transition-all w-full"
+                    title="Generate a 3x3 Multi-Angle cinematic sheet of this image"
+                  >
+                    <Grid size={10} className="text-[#c8f135]" />
+                    <span>Angles (5⚡)</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* CATEGORY 2: DIRECTOR TIMELINE SETUP */}
+            {lightboxItem.type === 'image' && (
+              <div className="space-y-2">
+                <div className="text-[7.5px] font-bold text-white/30 uppercase tracking-wider">Director Timeline Setup</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      setFirstFrameImage(lightboxItem.url);
+                      setFirstFramePreview(lightboxItem.url);
+                      setLightboxItem(null);
+                      const showToast = useAppStore.getState().showToast;
+                      if (showToast) showToast("Set as First Frame (FF)!", "success");
+                    }}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 hover:border-white/10 text-white/60 hover:text-white active:scale-[0.98] transition-all w-full"
+                  >
+                    <Video size={10} className="text-white/40" /> Use as FF
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setLastFrameImage(lightboxItem.url);
+                      setLastFramePreview(lightboxItem.url);
+                      setLightboxItem(null);
+                      const showToast = useAppStore.getState().showToast;
+                      if (showToast) showToast("Set as Last Frame (LF)!", "success");
+                    }}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 hover:border-white/10 text-white/60 hover:text-white active:scale-[0.98] transition-all w-full"
+                  >
+                    <Video size={10} className="text-white/40" /> Use as LF
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setFirstFrameImage(lightboxItem.url);
+                      setFirstFramePreview(lightboxItem.url);
+                      setLightboxItem(null);
+                      const showToast = useAppStore.getState().showToast;
+                      if (showToast) showToast("Set as Reference Style Guided Image!", "success");
+                    }}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 hover:border-white/10 text-white/60 hover:text-white active:scale-[0.98] transition-all w-full col-span-2"
+                  >
+                    <ImageIcon size={10} className="text-white/40" /> Use as Style Reference
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* CATEGORY 3: ADVANCED PRODUCTION SUITES */}
+            {lightboxItem.type === 'image' && (
+              <div className="space-y-2">
+                <div className="text-[7.5px] font-bold text-white/30 uppercase tracking-wider">Advanced Production Suites</div>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => setShowStoryboard(true)}
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/40 text-emerald-400 hover:text-emerald-300 active:scale-[0.99] transition-all w-full"
+                  >
+                    <Film size={11} className="text-emerald-400" />
+                    <span>Storyboard Console</span>
+                  </button>
+
+                  <button
+                    onClick={() => { setStoryEditInstruction(''); setShowEditStoryModal(true); }}
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20 hover:border-blue-500/40 text-blue-400 hover:text-blue-300 active:scale-[0.99] transition-all w-full"
+                  >
+                    <Palette size={11} className="text-blue-400" />
+                    <span>Narrative Edit Panel</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowInpaint(true)}
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest bg-purple-500/5 hover:bg-purple-500/10 border border-purple-500/20 hover:border-purple-500/40 text-purple-400 hover:text-purple-300 active:scale-[0.99] transition-all w-full"
+                  >
+                    <Pencil size={11} className="text-purple-400" />
+                    <span>Inpaint Brush Editor</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* CATEGORY 4: FILE UTILITIES */}
+            <div className="space-y-2">
+              <div className="text-[7.5px] font-bold text-white/30 uppercase tracking-wider">File Utilities</div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => handleDownload(resolveUrl(lightboxItem.url), lightboxItem.type, lightboxItem.id)}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-[#c8f135]/5 hover:bg-[#c8f135]/15 border border-[#c8f135]/20 text-[#c8f135] hover:text-white active:scale-[0.98] transition-all w-full"
+                >
+                  <Download size={10} /> Download
+                </button>
+
+                <button
+                  onClick={(e) => handleDeleteItem(lightboxItem.id, e)}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-red-500/5 hover:bg-red-500/15 border border-red-500/20 text-red-400 hover:text-red-300 active:scale-[0.98] transition-all w-full"
+                >
+                  <Trash2 size={10} className="text-red-400" /> Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* EDIT PANEL INSTRUCTION MODAL */}
+      {showEditStoryModal && (
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
+          <div onClick={() => setShowEditStoryModal(false)} className="absolute inset-0 bg-black/85 backdrop-blur-md" />
+          <div className="relative w-full max-w-md bg-[#0a0a0a] border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col z-[100001] animate-glass-glow" onClick={e => e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+              <h3 className="text-[10px] font-black text-white flex items-center gap-1.5 uppercase tracking-widest">
+                <Palette className="w-3.5 h-3.5 text-blue-400" /> Edit Story Panel
+              </h3>
+              <button onClick={() => setShowEditStoryModal(false)} className="p-1 hover:bg-white/10 rounded-full transition-colors">
+                <X size={14} className="text-gray-400" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <div className="p-2.5 bg-blue-500/5 border border-blue-500/15 rounded-xl text-[9px] leading-relaxed text-white/70">
+                <span className="font-black text-blue-400 uppercase tracking-wider block mb-0.5">ℹ Narrative Regeneration</span>
+                Describe the specific change you want to apply to this shot (e.g., "Make it rain heavily", "Change shirt color to red", or "Add a glowing drone in the sky"). Gemini will regenerate this panel keeping character identity identical.
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[8px] font-black text-gray-500 uppercase tracking-widest block">Editing Instructions / Brief</label>
+                <textarea
+                  value={storyEditInstruction}
+                  onChange={e => setStoryEditInstruction(e.target.value)}
+                  placeholder="Describe the changes you want to apply..."
+                  rows={4}
+                  className="w-full bg-black border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/20 outline-none focus:border-[#D4FF00]/50 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="px-4 py-3 bg-white/[0.01] border-t border-white/5 flex justify-end gap-2">
+              <button
+                onClick={() => setShowEditStoryModal(false)}
+                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all text-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditStory}
+                disabled={isEditingStory || !storyEditInstruction.trim()}
+                className="px-3 py-1.5 bg-blue-500 hover:bg-white disabled:bg-white/10 disabled:text-white/20 text-black text-[9px] font-black uppercase tracking-wider rounded-lg transition-all flex items-center gap-1.5 font-bold"
+              >
+                {isEditingStory ? (
+                  <>
+                    <Loader2 size={10} className="animate-spin text-black" />
+                    <span>Regenerating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={10} className="text-black" />
+                    <span>Apply Edit (2⚡)</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}

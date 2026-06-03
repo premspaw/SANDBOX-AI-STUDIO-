@@ -537,7 +537,8 @@ export function InfluencerStudio({ setActiveTab }) {
                     body: JSON.stringify({
                         image: output.url,
                         script: script || 'Hello! Welcome to my channel.',
-                        bible
+                        bible,
+                        userId: useAppStore.getState().userProfile?.id || null
                     })
                 });
                 const data = await res.json();

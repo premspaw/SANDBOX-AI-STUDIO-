@@ -181,12 +181,14 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="max-w-4xl mx-auto py-6 md:py-12 px-4 md:px-6">
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-6 md:space-y-8"
-            >
+        <div className="w-full h-full overflow-y-auto custom-scrollbar relative bg-black">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#bef264]/[0.03] to-transparent pointer-events-none" />
+            <div className="w-full h-full pt-6 md:pt-8 pb-20 px-6 md:px-10 lg:px-12 relative z-10">
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="w-full max-w-[1800px] mx-auto space-y-8"
+                >
                 {/* Mobile Back Button */}
                 <button
                     onClick={() => setActiveTabGlobal('home')}
@@ -597,6 +599,7 @@ export default function SettingsPage() {
                     </div>
                 </div>
             </motion.div>
+            </div>
         </div>
     );
 }

@@ -90,7 +90,7 @@ export const cacheUniverseBible = async (bible) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: 'models/gemini-1.5-pro-002',
+                model: 'models/gemini-3.1-pro',
                 contents: [{ role: 'user', parts: [{ text: textContext }] }],
                 ttl: "3600s" // 1 hour TTL
             })
@@ -134,7 +134,7 @@ export const analyzeVideoContinuity = async (videoUrl, bible) => {
         const client = getAI();
         let contextText = formatBibleContext(bible);
         const response = await client.models.generateContent({
-            model: "gemini-1.5-pro-latest",
+            model: "gemini-3.1-pro",
             contents: [{
                 parts: [{
                     text: `Simulate a realistic Continuity Director's report for an AI-generated video. The video was generated using the following context:\n\n${contextText}\n\nPoint out 1 thing it did well, 1 minor AI artifact (like hands, background warping, or lighting flicker), and give a final verdict (Pass/Needs Revision). Keep it under 4 sentences.`
@@ -604,7 +604,7 @@ export const generateSurgicalRepair = async (originalImage, maskImage, repairPro
             const base64Mask = maskImage.includes('base64,') ? maskImage.split(',')[1] : maskImage;
 
             const result = await client.models.generateContent({
-                model: 'gemini-3-pro-image-preview',
+                model: 'gemini-3.1-flash-image-preview',
                 contents: [{
                     parts: [
                         { text: `In-paint the masked area: ${repairPrompt}. Ensure seamless blending with the surrounding pixels.` },
@@ -654,8 +654,8 @@ export const synthesizeSpeech = async (text, voice = 'Puck') => {
         const voiceName = namedVoices.includes(voice) ? voice : 'Puck';
 
         const result = await client.models.generateContent({
-            model: "gemini-2.5-pro-tts",
-            contents: [{ parts: [{ text }] }],
+            model: "gemini-2.5-flash-preview-tts",
+            contents: [{ role: 'user', parts: [{ text }] }],
             config: {
                 responseModalities: ['AUDIO'],
                 speechConfig: {
@@ -666,7 +666,7 @@ export const synthesizeSpeech = async (text, voice = 'Puck') => {
             },
         });
 
-        const data = result.response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        const data = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
         return data || null;
     } catch (err) {
         console.error("[GEMINI_TTS] Error:", err?.message || err);
@@ -801,7 +801,7 @@ export const analyzeIdentity = async (imageInput) => {
             const mimeType = meta.split(':')[1]?.split(';')[0] || 'image/png';
 
             const result = await client.models.generateContent({
-                model: 'gemini-1.5-flash-latest',
+                model: 'gemini-3.1-flash',
                 contents: [{
                     parts: [
                         { inlineData: { data, mimeType } },
@@ -850,7 +850,7 @@ export const generateDynamicAngles = async (imageInput, name) => {
             `;
 
             const result = await client.models.generateContent({
-                model: 'gemini-3-flash-preview',
+                model: 'gemini-3.1-flash',
                 contents: [{
                     parts: [
                         { inlineData: { data, mimeType } },
@@ -896,7 +896,7 @@ export const generateBackstory = async (analysis, name) => {
         // 2. Standalone Fallback
         const client = getAI();
         const result = await client.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-3.1-flash',
             contents: [{ parts: [{ text: `Generate a 100-word backstory for ${name} based on this identity analysis: ${analysis}. Be gritty, atmospheric, and professional.` }] }]
         });
         return result.response.text() || "Backstory generation failed.";
@@ -938,7 +938,7 @@ export const generateDetailMatrix = async (name, references) => {
             }
 
             const result = await client.models.generateContent({
-                model: 'gemini-3.1-pro-image-preview',
+                model: 'gemini-3.1-pro-image',
                 contents: [{ role: "user", parts }],
                 config: {
                     aspectRatio: "1:1",
@@ -977,7 +977,7 @@ export const generateStoryboardDescriptions = async (narrative, count = 4) => {
       Example output format: ["Prompt 1", "Prompt 2", ... "Prompt N"]`;
 
         const result = await client.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-3.1-flash',
             contents: [{ parts: [{ text: prompt }] }],
             config: {
                 responseMimeType: "application/json",
@@ -1047,7 +1047,7 @@ export const researchProductionContext = async (query) => {
             const client = getAI();
             const prompt = `You are a Production Researcher. Conduct deep research on: "${query}".`;
             const result = await client.models.generateContent({
-                model: "gemini-3-flash-preview",
+                model: "gemini-3.1-flash",
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
                 config: {
                     tools: [{ googleSearch: {} }]
@@ -1083,7 +1083,7 @@ export const generateThinkerSequence = async (narrative, bible = null) => {
             const bibleContext = formatBibleContext(bible);
             const prompt = `${bibleContext} Narrative Arc: "${narrative}". Return JSON sequence of nodes. Reasoning included.`;
             const result = await client.models.generateContent({
-                model: "gemini-3-flash-thinking-preview",
+                model: "gemini-3.1-pro",
                 contents: [{ parts: [{ text: prompt }] }]
             });
             const text = result.response.text();
@@ -1114,7 +1114,7 @@ export const generateDirectorSequence = async (narrative, bible = null) => {
         const bibleContext = formatBibleContext(bible);
         const prompt = `${bibleContext} Narrative: "${narrative}". Decompose into cinematic nodes JSON.`;
         const result = await client.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-3.1-flash',
             contents: [{ parts: [{ text: prompt }] }],
             config: { responseMimeType: "application/json" }
         });
@@ -1146,7 +1146,7 @@ export const analyzeSceneMultimodal = async (imageInput, bible = null) => {
         const mimeType = meta.split(':')[1]?.split(';')[0] || 'image/png';
 
         const result = await client.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-3.1-flash',
             contents: [{
                 parts: [
                     { text: "Critique this cinematic scene. Format as JSON." },
@@ -1181,7 +1181,7 @@ export const expandPrompt = async (payload) => {
 
         const client = getAI();
         const result = await client.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-3.1-flash',
             contents: [
                 { parts: [{ text: SYSTEM_PROMPT_EXPANDER }] },
                 { parts: [{ text: JSON.stringify(payload) }] }
@@ -1372,7 +1372,7 @@ export async function generateUGCScript(analysis, niche, tone, directive = "", t
         Return ONLY valid JSON.`;
 
         const result = await client.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-3.1-flash',
             contents: [{ parts: [{ text: prompt }] }],
             config: { responseMimeType: "application/json" }
         });

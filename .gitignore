@@ -42,3 +42,15 @@ temp/
 .env.*
 
 gen-lang-client-*.json
+src/output.css
+
+# GCP service account credentials
+*-api-*.json
+new-zerolens-*.json
+
+# Ignore scratch directory (tracked files will remain tracked)
+scratch/
+
+# Misc generated files
+google_test_rose.png
+k.toLowerCase().includes('film')

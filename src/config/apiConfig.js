@@ -64,14 +64,14 @@ export const resolveUrl = (url) => {
 
     // ✅ FIX: Route ALL external video URLs through the backend proxy.
     // This prevents ERR_CACHE_OPERATION_NOT_SUPPORTED in Chrome for GCS/Supabase
-    if (isVideo && url.startsWith('http') && !url.includes('localhost') && !url.includes('/api/proxy/asset')) {
-        return getApiUrl(`/api/proxy/asset?url=${encodeURIComponent(url)}&cors=1`);
+    if (isVideo && url.startsWith('http') && !url.includes('localhost') && !url.includes('/api/proxy-image')) {
+        return getApiUrl(`/api/proxy-image?url=${encodeURIComponent(url)}&cors=1`);
     }
 
     // ✅ FIX: Route R2 image URLs through proxy to avoid CORS header issues
     const isR2 = url.includes('r2.dev') || url.includes('r2.cloudflarestorage.com');
-    if (isR2 && !url.includes('/api/proxy/asset')) {
-        return getApiUrl(`/api/proxy/asset?url=${encodeURIComponent(url)}&cors=1`);
+    if (isR2 && !url.includes('/api/proxy-image')) {
+        return getApiUrl(`/api/proxy-image?url=${encodeURIComponent(url)}&cors=1`);
     }
 
     // 2. Already fully qualified or data/blob

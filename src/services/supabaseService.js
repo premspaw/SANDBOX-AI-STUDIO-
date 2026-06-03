@@ -2,19 +2,47 @@ import { supabase } from '../lib/supabase';
 import { getApiUrl } from '../config/apiConfig';
 
 /**
- * Uploads a base64 image or file to Supabase Storage via Proxy.
+ * Uploads a base64 image or file to Supabase Storage.
  */
-export const uploadAsset = async (base64, characterId, slot) => {
+export const uploadAsset = async (base64, userId, slot) => {
     try {
-        const response = await fetch(getApiUrl('/api/proxy/upload'), {
+        const response = await fetch(getApiUrl('/api/upload-asset'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ base64, characterId, slot })
+            body: JSON.stringify({
+                image: base64,
+                userId: userId || 'anon',
+                type: 'image',
+                filename: `char_${slot}_${Date.now()}.png`
+            })
         });
         const data = await response.json();
-        return data.publicUrl || null;
+        return data.url || null;
     } catch (err) {
-        console.error(`Proxy upload failed for ${slot}:`, err);
+        console.error(`Upload failed for ${slot}:`, err);
+        return null;
+    }
+};
+
+/**
+ * Uploads a base64 audio file to Supabase Storage.
+ */
+export const uploadAudioAsset = async (base64, userId, filename) => {
+    try {
+        const response = await fetch(getApiUrl('/api/upload-asset'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                image: base64,
+                userId: userId || 'anon',
+                type: 'video', // Backend assets schema handles video/audio media
+                filename: filename || `voice_${Date.now()}.mp3`
+            })
+        });
+        const data = await response.json();
+        return data.url || null;
+    } catch (err) {
+        console.error(`Audio upload failed:`, err);
         return null;
     }
 };

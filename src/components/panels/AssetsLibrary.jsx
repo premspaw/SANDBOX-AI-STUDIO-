@@ -52,9 +52,20 @@ function CharacterKitCard({ character, onDirectorsCut, onDelete, onSelectReferen
         }
         setIsDeleting(true);
         try {
-            const res = await fetch(`${API}/api/delete-character/${character.id}`, { method: 'DELETE' });
-            const data = await res.json();
-            if (data.success && onDelete) onDelete(character.id);
+            if (character.isAvatarStudio) {
+                if (supabase) {
+                    const { error: dbErr } = await supabase
+                        .from('avatar_generations')
+                        .delete()
+                        .eq('id', character.id);
+                    if (dbErr) throw dbErr;
+                }
+                if (onDelete) onDelete(character.id);
+            } else {
+                const res = await fetch(`${API}/api/delete-character/${character.id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success && onDelete) onDelete(character.id);
+            }
         } catch (err) {
             console.error('Delete failed:', err);
         } finally {
@@ -175,8 +186,16 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         // Resolve user early for cache verification
         let targetUser = userProfile;
         if (!targetUser) {
-           const { data: { user: authUser } } = await supabase.auth.getUser();
-           targetUser = authUser;
+            try {
+                const { data: { user: authUser } } = await supabase.auth.getUser();
+                targetUser = authUser;
+            } catch (e) {
+                console.warn('[AssetsLibrary] Failed to fetch auth user:', e);
+            }
+        }
+
+        if (!targetUser || !targetUser.id || targetUser.id === 'null' || targetUser.id === 'undefined') {
+            targetUser = { id: 'local_user' };
         }
 
         if (!force && cachedAssets && cachedAssetsUserId === targetUser?.id) {
@@ -190,35 +209,55 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         const sharedImages = [];
         const sharedVideos = [];
         try {
-            if (!targetUser) {
-                setAssets({
-                    images: [],
-                    videos: [],
-                    models: [],
-                    upscaled: [],
-                    characters: [],
-                    landing: [],
-                    templates: []
-                });
-                setLoading(false);
-                return;
-            }
 
             // 1. Fetch images & videos via Proxy/Backend (IPv4 Fix)
             const response = await fetch(getApiUrl(`/api/list-assets?userId=${targetUser.id}`));
             const data = await response.json();
             
             if (!response.ok) throw new Error(data.error || "Failed to fetch assets");
-            const dbImages = data.images || [];
-            const dbVideos = data.videos || [];
-            const dbUpscaled = data.upscaled || [];
+            
+            const allAssets = data.assets || [];
+            const dbImages = allAssets.filter(a => a.type === 'image');
+            const dbVideos = allAssets.filter(a => a.type === 'video');
+            const dbUpscaled = allAssets.filter(a => a.type === 'upscaled' || a.type === 'upscale');
+            const dbCharacterAssets = allAssets.filter(a => a.type === 'character').map(a => {
+                return {
+                    id: a.id,
+                    type: "character",
+                    name: a.name || "Saved Character",
+                    visualStyle: a.metadata?.visualStyle || a.metadata?.style || 'Cinematic',
+                    anchorImage: a.url,
+                    url: a.url,
+                    image: a.url,
+                    date: a.date || 'Recently',
+                    isCharacter: true,
+                    isMatrix: false,
+                    isAvatarStudio: true,
+                    rawData: a
+                };
+            });
 
             // 2. Fetch characters via Proxy (IPv4 Fix)
             const charResponse = await fetch(getApiUrl(`/api/list-characters?userId=${targetUser.id}`));;
             const charData = await charResponse.json();
             const dbCharacters = charData.characters || [];
 
-            console.log(`Found: ${dbImages.length} images, ${dbVideos.length} videos, ${dbUpscaled.length} upscaled assets`);
+            // 2b. Fetch Avatar Studio generated characters from Supabase
+            let dbAvatars = [];
+            try {
+                if (supabase) {
+                    const { data: avatarData } = await supabase
+                        .from('avatar_generations')
+                        .select('*')
+                        .eq('user_id', targetUser.id)
+                        .order('created_at', { ascending: false });
+                    if (avatarData) dbAvatars = avatarData;
+                }
+            } catch (err) {
+                console.warn('[Assets Library] Failed to fetch generated avatars:', err);
+            }
+
+            console.log(`Found: ${dbImages.length} images, ${dbVideos.length} videos, ${dbUpscaled.length} upscaled assets, ${dbCharacterAssets.length} saved characters, ${dbAvatars.length} generated avatars`);
 
             // 3. Normalize characters to match your UI card format
             const normalizedCharacters = (dbCharacters || []).map(c => {
@@ -236,6 +275,29 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     isCharacter: true,
                     isMatrix: !!(c.identity_kit?.matrix || c.identityKit?.matrix),
                     rawData: c
+                };
+            });
+
+            // Normalize generated avatars from Avatar Studio
+            const normalizedAvatars = dbAvatars.map(a => {
+                return {
+                    id: a.id,
+                    type: "character",
+                    name: a.character_name || "Generated Avatar",
+                    visualStyle: a.style || 'Cinematic',
+                    anchorImage: a.output_url,
+                    url: a.output_url,
+                    image: a.output_url,
+                    date: a.created_at ? new Date(a.created_at).toISOString().split('T')[0] : 'Recently',
+                    isCharacter: true,
+                    isMatrix: false,
+                    isAvatarStudio: true,
+                    rawData: {
+                        ...a,
+                        name: a.character_name,
+                        image: a.output_url,
+                        visual_style: a.style
+                    }
                 };
             });
 
@@ -269,12 +331,32 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
             }
 
             // Merge and de-duplicate by ID (DB takes priority)
-            const finalCharacters = [...normalizedCharacters];
+            const finalCharacters = [...normalizedCharacters, ...normalizedAvatars];
+            
+            // Add explicitly saved character assets from the 'assets' table
+            (dbCharacterAssets || []).forEach(ca => {
+                if (!finalCharacters.find(fc => fc.url === ca.url || fc.id === ca.id)) {
+                    finalCharacters.unshift(ca);
+                }
+            });
+
             localCharacters.forEach(lc => {
                 if (!finalCharacters.find(dc => dc.id === lc.id)) {
                     finalCharacters.unshift(lc);
                 }
             });
+
+            // Sort all characters by date/timestamp descending (newest to top)
+            finalCharacters.sort((x, y) => {
+                const getMs = (item) => {
+                    const raw = item.rawData || {};
+                    const ts = raw.created_at || raw.timestamp || item.date || 0;
+                    if (!ts || ts === 'Recently' || ts === 'Active') return 0;
+                    return new Date(ts).getTime() || 0;
+                };
+                return getMs(y) - getMs(x);
+            });
+
 
             const newAssets = {
                 images: dbImages,
@@ -423,51 +505,50 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         <div className="h-full flex flex-col bg-[#020202] text-white font-mono">
             {/* Header */}
             {!compact && (
-                <div className="p-4 md:p-8 border-b border-white/5 flex flex-col md:flex-row items-center justify-between backdrop-blur-3xl bg-black/40 relative overflow-hidden shrink-0 gap-6">
+                <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-sm relative shrink-0">
                     <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#bef264]/20 to-transparent" />
-                    <div className="relative z-10 flex items-center gap-4 md:gap-6">
-                        <div className="p-2 md:p-3 bg-[#bef264]/10 rounded-2xl border border-[#bef264]/20 shadow-[0_0_30px_rgba(190,242,100,0.1)]">
-                            <FolderOpen className="w-6 h-6 md:w-8 md:h-8 text-[#bef264]" />
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-[#bef264]/10 rounded-xl border border-[#bef264]/20">
+                            <FolderOpen className="w-5 h-5 text-[#bef264]" />
                         </div>
                         <div>
-                            <h1 className="text-xl md:text-3xl font-black italic uppercase tracking-tighter text-metallic">
+                            <h1 className="text-base font-black italic uppercase tracking-tight text-white">
                                 Creative <span className="text-[#bef264]">Vault</span>
                             </h1>
-                            <p className="text-[8px] md:text-[10px] text-white/30 uppercase tracking-[0.3em] mt-1 font-bold">Secure_Neural_Asset_Management</p>
+                            <p className="text-[8px] text-white/30 uppercase tracking-[0.25em] font-bold">Neural_Asset_Archive</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4 md:gap-6 relative z-10 w-full md:w-auto overflow-x-auto no-scrollbar pb-2 md:pb-0">
-                        <div className={`flex items-center gap-3 px-4 md:px-5 py-2 md:py-2.5 rounded-full border backdrop-blur-md whitespace-nowrap ${isConnectedToDrive ? 'bg-[#bef264]/10 border-[#bef264]/20 text-[#bef264]' : 'bg-white/5 border-white/10 text-white/30'}`}>
-                            <Cloud className="w-3.5 h-3.5" />
-                            <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest">
-                                {isConnectedToDrive ? 'SYNC_ACTIVE' : 'LOCAL_ONLY'}
-                            </span>
+                    <div className="flex items-center gap-3">
+                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[9px] font-black uppercase tracking-widest whitespace-nowrap ${isConnectedToDrive ? 'bg-[#bef264]/10 border-[#bef264]/20 text-[#bef264]' : 'bg-white/5 border-white/10 text-white/30'}`}>
+                            <Cloud className="w-3 h-3" />
+                            {isConnectedToDrive ? 'SYNC_ACTIVE' : 'LOCAL_ONLY'}
                         </div>
 
                         {!isConnectedToDrive && (
                             <button
                                 onClick={handleConnectDrive}
-                                className="bg-white/5 hover:bg-white/10 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest border border-white/10 transition-all flex items-center gap-3 whitespace-nowrap"
+                                className="bg-white/5 hover:bg-white/10 text-white px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/10 transition-all flex items-center gap-2 whitespace-nowrap"
                             >
-                                <HardDrive className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                                CONNECT_DRIVE
+                                <HardDrive className="w-3.5 h-3.5" />
+                                Connect Drive
                             </button>
                         )}
 
                         <button
                             onClick={() => fetchAssets(true)}
-                            className="p-2.5 md:p-3 hover:bg-[#bef264] hover:text-black rounded-full text-white/40 border border-white/5 transition-all shadow-xl flex-shrink-0"
-                            title="Force Refresh Archive"
+                            className="p-2 hover:bg-[#bef264] hover:text-black rounded-full text-white/40 border border-white/5 transition-all flex-shrink-0"
+                            title="Refresh"
                         >
-                            <RefreshCw className={cn("w-4 h-4 md:w-5 md:h-5", loading && "animate-spin")} />
+                            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
                         </button>
                     </div>
                 </div>
             )}
 
-            <div className={cn("px-4 md:px-8 pt-4 border-b border-white/5 flex flex-col md:flex-row items-center justify-between bg-black/20 shrink-0 relative gap-4", compact && "pt-2 px-4 border-none")}>
-                <div className="flex gap-4 md:gap-8 overflow-x-auto w-full md:w-auto no-scrollbar">
+            {/* Tab Bar */}
+            <div className={cn("px-6 border-b border-white/5 flex items-center bg-black/20 shrink-0", compact && "px-4 border-none")}>
+                <div className="flex gap-6 overflow-x-auto no-scrollbar">
                     {[
                         { id: 'images', label: 'Images', icon: ImageIcon },
                         { id: 'videos', label: 'Videos', icon: Video },
@@ -487,26 +568,21 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`pb-4 px-2 text-[9px] md:text-[10px] font-black uppercase tracking-widest border-b-2 transition-all flex items-center gap-2 md:gap-3 whitespace-nowrap ${activeTab === tab.id ? 'border-[#bef264] text-[#bef264] drop-shadow-[0_0_10px_rgba(190,242,100,0.4)]' : 'border-transparent text-white/30 hover:text-white'}`}
+                                className={`py-3 px-1 text-[9px] md:text-[10px] font-black uppercase tracking-widest border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === tab.id ? 'border-[#bef264] text-[#bef264] drop-shadow-[0_0_10px_rgba(190,242,100,0.4)]' : 'border-transparent text-white/30 hover:text-white/70'}`}
                             >
-                                <tab.icon className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                                <tab.icon className="w-3.5 h-3.5" />
                                 {tab.label}
-                                <span className={`px-2 py-0.5 rounded-full text-[7px] md:text-[8px] ${activeTab === tab.id ? 'bg-[#bef264] text-black' : 'bg-white/5 text-white/20'}`}>
+                                <span className={`px-1.5 py-0.5 rounded-full text-[7px] ${activeTab === tab.id ? 'bg-[#bef264] text-black' : 'bg-white/5 text-white/20'}`}>
                                     {count}
                                 </span>
                             </button>
                         );
                     })}
                 </div>
+            </div>
 
-
-
-                    <div className="flex items-center gap-3 pb-4 w-full md:w-auto">
-
-                    </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar bg-black/10">
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar bg-black/10">
                 {loading ? (
                     <div className="h-full flex flex-col items-center justify-center gap-6">
                         <RefreshCw className="w-10 h-10 md:w-12 md:h-12 text-[#bef264] animate-spin opacity-50" />
@@ -670,6 +746,6 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     </div>
                 )}
             </div>
-        </div >
+        </div>
     );
 }
