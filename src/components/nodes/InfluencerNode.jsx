@@ -5,16 +5,16 @@ import { X, ShieldCheck, Activity } from 'lucide-react';
 import { useAppStore } from '../../store';
 import MagneticHandle from '../edges/MagneticHandle';
 
-export default memo(({ id, data }) => {
-    const edges = useAppStore(s => s.edges);
+const InfluencerNode = memo(({ id, data }) => {
+    // Optimization: Granular selectors for connectivity to prevent re-renders on unrelated edge changes
+    const isTargetConnected = useAppStore(s => s.edges.some(e => e.target === id));
+    const isSourceConnected = useAppStore(s => s.edges.some(e => e.source === id));
+
     const identity = data?.identityProfile;
     const anchorImg = identity?.anchors?.side || data.image || '';
     const fullImg = identity?.anchors?.full || '';
     const poseCount = identity?.poses?.length || 0;
     const isLocked = identity?.identityLock || false;
-
-    const isTargetConnected = edges.some(e => e.target === id);
-    const isSourceConnected = edges.some(e => e.source === id);
 
     return (
         <div className="relative group" style={{ zIndex: 1 }}>
@@ -122,3 +122,6 @@ export default memo(({ id, data }) => {
         </div>
     );
 });
+
+InfluencerNode.displayName = 'InfluencerNode';
+export default InfluencerNode;
