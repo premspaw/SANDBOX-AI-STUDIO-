@@ -1143,7 +1143,7 @@ app.use('/api', createAdminRouter(deps));
 app.use('/api', createAvatarRouter(deps));
 
 // Catch-all route to serve the SPA index.html for any client-side routes (avoiding ERR_CANNOT_GET on page reloads)
-app.get('(.*)', (req, res, next) => {
+app.get('/:any(.*)', (req, res, next) => {
     if (req.path.startsWith('/api')) {
         return next();
     }
