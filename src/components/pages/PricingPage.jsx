@@ -305,8 +305,8 @@ const PricingPage = () => {
                 <div className="flex md:grid md:grid-cols-3 gap-3 overflow-x-auto md:overflow-x-visible no-scrollbar snap-x snap-mandatory py-1">
                     {[
                         { price: 900, credits: "1000 Credits", desc: "Popular Top-Up", link: "https://rzp.io/rzp/G31rlOC", popular: true },
-                        { price: 4000, credits: "5000 Credits", desc: "Agency Bundle", link: "https://rzp.io/rzp/credits-5000" },
-                        { price: 8000, credits: "10000 Credits", desc: "Enterprise Stack", link: "https://rzp.io/rzp/credits-10000" }
+                        { price: 4000, credits: "4500 Credits", desc: "Agency Bundle", link: "https://rzp.io/rzp/credits-4500" },
+                        { price: 9000, credits: "10000 Credits", desc: "Enterprise Stack", link: "https://rzp.io/rzp/credits-10000" }
                     ].map((topup) => (
                         <div key={topup.price} className={cn(
                             "min-w-[280px] md:min-w-0 p-4 rounded-xl border flex items-center justify-between transition-all duration-300 snap-center",

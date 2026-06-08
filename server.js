@@ -1020,8 +1020,8 @@ app.post('/api/webhook/razorpay',
                 
                 // Top-Up Packs (No Tier updates)
                 else if (amount_in_rs === 900) { creditsToAdd = 1000; targetTier = null; planName = '1000-Credits Pack'; }
-                else if (amount_in_rs === 4000) { creditsToAdd = 5000; targetTier = null; planName = '5000-Credits Pack'; }
-                else if (amount_in_rs === 8000) { creditsToAdd = 10000; targetTier = null; planName = '10000-Credits Pack'; }
+                else if (amount_in_rs === 4000) { creditsToAdd = 4500; targetTier = null; planName = '4500-Credits Pack'; }
+                else if (amount_in_rs === 9000) { creditsToAdd = 10000; targetTier = null; planName = '10000-Credits Pack'; }
                 
                 // Fallback Legacy range checks
                 else if (amount_in_rs >= 7000) { creditsToAdd = 9999; targetTier = 'ENTERPRISE'; planName = 'Enterprise'; }
