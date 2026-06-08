@@ -257,7 +257,17 @@ const PricingPage = () => {
                                             <Check size={9} strokeWidth={4} />
                                         </div>
                                         <span className="text-[11px] font-medium text-white/70 group-hover/feat:text-white transition-colors leading-snug">
-                                            {feature}
+                                            {/unlimited/i.test(feature) ? (
+                                                <>
+                                                    {feature.split(/(unlimited)/gi).map((part, pIdx) => 
+                                                        /unlimited/i.test(part) ? (
+                                                            <strong key={pIdx} className="text-black bg-[#D4FF00] font-black tracking-wider uppercase px-1 py-0.5 rounded text-[8px] mr-1 inline-block shadow-[0_0_10px_rgba(212,255,0,0.25)]">
+                                                                {part}
+                                                            </strong>
+                                                        ) : part
+                                                    )}
+                                                </>
+                                            ) : feature}
                                         </span>
                                     </div>
                                 ))}
