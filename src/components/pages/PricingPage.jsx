@@ -28,7 +28,8 @@ const PricingPage = () => {
             models: [
                 { name: "Veo 3.1 Fast Preview (5s)", cost: "10 credits" },
                 { name: "Veo 3.1 High Fidelity (5s)", cost: "20 credits" },
-                { name: "Kling 3.0 Action (5s)", cost: "10 credits" }
+                { name: "Seedance 2.0 Fast (5s)", cost: "12 credits" },
+                { name: "Seedance 2.0 Pro (5s)", cost: "15 credits" }
             ]
         },
         {
@@ -65,7 +66,7 @@ const PricingPage = () => {
                 "399 Credits · Valid 3 Months",
                 "Starter Character Creation",
                 "2 Concurrent Jobs",
-                "Kling 720p Access (5s)",
+                "Seedance 2.0 Fast Access (5s)",
                 "Basic Storyboard builder",
                 "Standard Support"
             ],
@@ -89,7 +90,7 @@ const PricingPage = () => {
                 "1,999 Credits · Valid 3 Months",
                 "3 AI Character Creations",
                 "4 Concurrent Jobs",
-                "32 Kling 720p Videos (5s) OR",
+                "31 Seedance 2.0 Videos (5s) OR",
                 "21 Veo 1080p Videos (8s)",
                 "Batch Mode Support",
                 "Priority Support"
@@ -114,7 +115,7 @@ const PricingPage = () => {
                 "4,999 Credits · Valid 6 Months",
                 "10 AI Character Creations",
                 "8 Concurrent Jobs",
-                "80 Kling 720p Videos (5s) OR",
+                "79 Seedance 2.0 Videos (5s) OR",
                 "53 Veo 1080p Videos (8s)",
                 "Unlimited Nano Banana Images",
                 "4K Export Support",
@@ -140,7 +141,7 @@ const PricingPage = () => {
                 "9,999 Credits · Valid 1 Year",
                 "Unlimited AI Characters",
                 "16 Concurrent Jobs",
-                "161 Kling 720p Videos (5s) OR",
+                "158 Seedance 2.0 Videos (5s) OR",
                 "107 Veo 1080p Videos (8s)",
                 "Multi-node Sync renders",
                 "Raw Source Assets exports",
