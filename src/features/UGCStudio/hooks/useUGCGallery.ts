@@ -92,7 +92,7 @@ export function useUGCGallery(currentUserId: string) {
     loadGalleryFromIDB().then(idbItems => {
       const filtered = idbItems.filter(item => {
         if (!item) return false;
-        if (item.type === 'marketing_template') return false;
+        if ((item.type as string) === 'marketing_template') return false;
         if (item.url && (item.url.includes('/marketing/') || item.url.includes('marketing_template'))) return false;
         return true;
       });
