@@ -26,10 +26,10 @@ const PricingPage = () => {
         {
             category: "Video Production",
             models: [
-                { name: "Veo 3.1 Fast Preview (5s)", cost: "10 credits" },
-                { name: "Veo 3.1 High Fidelity (5s)", cost: "20 credits" },
-                { name: "Seedance 2.0 Fast (5s)", cost: "100 credits" },
-                { name: "Seedance 2.0 Pro (5s)", cost: "125 credits" }
+                { name: "Veo 3.1 Fast Preview", cost: "10 credits" },
+                { name: "Veo 3.1 High Fidelity", cost: "20 credits" },
+                { name: "Seedance 2.0 Fast", cost: "100 credits" },
+                { name: "Seedance 2.0 Pro", cost: "125 credits" }
             ]
         },
         {
@@ -63,11 +63,10 @@ const PricingPage = () => {
             description: "An affordable kickstart with a 6-Month setup value layout!",
             image: "https://jdepbrbujambxvtdiwla.supabase.co/storage/v1/object/public/templates/2a3c4c1e-fd65-4909-bfee-36190c085d94.png",
             features: [
-                "399 High-Speed Renders (Credits)",
-                "Unlimited Draft Nano Images",
+                "300 High-Speed Renders (Credits)",
                 "Starter Character Creation",
                 "2 Concurrent Jobs",
-                "Seedance 2.0 Fast Access (5s)",
+                "Seedance 2.0 Fast Access",
                 "Basic Storyboard builder",
                 "Standard Support"
             ],
@@ -88,12 +87,11 @@ const PricingPage = () => {
             description: "The choice for professional creators and growing visual brands.",
             image: "/pricing/influencer.png",
             features: [
-                "2,499 High-Speed Renders (Credits)",
-                "Unlimited Draft Nano Images",
+                "2,000 High-Speed Renders (Credits)",
                 "3 AI Character Creations",
                 "4 Concurrent Jobs",
-                "31 Seedance 2.0 Videos (5s) OR",
-                "21 Veo 1080p Videos (8s)",
+                "31 Seedance 2.0 Videos OR",
+                "21 Veo 1080p Videos",
                 "Batch Mode Support",
                 "Priority Support"
             ],
@@ -111,14 +109,14 @@ const PricingPage = () => {
             yearlyPrice: 3999,
             period: "/6mo",
             yearlyText: "One-time · No renewal",
-            description: "Maximum cinematic horsepower for Agencies and Power Users.",
+            description: "Advanced horsepower for Agencies and Power Users.",
             image: "/pricing/director.png",
             features: [
-                "4,999 High-Speed Renders (Credits)",
+                "5,499 High-Speed Renders (Credits)",
                 "10 AI Character Creations",
                 "8 Concurrent Jobs",
-                "79 Seedance 2.0 Videos (5s) OR",
-                "53 Veo 1080p Videos (8s)",
+                "79 Seedance 2.0 Videos OR",
+                "53 Veo 1080p Videos",
                 "Unlimited Nano Banana Images (All)",
                 "4K Export Support",
                 "24/7 Dedicated Support"
@@ -135,19 +133,18 @@ const PricingPage = () => {
             name: "Enterprise",
             monthlyPrice: 9999,
             yearlyPrice: 7999,
-            period: "/1yr",
+            period: "/6mo",
             yearlyText: "One-time · No renewal",
-            description: "Enterprise scalability for Commercial workflows and large volumes.",
+            description: "Maximum cinematic Enterprise Tier for Commercial workflows and large volumes.",
             image: "/pricing/enterprise.png",
             features: [
-                "9,999 High-Speed Renders (Credits)",
+                "10,999 High-Speed Renders (Credits)",
                 "Unlimited AI Characters",
                 "16 Concurrent Jobs",
-                "158 Seedance 2.0 Videos (5s) OR",
-                "107 Veo 1080p Videos (8s)",
+                "158 Seedance 2.0 Videos OR",
+                "107 Veo 1080p Videos",
                 "Multi-node Sync renders",
                 "Raw Source Assets exports",
-                "Unlimited Nano Banana Images & Multi-shot",
                 "Custom visual model training"
             ],
             icon: Coins,

@@ -391,10 +391,10 @@ export default function SettingsPage() {
                                                     <Coins size={9} className="text-[#bef264]" /> Monthly Allowance
                                                 </div>
                                                 <div className="text-lg font-black text-white">
-                                                    {currentTier === 'STARTER' ? '399 Credits' :
-                                                     currentTier === 'INFLUENCER' ? '2,499 Credits' :
-                                                     currentTier === 'DIRECTOR' ? '4,999 Credits' :
-                                                     currentTier === 'ENTERPRISE' ? '9,999 Credits' : '50 Free'}
+                                                    {currentTier === 'STARTER' ? '300 Credits' :
+                                                     currentTier === 'INFLUENCER' ? '2,000 Credits' :
+                                                     currentTier === 'DIRECTOR' ? '5,499 Credits' :
+                                                     currentTier === 'ENTERPRISE' ? '10,999 Credits' : '50 Free'}
                                                 </div>
                                             </div>
                                             <div className="p-4 bg-black/20 border border-white/5 rounded-xl">

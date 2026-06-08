@@ -970,8 +970,9 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
           })
         });
         if (!resp.ok) {
-          const errData = await resp.json().catch(() => ({}));
-          throw new Error(errData.message || errData.error || `Save failed: ${resp.statusText}`);
+          let errData = {};
+          try { errData = await resp.json(); } catch(e) {}
+          throw new Error(errData.message || errData.error || `HTTP ${resp.status} - ${resp.statusText}`);
         }
         const data = await resp.json();
         const url = data.url || data.path || base64;
