@@ -216,9 +216,9 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
         background: 'rgba(255,255,255,0.02)',
         border: '1px solid rgba(240,237,232,0.05)',
         borderRadius: 12,
-        padding: '18px 20px',
+        padding: isModal ? '10px 14px' : '13px 16px',
         fontFamily: "'Syne',sans-serif",
-        fontSize: 14,
+        fontSize: 13,
         color: T.white,
         outline: 'none',
         transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -226,15 +226,17 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
 
     return (
         <div style={{
-            height: isModal ? 'auto' : '100vh',
+            minHeight: isModal ? 'auto' : '100vh',
+            height: isModal ? 'auto' : undefined,
             background: isModal ? 'transparent' : T.bg,
             color: T.white,
             fontFamily: "'Syne',sans-serif",
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'center',
             position: 'relative',
-            overflow: 'hidden',
+            overflowX: 'hidden',
+            overflowY: isModal ? 'visible' : 'auto',
         }}>
             {/* ── Background Layer ── */}
             {!isModal && <StarField />}
@@ -250,12 +252,14 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                 position: 'relative',
                 zIndex: 10,
                 width: '100%',
-                height: isModal ? 'auto' : '100vh',
+                minHeight: isModal ? 'auto' : '100vh',
+                height: 'auto',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center',
-                padding: isModal ? '0px' : '20px',
+                justifyContent: 'flex-start',
+                padding: isModal ? '16px 8px 24px 8px' : '20px 20px 40px 20px',
+                margin: isModal ? undefined : '0 auto',
             }}>
 
                 {/* Branding Section */}
@@ -263,15 +267,15 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                    style={{ textAlign: 'center', marginBottom: 24 }}
+                    style={{ textAlign: 'center', marginBottom: isModal ? 10 : 16 }}
                 >
-                    <BrandLogo size={40} className="mb-4 mx-auto drop-shadow-[0_0_20px_rgba(200,241,53,0.3)]" />
+                    <BrandLogo size={isModal ? 28 : 34} className="mb-2 mx-auto drop-shadow-[0_0_20px_rgba(200,241,53,0.3)]" />
                     <h1 style={{
                         fontFamily: "'Bebas Neue',sans-serif",
-                        fontSize: 48,
+                        fontSize: isModal ? 30 : 38,
                         letterSpacing: '0.1em',
                         lineHeight: 0.9,
-                        marginBottom: 6,
+                        marginBottom: 4,
                         color: T.white,
                         textShadow: '0 0 40px rgba(255,255,255,0.1)'
                     }}>
@@ -279,7 +283,7 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                     </h1>
                     <p style={{
                         fontFamily: "'DM Mono',monospace",
-                        fontSize: 9,
+                        fontSize: 7.5,
                         letterSpacing: '0.4em',
                         color: T.lime,
                         textTransform: 'uppercase',
@@ -302,7 +306,7 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                 >
                     {/* Glassmorphic subtle container for the form itself */}
                     <div style={{
-                        padding: '24px 32px',
+                        padding: isModal ? '14px 20px' : '20px 24px',
                         borderRadius: 24,
                         border: '1px solid rgba(255,255,255,0.03)',
                         background: 'rgba(255,255,255,0.01)',
@@ -313,7 +317,7 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                         {!isForgotPassword && (
                             <div style={{
                                 display: 'flex',
-                                marginBottom: 24,
+                                marginBottom: isModal ? 16 : 20,
                                 position: 'relative',
                                 borderBottom: '1px solid rgba(255,255,255,0.05)',
                             }}>
@@ -325,9 +329,9 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                                         onClick={() => setIsLogin(i === 0)}
                                         style={{
                                             flex: 1,
-                                            padding: '16px 0',
+                                            padding: isModal ? '8px 0' : '12px 0',
                                             fontFamily: "'Bebas Neue',sans-serif",
-                                            fontSize: 18,
+                                            fontSize: 16,
                                             letterSpacing: '0.1em',
                                             color: active ? T.lime : 'rgba(255,255,255,0.25)',
                                             background: 'transparent',
@@ -354,14 +358,14 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                             </div>
                         )}
 
-                        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: isModal ? 10 : 12 }}>
                             <AnimatePresence>
                                 {!isLogin && !isForgotPassword && (
                                     <motion.div
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: 'auto' }}
                                         exit={{ opacity: 0, height: 0 }}
-                                        style={{ display: 'flex', flexDirection: 'column', gap: 8, overflow: 'hidden' }}
+                                        style={{ display: 'flex', flexDirection: 'column', gap: isModal ? 4 : 8, overflow: 'hidden' }}
                                     >
                                         <label style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em', opacity: 0.3 }}>FULL_NAME</label>
                                         <input
@@ -375,7 +379,7 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                                 )}
                             </AnimatePresence>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: isModal ? 4 : 8 }}>
                                 <label style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em', opacity: 0.3 }}>EMAIL_ADDRESS</label>
                                 <input
                                     type="email"
@@ -388,8 +392,8 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                             </div>
 
                             {!isForgotPassword && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: isModal ? 4 : 8 }}>
+                                    <div style={{ display: 'flex', justifyStyle: 'space-between', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <label style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em', opacity: 0.3 }}>PASSWORD_KEY</label>
                                         <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ background: 'none', border: 'none', color: T.lime, fontSize: 10, fontFamily: "'DM Mono',monospace", cursor: 'pointer', opacity: 0.6 }}>{showPassword ? 'HIDE' : 'SHOW'}</button>
                                     </div>
@@ -428,7 +432,7 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: 'auto' }}
                                         exit={{ opacity: 0, height: 0 }}
-                                        style={{ display: 'flex', flexDirection: 'column', gap: 8, overflow: 'hidden' }}
+                                        style={{ display: 'flex', flexDirection: 'column', gap: isModal ? 4 : 8, overflow: 'hidden' }}
                                     >
                                         <label style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.2em', opacity: 0.3 }}>CONFIRM_SECRET</label>
                                         <input
@@ -465,14 +469,14 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                                 whileTap={{ scale: 0.98 }}
                                 disabled={loading}
                                 style={{
-                                    marginTop: 12,
-                                    padding: '16px',
+                                    marginTop: isModal ? 6 : 8,
+                                    padding: isModal ? '10px' : '13px',
                                     borderRadius: 12,
                                     background: loading ? 'rgba(200,241,53,0.1)' : T.lime,
                                     color: '#000',
                                     border: 'none',
                                     fontFamily: "'Bebas Neue',sans-serif",
-                                    fontSize: 18,
+                                    fontSize: 16,
                                     letterSpacing: '0.1em',
                                     cursor: loading ? 'not-allowed' : 'pointer',
                                     boxShadow: `0 0 30px rgba(200,241,53,0.15)`
@@ -502,15 +506,15 @@ export default function AuthPage({ onAuthSuccess, isModal = false }) {
                     </div>
 
                     {/* Bottom Links */}
-                    <div style={{ textAlign: 'center', marginTop: 40, opacity: 0.3, fontFamily: "'DM Mono',monospace", fontSize: 9 }}>
+                    <div style={{ textAlign: 'center', marginTop: isModal ? 20 : 40, opacity: 0.3, fontFamily: "'DM Mono',monospace", fontSize: 9 }}>
                         © 2026 ZEROLENS SYSTEMS · ALL RIGHTS RESERVED
                     </div>
                 </motion.div>
             </div>
 
             {/* Corner Decorative Elements */}
-            <div style={{ position: 'absolute', top: 40, left: 40, opacity: 0.1, zIndex: 5, fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.4em' }}>ZEROLENS_AUTH_V4</div>
-            <div style={{ position: 'absolute', bottom: 40, right: 40, opacity: 0.1, zIndex: 5, fontFamily: "'DM Mono',monospace", fontSize: 10, letterSpacing: '0.4em' }}>SYS_READY_00X</div>
+            {!isModal && <div style={{ position: 'absolute', top: 24, left: 24, opacity: 0.1, zIndex: 5, fontFamily: "'DM Mono',monospace", fontSize: 9, letterSpacing: '0.4em' }}>ZEROLENS_AUTH_V4</div>}
+            {!isModal && <div style={{ position: 'absolute', bottom: 24, right: 24, opacity: 0.1, zIndex: 5, fontFamily: "'DM Mono',monospace", fontSize: 9, letterSpacing: '0.4em' }}>SYS_READY_00X</div>}
         </div>
     );
 }

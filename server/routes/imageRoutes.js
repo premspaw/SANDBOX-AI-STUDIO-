@@ -7,32 +7,100 @@ export default function createRouter(deps) {
         handleGoogle,
         handleOpenAI,
         openaiChat,
-        geminiService
+        geminiService,
+        requireAuth
     } = deps;
 
     // Generate Image (Multi-Model Support)
     router.post('/generate-image', async (req, res) => {
-        const { model } = req.body;
-        if (model === 'gpt-image-2' || model?.startsWith('gpt')) {
-            return await handleOpenAI(req, res);
+        try {
+            let user;
+            try {
+                user = await requireAuth(req);
+            } catch (authErr) {
+                if (process.env.NODE_ENV === 'production') {
+                    return res.status(401).json({ error: 'Authentication required to generate images.' });
+                }
+            }
+
+            const { model } = req.body;
+            const targetUserId = user ? user.id : req.body.userId;
+
+            // Deduct credits based on the model
+            let requiredCredits = 2; // Default (Gemini 3.1 Flash Image preview / Nano Banana 2)
+            const modelLower = (model || '').toLowerCase();
+            if (modelLower.includes('gpt') || modelLower.includes('openai') || modelLower.includes('dall')) {
+                requiredCredits = 5; // OpenAI DALL-E costs 5 credits
+            } else if (modelLower.includes('pro')) {
+                requiredCredits = 5;
+            } else if (modelLower === 'nano-banana' || modelLower === 'banana') {
+                requiredCredits = 1;
+            }
+
+            if (targetUserId) {
+                console.log(`[Generate Image] Consuming ${requiredCredits} credits for user: ${targetUserId} using model: ${model}`);
+                await consumeCredits(targetUserId, requiredCredits);
+            }
+
+            if (model === 'gpt-image-2' || model?.startsWith('gpt')) {
+                return await handleOpenAI(req, res);
+            }
+            return await handleGoogle(req, res);
+        } catch (err) {
+            console.error('[Generate Image Error]:', err.message);
+            res.status(err.status || 500).json({ error: err.message });
         }
-        return await handleGoogle(req, res);
+    });
+
+    // Proxy Remote Image/Video to bypass browser CORS
+    router.get('/proxy-image', async (req, res) => {
+        try {
+            const { url } = req.query;
+            if (!url) {
+                return res.status(400).json({ error: 'url parameter is required' });
+            }
+            const { default: fetch } = await import('node-fetch');
+            const response = await fetch(url);
+            if (!response.ok) {
+                return res.status(response.status).json({ error: `Failed to fetch remote resource: ${response.statusText}` });
+            }
+            const contentType = response.headers.get('content-type') || 'application/octet-stream';
+            const buffer = await response.buffer();
+            res.setHeader('Content-Type', contentType);
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.send(buffer);
+        } catch (err) {
+            console.error('[Proxy Error]:', err.message);
+            res.status(500).json({ error: err.message });
+        }
     });
 
     // Edit Image (Inpainting/Outpainting)
     router.post('/edit-image', async (req, res) => {
         try {
+            let user;
+            try {
+                user = await requireAuth(req);
+            } catch (authErr) {
+                if (process.env.NODE_ENV === 'production') {
+                    return res.status(401).json({ error: 'Authentication required to edit images.' });
+                }
+            }
+
             const { imageBase64, maskBase64, prompt, referenceImage, userId, model = 'gemini' } = req.body;
             if (!imageBase64 || !maskBase64) {
                 return res.status(400).json({ error: 'Base image and mask image are required.' });
             }
 
+            const targetUserId = user ? user.id : userId;
             const { default: fetch } = await import('node-fetch');
 
-            // 1. Deduct credits: Gemini/Banana inpaint costs 2 credits, GPT/OpenAI costs 3 credits
-            const requiredCredits = model === 'gemini' ? 2 : 3;
-            console.log(`[Inpaint] Consuming ${requiredCredits} credits for user: ${userId} using model: ${model}`);
-            await consumeCredits(userId, requiredCredits);
+            // 1. Deduct credits: Gemini/Banana inpaint costs 3 credits, GPT/OpenAI costs 5 credits
+            const requiredCredits = model === 'gemini' ? 3 : 5;
+            if (targetUserId) {
+                console.log(`[Inpaint] Consuming ${requiredCredits} credits for user: ${targetUserId} using model: ${model}`);
+                await consumeCredits(targetUserId, requiredCredits);
+            }
 
             const toBuffer = async (str) => {
                 if (!str) return null;
@@ -99,17 +167,41 @@ export default function createRouter(deps) {
                     text: `You are an expert image editor. Look at the base image and the mask image. Modify only the region of the base image that is highlighted in white in the mask image, according to this instruction: "${prompt}".${referenceImage ? ' Use the third provided reference image as a strong visual style, detail, and likeness guide for what to draw inside the edited area.' : ''} Keep all other parts of the image exactly the same.`
                 });
 
+                const safetySettings = [
+                    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                ];
+
                 const geminiResp = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [{ role: 'user', parts }],
+                        safetySettings,
                         generationConfig: { responseModalities: ["IMAGE"] }
                     })
                 });
 
                 const result = await geminiResp.json();
-                const b64 = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+
+                if (result.promptFeedback?.blockReason) {
+                    const reason = result.promptFeedback.blockReason;
+                    console.error('[Inpaint] Google API prompt feedback block:', JSON.stringify(result.promptFeedback));
+                    if (reason === 'OTHER') {
+                        throw new Error("Google API blocked the request (blockReason: OTHER). This is typically caused by a sensitive reference photo, copyright/trademark restrictions, or a celebrity likeness filter.");
+                    } else {
+                        throw new Error(`Google API safety block: ${reason}. Please try a different reference image or prompt.`);
+                    }
+                }
+
+                const candidate = result.candidates?.[0];
+                if (candidate && candidate.finishReason === 'SAFETY') {
+                    throw new Error("SAFETY_REFUSAL: The creative prompt was blocked by safety filters.");
+                }
+
+                const b64 = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
                 if (!b64) {
                     console.error('[Inpaint] Google API error response:', JSON.stringify(result));
                     throw new Error(result.error?.message || "Google API returned no image candidates");

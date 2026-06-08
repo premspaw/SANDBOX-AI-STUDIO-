@@ -13,12 +13,12 @@ const KIE_BASE    = 'https://api.kie.ai'
 // ── Price table (per second) ──────────────────────────────
 const PRICE_TABLE = {
     'seedance-2-fast': {
-        '720p': { no_video: 0.165, with_video: 0.10  },
-        '480p': { no_video: 0.0775, with_video: 0.045 },
+        '720p': { no_video: 0.150, with_video: 0.088 },
+        '480p': { no_video: 0.070, with_video: 0.042 },
     },
     'seedance-2': {
-        '720p': { no_video: 0.205, with_video: 0.125 },
-        '480p': { no_video: 0.095, with_video: 0.057 },
+        '720p': { no_video: 0.187, with_video: 0.116 },
+        '480p': { no_video: 0.088, with_video: 0.055 },
     }
 }
 

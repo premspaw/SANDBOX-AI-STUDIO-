@@ -38,6 +38,63 @@ const ensureDataUri = (str) => {
     return `data:image/jpeg;base64,${str}`;
 };
 
+const parseNameAndAgeFromPrompt = (prompt) => {
+    if (!prompt || typeof prompt !== 'string') return null;
+    
+    let name = '';
+    let age = '';
+    
+    // Match NAME:, NAME/SPECIES:, or SCENE: followed by double quotes, single quotes, or unquoted text
+    const nameMatch = prompt.match(/(?:NAME|NAME\/SPECIES|SCENE):\s*"([^"]+)"/i) || 
+                      prompt.match(/(?:NAME|NAME\/SPECIES|SCENE):\s*'([^']+)'/i) ||
+                      prompt.match(/(?:NAME|NAME\/SPECIES|SCENE):\s*([^·,]+)/i);
+                      
+    const ageMatch = prompt.match(/AGE:\s*"([^"]+)"/i) || 
+                     prompt.match(/AGE:\s*'([^']+)'/i) ||
+                     prompt.match(/AGE:\s*([^·,]+)/i);
+                     
+    if (nameMatch) {
+        name = nameMatch[1].split('·')[0].trim();
+        name = name.replace(/^["']|["']$/g, '').trim();
+        // Remove trailing species parenthetical type from NAME/SPECIES (e.g., "Vortex Serpent (Reptilian)" -> "Vortex Serpent")
+        name = name.replace(/\s*\([^)]+\)$/, '').trim();
+    }
+    
+    if (ageMatch) {
+        age = ageMatch[1].split('·')[0].trim();
+        age = age.replace(/^["']|["']$/g, '').trim();
+    }
+    
+    if (name) {
+        const cleanName = name.replace(/[^a-zA-Z0-9\s_-]/g, '').toUpperCase().trim();
+        if (
+            cleanName === 'CHARACTER' || 
+            cleanName === 'OBJECT' || 
+            cleanName === 'LOCATION' || 
+            cleanName === 'POSE' || 
+            cleanName === 'CREATURE' || 
+            cleanName === 'SHOT' ||
+            cleanName === 'PROP OBJECT' ||
+            cleanName === 'SCENIC LOCATION' ||
+            cleanName === 'UNTITLED SCENE'
+        ) {
+            return null;
+        }
+        
+        let cleanAge = '';
+        if (age) {
+            cleanAge = age.replace(/[^0-9]/g, '').trim();
+            if (!cleanAge) {
+                cleanAge = age.toUpperCase().trim();
+            }
+        }
+        
+        return { name: cleanName, age: cleanAge };
+    }
+    
+    return null;
+};
+
 // --- Character Kit Card Component ---
 function CharacterKitCard({ character, onDirectorsCut, onDelete, onSelectReference, compact }) {
     const [confirmDelete, setConfirmDelete] = useState(false);
@@ -89,7 +146,7 @@ function CharacterKitCard({ character, onDirectorsCut, onDelete, onSelectReferen
     const hasKit = Object.values(kitImages).some(v => v);
 
     return (
-        <div className={`group relative bg-[#050505] border ${isDeleting ? 'border-red-500/30 opacity-50' : 'border-white/5'} rounded-xl overflow-hidden hover:border-[#bef264]/40 transition-all duration-500 shadow-xl flex flex-col aspect-[4/5] w-full`}>
+        <div className={`group relative bg-[#050505] border ${isDeleting ? 'border-red-500/30 opacity-50' : 'border-white/5'} rounded-xl overflow-hidden hover:border-[#bef264]/40 transition-all duration-500 shadow-xl flex flex-col aspect-square w-full`}>
             {/* Anchor Hero Image */}
             <div className="absolute inset-0 bg-black">
                 {character.anchorImage ? (
@@ -182,8 +239,12 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
     const [searchQuery, setSearchQuery] = useState('');
 
 
-    const fetchAssets = async (force = false) => {
-        // Resolve user early for cache verification
+    const [loadedGroups, setLoadedGroups] = useState({
+        standard: false, // images, videos, upscaled
+        characters: false // characters, matrix
+    });
+
+    const getTargetUser = async () => {
         let targetUser = userProfile;
         if (!targetUser) {
             try {
@@ -193,56 +254,152 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 console.warn('[AssetsLibrary] Failed to fetch auth user:', e);
             }
         }
-
         if (!targetUser || !targetUser.id || targetUser.id === 'null' || targetUser.id === 'undefined') {
             targetUser = { id: 'local_user' };
         }
+        return targetUser;
+    };
 
-        if (!force && cachedAssets && cachedAssetsUserId === targetUser?.id) {
-            setAssets(cachedAssets);
+    const fetchStandardAssets = async (force = false) => {
+        const targetUser = await getTargetUser();
+        
+        // Cache check
+        if (!force && loadedGroups.standard && cachedAssets && cachedAssetsUserId === targetUser?.id) {
             setLoading(false);
             return;
         }
 
-        console.log(`AssetsLibrary: fetchAssets starting for User ${targetUser?.id}...`);
+        console.log(`AssetsLibrary: fetchStandardAssets starting for User ${targetUser?.id}...`);
         setLoading(true);
-        const sharedImages = [];
-        const sharedVideos = [];
         try {
-
-            // 1. Fetch images & videos via Proxy/Backend (IPv4 Fix)
             const response = await fetch(getApiUrl(`/api/list-assets?userId=${targetUser.id}`));
             const data = await response.json();
             
             if (!response.ok) throw new Error(data.error || "Failed to fetch assets");
             
             const allAssets = data.assets || [];
-            const dbImages = allAssets.filter(a => a.type === 'image');
-            const dbVideos = allAssets.filter(a => a.type === 'video');
-            const dbUpscaled = allAssets.filter(a => a.type === 'upscaled' || a.type === 'upscale');
-            const dbCharacterAssets = allAssets.filter(a => a.type === 'character').map(a => {
+            const dbImages = allAssets.filter(a => a.type === 'image').map(a => {
+                let displayName = a.name;
+                if (!displayName || displayName === 'CHARACTER Target' || displayName.toUpperCase().endsWith(' TARGET')) {
+                    const boardType = a.metadata?.boardType || 'Image';
+                    const extracted = parseNameAndAgeFromPrompt(a.metadata?.prompt);
+                    if (extracted) {
+                        displayName = `${extracted.name} — ${boardType} Board`;
+                    } else {
+                        displayName = boardType ? `${boardType} Board` : 'Generated Board';
+                    }
+                }
                 return {
-                    id: a.id,
-                    type: "character",
-                    name: a.name || "Saved Character",
-                    visualStyle: a.metadata?.visualStyle || a.metadata?.style || 'Cinematic',
-                    anchorImage: a.url,
-                    url: a.url,
-                    image: a.url,
-                    date: a.date || 'Recently',
-                    isCharacter: true,
-                    isMatrix: false,
-                    isAvatarStudio: true,
-                    rawData: a
+                    ...a,
+                    name: displayName
                 };
             });
+            const dbVideos = allAssets.filter(a => a.type === 'video');
+            const dbUpscaled = allAssets.filter(a => a.type === 'upscaled' || a.type === 'upscale');
 
-            // 2. Fetch characters via Proxy (IPv4 Fix)
-            const charResponse = await fetch(getApiUrl(`/api/list-characters?userId=${targetUser.id}`));;
+            let avatarStudioImages = [];
+            try {
+                if (supabase) {
+                    const { data: avatarData } = await supabase
+                        .from('avatar_generations')
+                        .select('*')
+                        .eq('user_id', targetUser.id)
+                        .order('created_at', { ascending: false });
+                    if (avatarData) {
+                        avatarStudioImages = avatarData
+                            .filter(a => a.type?.toUpperCase() !== 'CHARACTER')
+                            .map(a => {
+                                let displayName = a.character_name;
+                                if (!displayName || displayName === 'CHARACTER Target' || displayName.toUpperCase().endsWith(' TARGET')) {
+                                    const extracted = parseNameAndAgeFromPrompt(a.prompt);
+                                    if (extracted) {
+                                        displayName = `${extracted.name} — ${a.type} Board`;
+                                    } else {
+                                        displayName = `${a.type} Board`;
+                                    }
+                                }
+                                return {
+                                    id: a.id,
+                                    type: 'image',
+                                    name: displayName || 'Generated Board',
+                                    url: a.output_url,
+                                    image: a.output_url,
+                                    date: a.created_at ? new Date(a.created_at).toISOString().split('T')[0] : 'Recently',
+                                    size: 'N/A',
+                                    isAvatarStudio: true,
+                                    rawData: a
+                                };
+                            });
+                    }
+                }
+            } catch (err) {
+                console.warn('[Assets Library] Failed to fetch generated avatars for standard assets:', err);
+            }
+
+            setAssets(prev => {
+                const updated = {
+                    ...prev,
+                    images: [...avatarStudioImages, ...dbImages],
+                    videos: dbVideos,
+                    upscaled: dbUpscaled
+                };
+                setCachedAssets(updated, targetUser?.id);
+                return updated;
+            });
+
+            setLoadedGroups(prev => ({ ...prev, standard: true }));
+        } catch (err) {
+            console.error("fetchStandardAssets failed:", err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchCharacterAssets = async (force = false) => {
+        const targetUser = await getTargetUser();
+        
+        // Cache check
+        if (!force && loadedGroups.characters && cachedAssets && cachedAssetsUserId === targetUser?.id) {
+            setLoading(false);
+            return;
+        }
+
+        console.log(`AssetsLibrary: fetchCharacterAssets starting for User ${targetUser?.id}...`);
+        setLoading(true);
+        try {
+            const response = await fetch(getApiUrl(`/api/list-assets?userId=${targetUser.id}`));
+            const data = await response.json();
+            
+            let dbCharacterAssets = [];
+            if (response.ok && data.assets) {
+                dbCharacterAssets = data.assets.filter(a => a.type === 'character').map(a => {
+                    let displayName = a.name;
+                    if (!displayName || displayName === 'CHARACTER Target' || displayName.toUpperCase() === 'CHARACTER TARGET') {
+                        const extracted = parseNameAndAgeFromPrompt(a.metadata?.prompt);
+                        if (extracted) {
+                            displayName = extracted.age ? `NAME: ${extracted.name}, AGE: ${extracted.age}` : `NAME: ${extracted.name}`;
+                        }
+                    }
+                    return {
+                        id: a.id,
+                        type: "character",
+                        name: displayName || "Saved Character",
+                        visualStyle: a.metadata?.visualStyle || a.metadata?.style || 'Cinematic',
+                        anchorImage: a.url,
+                        url: a.url,
+                        image: a.url,
+                        date: a.date || 'Recently',
+                        isCharacter: true,
+                        isAvatarStudio: true,
+                        rawData: a
+                    };
+                });
+            }
+
+            const charResponse = await fetch(getApiUrl(`/api/list-characters?userId=${targetUser.id}`));
             const charData = await charResponse.json();
             const dbCharacters = charData.characters || [];
 
-            // 2b. Fetch Avatar Studio generated characters from Supabase
             let dbAvatars = [];
             try {
                 if (supabase) {
@@ -254,12 +411,9 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     if (avatarData) dbAvatars = avatarData;
                 }
             } catch (err) {
-                console.warn('[Assets Library] Failed to fetch generated avatars:', err);
+                console.warn('[Assets Library] Failed to fetch generated avatars for character assets:', err);
             }
 
-            console.log(`Found: ${dbImages.length} images, ${dbVideos.length} videos, ${dbUpscaled.length} upscaled assets, ${dbCharacterAssets.length} saved characters, ${dbAvatars.length} generated avatars`);
-
-            // 3. Normalize characters to match your UI card format
             const normalizedCharacters = (dbCharacters || []).map(c => {
                 let anchor = c.image || c.anchor_image || c.identity_kit?.anchor || c.identityKit?.anchor || '';
                 anchor = ensureDataUri(anchor);
@@ -269,7 +423,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     name: c.name || "UNNAMED_CONSTRUCT",
                     visualStyle: c.visual_style || c.visualStyle || 'Realistic',
                     anchorImage: anchor,
-                    url: anchor, // Crucial for rendering grid
+                    url: anchor,
                     image: anchor,
                     date: c.timestamp ? new Date(c.timestamp).toISOString().split('T')[0] : 'Recently',
                     isCharacter: true,
@@ -278,30 +432,37 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 };
             });
 
-            // Normalize generated avatars from Avatar Studio
-            const normalizedAvatars = dbAvatars.map(a => {
-                return {
-                    id: a.id,
-                    type: "character",
-                    name: a.character_name || "Generated Avatar",
-                    visualStyle: a.style || 'Cinematic',
-                    anchorImage: a.output_url,
-                    url: a.output_url,
-                    image: a.output_url,
-                    date: a.created_at ? new Date(a.created_at).toISOString().split('T')[0] : 'Recently',
-                    isCharacter: true,
-                    isMatrix: false,
-                    isAvatarStudio: true,
-                    rawData: {
-                        ...a,
-                        name: a.character_name,
-                        image: a.output_url,
-                        visual_style: a.style
+            const normalizedAvatars = dbAvatars
+                .filter(a => a.type?.toUpperCase() === 'CHARACTER')
+                .map(a => {
+                    let displayName = a.character_name;
+                    if (!displayName || displayName === 'CHARACTER Target' || displayName.toUpperCase() === 'CHARACTER TARGET') {
+                        const extracted = parseNameAndAgeFromPrompt(a.prompt);
+                        if (extracted) {
+                            displayName = extracted.age ? `NAME: ${extracted.name}, AGE: ${extracted.age}` : `NAME: ${extracted.name}`;
+                        }
                     }
-                };
-            });
+                    return {
+                        id: a.id,
+                        type: "character",
+                        name: displayName || "Generated Avatar",
+                        visualStyle: a.style || 'Cinematic',
+                        anchorImage: a.output_url,
+                        url: a.output_url,
+                        image: a.output_url,
+                        date: a.created_at ? new Date(a.created_at).toISOString().split('T')[0] : 'Recently',
+                        isCharacter: true,
+                        isMatrix: false,
+                        isAvatarStudio: true,
+                        rawData: {
+                            ...a,
+                            name: displayName,
+                            image: a.output_url,
+                            visual_style: a.style
+                        }
+                    };
+                });
 
-            // --- LOCAL MIRROR MERGE (Emergency Fallback, per-user scoped) ---
             let localCharacters = [];
             try {
                 const vaultKey = `local_vault:${targetUser.id}`;
@@ -330,10 +491,8 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 console.error("Local vault read failed:", e);
             }
 
-            // Merge and de-duplicate by ID (DB takes priority)
             const finalCharacters = [...normalizedCharacters, ...normalizedAvatars];
             
-            // Add explicitly saved character assets from the 'assets' table
             (dbCharacterAssets || []).forEach(ca => {
                 if (!finalCharacters.find(fc => fc.url === ca.url || fc.id === ca.id)) {
                     finalCharacters.unshift(ca);
@@ -346,7 +505,6 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 }
             });
 
-            // Sort all characters by date/timestamp descending (newest to top)
             finalCharacters.sort((x, y) => {
                 const getMs = (item) => {
                     const raw = item.rawData || {};
@@ -357,32 +515,52 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 return getMs(y) - getMs(x);
             });
 
+            setAssets(prev => {
+                const updated = {
+                    ...prev,
+                    characters: finalCharacters
+                };
+                setCachedAssets(updated, targetUser?.id);
+                return updated;
+            });
 
-            const newAssets = {
-                images: dbImages,
-                videos: dbVideos,
-                upscaled: dbUpscaled,
-                models: [
-                    { id: 'm1', name: 'GPT Image 1.5', type: 'Native', size: 'N/A', date: 'Active' },
-                    { id: 'm2', name: 'Flux Pro', type: 'Replicate', size: 'N/A', date: 'Active' },
-                ],
-                characters: finalCharacters,
-            };
-
-            setAssets(newAssets);
-            setCachedAssets(newAssets, targetUser?.id);
-            console.log("AssetsLibrary: State updated successfully via Direct Supabase + Local Merge.");
-
+            setLoadedGroups(prev => ({ ...prev, characters: true }));
         } catch (err) {
-            console.error("fetchAssets failed:", err.message);
+            console.error("fetchCharacterAssets failed:", err.message);
         } finally {
             setLoading(false);
         }
     };
 
+    const fetchAssets = async (force = false) => {
+        const isCharTab = activeTab === 'characters' || activeTab === 'matrix';
+        const isModelsTab = activeTab === 'models';
+        
+        if (isModelsTab) {
+            setLoading(false);
+            return;
+        }
+
+        if (force) {
+            if (isCharTab) {
+                setLoadedGroups(prev => ({ ...prev, characters: false }));
+                await fetchCharacterAssets(true);
+            } else {
+                setLoadedGroups(prev => ({ ...prev, standard: false }));
+                await fetchStandardAssets(true);
+            }
+        } else {
+            if (isCharTab) {
+                await fetchCharacterAssets(false);
+            } else {
+                await fetchStandardAssets(false);
+            }
+        }
+    };
+
     React.useEffect(() => {
         fetchAssets(false);
-    }, []);
+    }, [activeTab]);
 
     const handleSemanticSearch = async () => {
         if (!searchQuery.trim()) {
@@ -639,7 +817,10 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                             }
 
                             return (
-                                <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 md:gap-3">
+                                <div className={compact
+                                    ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4"
+                                    : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6"
+                                }>
                                     {filteredChars.map(char => (
                                         <CharacterKitCard
                                             key={char.id}
@@ -677,13 +858,17 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     </div>
                 ) : (
                     <div className={['images', 'videos'].includes(activeTab)
-                        ? "grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-0.5 md:gap-1.5"
-                        : "grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-8"
+                        ? (compact 
+                            ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4"
+                            : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6")
+                        : (compact
+                            ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4"
+                            : "grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-8")
                     }>
                         {assets[activeTab].map(item => (
-                            <div key={item.id} className={`group relative surface-glass border border-white/5 overflow-hidden transition-all duration-700 shadow-2xl ${['images', 'videos'].includes(activeTab) ? 'rounded-md hover:border-[#bef264]/60' : 'rounded-[2.5rem] hover:border-[#bef264]/40'}`}>
+                            <div key={item.id} className="group relative surface-glass border border-white/5 overflow-hidden transition-all duration-700 shadow-2xl rounded-xl hover:border-[#bef264]/60">
                                 {item.type === 'video' ? (
-                                    <div className="aspect-[4/5] bg-black relative flex items-center justify-center group/video">
+                                    <div className="aspect-square bg-black relative flex items-center justify-center group/video">
                                         <video
                                             src={resolveUrl(item.url)}
                                             className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
@@ -697,7 +882,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className={`${['images', 'videos'].includes(activeTab) ? 'aspect-square' : 'aspect-[4/5]'} bg-[#050505] relative overflow-hidden`}>
+                                    <div className="aspect-square bg-[#050505] relative overflow-hidden">
                                         <img
                                             src={resolveUrl(item.url)}
                                             alt={item.name}
@@ -707,21 +892,29 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                                     </div>
                                 )}
 
+                                {item.name && item.name !== 'Generated Board' && !item.name.startsWith('http') && (
+                                    <div className="absolute bottom-0 inset-x-0 p-3 pt-6 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10 pointer-events-none">
+                                        <p className="text-[9px] font-black uppercase text-white truncate drop-shadow-md tracking-wider">
+                                            {item.name}
+                                        </p>
+                                    </div>
+                                )}
+
                                 {/* Action Overlay */}
-                                <div className={`absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center ${['images', 'videos'].includes(activeTab) ? 'gap-2' : 'gap-4'}`}>
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
                                     <button
                                         onClick={(e) => { e.stopPropagation(); onSelectReference?.(item.url, item); }}
-                                        className={`${['images', 'videos'].includes(activeTab) ? 'w-8 h-8' : 'w-14 h-14'} bg-[#bef264] hover:scale-110 active:scale-95 rounded-full text-black flex items-center justify-center shadow-[0_0_40px_rgba(190,242,100,0.6)] transition-all`}
+                                        className="w-10 h-10 bg-[#bef264] hover:scale-110 active:scale-95 rounded-full text-black flex items-center justify-center shadow-[0_0_20px_rgba(190,242,100,0.5)] transition-all"
                                         title="Use as Reference"
                                     >
-                                        <ImagePlus className={['images', 'videos'].includes(activeTab) ? 'w-4 h-4' : 'w-7 h-7'} />
+                                        <ImagePlus size={16} />
                                     </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleDeleteAsset(item.id, activeTab); }}
-                                        className={`${['images', 'videos'].includes(activeTab) ? 'w-8 h-8' : 'w-14 h-14'} bg-red-500/80 hover:bg-red-500 hover:scale-110 active:scale-95 rounded-full text-white backdrop-blur-md flex items-center justify-center transition-all border border-red-400/50`}
+                                        className="w-10 h-10 bg-red-500/80 hover:bg-red-500 hover:scale-110 active:scale-95 rounded-full text-white backdrop-blur-md flex items-center justify-center transition-all border border-red-400/50"
                                         title="Delete Permanently"
                                     >
-                                        <Trash2 className={['images', 'videos'].includes(activeTab) ? 'w-3.5 h-3.5' : 'w-6 h-6'} />
+                                        <Trash2 size={16} />
                                     </button>
                                 </div>
 
@@ -744,8 +937,8 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                             </div>
                         ))}
                     </div>
-                )}
-            </div>
+                )
+            }</div>
         </div>
     );
 }

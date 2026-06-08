@@ -63,6 +63,7 @@ export const Seedance15ProNode = memo(({ id, data }) => {
     const [cameraFixed, setCameraFixed]   = useState(false)
     const [generateAudio, setGenerateAudio] = useState(true)
     const [status, setStatus]             = useState('idle')
+    const [errorMsg, setErrorMsg]         = useState('')
     const [outputUrl, setOutputUrl]       = useState(null)
     const [showGallery, setShowGallery]   = useState(false)
     const [showRatio, setShowRatio]       = useState(false)
@@ -154,16 +155,23 @@ export const Seedance15ProNode = memo(({ id, data }) => {
                     }))
                     return
                 }
-                if (json.status === 'failed') { setStatus('error'); return }
+                if (json.status === 'failed') {
+                    const failReason = json.error?.message || 'Generation failed';
+                    setErrorMsg(failReason.toLowerCase().includes('real person') ? 'Real-Person Policy Flagged: Volcano/BytePlus Ark safety filters restrict generating video from reference images that resemble real people.' : failReason);
+                    setStatus('error');
+                    return;
+                }
             } catch (_) { continue }
         }
-        setStatus('error')
+        setErrorMsg('Task compilation timed out.');
+        setStatus('error');
     }
 
     // ── Generate ──
     const generate = async () => {
         if (isBusy || !prompt.trim()) return
         setStatus('generating')
+        setErrorMsg('')
         setOutputUrl(null)
 
         const contentBlocks = [{ type: 'text', text: prompt.trim() }]
@@ -217,11 +225,31 @@ export const Seedance15ProNode = memo(({ id, data }) => {
             await poll(json.id)
         } catch (err) {
             console.error(err)
+            let rawMsg = err.message || 'Generation failed'
+            if (rawMsg.toLowerCase().includes('real person') || rawMsg.toLowerCase().includes('realperson')) {
+                rawMsg = 'Real-Person Policy Flagged: Volcano/BytePlus Ark safety filters restrict generating video from reference images that resemble real people.'
+            }
+            setErrorMsg(rawMsg)
             setStatus('error')
         }
     }
 
-    const estCost = (duration * (resolution === '1080p' ? 0.35 : 0.25)).toFixed(2)
+    const getEstCost = () => {
+        if (mode === 'pro') {
+            // Seedance 1.5 Pro (30% margin included)
+            const rate = resolution === '1080p'
+                ? (generateAudio ? 0.151 : 0.075)
+                : resolution === '720p'
+                ? (generateAudio ? 0.068 : 0.034)
+                : (generateAudio ? 0.031 : 0.016);
+            return (duration * rate).toFixed(2);
+        } else {
+            // Seedance 1.0 Lite (30% margin included)
+            const rate = resolution === '1080p' ? 0.159 : resolution === '720p' ? 0.068 : 0.031;
+            return (duration * rate).toFixed(2);
+        }
+    };
+    const estCost = getEstCost();
 
     return (
         <>
@@ -432,7 +460,7 @@ export const Seedance15ProNode = memo(({ id, data }) => {
 
                     {status === 'error' && (
                         <p className="text-[8px] text-red-400 text-center py-1 font-bold">
-                            ⚠ Task failed or timed out — retry
+                            ⚠ {errorMsg || 'Task failed or timed out — retry'}
                         </p>
                     )}
                 </div>

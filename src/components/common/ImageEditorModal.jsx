@@ -210,7 +210,7 @@ const ImageEditorModal = ({ imageUrl, onClose, onSubmitSuccess }) => {
                     ) : (
                         <Check className="w-4 h-4" />
                     )}
-                    Generate Edit
+                    Generate Edit (3⚡)
                 </button>
             </div>
         </div>

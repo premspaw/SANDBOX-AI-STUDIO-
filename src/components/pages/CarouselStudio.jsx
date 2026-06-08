@@ -776,7 +776,9 @@ function buildSystemPrompt(typeId, brandVoice, artDirection, typography) {
     const brandBlock = brandVoice?.brandName ? `
 ## PRE-LOADED BRAND DATA — skip asking these, use them directly
 - Brand Name: ${brandVoice.brandName}
-${brandVoice.words?.filter(Boolean).length ? `- Keywords: ${brandVoice.words.filter(Boolean).join(', ')}` : ''}
+${brandVoice.tagline ? `- Tagline: ${brandVoice.tagline}` : ''}
+${brandVoice.founderName ? `- Founder Name: ${brandVoice.founderName}` : ''}
+${brandVoice.phoneNumber ? `- Phone Number: ${brandVoice.phoneNumber}` : ''}
 ${brandVoice.whatTheyDo ? `- What They Do: ${brandVoice.whatTheyDo}` : ''}
 ${brandVoice.address ? `- Location: ${brandVoice.address}` : ''}
 ${brandVoice.brandColor ? `- Brand Color: ${brandVoice.brandColor} (use this exact hex in the brand.color field)` : ''}
@@ -978,6 +980,9 @@ export default function CarouselStudio({ userId }) {
         whatTheyDo: bv?.whatTheyDo || fallback.whatTheyDo,
         instagramHandle: bv?.instagramHandle,
         website: bv?.website,
+        tagline: bv?.tagline || fallback.tagline,
+        founderName: bv?.founderName || fallback.founderName,
+        phoneNumber: bv?.phoneNumber || fallback.phoneNumber,
     });
 
     // Sync session cache (Bug 6: useRef instead of module-level _s)
@@ -1808,7 +1813,7 @@ export default function CarouselStudio({ userId }) {
                                 )}
                                 <div className="min-w-0">
                                     <p className="text-[10px] font-black text-white/70 truncate">{brandVoice.brandName}</p>
-                                    <p className="text-[9px] text-white/30 truncate">{brandVoice.words?.filter(Boolean).join(' · ')}</p>
+                                    <p className="text-[9px] text-white/30 truncate">{brandVoice.tagline || brandVoice.whatTheyDo || 'Brand Voice Active'}</p>
                                 </div>
                             </div>
                             <span className={cn('text-[9px] font-black uppercase tracking-wider shrink-0', useBrandVoice ? 'text-[#D4FF00]' : 'text-white/20')}>

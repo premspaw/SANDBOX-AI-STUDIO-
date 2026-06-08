@@ -350,9 +350,11 @@ export function InpaintEditor({ imageUrl, userId, onClose, onDone }: InpaintEdit
                         : 'bg-white/5 text-white/40 hover:bg-white/10 border border-transparent'
                     }`}
                   >
-                    ✦ Gemini (NB2)
-                    <br />
-                    <span className="text-[8px] font-normal normal-case opacity-60">
+                    <div className="flex justify-between items-center w-full">
+                      <span>✦ Gemini (NB2)</span>
+                      <span className="text-[8.5px] font-mono opacity-90 bg-blue-500/30 px-1.5 py-0.5 rounded text-blue-400 font-black">3⚡</span>
+                    </div>
+                    <span className="text-[8px] font-normal normal-case opacity-60 block mt-0.5">
                       Precise mask-based inpainting
                     </span>
                   </button>
@@ -364,8 +366,11 @@ export function InpaintEditor({ imageUrl, userId, onClose, onDone }: InpaintEdit
                         : 'bg-white/5 text-white/40 hover:bg-white/10 border border-transparent'
                     }`}
                   >
-                    ◈ GPT Image 2<br />
-                    <span className="text-[8px] font-normal normal-case opacity-60">
+                    <div className="flex justify-between items-center w-full">
+                      <span>◈ GPT Image 2</span>
+                      <span className="text-[8.5px] font-mono opacity-90 bg-purple-500/30 px-1.5 py-0.5 rounded text-purple-400 font-black">5⚡</span>
+                    </div>
+                    <span className="text-[8px] font-normal normal-case opacity-60 block mt-0.5">
                       Instruction-based regeneration
                     </span>
                   </button>
@@ -399,7 +404,7 @@ export function InpaintEditor({ imageUrl, userId, onClose, onDone }: InpaintEdit
                     <Loader2 className="w-4 h-4 animate-spin" /> Editing…
                   </span>
                 ) : (
-                  '✦ Apply Edit'
+                  `✦ Apply Edit (${model === 'gemini' ? 3 : 5}⚡)`
                 )}
               </button>
             </div>

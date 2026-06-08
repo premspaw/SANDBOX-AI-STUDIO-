@@ -101,7 +101,7 @@ export const ReferencePanel = ({
                     </button>
                 </div>
 
-                <input type="file" ref={refUploadInputRef} className="hidden" accept="image/*" onChange={handleRefUpload} />
+                <input type="file" ref={refUploadInputRef} className="hidden" accept="image/*,video/mp4,audio/mp3" onChange={handleRefUpload} />
 
                 {showLibPicker && (
                     <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
@@ -111,9 +111,19 @@ export const ReferencePanel = ({
                                 <h4 className="text-sm font-bold text-white uppercase tracking-widest">Select {libPickerTarget?.toUpperCase() || 'Reference'}</h4>
                                 <button onClick={() => setShowLibPicker(false)} className="p-1 hover:bg-white/10 rounded-full transition-colors"><X className="w-4 h-4 text-gray-400" /></button>
                             </div>
-                            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                            <div className="flex-1 overflow-hidden p-4">
                                 <AssetsLibrary compact={true} defaultTab={libPickerTarget === 'characters' ? 'matrix' : 'images'} onSelectReference={(url, item) => {
-                                    const name = (item.name || 'Reference').replace(/\s+/g, '');
+                                    // Parse and clean name to make it a valid @mention identifier
+                                    let cleanName = item.name || 'Reference';
+                                    if (cleanName.toUpperCase().startsWith('NAME:')) {
+                                        const parts = cleanName.split(',');
+                                        cleanName = parts[0].substring(5).trim();
+                                    }
+                                    if (cleanName.includes(' — ')) {
+                                        cleanName = cleanName.split(' — ')[0].trim();
+                                    }
+                                    const name = cleanName.replace(/[^\w]/g, '');
+
                                     const category = libPickerTarget?.replace(/s$/, '') || item.category || (item.isCharacter ? 'character' : 'mood');
                                     addRefItem({
                                         id: crypto.randomUUID(),

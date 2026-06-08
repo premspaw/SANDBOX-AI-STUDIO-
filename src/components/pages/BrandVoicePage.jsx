@@ -4,22 +4,16 @@ import { useAppStore } from '../../store'
 import { supabase } from '../../lib/supabase'
 import { getApiUrl } from '../../config/apiConfig'
 
-const WORD_SUGGESTIONS = [
-    'Bold', 'Authentic', 'Playful', 'Luxurious', 'Minimal', 'Energetic',
-    'Trustworthy', 'Innovative', 'Warm', 'Premium', 'Edgy', 'Calm',
-    'Witty', 'Sophisticated', 'Raw', 'Vibrant', 'Clean', 'Powerful'
-]
-
 function FieldRow({ label, hint, done, children }) {
     return (
-        <div className={`relative rounded-2xl border transition-all duration-300 p-4 ${done ? 'border-[#D4FF00]/40 bg-[#D4FF00]/5' : 'border-white/10 bg-white/[0.03]'}`}>
+        <div className={`relative rounded-2xl border transition-all duration-300 p-3.5 ${done ? 'border-[#D4FF00]/40 bg-[#D4FF00]/5' : 'border-white/10 bg-white/[0.03]'}`}>
             <div className="flex items-start justify-between mb-2 gap-2">
                 <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50">{label}</p>
-                    {hint && <p className="text-[10px] text-white/25 mt-0.5">{hint}</p>}
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">{label}</p>
+                    {hint && <p className="text-[8.5px] text-white/30 mt-0.5 leading-relaxed">{hint}</p>}
                 </div>
-                <div className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${done ? 'border-[#D4FF00] bg-[#D4FF00]' : 'border-white/20 bg-transparent'}`}>
-                    {done && <Check className="w-3.5 h-3.5 text-black" strokeWidth={3} />}
+                <div className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${done ? 'border-[#D4FF00] bg-[#D4FF00]' : 'border-white/20 bg-transparent'}`}>
+                    {done && <Check className="w-3 h-3 text-black" strokeWidth={3} />}
                 </div>
             </div>
             {children}
@@ -34,7 +28,9 @@ export default function BrandVoicePage() {
     const [brandName, setBrandName] = useState('')
     const [logoUrl, setLogoUrl] = useState('')
     const [logoPreview, setLogoPreview] = useState('')
-    const [words, setWords] = useState(['', '', ''])
+    const [tagline, setTagline] = useState('')
+    const [founderName, setFounderName] = useState('')
+    const [phoneNumber, setPhoneNumber] = useState('')
     const [address, setAddress] = useState('')
     const [whatTheyDo, setWhatTheyDo] = useState('')
     const [brandColor, setBrandColor] = useState('')
@@ -43,6 +39,58 @@ export default function BrandVoicePage() {
     const [saving, setSaving] = useState(false)
     const [saved, setSaved] = useState(false)
     const [uploading, setUploading] = useState(false)
+    const [scannedPalette, setScannedPalette] = useState([])
+
+    const extractPalette = (fileOrBase64) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 30;
+            canvas.height = 30;
+            ctx.drawImage(img, 0, 0, 30, 30);
+            
+            const imgData = ctx.getImageData(0, 0, 30, 30).data;
+            const colorsMap = new Map();
+            
+            for (let i = 0; i < imgData.length; i += 4) {
+                const r = imgData[i];
+                const g = imgData[i+1];
+                const b = imgData[i+2];
+                const a = imgData[i+3];
+                
+                if (a < 128) continue; // skip transparency
+                
+                const qr = Math.round(r / 24) * 24;
+                const qg = Math.round(g / 24) * 24;
+                const qb = Math.round(b / 24) * 24;
+                
+                const cr = Math.max(0, Math.min(255, qr));
+                const cg = Math.max(0, Math.min(255, qg));
+                const cb = Math.max(0, Math.min(255, qb));
+                
+                const hex = "#" + ((1 << 24) + (cr << 16) + (cg << 8) + cb).toString(16).slice(1).toUpperCase();
+                colorsMap.set(hex, (colorsMap.get(hex) || 0) + 1);
+            }
+            
+            const sorted = Array.from(colorsMap.entries())
+                .sort((a, b) => b[1] - a[1])
+                .map(e => e[0]);
+                
+            setScannedPalette(sorted.slice(0, 8));
+        };
+        
+        if (typeof fileOrBase64 === 'string') {
+            img.src = fileOrBase64;
+        } else {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(fileOrBase64);
+        }
+    };
 
     // Load existing brand voice from profile metadata
     useEffect(() => {
@@ -51,7 +99,9 @@ export default function BrandVoicePage() {
         if (!bv) return
         if (bv.brandName) setBrandName(bv.brandName)
         if (bv.logoUrl) { setLogoUrl(bv.logoUrl); setLogoPreview(bv.logoUrl) }
-        if (bv.words) setWords(bv.words.length === 3 ? bv.words : [...bv.words, '', '', ''].slice(0, 3))
+        if (bv.tagline) setTagline(bv.tagline)
+        if (bv.founderName) setFounderName(bv.founderName)
+        if (bv.phoneNumber) setPhoneNumber(bv.phoneNumber)
         if (bv.address) setAddress(bv.address)
         if (bv.whatTheyDo) setWhatTheyDo(bv.whatTheyDo)
         if (bv.brandColor) setBrandColor(bv.brandColor)
@@ -61,16 +111,18 @@ export default function BrandVoicePage() {
 
     const doneBrandName = brandName.trim().length > 0
     const doneLogo = logoUrl.length > 0
-    const doneWords = words.filter(w => w.trim().length > 0).length === 3
+    const doneTagline = tagline.trim().length > 0
+    const doneFounderName = founderName.trim().length > 0
+    const donePhoneNumber = phoneNumber.trim().length > 0
     const doneAddress = address.trim().length > 0
     const doneWhatTheyDo = whatTheyDo.trim().length > 10
     const doneBrandColor = /^#([0-9A-Fa-f]{6})$/.test(brandColor.trim())
     const doneInstagram = instagramHandle.trim().length > 0
     const doneWebsite = website.trim().length > 0
-    const allDone = doneBrandName && doneLogo && doneWords && doneAddress && doneWhatTheyDo
+    const allDone = doneBrandName && doneWhatTheyDo
 
-    const completedCount = [doneBrandName, doneLogo, doneWords, doneAddress, doneWhatTheyDo, doneBrandColor, doneInstagram, doneWebsite].filter(Boolean).length
-    const totalFields = 8
+    const completedCount = [doneBrandName, doneLogo, doneTagline, doneFounderName, donePhoneNumber, doneAddress, doneWhatTheyDo, doneBrandColor, doneInstagram, doneWebsite].filter(Boolean).length
+    const totalFields = 10
     const progress = (completedCount / totalFields) * 100
 
     const handleLogoUpload = async (e) => {
@@ -85,6 +137,7 @@ export default function BrandVoicePage() {
                 reader.readAsDataURL(file)
             })
             setLogoPreview(base64)
+            extractPalette(file)
             const resp = await fetch(getApiUrl('/api/upload-asset'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -99,22 +152,10 @@ export default function BrandVoicePage() {
         }
     }
 
-    const handleWordChange = (i, val) => {
-        const next = [...words]
-        next[i] = val
-        setWords(next)
-    }
-
-    const handleSuggest = (word) => {
-        const emptyIdx = words.findIndex(w => w.trim() === '')
-        if (emptyIdx === -1) return
-        handleWordChange(emptyIdx, word)
-    }
-
     const handleSave = async () => {
         if (!userProfile?.id) return
         setSaving(true)
-        const payload = { brandName, logoUrl, words, address, whatTheyDo, brandColor, instagramHandle, website }
+        const payload = { brandName, logoUrl, tagline, founderName, phoneNumber, address, whatTheyDo, brandColor, instagramHandle, website }
         try {
             const { error } = await supabase.from('profiles').update({
                 brand_voice: payload
@@ -132,206 +173,252 @@ export default function BrandVoicePage() {
         }
     }
 
-    const handleProceedToPay = async () => {
-        await handleSave()
-        setActiveTab('pricing')
-    }
-
     return (
-        <div className="min-h-full bg-black text-white">
-            <div className="max-w-2xl mx-auto px-4 py-10 space-y-6">
+        <div className="min-h-full bg-black text-white py-4 font-sans select-none">
+            <div className="max-w-4xl mx-auto px-4 space-y-4">
 
                 {/* Header */}
-                <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-[#D4FF00]" />
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#D4FF00]">Brand Setup</p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/5 pb-3 gap-3">
+                    <div className="space-y-0.5">
+                        <div className="flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-[#D4FF00]" />
+                            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-[#D4FF00]">Brand Setup</p>
+                        </div>
+                        <h1 className="text-xl font-black uppercase tracking-tight">Brand Voice</h1>
                     </div>
-                    <h1 className="text-3xl font-black uppercase tracking-tight">Brand Voice</h1>
-                    <p className="text-sm text-white/40">Define your brand identity. Complete all fields to unlock your plan.</p>
+                    {/* Progress bar inside header */}
+                    <div className="w-full sm:w-64 space-y-1">
+                        <div className="flex justify-between text-[8px] text-white/30 font-bold uppercase tracking-widest">
+                            <span>{completedCount} of {totalFields} complete</span>
+                            <span>{Math.round(progress)}%</span>
+                        </div>
+                        <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-[#D4FF00] rounded-full transition-all duration-500"
+                                style={{ width: `${progress}%` }}
+                            />
+                        </div>
+                    </div>
                 </div>
 
-                {/* Progress bar */}
-                <div className="space-y-1.5">
-                    <div className="flex justify-between text-[10px] text-white/30 font-bold uppercase tracking-widest">
-                        <span>{completedCount} of {totalFields} complete</span>
-                        <span>{Math.round(progress)}%</span>
-                    </div>
-                    <div className="h-1 bg-white/10 rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-[#D4FF00] rounded-full transition-all duration-500"
-                            style={{ width: `${progress}%` }}
-                        />
-                    </div>
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Left Column: Identity & Channels */}
+                    <div className="space-y-4">
+                        {/* Brand Name */}
+                        <FieldRow label="Brand Name" hint="Official company name" done={doneBrandName}>
+                            <input
+                                type="text"
+                                value={brandName}
+                                onChange={e => setBrandName(e.target.value)}
+                                placeholder="e.g. ZeroLens"
+                                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/25 outline-none focus:border-[#D4FF00]/50 transition-colors"
+                            />
+                        </FieldRow>
 
-                {/* Brand Name */}
-                <FieldRow label="Brand Name" hint="Your official brand or company name" done={doneBrandName}>
-                    <input
-                        type="text"
-                        value={brandName}
-                        onChange={e => setBrandName(e.target.value)}
-                        placeholder="e.g. ZeroLens"
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-[#D4FF00]/50 transition-colors"
-                    />
-                </FieldRow>
+                        {/* Tagline */}
+                        <FieldRow label="Tagline" hint="Short brand motto or tagline" done={doneTagline}>
+                            <input
+                                type="text"
+                                value={tagline}
+                                onChange={e => setTagline(e.target.value)}
+                                placeholder="e.g. Direct without a camera"
+                                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/25 outline-none focus:border-[#D4FF00]/50 transition-colors"
+                            />
+                        </FieldRow>
 
-                {/* Logo Upload */}
-                <FieldRow label="Brand Logo" hint="Upload your logo (PNG or SVG recommended)" done={doneLogo}>
-                    <div className="flex items-center gap-4">
-                        {logoPreview ? (
-                            <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-white/10 shrink-0 bg-white/5">
-                                <img src={logoPreview} alt="Logo" className="w-full h-full object-contain p-1" />
+                        {/* Logo Upload */}
+                        <FieldRow label="Brand Logo" hint="PNG or SVG recommended" done={doneLogo}>
+                            <div className="flex items-center gap-3">
+                                {logoPreview ? (
+                                    <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/10 shrink-0 bg-white/5">
+                                        <img src={logoPreview} alt="Logo" className="w-full h-full object-contain p-1" />
+                                        <button
+                                            onClick={() => { setLogoUrl(''); setLogoPreview('') }}
+                                            className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 flex items-center justify-center hover:bg-red-500 transition-colors"
+                                        >
+                                            <X className="w-2 h-2 text-white" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="w-12 h-12 rounded-xl border border-dashed border-white/20 flex items-center justify-center shrink-0 bg-white/5">
+                                        <Upload className="w-4 h-4 text-white/20" />
+                                    </div>
+                                )}
                                 <button
-                                    onClick={() => { setLogoUrl(''); setLogoPreview('') }}
-                                    className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 flex items-center justify-center"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={uploading}
+                                    className="flex-1 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold text-white/60 hover:text-white transition-all"
                                 >
-                                    <X className="w-2.5 h-2.5 text-white" />
+                                    {uploading ? 'Uploading...' : logoPreview ? 'Change Logo' : 'Upload Logo'}
                                 </button>
+                                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
                             </div>
-                        ) : (
-                            <div className="w-16 h-16 rounded-xl border border-dashed border-white/20 flex items-center justify-center shrink-0 bg-white/5">
-                                <Upload className="w-5 h-5 text-white/20" />
-                            </div>
-                        )}
-                        <button
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={uploading}
-                            className="flex-1 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-sm font-bold text-white/60 hover:text-white transition-all"
-                        >
-                            {uploading ? 'Uploading...' : logoPreview ? 'Change Logo' : 'Upload Logo'}
-                        </button>
-                        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-                    </div>
-                </FieldRow>
+                        </FieldRow>
 
-                {/* 3 Brand Words */}
-                <FieldRow label="3 Brand Words" hint="Three words that define your brand personality" done={doneWords}>
-                    <div className="space-y-3">
-                        <div className="flex gap-2">
-                            {words.map((word, i) => (
+                        {/* Business Address */}
+                        <FieldRow label="Business Address" hint="City, Country is sufficient" done={doneAddress}>
+                            <input
+                                type="text"
+                                value={address}
+                                onChange={e => setAddress(e.target.value)}
+                                placeholder="e.g. Mumbai, India"
+                                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/25 outline-none focus:border-[#D4FF00]/50 transition-colors"
+                            />
+                        </FieldRow>
+
+                        {/* Channels Grid Row */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <FieldRow label="Instagram" done={doneInstagram}>
+                                <input type="text" value={instagramHandle} onChange={e => setInstagramHandle(e.target.value)}
+                                    placeholder="e.g. @zerolens"
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/25 outline-none focus:border-[#D4FF00]/50 transition-colors" />
+                            </FieldRow>
+
+                            <FieldRow label="Website" done={doneWebsite}>
+                                <input type="text" value={website} onChange={e => setWebsite(e.target.value)}
+                                    placeholder="e.g. https://zerolens.ai"
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/25 outline-none focus:border-[#D4FF00]/50 transition-colors" />
+                            </FieldRow>
+                        </div>
+                    </div>
+
+                    {/* Right Column: Description, Color & Tone */}
+                    <div className="space-y-4">
+                        {/* What you do */}
+                        <FieldRow label="What You Do" hint="Brief description of product/service (1-2 sentences)" done={doneWhatTheyDo}>
+                            <textarea
+                                value={whatTheyDo}
+                                onChange={e => setWhatTheyDo(e.target.value)}
+                                placeholder="We create AI-powered visual content for e-commerce brands..."
+                                rows={2}
+                                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/25 outline-none focus:border-[#D4FF00]/50 transition-colors resize-none leading-relaxed"
+                            />
+                            <p className="text-[8px] text-white/20 mt-0.5 text-right">{whatTheyDo.length} chars</p>
+                        </FieldRow>
+
+                        {/* Founder & Phone Info */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <FieldRow label="Founder Name" done={doneFounderName}>
                                 <input
-                                    key={i}
                                     type="text"
-                                    value={word}
-                                    onChange={e => handleWordChange(i, e.target.value)}
-                                    placeholder={`Word ${i + 1}`}
-                                    maxLength={20}
-                                    className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/20 outline-none focus:border-[#D4FF00]/50 transition-colors text-center font-bold"
+                                    value={founderName}
+                                    onChange={e => setFounderName(e.target.value)}
+                                    placeholder="e.g. John Doe"
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/25 outline-none focus:border-[#D4FF00]/50 transition-colors"
                                 />
-                            ))}
+                            </FieldRow>
+                            <FieldRow label="Phone Number" done={donePhoneNumber}>
+                                <input
+                                    type="text"
+                                    value={phoneNumber}
+                                    onChange={e => setPhoneNumber(e.target.value)}
+                                    placeholder="e.g. +1 234 567 890"
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/25 outline-none focus:border-[#D4FF00]/50 transition-colors"
+                                />
+                            </FieldRow>
                         </div>
-                        <div className="flex flex-wrap gap-1.5">
-                            {WORD_SUGGESTIONS.filter(w => !words.includes(w)).slice(0, 10).map(w => (
-                                <button
-                                    key={w}
-                                    onClick={() => handleSuggest(w)}
-                                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-white/5 hover:bg-[#D4FF00]/10 hover:text-[#D4FF00] text-white/30 border border-white/5 hover:border-[#D4FF00]/20 transition-all"
-                                >
-                                    {w}
-                                </button>
-                            ))}
-                        </div>
+
+                        {/* Brand Color */}
+                        <FieldRow label="Brand Color" hint="Primary hex color — pick a swatch, enter hex, or upload image to scan" done={doneBrandColor}>
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-8 h-8 rounded-lg border border-white/10 shrink-0" style={{ backgroundColor: /^#([0-9A-Fa-f]{6})$/.test(brandColor) ? brandColor : 'transparent' }} />
+                                <input
+                                    type="text"
+                                    value={brandColor}
+                                    onChange={e => setBrandColor(e.target.value)}
+                                    placeholder="e.g. #D4AF37"
+                                    className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/25 outline-none focus:border-[#D4FF00]/50 transition-colors font-mono"
+                                />
+                                <label className="px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-[10px] font-bold text-white/70 hover:text-white cursor-pointer transition-all flex items-center gap-1.5 shrink-0">
+                                    <Upload className="w-3.5 h-3.5" />
+                                    <span>Scan Image</span>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) extractPalette(file);
+                                        }}
+                                    />
+                                </label>
+                            </div>
+
+                            {/* Scanned palette if exists */}
+                            {scannedPalette.length > 0 && (
+                                <div className="mb-3 space-y-1.5">
+                                    <p className="text-[8px] font-bold uppercase tracking-wider text-[#D4FF00]">Scanned Palette Colors</p>
+                                    <div className="flex flex-wrap gap-1.5 bg-white/[0.02] border border-white/5 rounded-xl p-2">
+                                        {scannedPalette.map(hex => (
+                                            <button
+                                                key={`scanned-${hex}`}
+                                                type="button"
+                                                onClick={() => setBrandColor(hex)}
+                                                className={`w-6 h-6 rounded-full border transition-all flex items-center justify-center ${brandColor === hex ? 'border-[#D4FF00] scale-110' : 'border-white/10 hover:scale-105'}`}
+                                                style={{ backgroundColor: hex }}
+                                                title={hex}
+                                            >
+                                                {brandColor === hex && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="space-y-1">
+                                <p className="text-[8px] font-bold uppercase tracking-wider text-white/30">Preset Suggestions</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {[
+                                        { hex: '#D4AF37', label: 'Gold' },
+                                        { hex: '#0EA5E9', label: 'Blue' },
+                                        { hex: '#C8F135', label: 'Lime' },
+                                        { hex: '#FF6B35', label: 'Coral' },
+                                        { hex: '#A855F7', label: 'Purple' },
+                                        { hex: '#00CED1', label: 'Teal' },
+                                        { hex: '#F43F5E', label: 'Rose' },
+                                        { hex: '#10B981', label: 'Emerald' },
+                                        { hex: '#E2E8F0', label: 'Silver' },
+                                        { hex: '#F59E0B', label: 'Amber' },
+                                    ].map(c => (
+                                        <button
+                                            key={c.hex}
+                                            type="button"
+                                            onClick={() => setBrandColor(c.hex)}
+                                            className={`w-6 h-6 rounded-full border transition-all flex items-center justify-center ${brandColor === c.hex ? 'border-[#D4FF00] scale-110' : 'border-white/10 hover:scale-105'}`}
+                                            style={{ backgroundColor: c.hex }}
+                                            title={c.label}
+                                        >
+                                            {brandColor === c.hex && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </FieldRow>
                     </div>
-                </FieldRow>
-
-                {/* Address */}
-                <FieldRow label="Business Address" hint="City, Country is sufficient" done={doneAddress}>
-                    <input
-                        type="text"
-                        value={address}
-                        onChange={e => setAddress(e.target.value)}
-                        placeholder="e.g. Mumbai, India"
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-[#D4FF00]/50 transition-colors"
-                    />
-                </FieldRow>
-
-                {/* What they do */}
-                <FieldRow label="What You Do" hint="Briefly describe your product or service (1-2 sentences)" done={doneWhatTheyDo}>
-                    <textarea
-                        value={whatTheyDo}
-                        onChange={e => setWhatTheyDo(e.target.value)}
-                        placeholder="e.g. We create AI-powered visual content for e-commerce brands that want to stand out."
-                        rows={3}
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-[#D4FF00]/50 transition-colors resize-none"
-                    />
-                    <p className="text-[10px] text-white/20 mt-1 text-right">{whatTheyDo.length} chars</p>
-                </FieldRow>
-
-                {/* Brand Color */}
-                <FieldRow label="Brand Color" hint="Hex code for your primary brand color — pick a preset or type your own" done={doneBrandColor}>
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-lg border border-white/10 shrink-0" style={{ backgroundColor: /^#([0-9A-Fa-f]{6})$/.test(brandColor) ? brandColor : 'transparent' }} />
-                        <input
-                            type="text"
-                            value={brandColor}
-                            onChange={e => setBrandColor(e.target.value)}
-                            placeholder="e.g. #D4AF37"
-                            className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-[#D4FF00]/50 transition-colors font-mono"
-                        />
-                    </div>
-                    <div className="grid grid-cols-5 gap-2">
-                        {[
-                            { hex: '#D4AF37', label: 'Gold', feel: 'Luxury' },
-                            { hex: '#0EA5E9', label: 'Blue', feel: 'Tech' },
-                            { hex: '#C8F135', label: 'Lime', feel: 'Bold' },
-                            { hex: '#FF6B35', label: 'Coral', feel: 'Food' },
-                            { hex: '#A855F7', label: 'Purple', feel: 'Wellness' },
-                            { hex: '#00CED1', label: 'Teal', feel: 'Fintech' },
-                            { hex: '#F43F5E', label: 'Rose', feel: 'Fashion' },
-                            { hex: '#10B981', label: 'Emerald', feel: 'Health' },
-                            { hex: '#E2E8F0', label: 'Silver', feel: 'Minimal' },
-                            { hex: '#F59E0B', label: 'Amber', feel: 'Coffee' },
-                        ].map(c => (
-                            <button
-                                key={c.hex}
-                                onClick={() => setBrandColor(c.hex)}
-                                className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-all ${brandColor === c.hex ? 'border-[#D4FF00]/60 bg-[#D4FF00]/10' : 'border-white/5 hover:border-white/20 bg-white/[0.02]'}`}
-                            >
-                                <div className="w-7 h-7 rounded-md border border-white/10" style={{ backgroundColor: c.hex }} />
-                                <span className="text-[9px] font-bold text-white/50 uppercase tracking-wider">{c.label}</span>
-                                <span className="text-[8px] text-white/25">{c.feel}</span>
-                            </button>
-                        ))}
-                    </div>
-                </FieldRow>
-
-                {/* Instagram Handle */}
-                <FieldRow label="Instagram Handle" hint="Your Instagram @username" done={doneInstagram}>
-                    <input type="text" value={instagramHandle} onChange={e => setInstagramHandle(e.target.value)}
-                        placeholder="e.g. @zerolens"
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-[#D4FF00]/50 transition-colors" />
-                </FieldRow>
-
-                {/* Website */}
-                <FieldRow label="Website" hint="Your website URL" done={doneWebsite}>
-                    <input type="text" value={website} onChange={e => setWebsite(e.target.value)}
-                        placeholder="e.g. https://zerolens.ai"
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-[#D4FF00]/50 transition-colors" />
-                </FieldRow>
+                </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-col gap-3 pt-2">
+                <div className="flex items-center gap-3 pt-3 border-t border-white/5">
                     {/* Save — stays on page */}
                     <button
                         onClick={handleSave}
                         disabled={saving || !doneBrandName}
-                        className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-300 ${
+                        className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-300 ${
                             doneBrandName
-                                ? 'bg-[#D4FF00] text-black shadow-[0_0_30px_rgba(212,255,0,0.3)] hover:shadow-[0_0_40px_rgba(212,255,0,0.5)] hover:scale-[1.02] active:scale-95'
+                                ? 'bg-[#D4FF00] text-black shadow-[0_0_20px_rgba(212,255,0,0.2)] hover:shadow-[0_0_30px_rgba(212,255,0,0.3)] hover:scale-[1.01] active:scale-95'
                                 : 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
                         }`}
                     >
-                        {saved ? '✓ Brand Voice Saved!' : saving ? 'Saving...' : 'Save Brand Voice'}
+                        {saved ? '✓ Saved!' : saving ? 'Saving...' : 'Save Brand Voice'}
                     </button>
 
                     {/* Go to pricing — separate subtle link */}
                     {allDone && (
                         <button
                             onClick={() => setActiveTab('pricing')}
-                            className="w-full py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold text-white/40 hover:text-white transition-all flex items-center justify-center gap-1.5"
+                            className="px-5 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold text-white/60 hover:text-white transition-all flex items-center justify-center gap-1.5"
                         >
-                            Go to Plans <ChevronRight className="w-3 h-3" />
+                            Go to Plans <ChevronRight className="w-3.5 h-3.5" />
                         </button>
                     )}
                 </div>

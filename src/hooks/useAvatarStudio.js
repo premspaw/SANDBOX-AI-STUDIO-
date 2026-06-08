@@ -172,19 +172,53 @@ export function useAvatarStudio(userId = 'anon') {
 
     const saveToGallery = async () => {
         if (!generatedImage || saving) return;
+
+        // Validation for all boards
+        const name = (boardMeta.name || '').toString().trim();
+        if (!name) {
+            const labelMap = {
+                CHARACTER: 'Character Name',
+                POSE: 'Character Name',
+                SHOT: 'Scene Name',
+                LOCATION: 'Location Name',
+                OBJECT: 'Product / Object Name',
+                CREATURE: 'Creature Name'
+            };
+            const label = labelMap[activeBoard] || 'Name';
+            setError(`${label} is required to save.`);
+            return;
+        }
+
+        const isCharBoard = activeBoard === 'CHARACTER';
+        if (isCharBoard) {
+            const age = (boardMeta.age || '').toString().trim();
+            if (!age) {
+                setError('Age is required to save character.');
+                return;
+            }
+        }
+
         setSaving(true);
         setSavedOk(false);
+        setError('');
         try {
             if (supabase) {
-                const assetName = boardMeta.name
-                    ? `${boardMeta.name} — ${activeBoard} Board`
-                    : `${activeBoard} — ${additionalContext || 'Avatar Board'}`;
+                const assetType = isCharBoard ? 'character' : 'image';
+
+                // Format the name nicely
+                let assetName = '';
+                if (isCharBoard) {
+                    const age = (boardMeta.age || '').toString().trim();
+                    assetName = `NAME: ${name.toUpperCase()}, AGE: ${age}`;
+                } else {
+                    assetName = `${name.toUpperCase()} — ${activeBoard} Board`;
+                }
 
                 const { error: dbErr } = await supabase
                     .from('assets')
                     .insert({
                         user_id: userId === 'anon' ? null : userId,
-                        type: 'character',
+                        type: assetType,
                         url: generatedImage,
                         name: assetName,
                         metadata: {
@@ -206,6 +240,7 @@ export function useAvatarStudio(userId = 'anon') {
             setTimeout(() => setSavedOk(false), 3000);
         } catch (err) {
             console.error('[AvatarStudio] saveToGallery error:', err);
+            setError(err.message || 'Saving to assets failed.');
         } finally {
             setSaving(false);
         }

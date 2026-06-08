@@ -19,6 +19,7 @@ import {
   Wand2, Fingerprint, Camera, ShieldAlert, Award
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLivingAvatar } from '../../hooks/useLivingAvatar';
 
 const RECOMMENDED_VOICES = [
   { id: 'Aoede', label: 'Aoede (Female - Warm & Clear)' },
@@ -58,6 +59,75 @@ export default function LivingAvatar() {
   } = useAppStore();
 
   const userId = userProfile?.id || 'anon';
+
+  // ─── Live Stream States & Hook ─────────────────────────────────────
+  const [activeSubTab, setActiveSubTab] = useState('dna'); // 'dna' | 'streamer'
+  const [chatInputText, setChatInputText] = useState('');
+  const liveCanvasRef = useRef(null);
+  const liveAvatarImgRef = useRef(null);
+  const transcriptEndRef = useRef(null);
+
+  const {
+    isActive: isLiveActive,
+    isRecording: isLiveRecording,
+    transcript: liveTranscript,
+    error: liveError,
+    volumeInput,
+    volumeOutput,
+    connect: connectLiveStream,
+    disconnect: disconnectLiveStream,
+    startRecording: startLiveRecording,
+    stopRecording: stopLiveRecording,
+    sendTextMessage: sendLiveTextMessage,
+    clearTranscript: clearLiveTranscript
+  } = useLivingAvatar();
+
+  // Scroll transcript to bottom when new messages arrive
+  useEffect(() => {
+    if (transcriptEndRef.current) {
+      transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [liveTranscript]);
+
+  // Handle clean switch of characters (closes running stream first)
+  const handleSelectCharacter = (char) => {
+    if (isLiveActive) {
+      disconnectLiveStream();
+    }
+    setActiveSubTab('dna');
+    setActiveCharacter(char);
+  };
+
+  // Start or stop Gemini Live Stream
+  const handleToggleLiveStream = async () => {
+    if (isLiveActive) {
+      disconnectLiveStream();
+    } else {
+      if (!activeCharacter) return;
+      
+      const voiceId = activeCharacter.rawData?.metadata?.googleVoiceId || activeCharacter.metadata?.googleVoiceId || 'Aoede';
+      const languageVal = activeCharacter.rawData?.metadata?.language || activeCharacter.metadata?.language || 'English';
+      const characterNameVal = activeCharacter.name;
+      const originNiche = activeCharacter.origin || 'Tech & Lifestyle';
+      const visualStyleVal = activeCharacter.visualStyle || 'Ultra Realistic';
+
+      const config = {
+        characterName: characterNameVal,
+        personality: `Embody a digital content creator in the ${originNiche} niche, with a style that is ${visualStyleVal}. Respond naturally, concisely and voice-inflected.`,
+        language: languageVal,
+        voice: voiceId,
+        avatarUrl: resolveUrl(activeCharacter.image)
+      };
+
+      try {
+        showToast(`Connecting to ${characterNameVal}'s Neural Core...`, "info");
+        await connectLiveStream(config, liveCanvasRef.current, liveAvatarImgRef.current);
+      } catch (err) {
+        console.error(err);
+        showToast("Neural Connection failed.", "error");
+      }
+    }
+  };
 
   // ─── Creation Form States ──────────────────────────────────────────
   const [characterName, setCharacterName] = useState('');
@@ -674,71 +744,253 @@ export default function LivingAvatar() {
               <div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-bounce opacity-40 pointer-events-none" />
             )}
 
-            <div className="space-y-1">
-              <span className="text-[8.5px] font-black uppercase tracking-[0.2em] text-cyan-400 flex items-center gap-1.5">
-                <Award className="w-3.5 h-3.5" /> Anchored Active Persona
-              </span>
-              <h3 className="text-base font-black italic uppercase tracking-wide">
-                {activeCharacter ? activeCharacter.name : "NO PERSONA ANCHORED"}
-              </h3>
+            {/* Hidden crossOrigin image to feed into the Canvas streamer */}
+            {activeCharacter && (
+              <img 
+                ref={liveAvatarImgRef} 
+                src={resolveUrl(activeCharacter.image)} 
+                alt="hidden-avatar-source" 
+                className="hidden" 
+                crossOrigin="anonymous" 
+              />
+            )}
+
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="space-y-1">
+                <span className="text-[8.5px] font-black uppercase tracking-[0.2em] text-cyan-400 flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5" /> Anchored Active Persona
+                </span>
+                <h3 className="text-base font-black italic uppercase tracking-wide">
+                  {activeCharacter ? activeCharacter.name : "NO PERSONA ANCHORED"}
+                </h3>
+              </div>
+
+              {/* Sub-tabs for Blueprints vs Real-Time Interactive streamer */}
+              {activeCharacter && (
+                <div className="flex bg-white/5 border border-white/15 p-0.5 rounded-lg text-[9px] font-black uppercase">
+                  <button
+                    onClick={() => setActiveSubTab('dna')}
+                    className={`px-3 py-1 rounded-md transition-all ${
+                      activeSubTab === 'dna' 
+                        ? 'bg-cyan-500 text-black shadow-md' 
+                        : 'text-white/40 hover:text-white'
+                    }`}
+                  >
+                    DNA Lock
+                  </button>
+                  <button
+                    onClick={() => setActiveSubTab('streamer')}
+                    className={`px-3 py-1 rounded-md transition-all ${
+                      activeSubTab === 'streamer' 
+                        ? 'bg-cyan-500 text-black shadow-md font-bold' 
+                        : 'text-white/40 hover:text-white'
+                    }`}
+                  >
+                    Live Core
+                  </button>
+                </div>
+              )}
             </div>
 
             {activeCharacter ? (
-              <div className="space-y-5">
-                
-                {/* Visual Grid Preview */}
-                <div className="grid grid-cols-4 gap-2 bg-black/40 p-2.5 rounded-2xl border border-white/5">
-                  <div className="aspect-square bg-zinc-950 border border-white/10 rounded-xl overflow-hidden relative">
-                    <img src={resolveUrl(activeCharacter.image)} alt="face1" className="w-full h-full object-cover" />
-                    <span className="absolute bottom-1 inset-x-0 text-[6px] text-center font-black bg-black/80 text-white/50 py-0.5 uppercase">FACE_1</span>
+              activeSubTab === 'dna' ? (
+                <div className="space-y-5">
+                  {/* Visual Grid Preview */}
+                  <div className="grid grid-cols-4 gap-2 bg-black/40 p-2.5 rounded-2xl border border-white/5">
+                    <div className="aspect-square bg-zinc-950 border border-white/10 rounded-xl overflow-hidden relative">
+                      <img src={resolveUrl(activeCharacter.image)} alt="face1" className="w-full h-full object-cover" />
+                      <span className="absolute bottom-1 inset-x-0 text-[6px] text-center font-black bg-black/80 text-white/50 py-0.5 uppercase">FACE_1</span>
+                    </div>
+
+                    <div className="aspect-square bg-zinc-950 border border-white/10 rounded-xl overflow-hidden relative">
+                      <img src={resolveUrl(activeCharacter.kitImages?.profile || activeCharacter.image)} alt="face2" className="w-full h-full object-cover" />
+                      <span className="absolute bottom-1 inset-x-0 text-[6px] text-center font-black bg-black/80 text-white/50 py-0.5 uppercase">FACE_2</span>
+                    </div>
+
+                    <div className="aspect-square bg-zinc-950 border border-white/10 rounded-xl overflow-hidden relative">
+                      <img src={resolveUrl(activeCharacter.kitImages?.closeUp || activeCharacter.image)} alt="face3" className="w-full h-full object-cover" />
+                      <span className="absolute bottom-1 inset-x-0 text-[6px] text-center font-black bg-black/80 text-white/50 py-0.5 uppercase">FACE_3</span>
+                    </div>
+
+                    <div className="aspect-square bg-zinc-950 border border-white/10 rounded-xl overflow-hidden relative">
+                      <img src={resolveUrl(activeCharacter.kitImages?.halfBody || activeCharacter.image)} alt="costume" className="w-full h-full object-cover" />
+                      <span className="absolute bottom-1 inset-x-0 text-[6px] text-center font-black bg-black/80 text-white/50 py-0.5 uppercase">COSTUME</span>
+                    </div>
                   </div>
 
-                  <div className="aspect-square bg-zinc-950 border border-white/10 rounded-xl overflow-hidden relative">
-                    <img src={resolveUrl(activeCharacter.kitImages?.profile || activeCharacter.image)} alt="face2" className="w-full h-full object-cover" />
-                    <span className="absolute bottom-1 inset-x-0 text-[6px] text-center font-black bg-black/80 text-white/50 py-0.5 uppercase">FACE_2</span>
+                  {/* Identity DNA rows */}
+                  <div className="space-y-2 bg-black/30 border border-white/5 rounded-xl p-3 text-[11px] font-mono leading-relaxed">
+                    <div className="flex justify-between border-b border-white/5 pb-1">
+                      <span className="text-white/35 uppercase">Aesthetic style:</span>
+                      <span className="text-cyan-300 font-bold">{activeCharacter.visualStyle}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/5 pb-1">
+                      <span className="text-white/35 uppercase">Niche Sector:</span>
+                      <span className="text-white font-bold">{activeCharacter.origin || 'Digital Influencer'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-white/5 pb-1">
+                      <span className="text-white/35 uppercase">Accents Dialect:</span>
+                      <span className="text-[#bef264] font-bold">{activeCharacter.rawData?.metadata?.language || activeCharacter.metadata?.language || 'English'}</span>
+                    </div>
+                    <div className="flex justify-between pb-0.5">
+                      <span className="text-white/35 uppercase">Voice blueprint:</span>
+                      <span className="text-magenta-400 font-bold uppercase truncate max-w-[140px]">
+                        {activeCharacter.rawData?.metadata?.voiceType === 'cloned' ? 'Custom Cloned File' : `Google ${activeCharacter.rawData?.metadata?.googleVoiceId || activeCharacter.metadata?.googleVoiceId || 'Aoede'}`}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="aspect-square bg-zinc-950 border border-white/10 rounded-xl overflow-hidden relative">
-                    <img src={resolveUrl(activeCharacter.kitImages?.closeUp || activeCharacter.image)} alt="face3" className="w-full h-full object-cover" />
-                    <span className="absolute bottom-1 inset-x-0 text-[6px] text-center font-black bg-black/80 text-white/50 py-0.5 uppercase">FACE_3</span>
-                  </div>
-
-                  <div className="aspect-square bg-zinc-950 border border-white/10 rounded-xl overflow-hidden relative">
-                    <img src={resolveUrl(activeCharacter.kitImages?.halfBody || activeCharacter.image)} alt="costume" className="w-full h-full object-cover" />
-                    <span className="absolute bottom-1 inset-x-0 text-[6px] text-center font-black bg-black/80 text-white/50 py-0.5 uppercase">COSTUME</span>
+                  <div className="flex gap-2.5 p-3 rounded-xl bg-cyan-400/5 border border-cyan-400/15 text-[10px] text-cyan-300/80 leading-relaxed font-sans">
+                    <Check className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <p>
+                      <strong>DNA Active Lock Secured.</strong> When feeding storyboard scripts into Seedance 2.0 (Google Omni) generation, this high-fidelity Character Sheet payload is automatically injected to anchor visual and audio likeness!
+                    </p>
                   </div>
                 </div>
+              ) : (
+                /* Interactive Neural Streamer Tab */
+                <div className="space-y-4">
+                  {liveError && (
+                    <div className="bg-red-950/40 border border-red-500/20 text-red-300 p-3.5 rounded-2xl text-[9.5px] font-mono leading-relaxed flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
+                      <span>{liveError}</span>
+                    </div>
+                  )}
 
-                {/* Identity DNA rows */}
-                <div className="space-y-2 bg-black/30 border border-white/5 rounded-xl p-3 text-[11px] font-mono leading-relaxed">
-                  <div className="flex justify-between border-b border-white/5 pb-1">
-                    <span className="text-white/35 uppercase">Aesthetic style:</span>
-                    <span className="text-cyan-300 font-bold">{activeCharacter.visualStyle}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-white/5 pb-1">
-                    <span className="text-white/35 uppercase">Niche Sector:</span>
-                    <span className="text-white font-bold">{activeCharacter.origin || 'Digital Influencer'}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-white/5 pb-1">
-                    <span className="text-white/35 uppercase">Accents Dialect:</span>
-                    <span className="text-[#bef264] font-bold">{activeCharacter.rawData?.metadata?.language || 'English'}</span>
-                  </div>
-                  <div className="flex justify-between pb-0.5">
-                    <span className="text-white/35 uppercase">Voice blueprint:</span>
-                    <span className="text-magenta-400 font-bold uppercase truncate max-w-[140px]">
-                      {activeCharacter.rawData?.metadata?.voiceType === 'cloned' ? 'Custom Cloned File' : `Google ${activeCharacter.rawData?.metadata?.googleVoiceId || 'Aoede'}`}
-                    </span>
-                  </div>
+                  {!isLiveActive ? (
+                    <div className="flex flex-col items-center justify-center py-6 text-center gap-4">
+                      {/* Avatar preview with holographic scanner effect */}
+                      <div className="w-28 h-28 rounded-full border-2 border-cyan-400/40 p-1 relative group">
+                        <div className="absolute inset-0 rounded-full border border-dashed border-cyan-400 animate-spin opacity-40" />
+                        <img 
+                          src={resolveUrl(activeCharacter.image)} 
+                          alt={activeCharacter.name} 
+                          className="w-full h-full object-cover rounded-full shadow-lg" 
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-xs font-black uppercase text-white/80">Establish Vocal Connection</h4>
+                        <p className="text-[9.5px] text-white/40 max-w-xs mx-auto leading-relaxed">
+                          Initialize a real-time, low-latency voice and text stream with "{activeCharacter.name}" using Google's native Multimodal Live API.
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={handleToggleLiveStream}
+                        className="w-full py-4 rounded-2xl bg-cyan-400 hover:bg-cyan-300 text-black font-black uppercase tracking-[0.15em] text-[10px] transition-all shadow-xl shadow-cyan-400/10 flex items-center justify-center gap-2 hover:scale-[1.01]"
+                      >
+                        <Activity className="w-3.5 h-3.5 animate-pulse" /> ESTABLISH STREAM CONNECTION
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Live Streaming Visualizer Canvas */}
+                      <div className="relative aspect-video w-full rounded-2xl border border-white/10 bg-[#050508] overflow-hidden shadow-inner">
+                        <canvas
+                          ref={liveCanvasRef}
+                          width={640}
+                          height={360}
+                          className="w-full h-full object-cover"
+                        />
+                        {isLiveRecording && (
+                          <div className="absolute top-4 left-4 flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-600/80 border border-red-500 text-[8px] font-black uppercase tracking-wider text-white animate-pulse">
+                            <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
+                            REC
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Interactive scrolling dialogue log */}
+                      <div className="h-44 bg-black/60 border border-white/5 rounded-2xl p-4 overflow-y-auto space-y-3 flex flex-col custom-scrollbar text-[10.5px] font-mono select-text">
+                        {liveTranscript.length === 0 ? (
+                          <div className="flex-1 flex flex-col items-center justify-center text-center opacity-25 text-[8.5px] uppercase tracking-wider gap-1.5">
+                            <Mic className="w-5 h-5 text-white/50" />
+                            Awaiting speech or text input...
+                          </div>
+                        ) : (
+                          liveTranscript.map((msg, idx) => (
+                            <div
+                              key={idx}
+                              className={`flex flex-col gap-1 ${
+                                msg.role === 'model' ? 'items-start' : 'items-end'
+                              }`}
+                            >
+                              <span className={`text-[7.5px] font-black uppercase tracking-wider ${
+                                msg.role === 'model' ? 'text-cyan-400' : 'text-magenta-400'
+                              }`}>
+                                {msg.role === 'model' ? activeCharacter.name : 'YOU'}
+                              </span>
+                              <div className={`p-2.5 rounded-2xl max-w-[85%] leading-relaxed ${
+                                msg.role === 'model'
+                                  ? 'bg-cyan-500/10 border border-cyan-500/20 text-cyan-200 rounded-tl-sm'
+                                  : 'bg-magenta-500/10 border border-magenta-500/20 text-magenta-200 rounded-tr-sm'
+                              }`}>
+                                {msg.text}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                        <div ref={transcriptEndRef} />
+                      </div>
+
+                      {/* Typing and message sending box */}
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          if (chatInputText.trim()) {
+                            sendLiveTextMessage(chatInputText.trim());
+                            setChatInputText('');
+                          }
+                        }}
+                        className="flex gap-2"
+                      >
+                        <input
+                          type="text"
+                          value={chatInputText}
+                          onChange={(e) => setChatInputText(e.target.value)}
+                          placeholder={`Message ${activeCharacter.name}...`}
+                          className="flex-1 bg-black/50 border border-white/10 rounded-xl px-3.5 py-2 text-[11px] text-white font-bold outline-none focus:border-cyan-500 transition-colors"
+                        />
+                        <button
+                          type="submit"
+                          className="px-4 bg-cyan-400 hover:bg-cyan-300 text-black font-black uppercase tracking-wider text-[9px] rounded-xl transition-all shadow-md"
+                        >
+                          Send
+                        </button>
+                      </form>
+
+                      {/* Stream & Recording Control buttons */}
+                      <div className="grid grid-cols-2 gap-2.5 pt-1 border-t border-white/5">
+                        {isLiveRecording ? (
+                          <button
+                            onClick={stopLiveRecording}
+                            className="py-2.5 bg-red-600 hover:bg-red-500 text-white font-black uppercase tracking-wider text-[9px] rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md"
+                          >
+                            <X className="w-3.5 h-3.5" /> Stop Session Recording
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => startLiveRecording(liveCanvasRef.current, liveAvatarImgRef.current, {
+                              characterName: activeCharacter.name,
+                              voice: activeCharacter.rawData?.metadata?.googleVoiceId || activeCharacter.metadata?.googleVoiceId || 'Aoede'
+                            })}
+                            className="py-2.5 bg-red-950/40 hover:bg-red-900/60 border border-red-500/20 text-red-200 font-black uppercase tracking-wider text-[9px] rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
+                            Record Stream
+                          </button>
+                        )}
+                        <button
+                          onClick={handleToggleLiveStream}
+                          className="py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white border border-white/5 font-black uppercase tracking-wider text-[9px] rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md"
+                        >
+                          <X className="w-3.5 h-3.5" /> Stop Stream
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-
-                <div className="flex gap-2.5 p-3 rounded-xl bg-cyan-400/5 border border-cyan-400/15 text-[10px] text-cyan-300/80 leading-relaxed font-sans">
-                  <Check className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                  <p>
-                    <strong>DNA Active Lock Secured.</strong> When feeding storyboard scripts into Seedance 2.0 (Google Omni) generation, this high-fidelity Character Sheet payload is automatically injected to anchor visual and audio likeness!
-                  </p>
-                </div>
-
-              </div>
+              )
             ) : (
               <div className="py-8 flex flex-col items-center justify-center text-center gap-3 opacity-25">
                 <Fingerprint className="w-12 h-12 text-white/50" />
@@ -773,7 +1025,7 @@ export default function LivingAvatar() {
                   return (
                     <div
                       key={char.id}
-                      onClick={() => setActiveCharacter(char)}
+                      onClick={() => handleSelectCharacter(char)}
                       className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center gap-3 cursor-pointer group ${
                         isActive 
                           ? 'bg-[#bef264]/10 border-[#bef264]/40 shadow-lg' 

@@ -100,8 +100,8 @@ export default function createRouter(deps) {
             }
 
             let publicUrl = imageData; 
-            const ext = type === 'video' ? 'mp4' : 'png';
-            const mimeType = type === 'video' ? 'video/mp4' : 'image/png';
+            const ext = type === 'video' ? 'mp4' : type === 'audio' ? 'mp3' : 'png';
+            const mimeType = type === 'video' ? 'video/mp4' : type === 'audio' ? 'audio/mpeg' : 'image/png';
             const name = fileName || `gen_${userId || 'anon'}_${Date.now()}.${ext}`;
             let gcsPath = `users/${userId || 'anon'}/generated/${name}`;
 

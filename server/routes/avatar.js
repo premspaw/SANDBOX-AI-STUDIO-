@@ -87,8 +87,8 @@ export default function createRouter(deps) {
                 return res.status(400).json({ error: 'At least one reference photo is required.' });
             }
 
-            // 1. Charge credits conditionally (2 credits for Banana, 3 for GPT Image 2)
-            const requiredCredits = model === 'banana' ? 2 : 3;
+            // 1. Charge credits conditionally (5 credits for Nano Banana Pro, 3 for GPT Image 2)
+            const requiredCredits = model === 'banana' ? 5 : 3;
             console.log(`[Avatar Board] Consuming ${requiredCredits} credits for user: ${userId} using engine: ${model}`);
             await consumeCredits(userId, requiredCredits);
 
@@ -103,9 +103,9 @@ export default function createRouter(deps) {
             let r2Url = '';
 
             if (model === 'banana') {
-                // Trigger Google Gemini Imagen multimodal generation
+                // Trigger Google Gemini Imagen Pro multimodal generation in 2K
                 const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
-                const activeModel = 'gemini-3.1-flash-image-preview';
+                const activeModel = 'gemini-3.1-pro-image';
                 const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
 
                 const imageParts = [];
@@ -145,23 +145,48 @@ export default function createRouter(deps) {
 
                 const parts = [...imageParts, { text: prompt }];
 
+                const safetySettings = [
+                    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                ];
+
                 console.log('[Avatar Board] Querying Google Gemini Imagen...');
                 const geminiResp = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [{ role: 'user', parts }],
+                        safetySettings,
                         generationConfig: { 
                             responseModalities: ["IMAGE"],
                             imageConfig: {
-                                aspectRatio: aspectRatio === '1:1' ? '1:1' : aspectRatio === '16:9' ? '16:9' : aspectRatio === '9:16' ? '9:16' : '1:1'
+                                aspectRatio: aspectRatio === '1:1' ? '1:1' : aspectRatio === '16:9' ? '16:9' : aspectRatio === '9:16' ? '9:16' : '1:1',
+                                imageSize: '2K'
                             }
                         }
                     })
                 });
 
                 const result = await geminiResp.json();
-                const b64 = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+
+                if (result.promptFeedback?.blockReason) {
+                    const reason = result.promptFeedback.blockReason;
+                    console.error('[Avatar Board] Google API prompt feedback block:', JSON.stringify(result.promptFeedback));
+                    if (reason === 'OTHER') {
+                        throw new Error("Google API blocked the request (blockReason: OTHER). This is typically caused by a sensitive reference photo, copyright/trademark restrictions, or a celebrity likeness filter.");
+                    } else {
+                        throw new Error(`Google API safety block: ${reason}. Please try a different reference image or prompt.`);
+                    }
+                }
+
+                const candidate = result.candidates?.[0];
+                if (candidate && candidate.finishReason === 'SAFETY') {
+                    throw new Error("SAFETY_REFUSAL: The creative prompt was blocked by safety filters.");
+                }
+
+                const b64 = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
                 if (!b64) {
                     console.error('[Avatar Board] Google API error response:', JSON.stringify(result));
                     throw new Error(result.error?.message || "Google API returned no image candidates");
@@ -254,12 +279,29 @@ Synthesize all this information into a highly detailed, extremely precise and un
             const client = supabaseAdmin || supabase;
             if (client) {
                 console.log('[Avatar Board] Logging generation details in Supabase...');
+
+                let characterName = '';
+                if (boardType === 'CHARACTER') {
+                    const name = boardMeta.name || '';
+                    const age = boardMeta.age || '';
+                    if (name && age) {
+                        characterName = `NAME: ${name.toUpperCase()}, AGE: ${age}`;
+                    } else if (name) {
+                        characterName = `NAME: ${name.toUpperCase()}`;
+                    } else {
+                        characterName = additionalContext || `${boardType} Target`;
+                    }
+                } else {
+                    const name = boardMeta.name || '';
+                    characterName = name ? `${name.toUpperCase()} — ${boardType} Board` : (additionalContext || `${boardType} Target`);
+                }
+
                 const { error: dbErr } = await client
                     .from('avatar_generations')
                     .insert({
                         user_id: userId,
                         type: boardType,
-                        character_name: additionalContext || `${boardType} Target`,
+                        character_name: characterName,
                         style: 'Reference Board',
                         ref_image_url: refImageUrl || wardrobeRefUrl || propRefUrl || '',
                         output_url: r2Url,

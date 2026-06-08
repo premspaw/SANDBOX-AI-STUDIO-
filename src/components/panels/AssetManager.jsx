@@ -3,6 +3,7 @@ import { LANDING_ASSETS as INITIAL_ASSETS } from '../../config/landingAssets';
 import { getApiUrl } from '../../config/apiConfig';
 import { AssetsLibrary } from './AssetsLibrary';
 import { Search, Database, Image as ImageIcon, Video, Music, X, Upload, Trash2, CheckCircle2 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 export const AssetManager = () => {
     const [assets, setAssets] = useState(INITIAL_ASSETS);
@@ -16,7 +17,12 @@ export const AssetManager = () => {
 
     const fetchLibrary = async () => {
         try {
-            const response = await fetch(getApiUrl('/api/landing-assets-library'));
+            const { data: { session } } = await supabase.auth.getSession();
+            const headers = {};
+            if (session?.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
+            const response = await fetch(getApiUrl('/api/landing-assets-library'), { headers });
             const data = await response.json();
             setLibrary(data.assets || []);
         } catch (err) {
@@ -28,7 +34,7 @@ export const AssetManager = () => {
         const load = async () => {
             // 1. Fetch Active Config
             try {
-                const response = await fetch(getApiUrl('/api/get-landing-assets'));
+                const response = await fetch(getApiUrl(`/api/get-landing-assets?t=${Date.now()}`));
                 const data = await response.json();
                 if (data && Object.keys(data).length > 0) {
                     setAssets(prev => ({
@@ -111,9 +117,14 @@ export const AssetManager = () => {
         setIsSaving(true);
         setStatus({ type: 'info', message: 'Saving changes...' });
         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const headers = { 'Content-Type': 'application/json' };
+            if (session?.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
             const response = await fetch(getApiUrl('/api/update-landing-assets'), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({ assets })
             });
             const data = await response.json();
@@ -142,9 +153,14 @@ export const AssetManager = () => {
             reader.readAsDataURL(file);
             reader.onload = async () => {
                 const base64 = reader.result;
+                const { data: { session } } = await supabase.auth.getSession();
+                const headers = { 'Content-Type': 'application/json' };
+                if (session?.access_token) {
+                    headers['Authorization'] = `Bearer ${session.access_token}`;
+                }
                 const response = await fetch(getApiUrl('/api/landing-assets-upload'), {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers,
                     body: JSON.stringify({
                         fileName: file.name,
                         category,
@@ -180,8 +196,14 @@ export const AssetManager = () => {
     const deleteFromLibrary = async (id) => {
         if (!window.confirm("Remove this asset from library? (It won't break live site if used)")) return;
         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const headers = {};
+            if (session?.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
             const response = await fetch(getApiUrl(`/api/admin/landing-assets/library/${id}`), {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers
             });
             if (response.ok) {
                 setLibrary(prev => prev.filter(item => item.id !== id));
@@ -251,7 +273,7 @@ export const AssetManager = () => {
                             </h3>
                             <div className="grid gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-sm text-zinc-400 block uppercase tracking-wider text-[10px]">Hero Background Loop</label>
+                                    <label className="text-sm text-zinc-400 block uppercase tracking-wider text-[10px]">Hero Background Loop (Mobile)</label>
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
@@ -270,6 +292,30 @@ export const AssetManager = () => {
                                             <label className="px-4 bg-zinc-800 hover:bg-zinc-700 border border-white/10 rounded-lg text-white flex items-center gap-2 text-[10px] font-black cursor-pointer transition-all">
                                                 <Upload size={14} /> UPLOAD
                                                 <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'hero', 'heroBackground')} accept="video/*" />
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm text-zinc-400 block uppercase tracking-wider text-[10px]">Hero Background Loop (Desktop)</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={assets.heroBackgroundDesktop || ''}
+                                            onChange={(e) => handleInputChange('heroBackgroundDesktop', e.target.value)}
+                                            className="flex-1 bg-black/40 border border-white/10 rounded-lg p-3 text-sm focus:border-[#AADD00] outline-none transition-colors font-mono"
+                                            placeholder="https://..."
+                                        />
+                                        <div className="flex gap-1">
+                                            <button
+                                                onClick={() => openPicker('heroBackgroundDesktop', 'videos')}
+                                                className="px-4 bg-[#AADD00]/10 hover:bg-[#AADD00]/20 border border-[#AADD00]/30 rounded-lg text-[#AADD00] flex items-center gap-2 text-[10px] font-black transition-all"
+                                            >
+                                                <Database size={14} /> PICK
+                                            </button>
+                                            <label className="px-4 bg-zinc-800 hover:bg-zinc-700 border border-white/10 rounded-lg text-white flex items-center gap-2 text-[10px] font-black cursor-pointer transition-all">
+                                                <Upload size={14} /> UPLOAD
+                                                <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'hero', 'heroBackgroundDesktop')} accept="video/*" />
                                             </label>
                                         </div>
                                     </div>

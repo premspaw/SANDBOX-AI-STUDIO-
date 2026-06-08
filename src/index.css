@@ -156,29 +156,25 @@ option {
 }
 
 @keyframes scan {
-  0% {
-    transform: translateY(-100vh);
-  }
-
-  100% {
-    transform: translateY(100vh);
-  }
+  0% { transform: translateY(-100vh); }
+  100% { transform: translateY(100vh); }
 }
 
 @keyframes spin-slow {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @layer utilities {
   .animate-spin-slow {
     animation: spin-slow 6s linear infinite;
   }
+}
+
+/* Shimmer animation for gallery loading placeholder tiles */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 /* React Flow Visual Layering Fixes */
@@ -302,15 +298,16 @@ option {
   animation-duration: 0.25s;
   animation-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
 }
+
 /* Performance tweaks for filmstrip rendering */
 .film-strip-item {
-  contain: content; /* helps with layout isolation for long strips */
+  contain: content;
   flex-shrink: 0;
   will-change: transform;
 }
 
 img {
-  content-visibility: auto; /* helps lazy render of large image lists */
+  content-visibility: auto;
 }
 
 /* ── Kill React Flow white selection/focus outline on ALL nodes ── */
@@ -347,4 +344,3 @@ img {
 .react-flow__edge.react-flow__edge-neural {
   z-index: 9999 !important;
 }
-

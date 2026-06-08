@@ -52,6 +52,14 @@ export function useLivingAvatar() {
   const [volumeInput, setVolumeInput] = useState(0);
   const [volumeOutput, setVolumeOutput] = useState(0);
 
+  // Synchronized refs to prevent closures in requestAnimationFrame loop
+  const isActiveRef = useRef(false);
+  const isRecordingRef = useRef(false);
+  const volumeInputRef = useRef(0);
+  const volumeOutputRef = useRef(0);
+  const transcriptRef = useRef([]);
+  const configRef = useRef(null);
+
   // Refs for WebSockets, AudioContext, Nodes, etc.
   const wsRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -80,14 +88,15 @@ export function useLivingAvatar() {
   // Helper to append a message to the transcript
   const addTranscriptMessage = (role, text) => {
     setTranscript(prev => {
-      // If the last message is by the same role, we might want to append,
-      // but standard dialogue is easier to view as separate turns
+      let updated;
       if (prev.length > 0 && prev[prev.length - 1].role === role) {
-        const updated = [...prev];
+        updated = [...prev];
         updated[updated.length - 1].text += ' ' + text;
-        return updated;
+      } else {
+        updated = [...prev, { role, text }];
       }
-      return [...prev, { role, text }];
+      transcriptRef.current = updated;
+      return updated;
     });
   };
 
@@ -106,13 +115,16 @@ export function useLivingAvatar() {
     audioQueueRef.current = [];
     nextPlayTimeRef.current = 0;
     setVolumeOutput(0);
+    volumeOutputRef.current = 0;
   };
 
   // WebSocket Connection & Session Setup
-  const connect = async (config) => {
+  const connect = async (config, canvasElement = null, avatarImgElement = null) => {
     const { characterName, personality, language, voice, avatarUrl } = config;
+    configRef.current = config;
     setError(null);
     setTranscript([]);
+    transcriptRef.current = [];
 
     const apiKey = getApiKey();
     if (!apiKey) {
@@ -142,6 +154,7 @@ export function useLivingAvatar() {
 
       ws.onopen = () => {
         setIsActive(true);
+        isActiveRef.current = true;
 
         // Send setup message
         const setupMessage = {
@@ -211,6 +224,13 @@ export function useLivingAvatar() {
 
         // Initialize Mic Processor
         startMicStreaming(audioContext, micStream, ws);
+
+        // Kick off visualizer loop as soon as we connect
+        if (canvasElement) {
+          exportCanvasRef.current = canvasElement;
+          avatarImageRef.current = avatarImgElement;
+          startCanvasDrawingLoop(canvasElement, avatarImgElement, config);
+        }
       };
 
       ws.onmessage = async (event) => {
@@ -261,6 +281,7 @@ export function useLivingAvatar() {
 
       ws.onclose = () => {
         setIsActive(false);
+        isActiveRef.current = false;
       };
 
     } catch (err) {
@@ -301,6 +322,7 @@ export function useLivingAvatar() {
       const rms = Math.sqrt(sum / inputBuffer.length);
       const dbVolume = Math.round(Math.min(100, rms * 350));
       setVolumeInput(dbVolume);
+      volumeInputRef.current = dbVolume;
 
       // Simple interruption: If user starts speaking loudly and AI is playing, interrupt AI
       if (dbVolume > 20 && activeSourcesRef.current.length > 0) {
@@ -372,6 +394,7 @@ export function useLivingAvatar() {
       activeSourcesRef.current = activeSourcesRef.current.filter(src => src !== source);
       if (activeSourcesRef.current.length === 0) {
         setVolumeOutput(0);
+        volumeOutputRef.current = 0;
       }
     };
 
@@ -383,12 +406,18 @@ export function useLivingAvatar() {
     const rms = Math.sqrt(sum / float32Array.length);
     const dbVolume = Math.round(Math.min(100, rms * 300));
     setVolumeOutput(dbVolume);
+    volumeOutputRef.current = dbVolume;
   };
 
   // Disconnect & Cleanup
   const disconnect = () => {
     setIsActive(false);
+    isActiveRef.current = false;
     handleLocalInterruption();
+
+    if (isRecordingRef.current) {
+      stopRecording();
+    }
 
     // Close WebSocket
     if (wsRef.current) {
@@ -422,16 +451,33 @@ export function useLivingAvatar() {
 
     setVolumeInput(0);
     setVolumeOutput(0);
+    volumeInputRef.current = 0;
+    volumeOutputRef.current = 0;
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
   };
 
   // Start Canvas Recording & MediaRecorder (Video Export)
-  const startRecording = (canvasElement, avatarImgElement, config) => {
-    if (!isActive) return;
+  const startRecording = (canvasElement = null, avatarImgElement = null, config = null) => {
+    if (!isActiveRef.current) return;
     recordedChunksRef.current = [];
+    isRecordingRef.current = true;
     setIsRecording(true);
 
-    exportCanvasRef.current = canvasElement;
-    avatarImageRef.current = avatarImgElement;
+    const canvas = canvasElement || exportCanvasRef.current;
+    const avatarImg = avatarImgElement || avatarImageRef.current;
+    const finalConfig = config || configRef.current;
+
+    if (!canvas) {
+      console.warn("[LivingAvatar] Cannot start recording: Canvas element not available.");
+      return;
+    }
+
+    exportCanvasRef.current = canvas;
+    avatarImageRef.current = avatarImg;
 
     const audioContext = audioContextRef.current;
     if (!audioContext) return;
@@ -451,11 +497,13 @@ export function useLivingAvatar() {
       outputGainNodeRef.current.connect(audioDestination);
     }
 
-    // Start canvas drawing loop
-    startCanvasDrawingLoop(canvasElement, avatarImgElement, config);
+    // Ensure drawing loop is active
+    if (!animationFrameRef.current) {
+      startCanvasDrawingLoop(canvas, avatarImg, finalConfig);
+    }
 
     // Capture Canvas Stream at 30 fps
-    const canvasStream = canvasElement.captureStream(30);
+    const canvasStream = canvas.captureStream(30);
 
     // Combine Video and Audio tracks
     const videoTrack = canvasStream.getVideoTracks()[0];
@@ -487,7 +535,7 @@ export function useLivingAvatar() {
       // Trigger download
       const a = document.createElement('a');
       a.href = url;
-      a.download = `zerolens-live-avatar-${Date.now()}.webm`;
+      a.download = `${finalConfig?.characterName || 'avatar'}-live-session-${Date.now()}.webm`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -499,15 +547,11 @@ export function useLivingAvatar() {
 
   // Stop Canvas Recording
   const stopRecording = () => {
+    isRecordingRef.current = false;
     setIsRecording(false);
     
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
-    }
-
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
     }
 
     // Disconnect recording destination
@@ -519,6 +563,32 @@ export function useLivingAvatar() {
     }
   };
 
+  // Send typed text message
+  const sendTextMessage = (text) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+
+    const textMessage = {
+      clientContent: {
+        turns: [
+          {
+            role: "user",
+            parts: [{ text: text }]
+          }
+        ],
+        turnComplete: true
+      }
+    };
+
+    wsRef.current.send(JSON.stringify(textMessage));
+    addTranscriptMessage('user', text);
+  };
+
+  // Clear dialog transcripts
+  const clearTranscript = () => {
+    setTranscript([]);
+    transcriptRef.current = [];
+  };
+
   // Dynamic canvas drawing loop at 30fps
   const startCanvasDrawingLoop = (canvas, avatarImg, config) => {
     const ctx = canvas.getContext('2d');
@@ -528,7 +598,7 @@ export function useLivingAvatar() {
     let frame = 0;
 
     const draw = () => {
-      if (!isRecording) return;
+      if (!isActiveRef.current) return;
 
       frame++;
 
@@ -568,11 +638,11 @@ export function useLivingAvatar() {
       const avatarY = height / 2 - avatarSize / 2 - 40;
 
       // Draw outer glowing pulsing rings
-      const pulseFactor = 1 + (volumeOutput > 0 ? (volumeOutput / 100) * 0.15 : Math.sin(frame * 0.05) * 0.03);
+      const pulseFactor = 1 + (volumeOutputRef.current > 0 ? (volumeOutputRef.current / 100) * 0.15 : Math.sin(frame * 0.05) * 0.03);
       
-      ctx.strokeStyle = volumeOutput > 0 ? 'rgba(0, 255, 255, 0.4)' : 'rgba(0, 255, 255, 0.15)';
+      ctx.strokeStyle = volumeOutputRef.current > 0 ? 'rgba(0, 255, 255, 0.4)' : 'rgba(0, 255, 255, 0.15)';
       ctx.lineWidth = 4;
-      ctx.shadowBlur = volumeOutput > 0 ? 25 : 5;
+      ctx.shadowBlur = volumeOutputRef.current > 0 ? 25 : 5;
       ctx.shadowColor = 'rgba(0, 255, 255, 0.8)';
       ctx.beginPath();
       ctx.arc(width / 2, height / 2 - 40, (avatarSize / 2 + 15) * pulseFactor, 0, Math.PI * 2);
@@ -580,10 +650,10 @@ export function useLivingAvatar() {
       ctx.shadowBlur = 0; // reset shadow
 
       // Draw secondary magenta pulsing ring
-      ctx.strokeStyle = volumeInput > 0 ? 'rgba(255, 0, 255, 0.4)' : 'rgba(255, 0, 255, 0.1)';
+      ctx.strokeStyle = volumeInputRef.current > 0 ? 'rgba(255, 0, 255, 0.4)' : 'rgba(255, 0, 255, 0.1)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(width / 2, height / 2 - 40, (avatarSize / 2 + 30) * (1 + (volumeInput / 100) * 0.1), 0, Math.PI * 2);
+      ctx.arc(width / 2, height / 2 - 40, (avatarSize / 2 + 30) * (1 + (volumeInputRef.current / 100) * 0.1), 0, Math.PI * 2);
       ctx.stroke();
 
       // Draw clip-path avatar image (Circular)
@@ -616,7 +686,7 @@ export function useLivingAvatar() {
       ctx.beginPath();
       for (let i = 0; i < width / 2; i += 10) {
         const factor = 1 - (i / (width / 2));
-        const amp = (volumeInput / 100) * 45 * Math.sin(frame * 0.3 + i * 0.05) * factor;
+        const amp = (volumeInputRef.current / 100) * 45 * Math.sin(frame * 0.3 + i * 0.05) * factor;
         if (i === 0) ctx.moveTo(width / 2 - i, waveY + amp);
         else ctx.lineTo(width / 2 - i, waveY + amp);
       }
@@ -627,14 +697,14 @@ export function useLivingAvatar() {
       ctx.beginPath();
       for (let i = 0; i < width / 2; i += 10) {
         const factor = 1 - (i / (width / 2));
-        const amp = (volumeOutput / 100) * 55 * Math.sin(frame * 0.4 + i * 0.04) * factor;
+        const amp = (volumeOutputRef.current / 100) * 55 * Math.sin(frame * 0.4 + i * 0.04) * factor;
         if (i === 0) ctx.moveTo(width / 2 + i, waveY + amp);
         else ctx.lineTo(width / 2 + i, waveY + amp);
       }
       ctx.stroke();
 
       // Draw center visualizer join node
-      ctx.fillStyle = volumeOutput > 0 ? '#00ffff' : (volumeInput > 0 ? '#ff00ff' : '#ffffff');
+      ctx.fillStyle = volumeOutputRef.current > 0 ? '#00ffff' : (volumeInputRef.current > 0 ? '#ff00ff' : '#ffffff');
       ctx.beginPath();
       ctx.arc(width / 2, waveY, 6, 0, Math.PI * 2);
       ctx.fill();
@@ -659,20 +729,31 @@ export function useLivingAvatar() {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
       ctx.fillRect(40, height - 75, width - 80, 2);
 
-      ctx.fillStyle = '#ff0055';
-      ctx.beginPath();
-      // Blink recording dot
-      if (Math.floor(frame / 15) % 2 === 0) {
-        ctx.arc(60, height - 48, 7, 0, Math.PI * 2);
+      // Recording or Active stream indicators
+      if (isRecordingRef.current) {
+        ctx.fillStyle = '#ff0055';
+        ctx.beginPath();
+        if (Math.floor(frame / 15) % 2 === 0) {
+          ctx.arc(60, height - 48, 7, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.font = 'bold 15px "Courier New", monospace';
+        ctx.fillText("LIVE RECORDING IN PROGRESS", 80, height - 44);
+      } else {
+        ctx.fillStyle = '#bef264';
+        ctx.beginPath();
+        ctx.arc(60, height - 48, 5, 0, Math.PI * 2);
         ctx.fill();
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.font = 'bold 13px "Courier New", monospace';
+        ctx.fillText("STREAM ACTIVE - SECURED", 80, height - 44);
       }
-      
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-      ctx.font = 'bold 15px "Courier New", monospace';
-      ctx.fillText("LIVE RECORDING IN PROGRESS", 80, height - 44);
 
       // Print latest dialogue at the bottom right
-      const lastTurn = transcript[transcript.length - 1];
+      const lastTurn = transcriptRef.current[transcriptRef.current.length - 1];
       if (lastTurn) {
         ctx.fillStyle = lastTurn.role === 'model' ? '#00ffff' : '#ff00ff';
         ctx.font = 'bold 13px "Courier New", monospace';
@@ -684,14 +765,13 @@ export function useLivingAvatar() {
       animationFrameRef.current = requestAnimationFrame(draw);
     };
 
-    draw();
+    animationFrameRef.current = requestAnimationFrame(draw);
   };
 
   // Clean up on unmount
   useEffect(() => {
     return () => {
       disconnect();
-      stopRecording();
     };
   }, []);
 
@@ -705,6 +785,8 @@ export function useLivingAvatar() {
     connect,
     disconnect,
     startRecording,
-    stopRecording
+    stopRecording,
+    sendTextMessage,
+    clearTranscript
   };
 }

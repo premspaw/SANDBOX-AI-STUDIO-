@@ -78,6 +78,13 @@ export default function createRouter(deps) {
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), IMAGE_GEN_TIMEOUT);
                         
+                        const safetySettings = [
+                            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                        ];
+
                         const resp = await fetch(
                             `https://generativelanguage.googleapis.com/v1beta/${geminiModel}:generateContent?key=${apiKey}`,
                             {
@@ -85,6 +92,7 @@ export default function createRouter(deps) {
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                                    safetySettings,
                                     generationConfig: {
                                         responseModalities: ['TEXT', 'IMAGE']
                                     }
@@ -99,7 +107,22 @@ export default function createRouter(deps) {
                             throw new Error(data.error?.message || `Gemini API error: ${resp.status}`);
                         }
 
-                        const inlineData = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData;
+                        if (data.promptFeedback?.blockReason) {
+                            const reason = data.promptFeedback.blockReason;
+                            console.error('[Carousel-nano-banana-2] Google API prompt feedback block:', JSON.stringify(data.promptFeedback));
+                            if (reason === 'OTHER') {
+                                throw new Error("Google API blocked the request (blockReason: OTHER). This is typically caused by a sensitive reference photo, copyright/trademark restrictions, or a celebrity likeness filter.");
+                            } else {
+                                throw new Error(`Google API safety block: ${reason}. Please try a different reference image or prompt.`);
+                            }
+                        }
+
+                        const candidate = data.candidates?.[0];
+                        if (candidate && candidate.finishReason === 'SAFETY') {
+                            throw new Error("SAFETY_REFUSAL: The creative prompt was blocked by safety filters.");
+                        }
+
+                        const inlineData = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData;
                         if (!inlineData || !inlineData.data) {
                             throw new Error(`No image generated for slide ${i}`);
                         }

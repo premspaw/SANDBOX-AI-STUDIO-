@@ -252,6 +252,7 @@ function VCell({ cell, style = {} }) {
       }}>
         {cell.src ? (
           <video
+            key={cell.src}
             autoPlay muted loop playsInline
             src={resolveAsset(cell.src)}
             style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 1 }}
@@ -371,6 +372,7 @@ function UGCCard({ card, assets, index }) {
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
         {videoSrc ? (
           <video
+            key={videoSrc}
             autoPlay muted loop playsInline
             src={resolveAsset(videoSrc)}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -827,39 +829,13 @@ export default function LandingPage({ onEnter, onPricing }) {
   useEffect(() => {
     const fetchAssets = async () => {
       try {
-        const response = await fetch(getApiUrl('/api/get-landing-assets'));
+        const response = await fetch(getApiUrl(`/api/get-landing-assets?t=${Date.now()}`));
         const data = await response.json();
         if (data && Object.keys(data).length > 0) {
-          setAssets(prev => {
-            // Helper to protect GCS entries in a list
-            const protectGCS = (listKey) => {
-              const current = prev[listKey] || [];
-              const fetched = data[listKey] || [];
-              // Merge slot by slot: GCS always wins. If DB has nothing, current wins.
-              const maxLen = Math.max(current.length, fetched.length);
-              const merged = [];
-              for (let i = 0; i < maxLen; i++) {
-                if (current[i]?.src?.includes('storage.googleapis')) {
-                  merged[i] = current[i];
-                } else {
-                  merged[i] = fetched[i] || current[i];
-                }
-              }
-              return merged;
-            };
-
-            return {
-              ...data,
-              heroBackground: prev.heroBackground,
-              heroBackgroundDesktop: prev.heroBackgroundDesktop,
-              foregroundSubject: prev.foregroundSubject,
-              pipelineDemo: prev.pipelineDemo,
-              ugcAssets: protectGCS('ugcAssets'),
-              productAssets: protectGCS('productAssets'),
-              cinemaAssets: protectGCS('cinemaAssets'),
-              gallery: protectGCS('gallery')
-            };
-          });
+          setAssets(prev => ({
+            ...prev,
+            ...data
+          }));
         }
       } catch (err) {
         console.warn("[LandingPage] Failed to fetch dynamic assets, using initial config.");
@@ -946,6 +922,7 @@ export default function LandingPage({ onEnter, onPricing }) {
           {assets.heroBackground && (
             <>
               <video
+                key={heroSrc}
                 ref={videoRef}
                 autoPlay muted loop playsInline preload="auto"
                 crossOrigin="anonymous"
@@ -992,7 +969,9 @@ export default function LandingPage({ onEnter, onPricing }) {
             pointerEvents: 'none',
             display: 'flex', alignItems: 'flex-end',
           }}>
-            <video autoPlay muted loop playsInline preload="auto"
+            <video
+              key={assets.foregroundSubject}
+              autoPlay muted loop playsInline preload="auto"
               src={resolveAsset(assets.foregroundSubject)}
               style={{
                 height: '100%', width: 'auto',
@@ -1382,6 +1361,7 @@ function StackVideo({ src, objectFit = 'cover', objectPosition = 'center' }) {
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
       <video
+        key={src}
         autoPlay
         muted={isMuted}
         loop

@@ -16,14 +16,37 @@ export default function createRouter(deps) {
         BUCKET_NAME,
         MARKETING_BUCKET,
         supabaseRestGet,
-        LOCAL_ASSETS_FILE
+        LOCAL_ASSETS_FILE,
+        requireAuth
     } = deps;
 
-    // Agent Memory get
+    // Helper middleware to check if user has admin role
+    async function requireAdmin(req) {
+        const user = await requireAuth(req);
+        const adminClient = supabaseAdmin || supabase;
+        if (!adminClient) throw Object.assign(new Error('Database not configured'), { status: 503 });
+
+        const { data: profile, error } = await adminClient
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+        if (error || profile?.role !== 'admin') {
+            throw Object.assign(new Error('Forbidden: Admin access required'), { status: 403 });
+        }
+        return user;
+    }
+
+    // Agent Memory get (secured)
     router.get('/agent/memory', async (req, res) => {
         try {
+            const user = await requireAuth(req);
             const { userId } = req.query;
             if (!userId) return res.status(400).json({ error: 'userId is required' });
+            if (user.id !== userId) {
+                return res.status(403).json({ error: 'Forbidden: You can only access your own agent memory.' });
+            }
             
             let memories = [];
             try {
@@ -35,29 +58,34 @@ export default function createRouter(deps) {
             res.json({ memories });
         } catch (err) {
             console.error('[Agent Memory GET]', err.message);
-            res.status(500).json({ error: err.message });
+            res.status(err.status || 500).json({ error: err.message });
         }
     });
 
-    // Agent Memory post
+    // Agent Memory post (secured)
     router.post('/agent/memory', async (req, res) => {
         try {
+            const user = await requireAuth(req);
             const { userId, memories } = req.body;
             if (!userId || !Array.isArray(memories)) {
                 return res.status(400).json({ error: 'userId and memories array are required' });
+            }
+            if (user.id !== userId) {
+                return res.status(403).json({ error: 'Forbidden: You can only modify your own agent memory.' });
             }
             const payload = Buffer.from(JSON.stringify(memories, null, 2));
             await storageService.writeToR2(`agent-memory/${userId}.json`, payload);
             res.json({ success: true, count: memories.length });
         } catch (err) {
             console.error('[Agent Memory POST]', err.message);
-            res.status(500).json({ error: err.message });
+            res.status(err.status || 500).json({ error: err.message });
         }
     });
 
-    // Agent Chat
+    // Agent Chat (secured)
     router.post('/agent/chat', async (req, res) => {
         try {
+            await requireAuth(req);
             const { history, systemPrompt, memory = [] } = req.body;
             if (!Array.isArray(history) || history.length === 0) {
                 return res.status(400).json({ error: 'history is required' });
@@ -93,16 +121,25 @@ export default function createRouter(deps) {
             res.json({ text });
         } catch (err) {
             console.error('[Agent Chat]', err.message);
-            res.status(500).json({ error: err.message });
+            res.status(err.status || 500).json({ error: err.message });
         }
     });
 
-    // List Assets
+    // List Assets (secured)
     router.get('/list-assets', async (req, res) => {
         try {
+            const user = await requireAuth(req);
             let { userId } = req.query;
             if (!userId || userId === 'null' || userId === 'undefined' || userId === '') {
-                userId = 'local_user';
+                userId = user.id;
+            }
+
+            if (user.id !== userId) {
+                const adminClient = supabaseAdmin || supabase;
+                const { data: profile } = await adminClient.from('profiles').select('role').eq('id', user.id).single();
+                if (profile?.role !== 'admin') {
+                    return res.status(403).json({ error: 'Forbidden: You can only view your own assets.' });
+                }
             }
 
             console.log(`[SERVER] Fetching assets for user: ${userId}`);
@@ -176,7 +213,7 @@ export default function createRouter(deps) {
                             const parsed = JSON.parse(a.metadata);
                             aspect = parsed.aspect || parsed.aspect_ratio || aspect;
                         } catch (_) {}
-                    }
+                        }
                 }
                 if (aspect === '16:9' && (a.aspect || a.aspect_ratio)) {
                     aspect = a.aspect || a.aspect_ratio;
@@ -197,16 +234,25 @@ export default function createRouter(deps) {
             res.json({ assets: formattedAssets });
         } catch (err) {
             console.error('List Assets Error:', err);
-            res.status(500).json({ error: err.message });
+            res.status(err.status || 500).json({ error: err.message });
         }
     });
 
-    // List Characters
+    // List Characters (secured)
     router.get('/list-characters', async (req, res) => {
         try {
+            const user = await requireAuth(req);
             let { userId } = req.query;
             if (!userId || userId === 'null' || userId === 'undefined' || userId === '') {
-                userId = 'local_user';
+                userId = user.id;
+            }
+
+            if (user.id !== userId) {
+                const adminClient = supabaseAdmin || supabase;
+                const { data: profile } = await adminClient.from('profiles').select('role').eq('id', user.id).single();
+                if (profile?.role !== 'admin') {
+                    return res.status(403).json({ error: 'Forbidden: You can only view your own characters.' });
+                }
             }
             if (!supabase) return res.json({ characters: [] });
 
@@ -272,17 +318,29 @@ export default function createRouter(deps) {
             res.json({ characters: formattedChars });
         } catch (error) {
             console.error('List Characters Error:', error);
-            res.status(500).json({ error: error.message });
+            res.status(error.status || 500).json({ error: error.message });
         }
     });
 
-    // Delete character
+    // Delete character (secured)
     router.delete('/delete-character/:id', async (req, res) => {
         try {
+            const user = await requireAuth(req);
             const { id } = req.params;
             if (!supabase) return res.status(500).json({ error: 'Supabase not configured' });
 
             console.log(`[SERVER] Deleting character: ${id}`);
+
+            // Fetch character to verify owner
+            const { data: character } = await supabase.from('characters').select('user_id').eq('id', id).single();
+            if (character && character.user_id !== user.id) {
+                // Check if user is admin
+                const adminClient = supabaseAdmin || supabase;
+                const { data: profile } = await adminClient.from('profiles').select('role').eq('id', user.id).single();
+                if (profile?.role !== 'admin') {
+                    return res.status(403).json({ error: 'Forbidden: You do not own this character.' });
+                }
+            }
 
             const { error } = await supabase
                 .from('characters')
@@ -298,19 +356,28 @@ export default function createRouter(deps) {
             res.json({ success: true, deletedId: id });
         } catch (error) {
             console.error('Delete Character Error:', error);
-            res.status(500).json({ error: error.message });
+            res.status(error.status || 500).json({ error: error.message });
         }
     });
 
-    // Character image mirror to GCS
+    // Character image mirror to GCS (secured)
     router.post('/characters/mirror-to-gcs', async (req, res) => {
         try {
+            const user = await requireAuth(req);
             const { characterId, imageUrl, imageName } = req.body;
             if (!supabaseAdmin) throw new Error("Supabase Admin is required");
+
+            const { data: character } = await supabaseAdmin.from('characters').select('user_id').eq('id', characterId).single();
+            if (character && character.user_id !== user.id) {
+                const { data: profile } = await supabaseAdmin.from('profiles').select('role').eq('id', user.id).single();
+                if (profile?.role !== 'admin') {
+                    return res.status(403).json({ error: 'Forbidden: You do not own this character.' });
+                }
+            }
             
             const imgResp = await fetch(imageUrl);
             if (!imgResp.ok) throw new Error(`Could not fetch image: HTTP ${imgResp.status}`);
-            const buffer = Buffer.from(imgResp.arrayBuffer());
+            const buffer = Buffer.from(await imgResp.arrayBuffer());
             const contentType = imgResp.headers.get('content-type') || 'image/jpeg';
             const ext = contentType.includes('png') ? 'png' : 'jpg';
             const fileName = `characters/${imageName || characterId}_${Date.now()}.${ext}`;
@@ -335,15 +402,24 @@ export default function createRouter(deps) {
             res.json({ success: true, publicUrl, gcsUri });
         } catch (err) {
             console.error('[CHAR-MIRROR-ERR]', err.message);
-            res.status(500).json({ error: err.message });
+            res.status(err.status || 500).json({ error: err.message });
         }
     });
 
-    // Character ensure GCS
+    // Character ensure GCS (secured)
     router.post('/characters/ensure-gcs', async (req, res) => {
         try {
+            const user = await requireAuth(req);
             const { characterId } = req.body;
             if (!supabaseAdmin) throw new Error("Supabase Admin is required");
+
+            const { data: character } = await supabaseAdmin.from('characters').select('user_id').eq('id', characterId).single();
+            if (character && character.user_id !== user.id) {
+                const { data: profile } = await supabaseAdmin.from('profiles').select('role').eq('id', user.id).single();
+                if (profile?.role !== 'admin') {
+                    return res.status(403).json({ error: 'Forbidden: You do not own this character.' });
+                }
+            }
 
             const { data: char, error: fetchError } = await supabaseAdmin
                 .from('characters')
@@ -390,15 +466,27 @@ export default function createRouter(deps) {
             res.json({ success: true, publicUrl, gcsUri });
         } catch (err) {
             console.error('[CHAR-ENSURE-ERR]', err.message);
-            res.status(500).json({ error: err.message });
+            res.status(err.status || 500).json({ error: err.message });
         }
     });
 
-    // Save character
+    // Save character (secured)
     router.post('/proxy/save-character', async (req, res) => {
         try {
+            const user = await requireAuth(req);
             if (!supabase) throw new Error("Supabase not configured");
             const { character } = req.body;
+
+            if (character.user_id && character.user_id !== user.id) {
+                const adminClient = supabaseAdmin || supabase;
+                const { data: profile } = await adminClient.from('profiles').select('role').eq('id', user.id).single();
+                if (profile?.role !== 'admin') {
+                    return res.status(403).json({ error: 'Forbidden: You cannot save a character for another user.' });
+                }
+            }
+            if (!character.user_id) {
+                character.user_id = user.id;
+            }
 
             let bestImage = '';
             const candidates = [
@@ -449,7 +537,7 @@ export default function createRouter(deps) {
             res.json({ success: true, character: data?.[0] || finalChar });
         } catch (error) {
             console.error('Save Character Error:', error);
-            res.status(500).json({ error: error.message });
+            res.status(error.status || 500).json({ error: error.message });
         }
     });
 
@@ -478,7 +566,7 @@ export default function createRouter(deps) {
         }
     });
 
-    // Get Landing Page Assets Configuration
+    // Get Landing Page Assets Configuration (remains public for static site rendering)
     router.get('/get-landing-assets', async (req, res) => {
         const defaultAssets = {
             heroBackground: "",
@@ -534,9 +622,10 @@ export default function createRouter(deps) {
         }
     });
 
-    // Update Landing Assets
+    // Update Landing Assets (secured: admin only)
     router.post('/update-landing-assets', async (req, res) => {
         try {
+            await requireAdmin(req);
             const { assets } = req.body;
             if (!assets) throw new Error("No assets provided");
 
@@ -576,13 +665,14 @@ export default function createRouter(deps) {
             res.json({ success: true, message: 'Landing assets updated successfully (Supabase + Local)' });
         } catch (error) {
             console.error('Update Landing Assets Error:', error);
-            res.status(500).json({ error: error.message });
+            res.status(error.status || 500).json({ error: error.message });
         }
     });
 
-    // Landing Assets Library
+    // Landing Assets Library (secured)
     router.get('/landing-assets-library', async (req, res) => {
         try {
+            await requireAuth(req);
             if (!supabase) return res.json({ assets: [] });
 
             const folders = ['', 'videos', 'generated', 'refs'];
@@ -615,28 +705,39 @@ export default function createRouter(deps) {
             res.json({ assets: allAssets });
         } catch (err) {
             console.error('[ASSET-LIBRARY]', err);
-            res.status(500).json({ error: err.message });
+            res.status(err.status || 500).json({ error: err.message });
         }
     });
 
-    // Delete asset
+    // Delete asset (secured)
     router.delete('/delete-asset/:id', async (req, res) => {
         try {
+            const user = await requireAuth(req);
             const { id } = req.params;
             if (!supabase) return res.status(500).json({ error: 'Supabase client missing' });
+
+            const { data: asset } = await supabase.from('assets').select('user_id').eq('id', id).single();
+            if (asset && asset.user_id !== user.id) {
+                const adminClient = supabaseAdmin || supabase;
+                const { data: profile } = await adminClient.from('profiles').select('role').eq('id', user.id).single();
+                if (profile?.role !== 'admin') {
+                    return res.status(403).json({ error: 'Forbidden: You do not own this asset.' });
+                }
+            }
 
             const { error } = await supabase.from('assets').delete().eq('id', id);
             if (error) throw error;
             res.json({ success: true, deletedId: id });
         } catch (error) {
             console.error('Delete Asset Error:', error);
-            res.status(500).json({ error: error.message });
+            res.status(error.status || 500).json({ error: error.message });
         }
     });
 
-    // Marketing templates recover from R2
+    // Marketing templates recover from R2 (secured: admin only)
     router.post('/marketing/recover-from-r2', async (req, res) => {
         try {
+            await requireAdmin(req);
             const files = await storageService.listAssetsGCS('marketing/reference/', MARKETING_BUCKET);
             let recovered = 0;
             for (const file of files) {
@@ -656,14 +757,13 @@ export default function createRouter(deps) {
             res.json({ recovered, total: files.length });
         } catch (err) {
             console.error('[MARKETING-RECOVER]', err.message);
-            res.status(500).json({ error: err.message });
+            res.status(err.status || 500).json({ error: err.message });
         }
     });
 
-    // Marketing templates get
+    // Marketing templates get (remains user accessible for prompt suggestions)
     router.get('/marketing/templates', async (req, res) => {
         try {
-            const now = Date.now();
             let rows = [];
             if (supabase) {
                 try {
@@ -721,9 +821,10 @@ export default function createRouter(deps) {
         }
     });
 
-    // Marketing templates post
+    // Marketing templates post (secured: admin only)
     router.post('/marketing/templates', async (req, res) => {
         try {
+            await requireAdmin(req);
             const { id, name, image_url, prompt, aspect, category, user_id } = req.body;
             if (!image_url || !name || !prompt) {
                 return res.status(400).json({ error: 'Missing required template fields' });
@@ -792,13 +893,14 @@ export default function createRouter(deps) {
             res.json({ success: true, id });
         } catch (err) {
             console.error('Save template error:', err);
-            res.status(500).json({ error: err.message });
+            res.status(err.status || 500).json({ error: err.message });
         }
     });
 
-    // Marketing templates delete
+    // Marketing templates delete (secured: admin only)
     router.delete('/marketing/templates/:id', async (req, res) => {
         try {
+            await requireAdmin(req);
             const { id } = req.params;
 
             // 1. Delete from local_assets.json
@@ -837,16 +939,25 @@ export default function createRouter(deps) {
             res.json({ success: true, id });
         } catch (err) {
             console.error('Delete template error:', err);
-            res.status(500).json({ error: err.message });
+            res.status(err.status || 500).json({ error: err.message });
         }
     });
 
-    // Marketing Upload Reference
+    // Marketing Upload Reference (secured: user auth required)
     router.post('/marketing/upload-reference', async (req, res) => {
         try {
+            const user = await requireAuth(req);
             const { image, userId, isTemplate } = req.body;
             if (!image) {
                 return res.status(400).json({ error: 'No image data provided' });
+            }
+
+            if (isTemplate === true) {
+                const adminClient = supabaseAdmin || supabase;
+                const { data: profile } = await adminClient.from('profiles').select('role').eq('id', user.id).single();
+                if (profile?.role !== 'admin') {
+                    return res.status(403).json({ error: 'Forbidden: Admin access required to upload template reference.' });
+                }
             }
 
             // Extract base64 details
@@ -888,15 +999,28 @@ export default function createRouter(deps) {
             });
         } catch (err) {
             console.error('[Marketing] Upload reference error:', err);
-            res.status(500).json({ error: err.message });
+            res.status(err.status || 500).json({ error: err.message });
         }
     });
 
-    // Save Storyboard
+    // Save Storyboard (secured)
     router.post('/proxy/save-storyboard', async (req, res) => {
         try {
+            const user = await requireAuth(req);
             if (!supabase) throw new Error("Supabase client missing");
             const { storyboard } = req.body;
+
+            if (storyboard.user_id && storyboard.user_id !== user.id) {
+                const adminClient = supabaseAdmin || supabase;
+                const { data: profile } = await adminClient.from('profiles').select('role').eq('id', user.id).single();
+                if (profile?.role !== 'admin') {
+                    return res.status(403).json({ error: 'Forbidden: You cannot save a storyboard for another user.' });
+                }
+            }
+            if (!storyboard.user_id) {
+                storyboard.user_id = user.id;
+            }
+
             const { data, error } = await supabase
                 .from('storyboards')
                 .upsert([storyboard], { onConflict: 'id' })
@@ -905,11 +1029,88 @@ export default function createRouter(deps) {
             res.json({ success: true, storyboard: data?.[0] || storyboard });
         } catch (error) {
             console.error('Save Storyboard Error:', error);
-            res.status(500).json({ error: error.message });
+            res.status(error.status || 500).json({ error: error.message });
         }
     });
 
-    // Helper functions for SB API (Suapbase direct REST)
+    // Upload Landing Assets (New Route, secures files uploads via admin panel)
+    router.post('/landing-assets-upload', async (req, res) => {
+        try {
+            await requireAdmin(req);
+            const { fileName, category, type, base64 } = req.body;
+            if (!base64) {
+                return res.status(400).json({ error: 'No file data provided' });
+            }
+
+            // Extract base64 details
+            let buffer;
+            let mimeType = type === 'video' ? 'video/mp4' : 'image/png';
+            let ext = type === 'video' ? 'mp4' : 'png';
+
+            if (base64.startsWith('data:')) {
+                const match = base64.match(/^data:([^;]+);base64,(.+)$/);
+                if (match) {
+                    mimeType = match[1];
+                    ext = mimeType.split('/')[1] || ext;
+                    buffer = Buffer.from(match[2], 'base64');
+                } else {
+                    buffer = Buffer.from(base64, 'base64');
+                }
+            } else {
+                buffer = Buffer.from(base64, 'base64');
+            }
+
+            const timestamp = Date.now();
+            const filePath = `landing/assets/uploaded_${timestamp}.${ext}`;
+
+            console.log(`[Landing Admin] Uploading asset: ${filePath} (${mimeType})`);
+            const publicUrl = await storageService.uploadToGCS(buffer, filePath, mimeType, BUCKET_NAME);
+
+            // Save to landing assets library (user_id = 'landing_assets')
+            const dbClient = supabaseAdmin || supabase;
+            if (dbClient) {
+                try {
+                    await dbClient.from('assets').insert([{
+                        name: fileName || `landing_${timestamp}.${ext}`,
+                        type: type || 'image',
+                        url: publicUrl,
+                        user_id: 'landing_assets',
+                        created_at: new Date().toISOString()
+                    }]);
+                } catch (dbErr) {
+                    console.warn('[Landing Admin] DB insert failed:', dbErr.message);
+                }
+            }
+
+            res.json({
+                success: true,
+                url: publicUrl,
+                path: filePath
+            });
+        } catch (err) {
+            console.error('[Landing Admin] Upload error:', err);
+            res.status(err.status || 500).json({ error: err.message });
+        }
+    });
+
+    // Delete Landing Asset Library item (New Route, maps to the front-end delete action)
+    router.delete('/admin/landing-assets/library/:id', async (req, res) => {
+        try {
+            await requireAdmin(req);
+            const { id } = req.params;
+            const adminClient = supabaseAdmin || supabase;
+            if (!adminClient) return res.status(500).json({ error: 'Supabase client missing' });
+
+            const { error } = await adminClient.from('assets').delete().eq('id', id);
+            if (error) throw error;
+            res.json({ success: true, deletedId: id });
+        } catch (error) {
+            console.error('Delete Landing Asset Error:', error);
+            res.status(error.status || 500).json({ error: error.message });
+        }
+    });
+
+    // Helper functions for SB API (Supabase direct REST)
     function sbH() {
         return {
             'Content-Type': 'application/json',

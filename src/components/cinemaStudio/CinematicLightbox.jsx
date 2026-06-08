@@ -190,6 +190,10 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
           userId: userId
         })
       });
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.message || errData.error || `Save failed: ${resp.statusText}`);
+      }
       const data = await resp.json();
       const url = data.url || data.path || croppedUrlBase64;
       
@@ -213,6 +217,7 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
       }, 300);
     } catch (err) {
       console.error("Crop save failed:", err);
+      if (showToast) showToast(`Cloud save failed (${err.message}). Falling back to local browser storage.`, "info");
       // Fallback: try to crop from current DOM image directly
       try {
         const img = gridImgRef.current;
@@ -360,57 +365,18 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
           </div>
 
           {/* Actions Button List */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-white/5 pb-1">
               <span className="text-[8px] font-black text-white/40 uppercase tracking-widest block">Studio Controls</span>
               <span className="text-[8px] font-mono text-white/20">Production Suite v1.2</span>
             </div>
 
-            {/* CATEGORY 1: GENERATIVE REFINEMENTS */}
-            {lightboxItem.type === 'image' && (
-              <div className="space-y-2">
-                <div className="text-[7.5px] font-bold text-white/30 uppercase tracking-wider">Generative Refinements</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => handleUpscale(lightboxItem)}
-                    disabled={upscalingItems[lightboxItem.id]}
-                    className={cn(
-                      "flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border w-full",
-                      upscalingItems[lightboxItem.id]
-                        ? "bg-fuchsia-500/10 border-fuchsia-500/25 text-fuchsia-400 animate-pulse"
-                        : "bg-fuchsia-500/5 hover:bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-300 hover:text-fuchsia-200 active:scale-[0.98]"
-                    )}
-                  >
-                    {upscalingItems[lightboxItem.id] ? (
-                      <>
-                        <Loader2 size={10} className="animate-spin text-fuchsia-400" />
-                        <span>Refining...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Zap size={10} className="text-fuchsia-400 fill-fuchsia-400/20" />
-                        <span>Upscale 2K</span>
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => handleGenerateAnglesGrid(lightboxItem)}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-[#c8f135]/5 hover:bg-[#c8f135]/15 border border-[#c8f135]/20 hover:border-[#c8f135]/40 text-[#c8f135] active:scale-[0.98] transition-all w-full"
-                    title="Generate a 3x3 Multi-Angle cinematic sheet of this image"
-                  >
-                    <Grid size={10} className="text-[#c8f135]" />
-                    <span>Angles (5⚡)</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* CATEGORY 2: DIRECTOR TIMELINE SETUP */}
-            {lightboxItem.type === 'image' && (
-              <div className="space-y-2">
-                <div className="text-[7.5px] font-bold text-white/30 uppercase tracking-wider">Director Timeline Setup</div>
-                <div className="grid grid-cols-2 gap-2">
+            {/* COMPACT BUTTON GRID */}
+            <div className="grid grid-cols-2 gap-1.5">
+              
+              {/* DIRECTOR TIMELINE SETUP */}
+              {lightboxItem.type === 'image' && (
+                <>
                   <button
                     onClick={() => {
                       setFirstFrameImage(lightboxItem.url);
@@ -419,13 +385,11 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                       const showToast = useAppStore.getState().showToast;
                       if (showToast) showToast("Set as First Frame (FF)!", "success");
                     }}
-                    className="flex flex-col items-center justify-center p-3 rounded-xl border border-white/5 bg-zinc-900/40 hover:bg-fuchsia-500/[0.03] hover:border-fuchsia-500/30 text-white/70 hover:text-white transition-all active:scale-[0.98] w-full gap-1 group"
+                    className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-fuchsia-500/10 hover:border-fuchsia-500/30 text-white/70 hover:text-white transition-all group"
                   >
-                    <Video size={12} className="text-gray-400 group-hover:text-fuchsia-400 transition-colors" />
-                    <span className="text-[9px] font-black uppercase tracking-wider">Use as FF</span>
-                    <span className="text-[7px] text-gray-500 group-hover:text-gray-400 transition-colors">Start Keyframe</span>
+                    <Video size={11} className="mb-0.5 text-gray-400 group-hover:text-fuchsia-400" />
+                    <span className="text-[7.5px] font-black uppercase tracking-wider">Set as FF</span>
                   </button>
-
                   <button
                     onClick={() => {
                       setLastFrameImage(lightboxItem.url);
@@ -434,13 +398,11 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                       const showToast = useAppStore.getState().showToast;
                       if (showToast) showToast("Set as Last Frame (LF)!", "success");
                     }}
-                    className="flex flex-col items-center justify-center p-3 rounded-xl border border-white/5 bg-zinc-900/40 hover:bg-cyan-500/[0.03] hover:border-cyan-500/30 text-white/70 hover:text-white transition-all active:scale-[0.98] w-full gap-1 group"
+                    className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-cyan-500/10 hover:border-cyan-500/30 text-white/70 hover:text-white transition-all group"
                   >
-                    <Video size={12} className="text-gray-400 group-hover:text-cyan-400 transition-colors" />
-                    <span className="text-[9px] font-black uppercase tracking-wider">Use as LF</span>
-                    <span className="text-[7px] text-gray-500 group-hover:text-gray-400 transition-colors">End Keyframe</span>
+                    <Video size={11} className="mb-0.5 text-gray-400 group-hover:text-cyan-400" />
+                    <span className="text-[7.5px] font-black uppercase tracking-wider">Set as LF</span>
                   </button>
-
                   <button
                     onClick={() => {
                       setFirstFrameImage(lightboxItem.url);
@@ -449,86 +411,85 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                       const showToast = useAppStore.getState().showToast;
                       if (showToast) showToast("Set as Reference Style Guided Image!", "success");
                     }}
-                    className="flex items-center justify-center gap-3 p-3 rounded-xl border border-white/5 bg-zinc-900/40 hover:bg-[#c8f135]/[0.03] hover:border-[#c8f135]/30 text-white/70 hover:text-white transition-all active:scale-[0.98] w-full col-span-2 group"
+                    className="col-span-2 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-[#c8f135]/10 hover:border-[#c8f135]/30 text-white/70 hover:text-white transition-all group"
                   >
-                    <ImageIcon size={12} className="text-gray-400 group-hover:text-[#c8f135] transition-colors" />
-                    <div className="flex flex-col items-start justify-center gap-0.5">
-                      <span className="text-[9px] font-black uppercase tracking-wider">Use as Style Reference</span>
-                      <span className="text-[7px] text-gray-500 group-hover:text-gray-400 transition-colors">Apply visual DNA guide</span>
-                    </div>
+                    <ImageIcon size={11} className="text-gray-400 group-hover:text-[#c8f135]" />
+                    <span className="text-[7.5px] font-black uppercase tracking-wider">Use as Style Reference</span>
                   </button>
-                </div>
-              </div>
-            )}
+                </>
+              )}
 
-            {/* CATEGORY 3: ADVANCED PRODUCTION SUITES */}
-            {lightboxItem.type === 'image' && (
-              <div className="space-y-2">
-                <div className="text-[7.5px] font-bold text-white/30 uppercase tracking-wider">Advanced Production Suites</div>
-                <div className="flex flex-col gap-2">
+              {/* GENERATIVE REFINEMENTS */}
+              {lightboxItem.type === 'image' && (
+                <>
+                  <button
+                    onClick={() => handleUpscale(lightboxItem)}
+                    disabled={upscalingItems[lightboxItem.id]}
+                    className={cn(
+                      "col-span-1 flex items-center justify-center gap-1.5 p-2 rounded-lg text-[7.5px] font-black uppercase border transition-all",
+                      upscalingItems[lightboxItem.id]
+                        ? "bg-fuchsia-500/10 border-fuchsia-500/25 text-fuchsia-400 animate-pulse"
+                        : "bg-fuchsia-500/5 hover:bg-fuchsia-500/15 border-fuchsia-500/20 text-fuchsia-300 hover:text-fuchsia-200"
+                    )}
+                  >
+                    {upscalingItems[lightboxItem.id] ? (
+                      <><Loader2 size={10} className="animate-spin text-fuchsia-400" /> Refining...</>
+                    ) : (
+                      <><Zap size={10} className="fill-fuchsia-400/20" /> Upscale 2K</>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleGenerateAnglesGrid(lightboxItem)}
+                    className="col-span-1 flex items-center justify-center gap-1.5 p-2 rounded-lg text-[7.5px] font-black uppercase bg-[#c8f135]/5 hover:bg-[#c8f135]/15 border border-[#c8f135]/20 text-[#c8f135] transition-all"
+                  >
+                    <Grid size={10} /> 9-Angles
+                  </button>
+                </>
+              )}
+
+              {/* ADVANCED PRODUCTION SUITES */}
+              {lightboxItem.type === 'image' && (
+                <div className="col-span-2 grid grid-cols-3 gap-1.5 mt-1 pt-1.5 border-t border-white/5">
                   <button
                     onClick={() => setShowStoryboard(true)}
-                    className="flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-zinc-900/30 hover:bg-emerald-500/[0.02] hover:border-emerald-500/30 text-white/80 hover:text-white transition-all active:scale-[0.99] w-full text-left group"
+                    className="flex flex-col items-center justify-center p-2 rounded-lg border border-white/5 bg-zinc-900/30 hover:bg-emerald-500/10 hover:border-emerald-500/30 text-emerald-400/70 hover:text-emerald-400 transition-all group"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500/20 group-hover:scale-105 transition-all shrink-0">
-                      <Film size={14} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-black uppercase tracking-wider block text-emerald-400 group-hover:text-emerald-300">Storyboard Console</span>
-                      <span className="text-[7.5px] text-gray-500 group-hover:text-gray-400 block mt-0.5 truncate">Compile, sequence & build full scenes</span>
-                    </div>
-                    <ChevronRight size={12} className="text-gray-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+                    <Film size={12} className="mb-1" />
+                    <span className="text-[6.5px] font-black uppercase text-center leading-tight">Storyboard</span>
                   </button>
-
                   <button
                     onClick={() => { setStoryEditInstruction(''); setShowEditStoryModal(true); }}
-                    className="flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-zinc-900/30 hover:bg-blue-500/[0.02] hover:border-blue-500/30 text-white/80 hover:text-white transition-all active:scale-[0.99] w-full text-left group"
+                    className="flex flex-col items-center justify-center p-2 rounded-lg border border-white/5 bg-zinc-900/30 hover:bg-blue-500/10 hover:border-blue-500/30 text-blue-400/70 hover:text-blue-400 transition-all group"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/20 group-hover:scale-105 transition-all shrink-0">
-                      <Palette size={14} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-black uppercase tracking-wider block text-blue-400 group-hover:text-blue-300">Narrative Edit Panel</span>
-                      <span className="text-[7.5px] text-gray-500 group-hover:text-gray-400 block mt-0.5 truncate">Edit prompts & details via Gemini AI</span>
-                    </div>
-                    <ChevronRight size={12} className="text-gray-600 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+                    <Palette size={12} className="mb-1" />
+                    <span className="text-[6.5px] font-black uppercase text-center leading-tight">Narrative Edit</span>
                   </button>
-
                   <button
                     onClick={() => setShowInpaint(true)}
-                    className="flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-zinc-900/30 hover:bg-purple-500/[0.02] hover:border-purple-500/30 text-white/80 hover:text-white transition-all active:scale-[0.99] w-full text-left group"
+                    className="flex flex-col items-center justify-center p-2 rounded-lg border border-white/5 bg-zinc-900/30 hover:bg-purple-500/10 hover:border-purple-500/30 text-purple-400/70 hover:text-purple-400 transition-all group"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/20 group-hover:scale-105 transition-all shrink-0">
-                      <Pencil size={14} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-black uppercase tracking-wider block text-purple-400 group-hover:text-purple-300">Inpaint Brush Editor</span>
-                      <span className="text-[7.5px] text-gray-500 group-hover:text-gray-400 block mt-0.5 truncate">Modify parts of images with smart brush</span>
-                    </div>
-                    <ChevronRight size={12} className="text-gray-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+                    <Pencil size={12} className="mb-1" />
+                    <span className="text-[6.5px] font-black uppercase text-center leading-tight">Brush Editor</span>
                   </button>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* CATEGORY 4: FILE UTILITIES */}
-            <div className="space-y-2">
-              <div className="text-[7.5px] font-bold text-white/30 uppercase tracking-wider">File Utilities</div>
-              <div className="grid grid-cols-2 gap-2">
+              {/* FILE UTILITIES */}
+              <div className="col-span-2 grid grid-cols-2 gap-1.5 mt-1 pt-1.5 border-t border-white/5">
                 <button
                   onClick={() => handleDownload(resolveUrl(lightboxItem.url), lightboxItem.type, lightboxItem.id)}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-[#c8f135]/5 hover:bg-[#c8f135]/15 border border-[#c8f135]/20 text-[#c8f135] hover:text-white active:scale-[0.98] transition-all w-full"
+                  className="flex items-center justify-center gap-1.5 p-2 rounded-lg text-[7.5px] font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white transition-all"
                 >
                   <Download size={10} /> Download
                 </button>
-
                 <button
                   onClick={(e) => handleDeleteItem(lightboxItem.id, e)}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-red-500/5 hover:bg-red-500/15 border border-red-500/20 text-red-400 hover:text-red-300 active:scale-[0.98] transition-all w-full"
+                  className="flex items-center justify-center gap-1.5 p-2 rounded-lg text-[7.5px] font-black uppercase tracking-widest bg-red-500/5 hover:bg-red-500/15 border border-red-500/20 text-red-400 hover:text-red-300 transition-all"
                 >
-                  <Trash2 size={10} className="text-red-400" /> Delete
+                  <Trash2 size={10} /> Delete
                 </button>
               </div>
+
             </div>
           </div>
         </div>

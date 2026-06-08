@@ -5,13 +5,11 @@ import { MobileNav } from '../panels/MobileNav'
 
 const FULL_BLEED_TABS = new Set([
     'home',
-    'influencer',
     'forge',
     'playground',
     'avatar',
     'living-avatar',
     'directors-cut',
-    'creative-studio',
     'marketing',
     'carousel',
     'ugc',

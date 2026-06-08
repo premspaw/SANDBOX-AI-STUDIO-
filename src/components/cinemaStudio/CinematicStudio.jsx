@@ -11,7 +11,7 @@ import {
   Sparkles, Video, Trash2, Camera, Film, Play, Loader2, X,
   Clapperboard, Image as ImageIcon, Send, Download, ChevronDown,
   ChevronUp, Settings2, Maximize2, Clock, Ratio, Zap, Eye, Users,
-  Pencil, Grid, Tv
+  Pencil, Grid, Tv, Upload
 } from 'lucide-react';
 import { useShorts } from '../../hooks/useShorts';
 import { useAppStore } from '../../store';
@@ -24,7 +24,7 @@ import { InpaintEditor } from '../common/InpaintEditor';
 import { compressImageToMax1024 } from '../../services/geminiService';
 import { CinematicLightbox } from './CinematicLightbox';
 import { StoryboardEditor } from './StoryboardEditor';
-
+import { buildSeedanceContentArray } from './SeedanceEngine';
 
 /* ─── CONSTANTS ─────────────────────────────────────────────── */
 const VARIATIONS_OPTIONS = [
@@ -78,19 +78,19 @@ function CyclingLoadingText() {
 }
 
 const ENGINES = [
-  { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — cinematic quality', cost: 5 },
-  { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3.1 Fast',     icon: '⚡', desc: 'Google Fast — lower latency',         cost: 3 },
-  { id: 'veo-3.1-lite-generate-preview', label: 'Veo 3.1 Lite',     icon: '🍃', desc: 'Google Lite — rapid drafts',           cost: 2 },
-  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — ultra-fast generation',    cost: 4 },
-  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — motion-controlled',        cost: 4 },
+  { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — 30⚡/s (54⚡/s audio)', cost: 5 },
+  { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3.1 Fast',     icon: '⚡', desc: 'Google Fast — 10⚡/s (12⚡/s audio)',         cost: 3 },
+  { id: 'veo-3.1-lite-generate-preview', label: 'Veo 3.1 Lite',     icon: '🍃', desc: 'Google Lite — 4⚡/s (6⚡/s audio)',           cost: 2 },
+  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 12⚡/s (6⚡/s 480p)',          cost: 12 },
+  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 16⚡/s (41⚡/s 1080p, 7⚡/s 480p)', cost: 16 },
   { id: 'omni',                          label: 'Omni',            icon: '🌐', desc: 'Multi-modal fusion engine',             cost: 6 },
   { id: 'omni-flash',                    label: 'Omni Flash',      icon: '✨', desc: 'Omni fast — rapid iteration',           cost: 4 },
 ];
 
 const IMAGE_ENGINES = [
-  { id: 'nano-banana-2',   label: 'Nano Banana 2',   icon: '🎨', desc: 'Google highest-fidelity photo gen (Gemini 3.1 Era)', cost: 2 },
-  { id: 'nano-banana-pro', label: 'Nano Banana Pro', icon: '💎', desc: 'Google maximum fidelity image engine',           cost: 5 },
-  { id: 'gpt-image-2',     label: 'GPT Image Pro',   icon: '🤖', desc: 'OpenAI layout & text design',                 cost: 3 },
+  { id: 'nano-banana-2',   label: 'Nano Banana 2',   icon: '🎨', desc: 'Google highest-fidelity photo gen — 2⚡ (4⚡ 2K, 6⚡ 4K)', cost: 2 },
+  { id: 'nano-banana-pro', label: 'Nano Banana Pro', icon: '💎', desc: 'Google maximum fidelity image engine — 5⚡ (10⚡ 2K, 15⚡ 4K)', cost: 5 },
+  { id: 'gpt-image-2',     label: 'GPT Image Pro',   icon: '🤖', desc: 'OpenAI layout & text design — 3⚡ flat rate',                 cost: 3 },
 ];
 
 const STYLE_OPTIONS = [
@@ -116,6 +116,12 @@ const DURATION_OPTIONS = [
   { value: 5,  label: '5 Seconds',  desc: 'Quick burst — ideal for ads' },
   { value: 8,  label: '8 Seconds',  desc: 'Standard — cinematic shots' },
   { value: 10, label: '10 Seconds', desc: 'Extended — full scenes' },
+];
+
+const SEEDANCE_DURATION_OPTIONS = [
+  { value: 5,  label: '5 Seconds',  desc: 'Quick burst — ideal for ads' },
+  { value: 10, label: '10 Seconds', desc: 'Standard narrative length' },
+  { value: 15, label: '15 Seconds', desc: 'Extended scene — maximum duration' },
 ];
 
 const CAMERA_MOVEMENTS = [
@@ -428,6 +434,18 @@ const DEFAULT_CINEMA_ASSETS = [
   }
 ];
 
+const cleanErrorMessage = (msg) => {
+  if (!msg || typeof msg !== 'string') return '';
+  let cleaned = msg;
+  if (cleaned.toLowerCase().includes('real person') || cleaned.toLowerCase().includes('realperson')) {
+    return "Real-Person Policy Flagged: Volcano/BytePlus Ark safety filters restrict generating video from reference images that resemble real people. Recommendations: 1) Switch to Veo 3.1 or 2) Use a more stylized or cartoonish/drawn reference image.";
+  }
+  if (cleaned.includes('SAFETY_REFUSAL') || cleaned.toLowerCase().includes('safety filter')) {
+    return "Safety Filter Blocked: The prompt or input image triggered the model's safety filters. Please refine your prompt text or try a different reference image.";
+  }
+  return cleaned;
+};
+
 /* ─── MAIN COMPONENT ────────────────────────────────────────── */
 export default function CinematicStudio() {
   const userProfile = useAppStore(state => state.userProfile);
@@ -437,6 +455,7 @@ export default function CinematicStudio() {
 
   const { refresh: refreshShorts } = useShorts() || { refresh: () => {} };
   const spendShorts = useAppStore(state => state.spendShorts);
+  const refundShorts = useAppStore(state => state.refundShorts);
 
   // Core Inputs
   const [promptText, setPromptText] = useState('');
@@ -465,6 +484,7 @@ export default function CinematicStudio() {
   const [showPayloadModal, setShowPayloadModal] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedPayload, setCopiedPayload] = useState(false);
+  const [generateAudio, setGenerateAudio] = useState(false);
 
   // Automatically take default lens for selected Camera + Angle (framing & perspective)
   useEffect(() => {
@@ -473,6 +493,23 @@ export default function CinematicStudio() {
     const defaultLens = mapping?.default || mapping?.lenses?.[0] || 'Auto';
     setLens(defaultLens);
   }, [camera, angle]);
+
+  // Adjust resolution & duration options dynamically for Seedance engines
+  useEffect(() => {
+    const isSeed = activeEngine === 'seedance-fast' || activeEngine === 'seedace';
+    if (isSeed) {
+      if (resolution === '4k') {
+        setResolution('1080p');
+      }
+      if (duration === 8) {
+        setDuration(10);
+      }
+    } else {
+      if (duration === 15) {
+        setDuration(10);
+      }
+    }
+  }, [activeEngine, resolution, duration]);
 
   const handleCameraChange = (camId) => {
     const cam = CAMERA_MODELS.find(c => c.id === camId) || CAMERA_MODELS[0];
@@ -823,6 +860,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
   const [libPickerTarget, setLibPickerTarget] = useState(null)
   const refUploadInputRef = useRef(null)
   const [activeRefUploadCategory, setActiveRefUploadCategory] = useState(null)
+  const [pendingRefUpload, setPendingRefUpload] = useState(null);
   const [isUploadingRef, setIsUploadingRef] = useState(false)
 
   // Autocomplete mentions query states
@@ -927,117 +965,88 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
   }
 
   const handleRefUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file || !activeRefUploadCategory) return
-    
-    setIsUploadingRef(true)
-    const reader = new FileReader()
-    reader.onloadend = async () => {
-      const base64 = reader.result;
-      try {
-        const resp = await fetch('http://localhost:3002/api/save-asset', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            imageData: base64, 
-            fileName: `ref_${Date.now()}.png`,
-            userId: userId
-          })
-        });
-        const data = await resp.json();
-        const url = data.url || data.path || base64;
-        const defaultName = `Ref_${Date.now().toString().slice(-4)}`;
-        const customName = prompt(`Enter a name for this ${activeRefUploadCategory.replace(/s$/, '')} (e.g., riya):`, "");
-        const finalName = (customName?.trim() || defaultName).replace(/\s+/g, '');
-
-        const newItem = {
-          id: crypto.randomUUID(),
-          name: finalName,
-          category: activeRefUploadCategory,
-          imageUrl: url
-        };
-        addRefItem(newItem);
-      } catch (err) {
-        console.error("Ref upload failed:", err);
-      } finally {
-        setIsUploadingRef(false);
-      }
-    }
-    reader.readAsDataURL(file)
-    e.target.value = ''
-  }
-
-  const toolbarRefUploadInputRef = useRef(null);
-
-  const handleToolbarRefUpload = async (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    
-    const categoryChoice = prompt("Enter reference category (character, location, wardrobe, prop, mood):", "character");
-    if (categoryChoice === null) return;
-    
-    let resolvedCategory = 'characters';
-    const choice = categoryChoice.toLowerCase().trim();
-    if (choice.includes('char')) resolvedCategory = 'characters';
-    else if (choice.includes('loc')) resolvedCategory = 'locations';
-    else if (choice.includes('ward') || choice.includes('cloth')) resolvedCategory = 'wardrobes';
-    else if (choice.includes('prop')) resolvedCategory = 'props';
-    else if (choice.includes('mood') || choice.includes('style')) resolvedCategory = 'moods';
+    if (!file || !activeRefUploadCategory) return;
+    setPendingRefUpload({
+      file,
+      type: 'board',
+      defaultCategory: activeRefUploadCategory,
+      previewUrl: URL.createObjectURL(file)
+    });
+    e.target.value = '';
+  };
+
+
+
+  const processPendingRefUpload = async (name, category) => {
+    if (!pendingRefUpload) return;
+    const { file, type } = pendingRefUpload;
+    setPendingRefUpload(null);
 
     setIsUploadingRef(true);
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64 = reader.result;
+      const isVideo = file.type.startsWith('video/');
+      const isAudio = file.type.startsWith('audio/');
+      const assetType = isVideo ? 'video' : isAudio ? 'audio' : 'image';
+      const ext = isVideo ? 'mp4' : isAudio ? 'mp3' : 'png';
       try {
-        const resp = await fetch('http://localhost:3002/api/save-asset', {
+        const resp = await fetch(getApiUrl('/api/save-asset'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             imageData: base64, 
-            fileName: `ref_${Date.now()}.png`,
+            type: assetType,
+            fileName: `ref_${Date.now()}.${ext}`,
             userId: userId
           })
         });
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          throw new Error(errData.message || errData.error || `Save failed: ${resp.statusText}`);
+        }
         const data = await resp.json();
         const url = data.url || data.path || base64;
-        const defaultName = `Ref_${Date.now().toString().slice(-4)}`;
-        const customName = prompt(`Enter a mention name (e.g., riya) for this reference element:`, "");
-        const finalName = (customName?.trim() || defaultName).replace(/\s+/g, '');
-
+        
+        const finalName = (name.trim() || `Ref_${Date.now().toString().slice(-4)}`).replace(/\s+/g, '');
+        
         const newItem = {
           id: crypto.randomUUID(),
           name: finalName,
-          category: resolvedCategory,
+          category: category,
           imageUrl: url
         };
         
-        const categoryKey = resolvedCategory;
-        const singleAllowed = ['locations', 'wardrobes', 'moods'];
-        const updater = (prev) => {
-          const currentList = prev[categoryKey] || [];
-          if (singleAllowed.includes(categoryKey)) {
-            return { ...prev, [categoryKey]: [newItem] };
-          }
-          return { ...prev, [categoryKey]: [...currentList, newItem] };
-        };
-        setStagedRefBoard(updater);
-        setRefBoard(prev => {
-          const updated = updater(prev);
-          localStorage.setItem(`refBoard_video`, JSON.stringify(updated));
-          return updated;
-        });
-
-        const showToast = useAppStore.getState().showToast;
-        if (showToast) showToast(`Added @${finalName} to Reference Library!`, "success");
+        if (type === 'board') {
+          addRefItem(newItem);
+        } else {
+          const singleAllowed = ['locations', 'wardrobes', 'moods'];
+          const updater = (prev) => {
+            const currentList = prev[category] || [];
+            if (singleAllowed.includes(category)) {
+              return { ...prev, [category]: [newItem] };
+            }
+            return { ...prev, [category]: [...currentList, newItem] };
+          };
+          setStagedRefBoard(updater);
+          setRefBoard(prev => {
+            const updated = updater(prev);
+            localStorage.setItem(`refBoard_video`, JSON.stringify(updated));
+            return updated;
+          });
+          const showToast = useAppStore.getState().showToast;
+          if (showToast) showToast(`Added @${finalName} to Library!`, "success");
+        }
       } catch (err) {
         console.error("Ref upload failed:", err);
-        alert("Upload failed: " + err.message);
+        const showToast = useAppStore.getState().showToast;
+        if (showToast) showToast("Upload failed: " + err.message, "error");
       } finally {
         setIsUploadingRef(false);
       }
     };
     reader.readAsDataURL(file);
-    e.target.value = '';
   };
 
 
@@ -1049,11 +1058,64 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
 
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
+  const getRequiredCredits = (engineId) => {
+    if (activeTab === 'image') {
+      if (engineId === 'nano-banana-2') {
+        return resolution === '720p' ? 2 : resolution === '1080p' ? 4 : 6;
+      }
+      if (engineId === 'nano-banana-pro') {
+        return resolution === '720p' ? 5 : resolution === '1080p' ? 10 : 15;
+      }
+      return IMAGE_ENGINES.find(e => e.id === engineId)?.cost || 2;
+    }
+    if (engineId.startsWith('veo-3.1')) {
+      let costPerSec = 4;
+      if (engineId === 'veo-3.1-generate-preview') {
+        if (resolution === '4k') {
+          costPerSec = generateAudio ? 80 : 54;
+        } else {
+          costPerSec = generateAudio ? 54 : 30;
+        }
+      } else if (engineId === 'veo-3.1-fast-generate-preview') {
+        if (resolution === '4k') {
+          costPerSec = generateAudio ? 38 : 31;
+        } else if (resolution === '1080p') {
+          costPerSec = generateAudio ? 15 : 12;
+        } else {
+          costPerSec = generateAudio ? 12 : 10;
+        }
+      } else if (engineId === 'veo-3.1-lite-generate-preview') {
+        if (resolution === '4k' || resolution === '1080p') {
+          costPerSec = generateAudio ? 10 : 6;
+        } else {
+          costPerSec = generateAudio ? 6 : 4;
+        }
+      }
+      return costPerSec * duration;
+    }
+    if (engineId === 'seedance-fast') {
+      const costPerSec = resolution === '480p' ? 6 : 12;
+      return costPerSec * duration;
+    }
+    if (engineId === 'seedace') {
+      const costPerSec = (resolution === '1080p' || resolution === '4k') ? 41 : (resolution === '480p' ? 7 : 16);
+      return costPerSec * duration;
+    }
+    return ENGINES.find(e => e.id === engineId)?.cost || 4;
+  };
+
   const isBusy = status === 'generating' || status === 'polling';
-  const requiredCredits = (activeTab === 'video'
-    ? (ENGINES.find(e => e.id === activeEngine)?.cost || 4)
-    : (IMAGE_ENGINES.find(e => e.id === activeEngine)?.cost || 2)) * variationCount;
+  const requiredCredits = getRequiredCredits(activeEngine) * variationCount;
   const canGenerate = promptText.trim() && userCredits >= requiredCredits && !isBusy;
+
+  const triggerRefund = async (reason) => {
+    try {
+      await refundShorts(userId, requiredCredits, reason);
+      refreshShorts();
+    } catch (refundErr) {
+      console.error("Refund failed:", refundErr);
+    }
+  };
 
   // Auto-resize textarea
   useEffect(() => {
@@ -1080,12 +1142,27 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
       }
 
       try {
-        const ext = file.name.split('.').pop();
-        const path = `cinema/${userId}/${Date.now()}.${ext}`;
-        const { error } = await supabase.storage.from('assets').upload(path, file);
-        if (error) throw error;
+        const isVideo = file.type.startsWith('video/');
+        const isAudio = file.type.startsWith('audio/');
+        const assetType = isVideo ? 'video' : isAudio ? 'audio' : 'image';
+        const ext = isVideo ? 'mp4' : isAudio ? 'mp3' : 'png';
 
-        const { data: { publicUrl } } = supabase.storage.from('assets').getPublicUrl(path);
+        const resp = await fetch(getApiUrl('/api/save-asset'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            imageData: previewUrl, 
+            type: assetType,
+            fileName: `frame_${Date.now()}.${ext}`,
+            userId: userId
+          })
+        });
+        
+        if (!resp.ok) throw new Error('Failed to save asset via API');
+        
+        const data = await resp.json();
+        const publicUrl = data.url || data.path || previewUrl;
+
         if (uploadTarget === 'first' || activeTab === 'image') {
           setFirstFrameImage(publicUrl);
         } else {
@@ -1094,6 +1171,8 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
       } catch (err) {
         console.error('[Cinema Upload]:', err);
         setErrorMsg(`Upload failed: ${err.message}`);
+        const showToast = useAppStore.getState().showToast;
+        if (showToast) showToast(`Upload failed: ${err.message}`, "error");
         if (uploadTarget === 'first' || activeTab === 'image') {
           setFirstFramePreview('');
         } else {
@@ -1118,16 +1197,18 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  /* ─── ARK POLL ───────────────────────────────────────────── */
-  const pollArkTask = async (taskId, activePrompt, activeRatio) => {
+  /* ─── SEEDANCE POLL ──────────────────────────────────────── */
+  const pollSeedanceTask = async (taskId, activePrompt, activeRatio, engine) => {
     setStatus('polling');
+    const engineLabel = engine.includes('fast') ? 'Seedance Fast' : 'Seedance 2.0';
+
     for (let i = 0; i < 120; i++) {
       await new Promise(r => setTimeout(r, 6000));
       const elapsed = (i + 1) * 6;
       setPollMsg(`Rendering video... (${elapsed}s)`);
 
       try {
-        const res = await fetch(getApiUrl(`/api/ark/status/${taskId}?userId=${userId}&aspectRatio=${activeRatio}`));
+        const res = await fetch(getApiUrl(`/api/seedance/status/${taskId}?userId=${userId}&aspectRatio=${activeRatio}&engine=${engine}`));
         const json = await res.json();
         const st = json.status;
 
@@ -1139,7 +1220,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
               type: 'video',
               url: url,
               prompt: activePrompt,
-              engine: 'Seedance Fast',
+              engine: engineLabel,
               aspect: activeRatio,
               ts: Date.now()
             }, ...prev]);
@@ -1152,95 +1233,26 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
 
         if (st === 'failed' || st === 'error') {
           setStatus('error');
-          setErrorMsg(json.error || 'Seedance Fast generation failed.');
+          const cleanErr = cleanErrorMessage(json.error || json.message || `${engineLabel} generation failed.`);
+          setErrorMsg(cleanErr);
           setPollMsg('');
+          const showToast = useAppStore.getState().showToast;
+          if (showToast) showToast(cleanErr, "error");
+          await triggerRefund('cinematic_video_generation_failed');
           return;
         }
       } catch (pollErr) {
-        console.warn('[Ark Poll]:', pollErr.message);
+        console.warn('[Seedance Poll Error]:', pollErr.message);
         continue;
       }
     }
     setStatus('error');
-    setErrorMsg('Video compilation timed out.');
+    const timeoutMsg = `${engineLabel} compilation timed out.`;
+    setErrorMsg(timeoutMsg);
     setPollMsg('');
-  };
-
-  /* ─── SEEDANCE POLL ──────────────────────────────────────── */
-  const pollSeedanceTask = async (taskId, activePrompt, activeRatio) => {
-    setStatus('polling');
-    const apiKey = import.meta.env.VITE_KIE_API_KEY;
-    if (!apiKey) {
-      setStatus('error');
-      setErrorMsg('Kie.ai API key is missing.');
-      return;
-    }
-
-    for (let i = 0; i < 120; i++) {
-      await new Promise(r => setTimeout(r, 6000));
-      const elapsed = (i + 1) * 6;
-      setPollMsg(`Rendering video... (${elapsed}s)`);
-
-      try {
-        const res = await fetch(`https://api.kie.ai/api/v1/jobs/task?taskId=${taskId}`, {
-          headers: { Authorization: `Bearer ${apiKey}` }
-        });
-        const json = await res.json();
-        const st = json.data?.status;
-
-        if (st === 'succeed' || st === 'completed') {
-          const url = json.data?.videos?.[0]?.url || json.data?.resultUrl;
-          if (url) {
-            let finalUrl = url;
-            try {
-              const saveResp = await fetch(getApiUrl('/api/save-asset'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  imageData: url,
-                  userId,
-                  type: 'video',
-                  fileName: `seedance_${Date.now()}.mp4`
-                })
-              });
-              const saveJson = await saveResp.json();
-              if (saveJson.success && saveJson.url) {
-                finalUrl = saveJson.url;
-              }
-            } catch (saveErr) {
-              console.warn('[Seedance Save DB Failed]:', saveErr);
-            }
-
-            setGallery(prev => [{
-              id: Date.now(),
-              type: 'video',
-              url: finalUrl,
-              prompt: activePrompt,
-              engine: 'Seedance 2.0',
-              aspect: activeRatio,
-              ts: Date.now()
-            }, ...prev]);
-            setStatus('idle');
-            setPollMsg('');
-            refreshShorts();
-            return;
-          }
-        }
-
-        if (st === 'failed' || st === 'error') {
-          setStatus('error');
-          setErrorMsg(json.data?.failMsg || 'Seedance compilation failed.');
-          setPollMsg('');
-          return;
-        }
-      } catch (pollErr) {
-        console.warn('[Seedance Poll]:', pollErr.message);
-        continue;
-      }
-    }
-    setStatus('error');
-    setErrorMsg('Video compilation timed out.');
-    setPollMsg('');
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) showToast(timeoutMsg, "error");
+    await triggerRefund('cinematic_video_generation_failed');
   };
 
   const getCompiledPrompt = () => {
@@ -1330,6 +1342,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
     const activeRatio = aspectRatio;
     const taggedItems = getTaggedRefItems(basePrompt);
     const compiled = getCompiledPrompt();
+    const resVal = resolution === '720p' ? '1K' : resolution === '1080p' ? '2K' : '4K';
 
     if (activeTab === 'image') {
       let finalSize = '1024x1024';
@@ -1364,38 +1377,17 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
       const identity_images = taggedItems.map(item => item.imageUrl).filter(Boolean);
       const identity_gcs_uris = taggedItems.map(item => ({ name: item.name, uri: item.imageUrl }));
 
-      if (activeEngine === 'seedance-fast') {
+      if (activeEngine === 'seedance-fast' || activeEngine === 'seedace') {
+        const seedanceContentArray = buildSeedanceContentArray(compiled, taggedItems, firstFrameImage, lastFrameImage);
         return {
-          model: 'ep-20260603145826-n28jl',
-          prompt: compiled,
-          firstFrame: firstFrameImage || undefined,
-          lastFrame: lastFrameImage || undefined,
+          engine: activeEngine,
+          model: activeEngine === 'seedance-fast' ? 'dreamina-seedance-2-0-fast-260128' : 'dreamina-seedance-2-0-260128',
+          seedanceContentArray,
           duration,
           aspectRatio: activeRatio,
           resolution,
           userId,
-          identity_images
-        };
-      }
-
-      if (activeEngine === 'seedace') {
-        const input = {
-          prompt: compiled,
-          aspect_ratio: activeRatio.replace(':', '/'),
-          duration,
-          resolution: resolution === '4k' ? '1080p' : resolution,
-          generate_audio: false,
-          web_search: false,
-          identity_images,
-          identity_gcs_uris,
-          referenceImages: identity_images
-        };
-        if (firstFrameImage) input.first_frame_url = firstFrameImage;
-        if (lastFrameImage) input.last_frame_url = lastFrameImage;
-
-        return {
-          model: 'bytedance/seedance-2-fast',
-          input
+          generateAudio
         };
       }
 
@@ -1410,7 +1402,8 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
         model: targetModel,
         identity_images,
         identity_gcs_uris,
-        referenceImages: identity_images
+        referenceImages: identity_images,
+        generateAudio
       };
     }
   };
@@ -1455,7 +1448,10 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
       }
     } catch (err) {
       setStatus('error');
-      setErrorMsg(err.message || 'Insufficient credit balance.');
+      const errText = err.message || 'Insufficient credit balance.';
+      setErrorMsg(errText);
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast(errText, "error");
       return;
     }
 
@@ -1488,6 +1484,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
           const seedVal = Math.floor(Math.random() * 1000000);
           const tweakedPrompt = `${finalPrompt} [seed: ${seedVal}]`;
 
+          const resVal = resolution === '720p' ? '1K' : resolution === '1080p' ? '2K' : '4K';
           const resp = await fetch(getApiUrl('/api/generate-image'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1496,8 +1493,8 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
               prompt: tweakedPrompt,
               size: finalSize,
               aspectRatio: activeRatio,
-              imageSize: '1K',
-              resolution: '1K',
+              imageSize: resVal,
+              resolution: resVal,
               userId,
               referenceImages: reqRefImages
             })
@@ -1530,7 +1527,11 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
         setStatus('error');
         setPollMsg('');
         const label = IMAGE_ENGINES.find(e => e.id === activeEngine)?.label || 'Imagen 3 Pro';
-        setErrorMsg(err.message || `${label} engine failed.`);
+        const cleanErr = cleanErrorMessage(err.message || `${label} engine failed.`);
+        setErrorMsg(cleanErr);
+        const showToast = useAppStore.getState().showToast;
+        if (showToast) showToast(cleanErr, "error");
+        await triggerRefund('cinematic_image_generation_failed');
       }
       return;
     }
@@ -1568,11 +1569,13 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
               motionPrompt: tweakedPrompt,
               duration,
               aspectRatio: activeRatio,
+              resolution,
               model: targetModel,
               identity_images,
               identity_gcs_uris,
               referenceImages: identity_images,
-              userId
+              userId,
+              generateAudio
             })
           });
 
@@ -1602,82 +1605,55 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
         setStatus('error');
         setPollMsg('');
         const label = ENGINES.find(e => e.id === activeEngine)?.label || 'Veo 3.1';
-        setErrorMsg(err.message || `${label} engine failed.`);
+        const cleanErr = cleanErrorMessage(err.message || `${label} engine failed.`);
+        setErrorMsg(cleanErr);
+        const showToast = useAppStore.getState().showToast;
+        if (showToast) showToast(cleanErr, "error");
+        await triggerRefund('cinematic_video_generation_failed');
       }
-    } else if (activeEngine === 'seedance-fast') {
+    } else if (activeEngine === 'seedance-fast' || activeEngine === 'seedace') {
       try {
         if (variationCount > 1) {
-          throw new Error('Seedance Fast engine currently supports 1 generation at a time.');
+          const showToast = useAppStore.getState().showToast;
+          if (showToast) showToast("Seedance currently supports 1 variation per request natively. Processing 1.", "info");
         }
 
-        const resp = await fetch(getApiUrl('/api/ark/generate'), {
+        const modelParam = activeEngine === 'seedance-fast'
+          ? 'dreamina-seedance-2-0-fast-260128'
+          : 'dreamina-seedance-2-0-260128';
+
+        const seedanceContentArray = buildSeedanceContentArray(compiledPrompt, taggedItems, firstFrameImage, lastFrameImage);
+
+        const resp = await fetch(getApiUrl('/api/seedance/generate'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            prompt: compiledPrompt,
-            firstFrame: firstFrameImage || undefined,
-            lastFrame: lastFrameImage || undefined,
+            engine: activeEngine,
+            model: modelParam,
+            seedanceContentArray,
             duration,
             aspectRatio: activeRatio,
             resolution,
             userId,
-            identity_images
+            generateAudio
           })
         });
 
         const json = await resp.json();
-        if (!resp.ok) throw new Error(json.error || 'Seedance Fast task initialization failed.');
+        if (!resp.ok) throw new Error(json.error || 'Seedance task initialization failed.');
 
         const taskId = json.requestId;
-        if (!taskId) throw new Error('No task ID returned from Ark gateway.');
+        if (!taskId) throw new Error('No task ID returned from backend.');
 
-        await pollArkTask(taskId, basePrompt, activeRatio);
+        await pollSeedanceTask(taskId, basePrompt, activeRatio, json.engine || activeEngine);
       } catch (err) {
         setStatus('error');
-        setErrorMsg(err.message || 'Seedance Fast engine failed.');
-      }
-    } else {
-      try {
-        const apiKey = import.meta.env.VITE_KIE_API_KEY;
-        if (!apiKey) throw new Error('Kie.ai credentials not configured.');
-
-        if (variationCount > 1) {
-          throw new Error('Seedance engine currently supports 1 generation at a time. Please select Veo 3.1 to generate variations.');
-        }
-
-        const input = {
-          prompt: compiledPrompt,
-          aspect_ratio: activeRatio.replace(':', '/'),
-          duration,
-          resolution: resolution === '4k' ? '1080p' : resolution,
-          generate_audio: false,
-          web_search: false,
-          identity_images,
-          identity_gcs_uris,
-          referenceImages: identity_images
-        };
-        if (firstFrameImage) input.first_frame_url = firstFrameImage;
-        if (lastFrameImage) input.last_frame_url = lastFrameImage;
-
-        const res = await fetch('https://api.kie.ai/api/v1/jobs/createTask', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({ model: 'bytedance/seedance-2-fast', input })
-        });
-
-        const json = await res.json();
-        if (json.code !== 200) throw new Error(json.msg || 'Seedance task init failed.');
-
-        const taskId = json.data?.taskId;
-        if (!taskId) throw new Error('No task ID from Kie gateway.');
-
-        await pollSeedanceTask(taskId, basePrompt, activeRatio);
-      } catch (err) {
-        setStatus('error');
-        setErrorMsg(err.message || 'Seedance 2.0 engine failed.');
+        const label = ENGINES.find(e => e.id === activeEngine)?.label || 'Seedance';
+        const cleanErr = cleanErrorMessage(err.message || `${label} engine failed.`);
+        setErrorMsg(cleanErr);
+        const showToast = useAppStore.getState().showToast;
+        if (showToast) showToast(cleanErr, "error");
+        await triggerRefund('cinematic_video_generation_failed');
       }
     }
   };
@@ -1711,15 +1687,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
         disabled={isUploading}
       />
 
-      {/* Hidden file input for Toolbar Reference Upload */}
-      <input
-        ref={toolbarRefUploadInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleToolbarRefUpload}
-        disabled={isUploadingRef}
-      />
+
 
       {/* ── HEADER ─────────────────────────────────────────── */}
       <div className="flex items-center gap-4 px-5 py-2 border-b border-white/5 bg-black/50 backdrop-blur-xl flex-shrink-0 z-30 flex-wrap gap-y-2">
@@ -2011,56 +1979,78 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
             
             {/* ── TOP FLOATING CONTROL BAR (Style/Movement, Angle, Camera & Lens) ── */}
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar select-none w-full pb-1.5" style={{ scrollbarWidth: 'none' }}>
-              {/* CAMERA DROPDOWN */}
-              <UpwardDropdown
-                icon={<Video size={8} />}
-                label={isConsumerCam ? (CAMERA_MODELS.find(c => c.id === camera)?.label || 'Camera') : `${CAMERA_MODELS.find(c => c.id === camera)?.label?.split(' ')[0] || 'Arri'} · ${lens}`}
-                accentColor="lime"
+              {/* Refs Button Pill (Centralized Reference Board control) */}
+              <motion.button
+                onClick={() => { setStagedRefBoard({ ...refBoard }); setShowRefBoard(true); }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border bg-fuchsia-500/10 border-fuchsia-500/20 text-fuchsia-400 hover:bg-fuchsia-500/20 hover:border-fuchsia-500/30 transition-all shrink-0 origin-bottom"
+                title="Open Reference Board to stage Characters, Locations, Wardrobes, Props, and Moods"
               >
-                {(close) => (
-                  <div className="space-y-0.5">
-                    {CAMERA_MODELS.map((c, i) => (
-                      <motion.button
-                        key={c.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.03, type: 'spring', stiffness: 400, damping: 25 }}
-                        onClick={() => { handleCameraChange(c.id); close(); }}
-                        className={cn(
-                          "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all",
-                          camera === c.id
-                            ? "bg-lime-500/10 border border-lime-500/25"
-                            : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
-                        )}
-                      >
-                        <div className={cn(
-                          "w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0 transition-all",
-                          camera === c.id ? "bg-lime-500/20 text-[#c8f135]" : "bg-white/5 text-gray-500"
-                        )}>
-                          <Video size={10} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={cn(
-                            "text-[10px] font-black uppercase tracking-wider truncate",
-                            camera === c.id ? "text-[#c8f135]" : "text-white/70"
-                          )}>
-                            {c.label}
-                          </p>
-                          <p className="text-[7.5px] text-gray-600 font-medium truncate">{c.desc}</p>
-                        </div>
-                        {camera === c.id && (
-                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-[#c8f135] flex items-center justify-center shrink-0">
-                            <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          </motion.div>
-                        )}
-                      </motion.button>
-                    ))}
-                  </div>
+                <Users size={8} className="text-fuchsia-400" />
+                <span>Refs</span>
+                {allRefItems.length > 0 && (
+                  <span className="w-3.5 h-3.5 rounded-full bg-fuchsia-500 text-white text-[6px] font-black flex items-center justify-center shrink-0 ml-0.5">
+                    {allRefItems.length}
+                  </span>
                 )}
-              </UpwardDropdown>
+              </motion.button>
 
-              {/* LENS MODEL DROPDOWN */}
-              {!isConsumerCam && (
+              {/* Vertical divider line */}
+              <div className="w-px h-3.5 bg-white/10 shrink-0 self-center" />
+
+              {/* CAMERA DROPDOWN (Image mode only) */}
+              {activeTab === 'image' && (
+                <UpwardDropdown
+                  icon={<Video size={8} />}
+                  label={isConsumerCam ? (CAMERA_MODELS.find(c => c.id === camera)?.label || 'Camera') : `${CAMERA_MODELS.find(c => c.id === camera)?.label?.split(' ')[0] || 'Arri'} · ${lens}`}
+                  accentColor="lime"
+                >
+                  {(close) => (
+                    <div className="space-y-0.5">
+                      {CAMERA_MODELS.map((c, i) => (
+                        <motion.button
+                          key={c.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.03, type: 'spring', stiffness: 400, damping: 25 }}
+                          onClick={() => { handleCameraChange(c.id); close(); }}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all",
+                            camera === c.id
+                              ? "bg-lime-500/10 border border-lime-500/25"
+                              : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0 transition-all",
+                            camera === c.id ? "bg-lime-500/20 text-[#c8f135]" : "bg-white/5 text-gray-500"
+                          )}>
+                            <Video size={10} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={cn(
+                              "text-[10px] font-black uppercase tracking-wider truncate",
+                              camera === c.id ? "text-[#c8f135]" : "text-white/70"
+                            )}>
+                              {c.label}
+                            </p>
+                            <p className="text-[7.5px] text-gray-600 font-medium truncate">{c.desc}</p>
+                          </div>
+                          {camera === c.id && (
+                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-[#c8f135] flex items-center justify-center shrink-0">
+                              <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </motion.div>
+                          )}
+                        </motion.button>
+                      ))}
+                    </div>
+                  )}
+                </UpwardDropdown>
+              )}
+
+              {/* LENS MODEL DROPDOWN (Image mode only) */}
+              {activeTab === 'image' && !isConsumerCam && (
                 <UpwardDropdown
                   icon={<Camera size={8} />}
                   label={`Lens: ${LENS_MODELS.find(l => l.id === lensModel)?.label || 'Lens'}`}
@@ -2109,18 +2099,20 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                 </UpwardDropdown>
               )}
 
-              {/* PERSPECTIVE & FRAMING PILL */}
-              <motion.button
-                onClick={() => setShowAnglesModal(true)}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 22 }}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest bg-black/60 border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-colors shrink-0"
-              >
-                <Camera size={8} />
-                <span className="whitespace-nowrap">{CAMERA_ANGLES.find(a => a.id === angle)?.label || 'Angle'}</span>
-                <ChevronDown size={7} className="text-gray-600" />
-              </motion.button>
+              {/* PERSPECTIVE & FRAMING PILL (Image mode only) */}
+              {activeTab === 'image' && (
+                <motion.button
+                  onClick={() => setShowAnglesModal(true)}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest bg-black/60 border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-colors shrink-0"
+                >
+                  <Camera size={8} />
+                  <span className="whitespace-nowrap">{CAMERA_ANGLES.find(a => a.id === angle)?.label || 'Angle'}</span>
+                  <ChevronDown size={7} className="text-gray-600" />
+                </motion.button>
+              )}
 
               {/* STYLE PRESET DROPDOWN (Image only) */}
               {activeTab === 'image' && (
@@ -2270,7 +2262,22 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                 </div>
               )}
               
-              {/* TOP ROW: Switcher, Dividers, Upload Slots, Textarea */}
+              {/* Tagged Reference Pills (Full-width row at the very top of the input container, so they never squeeze the input text) */}
+              {getTaggedRefItems(promptText).length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 px-1 border-b border-white/5 pb-2">
+                  {getTaggedRefItems(promptText).map((item) => (
+                    <div key={item.id} className="flex items-center gap-1 px-2.5 py-1 bg-black/60 border border-[#c8f135]/40 rounded-lg shadow-md text-[9px] font-black uppercase text-[#D4FF00] tracking-wider shrink-0">
+                      <img src={item.imageUrl} className="w-4 h-4 rounded object-cover border border-white/20" />
+                      <span>@{item.name}</span>
+                      <button type="button" onClick={() => handleRemoveTag(item)} className="p-0.5 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors ml-0.5">
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* TOP ROW: Switcher, Dividers, Textarea, Upload Slots (on the right side) */}
               <div className="flex items-start gap-2.5 w-full">
                 
                 {/* Vertical Mode Switcher Tab (Neat left-side layout) */}
@@ -2314,129 +2321,135 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                 {/* Vertical divider line */}
                 <div className="w-px self-stretch bg-white/10 shrink-0 my-0.5" />
 
-                {/* Concatenated First and Last Frame Image Placeholders or Style Ref Slot */}
-                {activeTab === 'image' ? (
-                  /* ── IMAGE MODE: SINGLE STYLE REF SLOT ── */
-                  <div className="flex flex-col items-center gap-1 p-1 bg-white/[0.02] border border-white/5 rounded-xl shrink-0 select-none relative group mt-0.5">
-                    {firstFramePreview ? (
-                      <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-zinc-900 group/slot shrink-0 shadow-lg">
-                        <img src={firstFramePreview} alt="Style Reference" className="w-full h-full object-cover" />
-                        <button
-                          onClick={() => handleClearRef('first')}
-                          className="absolute inset-0 bg-black/60 opacity-0 group-hover/slot:opacity-100 flex items-center justify-center transition-opacity text-red-400"
-                          title="Clear Style Reference"
-                        >
-                          <Trash2 size={11} />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => { setUploadTarget('first'); setTimeout(() => fileInputRef.current?.click(), 50); }}
-                        disabled={isUploading}
-                        className="w-10 h-10 rounded-lg border-2 border-dashed border-white/10 hover:border-fuchsia-500/40 hover:bg-fuchsia-500/5 flex flex-col items-center justify-center gap-0.5 text-white/30 hover:text-fuchsia-400 transition-all shrink-0 active:scale-95"
-                        title="Upload Style Reference"
-                      >
-                        {isUploading ? (
-                          <Loader2 size={11} className="animate-spin text-fuchsia-400" />
-                        ) : (
-                          <>
-                            <ImageIcon size={11} />
-                            <span className="text-[5px] font-black uppercase tracking-wider">Style Ref</span>
-                          </>
-                        )}
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  /* ── VIDEO MODE: DUAL SLOTS ── */
-                  <div className="flex flex-col items-center gap-1.5 p-1.5 bg-white/[0.02] border border-white/5 rounded-2xl shrink-0 select-none relative group mt-0.5">
-                    <div className="flex items-center gap-1.5">
-                      {/* First Frame Slot */}
+                {/* Textarea (takes up full remaining width in the middle) */}
+                <div className="flex-1 min-w-0">
+                  <textarea
+                    ref={textareaRef}
+                    value={promptText}
+                    onChange={handleTextChange}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (canGenerate) handleGenerate();
+                      }
+                    }}
+                    placeholder={activeTab === 'image' 
+                      ? "Describe your premium image masterwork — subject, lighting, style preset... Type @ to tag reference elements."
+                      : "Describe your cinematic video scenario — camera movements, lighting, mood... Type @ to tag reference elements."
+                    }
+                    rows={1}
+                    disabled={isBusy}
+                    className="w-full bg-transparent text-xs text-white placeholder-white/20 outline-none resize-none font-medium leading-relaxed custom-scrollbar py-2 min-h-[36px]"
+                  />
+                </div>
+
+                {/* Vertical divider line before frame slots */}
+                <div className="w-px self-stretch bg-white/10 shrink-0 my-0.5" />
+
+                {/* First and Last Frame Image Placeholders or Style Ref Slot (Moved to the RIGHT corner) */}
+                <div className="shrink-0 select-none mt-0.5">
+                  {activeTab === 'image' ? (
+                    /* ── IMAGE MODE: SINGLE STYLE REF SLOT ── */
+                    <div className="flex flex-col items-center gap-1 p-1 bg-white/[0.02] border border-white/5 rounded-xl relative group">
                       {firstFramePreview ? (
-                        <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/10 bg-zinc-900 group/slot shrink-0 shadow-lg">
-                          <img src={firstFramePreview} alt="Start Frame" className="w-full h-full object-cover" />
+                        <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-zinc-900 group/slot shadow-lg">
+                          <img src={firstFramePreview} alt="Style Reference" className="w-full h-full object-cover" />
                           <button
                             onClick={() => handleClearRef('first')}
                             className="absolute inset-0 bg-black/60 opacity-0 group-hover/slot:opacity-100 flex items-center justify-center transition-opacity text-red-400"
-                            title="Clear Start Frame"
+                            title="Clear Style Reference"
                           >
-                            <Trash2 size={13} />
+                            <Trash2 size={11} />
                           </button>
                         </div>
                       ) : (
                         <button
                           onClick={() => { setUploadTarget('first'); setTimeout(() => fileInputRef.current?.click(), 50); }}
-                          disabled={isUploading && uploadTarget === 'first'}
-                          className="w-12 h-12 rounded-xl border-2 border-dashed border-white/10 hover:border-fuchsia-500/40 hover:bg-fuchsia-500/5 flex flex-col items-center justify-center gap-0.5 text-white/30 hover:text-fuchsia-400 transition-all shrink-0 active:scale-95 shadow-inner"
-                          title="Upload Start Frame"
+                          disabled={isUploading}
+                          className="w-10 h-10 rounded-lg border-2 border-dashed border-white/10 hover:border-fuchsia-500/40 hover:bg-fuchsia-500/5 flex flex-col items-center justify-center gap-0.5 text-white/30 hover:text-fuchsia-400 transition-all active:scale-95"
+                          title="Upload Style Reference"
                         >
-                          {isUploading && uploadTarget === 'first' ? (
-                            <Loader2 size={13} className="animate-spin text-fuchsia-400" />
+                          {isUploading ? (
+                            <Loader2 size={11} className="animate-spin text-fuchsia-400" />
                           ) : (
                             <>
-                              <ImageIcon size={13} />
-                              <span className="text-[6px] font-black uppercase tracking-wider">Start</span>
-                            </>
-                          )}
-                        </button>
-                      )}
-
-                      {/* Connection Line/Arrow */}
-                      <div className="text-[9px] font-black text-white/20 select-none px-0.5">➔</div>
-
-                      {/* Last Frame Slot */}
-                      {lastFramePreview ? (
-                        <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/10 bg-zinc-900 group/slot shrink-0 shadow-lg">
-                          <img src={lastFramePreview} alt="End Frame" className="w-full h-full object-cover" />
-                          <button
-                            onClick={() => handleClearRef('last')}
-                            className="absolute inset-0 bg-black/60 opacity-0 group-hover/slot:opacity-100 flex items-center justify-center transition-opacity text-red-400"
-                            title="Clear End Frame"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => { setUploadTarget('last'); setTimeout(() => fileInputRef.current?.click(), 50); }}
-                          disabled={isUploading && uploadTarget === 'last'}
-                          className="w-12 h-12 rounded-xl border-2 border-dashed border-white/10 hover:border-fuchsia-500/40 hover:bg-fuchsia-500/5 flex flex-col items-center justify-center gap-0.5 text-white/30 hover:text-fuchsia-400 transition-all shrink-0 active:scale-95 shadow-inner"
-                          title="Upload End Frame"
-                        >
-                          {isUploading && uploadTarget === 'last' ? (
-                            <Loader2 size={13} className="animate-spin text-fuchsia-400" />
-                          ) : (
-                            <>
-                              <ImageIcon size={13} />
-                              <span className="text-[6px] font-black uppercase tracking-wider">End</span>
+                              <ImageIcon size={11} />
+                              <span className="text-[5px] font-black uppercase tracking-wider">Style Ref</span>
                             </>
                           )}
                         </button>
                       )}
                     </div>
+                  ) : (
+                    /* ── VIDEO MODE: DUAL SLOTS ── */
+                    <div className="flex flex-col items-center gap-1.5 p-1.5 bg-white/[0.02] border border-white/5 rounded-2xl relative group">
+                      <div className="flex items-center gap-1.5">
+                        {/* First Frame Slot */}
+                        {firstFramePreview ? (
+                          <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/10 bg-zinc-900 group/slot shadow-lg">
+                            <img src={firstFramePreview} alt="Start Frame" className="w-full h-full object-cover" />
+                            <button
+                              onClick={() => handleClearRef('first')}
+                              className="absolute inset-0 bg-black/60 opacity-0 group-hover/slot:opacity-100 flex items-center justify-center transition-opacity text-red-400"
+                              title="Clear Start Frame"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setUploadTarget('first'); setTimeout(() => fileInputRef.current?.click(), 50); }}
+                            disabled={isUploading && uploadTarget === 'first'}
+                            className="w-12 h-12 rounded-xl border-2 border-dashed border-white/10 hover:border-fuchsia-500/40 hover:bg-fuchsia-500/5 flex flex-col items-center justify-center gap-0.5 text-white/30 hover:text-fuchsia-400 transition-all active:scale-95 shadow-inner"
+                            title="Upload Start Frame"
+                          >
+                            {isUploading && uploadTarget === 'first' ? (
+                              <Loader2 size={13} className="animate-spin text-fuchsia-400" />
+                            ) : (
+                              <>
+                                <ImageIcon size={13} />
+                                <span className="text-[6px] font-black uppercase tracking-wider">Start</span>
+                              </>
+                            )}
+                          </button>
+                        )}
 
-                  </div>
-                )}
+                        {/* Connection Line/Arrow */}
+                        <div className="text-[9px] font-black text-white/20 select-none px-0.5">➔</div>
 
-                {/* Textarea */}
-                <textarea
-                  ref={textareaRef}
-                  value={promptText}
-                  onChange={handleTextChange}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      if (canGenerate) handleGenerate();
-                    }
-                  }}
-                  placeholder={activeTab === 'image' 
-                    ? "Describe your premium image masterwork — subject, lighting, style preset... Type @ to tag reference elements."
-                    : "Describe your cinematic video scenario — camera movements, lighting, mood... Type @ to tag reference elements."
-                  }
-                  rows={1}
-                  disabled={isBusy}
-                  className="flex-1 bg-transparent text-xs text-white placeholder-white/20 outline-none resize-none font-medium leading-relaxed custom-scrollbar py-2 min-h-[36px]"
-                />
+                        {/* Last Frame Slot */}
+                        {lastFramePreview ? (
+                          <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/10 bg-zinc-900 group/slot shadow-lg">
+                            <img src={lastFramePreview} alt="End Frame" className="w-full h-full object-cover" />
+                            <button
+                              onClick={() => handleClearRef('last')}
+                              className="absolute inset-0 bg-black/60 opacity-0 group-hover/slot:opacity-100 flex items-center justify-center transition-opacity text-red-400"
+                              title="Clear End Frame"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setUploadTarget('last'); setTimeout(() => fileInputRef.current?.click(), 50); }}
+                            disabled={isUploading && uploadTarget === 'last'}
+                            className="w-12 h-12 rounded-xl border-2 border-dashed border-white/10 hover:border-fuchsia-500/40 hover:bg-fuchsia-500/5 flex flex-col items-center justify-center gap-0.5 text-white/30 hover:text-fuchsia-400 transition-all active:scale-95 shadow-inner"
+                            title="Upload End Frame"
+                          >
+                            {isUploading && uploadTarget === 'last' ? (
+                              <Loader2 size={13} className="animate-spin text-fuchsia-400" />
+                            ) : (
+                              <>
+                                <ImageIcon size={13} />
+                                <span className="text-[6px] font-black uppercase tracking-wider">End</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* BOTTOM ROW: ALL PILLS & GENERATE BUTTON (Unified in one bottom toolbar) */}
@@ -2445,33 +2458,9 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                 {/* Scrollable Pills List */}
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar select-none flex-1 py-0.5" style={{ scrollbarWidth: 'none' }}>
                   
-                  {/* Tagged Reference Tags (inline, no wrapping) */}
-                  {getTaggedRefItems(promptText).map((item) => (
-                    <div key={item.id} className="flex items-center gap-1 px-2 py-1 bg-[#0d0d11]/85 backdrop-blur-3xl border border-[#D4FF00]/30 rounded-full shadow-lg text-[7px] font-black uppercase text-[#D4FF00] tracking-wider shrink-0">
-                      <img src={item.imageUrl} className="w-3 h-3 rounded-full object-cover border border-white/20" />
-                      <span>@{item.name}</span>
-                      <button type="button" onClick={() => handleRemoveTag(item)} className="p-0.5 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-colors">
-                        <X size={7} />
-                      </button>
-                    </div>
-                  ))}
 
-                  {/* Add Reference Button */}
-                  <button
-                    onClick={() => toolbarRefUploadInputRef.current?.click()}
-                    disabled={isUploadingRef}
-                    className="flex items-center gap-1 px-2 py-1 bg-[#c8f135]/10 hover:bg-[#c8f135]/25 border border-[#c8f135]/25 rounded-lg text-[#c8f135] font-black uppercase text-[7px] tracking-wider transition-all shrink-0"
-                    title="Upload reference element directly from PC"
-                  >
-                    {isUploadingRef ? (
-                      <Loader2 size={8} className="animate-spin text-[#c8f135]" />
-                    ) : (
-                      <>
-                        <ImageIcon size={8} className="text-[#c8f135]" />
-                        <span>+ Ref</span>
-                      </>
-                    )}
-                  </button>
+
+
 
 
 
@@ -2513,7 +2502,15 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                               )}>
                                 {eng.label}
                               </p>
-                              <p className="text-[7.5px] text-gray-600 font-medium truncate">{eng.desc}</p>
+                              <p className="text-[7.5px] text-gray-600 font-medium truncate">
+                                {eng.id === 'veo-3.1-generate-preview'
+                                  ? `Google Standard — ${resolution === '4k' ? (generateAudio ? '80⚡/s' : '54⚡/s') : (generateAudio ? '54⚡/s' : '30⚡/s')}`
+                                  : eng.id === 'veo-3.1-fast-generate-preview'
+                                  ? `Google Fast — ${resolution === '4k' ? (generateAudio ? '38⚡/s' : '31⚡/s') : resolution === '1080p' ? (generateAudio ? '15⚡/s' : '12⚡/s') : (generateAudio ? '12⚡/s' : '10⚡/s')}`
+                                  : eng.id === 'veo-3.1-lite-generate-preview'
+                                  ? `Google Lite — ${resolution === '4k' || resolution === '1080p' ? (generateAudio ? '10⚡/s' : '6⚡/s') : (generateAudio ? '6⚡/s' : '4⚡/s')}`
+                                  : eng.desc}
+                              </p>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
                               <span className={cn(
@@ -2522,7 +2519,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                                   ? "bg-fuchsia-500/10 border-fuchsia-500/20 text-fuchsia-400"
                                   : "bg-white/5 border-white/5 text-gray-600"
                               )}>
-                                {eng.cost} ⚡
+                                {getRequiredCredits(eng.id)} ⚡
                               </span>
                               {activeEngine === eng.id && (
                                 <motion.div
@@ -2595,39 +2592,51 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                   {/* RESOLUTION DROPDOWN */}
                   <UpwardDropdown
                     icon={<Tv size={9} />}
-                    label={resolution}
+                    label={activeTab === 'image' ? (resolution === '720p' ? '1K' : resolution === '1080p' ? '2K' : '4K') : resolution}
                     accentColor="lime"
                   >
                     {(close) => (
                       <div className="space-y-0.5 w-48">
-                        {RESOLUTION_OPTIONS.map((opt, i) => (
-                          <motion.button
-                            key={opt.value}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.04, type: 'spring', stiffness: 400, damping: 25 }}
-                            onClick={() => { setResolution(opt.value); close(); }}
-                            className={cn(
-                              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
-                              resolution === opt.value
-                                ? "bg-[#c8f135]/10 border border-[#c8f135]/25"
-                                : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
-                            )}
-                          >
-                            <div className="flex-1">
-                              <p className={cn(
-                                "text-[10px] font-black uppercase tracking-wider",
-                                resolution === opt.value ? "text-[#c8f135]" : "text-white/70"
-                              )}>{opt.label}</p>
-                              <p className="text-[7.5px] text-gray-600">{opt.desc}</p>
-                            </div>
-                            {resolution === opt.value && (
-                              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-[#c8f135] flex items-center justify-center shrink-0">
-                                <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                              </motion.div>
-                            )}
-                          </motion.button>
-                        ))}
+                        {RESOLUTION_OPTIONS.filter(opt => {
+                          const isSeed = activeEngine === 'seedance-fast' || activeEngine === 'seedace';
+                          if (isSeed && opt.value === '4k') return false;
+                          return true;
+                        }).map((opt, i) => {
+                          const displayLabel = activeTab === 'image'
+                            ? (opt.value === '720p' ? '1K' : opt.value === '1080p' ? '2K' : '4K')
+                            : opt.label;
+                          const displayDesc = activeTab === 'image'
+                            ? (opt.value === '720p' ? 'Standard resolution' : opt.value === '1080p' ? 'High resolution (2K)' : 'Ultra-high definition (4K)')
+                            : opt.desc;
+                          return (
+                            <motion.button
+                              key={opt.value}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: i * 0.04, type: 'spring', stiffness: 400, damping: 25 }}
+                              onClick={() => { setResolution(opt.value); close(); }}
+                              className={cn(
+                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
+                                resolution === opt.value
+                                  ? "bg-[#c8f135]/10 border border-[#c8f135]/25"
+                                  : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                              )}
+                            >
+                              <div className="flex-1">
+                                <p className={cn(
+                                  "text-[10px] font-black uppercase tracking-wider",
+                                  resolution === opt.value ? "text-[#c8f135]" : "text-white/70"
+                                )}>{displayLabel}</p>
+                                <p className="text-[7.5px] text-gray-600">{displayDesc}</p>
+                              </div>
+                              {resolution === opt.value && (
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-[#c8f135] flex items-center justify-center shrink-0">
+                                  <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                </motion.div>
+                              )}
+                            </motion.button>
+                          );
+                        })}
                       </div>
                     )}
                   </UpwardDropdown>
@@ -2687,7 +2696,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                     >
                       {(close) => (
                         <div className="space-y-0.5">
-                          {DURATION_OPTIONS.map((opt, i) => (
+                          {(activeEngine === 'seedance-fast' || activeEngine === 'seedace' ? SEEDANCE_DURATION_OPTIONS : DURATION_OPTIONS).map((opt, i) => (
                             <motion.button
                               key={opt.value}
                               initial={{ opacity: 0, y: 8 }}
@@ -2707,7 +2716,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                                   className="h-full rounded-full"
                                   style={{ background: duration === opt.value ? '#22d3ee' : '#333' }}
                                   initial={{ width: 0 }}
-                                  animate={{ width: `${(opt.value / 10) * 100}%` }}
+                                  animate={{ width: `${(opt.value / ((activeEngine === 'seedance-fast' || activeEngine === 'seedace') ? 15 : 10)) * 100}%` }}
                                   transition={{ type: 'spring', stiffness: 200, damping: 20, delay: i * 0.05 }}
                                 />
                               </div>
@@ -2730,41 +2739,48 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                     </UpwardDropdown>
                   )}
 
+                  {/* AUDIO TOGGLE (Video only, Seedance & Veo 3.1 engines) */}
+                  {activeTab === 'video' && (activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine.startsWith('veo-3.1')) && (
+                    <button
+                      type="button"
+                      onClick={() => setGenerateAudio(!generateAudio)}
+                      className={cn(
+                        "flex items-center gap-1 px-2 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border transition-all shrink-0 select-none",
+                        generateAudio
+                          ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-400"
+                          : "bg-black/60 border-white/10 text-gray-500 hover:text-white"
+                      )}
+                      title={activeEngine.startsWith('veo-3.1') ? "Generate synchronized audio with Google Veo 3.1" : "Generate synchronized audio with Seedance 2.0"}
+                    >
+                      <span>🔊 Audio: {generateAudio ? 'ON' : 'OFF'}</span>
+                    </button>
+                  )}
 
 
-                  {/* Ref Library Button */}
-                  <button
-                    onClick={() => { setStagedRefBoard({ ...refBoard }); setShowRefBoard(true); }}
-                    className="flex items-center gap-1 px-2 py-1 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 border border-fuchsia-500/25 rounded-lg text-fuchsia-400 font-black uppercase text-[7px] tracking-wider transition-all shrink-0"
-                  >
-                    <Users size={8} className="text-fuchsia-400" />
-                    <span>Refs</span>
-                    {allRefItems.length > 0 && (
-                      <span className="w-3 h-3 rounded-full bg-fuchsia-500 text-white text-[6px] font-black flex items-center justify-center shrink-0">
-                        {allRefItems.length}
-                      </span>
-                    )}
-                  </button>
+
+
 
                 </div>
 
-                {/* Preview Payload Button */}
-                <motion.button
-                  type="button"
-                  onClick={() => setShowPayloadModal(true)}
-                  disabled={!promptText.trim()}
-                  whileHover={promptText.trim() ? { scale: 1.05, backgroundColor: 'rgba(255, 255, 255, 0.08)' } : {}}
-                  whileTap={promptText.trim() ? { scale: 0.95 } : {}}
-                  className={cn(
-                    "w-9 h-9 rounded-xl flex items-center justify-center border transition-all shrink-0",
-                    promptText.trim()
-                      ? "border-white/10 text-white/60 hover:text-white cursor-pointer bg-white/[0.02]"
-                      : "border-white/5 text-white/10 cursor-not-allowed bg-transparent"
-                  )}
-                  title="Preview exact API Payload & Compiled Prompt"
-                >
-                  <Eye size={13} />
-                </motion.button>
+                {/* Preview Payload Button (Image mode only) */}
+                {activeTab === 'image' && (
+                  <motion.button
+                    type="button"
+                    onClick={() => setShowPayloadModal(true)}
+                    disabled={!promptText.trim()}
+                    whileHover={promptText.trim() ? { scale: 1.05, backgroundColor: 'rgba(255, 255, 255, 0.08)' } : {}}
+                    whileTap={promptText.trim() ? { scale: 0.95 } : {}}
+                    className={cn(
+                      "w-9 h-9 rounded-xl flex items-center justify-center border transition-all shrink-0",
+                      promptText.trim()
+                        ? "border-white/10 text-white/60 hover:text-white cursor-pointer bg-white/[0.02]"
+                        : "border-white/5 text-white/10 cursor-not-allowed bg-transparent"
+                    )}
+                    title="Preview exact API Payload & Compiled Prompt"
+                  >
+                    <Eye size={13} />
+                  </motion.button>
+                )}
 
                 {/* Generate Button (aligned beautifully on the right of bottom row) */}
                 <motion.button
@@ -2967,6 +2983,59 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
               >
                 Close Developer Console
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* PENDING REF UPLOAD MODAL */}
+      {pendingRefUpload && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+          <div onClick={() => setPendingRefUpload(null)} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+          <div className="relative w-full max-w-sm bg-[#0a0a0a] border border-white/10 rounded-3xl overflow-hidden shadow-2xl z-[160] flex flex-col p-5">
+            <h3 className="text-[12px] font-black text-white uppercase tracking-widest mb-4 flex items-center gap-2">
+              <Upload className="w-4 h-4 text-[#c8f135]" /> Configure Reference
+            </h3>
+            
+            <div className="flex flex-col gap-5">
+              <div className="flex items-center justify-center bg-black/50 border border-white/5 rounded-2xl h-40 overflow-hidden relative shadow-inner">
+                <img src={pendingRefUpload.previewUrl} className="h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <span className="absolute bottom-2 left-3 text-[8px] font-black uppercase text-white/50 tracking-widest">Preview</span>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-[#c8f135] uppercase tracking-widest block pl-1">Reference Name (e.g. riya)</label>
+                <input 
+                  type="text" 
+                  id="pendingRefName"
+                  placeholder="Enter a unique name..."
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-white text-[11px] font-bold outline-none focus:border-[#c8f135] focus:bg-white/[0.05] transition-all"
+                  autoFocus
+                />
+              </div>
+
+
+
+              <div className="flex justify-end gap-2 mt-2 pt-4 border-t border-white/5">
+                <button 
+                  onClick={() => setPendingRefUpload(null)}
+                  className="px-4 py-2 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/5 text-[10px] font-black uppercase tracking-widest transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    const nameInput = document.getElementById('pendingRefName');
+                    const catInput = document.getElementById('pendingRefCategory');
+                    const name = nameInput ? nameInput.value : '';
+                    const cat = catInput ? catInput.value : pendingRefUpload.defaultCategory;
+                    processPendingRefUpload(name, cat);
+                  }}
+                  className="px-5 py-2 rounded-xl bg-[#c8f135] text-black font-black text-[10px] uppercase tracking-widest hover:bg-[#bce628] hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#c8f135]/20 flex items-center gap-1.5"
+                >
+                  <Upload size={12} /> Confirm Upload
+                </button>
+              </div>
             </div>
           </div>
         </div>

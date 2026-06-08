@@ -1,5 +1,42 @@
 import express from 'express';
 import * as musicService from '../../services/musicService.js';
+import ffmpeg from 'fluent-ffmpeg';
+import ffmpegStatic from 'ffmpeg-static';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
+ffmpeg.setFfmpegPath(ffmpegStatic);
+
+async function stripAudioFromBuffer(inputBuffer) {
+    const tempDir = os.tmpdir();
+    const inputPath = path.join(tempDir, `veo_in_${Date.now()}_${Math.random().toString(36).substring(7)}.mp4`);
+    const outputPath = path.join(tempDir, `veo_out_${Date.now()}_${Math.random().toString(36).substring(7)}.mp4`);
+    
+    await fs.promises.writeFile(inputPath, inputBuffer);
+    
+    try {
+        await new Promise((resolve, reject) => {
+            ffmpeg(inputPath)
+                .outputOptions('-an') // Strip audio stream
+                .outputOptions('-vcodec', 'copy') // Copy video stream directly without transcoding
+                .output(outputPath)
+                .on('end', resolve)
+                .on('error', (err) => {
+                    console.error('[FFMPEG STRIP ERROR]:', err);
+                    reject(err);
+                })
+                .run();
+        });
+        
+        const outputBuffer = await fs.promises.readFile(outputPath);
+        return outputBuffer;
+    } finally {
+        // Clean up temp files
+        fs.promises.unlink(inputPath).catch(() => {});
+        fs.promises.unlink(outputPath).catch(() => {});
+    }
+}
 
 export default function createRouter(deps) {
     const router = express.Router();
@@ -11,7 +48,9 @@ export default function createRouter(deps) {
         resolveToPublicUrl,
         broadcastProgress,
         broadcastComplete,
-        VERTEX_PROJECT_ID
+        VERTEX_PROJECT_ID,
+        requireAuth,
+        consumeCredits
     } = deps;
 
     // Queue Status Polling Endpoints
@@ -32,14 +71,38 @@ export default function createRouter(deps) {
     // Veo Image-to-Video: Animate a keyframe image into a clip
     router.post('/veo-i2v', async (req, res) => {
         try {
-            const { image, motionPrompt, duration = 8, aspectRatio = '16:9', nodeId, userId } = req.body;
+            let user;
+            try {
+                user = await requireAuth(req);
+            } catch (authErr) {
+                if (process.env.NODE_ENV === 'production') {
+                    return res.status(401).json({ error: 'Authentication required to generate video.' });
+                }
+            }
+
+            const { image, motionPrompt, duration = 8, aspectRatio = '16:9', nodeId, userId, generateAudio, resolution = '1080p', model } = req.body;
             if (!motionPrompt) throw new Error('No motion prompt provided');
+
+            const targetUserId = user ? user.id : userId;
+
+            // Deduct credits: veo_fast costs 20 credits, veo_full/standard costs 80 credits
+            let requiredCredits = 20; // Default
+            const modelLower = (model || '').toLowerCase();
+            if (modelLower.includes('full') || modelLower.includes('high') || duration > 6) {
+                requiredCredits = 80;
+            }
+
+            if (targetUserId) {
+                console.log(`[VEO-I2V] Consuming ${requiredCredits} credits for user: ${targetUserId}`);
+                await consumeCredits(targetUserId, requiredCredits);
+            }
 
             const taskId = nodeId ? `veo-${nodeId}` : 'veo-default';
             const validDuration = [4, 6, 8].includes(Number(duration)) ? Number(duration) : 8;
             const validAspectRatio = ['16:9', '9:16', '1:1'].includes(aspectRatio) ? aspectRatio : '16:9';
+            const validResolution = ['720p', '1080p', '4k'].includes(resolution) ? resolution : '1080p';
 
-            console.log(`[VEO-I2V] Starting | taskId: ${taskId} | duration: ${validDuration}s | ratio: ${validAspectRatio} | image: ${!!image}`);
+            console.log(`[VEO-I2V] Starting | taskId: ${taskId} | duration: ${validDuration}s | ratio: ${validAspectRatio} | res: ${validResolution} | image: ${!!image}`);
 
             // Build the instance object (shared for both SDK and REST formats)
             let instance = { prompt: motionPrompt };
@@ -102,7 +165,8 @@ export default function createRouter(deps) {
                     parameters: {
                         sampleCount: 1,
                         aspectRatio: validAspectRatio,
-                        durationSeconds: validDuration
+                        durationSeconds: validDuration,
+                        resolution: validResolution
                     }
                 })
             });
@@ -173,7 +237,18 @@ export default function createRouter(deps) {
             let videoUrl = null;
             if (video.videoBytes || video.bytesBase64Encoded) {
                 const b64 = video.videoBytes ? Buffer.from(video.videoBytes).toString('base64') : video.bytesBase64Encoded;
-                const videoBuffer = Buffer.from(b64, 'base64');
+                let videoBuffer = Buffer.from(b64, 'base64');
+                
+                if (generateAudio === false) {
+                    console.log('[VEO-I2V] generateAudio is false. Stripping audio from video bytes...');
+                    try {
+                        videoBuffer = await stripAudioFromBuffer(videoBuffer);
+                        console.log('[VEO-I2V] Audio successfully stripped.');
+                    } catch (ffmpegErr) {
+                        console.error('[VEO-I2V] Failed to strip audio using FFmpeg:', ffmpegErr);
+                    }
+                }
+                
                 const publicUrl = await uploadVideoToSupabase(videoBuffer, userId, validAspectRatio);
                 videoUrl = publicUrl;
             } else if (video.uri) {
@@ -187,8 +262,20 @@ export default function createRouter(deps) {
                 }
                 const videoResp = await fetch(downloadUrl, { headers: downloadHeaders });
                 if (!videoResp.ok) throw new Error(`Video download failed: ${videoResp.statusText}`);
-                const videoBuffer = await videoResp.arrayBuffer();
-                const publicUrl = await uploadVideoToSupabase(Buffer.from(videoBuffer), userId, validAspectRatio);
+                const videoBufferArray = await videoResp.arrayBuffer();
+                let videoBuffer = Buffer.from(videoBufferArray);
+                
+                if (generateAudio === false) {
+                    console.log('[VEO-I2V] generateAudio is false. Stripping audio from downloaded video bytes...');
+                    try {
+                        videoBuffer = await stripAudioFromBuffer(videoBuffer);
+                        console.log('[VEO-I2V] Audio successfully stripped.');
+                    } catch (ffmpegErr) {
+                        console.error('[VEO-I2V] Failed to strip audio using FFmpeg:', ffmpegErr);
+                    }
+                }
+                
+                const publicUrl = await uploadVideoToSupabase(videoBuffer, userId, validAspectRatio);
                 videoUrl = publicUrl;
             }
 
@@ -228,15 +315,32 @@ export default function createRouter(deps) {
     // Kling Generation
     router.post('/kling/generate', async (req, res) => {
         try {
+            let user;
+            try {
+                user = await requireAuth(req);
+            } catch (authErr) {
+                if (process.env.NODE_ENV === 'production') {
+                    return res.status(401).json({ error: 'Authentication required to generate video.' });
+                }
+            }
+
             const { prompt, firstFrame, lastFrame, duration, userId, negative_prompt, cfg_scale, model } = req.body;
             const apiKey = process.env.KLING_API_KEY;
 
             if (!apiKey) throw new Error("Kling API Key not configured. Please add KLING_API_KEY to your environment.");
 
-            console.log(`[KLING-ASYNC] Resolving assets for user ${userId}...`);
+            const targetUserId = user ? user.id : userId;
+            const requiredCredits = 15; // Kling costs 15 credits
+
+            if (targetUserId) {
+                console.log(`[KLING-GEN] Consuming ${requiredCredits} credits for user: ${targetUserId}`);
+                await consumeCredits(targetUserId, requiredCredits);
+            }
+
+            console.log(`[KLING-ASYNC] Resolving assets for user ${targetUserId}...`);
             const [imgUrl, tailUrl] = await Promise.all([
-                resolveToPublicUrl(firstFrame, userId),
-                resolveToPublicUrl(lastFrame, userId)
+                resolveToPublicUrl(firstFrame, targetUserId),
+                resolveToPublicUrl(lastFrame, targetUserId)
             ]);
 
             if (!imgUrl) throw new Error("Kling requires at least one starting image URL.");
@@ -319,147 +423,6 @@ export default function createRouter(deps) {
             res.json({ status: 'processing' });
         } catch (error) {
             console.error('[KLING-STATUS-ERR]', error);
-            res.status(500).json({ status: 'error', message: error.message });
-        }
-    });
-
-    // BytePlus Ark (Seedance Fast) Generation
-    router.post('/ark/generate', async (req, res) => {
-        try {
-            const { prompt, firstFrame, lastFrame, duration, aspectRatio, userId, identity_images, resolution } = req.body;
-            const apiKey = process.env.ARK_API_KEY;
-
-            if (!apiKey) throw new Error("Ark API Key not configured. Please add ARK_API_KEY to your environment.");
-
-            // Resolve images to public URLs
-            const resolvedImages = await Promise.all([
-                resolveToPublicUrl(firstFrame, userId),
-                resolveToPublicUrl(lastFrame, userId),
-                ...(Array.isArray(identity_images) ? identity_images.map(img => resolveToPublicUrl(img, userId)) : [])
-            ]);
-
-            const resolvedFirstFrame = resolvedImages[0];
-            const resolvedLastFrame = resolvedImages[1];
-            const resolvedIdentity = resolvedImages.slice(2).filter(Boolean);
-
-            const content = [
-                {
-                    type: "text",
-                    text: prompt
-                }
-            ];
-
-            // Add first frame image if present
-            if (resolvedFirstFrame) {
-                content.push({
-                    type: "image_url",
-                    image_url: { url: resolvedFirstFrame },
-                    role: "reference_image"
-                });
-            }
-
-            // Add last frame image if present
-            if (resolvedLastFrame) {
-                content.push({
-                    type: "image_url",
-                    image_url: { url: resolvedLastFrame },
-                    role: "reference_image"
-                });
-            }
-
-            // Add other identity/reference images
-            resolvedIdentity.forEach(url => {
-                // Avoid duplicating if already added as first/last frame
-                if (url !== resolvedFirstFrame && url !== resolvedLastFrame) {
-                    content.push({
-                        type: "image_url",
-                        image_url: { url },
-                        role: "reference_image"
-                    });
-                }
-            });
-
-            // Model ID from docs/seedance_fast.md
-            const model = req.body.model || "ep-20260603145826-n28jl"; 
-
-            const payload = {
-                model,
-                content,
-                generate_audio: false,
-                ratio: aspectRatio || "16:9",
-                duration: Number(duration) || 5,
-                resolution: resolution || "720p",
-                watermark: false
-            };
-
-            console.log(`[ARK-ASYNC] Creating task with payload:`, JSON.stringify(payload, null, 2));
-
-            const createResp = await fetch("https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            const createData = await createResp.json();
-            if (!createData.id) {
-                throw new Error(`Ark Task Creation Failed: ${JSON.stringify(createData)}`);
-            }
-
-            const taskId = createData.id;
-            console.log(`[ARK-ASYNC] Task Created: ${taskId}`);
-            res.json({ success: true, requestId: taskId });
-        } catch (error) {
-            console.error('[ARK-GEN-ERR]', error);
-            res.status(500).json({ error: error.message });
-        }
-    });
-
-    // BytePlus Ark (Seedance Fast) Status Polling
-    router.get('/ark/status/:requestId', async (req, res) => {
-        try {
-            const { requestId } = req.params;
-            const { userId, aspectRatio = '16:9' } = req.query;
-            const apiKey = process.env.ARK_API_KEY;
-
-            if (!apiKey) throw new Error("Ark API Key missing.");
-
-            const pollResp = await fetch(`https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks/${requestId}`, {
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}` 
-                }
-            });
-            const pollData = await pollResp.json();
-
-            // Check response status
-            if (pollData.error) {
-                throw new Error(`Ark Polling Failed: ${pollData.error.message || JSON.stringify(pollData.error)}`);
-            }
-
-            const state = pollData.status; // succeeded, failed, processing, pending etc.
-            console.log(`[ARK-STATUS] ${requestId}: ${state}`);
-
-            if (state === 'succeeded') {
-                const finalUrl = pollData.content?.video_url;
-                if (!finalUrl) throw new Error("No result video URL found in succeeded task.");
-                
-                // Download and archive to Supabase
-                console.log(`[ARK-STATUS] Downloading video from: ${finalUrl}`);
-                const videoResp = await fetch(finalUrl);
-                const ab = await videoResp.arrayBuffer();
-                const supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio);
-                
-                return res.json({ status: 'completed', url: supabaseUrl });
-            } else if (state === 'failed') {
-                return res.json({ status: 'failed', error: pollData.error?.message || 'Generation failed' });
-            }
-
-            res.json({ status: 'processing' });
-        } catch (error) {
-            console.error('[ARK-STATUS-ERR]', error);
             res.status(500).json({ status: 'error', message: error.message });
         }
     });

@@ -873,6 +873,13 @@ async function handleGoogle(req, res) {
                 finalImageSize = '1K';
             }
 
+            const safetySettings = [
+                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+            ];
+
             console.log(`[handleGoogle] Imagen request aspect ratio: ${mappedRatio}, size: ${finalImageSize}`);
 
             const resp = await fetch(endpoint, {
@@ -880,6 +887,7 @@ async function handleGoogle(req, res) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     contents: [{ role: 'user', parts }],
+                    safetySettings,
                     generationConfig: { 
                         responseModalities: ["IMAGE"],
                         imageConfig: {
@@ -894,6 +902,16 @@ async function handleGoogle(req, res) {
             if (result.error) {
                 console.error("[Imagen Error Body]:", JSON.stringify(result.error, null, 2));
                 throw new Error(result.error.message || "Google API returned an error");
+            }
+
+            if (result.promptFeedback?.blockReason) {
+                const reason = result.promptFeedback.blockReason;
+                console.error('[handleGoogle] Google API prompt feedback block:', JSON.stringify(result.promptFeedback));
+                if (reason === 'OTHER') {
+                    throw new Error("Google API blocked the request (blockReason: OTHER). This is typically caused by a sensitive reference photo, copyright/trademark restrictions, or a celebrity likeness filter.");
+                } else {
+                    throw new Error(`Google API safety block: ${reason}. Please try a different reference image or prompt.`);
+                }
             }
 
             const candidate = result.candidates?.[0];
@@ -958,21 +976,8 @@ wss.on('connection', (ws) => {
     });
 });
 
-// JSON parsers
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
-// Rate Limiting
-const apiLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000,
-    max: 150,
-    message: { error: 'Too many requests' },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-app.use('/api/', apiLimiter);
-
 // ── RAZORPAY AUTOMATED Webhook (S2 signature timingSafeEqual verify) ─────────
+// Razorpay webhook must be placed BEFORE express.json() to get the raw body
 app.post('/api/webhook/razorpay',
     express.raw({ type: 'application/json' }),
     async (req, res) => {
@@ -1036,6 +1041,20 @@ app.post('/api/webhook/razorpay',
     }
 });
 
+// JSON parsers
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Rate Limiting
+const apiLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000,
+    max: 150,
+    message: { error: 'Too many requests' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use('/api/', apiLimiter);
+
 // Niche SEO Static Pages Handlers
 app.get('/real-estate', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'real-estate', 'index.html')));
 app.get('/fashion', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'fashion', 'index.html')));
@@ -1094,6 +1113,7 @@ const deps = {
 import createCreditsRouter from './server/routes/creditsRoutes.js';
 import createImageRouter from './server/routes/imageRoutes.js';
 import createVideoRouter from './server/routes/videoRoutes.js';
+import createSeedanceRouter from './server/routes/seedanceRoutes.js';
 import createUgcRouter from './server/routes/ugcRoutes.js';
 import createForgeRouter from './server/routes/forgeRoutes.js';
 import createCarouselRouter from './server/routes/carouselRoutes.js';
@@ -1104,6 +1124,7 @@ import createAvatarRouter from './server/routes/avatar.js';
 app.use('/api', createCreditsRouter(deps));
 app.use('/api', createImageRouter(deps));
 app.use('/api', createVideoRouter(deps));
+app.use('/api', createSeedanceRouter(deps));
 app.use('/api', createUgcRouter(deps));
 app.use('/api/ugc', createUgcRouter(deps));
 app.use('/api', createForgeRouter(deps));

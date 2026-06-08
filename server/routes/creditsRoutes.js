@@ -94,10 +94,48 @@ export default function createRouter(deps) {
 
             if (fetchErr) throw fetchErr;
 
+            // 2. Security validation: Verify user has a matching spend transaction in the last 15 minutes
+            const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+            
+            const { data: recentSpends, error: spendErr } = await client
+                .from('shorts_transactions')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('amount', -amount)
+                .eq('action_type', reason)
+                .gte('created_at', fifteenMinutesAgo);
+
+            if (spendErr) {
+                console.error('[REFUND_SECURITY_ERROR] Spend check failed:', spendErr);
+                return res.status(500).json({ error: 'Failed to verify transaction history.' });
+            }
+
+            if (!recentSpends || recentSpends.length === 0) {
+                return res.status(403).json({ error: 'Forbidden: No matching recent generation found to refund.' });
+            }
+
+            // Check if we already refunded this transaction
+            const { data: recentRefunds, error: refundErr } = await client
+                .from('shorts_transactions')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('amount', amount)
+                .eq('action_type', `refund_${reason}`)
+                .gte('created_at', fifteenMinutesAgo);
+
+            if (refundErr) {
+                console.error('[REFUND_SECURITY_ERROR] Refund check failed:', refundErr);
+                return res.status(500).json({ error: 'Failed to verify refund history.' });
+            }
+
+            if (recentRefunds && recentRefunds.length >= recentSpends.length) {
+                return res.status(403).json({ error: 'Forbidden: This transaction has already been refunded.' });
+            }
+
             const currentBalance = profile?.shorts_balance ?? 0;
             const newBalance = currentBalance + amount;
 
-            // 2. Refund balance
+            // 3. Refund balance
             const { error: updateErr } = await client
                 .from('profiles')
                 .update({ shorts_balance: newBalance })
@@ -105,7 +143,7 @@ export default function createRouter(deps) {
 
             if (updateErr) throw updateErr;
 
-            // 3. Audit log
+            // 4. Audit log
             await client.from('shorts_transactions').insert({
                 user_id: user.id,
                 amount: amount,
@@ -129,6 +167,10 @@ export default function createRouter(deps) {
      */
     router.post('/pricing/purchase', async (req, res) => {
         try {
+            if (process.env.NODE_ENV === 'production') {
+                return res.status(403).json({ error: "Purchase simulation is disabled in production." });
+            }
+
             const { userId, planId } = req.body;
 
             if (!supabase) {

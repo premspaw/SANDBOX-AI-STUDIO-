@@ -53,7 +53,7 @@ const BOARDS = [
 const BOARD_FIELDS = {
   CHARACTER: [
     { key: 'name',        label: 'Character Name',    placeholder: 'e.g. Aria, Marcus, Zara…',          required: true },
-    { key: 'age',         label: 'Age',               placeholder: 'e.g. 25' },
+    { key: 'age',         label: 'Age',               placeholder: 'e.g. 25',                           required: true },
     { key: 'gender',      label: 'Gender',            placeholder: 'e.g. Female, Male, Non-binary…' },
     { key: 'ethnicity',   label: 'Ethnicity / Skin',  placeholder: 'e.g. South Asian, Fair complexion…' },
     { key: 'build',       label: 'Body Build',        placeholder: 'e.g. Athletic, Slim, Muscular…' },
@@ -63,7 +63,7 @@ const BOARD_FIELDS = {
     { key: 'style',       label: 'Render Style',      placeholder: 'Select Render Style...', type: 'dropdown', options: ['Realistic', 'Ultra Realistic', '3D', 'Anime'] },
   ],
   POSE: [
-    { key: 'name',    label: 'Character Name',  placeholder: 'e.g. Aria…' },
+    { key: 'name',    label: 'Character Name',  placeholder: 'e.g. Aria…', required: true },
     { key: 'action',  label: 'Action / Pose',   placeholder: 'e.g. Running, Leaping, Drawing sword…', required: true },
     { key: 'emotion', label: 'Emotion / Mood',  placeholder: 'e.g. Determined, Fearful, Joyful…' },
   ],
@@ -129,11 +129,19 @@ export default function AvatarStudio() {
   };
 
   const handleGenerate = () => {
+    // Validate required fields
+    const fields = BOARD_FIELDS[studio.activeBoard] || [];
+    for (const field of fields) {
+      if (field.required && (!studio.boardMeta[field.key] || !studio.boardMeta[field.key].toString().trim())) {
+        studio.setError(`${field.label} is required.`);
+        return;
+      }
+    }
     studio.generateBoard();
   };
 
   const hasReference = !!studio.refPreview || !!studio.wardrobeRefPreview || !!studio.propRefPreview;
-  const requiredCredits = studio.activeModel === 'banana' ? 2 : 3;
+  const requiredCredits = studio.activeModel === 'banana' ? 5 : 3;
   const canGenerate = hasReference && userCredits >= requiredCredits && !studio.generating;
 
   return (
@@ -355,16 +363,16 @@ export default function AvatarStudio() {
                     <span className={`text-[10px] font-black uppercase tracking-wider ${
                       studio.activeModel === 'banana' ? 'text-[#C8F135]' : 'text-white/80'
                     }`}>
-                      Nano Banana 2
+                      Nano Banana Pro
                     </span>
                     <span className={`text-[8px] font-extrabold px-1.5 py-0.2 rounded border uppercase ${
                       studio.activeModel === 'banana' ? 'bg-[#C8F135]/20 border-[#C8F135]/40 text-[#C8F135]' : 'bg-white/5 border-white/5 text-white/40'
                     }`}>
-                      2 Credits
+                      5 Credits
                     </span>
                   </div>
                   <p className="text-[8px] text-white/40 leading-tight">
-                    Standard, blazing-fast Gemini multimodal image generator.
+                    Google maximum-fidelity image engine (2K resolution).
                   </p>
                 </button>
               </div>

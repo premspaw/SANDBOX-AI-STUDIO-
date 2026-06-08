@@ -103,18 +103,15 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
     const navItems = [
         { id: 'avatar', label: 'Avatar Studio', icon: UserFocus, color: 'text-emerald-400', bgColor: 'bg-emerald-400', hoverColor: 'group-hover/navitem:text-emerald-400', glow: 'shadow-[0_0_15px_rgba(52,211,153,0.1)]' },
         { id: 'living-avatar', label: 'Living Avatar', icon: ChatCircle, color: 'text-[#00FFFF]', bgColor: 'bg-[#00FFFF]', hoverColor: 'group-hover/navitem:text-[#00FFFF]', glow: 'shadow-[0_0_15px_rgba(0,255,255,0.15)]' },
-        { id: 'creative-studio', label: "Creative Studio", icon: VideoCamera, color: 'text-orange-400', bgColor: 'bg-orange-400', hoverColor: 'group-hover/navitem:text-orange-400', glow: 'shadow-[0_0_15px_rgba(251,146,60,0.1)]' },
-
         { id: 'marketing', label: 'Marketing', icon: Megaphone, color: 'text-rose-400', bgColor: 'bg-rose-400', hoverColor: 'group-hover/navitem:text-rose-400', glow: 'shadow-[0_0_15px_rgba(251,113,133,0.1)]' },
         { id: 'cinematic-studio', label: 'Cinema Studio', icon: FilmSlate, color: 'text-fuchsia-400', bgColor: 'bg-fuchsia-400', hoverColor: 'group-hover/navitem:text-fuchsia-400', glow: 'shadow-[0_0_15px_rgba(232,121,249,0.15)]' },
         { id: 'carousel', label: 'Carousel Studio', icon: SquaresFour, color: 'text-pink-400', bgColor: 'bg-pink-400', hoverColor: 'group-hover/navitem:text-pink-400', glow: 'shadow-[0_0_15px_rgba(236,72,153,0.15)]' },
         { id: 'ugc', label: 'UGC Engine', icon: UsersThree, color: 'text-amber-400', bgColor: 'bg-amber-400', hoverColor: 'group-hover/navitem:text-amber-400', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.1)]' },
         { id: 'brand-voice', label: 'Brand Voice', icon: MicrophoneStage, color: 'text-[#D4FF00]', bgColor: 'bg-[#D4FF00]', hoverColor: 'group-hover/navitem:text-[#D4FF00]', glow: 'shadow-[0_0_15px_rgba(212,255,0,0.15)]' },
-        { id: 'agent', label: 'ZeroLens AI', icon: Robot, color: 'text-violet-400', bgColor: 'bg-violet-400', hoverColor: 'group-hover/navitem:text-violet-400', glow: 'shadow-[0_0_15px_rgba(167,139,250,0.2)]' },
         { id: 'assets', label: 'Assets Library', icon: FolderOpen, color: 'text-[#AADD00]', bgColor: 'bg-[#AADD00]', hoverColor: 'group-hover/navitem:text-[#AADD00]', glow: 'shadow-[0_0_15px_rgba(96,165,250,0.1)]' },
         { id: 'settings', label: 'Settings', icon: GearSix, color: 'text-neutral-300', bgColor: 'bg-neutral-300', hoverColor: 'group-hover/navitem:text-neutral-300', glow: 'shadow-[0_0_15px_rgba(163,163,163,0.4)]' },
         ...(isAdmin ? [
-            { id: 'influencer', label: 'AI Influencer', icon: Users, color: 'text-[#bef264]', bgColor: 'bg-[#bef264]', hoverColor: 'group-hover/navitem:text-[#bef264]', glow: 'shadow-[0_0_15px_rgba(190,242,100,0.1)]' },
+            { id: 'agent', label: 'ZeroLens AI', icon: Robot, color: 'text-violet-400', bgColor: 'bg-violet-400', hoverColor: 'group-hover/navitem:text-violet-400', glow: 'shadow-[0_0_15px_rgba(167,139,250,0.2)]' },
             { id: 'directors-cut', label: "Director's Cut", icon: FilmSlate, color: 'text-cyan-400', bgColor: 'bg-cyan-400', hoverColor: 'group-hover/navitem:text-cyan-400', glow: 'shadow-[0_0_15px_rgba(34,211,238,0.1)]' },
             { id: 'admin', label: 'Admin', icon: ShieldCheck, color: 'text-red-500', bgColor: 'bg-red-500', hoverColor: 'group-hover/navitem:text-red-500', glow: 'shadow-[0_0_15px_rgba(248,113,113,0.1)]' }
         ] : []),

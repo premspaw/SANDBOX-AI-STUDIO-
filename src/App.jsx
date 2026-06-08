@@ -4,9 +4,7 @@ import { Layout } from './components/pages/Layout'
 import { AssetsLibrary } from './components/panels/AssetsLibrary'
 import LandingPage from './components/pages/LandingPage'
 import AuthPage from './components/pages/AuthPage'
-import DirectorStudio from './components/pages/DirectorStudio'
-import UGC from './components/pages/UGC'
-import { InfluencerStudio } from './components/panels/InfluencerStudio'
+import UGC from './features/UGCStudio/UGC'
 import { PlaygroundCanvas } from './components/canvas/PlaygroundCanvas'
 import { AssetManager } from './components/panels/AssetManager'
 import MarketingStudio from './components/pages/MarketingStudio'
@@ -66,15 +64,14 @@ function AvatarPlaceholder() {
 
 const FULL_HEIGHT_TABS = new Set([
   'home',
-  'influencer',
   'playground',
   'avatar',
   'living-avatar',
   'directors-cut',
-  'creative-studio',
   'marketing',
   'carousel',
   'ugc',
+  'assets',
   'admin',
   'auth',
   'settings',
@@ -145,8 +142,9 @@ function App() {
 
   const handleEnterStudio = () => {
     if (user) {
-      // Already logged in, go directly to avatar creator
-      setActiveTab('avatar')
+      // Already logged in, go directly to avatar creator (or cinema studio on mobile)
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      setActiveTab(isMobile ? 'cinematic-studio' : 'avatar')
     } else {
       // Not logged in, show auth page
       setActiveTab('auth')
@@ -155,7 +153,8 @@ function App() {
 
   const handleAuthSuccess = (authUser) => {
     setUser(authUser)
-    setActiveTab('avatar')
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    setActiveTab(isMobile ? 'cinematic-studio' : 'avatar')
   }
 
   if (!authChecked) return null; // wait for session check
@@ -163,17 +162,15 @@ function App() {
   const tabComponents = {
     home: <LandingPage onEnter={handleEnterStudio} onPricing={() => setActiveTab('pricing')} />,
     auth: <AuthPage onAuthSuccess={handleAuthSuccess} />,
-    influencer: <InfluencerStudio setActiveTab={setActiveTab} />,
     assets: (
       <AssetsLibrary
         setActiveTab={setActiveTab}
-        onSelectReference={() => setActiveTab('influencer')}
+        onSelectReference={() => setActiveTab('avatar')}
       />
     ),
     avatar: <AvatarStudio />,
     'living-avatar': <LivingAvatar />,
     'directors-cut': <PlaygroundCanvas />,
-    'creative-studio': <DirectorStudio />,
     marketing: <MarketingStudio />,
     carousel: <CarouselStudio userId={userProfile?.id} />,
     ugc: <UGC />,
@@ -187,7 +184,7 @@ function App() {
 
 
   const getContainerClass = () => {
-    if (activeTab === 'settings' || activeTab === 'pricing' || activeTab === 'brand-voice') {
+    if (activeTab === 'settings' || activeTab === 'pricing' || activeTab === 'brand-voice' || activeTab === 'auth') {
       return 'h-full w-full overflow-y-auto'
     }
     return FULL_HEIGHT_TABS.has(activeTab) ? 'h-full' : 'p-4'
@@ -242,7 +239,7 @@ function App() {
 
       {isShowingAuthModal && !user && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-[99999]">
-          <div className="relative bg-zinc-950 border border-white/5 rounded-3xl w-full max-w-lg aspect-auto shadow-2xl p-2 flex flex-col items-center">
+          <div className="relative bg-zinc-950 border border-white/5 rounded-3xl w-full max-w-lg max-h-[90vh] overflow-hidden shadow-2xl p-2 flex flex-col items-center">
             
             <button 
               onClick={() => setShowingAuthModal(false)}
