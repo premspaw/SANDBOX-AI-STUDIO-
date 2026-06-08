@@ -1499,7 +1499,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
         setErrorMsg(cleanErr);
         const showToast = useAppStore.getState().showToast;
         if (showToast) showToast(cleanErr, "error");
-        await triggerRefund('cinematic_image_generation_failed');
+        await triggerRefund('cinematic_image_generation');
       }
       return;
     }
@@ -1577,7 +1577,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
         setErrorMsg(cleanErr);
         const showToast = useAppStore.getState().showToast;
         if (showToast) showToast(cleanErr, "error");
-        await triggerRefund('cinematic_video_generation_failed');
+        await triggerRefund('cinematic_video_generation');
       }
     } else if (activeEngine === 'seedance-fast' || activeEngine === 'seedace') {
       try {
@@ -1621,7 +1621,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
         setErrorMsg(cleanErr);
         const showToast = useAppStore.getState().showToast;
         if (showToast) showToast(cleanErr, "error");
-        await triggerRefund('cinematic_video_generation_failed');
+        await triggerRefund('cinematic_video_generation');
       }
     }
   };
