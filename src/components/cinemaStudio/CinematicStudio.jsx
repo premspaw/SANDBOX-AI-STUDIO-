@@ -843,11 +843,11 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
   // Flat list of all refBoard items for @mention autocomplete
   const IdMap = window.Map;
   const mergedBoard = {
-    characters: [...new IdMap([...refBoard.characters, ...stagedRefBoard.characters].map(i => [i.id, i])).values()],
-    locations:  [...new IdMap([...refBoard.locations,  ...stagedRefBoard.locations ].map(i => [i.id, i])).values()],
-    wardrobes:  [...new IdMap([...refBoard.wardrobes,  ...stagedRefBoard.wardrobes ].map(i => [i.id, i])).values()],
-    props:      [...new IdMap([...refBoard.props,      ...stagedRefBoard.props     ].map(i => [i.id, i])).values()],
-    moods:      [...new IdMap([...refBoard.moods,      ...stagedRefBoard.moods     ].map(i => [i.id, i])).values()],
+    characters: [...new IdMap([...(refBoard.characters || []), ...(stagedRefBoard.characters || [])].map(i => [i.id, i])).values()],
+    locations:  [...new IdMap([...(refBoard.locations || []),  ...(stagedRefBoard.locations || []) ].map(i => [i.id, i])).values()],
+    wardrobes:  [...new IdMap([...(refBoard.wardrobes || []),  ...(stagedRefBoard.wardrobes || []) ].map(i => [i.id, i])).values()],
+    props:      [...new IdMap([...(refBoard.props || []),      ...(stagedRefBoard.props || [])     ].map(i => [i.id, i])).values()],
+    moods:      [...new IdMap([...(refBoard.moods || []),      ...(stagedRefBoard.moods || [])     ].map(i => [i.id, i])).values()],
   }
   const allRefItems = [
     ...mergedBoard.characters.map(i => ({ ...i, category: 'character', prefix: 'char' })),

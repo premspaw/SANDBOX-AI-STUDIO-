@@ -47,7 +47,7 @@ globalThis.fetch = (url, options = {}) => {
         if (typeof options.headers.set === 'function') {
             options.headers.set('Referer', referer);
             if (!hasAuth && process.env.GOOGLE_API_KEY) {
-                options.headers.set('X-Goog-Api-Key', process.env.GOOGLE_API_KEY);
+                options.headers.set('X-Goog-Api-Key', process.env.GOOGLE_API_KEY.trim());
             }
         } else {
             options.headers = {
@@ -55,7 +55,7 @@ globalThis.fetch = (url, options = {}) => {
                 'Referer': referer
             };
             if (!hasAuth && process.env.GOOGLE_API_KEY) {
-                options.headers['X-Goog-Api-Key'] = process.env.GOOGLE_API_KEY;
+                options.headers['X-Goog-Api-Key'] = process.env.GOOGLE_API_KEY.trim();
             }
         }
         
