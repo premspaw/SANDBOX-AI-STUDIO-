@@ -53,7 +53,7 @@ const PricingPage = () => {
         }
     ];
 
-    const plans = [
+     const plans = [
         {
             name: "Starter",
             monthlyPrice: 399,
@@ -77,18 +77,18 @@ const PricingPage = () => {
             iconColor: "text-gray-400",
             buttonText: "Get Started",
             popular: false,
-            link: "https://rzp.io/rzp/vPs9Yvib"
+            link: "https://rzp.io/rzp/WhaNtMa"
         },
         {
             name: "Influencer",
-            monthlyPrice: 1999,
-            yearlyPrice: 1599,
+            monthlyPrice: 2499,
+            yearlyPrice: 1999,
             period: "/3mo",
             yearlyText: "One-time · No renewal",
             description: "The choice for professional creators and growing visual brands.",
             image: "/pricing/influencer.png",
             features: [
-                "1,999 High-Speed Renders (Credits)",
+                "2,499 High-Speed Renders (Credits)",
                 "Unlimited Draft Nano Images",
                 "3 AI Character Creations",
                 "4 Concurrent Jobs",
@@ -103,7 +103,7 @@ const PricingPage = () => {
             iconColor: "text-blue-400",
             buttonText: "Start Exploring",
             popular: false,
-            link: "https://rzp.io/rzp/xCEhb7Nl"
+            link: "https://rzp.io/rzp/nM3CK28p"
         },
         {
             name: "Director",
@@ -129,7 +129,7 @@ const PricingPage = () => {
             iconColor: "text-[#D4FF00]",
             buttonText: "Go Professional",
             popular: true,
-            link: "https://rzp.io/rzp/xjMjFsMo"
+            link: "https://rzp.io/rzp/bFVSdvM9"
         },
         {
             name: "Enterprise",
@@ -156,7 +156,7 @@ const PricingPage = () => {
             iconColor: "text-purple-400",
             buttonText: "Get Enterprise",
             popular: false,
-            link: "https://rzp.io/rzp/UCU5bwCC"
+            link: "https://rzp.io/rzp/bK6mnEe"
         }
     ];
 

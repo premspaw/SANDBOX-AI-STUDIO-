@@ -392,7 +392,7 @@ export default function SettingsPage() {
                                                 </div>
                                                 <div className="text-lg font-black text-white">
                                                     {currentTier === 'STARTER' ? '399 Credits' :
-                                                     currentTier === 'INFLUENCER' ? '1,999 Credits' :
+                                                     currentTier === 'INFLUENCER' ? '2,499 Credits' :
                                                      currentTier === 'DIRECTOR' ? '4,999 Credits' :
                                                      currentTier === 'ENTERPRISE' ? '9,999 Credits' : '50 Free'}
                                                 </div>
