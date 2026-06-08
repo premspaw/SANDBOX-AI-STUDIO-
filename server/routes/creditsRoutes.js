@@ -182,20 +182,59 @@ export default function createRouter(deps) {
             }
 
             let creditsToAdd = 0;
-            let newTier = 'FREE';
+            let newTier = null;
+            let priceAmount = 0;
+            let planName = 'TOP-UP';
 
             switch (planId.toLowerCase()) {
+                case 'starter':
+                    creditsToAdd = 399;
+                    newTier = 'STARTER';
+                    priceAmount = 399;
+                    planName = 'Starter';
+                    break;
                 case 'influencer':
-                    creditsToAdd = 150;
+                    creditsToAdd = 1999;
                     newTier = 'INFLUENCER';
+                    priceAmount = 1999;
+                    planName = 'Influencer';
                     break;
                 case 'director':
-                    creditsToAdd = 600;
+                    creditsToAdd = 4999;
                     newTier = 'DIRECTOR';
+                    priceAmount = 4999;
+                    planName = 'Director';
                     break;
+                case 'enterprise':
                 case 'business':
-                    creditsToAdd = 1200;
-                    newTier = 'BUSINESS';
+                    creditsToAdd = 9999;
+                    newTier = 'ENTERPRISE';
+                    priceAmount = 9999;
+                    planName = 'Enterprise';
+                    break;
+                case 'topup-1000':
+                case '1000':
+                case '900':
+                    creditsToAdd = 1000;
+                    newTier = null;
+                    priceAmount = 900;
+                    planName = '1000-Credits Pack';
+                    break;
+                case 'topup-4500':
+                case '4500':
+                case '4000':
+                    creditsToAdd = 4500;
+                    newTier = null;
+                    priceAmount = 4000;
+                    planName = '4500-Credits Pack';
+                    break;
+                case 'topup-10000':
+                case '10000':
+                case '9000':
+                    creditsToAdd = 10000;
+                    newTier = null;
+                    priceAmount = 9000;
+                    planName = '10000-Credits Pack';
                     break;
                 default:
                     return res.status(400).json({ error: "Invalid plan ID" });
@@ -214,12 +253,14 @@ export default function createRouter(deps) {
 
             const newBalance = profile.shorts_balance + creditsToAdd;
 
+            const profileUpdate = { shorts_balance: newBalance };
+            if (newTier) {
+                profileUpdate.tier = newTier;
+            }
+
             const { error: err2 } = await supabase
                 .from('profiles')
-                .update({
-                    shorts_balance: newBalance,
-                    tier: newTier
-                })
+                .update(profileUpdate)
                 .eq('id', userId);
 
             if (err2) {
@@ -231,10 +272,19 @@ export default function createRouter(deps) {
                 await supabase.from('shorts_transactions').insert({
                     user_id: userId,
                     amount: creditsToAdd,
-                    action_type: `PURCHASE_${newTier}`
+                    action_type: newTier ? `PURCHASE_${newTier}` : 'TOPUP_PURCHASE',
+                    reason: newTier ? `Purchase Plan: ${newTier}` : `Purchase Top-up Pack`
+                });
+
+                await supabase.from('billing_history').insert({
+                    user_id: userId,
+                    plan_name: planName,
+                    amount: priceAmount,
+                    status: 'SUCCESS',
+                    transaction_id: 'SIMULATED_PURCHASE_' + Math.random().toString(36).substr(2, 9).toUpperCase()
                 });
             } catch (txErr) {
-                console.warn("[SERVER] Failed to record transaction log:", txErr);
+                console.warn("[SERVER] Failed to record transaction/billing log:", txErr);
             }
 
             console.log(`[PRICING] User ${userId} purchased ${planId}. New Balance: ${newBalance}`);

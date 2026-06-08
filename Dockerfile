@@ -42,6 +42,7 @@ RUN npm install --omit=dev
 # Copy the built dist folder, server.js, services, and necessary src files
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server.js ./server.js
+COPY --from=builder /app/server ./server
 COPY --from=builder /app/services ./services
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/src/services ./src/services
