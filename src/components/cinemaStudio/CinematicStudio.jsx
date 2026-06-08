@@ -386,53 +386,7 @@ function UpwardDropdown({ children, icon, label, badge, accentColor = 'fuchsia' 
   );
 }
 
-const DEFAULT_CINEMA_ASSETS = [
-  {
-    id: 'default_1',
-    type: 'video',
-    url: 'https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing-assets/0224.mp4',
-    prompt: 'A hyper-cinematic flight over boiling volcanic landscape behind sci-fi drone, dodging explosions, IMAX, 8K',
-    engine: 'Veo 3.1 Pro',
-    aspect: '16:9',
-    ts: Date.now() - 3600000 * 24
-  },
-  {
-    id: 'default_2',
-    type: 'video',
-    url: 'https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing-assets/0302.mp4',
-    prompt: 'Neon cyberpunk tracking shot in rainy Tokyo alleyways, glowing holographic displays, reflections',
-    engine: 'Veo 3.1 Pro',
-    aspect: '16:9',
-    ts: Date.now() - 3600000 * 12
-  },
-  {
-    id: 'default_3',
-    type: 'video',
-    url: 'https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing-assets/studio_video_1773344505750.mp4',
-    prompt: 'Macro glide over a premium luxury watch bezel, dark studio background, cinematic soft fog lighting',
-    engine: 'Veo 3.1 Pro',
-    aspect: '16:9',
-    ts: Date.now() - 3600000 * 6
-  },
-  {
-    id: 'default_4',
-    type: 'video',
-    url: 'https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing-assets/27c5ff3b-0228-47dc-a10d-46d5eb6ff0ce%20(1).mp4',
-    prompt: 'Atmospheric cinematic track-in on luxury beauty bottle on golden desert sand dunes at sunrise',
-    engine: 'Veo 3.1 Pro',
-    aspect: '16:9',
-    ts: Date.now() - 3600000 * 2
-  },
-  {
-    id: 'default_5',
-    type: 'video',
-    url: 'https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing-assets/IMG_5525.MP4',
-    prompt: 'Authentic lifestyle vlogging, creator sitting in car talking directly to the camera, warm natural lighting',
-    engine: 'Veo 3.1 Pro',
-    aspect: '16:9',
-    ts: Date.now() - 3600000
-  }
-];
+const DEFAULT_CINEMA_ASSETS = [];
 
 const cleanErrorMessage = (msg) => {
   if (!msg || typeof msg !== 'string') return '';
