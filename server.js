@@ -1012,14 +1012,22 @@ app.post('/api/webhook/razorpay',
                 let targetTier = null;
                 let planName = 'TOP-UP';
 
-                if (amount_in_rs >= 4000) { creditsToAdd = 5000; targetTier = 'ENTERPRISE'; planName = 'Enterprise'; }
-                else if (amount_in_rs >= 1900) { creditsToAdd = 2500; targetTier = 'DIRECTOR'; planName = 'Director'; }
-                else if (amount_in_rs >= 790) { creditsToAdd = 600; targetTier = 'INFLUENCER'; planName = 'Influencer'; }
-                else if (amount_in_rs >= 300) { creditsToAdd = 250; targetTier = 'STARTER'; planName = 'Starter'; }
+                // Exact Match Checks (Plans & Top-Ups)
+                if (amount_in_rs === 9999 || amount_in_rs === 7999) { creditsToAdd = 9999; targetTier = 'ENTERPRISE'; planName = 'Enterprise'; }
+                else if (amount_in_rs === 4999 || amount_in_rs === 3999) { creditsToAdd = 4999; targetTier = 'DIRECTOR'; planName = 'Director'; }
+                else if (amount_in_rs === 1999 || amount_in_rs === 1599) { creditsToAdd = 1999; targetTier = 'INFLUENCER'; planName = 'Influencer'; }
+                else if (amount_in_rs === 399 || amount_in_rs === 319) { creditsToAdd = 399; targetTier = 'STARTER'; planName = 'Starter'; }
                 
-                if (amount_in_rs === 300) { creditsToAdd = 300; targetTier = null; planName = '300-Credits Pack'; }
-                if (amount_in_rs === 900) { creditsToAdd = 1000; targetTier = null; planName = '1000-Credits Pack'; }
-                if (amount_in_rs === 2000) { creditsToAdd = 2500; targetTier = null; planName = '2500-Credits Pack'; }
+                // Top-Up Packs (No Tier updates)
+                else if (amount_in_rs === 900) { creditsToAdd = 1000; targetTier = null; planName = '1000-Credits Pack'; }
+                else if (amount_in_rs === 4000) { creditsToAdd = 5000; targetTier = null; planName = '5000-Credits Pack'; }
+                else if (amount_in_rs === 8000) { creditsToAdd = 10000; targetTier = null; planName = '10000-Credits Pack'; }
+                
+                // Fallback Legacy range checks
+                else if (amount_in_rs >= 7000) { creditsToAdd = 9999; targetTier = 'ENTERPRISE'; planName = 'Enterprise'; }
+                else if (amount_in_rs >= 3500) { creditsToAdd = 4999; targetTier = 'DIRECTOR'; planName = 'Director'; }
+                else if (amount_in_rs >= 1500) { creditsToAdd = 1999; targetTier = 'INFLUENCER'; planName = 'Influencer'; }
+                else if (amount_in_rs >= 300) { creditsToAdd = 399; targetTier = 'STARTER'; planName = 'Starter'; }
 
                 if (creditsToAdd > 0 && supabaseAdmin) {
                     const { data: profile } = await supabaseAdmin.from('profiles').select('shorts_balance').eq('id', userId).single();
