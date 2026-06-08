@@ -640,6 +640,7 @@ Return ONLY valid JSON.`
             const uniqueUrls = new Set();
             const uniqueAssets = merged.filter(a => {
                 if (!a.url) return false;
+                if (a.type === 'marketing_template') return false;
                 if (uniqueUrls.has(a.url)) return false;
                 uniqueUrls.add(a.url);
                 return true;

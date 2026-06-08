@@ -64,7 +64,21 @@ export function useUGCGallery(currentUserId: string) {
   const [gallery, setGallery] = useState<GalleryItem[]>(() => {
     try {
       const saved = localStorage.getItem('ugc_generation_history');
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      const filtered = parsed.filter((item: any) => {
+        if (!item) return false;
+        if (item.type === 'marketing_template') return false;
+        if (item.url && (item.url.includes('/marketing/') || item.url.includes('marketing_template'))) return false;
+        return true;
+      });
+      if (filtered.length !== parsed.length) {
+        try {
+          localStorage.setItem('ugc_generation_history', JSON.stringify(filtered));
+        } catch {
+          // ignore quota
+        }
+      }
+      return filtered;
     } catch {
       return [];
     }
@@ -76,7 +90,16 @@ export function useUGCGallery(currentUserId: string) {
   // ── Load from IDB on mount (merges with localStorage seed) ──────────────
   useEffect(() => {
     loadGalleryFromIDB().then(idbItems => {
-      const sorted = [...idbItems].sort((a, b) => {
+      const filtered = idbItems.filter(item => {
+        if (!item) return false;
+        if (item.type === 'marketing_template') return false;
+        if (item.url && (item.url.includes('/marketing/') || item.url.includes('marketing_template'))) return false;
+        return true;
+      });
+      if (filtered.length !== idbItems.length) {
+        saveGalleryToIDB(filtered);
+      }
+      const sorted = [...filtered].sort((a, b) => {
         const aNum = parseInt(a.id) || 0;
         const bNum = parseInt(b.id) || 0;
         return bNum - aNum;
@@ -103,7 +126,7 @@ export function useUGCGallery(currentUserId: string) {
       .then(({ assets }) => {
         if (!Array.isArray(assets) || assets.length === 0) return;
         const dbItems: GalleryItem[] = assets
-          .filter((a: any) => a.url)
+          .filter((a: any) => a.url && a.type !== 'marketing_template' && !(a.url && (a.url.includes('/marketing/') || a.url.includes('marketing_template'))))
           .map((a: any) => ({
             id: String(a.id),
             type: (a.type === 'video' ? 'video' : 'image') as 'image' | 'video',
@@ -136,12 +159,14 @@ export function useUGCGallery(currentUserId: string) {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       if (!error && data) {
-        const historyGallery: GalleryItem[] = data.map((item: any) => ({
-          id: item.id,
-          type: item.asset_type as 'image' | 'video',
-          url: ensureDataUri(item.public_url),
-          prompt: item.prompt,
-        }));
+        const historyGallery: GalleryItem[] = data
+          .filter((item: any) => item.asset_type !== 'marketing_template' && !(item.public_url && (item.public_url.includes('/marketing/') || item.public_url.includes('marketing_template'))))
+          .map((item: any) => ({
+            id: item.id,
+            type: item.asset_type as 'image' | 'video',
+            url: ensureDataUri(item.public_url),
+            prompt: item.prompt,
+          }));
         setGallery(prev => {
           const existingIds = new Set(prev.map(p => p.id));
           const existingUrls = new Set(prev.map(p => p.url).filter(Boolean));

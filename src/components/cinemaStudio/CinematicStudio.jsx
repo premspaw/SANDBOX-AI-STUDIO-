@@ -489,9 +489,22 @@ export default function CinematicStudio() {
     try {
       const cached = localStorage.getItem('cinematic_studio_gallery');
       const parsed = cached ? JSON.parse(cached) : [];
-      return parsed.length > 0 ? parsed : DEFAULT_CINEMA_ASSETS;
+      const filtered = parsed.filter(item => {
+        if (!item) return false;
+        const itemId = String(item.id || '');
+        const itemUrl = String(item.url || '');
+        return !itemId.startsWith('default_') && !itemUrl.includes('landing-assets');
+      });
+      if (filtered.length !== parsed.length) {
+        try {
+          localStorage.setItem('cinematic_studio_gallery', JSON.stringify(filtered));
+        } catch (e) {
+          // ignore quota
+        }
+      }
+      return filtered;
     } catch {
-      return DEFAULT_CINEMA_ASSETS;
+      return [];
     }
   });
 
