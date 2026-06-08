@@ -1,4 +1,4 @@
-import { Robot, FilmSlate, GearSix, CaretLeft, CaretRight, FolderOpen, Users, ShieldCheck, VideoCamera, Coin, SquaresFour, Aperture, Megaphone, UserFocus, MicrophoneStage, UsersThree, ChatCircle } from '@phosphor-icons/react'
+import { Robot, FilmSlate, GearSix, CaretLeft, CaretRight, FolderOpen, Users, ShieldCheck, VideoCamera, Coins, SquaresFour, Aperture, Megaphone, UserFocus, MicrophoneStage, UsersThree, ChatCircle } from '@phosphor-icons/react'
 
 import logo from '../../assets/acs-icon.svg'
 import BrandLogo from '../common/BrandLogo'
@@ -210,7 +210,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                         isCollapsed ? "justify-center" : "justify-between"
                     )}>
                         <div className="flex items-center gap-2 shrink-0">
-                            <Coin weight="duotone" className="w-4 h-4 text-[#D4FF00]" />
+                            <Coins weight="duotone" className="w-4 h-4 text-[#D4FF00]" />
                             <div className={cn(
                                 "flex items-center gap-1.5 transition-all overflow-hidden",
                                 isCollapsed
