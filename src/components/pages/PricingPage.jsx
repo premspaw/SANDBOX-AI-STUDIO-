@@ -63,7 +63,8 @@ const PricingPage = () => {
             description: "An affordable kickstart with a 6-Month setup value layout!",
             image: "https://jdepbrbujambxvtdiwla.supabase.co/storage/v1/object/public/templates/2a3c4c1e-fd65-4909-bfee-36190c085d94.png",
             features: [
-                "399 Credits · Valid 3 Months",
+                "399 High-Speed Renders (Credits)",
+                "Unlimited Draft Nano Images",
                 "Starter Character Creation",
                 "2 Concurrent Jobs",
                 "Seedance 2.0 Fast Access (5s)",
@@ -87,7 +88,8 @@ const PricingPage = () => {
             description: "The choice for professional creators and growing visual brands.",
             image: "/pricing/influencer.png",
             features: [
-                "1,999 Credits · Valid 3 Months",
+                "1,999 High-Speed Renders (Credits)",
+                "Unlimited Draft Nano Images",
                 "3 AI Character Creations",
                 "4 Concurrent Jobs",
                 "31 Seedance 2.0 Videos (5s) OR",
@@ -112,12 +114,12 @@ const PricingPage = () => {
             description: "Maximum cinematic horsepower for Agencies and Power Users.",
             image: "/pricing/director.png",
             features: [
-                "4,999 Credits · Valid 6 Months",
+                "4,999 High-Speed Renders (Credits)",
                 "10 AI Character Creations",
                 "8 Concurrent Jobs",
                 "79 Seedance 2.0 Videos (5s) OR",
                 "53 Veo 1080p Videos (8s)",
-                "Unlimited Nano Banana Images",
+                "Unlimited Nano Banana Images (All)",
                 "4K Export Support",
                 "24/7 Dedicated Support"
             ],
@@ -138,13 +140,14 @@ const PricingPage = () => {
             description: "Enterprise scalability for Commercial workflows and large volumes.",
             image: "/pricing/enterprise.png",
             features: [
-                "9,999 Credits · Valid 1 Year",
+                "9,999 High-Speed Renders (Credits)",
                 "Unlimited AI Characters",
                 "16 Concurrent Jobs",
                 "158 Seedance 2.0 Videos (5s) OR",
                 "107 Veo 1080p Videos (8s)",
                 "Multi-node Sync renders",
                 "Raw Source Assets exports",
+                "Unlimited Nano Banana Images & Multi-shot",
                 "Custom visual model training"
             ],
             icon: Coins,
@@ -165,7 +168,7 @@ const PricingPage = () => {
             <div className="absolute bottom-[-20%] right-[-10%] w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px] -z-10" />
 
             {/* Premium Header Bar */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-0 bg-white/[0.02] border border-white/5 backdrop-blur-md p-4 md:p-2 rounded-xl mb-3 shrink-0 shadow-2xl relative overflow-hidden">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-0 bg-white/[0.02] border border-white/5 backdrop-blur-md p-4 md:p-3 rounded-xl mb-3 shrink-0 shadow-2xl relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.01] to-transparent animate-shimmer" />
                 <div className="flex items-center gap-4">
                     <div className="px-3 py-1 bg-gradient-to-r from-[#D4FF00]/10 to-transparent border border-[#D4FF00]/20 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-[#D4FF00] flex items-center gap-1.5 shadow-[0_0_20px_rgba(212,255,0,0.1)]">
@@ -176,6 +179,9 @@ const PricingPage = () => {
                     </h1>
                 </div>
 
+                <div className="flex items-center bg-[#D4FF00]/5 border border-[#D4FF00]/20 px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider text-[#D4FF00] shadow-[0_0_15px_rgba(212,255,0,0.05)]">
+                    ⚡ One-Time Payments Only • No Auto-Renewal Subscriptions
+                </div>
             </div>
 
             {/* Main Content Layout Grid - Stagger Layouts */}
