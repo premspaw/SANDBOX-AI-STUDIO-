@@ -56,7 +56,8 @@ function SlotGrid({ items, max, onAdd, onRemove }) {
 }
 
 export const NanoBananaNode = memo(({ id, data }) => {
-    const store = useAppStore()
+    const addOutputNode = useAppStore(s => s.addOutputNode)
+    const updateNodeData = useAppStore(s => s.updateNodeData)
     const [prompt, setPrompt]           = useState('')
     const [images, setImages]           = useState([])
     const [model, setModel]             = useState('banana2')
@@ -123,12 +124,13 @@ export const NanoBananaNode = memo(({ id, data }) => {
         setStatus('generating')
 
         // ── STEP 1: Spawn output node IMMEDIATELY with loading state ──
-        const currentNode = store.nodes?.find(n => n.id === id)
+        const { nodes } = useAppStore.getState()
+        const currentNode = nodes?.find(n => n.id === id)
         const newPos = currentNode
             ? { x: currentNode.position.x + 320, y: currentNode.position.y }
             : { x: 1000, y: 500 }
 
-        const outputId = store.addOutputNode({
+        const outputId = addOutputNode({
             sourceId: id,
             url: null,         // null = loading state
             loading: true,     // ← tells OutputNode to show spinner
@@ -175,7 +177,7 @@ export const NanoBananaNode = memo(({ id, data }) => {
             }
 
             // ── STEP 2: Update the output node with the real image ──
-            store.updateNodeData(outputId, {
+            updateNodeData(outputId, {
                 url: resultUrl,
                 loading: false,
                 ratio: ratio
@@ -195,7 +197,7 @@ export const NanoBananaNode = memo(({ id, data }) => {
         } catch (err) {
             console.error('[NanoBanana Node] Error:', err)
             // Update output node to error state
-            store.updateNodeData(outputId, {
+            updateNodeData(outputId, {
                 url: null,
                 loading: false,
                 error: true,

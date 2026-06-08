@@ -9,6 +9,7 @@ import {
     Maximize, Terminal, Music, Volume2, Mic2, Target, ChevronLeft
 } from "lucide-react";
 import { useAppStore } from "../../store";
+import { useShallow } from 'zustand/react/shallow';
 import logo from "../../assets/acs-icon.svg";
 import BrandLogo from "../common/BrandLogo";
 import { generateCharacterImage, analyzeIdentity, generateDynamicAngles, buildConsistencyRefs, expandPrompt } from "../../services/geminiService";
@@ -72,7 +73,36 @@ function ControlSelect({ label, icon: Icon, value, options, onChange }) {
 // --- MAIN DIRECTOR HUD ---
 
 export default function DirectorHUD() {
-    const store = useAppStore();
+    const activeCharacter = useAppStore(useShallow(s => s.activeCharacter));
+    const camera = useAppStore(useShallow(s => s.camera));
+    const anchorImage = useAppStore(s => s.anchorImage);
+    const wardrobeImage = useAppStore(s => s.wardrobeImage);
+    const poseImage = useAppStore(s => s.poseImage);
+    const actionScript = useAppStore(s => s.actionScript);
+    const isRendering = useAppStore(s => s.isRendering);
+    const isSyncing = useAppStore(s => s.isSyncing);
+    const activeNodeId = useAppStore(s => s.activeNodeId);
+    const lastGeneratedPrompt = useAppStore(s => s.lastGeneratedPrompt);
+
+    const setState = useAppStore(s => s.setState);
+    const setWardrobeImage = useAppStore(s => s.setWardrobeImage);
+    const setPoseImage = useAppStore(s => s.setPoseImage);
+    const generateStoryboard = useAppStore(s => s.generateStoryboard);
+    const addNode = useAppStore(s => s.addNode);
+    const updateNodeData = useAppStore(s => s.updateNodeData);
+    const deleteNode = useAppStore(s => s.deleteNode);
+    const syncCurrentSession = useAppStore(s => s.syncCurrentSession);
+    const setMode = useAppStore(s => s.setMode);
+    const purgeVault = useAppStore(s => s.purgeVault);
+    const setRepairSession = useAppStore(s => s.setRepairSession);
+    const addCameraNode = useAppStore(s => s.addCameraNode);
+    const addLightingNode = useAppStore(s => s.addLightingNode);
+    const addMusicNode = useAppStore(s => s.addMusicNode);
+    const addSFXNode = useAppStore(s => s.addSFXNode);
+    const addDialogueNode = useAppStore(s => s.addDialogueNode);
+    const addUGCPipelineNode = useAppStore(s => s.addUGCPipelineNode);
+    const addUGCEngineNode = useAppStore(s => s.addUGCEngineNode);
+
     const [activeTab, setActiveTab] = useState('VISUAL');
     const [isCollapsed, setIsCollapsed] = useState(true);
     const [selectedPoseId, setSelectedPoseId] = useState(null);
@@ -83,19 +113,19 @@ export default function DirectorHUD() {
     const [ugcHookStyle, setUgcHookStyle] = useState('PATTERN_INTERRUPT');
     const { isConnected, tasks } = useWebSocket();
 
-    if (!store.activeCharacter) return null;
+    if (!activeCharacter) return null;
 
     const updateCamera = (key, value) =>
-        store.setState(s => ({ ...s, camera: { ...s.camera, [key]: value } }));
+        setState(s => ({ ...s, camera: { ...s.camera, [key]: value } }));
 
     const handleUpload = (type) => (e) => {
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
-                if (type === 'wardrobe') store.setWardrobeImage(reader.result);
+                if (type === 'wardrobe') setWardrobeImage(reader.result);
                 else {
-                    store.setPoseImage(reader.result);
+                    setPoseImage(reader.result);
                     setSelectedPoseId(null);
                 }
             };
@@ -105,21 +135,21 @@ export default function DirectorHUD() {
 
     const handleStoryboardArc = async () => {
         if (!narrativeArc) return;
-        await store.generateStoryboard(narrativeArc);
+        await generateStoryboard(narrativeArc);
         setNarrativeArc('');
     };
 
     const handleMaterialize = async () => {
-        const { activeCharacter, actionScript, camera, wardrobeImage, poseImage, anchorImage } = store;
         if (!activeCharacter) return;
+        const { detailMatrix, currentProduct, nodes } = useAppStore.getState();
 
-        store.setState((s) => ({ ...s, isRendering: true }));
-        const tempId = store.addNode('', `Compiling_State...`, true);
+        setState((s) => ({ ...s, isRendering: true }));
+        const tempId = addNode('', `Compiling_State...`, true);
 
         try {
             // ✅ CONSISTENCY MODE: Smart reference builder (max 4, prioritized, null-safe)
             const references = await buildConsistencyRefs({
-                kit: activeCharacter.identity_kit || store.detailMatrix,
+                kit: activeCharacter.identity_kit || detailMatrix,
                 anchor: anchorImage,
                 wardrobe: wardrobeImage,
                 pose: poseImage,
@@ -129,70 +159,70 @@ export default function DirectorHUD() {
             const expandedPrompt = await expandPrompt({
                 subject: activeCharacter.name,
                 subjectDescription: activeCharacter.metadata?.imageAnalysis?.description || activeCharacter.personality || 'the subject',
-                productDetails: store.currentProduct?.description || 'the scene context',
+                productDetails: currentProduct?.description || 'the scene context',
                 userAction: actionScript || 'Cinematic Portrait',
                 visualStyle: activeCharacter.visualStyle,
                 duration: 30
             });
 
             // Update last generated prompt for UI visibility
-            store.setState(s => ({ ...s, lastGeneratedPrompt: expandedPrompt }));
+            setState(s => ({ ...s, lastGeneratedPrompt: expandedPrompt }));
 
             const result = await generateCharacterImage({
                 prompt: expandedPrompt,
                 identity_images: references,
-                product_image: store.currentProduct?.image,
+                product_image: currentProduct?.image,
                 aspectRatio: camera.ratio,
                 resolution: camera.resolution
             });
 
             if (result) {
-                store.updateNodeData(tempId, {
+                updateNodeData(tempId, {
                     image: result,
                     isOptimistic: false,
                     label: actionScript || 'Scene_Output',
                     resolution: camera.resolution
                 });
-                saveStoryboardItem(activeCharacter.id, result, store.nodes.length);
+                saveStoryboardItem(activeCharacter.id, result, nodes.length);
                 saveGeneratedAsset(result, 'image', `materialize_${Date.now()}.png`);
-                store.syncCurrentSession();
+                syncCurrentSession();
             } else {
-                store.deleteNode(tempId);
+                deleteNode(tempId);
             }
         } catch (err) {
             console.error("Materialize failed:", err);
-            store.deleteNode(tempId);
+            deleteNode(tempId);
         } finally {
-            store.setState((s) => ({ ...s, isRendering: false }));
+            setState((s) => ({ ...s, isRendering: false }));
         }
     };
 
     const handleMatrixRender = async () => {
-        const { activeCharacter, anchorImage, wardrobeImage, actionScript, camera } = store;
         if (!activeCharacter || !anchorImage) return;
+        const { detailMatrix, nodes } = useAppStore.getState();
 
-        store.setMode('ORBIT');
-        store.setState((s) => ({ ...s, isRendering: true }));
+        setMode('ORBIT');
+        setState((s) => ({ ...s, isRendering: true }));
 
-        let centerNodeId = store.activeNodeId;
+        let centerNodeId = activeNodeId;
 
         // ✅ CONSISTENCY MODE: build once, reuse across all 6 parallel renders
         const matrixRefs = await buildConsistencyRefs({
-            kit: activeCharacter.identity_kit || store.detailMatrix,
+            kit: activeCharacter.identity_kit || detailMatrix,
             anchor: anchorImage,
             wardrobe: wardrobeImage,
-            pose: store.poseImage,
+            pose: poseImage,
         });
 
         try {
-            if (!centerNodeId || !store.nodes.find(n => n.id === centerNodeId)) {
-                centerNodeId = store.addNode(anchorImage, "DIRECTOR_ANALYSIS...", true, { x: 500, y: 500 });
+            if (!centerNodeId || !nodes.find(n => n.id === centerNodeId)) {
+                centerNodeId = addNode(anchorImage, "DIRECTOR_ANALYSIS...", true, { x: 500, y: 500 });
             }
 
             const dynamicAngles = await generateDynamicAngles(anchorImage, activeCharacter.name);
 
             const analysisSummary = dynamicAngles.map((a) => `> ${a.label}`).join('\n');
-            store.updateNodeData(centerNodeId, {
+            updateNodeData(centerNodeId, {
                 label: "DIRECTOR_BRAIN",
                 isOptimistic: false,
                 analysisData: `DIRECTORIAL_STRATEGY:\n${analysisSummary}\n\nORIGIN_LOCK: ${activeCharacter.origin}`
@@ -200,7 +230,7 @@ export default function DirectorHUD() {
 
             const angles = [0, 60, 120, 180, 240, 300];
             const ghostNodeIds = [];
-            const center = store.nodes.find(n => n.id === centerNodeId)?.position || { x: 500, y: 500 };
+            const center = nodes.find(n => n.id === centerNodeId)?.position || { x: 500, y: 500 };
             const radius = 450;
 
             dynamicAngles.forEach((angleConfig, i) => {
@@ -209,11 +239,11 @@ export default function DirectorHUD() {
                 const x = center.x + radius * Math.cos(angle * (Math.PI / 180));
                 const y = center.y + radius * Math.sin(angle * (Math.PI / 180));
 
-                const id = store.addNode('', `RENDER_${angleConfig.label}`, true, { x, y });
+                const id = addNode('', `RENDER_${angleConfig.label}`, true, { x, y });
                 ghostNodeIds.push(id);
 
                 if (centerNodeId) {
-                    store.setState(s => ({
+                    setState(s => ({
                         ...s,
                         edges: [...s.edges, { id: `edge-${id}`, source: centerNodeId, target: id, animated: true, style: { stroke: '#bef264', opacity: 0.15 } }]
                     }));
@@ -222,12 +252,13 @@ export default function DirectorHUD() {
 
             const renderTasks = ghostNodeIds.map(async (id, i) => {
                 const config = dynamicAngles[i];
+                const { currentProduct, nodes: latestNodes } = useAppStore.getState();
 
                 // 1. Expand prompt per angle (strips names)
                 const expandedPrompt = await expandPrompt({
                     subject: activeCharacter.name,
                     subjectDescription: activeCharacter.metadata?.imageAnalysis?.description || activeCharacter.personality || 'the subject',
-                    productDetails: store.currentProduct?.description || 'the scene context',
+                    productDetails: currentProduct?.description || 'the scene context',
                     userAction: config.prompt,
                     visualStyle: activeCharacter.visualStyle,
                     duration: 30
@@ -236,28 +267,28 @@ export default function DirectorHUD() {
                 const result = await generateCharacterImage({
                     prompt: expandedPrompt,
                     identity_images: matrixRefs,
-                    product_image: store.currentProduct?.image,
+                    product_image: currentProduct?.image,
                     aspectRatio: '1:1',
                     resolution: camera.resolution
                 });
 
 
                 if (result) {
-                    store.updateNodeData(id, { image: result, isOptimistic: false, label: config.label, resolution: camera.resolution });
-                    saveStoryboardItem(activeCharacter.id, result, store.nodes.length + i);
+                    updateNodeData(id, { image: result, isOptimistic: false, label: config.label, resolution: camera.resolution });
+                    saveStoryboardItem(activeCharacter.id, result, latestNodes.length + i);
                     saveGeneratedAsset(result, 'image', `matrix_${config.label}_${Date.now()}.png`);
                 } else {
-                    store.deleteNode(id);
+                    deleteNode(id);
                 }
             });
 
             await Promise.all(renderTasks);
-            store.syncCurrentSession();
+            syncCurrentSession();
 
         } catch (err) {
             console.error("Matrix render failed:", err);
         } finally {
-            store.setState((s) => ({ ...s, isRendering: false }));
+            setState((s) => ({ ...s, isRendering: false }));
         }
     };
 
@@ -301,7 +332,7 @@ export default function DirectorHUD() {
                 <button
                     onClick={() => {
                         if (window.confirm("PURGE SESSION: This will clear local working memory and return to Forge mode. Character data synced to Supabase will remain safe in The Vault.")) {
-                            store.purgeVault();
+                        purgeVault();
                         }
                     }}
                     className="p-2 bg-red-500/5 border border-red-500/20 rounded-lg cursor-pointer hover:bg-red-500 hover:text-white transition-all group"
@@ -330,9 +361,9 @@ export default function DirectorHUD() {
                         <HUDSection title="01 // IDENTITY_ANCHOR" icon={User}>
                             <div className="group relative bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4 transition-all hover:bg-white/10">
                                 <div className="relative shrink-0">
-                                    {(store.anchorImage || store.activeCharacter?.image || store.activeCharacter?.identity_kit?.anchor) ? (
+                                {(anchorImage || activeCharacter?.image || activeCharacter?.identity_kit?.anchor) ? (
                                         <img
-                                            src={store.anchorImage || store.activeCharacter?.image || store.activeCharacter?.identity_kit?.anchor}
+                                        src={anchorImage || activeCharacter?.image || activeCharacter?.identity_kit?.anchor}
                                             className="w-12 h-12 rounded-xl object-cover border border-[#bef264]/30 hover:scale-110 transition-all duration-500 shadow-[0_0_15px_rgba(190,242,100,0.2)]"
                                         />
                                     ) : (
@@ -345,18 +376,18 @@ export default function DirectorHUD() {
                                     </div>
                                 </div>
                                 <div className="overflow-hidden flex-1">
-                                    <h4 className="text-xs font-black uppercase tracking-widest text-white/80 truncate italic">{store.activeCharacter.name}</h4>
+                                <h4 className="text-xs font-black uppercase tracking-widest text-white/80 truncate italic">{activeCharacter.name}</h4>
                                     <div className="flex items-center gap-2 mt-0.5">
                                         <div className="px-1.5 py-0.5 bg-[#bef264]/10 rounded-sm border border-[#bef264]/20">
                                             <span className="text-[7px] text-[#bef264] font-black uppercase tracking-widest">STABLE_DIFF</span>
                                         </div>
-                                        {store.activeCharacter?.identity_kit?.matrix && (
+                                    {activeCharacter?.identity_kit?.matrix && (
                                             <div className="px-1.5 py-0.5 bg-[#bef264]/20 border border-[#bef264] rounded-sm flex items-center gap-1 shadow-[0_0_10px_rgba(190,242,100,0.3)]">
                                                 <Lock size={8} className="text-[#bef264]" />
                                                 <span className="text-[7px] text-[#bef264] font-black uppercase tracking-widest">MATRIX_LOCKED</span>
                                             </div>
                                         )}
-                                        <p className="text-[8px] text-white/20 font-bold uppercase tracking-widest truncate">{store.activeCharacter.visualStyle || 'Realistic'}</p>
+                                    <p className="text-[8px] text-white/20 font-bold uppercase tracking-widest truncate">{activeCharacter.visualStyle || 'Realistic'}</p>
                                     </div>
                                 </div>
                             </div>
@@ -366,10 +397,10 @@ export default function DirectorHUD() {
                             <div className="grid grid-cols-2 gap-3">
                                 <div
                                     onClick={() => wardrobeRef.current?.click()}
-                                    className={`h-24 bg-white/5 border border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:bg-white/10 group ${store.wardrobeImage ? 'border-[#bef264] bg-[#bef264]/5' : 'border-white/10'}`}
+                                className={`h-24 bg-white/5 border border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:bg-white/10 group ${wardrobeImage ? 'border-[#bef264] bg-[#bef264]/5' : 'border-white/10'}`}
                                 >
-                                    {store.wardrobeImage ? (
-                                        <img src={store.wardrobeImage} className="w-full h-full object-cover rounded-2xl p-1" />
+                                {wardrobeImage ? (
+                                    <img src={wardrobeImage} className="w-full h-full object-cover rounded-2xl p-1" />
                                     ) : (
                                         <>
                                             <ImageIcon size={18} className="text-white/20 group-hover:text-[#bef264] transition-colors" />
@@ -380,10 +411,10 @@ export default function DirectorHUD() {
                                 </div>
                                 <div
                                     onClick={() => poseRef.current?.click()}
-                                    className={`h-24 bg-white/5 border border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:bg-white/10 group ${store.poseImage ? 'border-cyan-400 bg-cyan-400/5' : 'border-white/10'}`}
+                                className={`h-24 bg-white/5 border border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:bg-white/10 group ${poseImage ? 'border-cyan-400 bg-cyan-400/5' : 'border-white/10'}`}
                                 >
-                                    {store.poseImage ? (
-                                        <img src={store.poseImage} className="w-full h-full object-cover rounded-2xl p-1" />
+                                {poseImage ? (
+                                    <img src={poseImage} className="w-full h-full object-cover rounded-2xl p-1" />
                                     ) : (
                                         <>
                                             <PersonStanding size={18} className="text-white/20 group-hover:text-cyan-400 transition-colors" />
@@ -402,7 +433,7 @@ export default function DirectorHUD() {
                                         key={pose.id}
                                         onClick={() => {
                                             setSelectedPoseId(prev => prev === pose.id ? null : pose.id);
-                                            if (store.poseImage) store.setPoseImage(null);
+                                        if (poseImage) setPoseImage(null);
                                         }}
                                         className={`shrink-0 flex flex-col items-center justify-center w-16 h-16 rounded-xl border transition-all ${selectedPoseId === pose.id ? 'bg-[#bef264]/20 border-[#bef264] text-[#bef264]' : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'}`}
                                     >
@@ -416,17 +447,17 @@ export default function DirectorHUD() {
                         <HUDSection title="04 // ACTION_MANIFEST" icon={Sliders}>
                             <div className="relative">
                                 <textarea
-                                    value={store.actionScript}
-                                    onChange={(e) => store.setState((s) => ({ ...s, actionScript: e.target.value }))}
+                                value={actionScript}
+                                onChange={(e) => setState((s) => ({ ...s, actionScript: e.target.value }))}
                                     placeholder="Describe the cinematic moment..."
                                     className="w-full h-32 bg-black/40 border border-white/10 rounded-2xl p-5 text-xs text-white/80 focus:border-[#bef264]/50 outline-none resize-none font-medium placeholder:text-white/10 transition-all shadow-inner"
                                 />
                                 <button
                                     onClick={async () => {
-                                        if (!store.actionScript) return;
+                                    if (!actionScript) return;
                                         const { enhancePrompt } = await import('../../services/geminiService');
-                                        const enhanced = await enhancePrompt(store.actionScript, true); // True to use Search Grounding
-                                        store.setState(s => ({ ...s, actionScript: enhanced }));
+                                    const enhanced = await enhancePrompt(actionScript, true); // True to use Search Grounding
+                                    setState(s => ({ ...s, actionScript: enhanced }));
                                     }}
                                     className="absolute bottom-4 right-4 text-[9px] bg-white/10 hover:bg-[#bef264] hover:text-black text-white px-3 py-1.5 rounded-full flex items-center gap-2 transition-all font-black uppercase tracking-widest shadow-xl"
                                 >
@@ -437,15 +468,15 @@ export default function DirectorHUD() {
 
                         <HUDSection title="05 // NEURAL_OPTICS" icon={Camera}>
                             <div className="grid grid-cols-2 gap-3">
-                                <ControlSelect label="LENS" icon={Aperture} value={store.camera.lens} options={HUD_CONFIG.lenses} onChange={(v) => updateCamera('lens', v)} />
-                                <ControlSelect label="LIGHT" icon={Sun} value={store.camera.lighting} options={HUD_CONFIG.lighting} onChange={(v) => updateCamera('lighting', v)} />
-                                <ControlSelect label="ANGLE" icon={MapPin} value={store.camera.angle} options={HUD_CONFIG.angles} onChange={(v) => updateCamera('angle', v)} />
-                                <ControlSelect label="RATIO" icon={Ratio} value={store.camera.ratio} options={HUD_CONFIG.ratios} onChange={(v) => updateCamera('ratio', v)} />
-                                <ControlSelect label="RES" icon={Maximize} value={store.camera.resolution} options={HUD_CONFIG.resolutions} onChange={(v) => updateCamera('resolution', v)} />
+                            <ControlSelect label="LENS" icon={Aperture} value={camera.lens} options={HUD_CONFIG.lenses} onChange={(v) => updateCamera('lens', v)} />
+                            <ControlSelect label="LIGHT" icon={Sun} value={camera.lighting} options={HUD_CONFIG.lighting} onChange={(v) => updateCamera('lighting', v)} />
+                            <ControlSelect label="ANGLE" icon={MapPin} value={camera.angle} options={HUD_CONFIG.angles} onChange={(v) => updateCamera('angle', v)} />
+                            <ControlSelect label="RATIO" icon={Ratio} value={camera.ratio} options={HUD_CONFIG.ratios} onChange={(v) => updateCamera('ratio', v)} />
+                            <ControlSelect label="RES" icon={Maximize} value={camera.resolution} options={HUD_CONFIG.resolutions} onChange={(v) => updateCamera('resolution', v)} />
                             </div>
                         </HUDSection>
 
-                        {store.lastGeneratedPrompt && (
+                    {lastGeneratedPrompt && (
                             <HUDSection title="06 // NEURAL_PROMPT_PREVIEW" icon={Terminal}>
                                 <div className="bg-[#bef264]/5 border border-[#bef264]/20 rounded-2xl p-4 font-mono">
                                     <div className="flex items-center gap-2 mb-2">
@@ -453,7 +484,7 @@ export default function DirectorHUD() {
                                         <span className="text-[7px] text-[#bef264]/60 uppercase tracking-widest font-black">ACTIVE_GEN_PROMPT</span>
                                     </div>
                                     <p className="text-[8px] text-[#bef264] leading-relaxed break-words opacity-80 italic">
-                                        {store.lastGeneratedPrompt}
+                                    {lastGeneratedPrompt}
                                     </p>
                                 </div>
                             </HUDSection>
@@ -472,10 +503,10 @@ export default function DirectorHUD() {
                             />
                             <button
                                 onClick={handleStoryboardArc}
-                                disabled={store.isRendering || !narrativeArc}
+                            disabled={isRendering || !narrativeArc}
                                 className="w-full py-4 bg-[#bef264] text-black font-black uppercase text-[10px] tracking-widest rounded-2xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all"
                             >
-                                {store.isRendering ? <Loader2 size={16} className="animate-spin" /> : <Clapperboard size={16} />}
+                            {isRendering ? <Loader2 size={16} className="animate-spin" /> : <Clapperboard size={16} />}
                                 GENERATE_STORYBOARD_ARC
                             </button>
                         </HUDSection>
@@ -498,8 +529,8 @@ export default function DirectorHUD() {
 
                             <button
                                 onClick={() => {
-                                    const nodeId = store.addUGCPipelineNode({ x: 300, y: 200 });
-                                    store.updateNodeData(nodeId, { hookStyle: ugcHookStyle, niche: ugcNiche, characterName: store.activeCharacter?.name });
+                                    const nodeId = addUGCPipelineNode({ x: 300, y: 200 });
+                                    updateNodeData(nodeId, { hookStyle: ugcHookStyle, niche: ugcNiche, characterName: activeCharacter?.name });
                                 }}
                                 className="w-full py-4 mt-4 bg-gradient-to-r from-orange-600/30 to-amber-600/30 hover:from-orange-600/50 hover:to-amber-600/50 border border-orange-500/30 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95"
                             >
@@ -507,7 +538,7 @@ export default function DirectorHUD() {
                             </button>
 
                             <button
-                                onClick={() => store.addUGCEngineNode({ x: 500, y: 300 })}
+                                onClick={() => addUGCEngineNode({ x: 500, y: 300 })}
                                 className="w-full py-4 mt-3 bg-gradient-to-r from-[#bef264]/20 to-transparent hover:from-[#bef264]/40 border border-[#bef264]/30 text-[#bef264] rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95"
                             >
                                 <Sparkles size={16} /> LAUNCH_AD_ENGINE
@@ -525,9 +556,9 @@ export default function DirectorHUD() {
                             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[8px] font-black text-[#bef264] uppercase tracking-widest">Target_Focus</span>
-                                    <span className="text-[8px] text-white/20 font-mono">{store.activeNodeId || 'NONE_SELECTED'}</span>
+                                    <span className="text-[8px] text-white/20 font-mono">{activeNodeId || 'NONE_SELECTED'}</span>
                                 </div>
-                                {store.activeNodeId ? (
+                                {activeNodeId ? (
                                     <div className="flex items-center gap-3 p-2 bg-black/40 rounded-xl">
                                         <div className="w-8 h-8 rounded-lg bg-[#bef264]/10 flex items-center justify-center text-[#bef264]">
                                             <Target size={14} />
@@ -550,10 +581,10 @@ export default function DirectorHUD() {
                                 <h4 className="text-[8px] font-black text-white/40 uppercase tracking-widest ml-1">Identity_Package_Trace (MAX_4)</h4>
                                 <div className="grid grid-cols-4 gap-2">
                                     {[
-                                        { id: 'MX', img: store.activeCharacter?.identity_kit?.matrix, label: 'MATRIX', priority: true },
-                                        { id: 'AN', img: store.anchorImage || store.activeCharacter?.image, label: 'ANCHOR' },
-                                        { id: 'WD', img: store.wardrobeImage, label: 'WARDROBE' },
-                                        { id: 'PS', img: store.poseImage, label: 'POSE' },
+                                        { id: 'MX', img: activeCharacter?.identity_kit?.matrix, label: 'MATRIX', priority: true },
+                                        { id: 'AN', img: anchorImage || activeCharacter?.image, label: 'ANCHOR' },
+                                        { id: 'WD', img: wardrobeImage, label: 'WARDROBE' },
+                                        { id: 'PS', img: poseImage, label: 'POSE' },
                                     ].map((ref, idx) => (
                                         <div key={idx} className={`relative aspect-square rounded-lg border flex flex-col items-center justify-center overflow-hidden transition-all ${ref.img ? (ref.priority ? 'border-[#bef264] bg-[#bef264]/10 shadow-[0_0_10px_rgba(190,242,100,0.2)]' : 'border-[#bef264]/50 bg-[#bef264]/5') : 'border-white/5 bg-black/20 grayscale'}`}>
                                             {ref.img ? (
@@ -570,7 +601,7 @@ export default function DirectorHUD() {
                                         </div>
                                     ))}
                                 </div>
-                                {(!store.anchorImage && !store.activeCharacter?.image) && (
+                                {(!anchorImage && !activeCharacter?.image) && (
                                     <p className="text-[8px] text-orange-400 font-bold uppercase mt-1">⚠️ CRITICAL_MISSING: Primary Identity Anchor</p>
                                 )}
                             </div>
@@ -581,15 +612,15 @@ export default function DirectorHUD() {
                                 <div className="space-y-1.5 font-mono">
                                     <div className="flex justify-between p-2 bg-white/5 rounded-lg border border-white/5">
                                         <span className="text-[8px] text-white/40 uppercase">Optical_Lens</span>
-                                        <span className="text-[8px] text-[#bef264]">{store.camera.lens}</span>
+                                        <span className="text-[8px] text-[#bef264]">{camera.lens}</span>
                                     </div>
                                     <div className="flex justify-between p-2 bg-white/5 rounded-lg border border-white/5">
                                         <span className="text-[8px] text-white/40 uppercase">Light_Env</span>
-                                        <span className="text-[8px] text-[#bef264]">{store.camera.lighting}</span>
+                                        <span className="text-[8px] text-[#bef264]">{camera.lighting}</span>
                                     </div>
                                     <div className="flex justify-between p-2 bg-white/5 rounded-lg border border-white/5">
                                         <span className="text-[8px] text-white/40 uppercase">Aspect_Ratio</span>
-                                        <span className="text-[8px] text-cyan-400">{store.camera.ratio}</span>
+                                        <span className="text-[8px] text-cyan-400">{camera.ratio}</span>
                                     </div>
                                 </div>
                             </div>
@@ -599,7 +630,7 @@ export default function DirectorHUD() {
                                 <h4 className="text-[8px] font-black text-white/40 uppercase tracking-widest ml-1">Compiled_Prompt_String</h4>
                                 <div className="p-3 bg-black border border-white/10 rounded-xl text-[8px] text-white/60 font-mono leading-relaxed italic h-32 overflow-y-auto custom-scrollbar">
                                     <span className="text-[7px] text-[#bef264] block mb-1 font-black">PROMPT_HEAD_V3:</span>
-                                    {`SUBJECT: ${store.activeCharacter?.name}. STYLE: ${store.activeCharacter?.visualStyle}. ACTION: ${store.actionScript || '[WAITING_FOR_INPUT]'}. OPTICS: ${store.camera.lens} | ${store.camera.lighting}.`}
+                                    {`SUBJECT: ${activeCharacter?.name}. STYLE: ${activeCharacter?.visualStyle}. ACTION: ${actionScript || '[WAITING_FOR_INPUT]'}. OPTICS: ${camera.lens} | ${camera.lighting}.`}
                                 </div>
                             </div>
 
@@ -623,11 +654,11 @@ export default function DirectorHUD() {
                         {/* Secondary Actions */}
                         <div className="flex gap-2 flex-wrap">
                             {[
-                                { label: 'CAM', icon: Camera, fn: () => store.addCameraNode() },
-                                { label: 'LIGHT', icon: Sun, fn: () => store.addLightingNode() },
-                                { label: 'MUSIC', icon: Music, fn: () => store.addMusicNode() },
-                                { label: 'SFX', icon: Volume2, fn: () => store.addSFXNode() },
-                                { label: 'VOICE', icon: Mic2, fn: () => store.addDialogueNode() },
+                                { label: 'CAM', icon: Camera, fn: () => addCameraNode() },
+                                { label: 'LIGHT', icon: Sun, fn: () => addLightingNode() },
+                                { label: 'MUSIC', icon: Music, fn: () => addMusicNode() },
+                                { label: 'SFX', icon: Volume2, fn: () => addSFXNode() },
+                                { label: 'VOICE', icon: Mic2, fn: () => addDialogueNode() },
                             ].map(btn => (
                                 <button
                                     key={btn.label}
@@ -642,7 +673,7 @@ export default function DirectorHUD() {
 
                         <button
                             onClick={handleMatrixRender}
-                            disabled={store.isRendering}
+                            disabled={isRendering}
                             className="w-full py-4 bg-cyan-400/10 border border-cyan-400/20 text-cyan-400 rounded-2xl font-black uppercase text-[10px] flex items-center justify-center gap-3 hover:bg-cyan-400 hover:text-black transition-all group relative overflow-hidden active:scale-95 disabled:opacity-30"
                         >
                             <div className="absolute inset-0 bg-cyan-400/10 -translate-x-full group-hover:translate-x-full transition-transform duration-[1.5s]" />
@@ -651,27 +682,27 @@ export default function DirectorHUD() {
 
                         <div className="flex gap-3">
                             <button
-                                onClick={() => store.setRepairSession({ active: true })}
+                                onClick={() => setRepairSession({ active: true })}
                                 className="flex-1 py-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl font-black uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-red-500 hover:text-white transition-all active:scale-95"
                             >
                                 <Scissors size={14} /> Surgery
                             </button>
                             <button
-                                onClick={() => store.syncCurrentSession()}
-                                disabled={store.isSyncing}
+                                onClick={() => syncCurrentSession()}
+                                disabled={isSyncing}
                                 className="flex-1 py-4 bg-white/5 border border-white/10 text-white/40 rounded-2xl font-black uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-white/10 hover:text-white transition-all active:scale-95 disabled:opacity-50"
                             >
-                                {store.isSyncing ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                                {store.isSyncing ? 'SYNCING...' : 'SYNC_STATE'}
+                                {isSyncing ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                {isSyncing ? 'SYNCING...' : 'SYNC_STATE'}
                             </button>
                         </div>
 
                         <button
                             onClick={handleMaterialize}
-                            disabled={store.isRendering}
+                            disabled={isRendering}
                             className="w-full group relative py-4 bg-[#bef264] text-black font-black uppercase text-[10px] tracking-[0.3em] rounded-[2rem] shadow-2xl shadow-[#bef264]/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                         >
-                            {store.isRendering ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+                            {isRendering ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
                             MATERIALIZE_CONSTRUCT
                         </button>
                     </>
