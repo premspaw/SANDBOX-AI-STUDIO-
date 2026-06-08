@@ -93,6 +93,66 @@ function App() {
   const isShowingAuthModal = useAppStore(state => state.isShowingAuthModal);
   const setShowingAuthModal = useAppStore(state => state.setShowingAuthModal);
 
+  // 1. Sync URL path -> activeTab on mount (initial load)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const path = window.location.pathname.toLowerCase();
+    
+    let tab = 'home';
+    if (path === '/avatar-studio' || path === '/avatarstudio' || path === '/avatar') {
+      tab = 'avatar';
+    } else if (path !== '/') {
+      tab = path.slice(1);
+    }
+
+    if (FULL_HEIGHT_TABS.has(tab)) {
+      setActiveTab(tab);
+    } else {
+      setActiveTab('home');
+    }
+  }, [setActiveTab]);
+
+  // 2. Sync activeTab -> URL path on tab change
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const currentPath = window.location.pathname.toLowerCase();
+    
+    let expectedPath = '/';
+    if (activeTab === 'avatar') {
+      expectedPath = '/avatar-studio';
+    } else if (activeTab !== 'home') {
+      expectedPath = `/${activeTab}`;
+    }
+
+    if (currentPath !== expectedPath) {
+      window.history.pushState({ tab: activeTab }, '', expectedPath);
+    }
+  }, [activeTab]);
+
+  // 3. Handle browser Back/Forward navigation
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handlePopState = () => {
+      const path = window.location.pathname.toLowerCase();
+      let tab = 'home';
+      if (path === '/avatar-studio' || path === '/avatarstudio' || path === '/avatar') {
+        tab = 'avatar';
+      } else if (path !== '/') {
+        tab = path.slice(1);
+      }
+
+      if (FULL_HEIGHT_TABS.has(tab)) {
+        setActiveTab(tab);
+      } else {
+        setActiveTab('home');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [setActiveTab]);
+
   // Check for existing session on mount
   useEffect(() => {
     initFaviconAnimation()

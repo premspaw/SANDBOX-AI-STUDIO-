@@ -1142,6 +1142,14 @@ app.use('/api', createStorageRouter(deps));
 app.use('/api', createAdminRouter(deps));
 app.use('/api', createAvatarRouter(deps));
 
+// Catch-all route to serve the SPA index.html for any client-side routes (avoiding ERR_CANNOT_GET on page reloads)
+app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+        return next();
+    }
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
 process.on('uncaughtException', (err) => {
     console.error('[UNCAUGHT EXCEPTION] Kept alive:', err.message);
 });
