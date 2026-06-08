@@ -28,8 +28,8 @@ const PricingPage = () => {
             models: [
                 { name: "Veo 3.1 Fast Preview (5s)", cost: "10 credits" },
                 { name: "Veo 3.1 High Fidelity (5s)", cost: "20 credits" },
-                { name: "Seedance 2.0 Fast (5s)", cost: "12 credits" },
-                { name: "Seedance 2.0 Pro (5s)", cost: "15 credits" }
+                { name: "Seedance 2.0 Fast (5s)", cost: "100 credits" },
+                { name: "Seedance 2.0 Pro (5s)", cost: "125 credits" }
             ]
         },
         {
