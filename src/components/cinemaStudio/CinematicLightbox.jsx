@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { X, Loader2, Zap, Grid, Video, Image as ImageIcon, Pencil, Download, Trash2, Palette, Sparkles, Film, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAppStore } from '../../store';
-import { resolveUrl } from '../../config/apiConfig';
+import { resolveUrl, getApiUrl } from '../../config/apiConfig';
 
 export function CinematicLightbox({
   lightboxItem,
@@ -65,7 +65,7 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
         userId
       };
 
-      const resp = await fetch('http://localhost:3002/api/generate-image', {
+      const resp = await fetch(getApiUrl('/api/generate-image'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -181,7 +181,7 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
       ctx.drawImage(img, (col * cellW) + insetX, (row * cellH) + insetY, targetW, targetH, 0, 0, targetW, targetH);
       const croppedUrlBase64 = canvas.toDataURL('image/jpeg', 0.9);
 
-      const resp = await fetch('http://localhost:3002/api/save-asset', {
+      const resp = await fetch(getApiUrl('/api/save-asset'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

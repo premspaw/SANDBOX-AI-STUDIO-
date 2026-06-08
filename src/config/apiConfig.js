@@ -10,15 +10,18 @@ const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.me
 const VITE_API_URL =
     (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) ||
     (typeof process !== 'undefined' && process.env && process.env.VITE_API_URL) ||
-    (isDev ? 'http://localhost:3002' : '');
+    (isDev ? 'http://127.0.0.1:3002' : '');
 
 const VITE_WS_URL =
     (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_WS_URL) ||
     (typeof process !== 'undefined' && process.env && process.env.VITE_WS_URL) ||
-    (isDev ? 'ws://localhost:3002' : '');
+    (isDev ? 'ws://127.0.0.1:3002' : '');
 
 // Ensure base URL doesn't have a trailing slash
 export const API_BASE_URL = VITE_API_URL ? (VITE_API_URL.endsWith('/') ? VITE_API_URL.slice(0, -1) : VITE_API_URL) : '';
+
+// Alias for API_BASE
+export const API_BASE = API_BASE_URL;
 
 /**
  * Helper to ensure URLs don't have double slashes

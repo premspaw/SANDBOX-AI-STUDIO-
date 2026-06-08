@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, Loader2, Sparkles, Film } from 'lucide-react';
 import { useAppStore } from '../../store';
-import { resolveUrl } from '../../config/apiConfig';
+import { resolveUrl, getApiUrl } from '../../config/apiConfig';
 
 export function StoryboardEditor({
   lightboxItem,
@@ -101,7 +101,7 @@ Add distinct film-strip division borders, cybernetic HUD elements, rich teal and
         userId
       };
 
-      const resp = await fetch('http://localhost:3002/api/generate-image', {
+      const resp = await fetch(getApiUrl('/api/generate-image'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

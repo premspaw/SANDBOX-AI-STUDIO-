@@ -1230,7 +1230,7 @@ Return a detailed JSON with:
     try {
       const formData = new FormData();
       formData.append('audio', voiceSampleFile);
-      const apiUrl = `http://localhost:3002/api/ugc/analyze-voice`;
+      const apiUrl = getApiUrl('/api/ugc/analyze-voice');
       const res = await fetch(apiUrl, {
         method: 'POST',
         body: formData,

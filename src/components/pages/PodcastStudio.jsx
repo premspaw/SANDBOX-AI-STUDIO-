@@ -98,7 +98,6 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 
 const uploadToGCS = async (data, type, prompt = '') => {
   try {
-    const API_BASE = window.API_URL || 'http://localhost:3002';
     let base64 = data;
     if (!data.startsWith('data:')) {
       const res = await fetch(data);
@@ -109,7 +108,7 @@ const uploadToGCS = async (data, type, prompt = '') => {
         reader.readAsDataURL(blob);
       });
     }
-    const res = await fetch(`${API_BASE}/api/upload-asset`, {
+    const res = await fetch(getApiUrl('/api/upload-asset'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
