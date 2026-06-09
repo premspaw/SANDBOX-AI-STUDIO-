@@ -339,34 +339,31 @@ if (await isRedisAvailable()) {
 
         new Worker('video-generation', async (job) => {
             const { reqBody } = job.data;
-            console.log(`[WORKER] Starting video job ${job.id} for model ${reqBody.model}`);
+            const { provider = 'veo' } = reqBody;
+            console.log(`[WORKER] Starting video job ${job.id} | provider: ${provider}`);
             await updateJobStatus(job.id, 'processing');
-            const mockReq = { body: reqBody };
-            let finalUrl = null, finalVideoUrl = null;
-            let workerError = null;
-            const mockRes = { 
-                json: (d) => { 
-                    if (d.error || d.message) workerError = d.message || d.error;
-                    if (d.url) finalUrl = d.url;
-                    if (d.videoUrl) finalVideoUrl = d.videoUrl;
-                    return d; 
-                }, 
-                status: () => mockRes, 
-                headersSent: false 
-            };
             try {
-                await handleGoogle(mockReq, mockRes);
-                if (!finalUrl && !finalVideoUrl && !workerError) {
-                    throw new Error("AI Engine finished without returning a video result or an error message.");
+                let videoUrl = null;
+                if (provider === 'seedance') {
+                    videoUrl = await handleSeedanceJob(reqBody);
+                } else if (provider === 'openai') {
+                    // OpenAI image generation via queue
+                    let finalUrl = null;
+                    const mockRes = { json: (d) => { if (d.url) finalUrl = d.url; return d; }, status: () => mockRes, headersSent: false };
+                    await handleOpenAI({ body: reqBody }, mockRes);
+                    videoUrl = finalUrl;
+                } else {
+                    // Default: Google Veo 3.1 (full polling loop in worker)
+                    videoUrl = await handleVeoJob(reqBody);
                 }
-                if (workerError) throw new Error(workerError);
-                await updateJobStatus(job.id, 'completed', { url: finalUrl, videoUrl: finalVideoUrl });
+                await updateJobStatus(job.id, 'completed', { videoUrl });
+                console.log(`[WORKER] ✅ Video job ${job.id} completed`);
+                return { videoUrl };
             } catch (err) {
-                console.error(`[WORKER] Video job ${job.id} failed:`, err.message);
+                console.error(`[WORKER] ❌ Video job ${job.id} failed:`, err.message);
                 await updateJobStatus(job.id, 'failed', null, err.message);
                 throw err;
             }
-            return { url: finalUrl, videoUrl: finalVideoUrl };
         }, { connection: redisConn, concurrency: CONCURRENCY });
 
         console.log('[QUEUE] ✅ Redis connected. BullMQ workers active.');
@@ -927,6 +924,210 @@ async function handleGoogle(req, res) {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
+}
+
+// ─────────────────────────────────────────────────────────────
+// QUEUE JOB HANDLERS — called by BullMQ video-generation worker
+// These run INSIDE the worker (off the HTTP thread) and do the
+// full polling loop so the API responds instantly with a jobId.
+// ─────────────────────────────────────────────────────────────
+
+async function handleVeoJob(reqBody) {
+    const {
+        prompt, firstFrame, userId, aspectRatio, aspect_ratio,
+        duration = 8, resolution = '1080p', model
+    } = reqBody;
+
+    const validDuration = [4, 6, 8].includes(Number(duration)) ? Number(duration) : 8;
+    const validAspectRatio = ['16:9', '9:16', '1:1'].includes(aspectRatio || aspect_ratio)
+        ? (aspectRatio || aspect_ratio) : '16:9';
+    const validResolution = ['720p', '1080p', '4k'].includes(resolution) ? resolution : '1080p';
+    const modelName = model || 'veo-3.1-generate-preview';
+
+    const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+    const token = await getVertexToken();
+    if (!token && !apiKey) throw new Error('No Veo auth credentials configured (GOOGLE_API_KEY or service account)');
+
+    const instance = { prompt };
+    if (firstFrame) {
+        const resolved = await resolveFrameUri(firstFrame);
+        if (resolved?.inlineData) instance.image = resolved.inlineData;
+    }
+
+    const endpoint = apiKey
+        ? `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predictLongRunning?key=${apiKey}`
+        : `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predictLongRunning`;
+    const headers = { 'Content-Type': 'application/json' };
+    if (!apiKey && token) headers['Authorization'] = `Bearer ${token}`;
+
+    const initResp = await fetch(endpoint, {
+        method: 'POST', headers,
+        body: JSON.stringify({
+            instances: [instance],
+            parameters: { sampleCount: 1, aspectRatio: validAspectRatio, durationSeconds: validDuration, resolution: validResolution }
+        })
+    });
+    let operation = await initResp.json();
+    if (operation.error) throw new Error(operation.error.message || 'Veo operation initiation failed');
+    console.log(`[VEO-JOB] Operation started: ${operation.name}`);
+
+    // Poll until done (max ~6 minutes)
+    let attempts = 0;
+    while (!operation.done && attempts < 60) {
+        await new Promise(r => setTimeout(r, 6000));
+        attempts++;
+        try {
+            const pollUrl = apiKey
+                ? `https://generativelanguage.googleapis.com/v1beta/${operation.name}?key=${apiKey}`
+                : `https://generativelanguage.googleapis.com/v1beta/${operation.name}`;
+            const pollHeaders = (!apiKey && token) ? { 'Authorization': `Bearer ${token}` } : {};
+            const pollResp = await fetch(pollUrl, { headers: pollHeaders });
+            if (pollResp.ok) {
+                const polled = await pollResp.json();
+                if (polled.error) throw new Error(polled.error.message || 'Veo poll error');
+                operation = polled;
+            }
+            if (attempts % 5 === 0) console.log(`[VEO-JOB] Still generating... (${attempts * 6}s elapsed)`);
+        } catch (e) {
+            if (e.message.includes('poll error')) throw e;
+            console.warn(`[VEO-JOB] Poll retry (attempt ${attempts}):`, e.message);
+        }
+    }
+
+    if (!operation.done) throw new Error('Veo generation timed out after 6 minutes');
+
+    const video = findVideoInResponse(operation);
+    if (!video) throw new Error('No video data found in Veo response');
+
+    let videoBuffer;
+    if (video.videoBytes || video.bytesBase64Encoded) {
+        const b64 = video.videoBytes
+            ? Buffer.from(video.videoBytes).toString('base64')
+            : video.bytesBase64Encoded;
+        videoBuffer = Buffer.from(b64, 'base64');
+    } else if (video.uri) {
+        const dlUrl = apiKey ? `${video.uri}&key=${apiKey}` : video.uri;
+        const dlHeaders = (!apiKey && token) ? { 'Authorization': `Bearer ${token}` } : {};
+        const dlResp = await fetch(dlUrl, { headers: dlHeaders });
+        if (!dlResp.ok) throw new Error(`Veo video download failed: ${dlResp.statusText}`);
+        videoBuffer = Buffer.from(await dlResp.arrayBuffer());
+    }
+
+    if (!videoBuffer) throw new Error('Could not extract video buffer from Veo response');
+    console.log(`[VEO-JOB] ✅ Downloaded (${Math.round(videoBuffer.length / 1024)}KB), uploading to storage...`);
+    return await uploadVideoToSupabase(videoBuffer, userId, validAspectRatio);
+}
+
+async function handleSeedanceJob(reqBody) {
+    const {
+        engine = 'seedance-fast', prompt, firstFrame, lastFrame,
+        aspectRatio = '16:9', duration = 5, resolution = '1080p',
+        generateAudio, userId
+    } = reqBody;
+
+    const arkApiKey  = process.env.ARK_API_KEY;
+    const kieApiKey  = process.env.KIE_API_KEY || process.env.VITE_KIE_API_KEY;
+    const preferKie  = process.env.PREFER_KIE === 'true';
+
+    const resolvedFirst = firstFrame ? await resolveToPublicUrl(firstFrame, userId) : null;
+    const resolvedLast  = lastFrame  ? await resolveToPublicUrl(lastFrame,  userId) : null;
+
+    let taskId     = null;
+    let taskEngine = null;
+
+    // --- BytePlus Ark path ---
+    if (arkApiKey && !preferKie) {
+        const targetModel = reqBody.model || (engine === 'seedance-fast'
+            ? 'dreamina-seedance-2-0-fast-260128' : 'dreamina-seedance-2-0-260128');
+        const content = [];
+        if (prompt)        content.push({ type: 'text',      text:      prompt });
+        if (resolvedFirst) content.push({ type: 'image_url', image_url: { url: resolvedFirst }, role: 'first_frame' });
+        if (resolvedLast)  content.push({ type: 'image_url', image_url: { url: resolvedLast  }, role: 'last_frame'  });
+
+        try {
+            const createResp = await fetch('https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${arkApiKey}` },
+                body: JSON.stringify({ model: targetModel, content, generate_audio: !!generateAudio, ratio: aspectRatio, duration: Number(duration), watermark: false })
+            });
+            const d = await createResp.json();
+            if (!d.error && d.id) { taskId = d.id; taskEngine = 'ark'; }
+            else console.warn('[SEEDANCE-JOB] Ark failed, trying Kie.ai:', d.error?.message || d);
+        } catch (e) {
+            console.warn('[SEEDANCE-JOB] Ark request error:', e.message);
+        }
+    }
+
+    // --- Kie.ai path (primary or fallback) ---
+    if (!taskId && kieApiKey) {
+        const input = {
+            prompt,
+            aspect_ratio: aspectRatio.replace(':', '/'),
+            duration: Number(duration) || 5,
+            resolution: resolution === '4k' ? '1080p' : (resolution || '1080p'),
+            generate_audio: !!generateAudio,
+            web_search: false
+        };
+        if (resolvedFirst) input.first_frame_url = resolvedFirst;
+        if (resolvedLast)  input.last_frame_url  = resolvedLast;
+
+        const model = reqBody.model || 'bytedance/seedance-2-fast';
+        const createResp = await fetch('https://api.kie.ai/api/v1/jobs/createTask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${kieApiKey}` },
+            body: JSON.stringify({ model, input })
+        });
+        const d = await createResp.json();
+        if (d.code === 200 && d.data?.taskId) {
+            taskId = d.data.taskId; taskEngine = 'kie';
+        } else {
+            throw new Error(`Kie.ai task creation failed: ${d.msg || JSON.stringify(d)}`);
+        }
+    }
+
+    if (!taskId) throw new Error('No Seedance API key configured. Set ARK_API_KEY or KIE_API_KEY in Railway.');
+    console.log(`[SEEDANCE-JOB] Task created: ${taskId} via ${taskEngine}`);
+
+    // --- Poll until done (max ~10 minutes) ---
+    for (let attempts = 0; attempts < 100; attempts++) {
+        await new Promise(r => setTimeout(r, 6000));
+        try {
+            let finalUrl = null;
+
+            if (taskEngine === 'ark') {
+                const pollResp = await fetch(
+                    `https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks/${taskId}`,
+                    { headers: { 'Authorization': `Bearer ${arkApiKey}` } }
+                );
+                const d = await pollResp.json();
+                if (d.status === 'succeeded') finalUrl = d.content?.video_url;
+                if (d.status === 'failed') throw new Error(d.error?.message || 'Ark Seedance generation failed');
+            } else {
+                const pollResp = await fetch(
+                    `https://api.kie.ai/api/v1/jobs/task?taskId=${taskId}`,
+                    { headers: { 'Authorization': `Bearer ${kieApiKey}` } }
+                );
+                const d = await pollResp.json();
+                const state = d.data?.status;
+                if (state === 'succeed' || state === 'completed')
+                    finalUrl = d.data?.videos?.[0]?.url || d.data?.resultUrl;
+                if (state === 'failed' || state === 'error')
+                    throw new Error(d.data?.failMsg || 'Kie.ai Seedance generation failed');
+            }
+
+            if (finalUrl) {
+                console.log(`[SEEDANCE-JOB] ✅ Video ready, uploading to storage...`);
+                const videoResp = await fetch(finalUrl);
+                const ab = await videoResp.arrayBuffer();
+                return await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio);
+            }
+            if (attempts % 5 === 0) console.log(`[SEEDANCE-JOB] Processing... (${attempts * 6}s elapsed)`);
+        } catch (e) {
+            if (e.message.includes('failed')) throw e;
+            console.warn(`[SEEDANCE-JOB] Poll error (attempt ${attempts}):`, e.message);
+        }
+    }
+    throw new Error('Seedance generation timed out after 10 minutes');
 }
 
 // -------------------------------------------------------------

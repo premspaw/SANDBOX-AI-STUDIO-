@@ -50,7 +50,9 @@ export default function createRouter(deps) {
         broadcastComplete,
         VERTEX_PROJECT_ID,
         requireAuth,
-        consumeCredits
+        consumeCredits,
+        videoQueue,
+        updateJobStatus
     } = deps;
 
     // Queue Status Polling Endpoints
@@ -424,6 +426,83 @@ export default function createRouter(deps) {
         } catch (error) {
             console.error('[KLING-STATUS-ERR]', error);
             res.status(500).json({ status: 'error', message: error.message });
+        }
+    });
+
+    // ─────────────────────────────────────────────────────────────
+    // POST /video/generate — Unified BullMQ-queued video generation
+    // Supports: provider = "veo" | "seedance" | "openai"
+    // Returns { jobId } immediately; frontend polls /video/job-status/:jobId
+    // ─────────────────────────────────────────────────────────────
+    router.post('/video/generate', async (req, res) => {
+        try {
+            let user;
+            try {
+                user = await requireAuth(req);
+            } catch (authErr) {
+                if (process.env.NODE_ENV === 'production') {
+                    return res.status(401).json({ error: 'Authentication required to generate video.' });
+                }
+            }
+
+            const {
+                provider = 'veo',
+                model,
+                duration = 8,
+                resolution = '1080p',
+                userId,
+                engine
+            } = req.body;
+
+            const targetUserId = user ? user.id : userId;
+
+            // --- Dynamic credit cost by provider ---
+            let requiredCredits = 20;
+            const durationNum = Number(duration) || 5;
+            const resLower = (resolution || '720p').toLowerCase();
+
+            if (provider === 'veo') {
+                const modelLower = (model || '').toLowerCase();
+                requiredCredits = (modelLower.includes('full') || modelLower.includes('high') || durationNum > 6) ? 80 : 20;
+            } else if (provider === 'seedance') {
+                const eng = engine || 'seedance-fast';
+                if (eng === 'seedance-fast') {
+                    requiredCredits = (resLower === '480p' ? 6 : 12) * durationNum;
+                } else {
+                    requiredCredits = ((resLower === '1080p' || resLower === '4k') ? 41 : resLower === '480p' ? 7 : 16) * durationNum;
+                }
+            } else if (provider === 'openai') {
+                requiredCredits = 5;
+            }
+
+            if (targetUserId) {
+                console.log(`[VIDEO-GENERATE] Consuming ${requiredCredits} credits | user: ${targetUserId} | provider: ${provider}`);
+                await consumeCredits(targetUserId, requiredCredits);
+            }
+
+            // --- Route to BullMQ if Redis is connected ---
+            if (videoQueue) {
+                const job = await videoQueue.add('generate', { reqBody: req.body }, {
+                    attempts: 2,
+                    backoff: { type: 'fixed', delay: 5000 },
+                    removeOnComplete: { age: 3600 },   // keep completed jobs 1hr
+                    removeOnFail:    { age: 86400 }    // keep failed jobs 24hr
+                });
+                await updateJobStatus(job.id, 'queued');
+                console.log(`[VIDEO-QUEUE] ✅ Job ${job.id} queued | provider: ${provider}`);
+                return res.json({ jobId: job.id, status: 'queued' });
+            }
+
+            // --- Fallback: Redis not available ---
+            console.warn('[VIDEO-GENERATE] videoQueue unavailable — REDIS_URL not set or Redis unreachable.');
+            return res.status(503).json({
+                error: 'Queue system unavailable. Please add a Redis service in Railway and set REDIS_URL.',
+                hint: 'Railway → New Service → Redis → copy REDIS_URL into your app\'s environment variables.'
+            });
+
+        } catch (error) {
+            console.error('[VIDEO-GENERATE-ERR]', error);
+            res.status(error.status || 500).json({ error: error.message });
         }
     });
 
