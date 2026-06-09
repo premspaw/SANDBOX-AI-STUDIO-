@@ -124,6 +124,12 @@ const SEEDANCE_DURATION_OPTIONS = [
   { value: 15, label: '15 Seconds', desc: 'Extended scene — maximum duration' },
 ];
 
+const VEO_DURATION_OPTIONS = [
+  { value: 4,  label: '4 Seconds',  desc: 'Quick cut — fast-paced narrative' },
+  { value: 6,  label: '6 Seconds',  desc: 'Standard — balanced movement' },
+  { value: 8,  label: '8 Seconds',  desc: 'Extended — maximum duration' },
+];
+
 const CAMERA_MOVEMENTS = [
   { value: 'none',        label: 'Static / None',  icon: '📷', desc: 'No active camera movement' },
   { value: 'zoom-in',     label: 'Zoom In',        icon: '🔍', desc: 'Slow camera push forward' },
@@ -480,19 +486,31 @@ export default function CinematicStudio() {
     setLens(defaultLens);
   }, [camera, angle]);
 
-  // Adjust resolution & duration options dynamically for Seedance engines
+  // Adjust resolution & duration options dynamically for Seedance & Veo 3.1 engines
   useEffect(() => {
     const isSeed = activeEngine === 'seedance-fast' || activeEngine === 'seedace';
-    if (isSeed) {
+    const isVeo3 = activeEngine.startsWith('veo-3.1') || activeEngine === 'omni' || activeEngine === 'omni-flash';
+    
+    if (isVeo3) {
+      if (![4, 6, 8].includes(duration)) {
+        if (duration < 5) setDuration(4);
+        else if (duration < 8) setDuration(6);
+        else setDuration(8);
+      }
+    } else if (isSeed) {
       if (resolution === '4k') {
         setResolution('1080p');
       }
-      if (duration === 8) {
-        setDuration(10);
+      if (![5, 10, 15].includes(duration)) {
+        if (duration <= 7) setDuration(5);
+        else if (duration <= 12) setDuration(10);
+        else setDuration(15);
       }
     } else {
-      if (duration === 15) {
-        setDuration(10);
+      if (![5, 8, 10].includes(duration)) {
+        if (duration <= 6) setDuration(5);
+        else if (duration <= 9) setDuration(8);
+        else setDuration(10);
       }
     }
   }, [activeEngine, resolution, duration]);
@@ -2703,44 +2721,53 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                     >
                       {(close) => (
                         <div className="space-y-0.5">
-                          {(activeEngine === 'seedance-fast' || activeEngine === 'seedace' ? SEEDANCE_DURATION_OPTIONS : DURATION_OPTIONS).map((opt, i) => (
-                            <motion.button
-                              key={opt.value}
-                              initial={{ opacity: 0, y: 8 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: i * 0.05, type: 'spring', stiffness: 350, damping: 22 }}
-                              onClick={() => { setDuration(opt.value); close(); }}
-                              className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
-                                duration === opt.value
-                                  ? "bg-cyan-500/10 border border-cyan-500/25"
-                                  : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
-                              )}
-                            >
-                              {/* Duration bar visual */}
-                              <div className="w-10 h-2 bg-white/5 rounded-full overflow-hidden shrink-0">
-                                <motion.div
-                                  className="h-full rounded-full"
-                                  style={{ background: duration === opt.value ? '#22d3ee' : '#333' }}
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${(opt.value / ((activeEngine === 'seedance-fast' || activeEngine === 'seedace') ? 15 : 10)) * 100}%` }}
-                                  transition={{ type: 'spring', stiffness: 200, damping: 20, delay: i * 0.05 }}
-                                />
-                              </div>
-                              <div className="flex-1">
-                                <p className={cn(
-                                  "text-[10px] font-black uppercase tracking-wider",
-                                  duration === opt.value ? "text-cyan-400" : "text-white/70"
-                                )}>{opt.label}</p>
-                                <p className="text-[7.5px] text-gray-600">{opt.desc}</p>
-                              </div>
-                              {duration === opt.value && (
-                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-cyan-400 flex items-center justify-center shrink-0">
-                                  <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                </motion.div>
-                              )}
-                            </motion.button>
-                          ))}
+                          {(() => {
+                            const isVeo3 = activeEngine.startsWith('veo-3.1') || activeEngine === 'omni' || activeEngine === 'omni-flash';
+                            const isSeedance = activeEngine === 'seedance-fast' || activeEngine === 'seedace';
+                            const currentDurationOptions = isVeo3 
+                              ? VEO_DURATION_OPTIONS 
+                              : (isSeedance ? SEEDANCE_DURATION_OPTIONS : DURATION_OPTIONS);
+                            const maxOptValue = Math.max(...currentDurationOptions.map(o => o.value));
+
+                            return currentDurationOptions.map((opt, i) => (
+                              <motion.button
+                                key={opt.value}
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.05, type: 'spring', stiffness: 350, damping: 22 }}
+                                onClick={() => { setDuration(opt.value); close(); }}
+                                className={cn(
+                                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
+                                  duration === opt.value
+                                    ? "bg-cyan-500/10 border border-cyan-500/25"
+                                    : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                                )}
+                              >
+                                {/* Duration bar visual */}
+                                <div className="w-10 h-2 bg-white/5 rounded-full overflow-hidden shrink-0">
+                                  <motion.div
+                                    className="h-full rounded-full"
+                                    style={{ background: duration === opt.value ? '#22d3ee' : '#333' }}
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${(opt.value / maxOptValue) * 100}%` }}
+                                    transition={{ type: 'spring', stiffness: 200, damping: 20, delay: i * 0.05 }}
+                                  />
+                                </div>
+                                <div className="flex-1">
+                                  <p className={cn(
+                                    "text-[10px] font-black uppercase tracking-wider",
+                                    duration === opt.value ? "text-cyan-400" : "text-white/70"
+                                  )}>{opt.label}</p>
+                                  <p className="text-[7.5px] text-gray-600">{opt.desc}</p>
+                                </div>
+                                {duration === opt.value && (
+                                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-cyan-400 flex items-center justify-center shrink-0">
+                                    <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  </motion.div>
+                                )}
+                              </motion.button>
+                            ));
+                          })()}
                         </div>
                       )}
                     </UpwardDropdown>
