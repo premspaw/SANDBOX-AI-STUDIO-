@@ -234,8 +234,12 @@ function HeroTitle({ isMobile }) {
 // ═══════════════════════════════════════════════════════════════
 function VCell({ cell, style = {} }) {
   const [hovered, setHovered] = useState(false);
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: '200px' });
+
   return (
     <div
+      ref={ref}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -250,14 +254,14 @@ function VCell({ cell, style = {} }) {
         background: 'linear-gradient(135deg,#0c0c0c,#111)',
         position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'
       }}>
-        {cell.src ? (
+        {cell.src && inView ? (
           <video
             key={cell.src}
             autoPlay muted loop playsInline
             src={resolveAsset(cell.src)}
             style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 1 }}
           />
-        ) : (
+        ) : !cell.src ? (
           <>
             {/* grid lines */}
             <div style={{
@@ -294,7 +298,7 @@ function VCell({ cell, style = {} }) {
               </span>
             </div>
           </>
-        )}
+        ) : null}
       </div>
 
       {/* Overlay: Removed gradient as per user request */}
@@ -829,13 +833,19 @@ export default function LandingPage({ onEnter, onPricing }) {
   useEffect(() => {
     const fetchAssets = async () => {
       try {
-        const response = await fetch(getApiUrl(`/api/get-landing-assets?t=${Date.now()}`));
+        const response = await fetch(getApiUrl('/api/get-landing-assets'));
         const data = await response.json();
         if (data && Object.keys(data).length > 0) {
-          setAssets(prev => ({
-            ...prev,
-            ...data
-          }));
+          setAssets(prev => {
+            const hasChanges = Object.keys(data).some(key => {
+              if (Array.isArray(data[key])) {
+                if (!Array.isArray(prev[key]) || data[key].length !== prev[key].length) return true;
+                return data[key].some((item, i) => item.src !== prev[key][i]?.src);
+              }
+              return data[key] !== prev[key];
+            });
+            return hasChanges ? { ...prev, ...data } : prev;
+          });
         }
       } catch (err) {
         console.warn("[LandingPage] Failed to fetch dynamic assets, using initial config.");
@@ -1358,47 +1368,56 @@ function BtnGhost({ children, onClick, isMobile }) {
 // ─── INDIVIDUAL VIDEO FOR STACK SECTIONS ─────────────────────
 function StackVideo({ src, objectFit = 'cover', objectPosition = 'center' }) {
   const [isMuted, setIsMuted] = useState(true);
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: '200px' });
+
   return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-      <video
-        key={src}
-        autoPlay
-        muted={isMuted}
-        loop
-        playsInline
-        preload="auto"
-        crossOrigin="anonymous"
-        src={src}
-        style={{ width: '100%', height: '100%', objectFit, objectPosition }}
-      />
-      <motion.button
-        onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        style={{
-          position: 'absolute', top: 12, right: 12, zIndex: 30,
-          background: isMuted ? 'rgba(0,0,0,0.6)' : T.lime,
-          color: isMuted ? T.white : '#000',
-          border: `1px solid ${isMuted ? 'rgba(255,255,255,0.15)' : 'transparent'}`,
-          borderRadius: '50%', width: 32, height: 32,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', backdropFilter: 'blur(12px)',
-          boxShadow: isMuted ? 'none' : `0 0 25px ${T.lime}88`
-        }}
-      >
-        {isMuted ? (
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-            <line x1="23" y1="9" x2="17" y2="15" />
-            <line x1="17" y1="9" x2="23" y2="15" />
-          </svg>
-        ) : (
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-          </svg>
-        )}
-      </motion.button>
+    <div ref={ref} style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+      {inView ? (
+        <>
+          <video
+            key={src}
+            autoPlay
+            muted={isMuted}
+            loop
+            playsInline
+            preload="auto"
+            crossOrigin="anonymous"
+            src={src}
+            style={{ width: '100%', height: '100%', objectFit, objectPosition }}
+          />
+          <motion.button
+            onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            style={{
+              position: 'absolute', top: 12, right: 12, zIndex: 30,
+              background: isMuted ? 'rgba(0,0,0,0.6)' : T.lime,
+              color: isMuted ? T.white : '#000',
+              border: `1px solid ${isMuted ? 'rgba(255,255,255,0.15)' : 'transparent'}`,
+              borderRadius: '50%', width: 32, height: 32,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', backdropFilter: 'blur(12px)',
+              boxShadow: isMuted ? 'none' : `0 0 25px ${T.lime}88`
+            }}
+          >
+            {isMuted ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <line x1="23" y1="9" x2="17" y2="15" />
+                <line x1="17" y1="9" x2="23" y2="15" />
+              </svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+              </svg>
+            )}
+          </motion.button>
+        </>
+      ) : (
+        <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg,#0c0c0c,#111)' }} />
+      )}
     </div>
   );
 }
