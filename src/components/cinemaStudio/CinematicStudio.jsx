@@ -421,24 +421,56 @@ export default function CinematicStudio() {
   const [isUploading, setIsUploading] = useState(false);
 
   // Settings
-  const [activeTab, setActiveTab] = useState('image'); // 'video' | 'image'
-  const [imageStyle, setImageStyle] = useState('cinematic');
-  const [activeEngine, setActiveEngine] = useState('nano-banana-2');
-  const [aspectRatio, setAspectRatio] = useState('16:9');
-  const [resolution, setResolution] = useState('1080p');
-  const [variationCount, setVariationCount] = useState(1);
-  const [duration, setDuration] = useState(5);
-  const [camera, setCamera] = useState('arri');
-  const [lens, setLens] = useState('21mm');
-  const [angle, setAngle] = useState('wide');
-  const [lensModel, setLensModel] = useState('cooke');
-  const [cameraMovement, setCameraMovement] = useState('none');
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('cs_activeTab') || 'image'); // 'video' | 'image'
+  const [imageStyle, setImageStyle] = useState(() => localStorage.getItem('cs_imageStyle') || 'cinematic');
+  const [activeEngine, setActiveEngine] = useState(() => {
+    const savedEngine = localStorage.getItem('cs_activeEngine');
+    if (savedEngine) return savedEngine;
+    const tab = localStorage.getItem('cs_activeTab') || 'image';
+    return tab === 'image' ? 'nano-banana-2' : 'veo-3.1-lite-generate-preview';
+  });
+  const [aspectRatio, setAspectRatio] = useState(() => localStorage.getItem('cs_aspectRatio') || '16:9');
+  const [resolution, setResolution] = useState(() => localStorage.getItem('cs_resolution') || '1080p');
+  const [variationCount, setVariationCount] = useState(() => Number(localStorage.getItem('cs_variationCount')) || 1);
+  const [duration, setDuration] = useState(() => Number(localStorage.getItem('cs_duration')) || 5);
+  const [camera, setCamera] = useState(() => localStorage.getItem('cs_camera') || 'arri');
+  const [lens, setLens] = useState(() => localStorage.getItem('cs_lens') || '21mm');
+  const [angle, setAngle] = useState(() => localStorage.getItem('cs_angle') || 'wide');
+  const [lensModel, setLensModel] = useState(() => localStorage.getItem('cs_lensModel') || 'cooke');
+  const [cameraMovement, setCameraMovement] = useState(() => localStorage.getItem('cs_cameraMovement') || 'none');
   const isConsumerCam = ['iphone', 'gopro', 'vhs', 'disposable'].includes(camera);
   const [showAnglesModal, setShowAnglesModal] = useState(false);
   const [showPayloadModal, setShowPayloadModal] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedPayload, setCopiedPayload] = useState(false);
-  const [generateAudio, setGenerateAudio] = useState(false);
+  const [generateAudio, setGenerateAudio] = useState(() => localStorage.getItem('cs_generateAudio') === 'true');
+
+  // Persist settings to localStorage
+  useEffect(() => {
+    localStorage.setItem('cs_activeTab', activeTab);
+    localStorage.setItem('cs_imageStyle', imageStyle);
+    localStorage.setItem('cs_activeEngine', activeEngine);
+    localStorage.setItem('cs_aspectRatio', aspectRatio);
+    localStorage.setItem('cs_resolution', resolution);
+    localStorage.setItem('cs_variationCount', String(variationCount));
+    localStorage.setItem('cs_duration', String(duration));
+    localStorage.setItem('cs_camera', camera);
+    localStorage.setItem('cs_lens', lens);
+    localStorage.setItem('cs_angle', angle);
+    localStorage.setItem('cs_lensModel', lensModel);
+    localStorage.setItem('cs_cameraMovement', cameraMovement);
+    localStorage.setItem('cs_generateAudio', String(generateAudio));
+
+    // Remember last selected engine per tab
+    if (activeTab === 'image') {
+      localStorage.setItem('cs_lastImageEngine', activeEngine);
+    } else if (activeTab === 'video') {
+      localStorage.setItem('cs_lastVideoEngine', activeEngine);
+    }
+  }, [
+    activeTab, imageStyle, activeEngine, aspectRatio, resolution,
+    variationCount, duration, camera, lens, angle, lensModel, cameraMovement, generateAudio
+  ]);
 
   // Automatically take default lens for selected Camera + Angle (framing & perspective)
   useEffect(() => {
@@ -1300,6 +1332,11 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
     if (taggedItems.length > 0) {
       const directives = taggedItems.map(item => `Reference: @${item.name} (${item.category.toUpperCase()}) - ${item.imageUrl}`).join('\n');
       compiledPrompt = `${compiledPrompt}\n\n[REFERENCE ALIGNMENT DIRECTIVES]\n${directives}`;
+      
+      const hasCharacter = taggedItems.some(item => item.category === 'character');
+      if (hasCharacter) {
+        compiledPrompt = `${compiledPrompt}\n\n[FACE SYMMETRY DIRECTIVE]\nMake the face 100% symmetrical, matching the exact facial structure and features of the attached character reference image.`;
+      }
     }
 
     return compiledPrompt;
@@ -2254,7 +2291,8 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                     type="button"
                     onClick={() => {
                       setActiveTab('image');
-                      setActiveEngine('nano-banana-2');
+                      const lastImg = localStorage.getItem('cs_lastImageEngine') || 'nano-banana-2';
+                      setActiveEngine(lastImg);
                     }}
                     className={cn(
                       "flex flex-col items-center justify-center w-10 h-9 rounded-lg text-[7px] font-black uppercase tracking-wider transition-all",
@@ -2271,7 +2309,8 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                     type="button"
                     onClick={() => {
                       setActiveTab('video');
-                      setActiveEngine('veo-3.1-generate-preview');
+                      const lastVid = localStorage.getItem('cs_lastVideoEngine') || 'veo-3.1-lite-generate-preview';
+                      setActiveEngine(lastVid);
                     }}
                     className={cn(
                       "flex flex-col items-center justify-center w-10 h-9 rounded-lg text-[7px] font-black uppercase tracking-wider transition-all",

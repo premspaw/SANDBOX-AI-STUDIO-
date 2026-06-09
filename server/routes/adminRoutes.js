@@ -742,7 +742,7 @@ export default function createRouter(deps) {
             let recovered = 0;
             for (const file of files) {
                 if (file.name.match(/\.(png|jpg|jpeg)$/i)) {
-                    const url = `https://storage.googleapis.com/${MARKETING_BUCKET}/${file.name}`;
+                    const url = storageService.getPublicUrl(file.name, MARKETING_BUCKET);
                     const name = path.basename(file.name);
                     const { error } = await (supabaseAdmin || supabase).from('assets').insert([{
                         name,

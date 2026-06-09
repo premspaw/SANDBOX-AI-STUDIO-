@@ -572,13 +572,8 @@ async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9') 
     const filePath = `users/${userId || 'anon'}/generated/${name}`;
 
     try {
-        const bucket = storage.bucket(BUCKET_NAME);
-        const file = bucket.file(filePath);
-        await file.save(videoBuffer, {
-            metadata: { contentType: 'video/mp4', cacheControl: 'public, max-age=31536000' },
-            resumable: false
-        });
-        const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${filePath}`;
+        console.log(`[STORAGE-VIDEO] Uploading video ${name} via storageService...`);
+        const publicUrl = await storageService.uploadToGCS(videoBuffer, filePath, 'video/mp4', BUCKET_NAME);
         
         // Save to local fallback database
         saveLocalAsset({
@@ -607,6 +602,7 @@ async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9') 
         return `data:video/mp4;base64,${videoBuffer.toString('base64')}`;
     }
 }
+
 
 async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg', targetBucket = MARKETING_BUCKET, folder = `${MARKETING_FOLDER}/generated`, aspectRatio = '1:1') {
     const ext = mimeType.split('/')[1] || 'jpg';
