@@ -160,12 +160,12 @@ export function useUGCGallery(currentUserId: string) {
         .order('created_at', { ascending: false });
       if (!error && data) {
         const historyGallery: GalleryItem[] = data
-          .filter((item: any) => item.asset_type !== 'marketing_template' && !(item.public_url && (item.public_url.includes('/marketing/') || item.public_url.includes('marketing_template'))))
+          .filter((item: any) => item.type !== 'marketing_template' && !(item.url && (item.url.includes('/marketing/') || item.url.includes('marketing_template'))))
           .map((item: any) => ({
-            id: item.id,
-            type: item.asset_type as 'image' | 'video',
-            url: ensureDataUri(item.public_url),
-            prompt: item.prompt,
+            id: String(item.id),
+            type: (item.type === 'video' ? 'video' : 'image') as 'image' | 'video',
+            url: ensureDataUri(item.url),
+            prompt: item.name || item.prompt || '',
           }));
         setGallery(prev => {
           const existingIds = new Set(prev.map(p => p.id));
