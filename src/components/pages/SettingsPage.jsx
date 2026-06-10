@@ -25,8 +25,15 @@ export default function SettingsPage() {
     const [resetEmailSent, setResetEmailSent] = useState(false);
     const [sendingReset, setSendingReset] = useState(false);
 
+    // Admin Trial API settings
+    const isAdmin = profile?.role === 'admin';
+    const [useAdminTrialKey, setUseAdminTrialKey] = useState(false);
+    const [adminTrialKey, setAdminTrialKey] = useState('');
+
     // Load auth user on mount — use getSession() first (reads from localStorage instantly)
     useEffect(() => {
+        setUseAdminTrialKey(localStorage.getItem('useAdminTrialApiKey') === 'true');
+        setAdminTrialKey(localStorage.getItem('adminTrialApiKey') || '');
         const loadUser = async () => {
             setLoading(true);
             try {
@@ -241,12 +248,15 @@ export default function SettingsPage() {
                             { id: 'billing', label: 'Billing', icon: CreditCard },
                             { id: 'security', label: 'Security', icon: Shield },
                             { id: 'notifications', label: 'Alerts', icon: Bell },
+                            ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: Key }] : [])
                         ].map((item) => (
                             <button
                                 key={item.id}
                                 onClick={() => { setActiveTab(item.id); setMessage({ type: '', text: '' }); }}
                                 className={`flex items-center gap-3 px-5 py-3 rounded-xl transition-all whitespace-nowrap min-w-fit lg:w-full ${activeTab === item.id
-                                    ? 'bg-[#bef264] text-black font-black shadow-[0_0_20px_rgba(190,242,100,0.2)]'
+                                    ? item.id === 'admin' 
+                                        ? 'bg-red-500 text-white font-black shadow-[0_0_20px_rgba(239,68,68,0.2)]'
+                                        : 'bg-[#bef264] text-black font-black shadow-[0_0_20px_rgba(190,242,100,0.2)]'
                                     : 'text-white/40 hover:bg-white/5 hover:text-white'
                                     }`}
                             >
@@ -593,6 +603,52 @@ export default function SettingsPage() {
                                             )}
                                         </AnimatePresence>
                                     </form>
+                                </motion.div>
+                            )}
+
+                            {/* ── ADMIN TAB ── */}
+                            {isAdmin && activeTab === 'admin' && (
+                                <motion.div key="admin" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                                    <div className="bg-white/5 border border-red-500/20 rounded-2xl p-6 md:p-8 space-y-6 relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 blur-3xl rounded-full" />
+                                        <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 relative z-10">
+                                            <Key size={14} className="text-red-500" /> Admin Trial Mode
+                                        </h2>
+                                        <p className="text-xs text-white/40 mb-6 relative z-10">Use a free-tier Google API key locally for testing without consuming production quotas. This key is saved locally in your browser.</p>
+
+                                        <div className="space-y-4 relative z-10">
+                                            <div
+                                                className="flex items-center justify-between p-4 bg-black/20 rounded-xl border border-white/5 cursor-pointer hover:border-red-500/20 transition-colors"
+                                                onClick={() => {
+                                                    const newState = !useAdminTrialKey;
+                                                    setUseAdminTrialKey(newState);
+                                                    localStorage.setItem('useAdminTrialApiKey', newState ? 'true' : 'false');
+                                                }}
+                                            >
+                                                <div>
+                                                    <h4 className="text-xs font-black text-white uppercase tracking-wider">Enable Trial API Mode</h4>
+                                                    <p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">Override production key with trial key</p>
+                                                </div>
+                                                <div className={`text-${useAdminTrialKey ? 'red-500' : 'white/20'} transition-colors`}>
+                                                    {useAdminTrialKey ? <CheckSquare size={22} className="text-red-500" /> : <Square size={22} className="text-white/20" />}
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-white/50">Trial API Key</label>
+                                                <input
+                                                    type="password"
+                                                    value={adminTrialKey}
+                                                    onChange={(e) => {
+                                                        setAdminTrialKey(e.target.value);
+                                                        localStorage.setItem('adminTrialApiKey', e.target.value);
+                                                    }}
+                                                    placeholder="AIzaSy..."
+                                                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500/50 transition-colors"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>

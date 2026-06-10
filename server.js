@@ -790,7 +790,12 @@ async function handleGoogle(req, res) {
     try {
         const { model, modelEngine, prompt, aspect_ratio, aspectRatio, userId, firstFrame, lastFrame, referenceImages = [], quality, resolution, imageSize, size } = req.body;
         const targetModel = model || modelEngine;
-        const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+        // Admin trial key takes priority (only injected by admins via Settings > Admin tab)
+        const adminTrialKey = req.headers?.['x-admin-trial-key'] || '';
+        const apiKey = adminTrialKey || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+        if (adminTrialKey) {
+            console.log(`[handleGoogle] ⚡ ADMIN TRIAL MODE — Using admin-supplied trial API key.`);
+        }
         if (targetModel?.includes('kling')) {
             return await handleKling(req, res);
         }

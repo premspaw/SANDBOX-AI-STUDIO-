@@ -1508,9 +1508,14 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
           const tweakedPrompt = `${finalPrompt} [seed: ${seedVal}]`;
 
           const resVal = resolution === '720p' ? '1K' : resolution === '1080p' ? '2K' : '4K';
+          const _adminTrialOn = localStorage.getItem('useAdminTrialApiKey') === 'true';
+          const _adminKey = localStorage.getItem('adminTrialApiKey') || '';
+          const _imgHeaders = { 'Content-Type': 'application/json' };
+          if (_adminTrialOn && _adminKey) _imgHeaders['x-admin-trial-key'] = _adminKey;
+
           const resp = await fetch(getApiUrl('/api/generate-image'), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: _imgHeaders,
             body: JSON.stringify({
               model: activeEngine,
               prompt: tweakedPrompt,
@@ -1581,9 +1586,14 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
           const seedVal = Math.floor(Math.random() * 1000000);
           const tweakedPrompt = `${compiledPrompt} [seed: ${seedVal}]`;
 
+          const _veoAdminOn = localStorage.getItem('useAdminTrialApiKey') === 'true';
+          const _veoAdminKey = localStorage.getItem('adminTrialApiKey') || '';
+          const _veoHeaders = { 'Content-Type': 'application/json' };
+          if (_veoAdminOn && _veoAdminKey) _veoHeaders['x-admin-trial-key'] = _veoAdminKey;
+
           const resp = await fetch(getApiUrl('/api/veo-i2v'), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: _veoHeaders,
             body: JSON.stringify({
               image: firstFrameImage || undefined,
               firstFrameImage: firstFrameImage || undefined,

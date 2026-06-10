@@ -143,7 +143,12 @@ export default function createRouter(deps) {
             let modelName = req.body.model || 'veo-3.1-generate-preview';
             let operation;
 
-            const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+            // Admin trial key takes priority over production key (only injected by admins via Settings > Admin tab)
+            const adminTrialKey = req.headers['x-admin-trial-key'] || '';
+            const apiKey = adminTrialKey || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+            if (adminTrialKey) {
+                console.log(`[VEO-I2V] ⚡ ADMIN TRIAL MODE — Using admin-supplied trial API key instead of production key.`);
+            }
             const token = await getVertexToken();
             if (!token && !apiKey) throw new Error('Failed to acquire service account token or API key for Veo I2V');
 
@@ -158,6 +163,7 @@ export default function createRouter(deps) {
                 headers['Authorization'] = `Bearer ${token}`;
                 console.log(`[VEO-I2V] Calling REST API via Service Account for project: ${VERTEX_PROJECT_ID}`);
             }
+
 
             const restResponse = await fetch(endpoint, {
                 method: 'POST',
