@@ -26,6 +26,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { getApiUrl, resolveUrl } from '../../config/apiConfig';
 import { SHOT_BLUEPRINTS, SCENE_SEQUENCES, buildMultiCutPrompt } from './utils/ugcMultiShot';
+import { buildNicheHookContext } from './constants/hookLibrary';
 // ─── Feature module imports ──────────────────────────────────────────────────
 import { SCRIPT_TONES } from './constants/scriptTones';
 import { VIDEO_STYLES, SCENE_STYLES } from './constants/videoStyles';
@@ -68,7 +69,8 @@ import {
   buildScriptPrompt,
   buildRegenerateScriptPartPrompt,
   buildAnalyzeScenePrompt,
-  buildSplitScenePrompt
+  buildSplitScenePrompt,
+  buildImageAnalysisPrompt
 } from './constants/prompts';
 
 import LiveGuideModal from './components/modals/LiveGuideModal';
@@ -96,7 +98,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 
 export default function UGC() {
-  const { spend, refund } = useShorts();
+  const { spend, refund, canAfford } = useShorts();
   const userProfile = useAppStore(state => state.userProfile as { id?: string; role?: string } | null);
   const currentUserId = userProfile?.id || 'local_user';
   const isGlobalAdmin = userProfile?.role === 'admin';
@@ -228,6 +230,7 @@ export default function UGC() {
   const [script, setScript] = useState('');
   const [scriptDuration, setScriptDuration] = useState('16 seconds');
   const [selectedScriptTone, setSelectedScriptTone] = useState('viral_marketing');
+  const [selectedNiche, setSelectedNiche] = useState('none');
   const [videoPrompt, setVideoPrompt] = useState('');
   const [scenes, setScenes] = useState<Scene[]>([
     { id: '1', prompt: '', isApproved: false }
@@ -943,10 +946,18 @@ export default function UGC() {
   };
 
   const analyzeProduct = async () => {
-    if (!productImg) return;
+    let targetImg = productImg;
+    if (activeTab === 'talking-head') {
+      targetImg = thProductImg;
+    } else if (activeTab === 'podcast') {
+      targetImg = podcastProductImg;
+    }
+
+    if (!targetImg) return;
+
     setIsAnalyzing(true);
     try {
-      const imagePart = await fileToGenerativePart(productImg.file);
+      const imagePart = await fileToGenerativePart(targetImg.file);
       const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1013,56 +1024,75 @@ Return a detailed JSON with:
   const splitScriptIntoScenes = (text: string) => {
     if (!text) return [];
 
-    const targetWordsPerScene = 25;
-    const maxWordsPerScene = 29;
+    const targetWordsPerScene = 24;
+    const maxWordsPerScene = 28;
     const newScenes: Scene[] = [];
 
-    // First, split by existing brackets if they exist to respect the logical structure
-    const segments = text.split(/\[\d+:\d+\s*-\s*\d+:\d+\]\s*/).filter(s => s.trim().length > 0);
-    const headers = text.match(/\[\d+:\d+\s*-\s*\d+:\d+\]\s*([A-Z0-9\s]+)/gi) || [];
+    // Split by timestamps
+    const parts = text.split(/(\[\d+:\d+\s*[-–]\s*\d+:\d+\])/g);
+    
+    if (parts.length > 1) {
+      // It has timestamps! Parse them.
+      for (let i = 1; i < parts.length; i += 2) {
+        const timeRange = parts[i].replace(/[\[\]]/g, '').trim();
+        let segmentText = parts[i + 1]?.trim() || '';
+        if (segmentText) {
+          // Extract label if present (e.g. "HOOK: " -> label = "HOOK")
+          let label = 'SCENE';
+          const labelMatch = segmentText.match(/^(HOOK|PAYOFF|CTA|SCENE\s*\d*|INTRO|OUTRO|BODY|SCENE)\b/i);
+          if (labelMatch) {
+            label = labelMatch[1].toUpperCase();
+            // strip the label prefix
+            segmentText = segmentText.replace(/^(HOOK|PAYOFF|CTA|SCENE\s*\d*|INTRO|OUTRO|BODY|SCENE)\b\s*[:\-\–\s\,]*\s*/i, '').trim();
+          }
 
-    // If no structure at all, treat the whole block as one segment
-    const blocksToProcess = segments.length > 0 ? segments : [text];
+          const words = segmentText.split(/\s+/).filter(w => w.length > 0);
 
-    blocksToProcess.forEach((segmentText, segIdx) => {
-      // Extract label if possible
-      let label = 'SCENE';
-      if (headers[segIdx]) {
-        const labelMatch = headers[segIdx].match(/\]\s*(.*)/i);
-        label = labelMatch ? labelMatch[1].trim() : 'SCENE';
+          if (words.length <= maxWordsPerScene) {
+            newScenes.push({
+              id: (newScenes.length + 1).toString(),
+              text: segmentText,
+              prompt: '',
+              isApproved: false,
+              visualCue: '',
+              timestamp: `[${timeRange}]`,
+              label: label
+            });
+          } else {
+            // Sub-split into targetWordsPerScene chunks if a single segment is too long
+            for (let j = 0; j < words.length; j += targetWordsPerScene) {
+              const chunk = words.slice(j, j + targetWordsPerScene).join(' ');
+              newScenes.push({
+                id: (newScenes.length + 1).toString(),
+                text: chunk,
+                prompt: '',
+                isApproved: false,
+                visualCue: '',
+                timestamp: `[${timeRange}]`,
+                label: label
+              });
+            }
+          }
+        }
       }
-
-      const words = segmentText.split(/\s+/).filter(w => w.length > 0);
-
-      // If the segment is small enough, keep it together
-      if (words.length <= maxWordsPerScene) {
+    } else {
+      // Plain text script with no timestamps
+      const words = text.split(/\s+/).filter(w => w.length > 0);
+      for (let i = 0; i < words.length; i += targetWordsPerScene) {
+        const chunk = words.slice(i, i + targetWordsPerScene).join(' ');
         const startTime = newScenes.length * 8;
+        const timeStr = `${Math.floor(startTime / 60)}:${(startTime % 60).toString().padStart(2, '0')} - ${Math.floor((startTime + 8) / 60)}:${((startTime + 8) % 60).toString().padStart(2, '0')}`;
         newScenes.push({
           id: (newScenes.length + 1).toString(),
-          text: segmentText.trim(),
+          text: chunk,
           prompt: '',
           isApproved: false,
           visualCue: '',
-          timestamp: `[${Math.floor(startTime / 60)}:${(startTime % 60).toString().padStart(2, '0')} - ${Math.floor((startTime + 8) / 60)}:${((startTime + 8) % 60).toString().padStart(2, '0')}]`,
-          label: label
+          timestamp: `[${timeStr}]`,
+          label: newScenes.length === 0 ? 'HOOK' : 'PAYOFF'
         });
-      } else {
-        // Sub-split into targetWordsPerScene chunks
-        for (let i = 0; i < words.length; i += targetWordsPerScene) {
-          const chunk = words.slice(i, i + targetWordsPerScene).join(' ');
-          const startTime = newScenes.length * 8;
-          newScenes.push({
-            id: (newScenes.length + 1).toString(),
-            text: chunk,
-            prompt: '',
-            isApproved: false,
-            visualCue: '',
-            timestamp: `[${Math.floor(startTime / 60)}:${(startTime % 60).toString().padStart(2, '0')} - ${Math.floor((startTime + 8) / 60)}:${((startTime + 8) % 60).toString().padStart(2, '0')}]`,
-            label: label
-          });
-        }
       }
-    });
+    }
 
     return newScenes;
   };
@@ -1340,6 +1370,8 @@ Return a detailed JSON with:
         36: "1 HOOK (8s), 2 PERSUASIVE/PAYOFF scenes (8s each), and 1 CTA (8s)"
       }[durationInt as 8 | 16 | 24 | 36] || "multiple 8-second scenes";
 
+      const nicheHookContext = buildNicheHookContext(selectedNiche);
+
       const prompt = buildScriptPrompt({
         userPrompt,
         productDetails,
@@ -1354,6 +1386,7 @@ Return a detailed JSON with:
         voiceStyle,
         strategyContext,
         trainingContent,
+        nicheHookContext,
       });
 
       const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
@@ -1368,6 +1401,7 @@ Return a detailed JSON with:
             responseSchema: {
               type: "OBJECT",
               properties: {
+                hook: { type: "STRING" },
                 script: { type: "STRING" },
                 scenes: {
                   type: "ARRAY",
@@ -1384,7 +1418,7 @@ Return a detailed JSON with:
                   }
                 }
               },
-              required: ["script", "scenes"]
+              required: ["hook", "script", "scenes"]
             }
           }
         })
@@ -1401,7 +1435,7 @@ Return a detailed JSON with:
         setScript(result.script);
       }
 
-      if (result?.scenes && Array.isArray(result.scenes)) {
+      if (result?.scenes && Array.isArray(result.scenes) && result.scenes.length === sceneCount) {
         const structuredScenes: Scene[] = result.scenes.map((s: any) => ({
           id: s.id || Math.random().toString(36).substring(7),
           text: s.dialogue || '',
@@ -1417,8 +1451,8 @@ Return a detailed JSON with:
           setVideoPrompt(structuredScenes[0].prompt);
         }
       } else {
-        // Fallback if scenes array is missing
-        const automaticallySplitScenes = splitScriptIntoScenes(result?.script || '');
+        // Fallback if scenes array is missing or incorrect length
+        const automaticallySplitScenes = splitScriptIntoScenes(result?.script || result?.text || script || '');
         setScenes(automaticallySplitScenes);
         if (automaticallySplitScenes.length > 0) setActiveSceneIndex(0);
       }
@@ -1498,11 +1532,73 @@ Return a detailed JSON with:
     setIsRegeneratingPart(true);
     try {
       const scene = scenes[idx];
+
+      // Determine if we have a reference image (generated image or scene-level image)
+      const activeRefImg = scenes[idx]?.image || generatedImg;
+
+      if (activeRefImg) {
+        // ── MULTIMODAL PATH: analyze the reference image to generate a face-consistent prompt ──
+        let base64Data = '';
+        let mimeType = 'image/png';
+
+        try {
+          if (activeRefImg.startsWith('data:')) {
+            base64Data = activeRefImg.split(',')[1];
+            mimeType = activeRefImg.split(';')[0].split(':')[1];
+          } else {
+            const blob = await fetchImageAsBlob(activeRefImg);
+            mimeType = blob.type || 'image/jpeg';
+            base64Data = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+              reader.readAsDataURL(blob);
+            });
+          }
+        } catch (imgErr) {
+          console.warn('[analyzeScenePrompt] Could not load reference image, falling back to text-only:', imgErr);
+        }
+
+        if (base64Data) {
+          const aiPrompt = buildImageAnalysisPrompt({
+            text: scene.text || '',
+            productDetails,
+            selectedVideoStyle,
+            VIDEO_STYLES,
+          });
+
+          const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              parts: [
+                { inlineData: { mimeType, data: base64Data } },
+                { text: aiPrompt }
+              ],
+              model: 'gemini-2.5-flash',
+              userId: currentUserId
+            })
+          });
+
+          if (!response.ok) throw new Error(`Prompt gen failed: ${response.status}`);
+          const data = await response.json();
+          const newPrompt = (data.text || '').trim();
+          if (newPrompt) {
+            setVideoPrompt(newPrompt);
+            setScenes(prev => prev.map((s, i) => i === idx ? { ...s, prompt: newPrompt } : s));
+            showToast('🎯 Face-locked prompt generated from reference image!', 'success');
+          }
+          setIsRegeneratingPart(false);
+          return;
+        }
+      }
+
+      // ── TEXT-ONLY FALLBACK ──
       const prompt = buildAnalyzeScenePrompt({
         text: scene.text || '',
         productDetails,
         selectedVideoStyle,
         VIDEO_STYLES,
+        hasRefImage: false,
       });
 
       const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
@@ -1524,7 +1620,8 @@ Return a detailed JSON with:
       setVideoPrompt(newPrompt);
       setScenes(prev => prev.map((s, i) => i === idx ? { ...s, prompt: newPrompt } : s));
     } catch (e) {
-      console.error("Analysis failed", e);
+      console.error('Analysis failed', e);
+      showToast('Failed to generate prompt. Please try again.', 'error');
     }
     setIsRegeneratingPart(false);
   };
@@ -1535,6 +1632,64 @@ Return a detailed JSON with:
     if (!sc) return;
     setIsGeneratingSplitPrompt(true);
     try {
+      // Use the split scene's own ref image, or the global generated image, or character img
+      const splitRefImg = sc.refImage || generatedImg || characterImg?.url;
+
+      if (splitRefImg) {
+        // ── MULTIMODAL PATH: analyze reference image for face-consistent prompt ──
+        let base64Data = '';
+        let mimeType = 'image/png';
+
+        try {
+          if (splitRefImg.startsWith('data:')) {
+            base64Data = splitRefImg.split(',')[1];
+            mimeType = splitRefImg.split(';')[0].split(':')[1];
+          } else {
+            const blob = await fetchImageAsBlob(splitRefImg);
+            mimeType = blob.type || 'image/jpeg';
+            base64Data = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+              reader.readAsDataURL(blob);
+            });
+          }
+        } catch (imgErr) {
+          console.warn('[generateSplitScenePrompt] Could not load ref image, falling back to text-only:', imgErr);
+        }
+
+        if (base64Data) {
+          const imgAnalysisPrompt = buildImageAnalysisPrompt({
+            text: sc.dialog,
+            productDetails,
+            selectedVideoStyle,
+            VIDEO_STYLES,
+          });
+
+          const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              parts: [
+                { inlineData: { mimeType, data: base64Data } },
+                { text: imgAnalysisPrompt }
+              ],
+              model: 'gemini-2.5-flash',
+              userId: currentUserId
+            })
+          });
+          if (!response.ok) throw new Error(`Prompt gen failed: ${response.status}`);
+          const data = await response.json();
+          const newPrompt = (data.text || '').trim();
+          if (newPrompt) {
+            setSplitScenes(prev => prev.map((s, i) => i === tabIdx ? { ...s, prompt: newPrompt } : s));
+            showToast('🎯 Face-locked prompt generated from reference image!', 'success');
+          }
+          setIsGeneratingSplitPrompt(false);
+          return;
+        }
+      }
+
+      // ── TEXT-ONLY FALLBACK ──
       const aiPrompt = buildSplitScenePrompt({
         dialog: sc.dialog,
         productDetails,
@@ -2002,31 +2157,34 @@ Return a detailed JSON with:
         return;
       }
 
-      setThVideoProgress('Downloading…');
       const downloadLink = op.response?.generatedVideos?.[0]?.video?.uri;
       if (downloadLink) {
         const currentApiKey = getApiKey();
-        const resp = await fetch(downloadLink, { headers: { 'x-goog-api-key': currentApiKey } });
+        const tempId = Date.now().toString();
+
+        // ── Step 1: Download blob immediately for instant preview ──────────────
+        setThVideoProgress('Downloading video...');
+        const resp = await fetch(downloadLink, {
+          headers: { 'x-goog-api-key': currentApiKey },
+        });
         if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
         const blob = await resp.blob();
         const localUrl = URL.createObjectURL(blob);
-        const tempId = Date.now().toString();
 
-        // Show video instantly in gallery and preview
+        // ── Step 2: Show instantly in gallery + player ─────────────────────────
         setThGeneratedVideo(localUrl);
         addToGallery({ id: tempId, type: 'video', url: localUrl });
         showToast('Talking Head video ready!', 'success');
 
-        // Upload in the background
-        setThVideoProgress('Saving…');
-        uploadToSupabase(blob, 'video', talkingPrompt, currentUserId).then((publicUrl) => {
-          if (publicUrl) {
-            setThGeneratedVideo(publicUrl);
-            updateGalleryItem(tempId, { url: publicUrl });
-          }
-        }).catch((err) => {
-          console.error('[Background Upload] Failed:', err);
-        });
+        // ── Step 3: Upload to Supabase in background ───────────────────────────
+        uploadToSupabase(blob, 'video', talkingPrompt, currentUserId)
+          .then(publicUrl => {
+            if (publicUrl) {
+              setThGeneratedVideo(publicUrl);
+              updateGalleryItem(tempId, { url: publicUrl });
+            }
+          })
+          .catch(err => console.error('[Background Save] Failed:', err));
       } else {
         throw new Error('No video returned from Veo.');
       }
@@ -2123,9 +2281,11 @@ Return a detailed JSON with:
 
   const getImageCost = () => imgEngine === 'gpt2' ? 5 : 2;
 
-  const getCurrentCost = (isMontage = false) => {
+  const getCurrentCost = (isMontage = false, customDuration?: number) => {
     const audioOn = isMontage ? montageAudioEnabled : includeAudio;
-    const duration = isMontage
+    const duration = customDuration !== undefined
+      ? customDuration
+      : isMontage
       ? parseInt(montageDuration)
       : activeTab === 'talking-head'
       ? parseInt(thDuration)
@@ -2662,9 +2822,13 @@ Return a detailed JSON with:
         const sceneStyleModifier = SCENE_STYLES[selectedSceneStyle]?.promptModifier;
         const compiledStyle = [stylePrompt, sceneStyleModifier].filter(Boolean).join(', ');
 
+        const faceLockInstructions = (activeRefImg || characterImg)
+          ? ` FACE IDENTITY LOCK — CRITICAL: The creator's face MUST remain 100% identical to the reference image throughout the entire video. Do NOT change any facial features, skin tone, eye shape, nose, lips, or face structure. Maintain natural facial symmetry. This is a real person — do not idealize, stylize, or alter their appearance in any way. The person speaks like a natural UGC creator — authentic, direct, and relatable.`
+          : '';
+
         promptText = (overridePrompt || (scenes[activeSceneIndex]?.isApproved
           ? scenes[activeSceneIndex].prompt
-          : (videoPrompt || `A creator wearing or interacting with this product: ${productDetails}. If it's clothing, they MUST be wearing it.`))) + dialogue + (compiledStyle ? ` Style: ${compiledStyle}.` : '') + lipSyncBooster + virtualCreatorPrompt + (activeRefImg || characterImg ? " IMPORTANT: Match the natural vibe, lighting, and aesthetic of the provided reference image perfectly." : "");
+          : (videoPrompt || `A creator wearing or interacting with this product: ${productDetails}. If it's clothing, they MUST be wearing it.`))) + dialogue + (compiledStyle ? ` Style: ${compiledStyle}.` : '') + lipSyncBooster + virtualCreatorPrompt + faceLockInstructions;
 
         if (activeRefImg) {
           let base64 = '';
@@ -2753,38 +2917,40 @@ Return a detailed JSON with:
         return;
       }
 
-      setVideoProgressMsg('Downloading Render...');
       const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
       if (downloadLink) {
-        // Get the current API key for the download request
         const currentApiKey = getApiKey();
-
-        const response = await fetch(downloadLink, {
-          method: 'GET',
-          headers: { 'x-goog-api-key': currentApiKey },
-        });
-        if (!response.ok) {
-          const errText = await response.text();
-          throw new Error(`Download failed: ${response.status} - ${errText} `);
-        }
-        const blob = await response.blob();
-        const localUrl = URL.createObjectURL(blob);
         const tempId = Date.now().toString();
 
-        // Show video instantly in gallery and monitor
+        // ── Step 1: Download blob immediately ──────────────────────────────────
+        // Raw Google API URL requires auth headers — browsers can't use it as
+        // a <video> src directly, so thumbnails stay blank until Supabase is done.
+        // Fix: download → blob: URL first, then upload to Supabase in background.
+        setVideoProgressMsg('Downloading video...');
+        const resp = await fetch(downloadLink, {
+          headers: { 'x-goog-api-key': currentApiKey },
+        });
+        if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
+        const blob = await resp.blob();
+        const localUrl = URL.createObjectURL(blob);
+
+        // ── Step 2: Show instantly in gallery + player ─────────────────────────
         setGeneratedVideo(localUrl);
         addToGallery({ id: tempId, type: 'video', url: localUrl });
+        showToast('Video ready! Saving to cloud...', 'success');
 
-        // Upload in the background
-        setVideoProgressMsg('Cloud Archiving...');
-        uploadToSupabase(blob, 'video', promptText, currentUserId).then((publicUrl) => {
-          if (publicUrl) {
-            setGeneratedVideo(publicUrl);
-            updateGalleryItem(tempId, { url: publicUrl });
-          }
-        }).catch((err) => {
-          console.error('[Background Upload] Failed:', err);
-        });
+        // ── Step 3: Upload to Supabase in background ───────────────────────────
+        uploadToSupabase(blob, 'video', promptText, currentUserId)
+          .then(publicUrl => {
+            if (publicUrl) {
+              setGeneratedVideo(publicUrl);
+              updateGalleryItem(tempId, { url: publicUrl });
+            }
+          })
+          .catch(err => {
+            console.error('[Background GCS Save] Failed:', err);
+            // localUrl still works — user can download from gallery
+          });
       } else {
         setVideoError('Veo returned no video. The prompt may have been filtered — try a different prompt.');
         showToast('No video generated. Try rephrasing your prompt.', 'error');
@@ -2838,6 +3004,8 @@ Return a detailed JSON with:
     setScriptDuration,
     selectedScriptTone,
     setSelectedScriptTone,
+    selectedNiche,
+    setSelectedNiche,
     spokenDialog,
     setSpokenDialog,
     scenes,
@@ -3226,10 +3394,21 @@ Return a detailed JSON with:
                   {/* Script-tab dropdowns pushed right */}
                   {chatTab === 'script' && (
                     <div className="ml-auto flex items-center gap-1.5 px-3 flex-wrap justify-end">
-                      <Dropdown label="" value={language} options={LANGUAGES} onChange={setLanguage} icon={Box} direction="up" />
-                      <Dropdown label="" value={voice} options={VOICES} onChange={setVoice} icon={Volume2} direction="up" />
-                      <Dropdown label="" value={scriptDuration} options={['8 seconds', '16 seconds', '24 seconds', '36 seconds']} onChange={setScriptDuration} icon={Clock} direction="up" />
-                      <Dropdown label="" value={SCRIPT_TONES[selectedScriptTone]?.name || selectedScriptTone} options={Object.values(SCRIPT_TONES).map((t: any) => t.name)} onChange={(name: string) => { const key = Object.keys(SCRIPT_TONES).find(k => (SCRIPT_TONES as any)[k].name === name); if (key) setSelectedScriptTone(key); }} icon={Sparkles} direction="up" />
+                      <Dropdown label="" value={language} options={LANGUAGES} onChange={setLanguage} direction="up" className="w-[85px] shrink-0" />
+                      <Dropdown label="" value={voice} options={VOICES} onChange={setVoice} direction="up" className="w-[80px] shrink-0" />
+                      <Dropdown label="" value={scriptDuration} options={['8 seconds', '16 seconds', '24 seconds', '36 seconds']} onChange={setScriptDuration} direction="up" className="w-[100px] shrink-0" />
+                      <Dropdown
+                        label=""
+                        value={SCRIPT_TONES[selectedScriptTone] ? `${SCRIPT_TONES[selectedScriptTone].category}: ${SCRIPT_TONES[selectedScriptTone].name}` : selectedScriptTone}
+                        options={Object.values(SCRIPT_TONES).map((t: any) => `${t.category}: ${t.name}`)}
+                        onChange={(val: string) => {
+                          const key = Object.keys(SCRIPT_TONES).find(k => `${SCRIPT_TONES[k].category}: ${SCRIPT_TONES[k].name}` === val);
+                          if (key) setSelectedScriptTone(key);
+                        }}
+                        direction="up"
+                        className="w-[155px] shrink-0"
+                      />
+
                     </div>
                   )}
                   {/* Collapse / expand toggle — far right */}
@@ -3288,9 +3467,18 @@ Return a detailed JSON with:
                   <textarea
                     value={script}
                     onChange={(e) => setScript(e.target.value)}
-                    className="w-full h-16 bg-transparent font-sans text-sm text-white/90 resize-none focus:outline-none placeholder-white/20 leading-relaxed"
+                    className="w-full h-16 bg-transparent font-sans text-sm text-white/90 resize-none focus:outline-none placeholder-white/20 leading-relaxed pr-8"
                     placeholder={activeTab === 'podcast' ? 'Your podcast script will appear here — or type episode direction...' : 'Your UGC script will appear here — or type your creative direction...'}
                   />
+                  {script && !isGeneratingScript && !isExtractingPrompts && (
+                    <button
+                      onClick={generateScript}
+                      title="Rewrite Script"
+                      className="absolute right-6 top-3 p-1.5 rounded-full bg-white/5 border border-white/10 text-white/60 hover:text-[#c8f135] hover:bg-white/10 hover:border-[#c8f135]/30 hover:scale-105 active:scale-95 transition-all duration-200"
+                    >
+                      <RotateCcw size={12} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Bottom action bar */}
@@ -3319,23 +3507,21 @@ Return a detailed JSON with:
 
                       const parsed: {label: string; dialog: string; prompt: string; refImage?: string | null}[] = [];
 
-                      // ── Strategy 1: parse existing [0:00 - 0:08] timestamps in the script ──
-                      const segmentRegex = /\[([\d:]+\s*[-–]\s*[\d:]+)\][^:]*:\s*([\s\S]*?)(?=\[|$)/gi;
-                      let m;
-                      let idx = 0;
-                      while ((m = segmentRegex.exec(script)) !== null) {
-                        const timeRange = m[1].trim();
-                        const text = m[2].trim();
-                        if (text) {
-                          const matchingScene = scenes[idx];
-                          const defaultPrompt = matchingScene?.prompt || matchingScene?.visualCue || videoPrompt || '';
-                          parsed.push({ label: `Scene ${++idx} [${timeRange}]`, dialog: text, prompt: defaultPrompt });
+                      // Split by timestamps
+                      const parts = script.split(/(\[\d+:\d+\s*[-–]\s*\d+:\d+\])/g);
+                      if (parts.length > 1) {
+                        for (let i = 1; i < parts.length; i += 2) {
+                          const timeRange = parts[i].replace(/[\[\]]/g, '').trim();
+                          let segmentText = parts[i + 1]?.trim() || '';
+                          if (segmentText) {
+                            segmentText = segmentText.replace(/^(HOOK|PAYOFF|CTA|SCENE\s*\d*|INTRO|OUTRO|BODY|SCENE)\b\s*[:\-\–\s\,]*\s*/i, '').trim();
+                            const matchingScene = scenes[parsed.length];
+                            const defaultPrompt = matchingScene?.prompt || matchingScene?.visualCue || videoPrompt || '';
+                            parsed.push({ label: `Scene ${parsed.length + 1} [${timeRange}]`, dialog: segmentText, prompt: defaultPrompt });
+                          }
                         }
-                      }
-
-                      // ── Strategy 2: chunk by 8-second speaking windows ──
-                      if (parsed.length === 0) {
-                        // Strip scene labels, timestamps, speaker tags from raw script
+                      } else {
+                        // Fallback to chunking by words
                         const cleanText = script
                           .replace(/\[[^\]]+\]/g, '')           // remove [0:00-0:08] style timestamps
                           .replace(/^(HOOK|PAYOFF|Scene\s+\d+|Host\s*\d*)\s*:/gim, '') // remove scene/speaker labels
@@ -3343,29 +3529,20 @@ Return a detailed JSON with:
                           .replace(/\n{3,}/g, '\n\n')           // collapse triple+ newlines
                           .trim();
 
-                        // Split into sentences/phrases first, then group into 8-sec chunks
-                        // Average speaking rate ≈ 2.2 words/sec → 8 sec ≈ 17-18 words per chunk
-                        const WORDS_PER_CHUNK = 18; // ~8 seconds at normal speaking pace
+                        const WORDS_PER_CHUNK = 18;
                         const words = cleanText.split(/\s+/).filter(Boolean);
-
-                        if (words.length === 0) {
-                          // Nothing to split
-                        } else {
-                          let chunkStart = 0; // seconds
+                        if (words.length > 0) {
+                          let chunkStart = 0;
                           let sceneNum = 1;
                           for (let wi = 0; wi < words.length; wi += WORDS_PER_CHUNK) {
                             const chunkWords = words.slice(wi, wi + WORDS_PER_CHUNK);
                             const dialog = chunkWords.join(' ');
                             const chunkEnd = chunkStart + 8;
-
-                            // Format time as M:SS
                             const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
                             const label = `Scene ${sceneNum} [${fmt(chunkStart)} - ${fmt(chunkEnd)}]`;
-
                             const matchingScene = scenes[sceneNum - 1];
                             const defaultPrompt = matchingScene?.prompt || matchingScene?.visualCue || videoPrompt || '';
                             parsed.push({ label, dialog, prompt: defaultPrompt });
-
                             chunkStart = chunkEnd;
                             sceneNum++;
                           }

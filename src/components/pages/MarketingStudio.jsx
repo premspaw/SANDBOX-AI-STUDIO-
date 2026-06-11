@@ -1,12 +1,172 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Image as ImageIcon, Upload, Wand2, Code, X, Building, Utensils, Stethoscope, Briefcase, ChevronRight, ChevronLeft, Loader2, Play, Plus, Check, Link, Trash2, ZoomIn, ExternalLink, HardDrive, Pencil, Layers, Sparkles, Video, Expand, LayoutGrid } from 'lucide-react';
+import { Image as ImageIcon, Upload, Wand2, Code, X, Building, Utensils, Stethoscope, Briefcase, ChevronRight, ChevronLeft, Loader2, Play, Plus, Check, Link, Trash2, ZoomIn, ExternalLink, HardDrive, Pencil, Layers, Sparkles, Video, Expand, LayoutGrid, ChevronUp, Clock, Zap } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { cn } from '../../lib/utils';
 import { useShorts } from '../../hooks/useShorts';
 import { useAppStore } from '../../store';
 import { InpaintEditor } from '../common/InpaintEditor';
 import { getApiUrl } from '../../config/apiConfig';
+import { buildSeedanceContentArray } from '../cinemaStudio/SeedanceEngine';
+
+const ENGINES = [
+  { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — 5⚡/s (9⚡/s audio)', cost: 5 },
+  { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3.1 Fast',     icon: '⚡', desc: 'Google Fast — 3⚡/s (5⚡/s audio)',         cost: 3 },
+  { id: 'veo-3.1-lite-generate-preview', label: 'Veo 3.1 Lite',     icon: '🍃', desc: 'Google Lite — 2⚡/s (3⚡/s audio)',           cost: 2 },
+  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 12⚡/s (480p/1080p)',          cost: 12 },
+  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 16⚡/s (480p/1080p)', cost: 16 },
+];
+
+const IMAGE_ENGINES = [
+  { id: 'nano-banana-2',   label: 'Nano Banana 2',   icon: '🎨', desc: 'Google highest-fidelity photo gen — 2⚡ flat rate', cost: 2 },
+  { id: 'nano-banana-pro', label: 'Nano Banana Pro', icon: '💎', desc: 'Google maximum fidelity image engine — 5⚡ flat rate', cost: 5 },
+  { id: 'gpt-image-2',     label: 'GPT Image Pro',   icon: '🤖', desc: 'OpenAI layout & text design — 3⚡ flat rate',                 cost: 3 },
+];
+
+const DURATION_OPTIONS = [
+  { value: 5,  label: '5 Seconds',  desc: 'Quick burst — ideal for ads' },
+  { value: 8,  label: '8 Seconds',  desc: 'Standard — cinematic shots' },
+  { value: 10, label: '10 Seconds', desc: 'Extended — full scenes' },
+];
+
+const SEEDANCE_DURATION_OPTIONS = [
+  { value: 5,  label: '5 Seconds',  desc: 'Quick burst — ideal for ads' },
+  { value: 10, label: '10 Seconds', desc: 'Standard narrative length' },
+  { value: 15, label: '15 Seconds', desc: 'Extended scene — maximum duration' },
+];
+
+const VEO_DURATION_OPTIONS = [
+  { value: 4,  label: '4 Seconds',  desc: 'Quick cut — fast-paced narrative' },
+  { value: 6,  label: '6 Seconds',  desc: 'Standard — balanced movement' },
+  { value: 8,  label: '8 Seconds',  desc: 'Extended — maximum duration' },
+];
+
+const SIZE_OPTIONS = [
+  { value: 'auto',      label: 'Auto',      desc: 'Auto-adjust aspect ratio', w: 12, h: 12, ratio: 'Auto' },
+  { value: '1024x1792', label: 'Story',     desc: '9:16 vertical video/story', w: 9, h: 16, ratio: '9:16' },
+  { value: '1024x1536', label: 'Portrait',  desc: '2:3 portrait banner', w: 10, h: 15, ratio: '2:3' },
+  { value: '1024x1024', label: 'Square',    desc: '1:1 social post', w: 12, h: 12, ratio: '1:1' },
+  { value: '1536x1024', label: 'Landscape', desc: '3:2 standard landscape', w: 15, h: 10, ratio: '3:2' },
+  { value: '1792x1024', label: 'Wide',      desc: '16:9 widescreen', w: 16, h: 9, ratio: '16:9' },
+  { value: '1536x2048', label: 'Poster',    desc: '3:4 high-impact print', w: 9, h: 12, ratio: '3:4' },
+];
+
+
+const QUALITY_OPTIONS = [
+  { value: 'low',    label: 'Fast', desc: 'Quick rendering, standard quality' },
+  { value: 'medium', label: 'HD',   desc: 'High definition details' },
+  { value: 'high',   label: 'Max',  desc: 'Maximum quality, premium finish' },
+];
+
+function UpwardDropdown({ children, icon, label, badge, accentColor = 'fuchsia' }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ bottom: 0, left: 0 });
+  const triggerRef = useRef(null);
+  const panelRef = useRef(null);
+
+  const openDropdown = () => {
+    if (!open && triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setPos({
+        bottom: window.innerHeight - r.top + 8,
+        left: r.left + r.width / 2,
+      });
+    }
+    setOpen(v => !v);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (
+        triggerRef.current && !triggerRef.current.contains(e.target) &&
+        panelRef.current && !panelRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    };
+    
+    const handleResize = () => {
+      setOpen(false);
+    };
+
+    document.addEventListener('mousedown', handler);
+    window.addEventListener('resize', handleResize, { passive: true });
+
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [open]);
+
+  const colorMap = {
+    fuchsia: { bg: 'bg-fuchsia-500/10', border: 'border-fuchsia-500/25', text: 'text-fuchsia-400', hoverBorder: 'hover:border-fuchsia-500/30', ring: 'shadow-fuchsia-500/10' },
+    lime:    { bg: 'bg-[#c8f135]/10',    border: 'border-[#c8f135]/25',   text: 'text-[#c8f135]',   hoverBorder: 'hover:border-[#c8f135]/30', ring: 'shadow-[#c8f135]/10' },
+    cyan:    { bg: 'bg-cyan-500/10',     border: 'border-cyan-500/25',    text: 'text-cyan-400',    hoverBorder: 'hover:border-cyan-500/30', ring: 'shadow-cyan-500/10' },
+    violet:  { bg: 'bg-violet-500/10',   border: 'border-violet-500/25',  text: 'text-violet-400',  hoverBorder: 'hover:border-violet-500/30', ring: 'shadow-violet-500/10' },
+  };
+  const c = colorMap[accentColor] || colorMap.fuchsia;
+
+  return (
+    <>
+      <motion.button
+        ref={triggerRef}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+        onClick={openDropdown}
+        type="button"
+        className={cn(
+          "flex items-center gap-1 px-2 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border backdrop-blur-xl transition-colors shrink-0 origin-bottom",
+          open
+            ? `${c.bg} ${c.border} ${c.text}`
+            : "bg-black/60 border-white/10 text-gray-500 hover:text-white"
+        )}
+      >
+        {icon}
+        <span className="whitespace-nowrap">{label}</span>
+        {badge && <span className={cn("text-[6px] px-1 py-0.5 rounded border ml-0.5", open ? `${c.border} ${c.text}` : "border-white/5 text-gray-600")}>{badge}</span>}
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+          className="ml-0.5"
+        >
+          <ChevronUp size={7} />
+        </motion.span>
+      </motion.button>
+
+      {createPortal(
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              ref={panelRef}
+              initial={{ opacity: 0, y: 12, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+              style={{
+                position: 'fixed',
+                bottom: pos.bottom,
+                left: pos.left,
+                transform: 'translateX(-50%)',
+                zIndex: 9999,
+              }}
+              className={cn(
+                "min-w-[260px] max-w-[320px] max-h-[340px] overflow-y-auto custom-scrollbar",
+                "bg-[#0a0a0a]/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 shadow-2xl",
+                `shadow-lg ${c.ring}`
+              )}
+            >
+              {typeof children === 'function' ? children(() => setOpen(false)) : children}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+    </>
+  );
+}
 
 const LOADING_MESSAGES_DEFAULT = [
     "✨ Crafting your culinary masterpiece…",
@@ -342,6 +502,8 @@ function AddTemplateModal({ category, onClose, onSave, userId, userEmail }) {
 export default function MarketingStudio() {
     const userProfile = useAppStore(state => state.userProfile);
     const currentUserId = userProfile?.id || null;
+    const userShorts = useAppStore(state => state.userShorts);
+    const userCredits = userShorts ?? 0;
     const isAdmin = userProfile?.email === 'premspaw@gmail.com';
     const [activeCategory, setActiveCategory] = useState('food');
     const [templateTab, setTemplateTab] = useState('image'); // 'image' | 'video'
@@ -355,8 +517,125 @@ export default function MarketingStudio() {
     const [showEditBar, setShowEditBar] = useState(false);
     const [generateMode, setGenerateMode] = useState('image');
     const [imageEngine, setImageEngine] = useState('gpt-image-2');
-    const [videoEngine, setVideoEngine] = useState('veo3');
+    const [videoEngine, setVideoEngine] = useState('veo-3.1-fast-generate-preview');
     const [videoDuration, setVideoDuration] = useState(8);
+    const [generateAudio, setGenerateAudio] = useState(false);
+    const [pollMsg, setPollMsg] = useState('');
+    const { spend, refund, canAfford, refresh: refreshShorts } = useShorts();
+
+    const getApiKey = () => {
+        return localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
+    };
+
+    const getAI = () => {
+        const key = getApiKey();
+        if (!key) throw new Error("No API Key detected. Please provide a Gemini API Key.");
+        return new GoogleGenAI({ apiKey: key });
+    };
+
+    const cleanErrorMessage = (msg) => {
+        if (!msg || typeof msg !== 'string') return '';
+        let cleaned = msg;
+        if (cleaned.toLowerCase().includes('real person') || cleaned.toLowerCase().includes('realperson')) {
+            return "Real-Person Policy Flagged: Volcano/BytePlus Ark safety filters restrict generating video from reference images that resemble real people. Recommendations: 1) Switch to Veo 3.1 or 2) Use a more stylized or cartoonish/drawn reference image.";
+        }
+        if (cleaned.includes('SAFETY_REFUSAL') || cleaned.toLowerCase().includes('safety filter')) {
+            return "Safety Filter Blocked: The prompt or input image triggered the model's safety filters. Please refine your prompt text or try a different reference image.";
+        }
+        return cleaned;
+    };
+
+    const pollSeedanceTask = async (taskId, activePrompt, activeRatio, engine) => {
+        const engineLabel = engine.includes('fast') ? 'Seedance Fast' : 'Seedance 2.0';
+
+        for (let i = 0; i < 120; i++) {
+            await new Promise(r => setTimeout(r, 6000));
+            const elapsed = (i + 1) * 6;
+            setPollMsg(`Rendering video... (${elapsed}s)`);
+
+            try {
+                const res = await fetch(getApiUrl(`/api/seedance/status/${taskId}?userId=${currentUserId}&aspectRatio=${activeRatio}&engine=${engine}`));
+                const json = await res.json();
+                const st = json.status;
+
+                if (st === 'completed') {
+                    const url = json.url;
+                    if (url) {
+                        setGenerationHistory(prev => {
+                            const next = [{ url, ts: Date.now(), size: imageSize, type: 'video' }, ...prev].slice(0, 50);
+                            try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) {}
+                            return next;
+                        });
+                        refreshShorts();
+                        return;
+                    }
+                }
+
+                if (st === 'failed' || st === 'error') {
+                    const cleanErr = cleanErrorMessage(json.error || json.message || `${engineLabel} generation failed.`);
+                    throw new Error(cleanErr);
+                }
+            } catch (pollErr) {
+                console.warn('[Seedance Poll Error]:', pollErr.message);
+                if (pollErr.message.includes('Volcano') || pollErr.message.includes('safety') || pollErr.message.includes('failed')) {
+                    throw pollErr;
+                }
+                continue;
+            }
+        }
+        throw new Error(`${engineLabel} compilation timed out.`);
+    };
+
+    const getRequiredCredits = (engineId, customDuration) => {
+        const duration = customDuration ?? videoDuration;
+        if (generateMode === 'image') {
+            return IMAGE_ENGINES.find(e => e.id === engineId)?.cost || 2;
+        }
+        if (engineId.startsWith('veo-3.1') || engineId === 'veo3') {
+            let costPerSec = 10;
+            const modelId = engineId === 'veo3' ? 'veo-3.1-generate-preview' : engineId;
+            if (modelId === 'veo-3.1-generate-preview') {
+                costPerSec = generateAudio ? 54 : 30;
+            } else if (modelId === 'veo-3.1-fast-generate-preview') {
+                costPerSec = generateAudio ? 15 : 12;
+            } else if (modelId === 'veo-3.1-lite-generate-preview') {
+                costPerSec = generateAudio ? 10 : 6;
+            }
+            return costPerSec * duration;
+        }
+        if (engineId === 'seedance-fast') {
+            return 12 * duration;
+        }
+        if (engineId === 'seedace' || engineId === 'seedance2') {
+            return 16 * duration;
+        }
+        return (ENGINES.find(e => e.id === engineId)?.cost || 4) * duration;
+    };
+
+    useEffect(() => {
+        const isSeed = videoEngine === 'seedance-fast' || videoEngine === 'seedace';
+        const isVeo3 = videoEngine.startsWith('veo-3.1');
+        
+        if (isVeo3) {
+            if (![4, 6, 8].includes(videoDuration)) {
+                if (videoDuration < 5) setVideoDuration(4);
+                else if (videoDuration < 8) setVideoDuration(6);
+                else setVideoDuration(8);
+            }
+        } else if (isSeed) {
+            if (![5, 10, 15].includes(videoDuration)) {
+                if (videoDuration <= 7) setVideoDuration(5);
+                else if (videoDuration <= 12) setVideoDuration(10);
+                else setVideoDuration(15);
+            }
+        } else {
+            if (![5, 8, 10].includes(videoDuration)) {
+                if (videoDuration <= 6) setVideoDuration(5);
+                else if (videoDuration <= 9) setVideoDuration(8);
+                else setVideoDuration(10);
+            }
+        }
+    }, [videoEngine, videoDuration]);
     const [firstFrame, setFirstFrame] = useState(null);
     const [lastFrame, setLastFrame] = useState(null);
     const firstFrameRef = useRef(null);
@@ -576,10 +855,6 @@ export default function MarketingStudio() {
         setIngredientInput('');
     };
     const removeIngredient = (idx) => setSpecialIngredients(prev => prev.filter((_, i) => i !== idx));
-
-    const shortsHook = useShorts() || {};
-    const deductShorts = typeof shortsHook.deductShorts === 'function' ? shortsHook.deductShorts : async () => true;
-
     // Helper to convert image prompt to video cinematic prompt
     const toVideoPrompt = (imgPrompt, templateName) => {
         if (!imgPrompt) return `Cinematic product video for ${templateName || 'marketing'}. Dynamic camera movement, professional lighting, slow motion reveal, photorealistic, 4K quality.`;
@@ -798,110 +1073,227 @@ export default function MarketingStudio() {
 
     const handleGenerate = async () => {
         if (!selectedTemplate) return;
+
+        const requiredCredits = getRequiredCredits(generateMode === 'image' ? imageEngine : videoEngine);
+        const costKey = generateMode === 'image' ? imageEngine : videoEngine;
+
+        if (!canAfford(costKey, requiredCredits)) {
+            alert(`Insufficient Shorts! You need ${requiredCredits}⚡, but you only have ${userCredits}⚡.`);
+            return;
+        }
+
+        setIsGenerating(true);
+        setPollMsg('');
+
+        // Deduct credits
+        try {
+            const spendResult = await spend(costKey, requiredCredits);
+            if (!spendResult.success) {
+                throw new Error(spendResult.reason || 'Failed to authorize credit deduction.');
+            }
+        } catch (err) {
+            setIsGenerating(false);
+            alert(err.message || 'Credit deduction failed.');
+            return;
+        }
+
         if (generateMode === 'video') {
-            setIsGenerating(true);
             try {
-                const ai = getAI();
+                const isSeed = videoEngine === 'seedance-fast' || videoEngine === 'seedace';
+                
+                if (isSeed) {
+                    // Seedance video generation path
+                    const modelParam = videoEngine === 'seedance-fast'
+                        ? 'dreamina-seedance-2-0-fast-260128'
+                        : 'dreamina-seedance-2-0-260128';
 
-                // Get active image (firstFrame, reference, or uploaded)
-                const activeImage = firstFrame || referenceImageBase64 || referenceImage || null;
-                if (!activeImage) { alert('Please upload a First Frame image for video generation.'); setIsGenerating(false); return; }
+                    const seedanceContentArray = buildSeedanceContentArray(promptText || 'Cinematic product video', [], firstFrame, lastFrame);
 
-                // Prepare image payload
-                let imagePayload = null;
-                if (activeImage) {
-                    let base64 = '';
-                    let mimeType = 'image/jpeg';
-                    if (activeImage.startsWith('http')) {
-                        const res = await fetch(activeImage);
-                        const blob = await res.blob();
-                        base64 = await new Promise((resolve) => {
+                    const resp = await fetch(getApiUrl('/api/seedance/generate'), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            engine: videoEngine,
+                            model: modelParam,
+                            seedanceContentArray,
+                            duration: videoDuration,
+                            aspectRatio: '9:16', // default aspect
+                            resolution: '1080p',
+                            userId: currentUserId,
+                            generateAudio
+                        })
+                    });
+
+                    const json = await resp.json();
+                    if (!resp.ok) throw new Error(json.error || 'Seedance task initialization failed.');
+
+                    const taskId = json.requestId;
+                    if (!taskId) throw new Error('No task ID returned from backend.');
+
+                    // Poll Seedance
+                    await pollSeedanceTask(taskId, promptText || 'Cinematic product video', '9:16', json.engine || videoEngine);
+                } else {
+                    // Veo video generation path
+                    const ai = getAI();
+
+                    // Get active image (firstFrame, reference, or uploaded)
+                    const activeImage = firstFrame || referenceImageBase64 || referenceImage || null;
+                    if (!activeImage) { 
+                        throw new Error('Please upload a First Frame image for video generation.'); 
+                    }
+
+                    // Prepare image payload
+                    let imagePayload = null;
+                    if (activeImage) {
+                        let base64 = '';
+                        let mimeType = 'image/jpeg';
+                        if (activeImage.startsWith('http')) {
+                            const res = await fetch(activeImage);
+                            const blob = await res.blob();
+                            base64 = await new Promise((resolve) => {
+                                const reader = new FileReader();
+                                reader.onloadend = () => resolve(reader.result?.toString().split(',')[1] || '');
+                                reader.readAsDataURL(blob);
+                            });
+                        } else if (activeImage.startsWith('data:')) {
+                            base64 = activeImage.split(',')[1];
+                            mimeType = activeImage.match(/data:([^;]+)/)?.[1] || 'image/jpeg';
+                        }
+                        imagePayload = { imageBytes: base64, mimeType };
+                    }
+
+                    // Map aspect ratio
+                    const aspectMap = {
+                        '1536x1024': '16:9',
+                        '1024x1536': '9:16',
+                        '1024x1024': '9:16', // Veo doesn't support 1:1, use 9:16
+                        '1024x1792': '9:16',
+                        '1792x1024': '16:9'
+                    };
+
+                    let targetModel = videoEngine;
+                    if (videoEngine === 'veo3') {
+                        targetModel = 'veo-3.1-generate-preview';
+                    }
+
+                    const videoRequest = {
+                        model: targetModel,
+                        prompt: promptText || 'Cinematic product video',
+                        config: {
+                            numberOfVideos: 1,
+                            resolution: '1080p',
+                            aspectRatio: aspectMap[imageSize] || '9:16',
+                            durationSeconds: videoDuration,
+                        }
+                    };
+
+                    if (imagePayload) {
+                        videoRequest.image = imagePayload;
+                    }
+
+                    console.log('[Marketing] Generating video with Veo:', { model: videoRequest.model, hasImage: !!imagePayload });
+
+                    let operation = await ai.models.generateVideos(videoRequest);
+
+                    // Poll for completion
+                    let pollCount = 0;
+                    while (!operation.done) {
+                        setPollMsg(`Veo is rendering... (~${pollCount * 10}s)`);
+                        await new Promise(resolve => setTimeout(resolve, 10000));
+                        pollCount++;
+                        operation = await ai.operations.getVideosOperation({ operation });
+                    }
+
+                    const generateVideoResponse = operation.response?.generateVideoResponse;
+                    const raiFiltered = generateVideoResponse?.raiMediaFilteredCount || 0;
+
+                    if (raiFiltered > 0) {
+                        const reason = generateVideoResponse?.raiMediaFilteredReasons?.[0] || 'Prompt conflicted with safety policies.';
+                        throw new Error(`Video blocked by safety filter: ${reason}`);
+                    }
+
+                    const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+                    if (!downloadLink) throw new Error('No video URL in response');
+
+                    const apiKey = getApiKey();
+                    // Play direct Google GenAI streaming URL instantly
+                    const directUrl = `${downloadLink}${downloadLink.includes('?') ? '&' : '?'}key=${apiKey}`;
+
+                    setGenerationHistory(prev => {
+                        const next = [{ url: directUrl, ts: Date.now(), size: imageSize, type: 'video' }, ...prev].slice(0, 50);
+                        try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) {}
+                        return next;
+                    });
+
+                    // Download video and upload to permanent GCS storage in the background asynchronously
+                    const runBackgroundArchiving = async () => {
+                        try {
+                            const bgResponse = await fetch(downloadLink, {
+                                method: 'GET',
+                                headers: { 'x-goog-api-key': apiKey },
+                            });
+                            if (!bgResponse.ok) throw new Error(`Background download failed: ${bgResponse.status}`);
+                            const blob = await bgResponse.blob();
+
+                            // Convert to base64
                             const reader = new FileReader();
-                            reader.onloadend = () => resolve(reader.result?.toString().split(',')[1] || '');
-                            reader.readAsDataURL(blob);
-                        });
-                    } else if (activeImage.startsWith('data:')) {
-                        base64 = activeImage.split(',')[1];
-                        mimeType = activeImage.match(/data:([^;]+)/)?.[1] || 'image/jpeg';
-                    }
-                    imagePayload = { imageBytes: base64, mimeType };
+                            const base64 = await new Promise((resolve) => {
+                                reader.onloadend = () => resolve(reader.result);
+                                reader.readAsDataURL(blob);
+                            });
+
+                            // Upload to universal upload-asset
+                            const aspectMap = {
+                                '1536x1024': '16:9',
+                                '1024x1536': '9:16',
+                                '1024x1024': '9:16',
+                                '1024x1792': '9:16',
+                                '1792x1024': '16:9'
+                            };
+                            const aspect = aspectMap[imageSize] || '9:16';
+                            const uploadResp = await fetch(getApiUrl('/api/upload-asset'), {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    data: base64,
+                                    type: 'video',
+                                    userId: currentUserId,
+                                    aspect
+                                })
+                            });
+                            if (!uploadResp.ok) throw new Error(`Upload failed: ${uploadResp.statusText}`);
+                            const { url: publicUrl } = await uploadResp.json();
+                            if (publicUrl) {
+                                console.log('[Marketing] Background archiving complete:', publicUrl);
+                                setGenerationHistory(prev => {
+                                    const next = prev.map(item => item.url === directUrl ? { ...item, url: publicUrl } : item);
+                                    try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) {}
+                                    return next;
+                                });
+                            }
+                        } catch (bgErr) {
+                            console.error('[Marketing] Background archiving failed:', bgErr);
+                        }
+                    };
+
+                    runBackgroundArchiving();
                 }
-
-                // Map aspect ratio
-                const aspectMap = {
-                    '1536x1024': '16:9',
-                    '1024x1536': '9:16',
-                    '1024x1024': '9:16', // Veo doesn't support 1:1, use 9:16
-                    '1024x1792': '9:16',
-                    '1792x1024': '16:9'
-                };
-
-                const videoRequest = {
-                    model: videoEngine === 'veo3' ? 'veo-3.1-generate-preview' : 'veo-3.1-fast-generate-preview',
-                    prompt: promptText || 'Cinematic product video',
-                    config: {
-                        numberOfVideos: 1,
-                        resolution: '1080p',
-                        aspectRatio: aspectMap[imageSize] || '9:16',
-                        durationSeconds: videoDuration,
-                    }
-                };
-
-                if (imagePayload) {
-                    videoRequest.image = imagePayload;
-                }
-
-                console.log('[Marketing] Generating video with Veo:', { model: videoRequest.model, hasImage: !!imagePayload });
-
-                let operation = await ai.models.generateVideos(videoRequest);
-
-                // Poll for completion
-                let pollCount = 0;
-                while (!operation.done) {
-                    await new Promise(resolve => setTimeout(resolve, 10000));
-                    pollCount++;
-                    operation = await ai.operations.getVideosOperation({ operation });
-                }
-
-                const generateVideoResponse = operation.response?.generateVideoResponse;
-                const raiFiltered = generateVideoResponse?.raiMediaFilteredCount || 0;
-
-                if (raiFiltered > 0) {
-                    const reason = generateVideoResponse?.raiMediaFilteredReasons?.[0] || 'Prompt conflicted with safety policies.';
-                    throw new Error(`Video blocked by safety filter: ${reason}`);
-                }
-
-                const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-                if (!downloadLink) throw new Error('No video URL in response');
-
-                // Download video using API key
-                const apiKey = getApiKey();
-                const response = await fetch(downloadLink, {
-                    method: 'GET',
-                    headers: { 'x-goog-api-key': apiKey },
-                });
-                if (!response.ok) throw new Error(`Download failed: ${response.status}`);
-
-                const blob = await response.blob();
-                const videoUrl = URL.createObjectURL(blob);
-
-                setGenerationHistory(prev => {
-                    const next = [{ url: videoUrl, ts: Date.now(), size: imageSize, type: 'video' }, ...prev].slice(0, 50);
-                    try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) {}
-                    return next;
-                });
+                
+                refreshShorts();
             } catch (err) {
+                // Refund credits on failure
+                await refund(costKey, requiredCredits);
+                refreshShorts();
                 alert('Video generation failed: ' + (err?.message || 'Unknown error'));
             } finally {
                 setIsGenerating(false);
+                setPollMsg('');
             }
             return;
         }
-        setIsGenerating(true);
-        try {
-            const success = await deductShorts(3, 'marketing_image_generation');
-            if (!success) throw new Error("Insufficient Shorts");
 
+        // Image Mode
+        try {
             const isMedical = activeCategory === 'medical';
             const isRealEstate = activeCategory === 'realestate';
 
@@ -947,7 +1339,7 @@ export default function MarketingStudio() {
                 userInstruction = promptText?.trim() || '';
             }
 
-            // Build the final GPT Image 2 natural language prompt
+            // Build the final image natural language prompt
             let textPrompt = '';
             if (isRealEstate) {
                 const re = realEstateData;
@@ -998,7 +1390,7 @@ export default function MarketingStudio() {
                 ].filter(Boolean).join(' ');
             }
 
-            // Use base64 if available, otherwise fall back to URL (server can fetch GCS URLs)
+            // Use base64 if available, otherwise fall back to URL
             const imageToSend = referenceImageBase64 || referenceImage || undefined;
             const payload = {
                 model: imageEngine,
@@ -1009,13 +1401,6 @@ export default function MarketingStudio() {
                 image: imageToSend,
                 secondImage: logoImage || undefined
             };
-
-            console.log('[Marketing] PAYLOAD DEBUG:', {
-                hasReferenceImageBase64: !!referenceImageBase64,
-                hasReferenceImage: !!referenceImage,
-                imageInPayload: !!payload.image,
-                imageType: imageToSend?.startsWith('data:') ? 'base64' : imageToSend?.startsWith('http') ? 'url' : 'none'
-            });
 
             const resp = await fetch(getApiUrl('/api/generate-image'), {
                 method: 'POST',
@@ -1031,14 +1416,19 @@ export default function MarketingStudio() {
 
             const newUrl = data.url || data.imageUrl;
             if (!newUrl) throw new Error('No image URL in response: ' + JSON.stringify(data));
+            
             setGeneratedImage(newUrl);
             setGenerationHistory(prev => {
                 const next = [{ url: newUrl, ts: Date.now(), size: imageSize }, ...prev].slice(0, 50);
                 try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) {}
                 return next;
             });
-
+            
+            refreshShorts();
         } catch (error) {
+            // Refund credits on failure
+            await refund(costKey, requiredCredits);
+            refreshShorts();
             console.error('Generation failed:', error?.message || error);
             alert('Generation failed: ' + (error?.message || 'Unknown error — check console'));
         } finally {
@@ -1539,47 +1929,300 @@ export default function MarketingStudio() {
                                         </button>
 
                                         {/* Size */}
-                                        <select value={imageSize} onChange={e => setImageSize(e.target.value)}
-                                            className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white/40 outline-none hover:border-white/20 transition-all">
-                                            <option value="auto">Auto</option>
-                                            <option value="1024x1792">Story</option>
-                                            <option value="1024x1536">Portrait</option>
-                                            <option value="1024x1024">Square</option>
-                                            <option value="1536x1024">Landscape</option>
-                                            <option value="1792x1024">Wide</option>
-                                            <option value="1536x2048">Poster</option>
-                                        </select>
+                                         <UpwardDropdown
+                                             icon={<LayoutGrid size={8} />}
+                                             label={`Size: ${SIZE_OPTIONS.find(s => s.value === imageSize)?.label || 'Auto'}`}
+                                             accentColor="fuchsia"
+                                         >
+                                             {(close) => (
+                                                 <div className="space-y-0.5">
+                                                     {SIZE_OPTIONS.map((opt, i) => (
+                                                         <motion.button
+                                                             key={opt.value}
+                                                             initial={{ opacity: 0, y: 8 }}
+                                                             animate={{ opacity: 1, y: 0 }}
+                                                             transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
+                                                             onClick={() => { setImageSize(opt.value); close(); }}
+                                                             className={cn(
+                                                                 "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all",
+                                                                 imageSize === opt.value
+                                                                     ? "bg-fuchsia-500/10 border border-fuchsia-500/25"
+                                                                     : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                                                             )}
+                                                         >
+                                                             {/* Aspect visual */}
+                                                             <div className={cn(
+                                                                 "rounded border flex items-center justify-center shrink-0 transition-all",
+                                                                 imageSize === opt.value ? "border-fuchsia-500 bg-fuchsia-500/10" : "border-gray-700 bg-white/5"
+                                                             )}
+                                                                 style={{ width: `${opt.w * 1.5}px`, height: `${opt.h * 1.5}px` }}
+                                                             >
+                                                                 <span className={cn(
+                                                                     "text-[5px] font-black scale-90",
+                                                                     imageSize === opt.value ? "text-fuchsia-400" : "text-gray-500"
+                                                                 )}>{opt.ratio}</span>
+                                                             </div>
+                                                             <div className="flex-1 min-w-0">
+                                                                 <p className={cn(
+                                                                     "text-[10px] font-black uppercase tracking-wider truncate",
+                                                                     imageSize === opt.value ? "text-fuchsia-400" : "text-white/70"
+                                                                 )}>{opt.label}</p>
+                                                                 <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
+                                                             </div>
+                                                             {imageSize === opt.value && (
+                                                                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-fuchsia-400 flex items-center justify-center shrink-0">
+                                                                     <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                                                 </motion.div>
+                                                             )}
+                                                         </motion.button>
+                                                     ))}
+                                                 </div>
+                                             )}
+                                         </UpwardDropdown>
 
-                                        {/* Quality */}
-                                        <select value={quality} onChange={e => setQuality(e.target.value)}
-                                            className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white/40 outline-none hover:border-white/20 transition-all">
-                                            <option value="low">Fast</option>
-                                            <option value="medium">HD</option>
-                                            <option value="high">Max</option>
-                                        </select>
+                                         {/* Quality (only in image mode) */}
+                                         {generateMode === 'image' && (
+                                             <UpwardDropdown
+                                                 icon={<Sparkles size={8} />}
+                                                 label={`Quality: ${QUALITY_OPTIONS.find(q => q.value === quality)?.label || 'HD'}`}
+                                                 accentColor="violet"
+                                             >
+                                                 {(close) => (
+                                                     <div className="space-y-0.5">
+                                                         {QUALITY_OPTIONS.map((opt, i) => (
+                                                             <motion.button
+                                                                 key={opt.value}
+                                                                 initial={{ opacity: 0, y: 8 }}
+                                                                 animate={{ opacity: 1, y: 0 }}
+                                                                 transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
+                                                                 onClick={() => { setQuality(opt.value); close(); }}
+                                                                 className={cn(
+                                                                     "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all",
+                                                                     quality === opt.value
+                                                                         ? "bg-violet-500/10 border border-violet-500/25"
+                                                                         : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                                                                 )}
+                                                             >
+                                                                 <div className={cn(
+                                                                     "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
+                                                                     quality === opt.value ? "bg-violet-500/20 text-violet-400" : "bg-white/5 text-gray-500"
+                                                                 )}>
+                                                                     <Sparkles size={10} />
+                                                                 </div>
+                                                                 <div className="flex-1 min-w-0">
+                                                                     <p className={cn(
+                                                                         "text-[10px] font-black uppercase tracking-wider truncate",
+                                                                         quality === opt.value ? "text-violet-400" : "text-white/70"
+                                                                     )}>{opt.label}</p>
+                                                                     <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
+                                                                 </div>
+                                                                 {quality === opt.value && (
+                                                                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-violet-400 flex items-center justify-center shrink-0">
+                                                                         <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                                                     </motion.div>
+                                                                 )}
+                                                             </motion.button>
+                                                         ))}
+                                                     </div>
+                                                 )}
+                                             </UpwardDropdown>
+                                         )}
 
-                                        {/* Engine dropdown — always visible, options change by mode */}
-                                        {generateMode === 'image' ? (
-                                            <select value={imageEngine} onChange={e => setImageEngine(e.target.value)}
-                                                className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white/60 outline-none hover:border-white/20 transition-all">
-                                                <option value="gpt-image-2">GPT-2</option>
-                                                <option value="nano-banana-2">NB2</option>
-                                            </select>
-                                        ) : (
-                                            <>
-                                            <select value={videoEngine} onChange={e => setVideoEngine(e.target.value)}
-                                                className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white/60 outline-none hover:border-white/20 transition-all">
-                                                <option value="veo3">Veo 3</option>
-                                                <option value="seedance2">Seedance 2</option>
-                                            </select>
-                                            <select value={videoDuration} onChange={e => setVideoDuration(Number(e.target.value))}
-                                                className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white/60 outline-none hover:border-white/20 transition-all">
-                                                <option value={4}>4s</option>
-                                                <option value={6}>6s</option>
-                                                <option value={8}>8s</option>
-                                            </select>
-                                            </>
-                                        )}
+                                         {/* Engine */}
+                                         <UpwardDropdown
+                                             icon={<Zap size={8} />}
+                                             label={generateMode === 'image' 
+                                                 ? `Engine: ${IMAGE_ENGINES.find(e => e.id === imageEngine)?.label || 'GPT Pro'}`
+                                                 : `Engine: ${ENGINES.find(e => e.id === videoEngine)?.label || 'Veo Fast'}`}
+                                             accentColor="lime"
+                                         >
+                                             {(close) => (
+                                                 <div className="space-y-0.5">
+                                                     {generateMode === 'image' ? (
+                                                         IMAGE_ENGINES.map((eng, i) => (
+                                                             <motion.button
+                                                                 key={eng.id}
+                                                                 initial={{ opacity: 0, x: -10 }}
+                                                                 animate={{ opacity: 1, x: 0 }}
+                                                                 transition={{ delay: i * 0.03, type: 'spring', stiffness: 400, damping: 25 }}
+                                                                 onClick={() => { setImageEngine(eng.id); close(); }}
+                                                                 className={cn(
+                                                                     "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all",
+                                                                     imageEngine === eng.id
+                                                                         ? "bg-lime-500/10 border border-lime-500/25"
+                                                                         : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                                                                 )}
+                                                             >
+                                                                 <div className={cn(
+                                                                     "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
+                                                                     imageEngine === eng.id ? "bg-lime-500/20 text-[#c8f135]" : "bg-white/5 text-gray-500"
+                                                                 )}>
+                                                                     <span className="text-[10px]">{eng.icon}</span>
+                                                                 </div>
+                                                                 <div className="flex-1 min-w-0">
+                                                                     <p className={cn(
+                                                                         "text-[10px] font-black uppercase tracking-wider truncate",
+                                                                         imageEngine === eng.id ? "text-[#c8f135]" : "text-white/70"
+                                                                     )}>{eng.label}</p>
+                                                                     <p className="text-[7.5px] text-gray-600 truncate">{eng.desc}</p>
+                                                                 </div>
+                                                                 <div className="flex items-center gap-1.5 shrink-0">
+                                                                     <span className={cn(
+                                                                         "text-[7px] font-black px-1.5 py-0.5 rounded-md border",
+                                                                         imageEngine === eng.id
+                                                                             ? "bg-[#c8f135]/10 border-[#c8f135]/20 text-[#c8f135]"
+                                                                             : "bg-white/5 border-white/5 text-gray-600"
+                                                                     )}>
+                                                                         {getRequiredCredits(eng.id)} ⚡
+                                                                     </span>
+                                                                     {imageEngine === eng.id && (
+                                                                         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-[#c8f135] flex items-center justify-center shrink-0">
+                                                                             <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                                                         </motion.div>
+                                                                     )}
+                                                                 </div>
+                                                             </motion.button>
+                                                         ))
+                                                     ) : (
+                                                         ENGINES.map((eng, i) => (
+                                                             <motion.button
+                                                                 key={eng.id}
+                                                                 initial={{ opacity: 0, x: -10 }}
+                                                                 animate={{ opacity: 1, x: 0 }}
+                                                                 transition={{ delay: i * 0.03, type: 'spring', stiffness: 400, damping: 25 }}
+                                                                 onClick={() => { setVideoEngine(eng.id); close(); }}
+                                                                 className={cn(
+                                                                     "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all",
+                                                                     videoEngine === eng.id
+                                                                         ? "bg-lime-500/10 border border-lime-500/25"
+                                                                         : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                                                                 )}
+                                                             >
+                                                                 <div className={cn(
+                                                                     "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
+                                                                     videoEngine === eng.id ? "bg-lime-500/20 text-[#c8f135]" : "bg-white/5 text-gray-500"
+                                                                 )}>
+                                                                     <span className="text-[10px]">{eng.icon}</span>
+                                                                 </div>
+                                                                 <div className="flex-1 min-w-0">
+                                                                     <p className={cn(
+                                                                         "text-[10px] font-black uppercase tracking-wider truncate",
+                                                                         videoEngine === eng.id ? "text-[#c8f135]" : "text-white/70"
+                                                                     )}>{eng.label}</p>
+                                                                     <p className="text-[7.5px] text-gray-600 truncate">{eng.desc}</p>
+                                                                 </div>
+                                                                 <div className="flex items-center gap-1.5 shrink-0">
+                                                                     <span className={cn(
+                                                                         "text-[7px] font-black px-1.5 py-0.5 rounded-md border",
+                                                                         videoEngine === eng.id
+                                                                             ? "bg-[#c8f135]/10 border-[#c8f135]/20 text-[#c8f135]"
+                                                                             : "bg-white/5 border-white/5 text-gray-600"
+                                                                     )}>
+                                                                         {getRequiredCredits(eng.id)} ⚡
+                                                                     </span>
+                                                                     {videoEngine === eng.id && (
+                                                                         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-[#c8f135] flex items-center justify-center shrink-0">
+                                                                             <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                                                         </motion.div>
+                                                                     )}
+                                                                 </div>
+                                                             </motion.button>
+                                                         ))
+                                                     )}
+                                                 </div>
+                                             )}
+                                         </UpwardDropdown>
+
+                                         {/* Duration/Time (only in video mode) */}
+                                         {generateMode === 'video' && (
+                                             <UpwardDropdown
+                                                 icon={<Clock size={8} />}
+                                                 label={`Time: ${videoDuration}s`}
+                                                 accentColor="cyan"
+                                             >
+                                                 {(close) => {
+                                                     const isSeed = videoEngine === 'seedance-fast' || videoEngine === 'seedace';
+                                                     const isVeo3 = videoEngine.startsWith('veo-3.1') || videoEngine === 'veo3';
+                                                     const opts = isVeo3 
+                                                         ? VEO_DURATION_OPTIONS 
+                                                         : isSeed 
+                                                             ? SEEDANCE_DURATION_OPTIONS 
+                                                             : DURATION_OPTIONS;
+                                                     const maxOptValue = Math.max(...opts.map(o => o.value));
+                                                     
+                                                     return (
+                                                         <div className="space-y-0.5">
+                                                             {opts.map((opt, i) => (
+                                                                 <motion.button
+                                                                     key={opt.value}
+                                                                     initial={{ opacity: 0, y: 8 }}
+                                                                     animate={{ opacity: 1, y: 0 }}
+                                                                     transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
+                                                                     onClick={() => { setVideoDuration(opt.value); close(); }}
+                                                                     className={cn(
+                                                                         "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
+                                                                         videoDuration === opt.value
+                                                                             ? "bg-cyan-500/10 border border-cyan-500/25"
+                                                                             : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                                                                     )}
+                                                                 >
+                                                                     {/* Duration bar visual */}
+                                                                     <div className="w-10 h-2 bg-white/5 rounded-full overflow-hidden shrink-0">
+                                                                         <motion.div
+                                                                             className="h-full rounded-full"
+                                                                             style={{ background: videoDuration === opt.value ? '#22d3ee' : '#333' }}
+                                                                             initial={{ width: 0 }}
+                                                                             animate={{ width: `${(opt.value / maxOptValue) * 100}%` }}
+                                                                             transition={{ type: 'spring', stiffness: 200, damping: 20, delay: i * 0.05 }}
+                                                                         />
+                                                                     </div>
+                                                                     <div className="flex-1 min-w-0">
+                                                                         <p className={cn(
+                                                                             "text-[10px] font-black uppercase tracking-wider truncate",
+                                                                             videoDuration === opt.value ? "text-cyan-400" : "text-white/70"
+                                                                         )}>{opt.label}</p>
+                                                                         <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
+                                                                     </div>
+                                                                     <div className="flex items-center gap-1.5 shrink-0">
+                                                                         <span className={cn(
+                                                                             "text-[7px] font-black px-1.5 py-0.5 rounded-md border",
+                                                                             videoDuration === opt.value
+                                                                                 ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-400"
+                                                                                 : "bg-white/5 border-white/5 text-gray-600"
+                                                                         )}>
+                                                                             {getRequiredCredits(videoEngine, opt.value)} ⚡
+                                                                         </span>
+                                                                         {videoDuration === opt.value && (
+                                                                             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-cyan-400 flex items-center justify-center shrink-0">
+                                                                                 <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                                                             </motion.div>
+                                                                         )}
+                                                                     </div>
+                                                                 </motion.button>
+                                                             ))}
+                                                         </div>
+                                                     );
+                                                 }}
+                                             </UpwardDropdown>
+                                         )}
+
+                                         {/* Audio toggle (only in video mode) */}
+                                         {generateMode === 'video' && (
+                                             <motion.button
+                                                 type="button"
+                                                 whileHover={{ scale: 1.05 }}
+                                                 whileTap={{ scale: 0.95 }}
+                                                 onClick={() => setGenerateAudio(!generateAudio)}
+                                                 className={cn(
+                                                     "flex items-center gap-1 px-2.5 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border transition-colors shrink-0",
+                                                     generateAudio
+                                                         ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-400"
+                                                         : "bg-black/60 border-white/10 text-gray-500 hover:text-white"
+                                                 )}
+                                             >
+                                                 <span>🎵 Audio: {generateAudio ? "ON" : "OFF"}</span>
+                                             </motion.button>
+                                         )}
 
                                         {/* Generate */}
                                         <button onClick={handleGenerate} disabled={isGenerating}
@@ -1591,7 +2234,8 @@ export default function MarketingStudio() {
                                                 ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating…</>
                                                 : <>{generateMode === 'video' ? <Video className="w-3.5 h-3.5" /> : <Wand2 className="w-3.5 h-3.5" />}
                                                    {generateMode === 'video' ? 'Make Video' : 'Generate'}
-                                                   <span className="bg-black/20 rounded px-1 py-0.5 text-[9px] font-black normal-case tracking-normal">✦ 3</span>
+                                                   <span className="opacity-40 ml-1">|</span>
+                                                   <span className="font-mono text-[9px] ml-1">{getRequiredCredits(generateMode === 'image' ? imageEngine : videoEngine)}⚡</span>
                                                 </>
                                             }
                                         </button>

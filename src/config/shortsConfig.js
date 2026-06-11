@@ -7,6 +7,7 @@ export const SHORTS_COST = {
     image_grid_multishot: 2,
 
     // UGC
+    ugc_product_scan: 0.5,
     ugc_script_gen: 1,
     ugc_video_scene: 10,
     ugc_full_video: 20,

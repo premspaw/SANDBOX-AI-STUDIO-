@@ -204,7 +204,7 @@ export default function VideoTab() {
                 {splitScenes.length > 0 ? 'Gen All' : 'Generate'}
               </span>
               <span className="text-[7px] opacity-50 font-mono tracking-wider">
-                ({getCurrentCost(false) * (splitScenes.length > 0 ? splitScenes.length : 1)} S)
+                (⚡ {getCurrentCost(false) * (splitScenes.length > 0 ? splitScenes.length : 1)})
               </span>
             </>
           )}

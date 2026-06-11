@@ -58,71 +58,74 @@ export const buildScriptPrompt = (params: {
   voiceStyle?: string;
   strategyContext: string;
   trainingContent: string;
+  nicheHookContext?: string;
 }) => {
   const toneInfo = params.SCRIPT_TONES[params.selectedScriptTone] || params.SCRIPT_TONES.viral_marketing;
   const styleInfo = params.VIDEO_STYLES[params.selectedVideoStyle] || params.VIDEO_STYLES.calm;
 
-  return `You are an elite UGC scriptwriter who writes exactly how real people actually talk — casual, natural, human.
+  return `You are a professional UGC script writer. You write exactly how real people talk on camera.
 
-CRITICAL WRITING STYLE — READ THIS FIRST:
-- Write like a real person speaking to a friend, NOT like an ad or a press release
-- Use contractions: "I've", "you'll", "it's", "don't", "can't", "this'll"
-- Use filler energy words naturally: "okay so", "honestly", "literally", "like", "okay real talk", "no cap", "I'm not even joking"
-- Short punchy sentences. Fragments are fine. Real people don't always finish sentences perfectly.
-- Avoid ANY corporate/ad words: "experience", "elevate", "indulge", "journey", "discover", "innovative", "premium", "solution", "transformative"
-- No rhyming unless the tone specifically calls for it
-- The script should sound like something you'd actually say out loud — read it back and if it sounds robotic, rewrite it
+${params.nicheHookContext || ''}
 
-══════════════════════════════════════════════════
-STEP 1 — CREATIVE DIRECTION (HIGHEST PRIORITY)
-══════════════════════════════════════════════════
-${params.userPrompt
-  ? `The creator has given you this creative direction. Follow it precisely and let it shape the entire script:\n"${params.userPrompt}"`
-  : `No specific direction given. Use your best judgment to create a compelling, authentic UGC script.`}
-
-══════════════════════════════════════════════════
-STEP 2 — PRODUCT KNOWLEDGE
-══════════════════════════════════════════════════
+PRODUCT KNOWLEDGE:
 ${params.productDetails || 'No product scanned yet. Write a general lifestyle UGC script.'}
 
-══════════════════════════════════════════════════
-STEP 3 — SCRIPT PARAMETERS
-══════════════════════════════════════════════════
-DURATION: ${params.scriptDuration} → EXACTLY ${params.sceneCount} scene(s) of 8 seconds each (${params.durationLogic})
-LANGUAGE: ${params.language} — Write ALL dialogue in ${params.language} only.
-TONE: ${toneInfo.prompt || toneInfo}
-PERFORMANCE STYLE: ${styleInfo.name} — ${styleInfo.modifier || styleInfo}${params.voiceStyle ? `\nVOICE STYLE (mimic this speaker's personality exactly in how you write): ${params.voiceStyle}` : ''}
+SCRIPT PARAMETERS:
+- TONE: ${toneInfo.name} — ${toneInfo.prompt || toneInfo}
+- PERFORMANCE STYLE: ${styleInfo.name} — ${styleInfo.modifier || styleInfo}${params.voiceStyle ? `\n- VOICE STYLE: ${params.voiceStyle}` : ''}
+- DURATION: ${params.scriptDuration} → EXACTLY ${params.sceneCount} scene(s) of 8 seconds each (${params.durationLogic})
+- LANGUAGE: ${params.language} — Write ALL dialogue in ${params.language} only.
 ${params.strategyContext}
 
-══════════════════════════════════════════════════
-STEP 4 — VIRAL SCRIPT TRAINING EXAMPLES
-══════════════════════════════════════════════════
-${params.trainingContent || 'No templates loaded. Apply viral UGC best practices.'}
+─── WRITING RULES ───────────────────────────────
+1. Write the HOOK first. It must follow the niche hook patterns and rules above.
+   The hook is the most important line — spend 70% of your thinking on it.
+2. The hook must work WITHOUT seeing the product. 
+   Viewer clicks because of the hook, not the product.
+3. After the hook, write the rest of the script naturally — don't announce scene names mid-script.
+4. Write like a real person talking to a friend on FaceTime, NOT like a TV commercial.
+5. NEVER use robotic marketing words like: "premium", "luxury", "exclusivity", "experience", "elevate", "indulge", "journey", "discover", "innovative", "solution", "transformative", "revolutionary", "features", "designed to", "unmatched", "perfect choice".
+6. Even if the selected tone is "Soft Luxury", do NOT use the literal words "luxury" or "premium" in the dialogue! Instead, show high quality naturally (e.g. "this feels so heavy and sturdy", "the stitching is literally insane", "it looks so clean and minimal").
+7. Use contractions in every single sentence: "I've", "you'll", "it's", "don't", "can't", "this'll", "what's".
+8. Use natural filler words: "okay so", "honestly", "literally", "like", "real talk", "no cap", "seriously", "I'm not even joking".
+9. Use short punchy sentences or fragments. Never write long, complex, formal, or polished sentences.
+10. SCRIPT IS SPOKEN WORDS ONLY. No stage directions. No [smiles]. No (pause) in the dialogue text.
+11. WORD COUNT: Strictly 16-22 spoken words per 8-second scene (speak at a natural, relaxed UGC pace — 16 words minimum, 22 words maximum. Never exceed 22 words per scene, or else it is too fast to read/speak and sounds robotic). Total ≈ ${params.sceneCount * 19} words.
+12. SCENE COUNT: Output EXACTLY ${params.sceneCount} scene(s). No more, no less.
+13. COMPLETE THOUGHTS: Each scene is self-contained — no sentence starts in one scene and ends in another.
+14. End with one clear action — not multiple CTAs. No fake urgency.
+15. PRODUCT INTEGRATION: Use specific details from the product knowledge above (benefits, use cases, audience) — not generic claims.
+16. FORMATTING: In the "script" JSON field, format and label each scene exactly as: [0:00 - 0:08] HOOK, [0:08 - 0:16] PAYOFF, etc., using newlines to separate them.
+17. VISUAL CUES: Describe a realistic UGC creator shot — natural lighting, phone camera, authentic setting. NO cinematic/commercial tropes. NO bokeh, NO 85mm lens.
+18. CLOTHING RULE: If the product is clothing/apparel, the creator MUST be wearing it — never just holding it.
+─────────────────────────────────────────────────
 
-══════════════════════════════════════════════════
-MANDATORY RULES — FOLLOW EVERY SINGLE ONE
-══════════════════════════════════════════════════
-1. HOOK FIRST: Scene 1 MUST open with a natural, scroll-stopping hook in the first 2 seconds. Sound like a real person — NOT an ad. Good examples: "okay so I tried this and I'm obsessed", "why did nobody tell me about this sooner", "I genuinely can't stop thinking about this", "bro this changed everything for me". BAD examples: "Experience the ultimate...", "Discover the power of...", "Introducing the revolutionary...".
-2. TONE: Every single line must feel and sound like: ${toneInfo.name || 'Viral Marketing'} — ${toneInfo.prompt || toneInfo}. The tone must be consistent across ALL scenes.
-3. WORD COUNT: Strictly 20-25 spoken words per 8-second scene. Total ≈ ${params.sceneCount * 22} words.
-4. SCENE COUNT: Output EXACTLY ${params.sceneCount} scene(s). No more, no less.
-5. COMPLETE THOUGHTS: Each scene is self-contained — no sentence starts in one scene and ends in another.
-6. LANGUAGE: Every word of dialogue must be in ${params.language}. No mixing languages.
-7. PRODUCT INTEGRATION: Use specific details from the product knowledge above (benefits, use cases, audience) — not generic claims.
-8. FORMATTING: Label each scene exactly as: [0:00 - 0:08] HOOK, [0:08 - 0:16] PAYOFF, etc.
-9. VISUAL CUES: Describe a realistic UGC creator shot — natural lighting, phone camera, authentic setting. NO cinematic/commercial tropes. NO bokeh, NO 85mm lens.
-10. CLOTHING RULE: If the product is clothing/apparel, the creator MUST be wearing it — never just holding it.
+STRUCTURE FOR ${params.scriptDuration}:
+${params.durationLogic}
 
-Return ONLY a valid JSON object:
+${params.trainingContent ? `TRAINING EXAMPLES FROM YOUR KNOWLEDGE BASE:\n${params.trainingContent}` : ''}
+
+Write the script now. Return ONLY a valid JSON object.
+The "scenes" array MUST contain EXACTLY ${params.sceneCount} scene(s) matching the duration.
+
+Example structure for a script:
 {
-  "script": "Clean dialogue-only with timestamps and scene labels",
+  "hook": "the opening line only — max 10 words, matching the hook dialogue exactly",
+  "script": "Clean dialogue-only with timestamps and scene labels (e.g. [0:00 - 0:08] HOOK: dialogue for scene 1\\n[0:08 - 0:16] PAYOFF: dialogue for scene 2)",
   "scenes": [
     {
       "id": "1",
       "timestamp": "0:00 - 0:08",
       "label": "HOOK",
-      "dialogue": "The exact spoken words for this scene in ${params.language}",
+      "dialogue": "The exact spoken words for scene 1 in ${params.language}",
       "visualCue": "Realistic UGC shot description: creator action, expression, environment, camera angle. Performance: ${styleInfo.modifier || ''}. The creator is saying: [insert dialogue here]."
+    },
+    {
+      "id": "2",
+      "timestamp": "0:08 - 0:16",
+      "label": "PAYOFF",
+      "dialogue": "The exact spoken words for scene 2 in ${params.language}",
+      "visualCue": "Realistic UGC shot description for scene 2..."
     }
   ]
 }`;
@@ -153,13 +156,30 @@ export const buildAnalyzeScenePrompt = (params: {
   productDetails: string;
   selectedVideoStyle: string;
   VIDEO_STYLES: any;
+  hasRefImage?: boolean;
+  imageDescription?: string;
 }) => {
   const styleInfo = params.VIDEO_STYLES[params.selectedVideoStyle] || params.VIDEO_STYLES.calm;
+
+  const faceLockNote = params.hasRefImage
+    ? `
+⚠️ FACE CONSISTENCY — CRITICAL:
+A reference image of the creator is provided. You MUST:
+- Keep the creator's face EXACTLY as shown in the reference image
+- Do NOT alter facial features, skin tone, eye shape, nose, lips, or face structure
+- Maintain natural facial symmetry — this is a real person, not AI-generated
+- The creator speaks like a real UGC creator — authentic, direct, relatable
+- NO face morphing, NO idealization, NO stylization of the face
+- The face and body must remain 100% consistent with the reference throughout the entire video
+${params.imageDescription ? `REFERENCE IMAGE ANALYSIS: ${params.imageDescription}` : ''}`
+    : '';
+
   return `Analyze the following UGC script dialogue and generate a detailed visual prompt for a video generation model (like Veo 3.1).
 
 DIALOGUE: "${params.text}"
 PRODUCT: ${params.productDetails}
 PERFORMANCE STYLE: ${styleInfo.modifier || styleInfo}
+${faceLockNote}
 
 The visual prompt should describe a UGC Creator Style scene:
 1. The creator talking directly to the camera with a relatable, genuine emotion.
@@ -168,9 +188,45 @@ The visual prompt should describe a UGC Creator Style scene:
 4. If the product is clothing, the creator MUST be wearing it naturally and showing it off.
 5. The creator is speaking the exact words: "${params.text}". This is critical for accurate lip-sync.
 6. Performance Style: The creator's performance must reflect a ${styleInfo.name} style: ${styleInfo.modifier}.
+${params.hasRefImage ? '7. The creator\'s face must stay IDENTICAL to the reference image — same person, same face, no changes.' : ''}
 
 AVOID: 85mm lens, portrait mode, heavy bokeh, or 'fashion film' or 'cinematic' aesthetics. Keep it grounded, natural, and realistic.
-Return ONLY the visual prompt text (max 80 words).`;
+Return ONLY the visual prompt text (max 100 words).`;
+};
+
+/**
+ * Builds the AI prompt for analyzing a reference image and generating a
+ * face-consistent video prompt. The AI sees the actual image and extracts
+ * face descriptors that are baked into the video prompt.
+ */
+export const buildImageAnalysisPrompt = (params: {
+  text: string;
+  productDetails: string;
+  selectedVideoStyle: string;
+  VIDEO_STYLES: any;
+}) => {
+  const styleInfo = params.VIDEO_STYLES[params.selectedVideoStyle] || params.VIDEO_STYLES.calm;
+  return `You are an expert Veo 3.1 prompt engineer. A reference image of the UGC creator is provided.
+
+Your job is to:
+1. ANALYZE the reference image — describe the person's exact face, skin tone, hair, eye color, facial structure, outfit, and expression in detail.
+2. GENERATE a Veo 3.1 video prompt (max 120 words) that:
+   - Starts by describing the creator using the EXACT physical details from the image (e.g. "A [skin tone] [gender] creator with [hair description], [eye description], wearing [outfit]...")
+   - Has them speak naturally to camera: "${params.text}"
+   - Uses UGC creator style — direct, relatable, authentic — NOT cinematic
+   - Specifies a natural environment (living room, bedroom, cafe, etc.)
+   - Performance style: ${styleInfo.name} — ${styleInfo.modifier || 'natural and authentic'}
+
+CRITICAL FACE RULES:
+- The creator's face MUST stay exactly as shown in the reference image throughout the entire video
+- Do NOT change face shape, facial features, skin tone, or expression baseline
+- Do NOT idealize or stylize the face — they should look like the real person in the image
+- Natural facial symmetry must be preserved
+- They speak like a real UGC creator, not an actor
+
+PRODUCT CONTEXT: ${params.productDetails || 'consumer product'}
+
+Return ONLY the video prompt text. No extra commentary.`;
 };
 
 export const buildSplitScenePrompt = (params: {

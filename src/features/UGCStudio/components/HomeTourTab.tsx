@@ -399,7 +399,7 @@ export default function HomeTourTab() {
       return;
     }
 
-    const unitCost = getCurrentCost(false);
+     const unitCost = getCurrentCost(false, room.duration);
     if (!isAdmin && !isGlobalAdmin) {
       const spendRes = await spend('veo_fast', unitCost as any);
       if (!spendRes?.success) {
@@ -546,23 +546,20 @@ No collage. One unified photo.
 
       const link = op.response?.generatedVideos?.[0]?.video?.uri;
       if (link) {
-        const res = await fetch(link, {
-          headers: { 'x-goog-api-key': getApiKey() }
-        });
-        const blob = await res.blob();
-        const url = await uploadToSupabase(blob, 'video', finalPrompt, currentUserId)
-          || URL.createObjectURL(blob);
+        const apiKey = getApiKey();
+        const directUrl = `${link}${link.includes('?') ? '&' : '?'}key=${apiKey}`;
+        const timelineId = `room-${room.id}-${Date.now()}`;
 
-        // Update room with generated video
+        // Update room with generated video instantly using direct URL
         setRooms(prev => prev.map(r =>
-          r.id === room.id ? { ...r, generatedVideo: url } : r
+          r.id === room.id ? { ...r, generatedVideo: directUrl } : r
         ));
 
-        // Add to gallery + timeline
-        updateGalleryItem(galleryId, { loading: false, url, prompt: finalPrompt });
+        // Add to gallery + timeline instantly using direct URL
+        updateGalleryItem(galleryId, { loading: false, url: directUrl, prompt: finalPrompt });
         setTimeline(prev => [...prev, {
-          id: `room-${room.id}-${Date.now()}`,
-          url,
+          id: timelineId,
+          url: directUrl,
           start: 0,
           end: room.duration,
           duration: room.duration,
@@ -570,6 +567,30 @@ No collage. One unified photo.
         }]);
 
         showToast(`${room.label} done ✓`, 'success');
+
+        // Download and upload to Supabase in the background
+        fetch(link, { headers: { 'x-goog-api-key': apiKey } })
+          .then(res => {
+            if (!res.ok) throw new Error(`Background download failed: ${res.status}`);
+            return res.blob();
+          })
+          .then(blob => {
+            return uploadToSupabase(blob, 'video', finalPrompt, currentUserId);
+          })
+          .then(publicUrl => {
+            if (publicUrl) {
+              setRooms(prev => prev.map(r =>
+                r.id === room.id ? { ...r, generatedVideo: publicUrl } : r
+              ));
+              updateGalleryItem(galleryId, { url: publicUrl });
+              setTimeline(prev => prev.map(t =>
+                t.id === timelineId ? { ...t, url: publicUrl } : t
+              ));
+            }
+          })
+          .catch(err => {
+            console.error('[Background Save] Failed:', err);
+          });
       }
 
     } catch (e: any) {
@@ -834,7 +855,7 @@ No collage. One unified photo.
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
         className={`absolute z-30 w-6 h-12 flex items-center justify-center rounded-r-xl transition-all shadow-lg
           ${isSidebarOpen
-            ? 'bg-[#111113] border border-[#1e1e24] text-white/30 hover:text-[#c8f135] hover:border-[#c8f135]/40'
+            ? 'bg-[#111113] border border-[#c8f135]/20 text-[#c8f135]/60 hover:text-[#c8f135] hover:border-[#c8f135]/60 hover:bg-[#c8f135]/5 shadow-[0_0_8px_rgba(200,241,53,0.1)] hover:shadow-[0_0_12px_rgba(200,241,53,0.35)]'
             : 'bg-[#c8f135] border border-[#c8f135] text-black hover:bg-[#d4f545] animate-pulse shadow-[0_0_12px_rgba(200,241,53,0.7)]'
           }`}
         style={{
@@ -1034,7 +1055,7 @@ No collage. One unified photo.
                           {generatingRoomId === activeRoom.id ? (
                             <><Loader2 size={10} className="animate-spin" />{videoProgressMsg}</>
                           ) : (
-                            <><Film size={10} /> Generate {activeRoom.label} Shot</>
+                            <><Film size={10} /> Generate {activeRoom.label} Shot (⚡ {getCurrentCost(false, activeRoom.duration)})</>
                           )}
                         </button>
                       ) : (
@@ -1093,7 +1114,7 @@ No collage. One unified photo.
                           <>
                             <MapPin size={12} />
                             Generate Full Tour
-                            <span className="opacity-50 ml-1">· {filledRoomCount} shots · {totalDuration}s</span>
+                            <span className="opacity-50 ml-1">· {filledRoomCount} shots · {totalDuration}s · ⚡ {rooms.filter(r => r.image).reduce((acc, r) => acc + getCurrentCost(false, r.duration), 0)}</span>
                           </>
                         )}
                       </button>

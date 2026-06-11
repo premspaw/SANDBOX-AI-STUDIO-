@@ -108,7 +108,7 @@ export const TalkingHeadTab: React.FC = () => {
         ) : (
           <>
             <Film size={12} />
-            <span>Generate Talking Head Video · {getCurrentCost(false)} Shorts</span>
+            <span>Generate Talking Head Video · ⚡ {getCurrentCost(false)}</span>
           </>
         )}
       </button>

@@ -308,7 +308,7 @@ Return ONLY the prompt text, no preamble.`;
               ) : (
                 <>
                   <Check size={11} className="text-[#c8f135]" />
-                  <span>Approve &amp; Make Video</span>
+                  <span>Approve &amp; Make Video (⚡ {getCurrentCost(false)})</span>
                 </>
               )}
             </button>

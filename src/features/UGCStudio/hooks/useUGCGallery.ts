@@ -10,7 +10,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { getApiUrl } from '../../../config/apiConfig';
-import { ensureDataUri } from '../utils/imageUtils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface GalleryItem {
@@ -69,6 +68,8 @@ export function useUGCGallery(currentUserId: string) {
         if (!item) return false;
         if (item.type === 'marketing_template') return false;
         if (item.url && (item.url.includes('/marketing/') || item.url.includes('marketing_template'))) return false;
+        // Blob URLs are session-specific — dead on refresh
+        if (item.url && item.url.startsWith('blob:')) return false;
         return true;
       });
       if (filtered.length !== parsed.length) {
@@ -94,6 +95,8 @@ export function useUGCGallery(currentUserId: string) {
         if (!item) return false;
         if ((item.type as string) === 'marketing_template') return false;
         if (item.url && (item.url.includes('/marketing/') || item.url.includes('marketing_template'))) return false;
+        // Blob URLs are session-specific — they expire on page refresh, drop them
+        if (item.url && item.url.startsWith('blob:')) return false;
         return true;
       });
       if (filtered.length !== idbItems.length) {
@@ -147,38 +150,7 @@ export function useUGCGallery(currentUserId: string) {
       });
   }, [currentUserId]);
 
-  // ── Merge Supabase history on mount ──────────────────────────────────────
-  useEffect(() => {
-    const fetchAssets = async () => {
-      if (!supabase) return;
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data, error } = await supabase
-        .from('assets')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      if (!error && data) {
-        const historyGallery: GalleryItem[] = data
-          .filter((item: any) => item.type !== 'marketing_template' && !(item.url && (item.url.includes('/marketing/') || item.url.includes('marketing_template'))))
-          .map((item: any) => ({
-            id: String(item.id),
-            type: (item.type === 'video' ? 'video' : 'image') as 'image' | 'video',
-            url: ensureDataUri(item.url),
-            prompt: item.name || item.prompt || '',
-          }));
-        setGallery(prev => {
-          const existingIds = new Set(prev.map(p => p.id));
-          const existingUrls = new Set(prev.map(p => p.url).filter(Boolean));
-          const newItems = historyGallery.filter(
-            hist => hist.url && !existingIds.has(hist.id) && !existingUrls.has(hist.url)
-          );
-          return newItems.length ? [...prev, ...newItems] : prev;
-        });
-      }
-    };
-    fetchAssets();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // ── addToGallery — mirrors MarketingStudio persistence pattern ────────────
   const addToGallery = useCallback((item: GalleryItem) => {

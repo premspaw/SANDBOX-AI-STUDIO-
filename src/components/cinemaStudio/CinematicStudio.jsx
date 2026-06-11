@@ -78,18 +78,18 @@ function CyclingLoadingText() {
 }
 
 const ENGINES = [
-  { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — 30⚡/s (54⚡/s audio)', cost: 5 },
-  { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3.1 Fast',     icon: '⚡', desc: 'Google Fast — 10⚡/s (12⚡/s audio)',         cost: 3 },
-  { id: 'veo-3.1-lite-generate-preview', label: 'Veo 3.1 Lite',     icon: '🍃', desc: 'Google Lite — 4⚡/s (6⚡/s audio)',           cost: 2 },
-  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 12⚡/s (6⚡/s 480p)',          cost: 12 },
-  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 16⚡/s (41⚡/s 1080p, 7⚡/s 480p)', cost: 16 },
-  { id: 'omni',                          label: 'Omni',            icon: '🌐', desc: 'Multi-modal fusion engine',             cost: 6 },
-  { id: 'omni-flash',                    label: 'Omni Flash',      icon: '✨', desc: 'Omni fast — rapid iteration',           cost: 4 },
+  { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — 5⚡/s (9⚡/s audio)', cost: 5 },
+  { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3.1 Fast',     icon: '⚡', desc: 'Google Fast — 3⚡/s (5⚡/s audio)',         cost: 3 },
+  { id: 'veo-3.1-lite-generate-preview', label: 'Veo 3.1 Lite',     icon: '🍃', desc: 'Google Lite — 2⚡/s (3⚡/s audio)',           cost: 2 },
+  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 12⚡/s (480p/1080p)',          cost: 12 },
+  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 16⚡/s (480p/1080p)', cost: 16 },
+  { id: 'omni',                          label: 'Omni',            icon: '🌐', desc: 'Multi-modal fusion engine — 6⚡/s',             cost: 6 },
+  { id: 'omni-flash',                    label: 'Omni Flash',      icon: '✨', desc: 'Omni fast — 4⚡/s',           cost: 4 },
 ];
 
 const IMAGE_ENGINES = [
-  { id: 'nano-banana-2',   label: 'Nano Banana 2',   icon: '🎨', desc: 'Google highest-fidelity photo gen — 2⚡ (4⚡ 2K, 6⚡ 4K)', cost: 2 },
-  { id: 'nano-banana-pro', label: 'Nano Banana Pro', icon: '💎', desc: 'Google maximum fidelity image engine — 5⚡ (10⚡ 2K, 15⚡ 4K)', cost: 5 },
+  { id: 'nano-banana-2',   label: 'Nano Banana 2',   icon: '🎨', desc: 'Google highest-fidelity photo gen — 2⚡ flat rate', cost: 2 },
+  { id: 'nano-banana-pro', label: 'Nano Banana Pro', icon: '💎', desc: 'Google maximum fidelity image engine — 5⚡ flat rate', cost: 5 },
   { id: 'gpt-image-2',     label: 'GPT Image Pro',   icon: '🤖', desc: 'OpenAI layout & text design — 3⚡ flat rate',                 cost: 3 },
 ];
 
@@ -1078,48 +1078,41 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
   const textareaRef = useRef(null);
   const getRequiredCredits = (engineId) => {
     if (activeTab === 'image') {
-      if (engineId === 'nano-banana-2') {
-        return resolution === '720p' ? 2 : resolution === '1080p' ? 4 : 6;
-      }
-      if (engineId === 'nano-banana-pro') {
-        return resolution === '720p' ? 5 : resolution === '1080p' ? 10 : 15;
-      }
       return IMAGE_ENGINES.find(e => e.id === engineId)?.cost || 2;
     }
-    if (engineId.startsWith('veo-3.1')) {
-      let costPerSec = 4;
-      if (engineId === 'veo-3.1-generate-preview') {
+    if (engineId.startsWith('veo-3.1') || engineId === 'veo3') {
+      let costPerSec = 10;
+      const modelId = engineId === 'veo3' ? 'veo-3.1-generate-preview' : engineId;
+      if (modelId === 'veo-3.1-generate-preview') {
         if (resolution === '4k') {
           costPerSec = generateAudio ? 80 : 54;
         } else {
           costPerSec = generateAudio ? 54 : 30;
         }
-      } else if (engineId === 'veo-3.1-fast-generate-preview') {
+      } else if (modelId === 'veo-3.1-fast-generate-preview') {
         if (resolution === '4k') {
           costPerSec = generateAudio ? 38 : 31;
         } else if (resolution === '1080p') {
           costPerSec = generateAudio ? 15 : 12;
-        } else {
+        } else { // 720p
           costPerSec = generateAudio ? 12 : 10;
         }
-      } else if (engineId === 'veo-3.1-lite-generate-preview') {
+      } else if (modelId === 'veo-3.1-lite-generate-preview') {
         if (resolution === '4k' || resolution === '1080p') {
           costPerSec = generateAudio ? 10 : 6;
-        } else {
+        } else { // 720p
           costPerSec = generateAudio ? 6 : 4;
         }
       }
       return costPerSec * duration;
     }
     if (engineId === 'seedance-fast') {
-      const costPerSec = resolution === '480p' ? 6 : 12;
-      return costPerSec * duration;
+      return 12 * duration;
     }
     if (engineId === 'seedace') {
-      const costPerSec = (resolution === '1080p' || resolution === '4k') ? 41 : (resolution === '480p' ? 7 : 16);
-      return costPerSec * duration;
+      return 16 * duration;
     }
-    return ENGINES.find(e => e.id === engineId)?.cost || 4;
+    return (ENGINES.find(e => e.id === engineId)?.cost || 4) * duration;
   };
 
   const isBusy = status === 'generating' || status === 'polling';

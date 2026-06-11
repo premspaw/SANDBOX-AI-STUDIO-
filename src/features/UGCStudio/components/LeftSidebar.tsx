@@ -176,7 +176,7 @@ export default function LeftSidebar() {
                 <h2 className="text-[10px] font-black text-[#3a3a4a] uppercase tracking-[0.2em] flex items-center gap-2">
                   <Camera size={12} className="text-[#c8f135]" /> Reference Assets
                 </h2>
-                <span className="text-[8px] font-black text-[#c8f135] bg-[#c8f135]/10 px-1.5 py-0.5 rounded border border-[#c8f135]/20 uppercase tracking-widest">{getImageCost()} Shorts</span>
+                <span className="text-[8px] font-black text-[#c8f135] bg-[#c8f135]/10 px-1.5 py-0.5 rounded border border-[#c8f135]/20 uppercase tracking-widest">⚡ {getImageCost()}</span>
               </div>
 
               {/* 3-slot grid: Person / Product / Stage */}
@@ -238,7 +238,7 @@ export default function LeftSidebar() {
                   'bg-[#c8f135] text-black hover:bg-[#d4ff3a] shadow-[0_4px_16px_rgba(200,241,53,0.25)]'
                 }`}
               >
-                {thIsGeneratingImg ? <><Loader2 size={10} className="animate-spin" /> Generating…</> : <><Camera size={10} /> Generate Reference Image <span className="opacity-60">· {getImageCost()} Shorts</span></>}
+                {thIsGeneratingImg ? <><Loader2 size={10} className="animate-spin" /> Generating…</> : <><Camera size={10} /> Generate Reference Image <span className="opacity-60">· ⚡ {getImageCost()}</span></>}
               </button>
 
               {/* Product Scan */}
@@ -503,7 +503,7 @@ export default function LeftSidebar() {
                 <h2 className="text-[10px] font-black text-[#3a3a4a] uppercase tracking-[0.2em] flex items-center gap-2">
                   <Camera size={12} className="text-[#c8f135]" /> Reference Assets
                 </h2>
-                <span className="text-[8px] font-black text-[#c8f135] bg-[#c8f135]/10 px-1.5 py-0.5 rounded border border-[#c8f135]/20 uppercase tracking-widest">{getImageCost()} Shorts</span>
+                <span className="text-[8px] font-black text-[#c8f135] bg-[#c8f135]/10 px-1.5 py-0.5 rounded border border-[#c8f135]/20 uppercase tracking-widest">⚡ {getImageCost()}</span>
               </div>
 
               {/* 3-slot grid: Person / Product / Stage */}
@@ -932,7 +932,7 @@ export default function LeftSidebar() {
                     <Camera size={12} />
                     {montageGeneratedImg ? 'Regenerate' : 'Generate'}{' '}
                     {SCENE_STYLES[selectedSceneStyle]?.name?.replace(/^[^a-zA-Z]+/, '') || 'Reference Image'}
-                    {' '}<span className="opacity-60">· {getImageCost()} Shorts</span>
+                    {' '}<span className="opacity-60">· ⚡ {getImageCost()}</span>
                   </>
               }
             </motion.button>
@@ -945,7 +945,7 @@ export default function LeftSidebar() {
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
         className={`absolute -right-3 top-1/2 -translate-y-1/2 z-30 w-6 h-12 flex items-center justify-center rounded-r-xl transition-all shadow-lg
           ${isSidebarOpen
-            ? 'bg-[#111113] border border-[#1e1e24] text-white/30 hover:text-[#c8f135] hover:border-[#c8f135]/40'
+            ? 'bg-[#111113] border border-[#c8f135]/20 text-[#c8f135]/60 hover:text-[#c8f135] hover:border-[#c8f135]/60 hover:bg-[#c8f135]/5 shadow-[0_0_8px_rgba(200,241,53,0.1)] hover:shadow-[0_0_12px_rgba(200,241,53,0.35)]'
             : 'bg-[#c8f135] border border-[#c8f135] text-black hover:bg-[#d4f545] animate-pulse shadow-[0_0_12px_rgba(200,241,53,0.7)]'
           }`}
         title={isSidebarOpen ? 'Hide sidebar' : 'Show sidebar'}

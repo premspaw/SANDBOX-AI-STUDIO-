@@ -1,8 +1,33 @@
-import React from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useUGC } from '../context/UGCContext';
 import { motion } from 'motion/react';
 import { Play, Video, Download, Wand2, Plus, Film } from 'lucide-react';
 import { resolveUrl } from '../../../config/apiConfig';
+
+// Helper to resolve video URLs without proxying external URLs, enabling browser range requests for thumbnails
+const resolveVideoUrl = (url: string): string => {
+  if (!url) return '';
+  if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:')) {
+    return url;
+  }
+  return resolveUrl(url);
+};
+
+// ── VideoThumbnail ─────────────────────────────────────────────────────────────
+// Displays a preview frame of the video at 0.5s natively without preloading the full video.
+function VideoThumbnail({ url, className }: { url: string; className?: string }) {
+  return (
+    <div className={`relative w-full h-full ${className || ''}`}>
+      <video
+        src={`${resolveVideoUrl(url)}#t=0.5`}
+        className="w-full h-full object-cover"
+        preload="metadata"
+        playsInline
+        muted
+      />
+    </div>
+  );
+}
 
 export default function GalleryGrid() {
   const {
@@ -133,7 +158,7 @@ export default function GalleryGrid() {
                 >
                   {item.type === 'video' ? (
                     <div className="w-full h-full relative bg-black/60 flex items-center justify-center">
-                      <video src={resolveUrl(item.url)} className="w-full h-full object-cover" preload="metadata" playsInline />
+                      <VideoThumbnail url={item.url} className="w-full h-full" />
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity duration-200">
                         <div className="w-10 h-10 rounded-full bg-black/70 border border-white/30 flex items-center justify-center shadow-lg">
                           <Play size={14} className="text-white fill-white ml-0.5" />

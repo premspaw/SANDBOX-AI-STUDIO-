@@ -1,5 +1,7 @@
 // ─── SCRIPT TONES ─────────────────────────────────────────────────────────────
-// Extracted from UGC.tsx — pure constant, no React dependency.
+// Human-first UGC tones — written to produce natural spoken dialogue,
+// not marketing copy. Every prompt instructs the AI to write AS a person
+// speaking on camera, not about a technique.
 
 export interface ScriptTone {
   name: string;
@@ -10,180 +12,281 @@ export interface ScriptTone {
 }
 
 export const SCRIPT_TONES: Record<string, ScriptTone> = {
-  // MARKETING TONES
+
+  // ── MARKETING ──────────────────────────────────────────────────────────────
   viral_marketing: {
     category: 'Marketing',
-    name: 'Viral Marketing',
+    name: 'Viral Hook',
     icon: '🔥',
-    description: 'High-energy hooks, fast-paced',
+    description: 'Stops the scroll in 2 seconds',
     prompt:
-      "Write in a high-energy viral marketing style with attention-grabbing hooks, FOMO triggers, power words, short punchy sentences, and strong CTAs. Use pattern interrupts and scroll-stoppers.",
+      `Write exactly how someone talks when they're genuinely excited and can't wait to tell their friend something. 
+      Start mid-thought — drop the viewer into the middle of the energy. 
+      Short, punchy lines. Real pauses ("okay wait—", "no seriously—", "I'm not joking"). 
+      Never say "attention-grabbing" or "scroll-stopper" — just BE that. 
+      Sounds like it was filmed spontaneously, not scripted.`,
   },
+
   luxury_sales: {
     category: 'Marketing',
-    name: 'Luxury & Premium',
+    name: 'Soft Luxury',
     icon: '💎',
-    description: 'Sophisticated, aspirational',
+    description: 'Quiet confidence, premium feel',
     prompt:
-      'Write in an elegant, sophisticated tone emphasizing exclusivity, premium quality, and aspirational lifestyle. Use refined language, create desire through scarcity, focus on craftsmanship and prestige.',
+      `Write like someone who genuinely has taste and isn't trying to sell you anything — they're just sharing what they love. 
+      Slow, deliberate sentences. No hype words. 
+      Describe the feeling of using it, not the features. 
+      "The texture is just—" / "I didn't expect to love it this much" / "it's one of those things you just keep reaching for." 
+      Sounds like a whisper, not a shout.`,
   },
+
   direct_response: {
     category: 'Marketing',
-    name: 'Direct Response',
+    name: 'Problem → Fix',
     icon: '🎯',
-    description: 'Problem-solution, urgent',
+    description: 'Names the pain, gives the answer',
     prompt:
-      "Write in a direct response style: identify pain point, present solution, emphasize benefits over features, create urgency, clear CTA. Use 'you' language and address objections.",
+      `Write like someone who had a real problem and found the thing that actually fixed it. 
+      Start by naming the exact frustration — be specific, not vague. 
+      Then the pivot: "and then I found this" / "okay so I tried this and—". 
+      End with what changed. No fake urgency. No "limited time offer" language. 
+      Real person. Real problem. Real result.`,
   },
+
   social_proof: {
     category: 'Marketing',
-    name: 'Social Proof',
+    name: 'Everyone\'s Using It',
     icon: '⭐',
-    description: 'Trust-building, relatable',
+    description: 'Feels like a recommendation from a friend',
     prompt:
-      "Write as if sharing a personal discovery or recommendation to a friend. Include relatable problems, emphasize results and transformations, use social proof language like 'everyone's talking about' and 'you need to try this'.",
+      `Write like you're texting a friend to tell them about something you discovered. 
+      Casual, a little breathless, slightly gossipy. 
+      "Okay so I've been seeing this everywhere and I finally tried it—" 
+      Use "literally", "honestly", "I was not expecting this". 
+      Sounds like you found a secret and you're letting them in on it.`,
   },
-  // STORYTELLING TONES
+
+  // ── STORYTELLING ───────────────────────────────────────────────────────────
   emotional_story: {
     category: 'Storytelling',
-    name: 'Emotional Story',
+    name: 'Real Talk',
     icon: '❤️',
-    description: 'Personal, heartfelt',
+    description: 'Vulnerable, honest, human',
     prompt:
-      'Write a compelling emotional narrative with a personal journey arc. Start with vulnerability or challenge, show transformation, end with hope or triumph. Use vivid sensory details and emotional language.',
+      `Write like someone opening up about something they went through. 
+      Start with the low point — the actual feeling, not a generic problem. 
+      Don't rush to the product. Let the story breathe. 
+      "I remember thinking—" / "there was this one day where—". 
+      The product appears naturally as part of what helped, not as the hero. 
+      Sounds like they're talking to a camera at 11pm, not a film set.`,
   },
+
   hero_journey: {
     category: 'Storytelling',
-    name: "Hero's Journey",
+    name: 'Glow-Up Arc',
     icon: '🦸',
-    description: 'Transformation arc',
+    description: 'Before → struggle → transformation',
     prompt:
-      "Structure as a hero's journey: ordinary world → challenge/obstacle → struggle → breakthrough → transformation. Make the viewer the hero, product/service as the mentor/tool.",
+      `Write like someone telling their transformation story with real detail — not a highlight reel. 
+      Include the messy middle: "I tried like three other things first." 
+      Make the turning point feel earned. 
+      "And then something actually shifted" / "week three was when I noticed—". 
+      End with where they are now, in their own words. Grounded, not motivational-poster.`,
   },
-  // EDUCATIONAL TONES
+
+  // ── EDUCATIONAL ────────────────────────────────────────────────────────────
   educational: {
     category: 'Educational',
-    name: 'Tutorial',
+    name: 'Let Me Show You',
     icon: '📚',
-    description: 'Informative, clear',
+    description: 'Helpful, clear, step-by-step',
     prompt:
-      "Write in a clear, educational tone breaking down information into digestible steps. Use 'here's how', 'let me show you', numbered steps. Encourage learning with accessible language.",
+      `Write like a knowledgeable friend explaining something while they do it. 
+      Conversational but clear. "So first you just—" / "the key thing here is—" / "and this is the part most people skip". 
+      One idea per sentence. No jargon unless you explain it immediately. 
+      Sounds like a voice note, not a manual.`,
   },
+
   expert_tips: {
     category: 'Educational',
-    name: 'Expert Tips',
+    name: 'Insider Intel',
     icon: '💡',
-    description: 'Insider knowledge',
+    description: 'Sounds like they actually know their stuff',
     prompt:
-      "Write as an expert sharing insider tips and life hacks. Use phrases like 'pro tip', 'here's what most people don't know', 'the secret is'. Make viewer feel they're getting exclusive knowledge.",
+      `Write like someone who genuinely knows this topic deeply and is sharing the things they wish they'd known earlier. 
+      Specific details, not general advice. 
+      "Most people do X — but actually Y is why it works." 
+      No "pro tip" labels — just drop the knowledge naturally. 
+      Confident but not arrogant. They've earned it.`,
   },
+
   myth_busting: {
     category: 'Educational',
-    name: 'Myth-Busting',
+    name: 'That\'s Actually Wrong',
     icon: '🔬',
-    description: 'Correcting misconceptions',
+    description: 'Calls out the misinformation',
     prompt:
-      "Start by calling out a common myth or misconception. Use 'stop believing', 'the truth is', 'here's what they don't tell you'. Build credibility by revealing insider information.",
+      `Write like someone who just learned something that changed their mind and they can't believe they didn't know sooner. 
+      Start with the wrong belief stated plainly — "okay so everyone says X". 
+      Then the reframe: "but here's what's actually happening—". 
+      Sounds a little indignant, a little excited. Like they're correcting a record.`,
   },
-  // LIFESTYLE TONES
+
+  // ── LIFESTYLE ──────────────────────────────────────────────────────────────
   casual_vlog: {
     category: 'Lifestyle',
-    name: 'Casual Vlog',
+    name: 'Just Talking',
     icon: '📹',
-    description: 'Friendly, authentic',
+    description: 'Zero effort energy, maximum relatability',
     prompt:
-      "Write in a casual, friend-to-friend conversational tone. Use contractions, filler words like 'so', 'like', casual language. Make it feel spontaneous and authentic, like talking to the camera.",
+      `Write exactly like someone filming a casual vlog — stream of consciousness, natural rhythm. 
+      Incomplete sentences are fine. Filler words are fine ("like", "you know", "honestly"). 
+      Small digressions are fine. 
+      "Okay so I was just — wait let me back up." 
+      No polish. No structure. Just a person talking.`,
   },
+
   day_in_life: {
     category: 'Lifestyle',
-    name: 'Day in Life',
+    name: 'Day In My Life',
     icon: '🌅',
-    description: 'Personal narrative',
+    description: 'Grounded, routine, real',
     prompt:
-      'Write as a personal diary entry or day-in-the-life narrative. Use present tense, include time markers, show authentic moments. Balance routine with interesting details.',
+      `Write like someone narrating their morning or afternoon as it happens. 
+      Present tense. Specific small details ("made my third coffee", "couldn't find my keys again"). 
+      The product fits into the routine naturally — not a big reveal, just part of the day. 
+      Feels like you're watching a real person's real life, not a curated aesthetic.`,
   },
+
   lifestyle_aspirational: {
     category: 'Lifestyle',
-    name: 'Aspirational',
+    name: 'Soft Life',
     icon: '✨',
-    description: 'Aesthetic, curated',
+    description: 'Elevated, intentional, peaceful',
     prompt:
-      'Write in an aspirational lifestyle tone emphasizing aesthetics, intentional living, elevated everyday moments. Use poetic language, focus on feelings and ambiance, create desire for the lifestyle.',
+      `Write like someone who has figured out their version of a good life and is quietly sharing it. 
+      Slow sentences. Sensory language ("the smell of it", "the way the light hits"). 
+      Not bragging — just appreciating. 
+      "This is the kind of thing that makes a Tuesday feel different." 
+      Calm, warm, unhurried.`,
   },
-  // ENTERTAINMENT
+
+  // ── ENTERTAINMENT ──────────────────────────────────────────────────────────
   comedy_skit: {
     category: 'Entertainment',
-    name: 'Comedy Skit',
+    name: 'Funny Take',
     icon: '😂',
-    description: 'Funny, exaggerated',
+    description: 'Timing, timing, timing',
     prompt:
-      'Write with comedic timing using exaggeration, unexpected twists, relatable humor, and playful language. Include setup and punchline structure. Make it entertaining first, informative second.',
+      `Write like a comedian setting up a bit. 
+      The setup is relatable (everyone's been there). The punchline is unexpected but instantly makes sense. 
+      Short sentences for punch. Longer sentence for buildup. 
+      "You know when you—" / "and then — nothing. just. nothing." 
+      The product is part of the joke, not a break from it. Dry or absurd, not forced.`,
   },
+
   reaction_commentary: {
     category: 'Entertainment',
-    name: 'Reaction',
+    name: 'Hot Take',
     icon: '🗣️',
-    description: 'Opinionated, engaging',
+    description: 'Opinionated, direct, no filter',
     prompt:
-      'Write as live reaction or commentary. Use expressive language, exclamations, rhetorical questions. Share opinions boldly while keeping it entertaining. React authentically to surprises.',
+      `Write like someone who has a strong opinion and zero hesitation about sharing it. 
+      Punchy, declarative sentences. A little provocative. 
+      "I'm just going to say what everyone's thinking." 
+      They might be wrong. They don't care. 
+      The energy is confident, maybe slightly unhinged. Entertaining first, informative if it fits.`,
   },
-  // NICHE
+
+  // ── NICHE ──────────────────────────────────────────────────────────────────
   unboxing_review: {
     category: 'Niche',
-    name: 'Unboxing',
+    name: 'Unboxing Review',
     icon: '📦',
-    description: 'First impressions',
+    description: 'Genuine first impressions, unfiltered',
     prompt:
-      "Write as real-time unboxing experience. Build anticipation, share first impressions, cover features systematically, give honest pros/cons. Use 'wow', 'okay so', 'let's see' naturally.",
+      `Write like someone experiencing the product for the first time on camera. 
+      Real-time reactions. Genuine surprises. 
+      "Oh — okay, that's actually—" / "wait this is nicer than I thought". 
+      Include one thing that wasn't expected. One thing that could be better. 
+      Honest, not hyped. The enthusiasm is real because the product earns it.`,
   },
+
   comparison: {
     category: 'Niche',
-    name: 'Comparison',
+    name: 'I Tried Both',
     icon: '⚖️',
-    description: 'Analytical, balanced',
+    description: 'First-hand comparison, clear verdict',
     prompt:
-      "Structure as balanced comparison: introduce both options, compare key features side-by-side, highlight strengths/weaknesses, give clear verdict. Use 'versus', 'on the other hand', 'the winner is'.",
+      `Write like someone who actually used both options for a real amount of time and has a real opinion. 
+      No corporate hedging. Give the verdict clearly. 
+      "Look, X is fine if you — but if you actually want —, you want Y." 
+      Acknowledge what the other option does well. Then say why this one wins for them specifically.`,
   },
+
   before_after: {
     category: 'Niche',
-    name: 'Before/After',
+    name: 'This Changed It',
     icon: '🔄',
-    description: 'Results-driven',
+    description: 'Specific results, believable timeline',
     prompt:
-      "Emphasize dramatic transformation. Start with 'before' pain point or problem state, build anticipation, reveal 'after' results. Use time markers and quantifiable results. Make the change feel achievable.",
+      `Write like someone showing their actual results — not the best case, just their real case. 
+      Be specific about time ("by day 4", "after about two weeks"). 
+      Describe what they noticed first. Then what changed more gradually. 
+      "I didn't even realize until someone pointed it out" type of moment. 
+      Real, not exaggerated. The specificity is what makes it believable.`,
   },
-  // URGENCY
+
+  // ── URGENCY ────────────────────────────────────────────────────────────────
   trending_now: {
     category: 'Urgency',
-    name: 'Trending Now',
+    name: 'Caught On Late',
     icon: '🌊',
-    description: 'Timely, relevant',
+    description: 'FOMO without sounding desperate',
     prompt:
-      "Reference current trend or viral moment. Use 'everyone's talking about', 'if you haven't seen', 'this is blowing up'. Create FOMO around being in the know. Strike while relevant.",
+      `Write like someone who resisted a trend for a while and then finally caved — and now gets why everyone was obsessed. 
+      Self-aware about being late. 
+      "I was literally the last person to try this." / "I kept seeing it and I was like — okay fine." 
+      Now they're a convert. The FOMO is real because they felt it themselves.`,
   },
+
   limited_time: {
     category: 'Urgency',
-    name: 'Limited Time',
+    name: 'Don\'t Sleep On This',
     icon: '⏰',
-    description: 'Scarcity-driven',
+    description: 'Genuine urgency, not manufactured',
     prompt:
-      "Create strong urgency with time/quantity scarcity. Use 'only', 'last chance', 'don't miss out', countdown language. Make inaction feel like a loss. Clear deadline and strong CTA.",
+      `Write like a friend who just found out about something good and is texting you immediately. 
+      The urgency comes from caring, not from a countdown timer. 
+      "I don't know how long this is going to be available but—". 
+      Short. Direct. Sounds like they filmed this in 30 seconds because they didn't want you to miss it.`,
   },
-  // TRUST
+
+  // ── TRUST ──────────────────────────────────────────────────────────────────
   honest_review: {
     category: 'Trust',
-    name: 'Brutally Honest',
+    name: 'No BS Review',
     icon: '💯',
-    description: 'Transparent, no-BS',
+    description: 'Says the quiet part out loud',
     prompt:
-      "Write with radical honesty and transparency. Call out both pros AND cons, admit sponsorships or biases, use 'let me be real', 'not gonna lie'. Build trust through authenticity over perfection.",
+      `Write like someone who is going to tell you the real thing, not the nice thing. 
+      They'll say what they don't love. They'll admit what surprised them. 
+      "I'm not going to pretend this is perfect—" / "here's the thing nobody tells you—". 
+      Trust is built by being willing to point out the flaw. 
+      The positives land harder because the negatives were real.`,
   },
+
   personal_recommendation: {
     category: 'Trust',
-    name: 'Personal Rec',
+    name: 'Just Telling You',
     icon: '🤝',
-    description: 'Genuine, helpful',
+    description: 'One friend to another',
     prompt:
-      "Write as sincere recommendation to a friend. Use 'I genuinely', 'you have to try', personal anecdotes. Show you use/love it yourself. Make viewer feel you care about helping them.",
+      `Write like someone texting their best friend about something they think they'd actually love. 
+      Warm, specific, low-pressure. 
+      "I'm not saying you have to — but like, I genuinely think you'd love this." 
+      References something specific about the person they're talking to ("you always say you struggle with—"). 
+      Feels like a personal recommendation, not a review.`,
   },
+
 };

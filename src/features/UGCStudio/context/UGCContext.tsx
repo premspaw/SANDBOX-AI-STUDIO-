@@ -94,6 +94,8 @@ export interface UGCContextType {
   setScriptDuration: (v: string) => void;
   selectedScriptTone: string;
   setSelectedScriptTone: (v: string) => void;
+  selectedNiche: string;
+  setSelectedNiche: (v: string) => void;
   spokenDialog: string;
   setSpokenDialog: (v: string) => void;
   scenes: Scene[];
@@ -269,7 +271,7 @@ export interface UGCContextType {
   isGeneratingScript: boolean;
   handleApiError: (e: any, context: string) => void;
   getImageCost: () => number;
-  getCurrentCost: (isMontage?: boolean) => number;
+  getCurrentCost: (isMontage?: boolean, customDuration?: number) => number;
 
   // ── Extended States & Handlers ──────────────────────────────────────────
   analyzeProduct: () => Promise<void>;

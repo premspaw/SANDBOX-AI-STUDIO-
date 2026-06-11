@@ -215,46 +215,47 @@ export const MontagePanel: React.FC = () => {
       const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
       if (downloadLink) {
         const apiKey = getApiKey();
-        setVideoProgressMsg('Downloading Render...');
-        const response = await fetch(downloadLink, {
-          method: 'GET',
-          headers: { 'x-goog-api-key': apiKey },
-        });
-        const blob = await response.blob();
-        const localUrl = URL.createObjectURL(blob);
+        const directUrl = `${downloadLink}${downloadLink.includes('?') ? '&' : '?'}key=${apiKey}`;
         const tempId = Date.now().toString();
         
         const newItemId = Math.random().toString(36).substr(2, 9);
         const newItem = {
           id: newItemId,
           type: 'video' as const,
-          url: localUrl,
+          url: directUrl,
           start: 0,
           end: duration,
-          duration: duration,
-          originalFile: new File([blob], `${option.id}_montage.mp4`, { type: 'video/mp4' })
+          duration: duration
         };
         addToTimeline(newItem);
-        addToGallery({ id: tempId, type: 'video', url: localUrl });
+        addToGallery({ id: tempId, type: 'video', url: directUrl });
         showToast(`${option.title} montage added to timeline!`, 'success');
         setShowMontageOptions(false);
         setMontageGeneratedImg('');
 
-        // Upload in the background
-        setVideoProgressMsg('Saving...');
-        uploadToSupabase(blob, 'video', option.prompt || option.title, currentUserId).then((publicUrl) => {
-          if (publicUrl) {
-            updateGalleryItem(tempId, { url: publicUrl });
-            setTimeline((prev: any[]) =>
-              prev.map((t) => (t.id === newItemId ? { ...t, url: publicUrl } : t))
-            );
-          } else {
-            showToast('Cloud save failed. Montage will remain stored locally in your browser.', 'error');
-          }
-        }).catch((err) => {
-          console.error('[Background Upload] Montage upload failed:', err);
-          showToast(`Cloud save failed: ${err.message || err}`, 'error');
-        });
+        // Download and upload to Supabase in the background
+        fetch(downloadLink, {
+          method: 'GET',
+          headers: { 'x-goog-api-key': apiKey },
+        })
+          .then(res => {
+            if (!res.ok) throw new Error(`Background download failed: ${res.status}`);
+            return res.blob();
+          })
+          .then(blob => {
+            return uploadToSupabase(blob, 'video', option.prompt || option.title, currentUserId);
+          })
+          .then(publicUrl => {
+            if (publicUrl) {
+              updateGalleryItem(tempId, { url: publicUrl });
+              setTimeline((prev: any[]) =>
+                prev.map((t) => (t.id === newItemId ? { ...t, url: publicUrl } : t))
+              );
+            }
+          })
+          .catch((err) => {
+            console.error('[Background Upload] Montage upload failed:', err);
+          });
       } else {
         showToast('Veo returned no video. The prompt may have been filtered. Try rephrasing.', 'error');
       }
@@ -437,7 +438,7 @@ export const MontagePanel: React.FC = () => {
                         className="w-full py-1.5 bg-white/10 border border-white/15 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-[#c8f135]/10 hover:border-[#c8f135]/40 hover:text-[#c8f135] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                       >
                         {isGeneratingMontageImg ? <Loader2 size={11} className="animate-spin" /> : <Camera size={11} />}
-                        {montageGeneratedImg ? 'Regenerate Image' : 'Generate Reference Image'} <span className="opacity-60">· {getImageCost()} Shorts</span>
+                        {montageGeneratedImg ? 'Regenerate Image' : 'Generate Reference Image'} <span className="opacity-60">· ⚡ {getImageCost()}</span>
                       </button>
                     </div>
 
@@ -484,7 +485,7 @@ export const MontagePanel: React.FC = () => {
 
                       {/* Estimated cost calculation */}
                       <p className="text-[7px] font-mono text-gray-600 uppercase tracking-wider mb-2">
-                        {montageAudioEnabled ? '🔊 Audio ON' : '🔇 Muted'} &nbsp;·&nbsp; {montageDuration}s clip ({montageAudioEnabled ? 12 * parseInt(montageDuration) : 10 * parseInt(montageDuration)} Shorts)
+                        {montageAudioEnabled ? '🔊 Audio ON' : '🔇 Muted'} &nbsp;·&nbsp; {montageDuration}s clip (⚡ {getCurrentCost(true)})
                       </p>
 
                       <button
@@ -494,7 +495,7 @@ export const MontagePanel: React.FC = () => {
                         className="w-full py-2 bg-[#c8f135] text-black font-black text-[10px] uppercase tracking-widest rounded-lg hover:bg-[#d9ff4d] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {isGeneratingVideo ? <Loader2 size={13} className="animate-spin" /> : <Video size={13} />}
-                        {isGeneratingVideo ? (videoProgressMsg || 'Generating...') : (montageGeneratedImg ? `Animate Reference → Video (${montageAudioEnabled ? 12 * parseInt(montageDuration) : 10 * parseInt(montageDuration)} Shorts)` : `Produce Montage Video (${montageAudioEnabled ? 12 * parseInt(montageDuration) : 10 * parseInt(montageDuration)} Shorts)`)}
+                        {isGeneratingVideo ? (videoProgressMsg || 'Generating...') : (montageGeneratedImg ? `Animate Reference → Video (⚡ ${getCurrentCost(true)})` : `Produce Montage Video (⚡ ${getCurrentCost(true)})`)}
                       </button>
                     </div>
                   </div>
