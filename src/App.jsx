@@ -1,26 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { Bot } from 'lucide-react'
-import { Layout } from './components/pages/Layout'
-import { AssetsLibrary } from './components/panels/AssetsLibrary'
-import LandingPage from './components/pages/LandingPage'
-import AuthPage from './components/pages/AuthPage'
-import UGC from './features/UGCStudio/UGC'
-import { PlaygroundCanvas } from './components/canvas/PlaygroundCanvas'
-import { AssetManager } from './components/panels/AssetManager'
-import MarketingStudio from './components/pages/MarketingStudio'
-import CarouselStudio from './components/pages/CarouselStudio'
-import SettingsPage from './components/pages/SettingsPage'
-import PricingPage from './components/pages/PricingPage'
-import BrandVoicePage from './components/pages/BrandVoicePage'
-import AgentPage from './components/pages/AgentPage'
-import AvatarStudio from './components/pages/AvatarStudio'
-import LivingAvatar from './components/pages/LivingAvatar'
-import CinematicStudio from './components/cinemaStudio/CinematicStudio'
-import { supabase } from './lib/supabase'
-import { initFaviconAnimation } from './utils/favicon'
-import { Toast } from './components/common/Toast'
-import { useAppStore } from './store'
-import { X } from 'lucide-react'
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { Bot, X } from 'lucide-react';
+import { Layout } from './components/pages/Layout';
+import LandingPage from './components/pages/LandingPage';
+import { supabase } from './lib/supabase';
+import { initFaviconAnimation } from './utils/favicon';
+import { Toast } from './components/common/Toast';
+import { useAppStore } from './store';
+
+// Lazy imports of panels and inner studio pages
+const AuthPage = lazy(() => import('./components/pages/AuthPage'));
+const AssetsLibrary = lazy(() => import('./components/panels/AssetsLibrary').then(m => ({ default: m.AssetsLibrary })));
+const UGC = lazy(() => import('./features/UGCStudio/UGC'));
+const PlaygroundCanvas = lazy(() => import('./components/canvas/PlaygroundCanvas').then(m => ({ default: m.PlaygroundCanvas })));
+const AssetManager = lazy(() => import('./components/panels/AssetManager').then(m => ({ default: m.AssetManager })));
+const MarketingStudio = lazy(() => import('./components/pages/MarketingStudio'));
+const CarouselStudio = lazy(() => import('./components/pages/CarouselStudio'));
+const SettingsPage = lazy(() => import('./components/pages/SettingsPage'));
+const PricingPage = lazy(() => import('./components/pages/PricingPage'));
+const BrandVoicePage = lazy(() => import('./components/pages/BrandVoicePage'));
+const AgentPage = lazy(() => import('./components/pages/AgentPage'));
+const AvatarStudio = lazy(() => import('./components/pages/AvatarStudio'));
+const LivingAvatar = lazy(() => import('./components/pages/LivingAvatar'));
+const CinematicStudio = lazy(() => import('./components/cinemaStudio/CinematicStudio'));
 
 // Beautiful, futuristic stand-by placeholder for the new Avatar Studio
 function AvatarPlaceholder() {
@@ -56,6 +57,25 @@ function AvatarPlaceholder() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Sleek, futuristic dark loader fallback for lazy components
+function StudioLoader() {
+  return (
+    <div className="h-full w-full flex flex-col items-center justify-center bg-[#050505] text-white p-6 relative font-sans overflow-hidden">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-[#c8f135]/5 rounded-full blur-[80px] pointer-events-none -z-10" />
+      <div className="text-center space-y-4">
+        <div className="relative w-12 h-12 mx-auto">
+          <div className="absolute inset-0 rounded-full border border-white/5" />
+          <div className="absolute inset-0 rounded-full border-t-2 border-l-2 border-[#c8f135] animate-spin" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-[#c8f135]/80">Loading Studio</p>
+          <p className="text-[8px] font-mono text-white/30 uppercase tracking-widest">Initializing parameter state...</p>
         </div>
       </div>
     </div>
@@ -219,28 +239,47 @@ function App() {
 
   if (!authChecked) return null; // wait for session check
 
-  const tabComponents = {
-    home: <LandingPage onEnter={handleEnterStudio} onPricing={() => setActiveTab('pricing')} />,
-    auth: <AuthPage onAuthSuccess={handleAuthSuccess} />,
-    assets: (
-      <AssetsLibrary
-        setActiveTab={setActiveTab}
-        onSelectReference={() => setActiveTab('avatar')}
-      />
-    ),
-    avatar: <AvatarStudio />,
-    'living-avatar': <LivingAvatar />,
-    'directors-cut': <PlaygroundCanvas />,
-    marketing: <MarketingStudio />,
-    carousel: <CarouselStudio userId={userProfile?.id} />,
-    ugc: <UGC />,
-    admin: <AssetManager />,
-    settings: <SettingsPage />,
-    pricing: <PricingPage />,
-    'brand-voice': <BrandVoicePage />,
-    'agent': <AgentPage />,
-    'cinematic-studio': <CinematicStudio />,
-  }
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'home':
+        return <LandingPage onEnter={handleEnterStudio} onPricing={() => setActiveTab('pricing')} />;
+      case 'auth':
+        return <AuthPage onAuthSuccess={handleAuthSuccess} />;
+      case 'assets':
+        return (
+          <AssetsLibrary
+            setActiveTab={setActiveTab}
+            onSelectReference={() => setActiveTab('avatar')}
+          />
+        );
+      case 'avatar':
+        return <AvatarStudio />;
+      case 'living-avatar':
+        return <LivingAvatar />;
+      case 'directors-cut':
+        return <PlaygroundCanvas />;
+      case 'marketing':
+        return <MarketingStudio />;
+      case 'carousel':
+        return <CarouselStudio userId={userProfile?.id} />;
+      case 'ugc':
+        return <UGC />;
+      case 'admin':
+        return <AssetManager />;
+      case 'settings':
+        return <SettingsPage />;
+      case 'pricing':
+        return <PricingPage />;
+      case 'brand-voice':
+        return <BrandVoicePage />;
+      case 'agent':
+        return <AgentPage />;
+      case 'cinematic-studio':
+        return <CinematicStudio />;
+      default:
+        return null;
+    }
+  };
 
 
   const getContainerClass = () => {
@@ -253,7 +292,9 @@ function App() {
   return (
     <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
       <div className={getContainerClass()}>
-        {tabComponents[activeTab] ?? null}
+        <Suspense fallback={<StudioLoader />}>
+          {renderTabContent()}
+        </Suspense>
       </div>
 
       {isRecoveringPassword && (

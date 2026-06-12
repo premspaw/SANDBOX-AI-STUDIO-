@@ -257,7 +257,7 @@ function VCell({ cell, style = {} }) {
         {cell.src && inView ? (
           <video
             key={cell.src}
-            autoPlay muted loop playsInline
+            autoPlay muted loop playsInline preload="metadata"
             src={resolveAsset(cell.src)}
             style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 1 }}
           />
@@ -1154,7 +1154,7 @@ export default function LandingPage({ onEnter, onPricing }) {
               }}
             >
               {([...VCELLS, ...(isMobile ? [] : [...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS])])
-                .slice(0, isMobile ? 6 : 48)
+                .slice(0, isMobile ? 6 : 24)
                 .map((cell, i) => (
                   <VCell key={i} cell={cell} />
                 ))}
@@ -1381,7 +1381,7 @@ function StackVideo({ src, objectFit = 'cover', objectPosition = 'center' }) {
             muted={isMuted}
             loop
             playsInline
-            preload="auto"
+            preload="metadata"
             crossOrigin="anonymous"
             src={src}
             style={{ width: '100%', height: '100%', objectFit, objectPosition }}
