@@ -332,6 +332,11 @@ export default function HomeTourTab() {
         refImages = undefined;
       }
 
+      if (realtorImg) {
+        prompt += `\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.
+SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.`;
+      }
+
       const response = await fetch(getApiUrl('/api/generate-image'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -341,6 +346,7 @@ export default function HomeTourTab() {
           aspect_ratio: '9:16',
           size: '2K',
           userId: currentUserId,
+          folder: 'ugc/generated',
           referenceImages: refImages,
         }),
       });
@@ -421,8 +427,7 @@ export default function HomeTourTab() {
       let imagePayload: { imageBytes: string; mimeType: string } | undefined;
 
       if (realtorImg && room.image) {
-        // Generate composite reference: realtor IN the room
-        const compositePrompt = `
+        let compositePrompt = `
 The FIRST image is the REALTOR/AGENT reference photo.
 The SECOND image is the ${room.label} of a property.
 TASK: Generate ONE single coherent ultra-realistic photo of this realtor 
@@ -433,6 +438,11 @@ The room background must match the second image exactly.
 Ultra-realistic, lifelike textures, cinematic realism. 
 No collage. One unified photo.
         `.trim();
+
+        if (realtorImg) {
+          compositePrompt += `\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.
+SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.`;
+        }
 
         const getBase64WithPrefix = async (imgObj: { url?: string; file?: File }) => {
           let blob = imgObj.file;
@@ -456,6 +466,7 @@ No collage. One unified photo.
             aspect_ratio: '9:16',
             size: '2K',
             userId: currentUserId,
+            folder: 'ugc/generated',
             referenceImages: refImages,
           }),
         });

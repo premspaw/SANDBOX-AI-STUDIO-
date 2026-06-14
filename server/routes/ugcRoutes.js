@@ -340,7 +340,7 @@ Output ONLY the style description — no preamble, no headings.`,
             broadcastProgress('ugc-hook', 1, 3, 'Generating viral hook script...');
 
             const result = await client.models.generateContent({
-                model: 'gemini-2.0-flash',
+                model: 'gemini-2.5-flash',
                 config: { responseMimeType: "application/json" },
                 contents: [{
                     role: 'user',
@@ -413,7 +413,7 @@ Return ONLY valid JSON.`
             broadcastProgress('ugc-captions', 1, 2, 'Generating caption overlays...');
 
             const aiResp = await client.models.generateContent({
-                model: 'gemini-2.0-flash',
+                model: 'gemini-2.5-flash',
                 config: { responseMimeType: "application/json" },
                 contents: [{
                     role: 'user',
@@ -749,7 +749,7 @@ Return ONLY valid JSON.`
             };
 
             const keyframeResult = await withRetry(() => client.models.generateContent({
-                model: 'gemini-2.0-flash',
+                model: 'gemini-2.5-flash',
                 config: { responseModalities: ['image', 'text'] },
                 contents: [{
                     role: 'user',

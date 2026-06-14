@@ -18,7 +18,34 @@ export interface GalleryItem {
   url: string;
   prompt?: string;
   loading?: boolean;
+  createdAt?: number;
 }
+
+// ── Helper to resolve item timestamps for sorting ──────────────────────────────
+const getTimestamp = (item: GalleryItem): number => {
+  if (item.createdAt) return item.createdAt;
+  if (item.id) {
+    if (item.id.startsWith('local_')) {
+      const parts = item.id.split('_');
+      if (parts[1]) {
+        const t = parseInt(parts[1]);
+        if (!isNaN(t)) return t;
+      }
+    }
+    if (item.id.startsWith('img-pending-') || item.id.startsWith('img-pending-') || item.id.startsWith('img-pending-')) {
+      const parts = item.id.split('-');
+      if (parts[2]) {
+        const t = parseInt(parts[2]);
+        if (!isNaN(t)) return t;
+      }
+    }
+    const num = parseInt(item.id);
+    if (!isNaN(num)) {
+      return num;
+    }
+  }
+  return 0;
+};
 
 // ── IndexedDB helpers ─────────────────────────────────────────────────────────
 const IDB_NAME = 'ugc_studio';
@@ -103,14 +130,13 @@ export function useUGCGallery(currentUserId: string) {
         saveGalleryToIDB(filtered);
       }
       const sorted = [...filtered].sort((a, b) => {
-        const aNum = parseInt(a.id) || 0;
-        const bNum = parseInt(b.id) || 0;
-        return bNum - aNum;
+        return getTimestamp(b) - getTimestamp(a);
       });
       setGallery(prev => {
         const existingIds = new Set(prev.map(i => i.id));
         const extras = sorted.filter(i => !existingIds.has(i.id) && i.url);
-        return extras.length ? [...extras, ...prev] : prev;
+        const combined = [...extras, ...prev];
+        return combined.sort((a, b) => getTimestamp(b) - getTimestamp(a));
       });
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -135,11 +161,32 @@ export function useUGCGallery(currentUserId: string) {
             type: (a.type === 'video' ? 'video' : 'image') as 'image' | 'video',
             url: a.url,
             prompt: a.prompt || '',
+            createdAt: a.created_at ? new Date(a.created_at).getTime() : (a.id.startsWith('local_') ? parseInt(a.id.split('_')[1]) : parseInt(a.id) || Date.now()),
           }));
         setGallery(prev => {
+          // De-duplicate by both ID and URL (in case IndexedDB has placeholder IDs for same URL)
           const existingIds = new Set(prev.map(i => i.id));
-          const fresh = dbItems.filter(i => !existingIds.has(i.id));
-          return fresh.length ? [...prev, ...fresh] : prev;
+          const existingUrls = new Set(prev.map(i => i.url));
+
+          // Map/update placeholder items in prev to match DB details if URLs match
+          const updatedPrev = prev.map(item => {
+            const dbMatch = dbItems.find(dbItem => dbItem.url === item.url);
+            if (dbMatch && (item.id.startsWith('img-pending-') || item.id.startsWith('local_') || !isNaN(Number(item.id)) !== !isNaN(Number(dbMatch.id)))) {
+              return {
+                ...item,
+                id: dbMatch.id,
+                createdAt: dbMatch.createdAt
+              };
+            }
+            return item;
+          });
+
+          // Recompute existingIds with mapped state to avoid duplicate DB items insertion
+          const finalExistingIds = new Set(updatedPrev.map(i => i.id));
+          const fresh = dbItems.filter(i => !finalExistingIds.has(i.id));
+
+          const combined = [...updatedPrev, ...fresh];
+          return combined.sort((a, b) => getTimestamp(b) - getTimestamp(a));
         });
       })
       .catch(err => {
@@ -150,12 +197,14 @@ export function useUGCGallery(currentUserId: string) {
       });
   }, [currentUserId]);
 
-
-
   // ── addToGallery — mirrors MarketingStudio persistence pattern ────────────
   const addToGallery = useCallback((item: GalleryItem) => {
     setGallery(prev => {
-      const next = [item, ...prev].slice(0, 100);
+      const itemWithTime = {
+        ...item,
+        createdAt: item.createdAt || Date.now()
+      };
+      const next = [itemWithTime, ...prev].slice(0, 100);
       // Only persist real (non-loading) items with stable URLs
       const persistable = next.filter(i => i.url && !i.loading && !i.url.startsWith('data:') && !i.url.startsWith('blob:'));
       try { localStorage.setItem('ugc_generation_history', JSON.stringify(persistable)); } catch { /* ignore quota */ }

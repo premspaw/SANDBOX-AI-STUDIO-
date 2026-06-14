@@ -179,7 +179,8 @@ export default function InpaintEditor({
             secondImage: refImage || undefined,
             size: '1024x1024',
             quality: 'medium',
-            userId
+            userId,
+            folder: 'ugc/generated'
           })
         });
         const data = await resp.json();

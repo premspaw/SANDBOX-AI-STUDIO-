@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Image as ImageIcon, Upload, Wand2, Code, X, Building, Utensils, Stethoscope, Briefcase, ChevronRight, ChevronLeft, Loader2, Play, Plus, Check, Link, Trash2, ZoomIn, ExternalLink, HardDrive, Pencil, Layers, Sparkles, Video, Expand, LayoutGrid, ChevronUp, Clock, Zap } from 'lucide-react';
+import { Image as ImageIcon, Upload, Wand2, Code, X, Building, Utensils, Stethoscope, Briefcase, ChevronRight, ChevronLeft, Loader2, Play, Plus, Check, Link, Trash2, ZoomIn, ExternalLink, HardDrive, Pencil, Layers, Sparkles, Video, Expand, LayoutGrid, ChevronUp, Clock, Zap, Sliders } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { cn } from '../../lib/utils';
 import { useShorts } from '../../hooks/useShorts';
@@ -9,6 +9,7 @@ import { useAppStore } from '../../store';
 import { InpaintEditor } from '../common/InpaintEditor';
 import { getApiUrl } from '../../config/apiConfig';
 import { buildSeedanceContentArray } from '../cinemaStudio/SeedanceEngine';
+import { AddTemplateModal } from './AddTemplateModal';
 
 const ENGINES = [
   { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — 5⚡/s (9⚡/s audio)', cost: 5 },
@@ -21,7 +22,7 @@ const ENGINES = [
 const IMAGE_ENGINES = [
   { id: 'nano-banana-2',   label: 'Nano Banana 2',   icon: '🎨', desc: 'Google highest-fidelity photo gen — 2⚡ flat rate', cost: 2 },
   { id: 'nano-banana-pro', label: 'Nano Banana Pro', icon: '💎', desc: 'Google maximum fidelity image engine — 5⚡ flat rate', cost: 5 },
-  { id: 'gpt-image-2',     label: 'GPT Image Pro',   icon: '🤖', desc: 'OpenAI layout & text design — 3⚡ flat rate',                 cost: 3 },
+  { id: 'gpt-image-2',     label: 'GPT Image Pro',   icon: '🤖', desc: 'OpenAI layout & text design — 2⚡ to 5⚡ variable rate',        cost: 3 },
 ];
 
 const DURATION_OPTIONS = [
@@ -224,12 +225,20 @@ const CATEGORIES = [
     { id: 'other', label: 'Others', icon: Briefcase, color: 'text-purple-400', bg: 'bg-purple-400/10' },
 ];
 
-// GPT Image 2 cost in ₹ with 50% margin (size: 1024x1536)
+// GPT Image 2 cost in ₹ with 50% margin
 const USD_TO_INR = 84;
-const OPENAI_COST = { low: 0.005, medium: 0.041, high: 0.165 };
-const getGenerateCostINR = (quality) => {
-    const usd = (OPENAI_COST[quality] || OPENAI_COST.medium) * 1.5;
-    return (usd * USD_TO_INR).toFixed(2);
+const getGenerateCostINR = (quality, size) => {
+    const isSquare = size === '1024x1024' || size === '2048x2048' || size === 'auto';
+    let usd = 0.041;
+    if (quality === 'low') {
+        usd = isSquare ? 0.006 : 0.005;
+    } else if (quality === 'medium') {
+        usd = isSquare ? 0.053 : 0.041;
+    } else if (quality === 'high') {
+        usd = isSquare ? 0.211 : 0.165;
+    }
+    const usdWithMargin = usd * 1.5;
+    return (usdWithMargin * USD_TO_INR).toFixed(2);
 };
 
 const TEMPLATES = { food: [], restaurant: [], realestate: [], medical: [], other: [] };
@@ -262,243 +271,6 @@ const VIDEO_TEMPLATES = {
     other: [],
 };
 
-// ── Add-Template Modal ──────────────────────────────────────────────────────
-function AddTemplateModal({ category, onClose, onSave, userId, userEmail }) {
-    const [name, setName]         = useState('');
-    const [imageUrl, setImageUrl] = useState('');
-    const [previewSrc, setPreviewSrc] = useState('');
-    const [prompt, setPrompt]     = useState('');
-    const [aspect, setAspect]     = useState('16/9');
-    const [tab, setTab]           = useState('url'); // 'url' | 'upload'
-    const [isUploading, setIsUploading] = useState(false);
-    const [uploadedBucket, setUploadedBucket] = useState(null);
-    const [tags, setTags] = useState([]);
-    const [tagInput, setTagInput] = useState('');
-    const uploadRef = useRef(null);
-    const finalUrlRef = useRef(''); // always holds latest R2/proxy URL
-
-    const addTag = (v) => { const t = v.trim().toLowerCase(); if (t && !tags.includes(t)) setTags(prev => [...prev, t]); setTagInput(''); };
-    const removeTag = (i) => setTags(prev => prev.filter((_, idx) => idx !== i));
-
-    const handleFileRead = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-            const base64 = ev.target.result;
-            setPreviewSrc(base64); // show preview immediately
-            setImageUrl(base64);   // temp until R2 URL comes back
-            setIsUploading(true);
-            setUploadedBucket(null);
-            try {
-                const resp = await fetch(getApiUrl('/api/marketing/upload-reference'), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: base64, userId, userEmail, isTemplate: true })
-                });
-                const data = await resp.json();
-                if (data.url) {
-                    setImageUrl(data.url);
-                    setPreviewSrc(data.url); // swap base64 preview → proxy URL
-                    finalUrlRef.current = data.url;
-                    setUploadedBucket(data.bucket);
-                }
-            } catch (err) {
-                console.error('[AddTemplate] R2 upload failed:', err);
-            } finally {
-                setIsUploading(false);
-            }
-        };
-        reader.readAsDataURL(file);
-    };
-
-    const handleUrlChange = (v) => { setImageUrl(v); setPreviewSrc(v); finalUrlRef.current = v; setUploadedBucket(null); };
-
-    const canSave = name.trim() && imageUrl.trim() && prompt.trim() && !isUploading;
-
-    const save = () => {
-        const resolvedUrl = finalUrlRef.current || imageUrl;
-        console.log('[DEBUG] Saving template with URL:', resolvedUrl?.slice(0, 100));
-        onSave({
-            id: `custom_${Date.now()}`,
-            name: name.trim(),
-            imageUrl: resolvedUrl,
-            prompt: prompt.trim(),
-            aspect,
-            tags,
-            isCustom: true,
-        });
-        onClose();
-    };
-
-    return (
-        <AnimatePresence>
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-                onClick={(e) => e.target === e.currentTarget && onClose()}
-            >
-                <motion.div
-                    initial={{ scale: 0.92, y: 30 }}
-                    animate={{ scale: 1, y: 0 }}
-                    exit={{ scale: 0.92, y: 30 }}
-                    className="w-full max-w-lg bg-[#111114] border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[90vh]"
-                >
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-                        <div>
-                            <h3 className="font-black text-white uppercase tracking-wider text-sm">Add New Template</h3>
-                            <p className="text-[10px] text-white/40 uppercase tracking-widest mt-0.5">{category} category</p>
-                        </div>
-                        <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
-                            <X className="w-4 h-4 text-white/60" />
-                        </button>
-                    </div>
-
-                    <div className="p-6 space-y-5 overflow-y-auto flex-1 custom-scrollbar">
-                        {/* Name */}
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block">Template Name</label>
-                            <input
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                placeholder="e.g. Spicy Ramen Bowl"
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white/90 focus:border-orange-500/50 outline-none"
-                            />
-                        </div>
-
-                        {/* Aspect */}
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block">Aspect Ratio</label>
-                            <div className="flex gap-2">
-                                {['16/9', '9/16', '1/1'].map(r => (
-                                    <button
-                                        key={r}
-                                        onClick={() => setAspect(r)}
-                                        className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
-                                            aspect === r ? 'bg-orange-500 text-black' : 'bg-white/5 text-white/50 hover:bg-white/10'
-                                        }`}
-                                    >{r}</button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Image Source Tabs */}
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block">Image Source</label>
-                            <div className="flex gap-1 bg-black/30 p-1 rounded-xl">
-                                <button onClick={() => setTab('url')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold uppercase transition-all ${ tab === 'url' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/60' }`}>
-                                    <Link className="w-3 h-3" /> URL
-                                </button>
-                                <button onClick={() => setTab('upload')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold uppercase transition-all ${ tab === 'upload' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/60' }`}>
-                                    <Upload className="w-3 h-3" /> Upload
-                                </button>
-                            </div>
-
-                            {tab === 'url' ? (
-                                <input
-                                    value={imageUrl}
-                                    onChange={(e) => handleUrlChange(e.target.value)}
-                                    placeholder="https://example.com/image.jpg"
-                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white/90 focus:border-orange-500/50 outline-none"
-                                />
-                            ) : (
-                                <button
-                                    onClick={() => uploadRef.current?.click()}
-                                    className="w-full border-2 border-dashed border-white/20 hover:border-orange-400/50 rounded-xl py-4 flex items-center justify-center gap-2 text-sm text-white/50 hover:text-white/80 transition-all"
-                                >
-                                    <Upload className="w-4 h-4" />
-                                    {previewSrc && tab === 'upload' ? 'Change Image' : 'Click to Upload'}
-                                </button>
-                            )}
-                            <input ref={uploadRef} type="file" accept="image/*" className="hidden" onChange={handleFileRead} />
-
-                            {/* Preview */}
-                            {previewSrc && (
-                                <div className="relative rounded-xl overflow-hidden bg-black/30 border border-white/10 max-h-40">
-                                    <img src={previewSrc} alt="preview" className="w-full h-full object-cover max-h-40" />
-                                    <button
-                                        onClick={() => { setPreviewSrc(''); setImageUrl(''); setUploadedBucket(null); }}
-                                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center hover:bg-red-500/80 transition-colors"
-                                    ><X className="w-3 h-3 text-white" /></button>
-                                    {isUploading ? (
-                                        <span className="absolute bottom-2 left-2 flex items-center gap-1 text-[9px] text-yellow-300 bg-black/60 px-2 py-0.5 rounded-md font-bold uppercase tracking-widest">
-                                            <Loader2 className="w-2.5 h-2.5 animate-spin" /> Uploading to R2…
-                                        </span>
-                                    ) : uploadedBucket ? (
-                                        <span className="absolute bottom-2 left-2 flex items-center gap-1 text-[9px] text-lime-300 bg-black/60 px-2 py-0.5 rounded-md font-bold uppercase tracking-widest">
-                                            <HardDrive className="w-2.5 h-2.5" /> R2 · {uploadedBucket}
-                                        </span>
-                                    ) : (
-                                        <span className="absolute bottom-2 left-2 text-[9px] text-white/60 bg-black/50 px-2 py-0.5 rounded-md font-bold uppercase tracking-widest">Preview only</span>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Tags */}
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block">Tags <span className="text-white/20 normal-case font-normal">(for filtering)</span></label>
-                            <div className="flex gap-2">
-                                <input
-                                    value={tagInput}
-                                    onChange={(e) => setTagInput(e.target.value)}
-                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(tagInput); } }}
-                                    placeholder="e.g. promo, sale, festive..."
-                                    className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80 focus:border-orange-500/40 outline-none placeholder:text-white/20"
-                                />
-                                <button onClick={() => addTag(tagInput)} className="px-3 py-2 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 rounded-xl text-orange-400 text-xs font-bold uppercase transition-colors">
-                                    <Plus className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
-                            {tags.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5">
-                                    {tags.map((t, i) => (
-                                        <span key={i} onClick={() => removeTag(i)} className="inline-flex items-center gap-1 text-[10px] bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-full text-orange-300 font-bold cursor-pointer hover:bg-red-500/20 hover:text-red-300 transition-colors">
-                                            #{t} <X className="w-2.5 h-2.5" />
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Prompt */}
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block">Generation Prompt</label>
-                            <textarea
-                                value={prompt}
-                                onChange={(e) => setPrompt(e.target.value)}
-                                placeholder="Describe your desired marketing asset in detail..."
-                                rows={4}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white/90 focus:border-orange-500/50 outline-none resize-none"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Footer - sticky at bottom */}
-                    <div className="px-6 pb-6 pt-3 flex gap-3 border-t border-white/10 bg-[#111114] flex-none">
-                        <button onClick={onClose} className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 font-bold text-sm uppercase tracking-wider transition-all">Cancel</button>
-                        <button
-                            onClick={save}
-                            disabled={!canSave}
-                            className={`flex-1 py-3 rounded-xl font-black text-sm uppercase tracking-wider transition-all ${
-                                canSave ? 'bg-gradient-to-r from-orange-500 to-amber-400 text-black hover:scale-[1.02] shadow-lg' : 'bg-white/5 text-white/20 cursor-not-allowed'
-                            }`}
-                        >
-                            Save Template
-                        </button>
-                    </div>
-                </motion.div>
-            </motion.div>
-        </AnimatePresence>
-    );
-}
-// ────────────────────────────────────────────────────────────────────────────
-
-// ── InpaintEditor ────────────────────────────────────────────────────────────
-
 export default function MarketingStudio() {
     const userProfile = useAppStore(state => state.userProfile);
     const currentUserId = userProfile?.id || null;
@@ -520,7 +292,76 @@ export default function MarketingStudio() {
     const [videoEngine, setVideoEngine] = useState('veo-3.1-fast-generate-preview');
     const [videoDuration, setVideoDuration] = useState(8);
     const [generateAudio, setGenerateAudio] = useState(false);
+    const [imageFormat, setImageFormat] = useState('png'); // 'png' | 'jpeg' | 'webp'
+    const [imageCompression, setImageCompression] = useState(80); // 0-100
+    const [imageBackground, setImageBackground] = useState('auto'); // 'auto' | 'opaque'
     const [pollMsg, setPollMsg] = useState('');
+    const [firstFrame, setFirstFrame] = useState(null);
+    const [lastFrame, setLastFrame] = useState(null);
+    const firstFrameRef = useRef(null);
+    const lastFrameRef = useRef(null);
+    const [previewTemplateIdx, setPreviewTemplateIdx] = useState(null);
+    const [showPropertyDetails, setShowPropertyDetails] = useState(false); // 'image' | 'video'
+    const logoInputRef = useRef(null);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [generatedImage, setGeneratedImage] = useState(null);
+    const fileInputRef = useRef(null);
+    const [promptText, setPromptText] = useState('');
+    const [selectedStyle, setSelectedStyle] = useState('premium marketing');
+    const [brandColors, setBrandColors] = useState(['#FF0000', '#000000']);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [brandLogoPreview, setBrandLogoPreview] = useState(null);
+    const [zoomedImage, setZoomedImage] = useState(null);
+    const [zoomedIndex, setZoomedIndex] = useState(null);
+    const [inpaintOpen, setInpaintOpen] = useState(false);
+    const [showTemplatePanel, setShowTemplatePanel] = useState(true);
+    const [customTemplates, setCustomTemplates] = useState({ food: [], restaurant: [], realestate: [], medical: [], other: [] });
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [templatesLoading, setTemplatesLoading] = useState(true);
+    const [recipeData, setRecipeData] = useState({
+        dish_name: '',
+        dish_presentation: '',
+        ingredients: [],
+        steps: [],
+        meta: { calories: '', time: '', servings: 4 }
+    });
+    const [quality, setQuality] = useState('medium');
+    const [imageSize, setImageSize] = useState('1024x1024');
+    const [specialIngredients, setSpecialIngredients] = useState([]);
+    const [ingredientInput, setIngredientInput] = useState('');
+    const [realEstateData, setRealEstateData] = useState({
+        property_name: '',
+        property_type: 'apartment',
+        location: '',
+        price: '',
+        bedrooms: '',
+        bathrooms: '',
+        area: '',
+        features: '',
+        tagline: '',
+        agent_name: '',
+    });
+    const [medicalData, setMedicalData] = useState({
+        clinic_name: '',
+        doctor_name: '',
+        specialization: '',
+        phone: '',
+        address: '',
+        services: '',
+        tagline: '',
+        timings: '',
+    });
+    const [referenceImageMeta, setReferenceImageMeta] = useState(null);
+    const [generationHistory, setGenerationHistory] = useState(() => {
+        try {
+            const saved = localStorage.getItem('marketing_generation_history');
+            return saved ? JSON.parse(saved) : [];
+        } catch { return []; }
+    });
+    const [gallerySearch, setGallerySearch] = useState('');
+    const [activeTag, setActiveTag] = useState(null);
+    const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
+
     const { spend, refund, canAfford, refresh: refreshShorts } = useShorts();
 
     const getApiKey = () => {
@@ -544,8 +385,7 @@ export default function MarketingStudio() {
         }
         return cleaned;
     };
-
-    const pollSeedanceTask = async (taskId, activePrompt, activeRatio, engine) => {
+    const pollSeedanceTask = async (taskId, activePrompt, activeRatio, engine, folder = 'marketing') => {
         const engineLabel = engine.includes('fast') ? 'Seedance Fast' : 'Seedance 2.0';
 
         for (let i = 0; i < 120; i++) {
@@ -554,7 +394,7 @@ export default function MarketingStudio() {
             setPollMsg(`Rendering video... (${elapsed}s)`);
 
             try {
-                const res = await fetch(getApiUrl(`/api/seedance/status/${taskId}?userId=${currentUserId}&aspectRatio=${activeRatio}&engine=${engine}`));
+                const res = await fetch(getApiUrl(`/api/seedance/status/${taskId}?userId=${currentUserId}&aspectRatio=${activeRatio}&engine=${engine}&folder=${folder}`));
                 const json = await res.json();
                 const st = json.status;
 
@@ -589,6 +429,11 @@ export default function MarketingStudio() {
     const getRequiredCredits = (engineId, customDuration) => {
         const duration = customDuration ?? videoDuration;
         if (generateMode === 'image') {
+            if (engineId === 'gpt-image-2') {
+                if (quality === 'low') return 2;
+                if (quality === 'high') return 5;
+                return 3; // default medium
+            }
             return IMAGE_ENGINES.find(e => e.id === engineId)?.cost || 2;
         }
         if (engineId.startsWith('veo-3.1') || engineId === 'veo3') {
@@ -636,86 +481,30 @@ export default function MarketingStudio() {
             }
         }
     }, [videoEngine, videoDuration]);
-    const [firstFrame, setFirstFrame] = useState(null);
-    const [lastFrame, setLastFrame] = useState(null);
-    const firstFrameRef = useRef(null);
-    const lastFrameRef = useRef(null);
-    const [previewTemplateIdx, setPreviewTemplateIdx] = useState(null);
-    const [showPropertyDetails, setShowPropertyDetails] = useState(false); // 'image' | 'video'
-    const logoInputRef = useRef(null);
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [generatedImage, setGeneratedImage] = useState(null);
-    const fileInputRef = useRef(null);
-    const [promptText, setPromptText] = useState('');
-    const [selectedStyle, setSelectedStyle] = useState('premium marketing');
-    const [brandColors, setBrandColors] = useState(['#FF0000', '#000000']);
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [brandLogoPreview, setBrandLogoPreview] = useState(null);
-    const [zoomedImage, setZoomedImage] = useState(null);
-    const [zoomedIndex, setZoomedIndex] = useState(null);
-    const [inpaintOpen, setInpaintOpen] = useState(false);
-    const [showTemplatePanel, setShowTemplatePanel] = useState(true);
 
-    const openZoom = (img, idx) => { setZoomedImage(img); setZoomedIndex(idx ?? null); };
-    const closeZoom = () => { setZoomedImage(null); setZoomedIndex(null); };
+    useEffect(() => {
+        if (generateMode === 'image' && imageEngine === 'gpt-image-2') {
+            const validValues = ['1024x1024', '1536x1024', '1024x1536', '2048x2048', '2048x1152', '3840x2160', '2160x3840'];
+            if (!validValues.includes(imageSize)) {
+                setImageSize('1024x1024');
+            }
+        }
+    }, [imageEngine, generateMode, imageSize]);
 
-    // Custom templates: { [categoryId]: Template[] }
-    const [customTemplates, setCustomTemplates] = useState({ food: [], restaurant: [], realestate: [], medical: [], other: [] });
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [templatesLoading, setTemplatesLoading] = useState(true);
-
-    // Recipe Infographic State
-    const [recipeData, setRecipeData] = useState({
-        dish_name: '',
-        dish_presentation: '',
-        ingredients: [],
-        steps: [],
-        meta: { calories: '', time: '', servings: 4 }
-    });
-    const [quality, setQuality] = useState('medium');
-    const [imageSize, setImageSize] = useState('1024x1024');
-    const [specialIngredients, setSpecialIngredients] = useState([]);
-    const [ingredientInput, setIngredientInput] = useState('');
-
-    // Real Estate data state
-    const [realEstateData, setRealEstateData] = useState({
-        property_name: '',
-        property_type: 'apartment',
-        location: '',
-        price: '',
-        bedrooms: '',
-        bathrooms: '',
-        area: '',
-        features: '',
-        tagline: '',
-        agent_name: '',
-    });
-
-    // Medical / Clinic data state
-    const [medicalData, setMedicalData] = useState({
-        clinic_name: '',
-        doctor_name: '',
-        specialization: '',
-        phone: '',
-        address: '',
-        services: '',
-        tagline: '',
-        timings: '',
-    });
-
-    const [referenceImageMeta, setReferenceImageMeta] = useState(null);
-    const GH_KEY = 'marketing_generation_history';
-    const [generationHistory, setGenerationHistory] = useState(() => {
-        try {
-            const saved = localStorage.getItem('marketing_generation_history');
-            return saved ? JSON.parse(saved) : [];
-        } catch { return []; }
-    });
-    const [gallerySearch, setGallerySearch] = useState('');
-    const [activeTag, setActiveTag] = useState(null);
-
-    const LS_KEY = 'marketing_custom_templates';
-
+    const getAvailableSizes = () => {
+        if (generateMode === 'image' && imageEngine === 'gpt-image-2') {
+            return [
+                { value: '1024x1024', label: 'Square',    desc: '1:1 social post', w: 12, h: 12, ratio: '1:1' },
+                { value: '1536x1024', label: 'Landscape', desc: '3:2 standard landscape', w: 15, h: 10, ratio: '3:2' },
+                { value: '1024x1536', label: 'Portrait',  desc: '2:3 portrait banner', w: 10, h: 15, ratio: '2:3' },
+                { value: '2048x2048', label: '2K Square', desc: 'High-res square banner', w: 12, h: 12, ratio: '1:1' },
+                { value: '2048x1152', label: '2K Landscape', desc: '2K widescreen presentation', w: 16, h: 9, ratio: '16:9' },
+                { value: '3840x2160', label: '4K Landscape', desc: 'Ultra-HD widescreen', w: 16, h: 9, ratio: '16:9' },
+                { value: '2160x3840', label: '4K Portrait',  desc: 'Ultra-HD vertical display', w: 9, h: 16, ratio: '9:16' }
+            ];
+        }
+        return SIZE_OPTIONS;
+    };
     // Load persisted custom templates — DB first, localStorage fallback
     useEffect(() => {
         // Load from localStorage immediately so UI isn't blank
@@ -753,52 +542,8 @@ export default function MarketingStudio() {
                         isCustom: true,
                     });
                 });
-                // Merge server templates with browser localStorage to protect saved templates on port changes
-                const hasRows = Object.values(grouped).some(arr => arr.length > 0);
-                if (hasRows) {
-                    let localCached = { food: [], restaurant: [], realestate: [], medical: [], other: [] };
-                    try {
-                        const cached = localStorage.getItem(LS_KEY);
-                        if (cached) {
-                            const parsed = JSON.parse(cached);
-                            if (parsed && typeof parsed === 'object') {
-                                localCached = parsed;
-                            }
-                        }
-                    } catch (_) {}
-
-                    const merged = { food: [], restaurant: [], realestate: [], medical: [], other: [] };
-                    const categories = ['food', 'restaurant', 'realestate', 'medical', 'other'];
-                    
-                    categories.forEach(cat => {
-                        const dbTemplates = grouped[cat] || [];
-                        const localTemplates = localCached[cat] || [];
-                        
-                        const uniqueTemplates = [];
-                        const seenUrls = new Set();
-                        
-                        // DB templates take priority
-                        dbTemplates.forEach(t => {
-                            if (t.imageUrl && !seenUrls.has(t.imageUrl)) {
-                                seenUrls.add(t.imageUrl);
-                                uniqueTemplates.push(t);
-                            }
-                        });
-                        
-                        // Merge with local templates, retaining original prompts and names
-                        localTemplates.forEach(t => {
-                            if (t.imageUrl && !seenUrls.has(t.imageUrl)) {
-                                seenUrls.add(t.imageUrl);
-                                uniqueTemplates.push(t);
-                            }
-                        });
-                        
-                        merged[cat] = uniqueTemplates;
-                    });
-
-                    setCustomTemplates(merged);
-                    localStorage.setItem(LS_KEY, JSON.stringify(merged));
-                }
+                setCustomTemplates(grouped);
+                try { localStorage.setItem(LS_KEY, JSON.stringify(grouped)); } catch (_) {}
             })
             .catch(err => console.warn('[Templates] DB unavailable, using localStorage cache:', err))
             .finally(() => setTemplatesLoading(false));
@@ -847,6 +592,73 @@ export default function MarketingStudio() {
         return matchSearch && matchTag;
     });
 
+    // ── Zoom/Lightbox helpers ──────────────────────────────────────────────
+    const openZoom = (url, idx = null) => {
+        setZoomedImage(url);
+        setZoomedIndex(idx);
+    };
+    const closeZoom = () => {
+        setZoomedImage(null);
+        setZoomedIndex(null);
+    };
+
+    // ── Download helper (blob fetch to force save-as on cross-origin URLs) ─
+    const downloadAsset = async (url, type = 'image') => {
+        const ext = type === 'video' ? 'mp4' : 'png';
+        const filename = `marketing-asset-${Date.now()}.${ext}`;
+
+        // Step 1: Try proxying through our backend (same-origin) so the
+        // browser's `download` attribute works on cross-origin CDN URLs.
+        try {
+            const proxyUrl = getApiUrl(`/api/proxy-image?url=${encodeURIComponent(url)}`);
+            const resp = await fetch(proxyUrl);
+            if (!resp.ok) throw new Error(`Proxy fetch failed: ${resp.status}`);
+            const blob = await resp.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 8000);
+            return;
+        } catch (proxyErr) {
+            console.warn('[downloadAsset] Proxy failed, trying direct fetch:', proxyErr.message);
+        }
+
+        // Step 2: Direct fetch (works if CDN has permissive CORS headers).
+        try {
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error('Direct fetch failed');
+            const blob = await resp.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 8000);
+            return;
+        } catch (directErr) {
+            console.warn('[downloadAsset] Direct fetch failed, opening new tab:', directErr.message);
+        }
+
+        // Step 3: Open in new tab — NEVER replace the current app page.
+        window.open(url, '_blank', 'noopener,noreferrer');
+    };
+
+    // Derive CSS aspect-ratio string from a WxH size string (e.g. '1536x1024' → '1536/1024')
+    const getAspectRatio = (size) => {
+        if (!size || size === 'auto') return '9/16';
+        const parts = size.split('x');
+        if (parts.length !== 2) return '9/16';
+        const [w, h] = parts.map(Number);
+        if (!w || !h) return '9/16';
+        return `${w}/${h}`;
+    };
+
     const addIngredient = () => {
         const val = ingredientInput.trim();
         if (val && !specialIngredients.includes(val)) {
@@ -871,6 +683,13 @@ export default function MarketingStudio() {
         } else {
             setPromptText(template.prompt);
         }
+        if (template.imageUrl) {
+            setReferenceImage(template.imageUrl);
+            setReferenceImageBase64(null); // Clear base64 since we are using the URL
+        } else {
+            setReferenceImage(null);
+            setReferenceImageBase64(null);
+        }
         setGeneratedImage(null);
     };
 
@@ -884,7 +703,6 @@ export default function MarketingStudio() {
         }
     }, [generateMode, selectedTemplate]);
 
-    const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
 
     const saveGeneratedAsTemplate = async () => {
         if (!generatedImage) return;
@@ -1027,7 +845,11 @@ export default function MarketingStudio() {
                 size: imageSize,
                 userId: currentUserId,
                 image: generatedImage,
-                secondImage: logoImage
+                secondImage: logoImage,
+                format: imageFormat,
+                output_compression: imageCompression,
+                background: imageBackground,
+                folder: 'marketing'
             };
             const resp = await fetch(getApiUrl('/api/generate-image'), {
                 method: 'POST',
@@ -1054,7 +876,11 @@ export default function MarketingStudio() {
                 quality,
                 size: imageSize,
                 userId: currentUserId,
-                image: generatedImage
+                image: generatedImage,
+                format: imageFormat,
+                output_compression: imageCompression,
+                background: imageBackground,
+                folder: 'marketing'
             };
             const resp = await fetch(getApiUrl('/api/generate-image'), {
                 method: 'POST',
@@ -1120,7 +946,8 @@ export default function MarketingStudio() {
                             aspectRatio: '9:16', // default aspect
                             resolution: '1080p',
                             userId: currentUserId,
-                            generateAudio
+                            generateAudio,
+                            folder: 'marketing'
                         })
                     });
 
@@ -1131,7 +958,7 @@ export default function MarketingStudio() {
                     if (!taskId) throw new Error('No task ID returned from backend.');
 
                     // Poll Seedance
-                    await pollSeedanceTask(taskId, promptText || 'Cinematic product video', '9:16', json.engine || videoEngine);
+                    await pollSeedanceTask(taskId, promptText || 'Cinematic product video', '9:16', json.engine || videoEngine, 'marketing');
                 } else {
                     // Veo video generation path
                     const ai = getAI();
@@ -1258,7 +1085,8 @@ export default function MarketingStudio() {
                                     data: base64,
                                     type: 'video',
                                     userId: currentUserId,
-                                    aspect
+                                    aspect,
+                                    folder: 'marketing'
                                 })
                             });
                             if (!uploadResp.ok) throw new Error(`Upload failed: ${uploadResp.statusText}`);
@@ -1304,6 +1132,16 @@ export default function MarketingStudio() {
                 try {
                     const parsed = JSON.parse(promptText);
                     const ep = parsed?.image_edit_prompt || parsed;
+                    
+                    // Dynamically map and overwrite aspect_ratio based on active user choice
+                    const sizeOpt = getAvailableSizes().find(s => s.value === imageSize);
+                    const currentRatio = sizeOpt ? sizeOpt.ratio : 'Auto';
+                    if (ep.output_format) {
+                        ep.output_format.aspect_ratio = `Match user requested ratio: ${currentRatio}`;
+                    } else {
+                        ep.output_format = { aspect_ratio: `Match user requested ratio: ${currentRatio}` };
+                    }
+
                     // Extract every meaningful field and write as plain English
                     const parts = [];
                     if (ep.goal) parts.push(ep.goal);
@@ -1333,6 +1171,50 @@ export default function MarketingStudio() {
                         parts.push(`Layout: ${c.layout || 'dynamic free-flow'}. ${c.visual_hierarchy || ''}. ${c.negative_space || ''}.`);
                     }
                     if (ep.output) parts.push(`No watermarks. High resolution social media optimized output.`);
+                    
+                    // New detailed format fields
+                    if (ep.instruction) parts.push(ep.instruction);
+                    if (ep.style) {
+                        const s = ep.style;
+                        if (s.theme) parts.push(`Theme: ${s.theme}.`);
+                        if (s.background) parts.push(`Background: ${s.background}.`);
+                        if (s.view) parts.push(`View: ${s.view}.`);
+                        if (s.design_style) parts.push(`Design style: ${s.design_style}.`);
+                        if (s.lighting) parts.push(`Lighting: ${s.lighting}.`);
+                        if (s.graphics) parts.push(`Graphics: ${s.graphics}.`);
+                        if (s.typography) parts.push(`Typography: ${s.typography}.`);
+                        if (s.negative_space) parts.push(`Negative space: ${s.negative_space}.`);
+                    }
+                    if (ep.ingredients_section) {
+                        const ing = ep.ingredients_section;
+                        if (ing.instruction) parts.push(`Ingredients section: ${ing.instruction}`);
+                        if (ing.layout) parts.push(`Ingredients layout: ${ing.layout}.`);
+                    }
+                    if (ep.process_flow) {
+                        const pf = ep.process_flow;
+                        if (pf.instruction) parts.push(`Process flow steps: ${pf.instruction}`);
+                        if (pf.layout) parts.push(`Process flow layout: ${pf.layout} with ${pf.connector_style || 'connectors'}.`);
+                    }
+                    if (ep.final_presentation) {
+                        const fp = ep.final_presentation;
+                        if (fp.dish) parts.push(`Hero presentation: ${fp.dish}.`);
+                        if (fp.presentation_style) parts.push(`Presentation style: ${fp.presentation_style}.`);
+                        if (fp.position) parts.push(`Hero position: ${fp.position}.`);
+                        if (fp.shadow) parts.push(`Hero shadow: ${fp.shadow}.`);
+                    }
+                    if (ep.creative_enhancements) {
+                        const active = Object.entries(ep.creative_enhancements)
+                            .filter(([_, val]) => val === true)
+                            .map(([key]) => key.replace(/_/g, ' '))
+                            .join(', ');
+                        if (active) parts.push(`Creative enhancements: ${active}.`);
+                    }
+                    if (ep.output_format) {
+                        const of = ep.output_format;
+                        if (of.quality) parts.push(`Quality: ${of.quality}.`);
+                        if (of.resolution_style) parts.push(`Resolution style: ${of.resolution_style}.`);
+                    }
+
                     templateEnglish = parts.filter(Boolean).join(' ');
                 } catch (_) {}
             } else {
@@ -1343,6 +1225,7 @@ export default function MarketingStudio() {
             let textPrompt = '';
             if (isRealEstate) {
                 const re = realEstateData;
+                const isCustomPrompt = !!(userInstruction || templateEnglish);
                 textPrompt = [
                     userInstruction || templateEnglish || `Create a stunning real estate marketing visual for this property.`,
                     re.property_name ? `Property: ${re.property_name}.` : '',
@@ -1354,10 +1237,13 @@ export default function MarketingStudio() {
                     re.features ? `Key features: ${re.features}.` : '',
                     re.tagline ? `Tagline: "${re.tagline}".` : '',
                     re.agent_name ? `Agent: ${re.agent_name}.` : '',
-                    referenceImage ? `Use the uploaded property photo as the main visual. Enhance lighting and composition.` : `Show a premium exterior or interior shot of a ${re.property_type || 'modern property'}.`,
-                    !(userInstruction || templateEnglish) ? `Luxury real estate aesthetic, golden hour or bright daylight, architectural photography style, photorealistic. No watermarks.` : `Photorealistic, high resolution. No watermarks.`
+                    !isCustomPrompt
+                        ? (referenceImage ? `Use the uploaded property photo as the main visual. Enhance lighting and composition.` : `Show a premium exterior or interior shot of a ${re.property_type || 'modern property'}.`)
+                        : (referenceImage && !userInstruction.toLowerCase().includes('photo') && !userInstruction.toLowerCase().includes('image') ? `Use the uploaded property photo as the main visual.` : ''),
+                    !isCustomPrompt ? `Luxury real estate aesthetic, golden hour or bright daylight, architectural photography style, photorealistic. No watermarks.` : `Photorealistic, high resolution. No watermarks.`
                 ].filter(Boolean).join(' ');
             } else if (isMedical) {
+                const isCustomPrompt = !!(userInstruction || templateEnglish);
                 textPrompt = [
                     userInstruction || templateEnglish || `Create a professional medical clinic marketing poster.`,
                     medicalData.clinic_name ? `Clinic name: ${medicalData.clinic_name}.` : '',
@@ -1365,9 +1251,10 @@ export default function MarketingStudio() {
                     medicalData.specialization ? `Specialization: ${medicalData.specialization}.` : '',
                     medicalData.tagline ? `Tagline: "${medicalData.tagline}".` : '',
                     medicalData.services ? `Services offered: ${medicalData.services}.` : '',
-                    `Clean, trustworthy, professional healthcare aesthetic. White and teal tones. No watermarks.`
+                    !isCustomPrompt ? `Clean, trustworthy, professional healthcare aesthetic. White and teal tones. No watermarks.` : `Photorealistic, high resolution. No watermarks.`
                 ].filter(Boolean).join(' ');
             } else if (!isMedical) {
+                const isCustomPrompt = !!(userInstruction || templateEnglish);
                 const dishDesc = recipeData.dish_name
                     ? `a dish called "${recipeData.dish_name}"`
                     : referenceImage ? 'the food shown in the reference photo' : 'a gourmet food dish';
@@ -1383,15 +1270,21 @@ export default function MarketingStudio() {
 
                 textPrompt = [
                     baseInstruction,
-                    referenceImage && !userInstruction && !templateEnglish ? `Match the dish appearance, plating, colors and ingredients from the reference photo exactly.` : '',
+                    referenceImage && !isCustomPrompt ? `Match the dish appearance, plating, colors and ingredients from the reference photo exactly.` : '',
                     specialIngredients.length > 0 ? `Prominently feature: ${specialIngredients.join(', ')}.` : '',
                     `Color palette: ${brandColors[0]} and ${brandColors[1]}.`,
                     `Photorealistic, high resolution, no watermarks, no logos.`
                 ].filter(Boolean).join(' ');
             }
 
-            // Use base64 if available, otherwise fall back to URL
-            const imageToSend = referenceImageBase64 || referenceImage || undefined;
+            // Use base64 if available, otherwise fall back to URL.
+            // Logo: if there's a reference image, logo goes as secondImage for multi-image edit.
+            // If there's NO reference image but there IS a logo, use the logo as the primary image
+            // so gpt-image-2 can use it in edit mode (incorporating it into the design).
+            const imageToSend = referenceImageBase64 || referenceImage || (logoImage ? logoImage : undefined);
+            const secondImageToSend = (imageToSend && logoImage && (referenceImageBase64 || referenceImage))
+                ? logoImage
+                : undefined;
             const payload = {
                 model: imageEngine,
                 prompt: textPrompt,
@@ -1399,7 +1292,13 @@ export default function MarketingStudio() {
                 size: imageSize,
                 userId: currentUserId,
                 image: imageToSend,
-                secondImage: logoImage || undefined
+                secondImage: secondImageToSend,
+                folder: 'marketing',
+                ...(imageEngine === 'gpt-image-2' ? {
+                    format: imageFormat,
+                    output_compression: imageCompression,
+                    background: imageBackground
+                } : {})
             };
 
             const resp = await fetch(getApiUrl('/api/generate-image'), {
@@ -1679,28 +1578,29 @@ export default function MarketingStudio() {
                     {selectedTemplate ? (
                         <div className="flex-1 flex flex-col h-full overflow-hidden relative">
 
-                            {/* ── MASONRY GALLERY (Higgsfield style) ── */}
-                            <div className="flex-1 overflow-y-auto bg-[#0a0a0a] custom-scrollbar" style={{paddingBottom:'80px'}}>
+                            {/* ── UGC-STYLE FIXED GRID ── */}
+                            <div className="flex-1 overflow-y-auto bg-[#0a0a0a] custom-scrollbar" style={{paddingBottom:'80px', minHeight:0}}>
                                 {isGenerating && generationHistory.length === 0 ? (
                                     <div className="w-full h-full flex flex-col items-center justify-center gap-4 min-h-[300px]">
-                                        <div className="relative w-20 h-20">
+                                        <div className="relative w-16 h-16">
                                             <div className="absolute inset-0 rounded-full border-4 border-white/5" />
-                                            <div className="absolute inset-0 rounded-full border-4 border-t-lime-400 border-r-transparent border-b-transparent border-l-transparent animate-spin" />
-                                            <Wand2 className="absolute inset-0 m-auto w-7 h-7 text-lime-400" />
+                                            <div className="absolute inset-0 rounded-full border-4 border-t-[#c8f135] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+                                            <Wand2 className="absolute inset-0 m-auto w-6 h-6 text-[#c8f135]" />
                                         </div>
                                         <CyclingLoadingText messages={activeCategory === 'realestate' ? LOADING_MESSAGES_REALESTATE : LOADING_MESSAGES_DEFAULT} />
                                     </div>
                                 ) : generationHistory.length > 0 ? (
-                                    <div className="p-2" style={{columns:'3', columnGap:'6px'}}>
+                                    <div className="p-2 grid gap-2" style={{gridTemplateColumns:'repeat(auto-fill, minmax(120px, 1fr))'}}>
                                         {/* Generating spinner tile */}
                                         {isGenerating && (
-                                            <div className="break-inside-avoid mb-1.5 rounded-lg border border-white/10 bg-white/3 flex flex-col items-center justify-center gap-2"
-                                                style={{aspectRatio: (() => { const s = imageSize; if (!s || s==='auto') return '4/5'; const [w,h]=s.split('x'); return `${w}/${h}`; })()}}>
-                                                <div className="relative w-7 h-7">
-                                                    <div className="absolute inset-0 rounded-full border-[2px] border-t-lime-400 border-r-transparent border-b-transparent border-l-transparent animate-spin" />
-                                                    <Wand2 className="absolute inset-0 m-auto w-3 h-3 text-lime-400" />
+                                            <div className="w-full rounded-lg border border-[#c8f135]/20 bg-[#0d0d0d] flex flex-col items-center justify-center gap-2 relative overflow-hidden" style={{aspectRatio: getAspectRatio(imageSize)}}>
+                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent" style={{animation:'shimmer 1.8s infinite', transform:'translateX(-100%)'}} />
+                                                <div className="relative w-8 h-8">
+                                                    <div className="absolute inset-0 rounded-full border-2 border-[#c8f135]/20" />
+                                                    <div className="absolute inset-0 rounded-full border-2 border-t-[#c8f135] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+                                                    <Wand2 className="absolute inset-0 m-auto w-3.5 h-3.5 text-[#c8f135]" />
                                                 </div>
-                                                <span className="text-[7px] text-white/30 font-bold uppercase tracking-widest">Generating…</span>
+                                                <span className="text-[7px] text-[#c8f135] font-bold uppercase tracking-widest animate-pulse">Generating…</span>
                                             </div>
                                         )}
                                         {generationHistory.map((item, idx) => (
@@ -1708,76 +1608,76 @@ export default function MarketingStudio() {
                                                 initial={{ opacity: 0, scale: 0.95 }}
                                                 animate={{ opacity: 1, scale: 1 }}
                                                 transition={{ duration: 0.3 }}
-                                                className="break-inside-avoid mb-1.5 relative group rounded-lg overflow-hidden cursor-pointer"
+                                                className="relative group rounded-lg overflow-hidden cursor-pointer w-full"
+                                                style={{ aspectRatio: getAspectRatio(item.size) }}
                                                 onClick={() => openZoom(item.url)}
                                             >
                                                 {item.type === 'video'
-                                                    ? <div className="w-full relative bg-black/60 aspect-[9/16] flex items-center justify-center">
-                                                        <video src={item.url} className="w-full h-full object-cover" preload="metadata" playsInline />
-                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                    ? <div className="w-full h-full relative bg-black/60 flex items-center justify-center">
+                                                        <video src={item.url} className="w-full h-full object-cover" preload="metadata" playsInline muted />
+                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity duration-200">
                                                             <div className="w-10 h-10 rounded-full bg-black/70 border border-white/30 flex items-center justify-center shadow-lg">
                                                                 <Play className="w-4 h-4 text-white fill-white ml-0.5" />
                                                             </div>
                                                         </div>
                                                         <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1 bg-black/70 px-1.5 py-0.5 rounded-md pointer-events-none">
-                                                            <Video className="w-2.5 h-2.5 text-lime-400" />
-                                                            <span className="text-[8px] text-lime-300 font-black uppercase">Video</span>
+                                                            <Video className="w-2.5 h-2.5 text-[#c8f135]" />
+                                                            <span className="text-[7px] text-[#c8f135] font-black uppercase">Video</span>
                                                         </div>
                                                       </div>
-                                                    : <img src={item.url} alt={`gen-${idx}`} className="w-full block" />}
+                                                    : <div className="w-full h-full relative bg-black/60 overflow-hidden">
+                                                        <img src={item.url} alt={`gen-${idx}`} className="w-full h-full object-cover" />
+                                                      </div>
+                                                }
                                                 {/* NEW badge */}
                                                 {idx === 0 && (
-                                                    <span className="absolute top-1.5 left-1.5 text-[7px] bg-lime-400 text-black font-black px-1 py-0.5 rounded uppercase tracking-wider z-10">New</span>
+                                                    <span className="absolute top-1.5 left-1.5 text-[7px] bg-[#c8f135] text-black font-black px-1 py-0.5 rounded uppercase tracking-wider z-10">New</span>
                                                 )}
                                                 {/* Hover overlay */}
-                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
+                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 z-10">
                                                     <div className="flex gap-1.5">
+                                                        {item.type === 'video' && (
+                                                            <button title="Play" onClick={e => { e.stopPropagation(); openZoom(item.url); }}
+                                                                className="w-9 h-9 flex items-center justify-center bg-[#c8f135] hover:bg-[#b0d62a] text-black rounded-xl transition-all shadow-lg hover:scale-105 active:scale-95">
+                                                                <Play className="w-3.5 h-3.5 fill-black" />
+                                                            </button>
+                                                        )}
                                                         <button title="Zoom" onClick={e => { e.stopPropagation(); openZoom(item.url); }}
                                                             className="w-9 h-9 flex items-center justify-center bg-black/80 hover:bg-white/25 rounded-xl text-white border border-white/20 transition-all shadow-lg">
                                                             <ZoomIn className="w-4 h-4" />
                                                         </button>
-                                                        <button title="Save" onClick={e => { e.stopPropagation(); const ext = item.type === 'video' ? 'mp4' : 'png'; const a = document.createElement('a'); a.href = item.url; a.download = `asset-${item.ts}.${ext}`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }}
-                                                            className="w-9 h-9 flex items-center justify-center bg-black/80 hover:bg-white/25 rounded-xl text-white text-sm font-black border border-white/20 transition-all shadow-lg">
-                                                            ↓
+                                                        <button title="Download" onClick={e => { e.stopPropagation(); downloadAsset(item.url, item.type || 'image'); }}
+                                                            className="w-9 h-9 flex items-center justify-center bg-black/80 hover:bg-white/25 rounded-xl text-white border border-white/20 transition-all shadow-lg">
+                                                            <span className="text-sm font-black">↓</span>
                                                         </button>
-                                                        {item.type !== 'video' && (
-                                                        <button title="Edit" onClick={e => { e.stopPropagation(); setGeneratedImage(item.url); setInpaintOpen(true); }}
-                                                            className="w-9 h-9 flex items-center justify-center bg-purple-600/90 hover:bg-purple-500 rounded-xl text-white border border-purple-400/40 transition-all shadow-lg">
-                                                            <Pencil className="w-4 h-4" />
-                                                        </button>
-                                                        )}
-                                                        {/* FF / LF — only for images */}
-                                                        {item.type !== 'video' && (
-                                                            <>
-                                                                <button title="Set as First Frame" onClick={e => { e.stopPropagation(); setFirstFrame(item.url); }}
-                                                                    className="w-9 h-9 flex items-center justify-center bg-blue-600/80 hover:bg-blue-500 rounded-xl text-white text-[9px] font-black border border-blue-400/40 transition-all shadow-lg">
-                                                                    FF
-                                                                </button>
-                                                                <button title="Set as Last Frame" onClick={e => { e.stopPropagation(); setLastFrame(item.url); }}
-                                                                    className="w-9 h-9 flex items-center justify-center bg-indigo-600/80 hover:bg-indigo-500 rounded-xl text-white text-[9px] font-black border border-indigo-400/40 transition-all shadow-lg">
-                                                                    LF
-                                                                </button>
-                                                            </>
-                                                        )}
                                                     </div>
+                                                    {item.type !== 'video' && (
+                                                        <div className="flex gap-1.5">
+                                                            <button title="Edit" onClick={e => { e.stopPropagation(); setGeneratedImage(item.url); setInpaintOpen(true); }}
+                                                                className="w-9 h-9 flex items-center justify-center bg-purple-600/90 hover:bg-purple-500 rounded-xl text-white border border-purple-400/40 transition-all shadow-lg">
+                                                                <Pencil className="w-4 h-4" />
+                                                            </button>
+                                                            <button title="Set as First Frame" onClick={e => { e.stopPropagation(); setFirstFrame(item.url); }}
+                                                                className="w-9 h-9 flex items-center justify-center bg-blue-600/80 hover:bg-blue-500 rounded-xl text-white text-[9px] font-black border border-blue-400/40 transition-all shadow-lg">
+                                                                FF
+                                                            </button>
+                                                            <button title="Set as Last Frame" onClick={e => { e.stopPropagation(); setLastFrame(item.url); }}
+                                                                className="w-9 h-9 flex items-center justify-center bg-indigo-600/80 hover:bg-indigo-500 rounded-xl text-white text-[9px] font-black border border-indigo-400/40 transition-all shadow-lg">
+                                                                LF
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </motion.div>
                                         ))}
                                     </div>
                                 ) : (
                                     <div className="w-full h-full flex flex-col items-center justify-center gap-3 select-none min-h-[300px]">
-                                        <div className="relative rounded-2xl border-2 border-dashed border-white/10 bg-white/2 flex flex-col items-center justify-center gap-4"
-                                            style={{ width: 'min(320px, 80%)', aspectRatio: '4/5', maxHeight: '55vh' }}>
-                                            <img src={selectedTemplate.imageUrl} alt={selectedTemplate.name}
-                                                className="absolute inset-0 w-full h-full object-cover rounded-2xl opacity-15" />
-                                            <div className="relative z-10 flex flex-col items-center gap-2 px-6 text-center">
-                                                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-                                                    <ImageIcon className="w-7 h-7 text-white/20" />
-                                                </div>
-                                                <p className="text-white/30 text-xs font-bold uppercase tracking-widest">Generated images appear here</p>
-                                                <p className="text-white/15 text-[10px]">{selectedTemplate.name} · {selectedTemplate.aspect}</p>
-                                            </div>
+                                        <div className="w-14 h-14 rounded-2xl bg-white/3 border border-white/8 flex items-center justify-center">
+                                            <ImageIcon className="w-7 h-7 text-white/15" />
                                         </div>
+                                        <p className="text-[10px] text-white/20 font-black uppercase tracking-widest">Generated assets appear here</p>
+                                        <p className="text-[8px] text-white/10 font-mono">{selectedTemplate?.name} · hit Generate to start</p>
                                     </div>
                                 )}
                             </div>
@@ -1931,12 +1831,12 @@ export default function MarketingStudio() {
                                         {/* Size */}
                                          <UpwardDropdown
                                              icon={<LayoutGrid size={8} />}
-                                             label={`Size: ${SIZE_OPTIONS.find(s => s.value === imageSize)?.label || 'Auto'}`}
+                                             label={`Size: ${getAvailableSizes().find(s => s.value === imageSize)?.label || 'Auto'}`}
                                              accentColor="fuchsia"
                                          >
                                              {(close) => (
                                                  <div className="space-y-0.5">
-                                                     {SIZE_OPTIONS.map((opt, i) => (
+                                                     {getAvailableSizes().map((opt, i) => (
                                                          <motion.button
                                                              key={opt.value}
                                                              initial={{ opacity: 0, y: 8 }}
@@ -2014,7 +1914,9 @@ export default function MarketingStudio() {
                                                                          "text-[10px] font-black uppercase tracking-wider truncate",
                                                                          quality === opt.value ? "text-violet-400" : "text-white/70"
                                                                      )}>{opt.label}</p>
-                                                                     <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
+                                                                     <p className="text-[7.5px] text-gray-600 truncate">
+                                                                         {opt.desc} {imageEngine === 'gpt-image-2' && `· ₹${getGenerateCostINR(opt.value, imageSize)}`}
+                                                                     </p>
                                                                  </div>
                                                                  {quality === opt.value && (
                                                                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-violet-400 flex items-center justify-center shrink-0">
@@ -2027,6 +1929,86 @@ export default function MarketingStudio() {
                                                  )}
                                              </UpwardDropdown>
                                          )}
+
+                                          {/* GPT-2 Custom Output Settings (only when imageEngine === 'gpt-image-2' in image mode) */}
+                                          {generateMode === 'image' && imageEngine === 'gpt-image-2' && (
+                                              <UpwardDropdown
+                                                  icon={<Sliders size={8} />}
+                                                  label={`Output: ${imageFormat.toUpperCase()} (${imageBackground === 'auto' ? 'Auto BG' : 'Opaque BG'})`}
+                                                  accentColor="cyan"
+                                              >
+                                                  {(close) => (
+                                                      <div className="space-y-4 p-2 text-white">
+                                                          <div>
+                                                              <h4 className="text-[10px] font-black text-white/50 uppercase tracking-wider mb-2">GPT-2 Output Settings</h4>
+                                                          </div>
+                                                          
+                                                          {/* Format Selection */}
+                                                          <div className="space-y-1.5">
+                                                              <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block">Format</label>
+                                                              <div className="grid grid-cols-3 gap-1 bg-white/5 p-0.5 rounded-lg border border-white/5">
+                                                                  {['png', 'jpeg', 'webp'].map(fmt => (
+                                                                      <button
+                                                                          key={fmt}
+                                                                          type="button"
+                                                                          onClick={() => setImageFormat(fmt)}
+                                                                          className={cn("py-1 text-[9px] font-black uppercase tracking-wider rounded-md transition-all",
+                                                                              imageFormat === fmt ? "bg-cyan-500 text-black shadow-md shadow-cyan-500/10" : "text-white/40 hover:text-white/80")}
+                                                                      >
+                                                                          {fmt}
+                                                                      </button>
+                                                                  ))}
+                                                              </div>
+                                                          </div>
+
+                                                          {/* Background Selection */}
+                                                          <div className="space-y-1.5">
+                                                              <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block">Background</label>
+                                                              <div className="grid grid-cols-2 gap-1 bg-white/5 p-0.5 rounded-lg border border-white/5">
+                                                                  {['auto', 'opaque'].map(bg => (
+                                                                      <button
+                                                                          key={bg}
+                                                                          type="button"
+                                                                          onClick={() => setImageBackground(bg)}
+                                                                          className={cn("py-1 text-[9px] font-black uppercase tracking-wider rounded-md transition-all",
+                                                                              imageBackground === bg ? "bg-cyan-500 text-black shadow-md shadow-cyan-500/10" : "text-white/40 hover:text-white/80")}
+                                                                      >
+                                                                          {bg}
+                                                                      </button>
+                                                                  ))}
+                                                              </div>
+                                                          </div>
+
+                                                          {/* Compression Selection (only if jpeg or webp) */}
+                                                          {(imageFormat === 'jpeg' || imageFormat === 'webp') && (
+                                                              <div className="space-y-1.5">
+                                                                  <div className="flex justify-between items-baseline">
+                                                                      <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block">Compression</label>
+                                                                      <span className="text-[9px] font-bold text-cyan-400">{imageCompression}%</span>
+                                                                  </div>
+                                                                  <input
+                                                                      type="range"
+                                                                      min="0"
+                                                                      max="100"
+                                                                      value={imageCompression}
+                                                                      onChange={e => setImageCompression(Number(e.target.value))}
+                                                                      className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-500 outline-none"
+                                                                  />
+                                                              </div>
+                                                          )}
+
+                                                          {/* Close Button */}
+                                                          <button
+                                                              type="button"
+                                                              onClick={close}
+                                                              className="w-full py-1.5 mt-2 text-[9px] font-black uppercase tracking-widest bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-all text-white/60 hover:text-white"
+                                                          >
+                                                              Done
+                                                          </button>
+                                                      </div>
+                                                  )}
+                                              </UpwardDropdown>
+                                          )}
 
                                          {/* Engine */}
                                          <UpwardDropdown
@@ -2348,7 +2330,7 @@ export default function MarketingStudio() {
                             </button>
                             )}
                             <button
-                                onClick={(e) => { e.stopPropagation(); const isVid = zoomedImage?.startsWith('blob:') || generationHistory.find(i => i.url === zoomedImage)?.type === 'video'; const ext = isVid ? 'mp4' : 'png'; const a = document.createElement('a'); a.href = zoomedImage; a.download = `asset-${Date.now()}.${ext}`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }}
+                                onClick={(e) => { e.stopPropagation(); const isVid = zoomedImage?.startsWith('blob:') || generationHistory.find(i => i.url === zoomedImage)?.type === 'video'; downloadAsset(zoomedImage, isVid ? 'video' : 'image'); }}
                                 className="flex items-center gap-1.5 px-4 py-2 bg-black/70 hover:bg-white/10 rounded-xl text-xs font-black text-white/80 border border-white/15 transition-all"
                             >
                                 ↓ Save

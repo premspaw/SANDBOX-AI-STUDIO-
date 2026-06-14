@@ -1379,10 +1379,12 @@ Return a detailed JSON with:
         language,
         selectedScriptTone,
         selectedVideoStyle,
+        selectedSceneStyle,
         sceneCount,
         durationLogic,
         SCRIPT_TONES,
         VIDEO_STYLES,
+        SCENE_STYLES,
         voiceStyle,
         strategyContext,
         trainingContent,
@@ -1472,6 +1474,9 @@ Return a detailed JSON with:
         script,
         label,
         idx,
+        productDetails,
+        selectedSceneStyle,
+        SCENE_STYLES,
       });
 
       const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
@@ -1564,6 +1569,8 @@ Return a detailed JSON with:
             productDetails,
             selectedVideoStyle,
             VIDEO_STYLES,
+            selectedSceneStyle,
+            SCENE_STYLES,
           });
 
           const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
@@ -1598,6 +1605,8 @@ Return a detailed JSON with:
         productDetails,
         selectedVideoStyle,
         VIDEO_STYLES,
+        selectedSceneStyle,
+        SCENE_STYLES,
         hasRefImage: false,
       });
 
@@ -1663,6 +1672,8 @@ Return a detailed JSON with:
             productDetails,
             selectedVideoStyle,
             VIDEO_STYLES,
+            selectedSceneStyle,
+            SCENE_STYLES,
           });
 
           const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
@@ -1695,6 +1706,8 @@ Return a detailed JSON with:
         productDetails,
         selectedVideoStyle,
         VIDEO_STYLES,
+        selectedSceneStyle,
+        SCENE_STYLES,
       });
 
       const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
@@ -1902,37 +1915,77 @@ Return a detailed JSON with:
       const hasLoc = !!locationImg;
       let promptInstructions = '';
 
+      const faceLockInstructions = hasChar
+        ? ` Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, natural asymmetry. Ultra-realistic skin: visible pores, subtle texture, no airbrushing, no beauty filter. This is a real person — do not idealize or alter.`
+        : '';
+
+      const skinRealismBlock = `SKIN REALISM (critical): Ultra-realistic human skin — visible pores, natural texture, subtle imperfections, micro-hair detail. NO airbrushed or plastic skin. NO beauty filter. Skin must look like an unedited photo of a real person.`;
+
+      const photoQualityBlock = imageStyle === 'ultra-realistic'
+        ? `Shot on iPhone, natural ambient light, imperfect raw quality, slight handheld movement, no studio polish, real-life moment feel, 2K resolution.`
+        : imageStyle === 'cinematic'
+        ? `Shot on Sony A7 IV, 35mm f/1.8, dramatic natural light, cinematic color grade, shallow depth of field on background only.`
+        : `Natural phone camera quality, authentic lighting, candid feel.`;
+
       if (hasChar && hasProd && hasLoc) {
-        promptInstructions = `Images provided in order: PERSON, PRODUCT, LOCATION. TASK: Generate a SINGLE photograph of the PERSON wearing or using the PRODUCT, placed naturally inside the LOCATION environment. Match the person's likeness, integrate the product naturally, and replicate the location's background, lighting, and atmosphere exactly. Scene: ${promptText}. Output must be one seamless photo — no collage, no split-screen.`;
+        promptInstructions = `One seamless photograph. 
+        Subject: the person from the first reference image — ${faceLockInstructions}
+        They are naturally wearing or using the product from the second reference image, integrated as if they own it.
+        Environment: the background, lighting, and atmosphere from the third reference image — replicated exactly.
+        Scene: ${promptText}.
+        ${skinRealismBlock}
+        ${photoQualityBlock}
+        No collage. No split-screen. One photo.`;
       } else if (hasChar && hasProd) {
-        promptInstructions = `The first image is the reference for the PERSON (creator). The second image is the reference for the PRODUCT. 
-        TASK: Generate a SINGLE, COHERENT photograph where this person is wearing or using this product in the scene: ${promptText}. 
-        CRITICAL: DO NOT create a collage, side-by-side comparison, or split-screen. The output must be one single, natural-looking photo. 
-        Match the lighting, skin texture, and aesthetic of the first image. The product must be integrated naturally.`;
+        promptInstructions = `One seamless photograph of this specific person using this specific product.
+        Person: match the face, skin tone, hair, and body from the first reference image exactly.${faceLockInstructions}
+        Product: integrated naturally — worn, held, or used as fits the scene. Matches the product reference exactly.
+        Scene: ${promptText}.
+        ${skinRealismBlock}
+        ${photoQualityBlock}
+        No collage. No split-screen. One photo.`;
       } else if (hasChar && hasLoc) {
-        promptInstructions = `The first image is the reference for the PERSON. The second image is the LOCATION. TASK: Generate a SINGLE photograph of this person placed naturally inside the location environment. Scene: ${promptText}. Match the person's appearance and replicate the location's background and atmosphere.`;
+        promptInstructions = `One photograph of this person inside this specific environment.
+        Person: face, skin, hair match the reference image exactly.${faceLockInstructions}
+        Location: background, lighting, and atmosphere replicated from the reference — the person belongs in this space naturally.
+        Scene: ${promptText}.
+        ${skinRealismBlock}
+        ${photoQualityBlock}
+        One photo.`;
       } else if (hasProd && hasLoc) {
-        promptInstructions = `The first image is the reference for the PRODUCT. The second image is the LOCATION. TASK: Generate a SINGLE photograph of a creator using or wearing this product inside the location environment. Scene: ${promptText}. The product must look exactly like the reference and the background must match the location.`;
+        promptInstructions = `One photograph of a creator using this product inside this specific location.
+        Product: appears exactly as in the reference — same shape, color, branding, texture.
+        Location: background and lighting match the reference environment exactly.
+        Scene: ${promptText}.
+        ${skinRealismBlock}
+        ${photoQualityBlock}
+        One photo.`;
       } else if (hasChar) {
-        promptInstructions = `The image provided is the reference for the PERSON (creator). 
-        TASK: Generate a SINGLE photograph of this person in the scene: ${promptText}. 
-        Match their appearance and the lighting/aesthetic of the reference image perfectly.`;
+        promptInstructions = `One photograph of this specific person.
+        Face and appearance: match the reference image exactly.${faceLockInstructions}
+        Scene: ${promptText}.
+        ${skinRealismBlock}
+        ${photoQualityBlock}`;
       } else if (hasProd) {
-        promptInstructions = `The image provided is the reference for the PRODUCT. 
-        TASK: Generate a SINGLE photograph of a creator using/wearing this product in the scene: ${promptText}. 
-        The product in the generated image must look exactly like the reference.`;
+        promptInstructions = `One photograph of a creator using this product.
+        Product: matches the reference exactly — same design, color, texture, branding.
+        Scene: ${promptText}.
+        ${skinRealismBlock}
+        ${photoQualityBlock}`;
       } else if (hasLoc) {
-        promptInstructions = `The image provided is the LOCATION reference. TASK: Generate a SINGLE photograph of a creator in the scene: ${promptText}, placed naturally inside this location. Replicate the background, lighting, and atmosphere of the location image exactly.`;
+        promptInstructions = `One photograph of a creator inside this specific location.
+        Environment: background and lighting replicated from the reference exactly.
+        Scene: ${promptText}.
+        ${skinRealismBlock}
+        ${photoQualityBlock}`;
       } else {
-        promptInstructions = `TASK: Generate a SINGLE photograph of a creator in the scene: ${promptText}.`;
+        promptInstructions = `One photograph of a UGC creator.
+        Scene: ${promptText}.
+        ${skinRealismBlock}
+        ${photoQualityBlock}`;
       }
 
-      // Append everyday-phone-photo quality block when ultra-realistic is selected
-      if (imageStyle === 'ultra-realistic') {
-        promptInstructions += `\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.`;
-      }
-
-    contents.push({ text: promptInstructions });
+      contents.push({ text: promptInstructions });
 
     // gemini-3.1-flash-image-preview = Nano Banana 2 (correct per official docs)
     const modelName = 'gemini-3.1-flash-image-preview';
@@ -2591,6 +2644,11 @@ Return a detailed JSON with:
         promptInstructions = `TASK: Generate ONE UGC-style photo for this scene: ${sceneDesc}. Style: ${stylePrompt}.`;
       }
 
+      if (primaryPersonImg || secondaryPersonImg) {
+        promptInstructions += `\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.
+SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.`;
+      }
+
       if (imageStyle === 'ultra-realistic') {
         promptInstructions += `\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.`;
       }
@@ -2653,6 +2711,7 @@ Return a detailed JSON with:
             size: aspectRatio === '16:9' ? '1536x1024' : aspectRatio === '1:1' ? '1024x1024' : '1024x1536',
             aspect_ratio: aspectRatio,
             userId: currentUserId,
+            folder: 'ugc/generated',
             ...(primaryImage && { image: primaryImage }),
             ...(secondaryImage && { secondImage: secondaryImage }),
           }),
@@ -2687,6 +2746,7 @@ Return a detailed JSON with:
             prompt: contents.find(c => c.text)?.text || promptInstructions,
             aspect_ratio: aspectRatio,
             userId: currentUserId,
+            folder: 'ugc/generated',
             referenceImages: refImages,
           }),
         });

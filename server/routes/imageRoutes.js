@@ -29,7 +29,12 @@ export default function createRouter(deps) {
             // Deduct credits based on the model
             let requiredCredits = 2; // Default (Gemini 3.1 Flash Image preview / Nano Banana 2)
             const modelLower = (model || '').toLowerCase();
-            if (modelLower.includes('gpt') || modelLower.includes('openai') || modelLower.includes('dall')) {
+            if (modelLower === 'gpt-image-2') {
+                const q = (req.body.quality || 'medium').toLowerCase();
+                if (q === 'low') requiredCredits = 2;
+                else if (q === 'high') requiredCredits = 5;
+                else requiredCredits = 3; // medium / auto
+            } else if (modelLower.includes('gpt') || modelLower.includes('openai') || modelLower.includes('dall')) {
                 requiredCredits = 5; // OpenAI DALL-E costs 5 credits
             } else if (modelLower.includes('pro')) {
                 requiredCredits = 5;
@@ -42,7 +47,7 @@ export default function createRouter(deps) {
                 await consumeCredits(targetUserId, requiredCredits);
             }
 
-            if (model === 'gpt-image-2' || model?.startsWith('gpt')) {
+            if (model === 'gpt-image-2' || model === 'gpt-image-1' || model?.startsWith('gpt') || model?.startsWith('dall')) {
                 return await handleOpenAI(req, res);
             }
             return await handleGoogle(req, res);
@@ -209,30 +214,50 @@ export default function createRouter(deps) {
 
                 buffer = Buffer.from(b64, 'base64');
             } else {
-                // Call OpenAI DALL-E 2 edit API
+                // Call OpenAI Edit API
                 const apiKey = process.env.OPENAI_API_KEY;
                 if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
                 const { default: OpenAI, toFile } = await import('openai');
                 const openai = new OpenAI({ apiKey });
 
-                console.log('[Inpaint] Calling OpenAI DALL-E image edit API...');
+                const targetModel = model || 'gpt-image-2';
+                console.log(`[Inpaint] Calling OpenAI edit API with model: ${targetModel}...`);
+
+                const imageFile = await toFile(imageBuffer, 'image.png');
+                const maskFile = await toFile(maskBuffer, 'mask.png');
+
+                const imagesList = [imageFile];
+                if (referenceImage) {
+                    try {
+                        const refBuffer = await toBuffer(referenceImage);
+                        if (refBuffer) {
+                            const refFile = await toFile(refBuffer, 'reference.png');
+                            imagesList.push(refFile);
+                        }
+                    } catch (refErr) {
+                        console.warn('[Inpaint] Warning: Failed to load reference image for OpenAI:', refErr.message);
+                    }
+                }
+
+                const isGPTImage = targetModel === 'gpt-image-2' || targetModel === 'gpt-image-1.5' || targetModel.startsWith('gpt-image');
 
                 const response = await openai.images.edit({
-                    model: 'dall-e-2',
-                    image: await toFile(imageBuffer, 'image.png'),
-                    mask: await toFile(maskBuffer, 'mask.png'),
+                    model: targetModel,
+                    image: (isGPTImage && imagesList.length > 1) ? imagesList : imageFile,
+                    mask: maskFile,
                     prompt: prompt,
                     n: 1,
-                    size: '1024x1024'
+                    size: '1024x1024',
+
                 });
 
-                const dallEUrl = response.data?.[0]?.url;
-                if (!dallEUrl) {
-                    throw new Error('DALL-E edit API failed to return an image.');
+                const resultUrl = response.data?.[0]?.url;
+                if (!resultUrl) {
+                    throw new Error(`${targetModel} edit API failed to return an image.`);
                 }
 
                 // Download image buffer from OpenAI CDN
-                const dallEResp = await fetch(dallEUrl);
+                const dallEResp = await fetch(resultUrl);
                 if (!dallEResp.ok) {
                     throw new Error(`Failed to download image from OpenAI CDN: ${dallEResp.statusText}`);
                 }

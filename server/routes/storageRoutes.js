@@ -211,7 +211,7 @@ export default function createRouter(deps) {
     router.post('/upload-asset', async (req, res) => {
         try {
             const image = req.body.image || req.body.data || req.body.imageData;
-            const { userId, type = 'image', filename } = req.body;
+            const { userId, type = 'image', filename, folder } = req.body;
             if (!image) throw new Error("No image data provided");
 
             const mimeMatch = image.match(/^data:(image\/[a-zA-Z+]+|video\/[a-zA-Z0-9]+);base64,/);
@@ -223,7 +223,7 @@ export default function createRouter(deps) {
             const base64Str = image.split(',')[1] || image;
             const buffer = Buffer.from(base64Str, 'base64');
             const name = filename || `upload_${Date.now()}.${ext}`;
-            const filePath = `users/${userId || 'anon'}/uploads/${name}`;
+            const filePath = `users/${userId || 'anon'}/${folder || 'uploads'}/${name}`;
 
             const publicUrl = await storageService.uploadToGCS(buffer, filePath, mimeType, BUCKET_NAME);
             
@@ -233,7 +233,8 @@ export default function createRouter(deps) {
                 type,
                 url: publicUrl,
                 user_id: userId || 'local_user',
-                aspect: aspect
+                aspect: aspect,
+                metadata: { folder: folder || 'uploads' }
             });
 
             // Save to assets database table in Supabase
@@ -246,7 +247,7 @@ export default function createRouter(deps) {
                         url: publicUrl,
                         user_id: userId,
                         created_at: new Date().toISOString(),
-                        metadata: { aspect }
+                        metadata: { aspect, folder: folder || 'uploads' }
                     }]);
                     console.log(`[UPLOAD-ASSET] Saved uploaded ${type} to DB for user ${userId}`);
                 } catch (dbErr) {

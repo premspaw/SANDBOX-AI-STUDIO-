@@ -26,8 +26,11 @@ export default function LeftSidebar() {
     isAnalyzing,
     productAnalysis,
     podcastHost1Img,
+    setPodcastHost1Img,
     podcastHost2Img,
+    setPodcastHost2Img,
     podcastProductImg,
+    setPodcastProductImg,
     handleImageUpload,
     host1Voice,
     setHost1Voice,
@@ -58,7 +61,9 @@ export default function LeftSidebar() {
     setPodcastDirectorNote,
     leftPanelMode,
     productImg,
+    setProductImg,
     characterImg,
+    setCharacterImg,
     locationImg,
     setLocationImg,
     sourceVideo,
@@ -187,8 +192,8 @@ export default function LeftSidebar() {
                     <input type="file" accept="image/*" onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) setThPersonImg({ file: f, url: URL.createObjectURL(f) }); }} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                     {thPersonImg ? (
                       <>
-                        <img src={resolveUrl(thPersonImg.url)} alt="Person" className="w-full h-full object-cover" />
-                        <button onClick={ev => { ev.stopPropagation(); setThPersonImg(null); }} className="absolute top-1 right-1 z-20 w-4 h-4 rounded-full bg-black/80 flex items-center justify-center hover:bg-red-500 transition-colors"><X size={8} /></button>
+                        <img src={resolveUrl(thPersonImg.url)} alt="Person" className="w-full h-full object-cover transition-opacity duration-200 group-hover:opacity-0" />
+                        <button onClick={ev => { ev.stopPropagation(); setThPersonImg(null); }} className="absolute inset-0 z-20 flex items-center justify-center bg-black/90 text-red-500 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"><X size={18} strokeWidth={2} /></button>
                       </>
                     ) : (
                       <div className="flex flex-col items-center gap-1 text-[#2a2a3a] group-hover:text-[#c8f135]/60 transition-colors"><User size={18} strokeWidth={1.5} /></div>
@@ -202,8 +207,8 @@ export default function LeftSidebar() {
                     <input type="file" accept="image/*" onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) setThProductImg({ file: f, url: URL.createObjectURL(f) }); }} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                     {thProductImg ? (
                       <>
-                        <img src={resolveUrl(thProductImg.url)} alt="Product" className="w-full h-full object-cover" />
-                        <button onClick={ev => { ev.stopPropagation(); setThProductImg(null); }} className="absolute top-1 right-1 z-20 w-4 h-4 rounded-full bg-black/80 flex items-center justify-center hover:bg-red-500 transition-colors"><X size={8} /></button>
+                        <img src={resolveUrl(thProductImg.url)} alt="Product" className="w-full h-full object-cover transition-opacity duration-200 group-hover:opacity-0" />
+                        <button onClick={ev => { ev.stopPropagation(); setThProductImg(null); }} className="absolute inset-0 z-20 flex items-center justify-center bg-black/90 text-red-500 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"><X size={18} strokeWidth={2} /></button>
                       </>
                     ) : (
                       <div className="flex flex-col items-center gap-1 text-[#2a2a3a] group-hover:text-[#c8f135]/60 transition-colors"><Package size={18} strokeWidth={1.5} /></div>
@@ -217,8 +222,8 @@ export default function LeftSidebar() {
                     <input type="file" accept="image/*" onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) setThLocationImg({ file: f, url: URL.createObjectURL(f) }); }} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                     {thLocationImg ? (
                       <>
-                        <img src={resolveUrl(thLocationImg.url)} alt="Location" className="w-full h-full object-cover" />
-                        <button onClick={ev => { ev.stopPropagation(); setThLocationImg(null); }} className="absolute top-1 right-1 z-20 w-4 h-4 rounded-full bg-black/80 flex items-center justify-center hover:bg-red-500 transition-colors"><X size={8} /></button>
+                        <img src={resolveUrl(thLocationImg.url)} alt="Location" className="w-full h-full object-cover transition-opacity duration-200 group-hover:opacity-0" />
+                        <button onClick={ev => { ev.stopPropagation(); setThLocationImg(null); }} className="absolute inset-0 z-20 flex items-center justify-center bg-black/90 text-red-500 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"><X size={18} strokeWidth={2} /></button>
                       </>
                     ) : (
                       <div className="flex flex-col items-center gap-1 text-[#2a2a3a] group-hover:text-[#c8f135]/60 transition-colors"><MapPin size={18} strokeWidth={1.5} /></div>
@@ -281,21 +286,31 @@ export default function LeftSidebar() {
 
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: 'Host 1', value: podcastHost1Img, target: 'podcastHost1' as const, icon: User, voiceVal: host1Voice, setVoice: setHost1Voice },
-                  { label: 'Host 2', value: podcastHost2Img, target: 'podcastHost2' as const, icon: User, voiceVal: host2Voice, setVoice: setHost2Voice },
-                  { label: 'Product', value: podcastProductImg, target: 'podcastProduct' as const, icon: Package, voiceVal: null, setVoice: null },
-                ].map(({ label, value, target, icon: Icon, voiceVal, setVoice }) => (
+                  { label: 'Host 1', value: podcastHost1Img, target: 'podcastHost1' as const, icon: User, voiceVal: host1Voice, setVoice: setHost1Voice, clearFn: () => setPodcastHost1Img(null) },
+                  { label: 'Host 2', value: podcastHost2Img, target: 'podcastHost2' as const, icon: User, voiceVal: host2Voice, setVoice: setHost2Voice, clearFn: () => setPodcastHost2Img(null) },
+                  { label: 'Product', value: podcastProductImg, target: 'podcastProduct' as const, icon: Package, voiceVal: null, setVoice: null, clearFn: () => setPodcastProductImg(null) },
+                ].map(({ label, value, target, icon: Icon, voiceVal, setVoice, clearFn }) => (
                   <div className="space-y-1" key={target}>
                     <div className="relative group aspect-square bg-[#111113] border border-[#1e1e24] rounded-xl overflow-hidden cursor-pointer hover:border-[#c8f135]/50 transition-colors flex items-center justify-center">
                       <input type="file" accept="image/*" onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleImageUpload(e, target)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                       {value ? (
-                        <img src={resolveUrl(value.url)} alt={label} className="w-full h-full object-cover" />
+                        <>
+                          <img src={resolveUrl(value.url)} alt={label} className="w-full h-full object-cover transition-opacity duration-200 group-hover:opacity-0" />
+                          <button
+                            onClick={ev => {
+                              ev.stopPropagation();
+                              clearFn?.();
+                            }}
+                            className="absolute inset-0 z-20 flex items-center justify-center bg-black/90 text-red-500 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"
+                          >
+                            <X size={18} strokeWidth={2} />
+                          </button>
+                        </>
                       ) : (
                         <div className="flex flex-col items-center gap-1 text-[#2a2a3a] group-hover:text-[#c8f135]/60 transition-colors">
                           <Icon size={18} strokeWidth={1.5} />
                         </div>
                       )}
-                      {value && <div className="absolute inset-0 bg-[#c8f135]/10 opacity-0 group-hover:opacity-100 transition-opacity" />}
                     </div>
                     <p className="text-[7px] text-center font-black text-white/20 uppercase tracking-widest">{label}</p>
                     {setVoice && (
@@ -513,13 +528,15 @@ export default function LeftSidebar() {
                   <div className="relative group aspect-square bg-[#111113] border border-[#1e1e24] rounded-xl overflow-hidden cursor-pointer hover:border-[#c8f135]/50 transition-colors flex items-center justify-center">
                     <input type="file" accept="image/*" onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleImageUpload(e, 'character')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                     {characterImg ? (
-                      <img src={resolveUrl(characterImg.url)} alt="Person" className="w-full h-full object-cover" />
+                      <>
+                        <img src={resolveUrl(characterImg.url)} alt="Person" className="w-full h-full object-cover transition-opacity duration-200 group-hover:opacity-0" />
+                        <button onClick={(ev) => { ev.stopPropagation(); setCharacterImg(null); }} className="absolute inset-0 z-20 flex items-center justify-center bg-black/90 text-red-500 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"><X size={18} strokeWidth={2} /></button>
+                      </>
                     ) : (
                       <div className="flex flex-col items-center gap-1 text-[#2a2a3a] group-hover:text-[#c8f135]/60 transition-colors">
                         <User size={18} strokeWidth={1.5} />
                       </div>
                     )}
-                    {characterImg && <div className="absolute inset-0 bg-[#c8f135]/10 opacity-0 group-hover:opacity-100 transition-opacity" />}
                   </div>
                   <p className="text-[7px] text-center font-black text-white/20 uppercase tracking-widest">Person</p>
                 </div>
@@ -528,13 +545,15 @@ export default function LeftSidebar() {
                   <div className="relative group aspect-square bg-[#111113] border border-[#1e1e24] rounded-xl overflow-hidden cursor-pointer hover:border-[#c8f135]/50 transition-colors flex items-center justify-center">
                     <input type="file" accept="image/*" onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleImageUpload(e, 'product')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                     {productImg ? (
-                      <img src={resolveUrl(productImg.url)} alt="Product" className="w-full h-full object-cover" />
+                      <>
+                        <img src={resolveUrl(productImg.url)} alt="Product" className="w-full h-full object-cover transition-opacity duration-200 group-hover:opacity-0" />
+                        <button onClick={(ev) => { ev.stopPropagation(); setProductImg(null); }} className="absolute inset-0 z-20 flex items-center justify-center bg-black/90 text-red-500 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"><X size={18} strokeWidth={2} /></button>
+                      </>
                     ) : (
                       <div className="flex flex-col items-center gap-1 text-[#2a2a3a] group-hover:text-[#c8f135]/60 transition-colors">
                         <Package size={18} strokeWidth={1.5} />
                       </div>
                     )}
-                    {productImg && <div className="absolute inset-0 bg-[#c8f135]/10 opacity-0 group-hover:opacity-100 transition-opacity" />}
                   </div>
                   <p className="text-[7px] text-center font-black text-white/20 uppercase tracking-widest">Product</p>
                 </div>
@@ -544,8 +563,8 @@ export default function LeftSidebar() {
                     <input type="file" accept="image/*" onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleImageUpload(e, 'location')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                     {locationImg ? (
                       <>
-                        <img src={resolveUrl(locationImg.url)} alt="Stage" className="w-full h-full object-cover" />
-                        <button onClick={(ev) => { ev.stopPropagation(); setLocationImg(null); }} className="absolute top-1 right-1 z-20 w-4 h-4 rounded-full bg-black/80 flex items-center justify-center hover:bg-red-500 transition-colors"><X size={8} /></button>
+                        <img src={resolveUrl(locationImg.url)} alt="Stage" className="w-full h-full object-cover transition-opacity duration-200 group-hover:opacity-0" />
+                        <button onClick={(ev) => { ev.stopPropagation(); setLocationImg(null); }} className="absolute inset-0 z-20 flex items-center justify-center bg-black/90 text-red-500 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"><X size={18} strokeWidth={2} /></button>
                       </>
                     ) : (
                       <div className="flex flex-col items-center gap-1 text-[#2a2a3a] group-hover:text-[#c8f135]/60 transition-colors">

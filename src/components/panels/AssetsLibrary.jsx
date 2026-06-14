@@ -21,7 +21,10 @@ import {
     Film,
     Bot,
     Lock,
-    Database
+    Database,
+    Play,
+    Plus,
+    X
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
@@ -221,6 +224,198 @@ function CharacterKitCard({ character, onDirectorsCut, onDelete, onSelectReferen
 }
 
 
+function VideoThumbnail({ url, className }) {
+    if (!url) return null;
+    const resolvedUrl = url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:') ? url : resolveUrl(url);
+    return (
+        <div className={`relative w-full h-full ${className || ''}`}>
+            <video
+                src={`${resolvedUrl}#t=0.5`}
+                className="w-full h-full object-cover"
+                preload="metadata"
+                playsInline
+                muted
+            />
+        </div>
+    );
+}
+
+function MarketingGalleryGrid({ items, onSelectReference, onDelete, compact, onPreview }) {
+    const [tab, setTab] = useState('all'); // 'all', 'image', 'video'
+
+    const filtered = items.filter(item => {
+        if (tab === 'all') return true;
+        return item.type === tab;
+    });
+
+    return (
+        <div className="flex-1 flex flex-col min-h-0 min-w-0">
+            {/* Inner category tabs */}
+            <div className="flex gap-2 mb-4">
+                {['all', 'image', 'video'].map(t => (
+                    <button
+                        key={t}
+                        onClick={() => setTab(t)}
+                        className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all ${
+                            tab === t
+                                ? 'bg-[#bef264] text-black'
+                                : 'text-white/30 border border-white/10 hover:text-white/60'
+                        }`}
+                    >
+                        {t}
+                    </button>
+                ))}
+            </div>
+
+            {filtered.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center gap-4 opacity-20 text-center select-none">
+                    <FolderOpen className="w-20 h-20 text-[#bef264]/20" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">No_Marketing_Assets_Found</span>
+                </div>
+            ) : (
+                <div className={compact
+                    ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4"
+                    : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6"
+                }>
+                    {filtered.map((item, idx) => (
+                        <div
+                            key={item.id}
+                            className="relative group rounded-xl overflow-hidden cursor-pointer w-full aspect-[9/16] surface-glass border border-white/5 hover:border-[#bef264]/60 transition-all duration-500 shadow-2xl"
+                            onClick={() => onPreview(item)}
+                        >
+                            {item.type === 'video' ? (
+                                <div className="w-full h-full relative bg-black/60 flex items-center justify-center">
+                                    <VideoThumbnail url={item.url} className="w-full h-full" />
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity duration-200">
+                                        <div className="w-10 h-10 rounded-full bg-black/70 border border-white/30 flex items-center justify-center shadow-lg">
+                                            <Play size={14} className="text-white fill-white ml-0.5" />
+                                        </div>
+                                    </div>
+                                    <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/70 px-1.5 py-0.5 rounded-md pointer-events-none">
+                                        <Video size={9} className="text-[#bef264]" />
+                                        <span className="text-[7px] text-[#bef264] font-black uppercase">Video</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="w-full h-full relative bg-black/60 flex items-center justify-center overflow-hidden">
+                                    <img src={resolveUrl(item.url)} alt={`marketing-gen-${idx}`} className="w-full h-full object-cover transition-all duration-1000 brightness-75 group-hover:brightness-110 group-hover:scale-110" loading="lazy" />
+                                </div>
+                            )}
+
+                            {/* Hover overlay */}
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2.5 z-10">
+                                <div className="flex gap-2">
+                                    <button
+                                        title="Preview"
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            onPreview(item);
+                                        }}
+                                        className="w-9 h-9 flex items-center justify-center bg-[#bef264] hover:bg-[#a3d94b] text-black rounded-xl transition-all shadow-lg hover:scale-105 active:scale-95"
+                                    >
+                                        <Play size={14} className={item.type === 'video' ? "fill-black ml-0.5" : "text-black"} />
+                                    </button>
+                                    <button
+                                        title="Download"
+                                        onClick={async e => {
+                                            e.stopPropagation();
+                                            const ext = item.type === 'video' ? 'mp4' : 'png';
+                                            try {
+                                                const res = await fetch(resolveUrl(item.url));
+                                                const blob = await res.blob();
+                                                const blobUrl = URL.createObjectURL(blob);
+                                                const a = document.createElement('a');
+                                                a.href = blobUrl;
+                                                a.download = `marketing-${item.id}.${ext}`;
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                document.body.removeChild(a);
+                                                URL.revokeObjectURL(blobUrl);
+                                            } catch {
+                                                const a = document.createElement('a');
+                                                a.href = resolveUrl(item.url);
+                                                a.download = `marketing-${item.id}.${ext}`;
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                document.body.removeChild(a);
+                                            }
+                                        }}
+                                        className="w-9 h-9 flex items-center justify-center bg-black/80 hover:bg-white/25 rounded-xl text-white text-sm font-black border border-white/20 transition-all shadow-lg"
+                                    >
+                                        <Download size={14} />
+                                    </button>
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <button
+                                        title="Use as Reference"
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            onSelectReference?.(item.url, item);
+                                        }}
+                                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl border bg-black/80 hover:bg-[#bef264] hover:text-black hover:border-[#bef264] border-white/20 text-white transition-all shadow-lg text-[8px] font-black uppercase tracking-wider"
+                                    >
+                                        <Plus size={10} /> Use Reference
+                                    </button>
+                                    <button
+                                        title="Delete"
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            onDelete(item.id);
+                                        }}
+                                        className="w-9 h-9 flex items-center justify-center bg-red-500/80 hover:bg-red-500 rounded-xl text-white border border-red-400/50 transition-all shadow-lg"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function Lightbox({ item, onClose }) {
+    if (!item) return null;
+    const resolvedUrl = item.url.startsWith('http') || item.url.startsWith('data:') || item.url.startsWith('blob:') ? item.url : resolveUrl(item.url);
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md p-4" onClick={onClose}>
+            <button 
+                onClick={onClose}
+                className="absolute top-4 right-4 p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white transition-all z-50"
+            >
+                <X size={20} />
+            </button>
+            <div className="relative max-w-full max-h-full flex flex-col items-center justify-center animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                {item.type === 'video' ? (
+                    <video 
+                        src={resolvedUrl}
+                        controls
+                        autoPlay
+                        className="max-w-[95vw] max-h-[85vh] rounded-lg shadow-2xl object-contain border border-white/10"
+                    />
+                ) : (
+                    <img 
+                        src={resolvedUrl}
+                        alt="marketing-preview"
+                        className="max-w-[95vw] max-h-[85vh] rounded-lg shadow-2xl object-contain border border-white/10"
+                    />
+                )}
+                {item.prompt && (
+                    <div className="mt-4 max-w-2xl text-center bg-black/60 border border-white/5 rounded-xl px-4 py-3">
+                        <p className="text-[10px] text-white/50 font-mono uppercase tracking-widest mb-1">Generated Prompt</p>
+                        <p className="text-xs text-white/80 font-mono leading-relaxed">{item.prompt}</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+
 export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab: setAppTab, defaultTab = 'images' }) {
     const [activeTab, setActiveTab] = useState(defaultTab);
     const [viewMode, setViewMode] = useState('grid');
@@ -233,11 +428,13 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         upscaled: [],
         characters: [],
         landing: [],
-        templates: []
+        templates: [],
+        marketing: []
     });
+
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-
+    const [lightboxItem, setLightboxItem] = useState(null);
 
     const [loadedGroups, setLoadedGroups] = useState({
         standard: false, // images, videos, upscaled
@@ -276,9 +473,8 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
             const data = await response.json();
             
             if (!response.ok) throw new Error(data.error || "Failed to fetch assets");
-            
             const allAssets = data.assets || [];
-            const dbImages = allAssets.filter(a => a.type === 'image').map(a => {
+            const dbImages = allAssets.filter(a => a.type === 'image' && a.folder !== 'marketing').map(a => {
                 let displayName = a.name;
                 if (!displayName || displayName === 'CHARACTER Target' || displayName.toUpperCase().endsWith(' TARGET')) {
                     const boardType = a.metadata?.boardType || 'Image';
@@ -294,8 +490,9 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     name: displayName
                 };
             });
-            const dbVideos = allAssets.filter(a => a.type === 'video');
-            const dbUpscaled = allAssets.filter(a => a.type === 'upscaled' || a.type === 'upscale');
+            const dbVideos = allAssets.filter(a => a.type === 'video' && a.folder !== 'marketing');
+            const dbUpscaled = allAssets.filter(a => (a.type === 'upscaled' || a.type === 'upscale') && a.folder !== 'marketing');
+            const dbMarketing = allAssets.filter(a => a.folder === 'marketing' || (a.url && a.url.includes('/marketing/')));
 
             let avatarStudioImages = [];
             try {
@@ -341,7 +538,8 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     ...prev,
                     images: [...avatarStudioImages, ...dbImages],
                     videos: dbVideos,
-                    upscaled: dbUpscaled
+                    upscaled: dbUpscaled,
+                    marketing: dbMarketing
                 };
                 setCachedAssets(updated, targetUser?.id);
                 return updated;
@@ -631,6 +829,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
         { id: 'images', label: 'Images', icon: ImageIcon },
         { id: 'characters', label: 'Characters', icon: User },
         { id: 'videos', label: 'Videos', icon: Video },
+        { id: 'marketing', label: 'Marketing', icon: Bot },
         { id: 'models', label: 'AI Models', icon: Box },
         { id: 'upscaled', label: 'Upscaled', icon: ArrowBigUpDash },
     ];
@@ -731,6 +930,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                         { id: 'images', label: 'Images', icon: ImageIcon },
                         { id: 'videos', label: 'Videos', icon: Video },
                         { id: 'characters', label: 'Characters', icon: User },
+                        { id: 'marketing', label: 'Marketing', icon: Bot },
                         { id: 'matrix', label: 'Movie Matrix', icon: Box },
                         { id: 'models', label: 'AI Models', icon: Box },
                         { id: 'upscaled', label: 'Upscaled', icon: ArrowBigUpDash }
@@ -798,6 +998,14 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                             </tbody>
                         </table>
                     </div>
+                ) : activeTab === 'marketing' ? (
+                    <MarketingGalleryGrid
+                        items={assets.marketing || []}
+                        onSelectReference={onSelectReference}
+                        onDelete={(id) => handleDeleteAsset(id, 'marketing')}
+                        compact={compact}
+                        onPreview={setLightboxItem}
+                    />
                 ) : activeTab === 'characters' || activeTab === 'matrix' ? (
                     <div>
                         {(() => {
@@ -939,6 +1147,9 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     </div>
                 )
             }</div>
+            {lightboxItem && (
+                <Lightbox item={lightboxItem} onClose={() => setLightboxItem(null)} />
+            )}
         </div>
     );
 }

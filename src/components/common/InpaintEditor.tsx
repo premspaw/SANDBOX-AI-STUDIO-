@@ -161,17 +161,16 @@ export function InpaintEditor({ imageUrl, userId, onClose, onDone }: InpaintEdit
         if (!resp.ok) throw new Error(data.error || 'Edit failed');
         resultUrl = data.url || data.imageUrl || data.dataUrl;
       } else {
-        const editPrompt = `Edit the image as follows: ${instruction}.${refImage ? ' Use the reference image as a style/content guide for the marked area.' : ''} Focus changes ONLY on the highlighted/masked region. Keep everything else exactly the same.`;
-        const resp = await fetch(getApiUrl('/api/generate-image'), {
+        const editPrompt = instruction;
+        const resp = await fetch(getApiUrl('/api/edit-image'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'gpt-image-2',
+            imageBase64: imageUrl,
+            maskBase64,
             prompt: editPrompt,
-            image: imageUrl,
-            secondImage: refImage || undefined,
-            size: '1024x1024',
-            quality: 'medium',
+            referenceImage: refImage || undefined,
+            model: 'gpt-image-2',
             userId
           })
         });

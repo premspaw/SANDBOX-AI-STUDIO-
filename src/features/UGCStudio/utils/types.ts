@@ -9,6 +9,7 @@ export interface GalleryItem {
   type: 'image' | 'video';
   url: string;
   prompt?: string;
+  createdAt?: number;
 }
 
 export interface TimelineItem {

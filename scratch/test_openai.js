@@ -1,20 +1,15 @@
-
 import fetch from 'node-fetch';
 
 async function testOpenAI() {
     const payload = {
-        model: "gpt-image-2-2026-04-21",
-        prompt: JSON.stringify({
-            goal: "Create a professional marketing asset",
-            mode: "detailed_infographic",
-            subject: "Gourmet Burger",
-            details: {
-                composition: "Centered",
-                visual_quality: "High"
-            }
-        }),
+        model: "gpt-image-2",
+        prompt: "A delicious gourmet burger on a dark background",
         quality: "medium",
-        userId: "test_user"
+        size: "1024x1024",
+        userId: "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+        format: "webp",
+        output_compression: 80,
+        background: "opaque"
     };
 
     console.log("Sending request to server...");
@@ -25,7 +20,8 @@ async function testOpenAI() {
     });
 
     const data = await resp.json();
-    console.log("Response:", JSON.stringify(data, null, 2));
+    console.log("Response status:", resp.status);
+    console.log("Response data:", JSON.stringify(data, null, 2));
 }
 
 testOpenAI();

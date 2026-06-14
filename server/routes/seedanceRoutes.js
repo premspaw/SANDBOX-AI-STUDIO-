@@ -365,7 +365,7 @@ export default function createRouter(deps) {
     router.get('/seedance/status/:requestId', async (req, res) => {
         try {
             const { requestId } = req.params;
-            const { userId, aspectRatio = '16:9', engine } = req.query;
+            const { userId, aspectRatio = '16:9', engine, folder } = req.query;
 
             console.log(`[SEEDANCE-STATUS] Checking status | id: ${requestId} | engine: ${engine}`);
 
@@ -396,7 +396,7 @@ export default function createRouter(deps) {
                     console.log(`[SEEDANCE-STATUS-ARK] Downloading video: ${finalUrl}`);
                     const videoResp = await fetch(finalUrl);
                     const ab = await videoResp.arrayBuffer();
-                    const supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio);
+                    const supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, folder);
 
                     return res.json({ status: 'completed', url: supabaseUrl });
                 } else if (state === 'failed') {
@@ -432,7 +432,7 @@ export default function createRouter(deps) {
                     console.log(`[SEEDANCE-STATUS-KIE] Downloading video: ${finalUrl}`);
                     const videoResp = await fetch(finalUrl);
                     const ab = await videoResp.arrayBuffer();
-                    const supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio);
+                    const supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, folder);
 
                     return res.json({ status: 'completed', url: supabaseUrl });
                 } else if (state === 'failed' || state === 'error') {

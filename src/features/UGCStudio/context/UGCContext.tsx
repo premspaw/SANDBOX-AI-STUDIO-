@@ -24,6 +24,7 @@ export interface GalleryItem {
   url: string;
   prompt?: string;
   loading?: boolean;
+  createdAt?: number;
 }
 
 export interface TimelineItem {
