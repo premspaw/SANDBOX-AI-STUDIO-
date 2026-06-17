@@ -1,8 +1,32 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useUGC } from '../context/UGCContext';
 import { motion } from 'motion/react';
-import { Play, Video, Download, Wand2, Plus, Film } from 'lucide-react';
+import { Play, Video, Download, Wand2, Plus, Film, Clock } from 'lucide-react';
 import { resolveUrl } from '../../../config/apiConfig';
+import type { GalleryItem } from '../context/UGCContext';
+
+// Resolve a numeric timestamp from a gallery item
+const getItemTimestamp = (item: GalleryItem): number => {
+  if (item.createdAt) return item.createdAt;
+  if (item.id) {
+    // Handles ids like '1781691096213' (Date.now()) or 'local_1781..._xyz'
+    const parts = item.id.replace(/^[a-z\-]+_?/i, '').split('_');
+    const t = parseInt(parts[0]);
+    if (!isNaN(t) && t > 1_000_000_000_000) return t; // valid ms timestamp
+  }
+  return 0;
+};
+
+// Human-readable relative time label
+const relativeTime = (ts: number): string => {
+  if (!ts) return '';
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 5)   return 'just now';
+  if (diff < 60)  return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+};
 
 // Helper to resolve video URLs without proxying external URLs, enabling browser range requests for thumbnails
 const resolveVideoUrl = (url: string): string => {
@@ -61,9 +85,11 @@ export default function GalleryGrid() {
     ? 'Generating Creator Image...'
     : (imageProgressMsg || 'Generating Image...');
 
-  // Separate loading placeholders from real items
+  // Separate loading placeholders from real items, then sort newest-first by generation time
   const loadingItems = gallery.filter(item => item.loading);
-  const realItems = gallery.filter(item => !item.loading && item.url);
+  const realItems = gallery
+    .filter(item => !item.loading && item.url)
+    .sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
 
   return (
     <div id="tour-script" className="flex-1 min-w-0 flex flex-col overflow-hidden min-h-0">
@@ -147,7 +173,10 @@ export default function GalleryGrid() {
             ))}
             {realItems
               .filter(item => galleryTab === 'all' || item.type === galleryTab)
-              .map((item, idx) => (
+              .map((item, idx) => {
+                const ts = getItemTimestamp(item);
+                const timeLabel = relativeTime(ts);
+                return (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -174,10 +203,17 @@ export default function GalleryGrid() {
                       <img src={resolveUrl(item.url)} alt={`gen-${idx}`} className="w-full h-full object-cover" />
                     </div>
                   )}
-                  {/* NEW badge */}
+                  {/* NEW badge — always on the freshest item (idx 0 after sort) */}
                   {idx === 0 && (
                     <span className="absolute top-1.5 left-1.5 text-[7px] bg-[#c8f135] text-black font-black px-1 py-0.5 rounded uppercase tracking-wider z-10">
                       New
+                    </span>
+                  )}
+                  {/* Relative timestamp — bottom-left, shown whenever we have a time */}
+                  {timeLabel && idx !== 0 && (
+                    <span className="absolute top-1.5 left-1.5 flex items-center gap-0.5 text-[6.5px] bg-black/70 text-white/50 font-mono px-1 py-0.5 rounded z-10">
+                      <Clock size={6} className="shrink-0" />
+                      {timeLabel}
                     </span>
                   )}
                   {/* Hover overlay */}
@@ -259,7 +295,8 @@ export default function GalleryGrid() {
                     })()}
                   </div>
                 </motion.div>
-              ))}
+              );
+              })}
           </div>
         )}
       </div>

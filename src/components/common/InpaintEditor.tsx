@@ -350,8 +350,8 @@ export function InpaintEditor({ imageUrl, userId, onClose, onDone }: InpaintEdit
                     }`}
                   >
                     <div className="flex justify-between items-center w-full">
-                      <span>✦ Gemini (NB2)</span>
-                      <span className="text-[8.5px] font-mono opacity-90 bg-blue-500/30 px-1.5 py-0.5 rounded text-blue-400 font-black">3⚡</span>
+                      <span>✦ Gemini (NB Pro)</span>
+                      <span className="text-[8.5px] font-mono opacity-90 bg-blue-500/30 px-1.5 py-0.5 rounded text-blue-400 font-black">5⚡</span>
                     </div>
                     <span className="text-[8px] font-normal normal-case opacity-60 block mt-0.5">
                       Precise mask-based inpainting
@@ -403,7 +403,7 @@ export function InpaintEditor({ imageUrl, userId, onClose, onDone }: InpaintEdit
                     <Loader2 className="w-4 h-4 animate-spin" /> Editing…
                   </span>
                 ) : (
-                  `✦ Apply Edit (${model === 'gemini' ? 3 : 5}⚡)`
+                  `✦ Apply Edit (${model === 'gemini' ? 5 : 5}⚡)`
                 )}
               </button>
             </div>

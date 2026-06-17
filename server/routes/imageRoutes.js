@@ -100,8 +100,8 @@ export default function createRouter(deps) {
             const targetUserId = user ? user.id : userId;
             const { default: fetch } = await import('node-fetch');
 
-            // 1. Deduct credits: Gemini/Banana inpaint costs 3 credits, GPT/OpenAI costs 5 credits
-            const requiredCredits = model === 'gemini' ? 3 : 5;
+            // 1. Deduct credits: Gemini/Banana Pro inpaint costs 5 credits, GPT/OpenAI costs 5 credits
+            const requiredCredits = 5;
             if (targetUserId) {
                 console.log(`[Inpaint] Consuming ${requiredCredits} credits for user: ${targetUserId} using model: ${model}`);
                 await consumeCredits(targetUserId, requiredCredits);
@@ -128,9 +128,9 @@ export default function createRouter(deps) {
             let buffer;
 
             if (model === 'gemini') {
-                // Call premium Gemini 3.1 Flash Image model (Nano Banana 2) with native multimodal inpainting
+                // Call premium Gemini 3.1 Pro Image model (Nano Banana Pro 1K) with native multimodal inpainting
                 const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
-                const activeModel = 'gemini-3.1-flash-image-preview';
+                const activeModel = 'gemini-3-pro-image-preview';
                 const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
 
                 console.log('[Inpaint] Querying Google Gemini 3.1 Multimodal Inpainting...');

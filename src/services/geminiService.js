@@ -307,7 +307,7 @@ const resolveModelId = (id) => {
         // Use the 'latest' aliases – Google routes these to the newest 3.1 versions
         'nano-banana': 'gemini-2.5-flash-image', // Stable 2.5
         'nano-banana-2': 'gemini-3.1-flash-image-preview', 
-        'nano-banana-pro': 'gemini-3.1-pro-image', // 3.0 was retired March 9th
+        'nano-banana-pro': 'gemini-3-pro-image-preview', 
         'veo': 'veo-3.1-generate-preview',
         'veo-fast': 'veo-3.1-fast-generate-preview'
     };
@@ -938,7 +938,7 @@ export const generateDetailMatrix = async (name, references) => {
             }
 
             const result = await client.models.generateContent({
-                model: 'gemini-3.1-pro-image',
+                model: 'gemini-3-pro-image-preview',
                 contents: [{ role: "user", parts }],
                 config: {
                     aspectRatio: "1:1",
@@ -1357,6 +1357,7 @@ export async function generateUGCScript(analysis, niche, tone, directive = "", t
         5. CAMERA LOGIC (CRITICAL): Append high-end photography modifiers to the end of EVERY scene's 'prompt'.
            - If niche is 'lifestyle/casual': Append "Shot on iPhone 15 Pro Max, Apple ProRAW, macro lens, natural lighting, 4k."
            - If niche is 'luxury/high-end': Append "Cinematic lighting, ARRI Alexa, 85mm lens, movie quality, photorealistic, 8k."
+        6. WORD COUNT (CRITICAL): The spoken script in each scene/segment must contain strictly between 21 and 25 words.
         
         Return JSON:
         {

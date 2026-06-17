@@ -1024,8 +1024,8 @@ Return a detailed JSON with:
   const splitScriptIntoScenes = (text: string) => {
     if (!text) return [];
 
-    const targetWordsPerScene = 24;
-    const maxWordsPerScene = 28;
+    const targetWordsPerScene = 23;
+    const maxWordsPerScene = 25;
     const newScenes: Scene[] = [];
 
     // Split by timestamps
@@ -2407,35 +2407,47 @@ Return a detailed JSON with:
       const shotType = shotSequence[i] ?? 'PAYOFF';
       setVideoProgressMsg(`Shot ${i + 1}/${splitScenes.length} — ${shotType}...`);
 
-      const prompt = buildMultiCutPrompt({
-        dialog: sc.dialog,
-        shotType,
-        shotIndex: i,
-        totalShots: splitScenes.length,
-        imageStyle,
-        productName: productAnalysis?.productName,
-        productDetails: productDetails?.substring(0, 60),
-        hasCharacterRef: !!characterImg,
-        hasProductRef: !!productImg,
-      });
+      const isTalkingHead = activeTab === 'talking-head';
+
+      // For talking-head mode use a natural talking-head prompt; otherwise use the UGC multi-cut prompt
+      const prompt = isTalkingHead
+        ? `A confident creator looks directly into the camera and delivers this message with natural, expressive lip sync: "${sc.dialog.substring(0, 400)}". They speak clearly with hook energy — engaging the viewer from the first frame. Realistic facial movements, natural blinks, slight head movement. Cinematic UGC style.${sc.refImage || thGeneratedImg ? ' Animate from the reference image — keep face, background and outfit consistent.' : ''}`
+        : buildMultiCutPrompt({
+            dialog: sc.dialog,
+            shotType,
+            shotIndex: i,
+            totalShots: splitScenes.length,
+            imageStyle,
+            productName: productAnalysis?.productName,
+            productDetails: productDetails?.substring(0, 60),
+            hasCharacterRef: !!characterImg,
+            hasProductRef: !!productImg,
+          });
 
       try {
         const ai = getAI();
         let imagePayload: { imageBytes: string; mimeType: string } | undefined;
 
-        const refImg = sc.refImage ?? characterImg?.url;
+        // For talking-head tab, fall back to the generated face image instead of characterImg
+        const refImg = sc.refImage ?? (isTalkingHead ? thGeneratedImg : characterImg?.url);
         if (refImg) {
           const blob = await fetchImageAsBlob(refImg);
           const base64 = await resizeImage(blob);
           imagePayload = { imageBytes: base64, mimeType: 'image/jpeg' };
         }
 
+        // Use talking-head model/settings when in that tab, otherwise use UGC video settings
+        const resolvedEngine = isTalkingHead ? thEngine : videoGenMode;
         const veoModel =
-          videoGenMode === 'veo3'
+          resolvedEngine === 'veo3'
             ? 'veo-3.1-generate-preview'
-            : videoGenMode === 'veo_lite'
+            : resolvedEngine === 'veo_lite'
             ? 'veo-3.1-lite-generate-preview'
             : 'veo-3.1-fast-generate-preview';
+
+        const resolvedAspectRatio = isTalkingHead ? thAspectRatio : (aspectRatio === '1:1' ? '9:16' : aspectRatio as any);
+        const resolvedDuration = isTalkingHead ? parseInt(thDuration) : Math.min(parseInt(durationSeconds), 8);
+        const resolvedIncludeAudio = isTalkingHead ? true : includeAudio;
 
         const videoRequest: any = {
           model: veoModel,
@@ -2443,9 +2455,9 @@ Return a detailed JSON with:
           config: {
             numberOfVideos: 1,
             resolution: videoResolution as any,
-            aspectRatio: aspectRatio === '1:1' ? '9:16' : (aspectRatio as any),
-            durationSeconds: Math.min(parseInt(durationSeconds), 8),
-            includeAudio,
+            aspectRatio: resolvedAspectRatio,
+            durationSeconds: resolvedDuration,
+            includeAudio: resolvedIncludeAudio,
           },
         };
         if (imagePayload) videoRequest.image = imagePayload;
@@ -2838,16 +2850,21 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
       const lipSyncBooster = ` UGC Creator Style: The creator is in a natural, relatable environment, talking directly to the camera. Performance Style: ${VIDEO_STYLES[selectedVideoStyle]?.modifier}. The creator is speaking the script dialogue clearly with natural mouth movements. High quality facial animation. Avoid high-end commercial sets.`;
 
       // Prioritize the specific reference image if provided (e.g. for montage clips)
-      const activeRefImg = referenceImageUrl || scenes[activeSceneIndex]?.image || generatedImg;
+      const activeRefImg = referenceImageUrl || scenes[activeSceneIndex]?.image || (activeTab === 'talking-head' ? thGeneratedImg : generatedImg);
       
       let virtualCreatorPrompt = '';
       if (!activeRefImg && !characterImg) {
         virtualCreatorPrompt = ` Virtual Creator: ${getVirtualCreatorPrompt(productDetails, productTags)}.`;
       }
 
-      const dialogueText = splitScenes.length > 0 
-        ? splitScenes[activeSplitTab]?.dialog 
-        : scenes[activeSceneIndex]?.text;
+      // Only read dialogueText when no overridePrompt is supplied.
+      // When called from SplitScenesPanel "Approve & Make Video", the overridePrompt
+      // already contains sc.dialog — appending it again would duplicate the dialogue.
+      const dialogueText = !overridePrompt
+        ? (splitScenes.length > 0
+            ? splitScenes[activeSplitTab]?.dialog
+            : scenes[activeSceneIndex]?.text)
+        : '';
 
       const dialogue = dialogueText ? ` Dialogue to speak: "${dialogueText}".` : '';
 
@@ -2911,9 +2928,10 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
       setVideoProgressMsg('Igniting the Motion Engine...');
 
-      const veoModel = videoGenMode === 'veo3'
+      const engine = activeTab === 'talking-head' ? thEngine : videoGenMode;
+      const veoModel = engine === 'veo3'
         ? 'veo-3.1-generate-preview'
-        : videoGenMode === 'veo_lite'
+        : engine === 'veo_lite'
         ? 'veo-3.1-lite-generate-preview'
         : 'veo-3.1-fast-generate-preview';
 
@@ -2923,9 +2941,9 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         config: {
           numberOfVideos: 1,
           resolution: videoResolution as any,
-          aspectRatio: aspectRatio === '1:1' ? '9:16' : aspectRatio as any, // Veo doesn't support 1:1
-          durationSeconds: parseInt(durationSeconds),
-          includeAudio: includeAudio
+          aspectRatio: activeTab === 'talking-head' ? thAspectRatio : (aspectRatio === '1:1' ? '9:16' : aspectRatio as any),
+          durationSeconds: activeTab === 'talking-head' ? parseInt(thDuration) : parseInt(durationSeconds),
+          includeAudio: activeTab === 'talking-head' ? true : includeAudio
         }
       };
 
@@ -3589,7 +3607,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                           .replace(/\n{3,}/g, '\n\n')           // collapse triple+ newlines
                           .trim();
 
-                        const WORDS_PER_CHUNK = 18;
+                        const WORDS_PER_CHUNK = 23;
                         const words = cleanText.split(/\s+/).filter(Boolean);
                         if (words.length > 0) {
                           let chunkStart = 0;

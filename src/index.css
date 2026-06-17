@@ -344,3 +344,24 @@ img {
 .react-flow__edge.react-flow__edge-neural {
   z-index: 9999 !important;
 }
+
+/* ── Neon Glow and Pulse Animations for Sidebar and Drawer ── */
+@keyframes sidebar-glow-pulse {
+  0% {
+    box-shadow: 0 0 5px rgba(200, 241, 53, 0.2), inset 0 0 5px rgba(200, 241, 53, 0.1);
+    border-color: rgba(200, 241, 53, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(200, 241, 53, 0.8), inset 0 0 8px rgba(200, 241, 53, 0.4);
+    border-color: rgba(200, 241, 53, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(200, 241, 53, 0.2), inset 0 0 5px rgba(200, 241, 53, 0.1);
+    border-color: rgba(200, 241, 53, 0.2);
+  }
+}
+
+.sidebar-glow-pulse {
+  animation: sidebar-glow-pulse 2s infinite ease-in-out;
+}
+

@@ -769,6 +769,31 @@ async function handleKling(req, res) {
     }
 }
 
+// Resolve any image source (data URI, raw base64, or HTTP URL) to a raw Buffer + mimeType
+// WITHOUT going through GCS storage — avoids MIME corruption and unnecessary roundtrips.
+async function resolveImageToBuffer(imgSrc) {
+    if (!imgSrc) return null;
+
+    // HTTP/HTTPS URL — fetch directly
+    if (imgSrc.startsWith('http://') || imgSrc.startsWith('https://')) {
+        const resp = await fetch(imgSrc);
+        if (!resp.ok) throw new Error(`Failed to fetch image from URL: ${resp.statusText}`);
+        const mimeType = resp.headers.get('content-type') || 'image/png';
+        const buffer = Buffer.from(await resp.arrayBuffer());
+        return { buffer, mimeType };
+    }
+
+    // Data URI — data:image/png;base64,xxxx
+    if (imgSrc.startsWith('data:')) {
+        const [header, b64] = imgSrc.split(',');
+        const mimeType = header.match(/:(.*?);/)?.[1] || 'image/png';
+        return { buffer: Buffer.from(b64, 'base64'), mimeType };
+    }
+
+    // Raw base64 — assume PNG
+    return { buffer: Buffer.from(imgSrc, 'base64'), mimeType: 'image/png' };
+}
+
 async function handleOpenAI(req, res) {
     try {
         const { model, prompt, quality, size, image, secondImage, userId, folder, format, output_format, output_compression, background } = req.body;
@@ -778,28 +803,24 @@ async function handleOpenAI(req, res) {
 
         let response;
         if (isEdit) {
-            // Proper image edit — wrap buffer as a File so the SDK sends multipart (not raw JSON array)
+            // Resolve image buffer directly — no GCS roundtrip, preserves exact MIME type
             const { toFile } = await import('openai');
-            const publicUrl = await resolveToPublicUrl(image, userId);
-            const dlResp = await fetch(publicUrl);
-            if (!dlResp.ok) throw new Error(`Failed to fetch reference image: ${dlResp.statusText}`);
-            const rawBuf = Buffer.from(await dlResp.arrayBuffer());
-            const imageFile = await toFile(rawBuf, 'reference.png', { type: 'image/png' });
+            const resolved = await resolveImageToBuffer(image);
+            if (!resolved) throw new Error('Failed to resolve reference image to buffer.');
+            const { buffer: rawBuf, mimeType: imgMime } = resolved;
+            // OpenAI images.edit only accepts PNG — convert MIME header accordingly
+            const imageFile = await toFile(rawBuf, 'reference.png', { type: imgMime });
 
             const imagesList = [imageFile];
             if (secondImage) {
                 try {
-                    const publicUrl2 = await resolveToPublicUrl(secondImage, userId);
-                    if (publicUrl2) {
-                        const dlResp2 = await fetch(publicUrl2);
-                        if (dlResp2.ok) {
-                            const rawBuf2 = Buffer.from(await dlResp2.arrayBuffer());
-                            const imageFile2 = await toFile(rawBuf2, 'second_reference.png', { type: 'image/png' });
-                            imagesList.push(imageFile2);
-                        }
+                    const resolved2 = await resolveImageToBuffer(secondImage);
+                    if (resolved2) {
+                        const imageFile2 = await toFile(resolved2.buffer, 'second_reference.png', { type: resolved2.mimeType });
+                        imagesList.push(imageFile2);
                     }
                 } catch (secErr) {
-                    console.warn('[handleOpenAI] Warning: Failed to download second image:', secErr.message);
+                    console.warn('[handleOpenAI] Warning: Failed to resolve second image:', secErr.message);
                 }
             }
 
@@ -917,7 +938,7 @@ async function handleGoogle(req, res) {
             if (activeModel === 'nano-banana-2' || activeModel === 'nano-banana') {
                 activeModel = 'gemini-3.1-flash-image-preview';
             } else if (activeModel === 'nano-banana-pro' || activeModel === 'pro') {
-                activeModel = 'gemini-3.1-flash-image-preview';
+                activeModel = 'gemini-3-pro-image-preview';
             }
             const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
 
@@ -1417,6 +1438,7 @@ import createCarouselRouter from './server/routes/carouselRoutes.js';
 import createStorageRouter from './server/routes/storageRoutes.js';
 import createAdminRouter from './server/routes/adminRoutes.js';
 import createAvatarRouter from './server/routes/avatar.js';
+import createYourVoiceRouter from './server/routes/yourVoiceRoutes.js';
 
 app.use('/api', createCreditsRouter(deps));
 app.use('/api', createImageRouter(deps));
@@ -1430,6 +1452,7 @@ app.use('/api', createCarouselRouter(deps));
 app.use('/api', createStorageRouter(deps));
 app.use('/api', createAdminRouter(deps));
 app.use('/api', createAvatarRouter(deps));
+app.use('/api', createYourVoiceRouter(deps));
 
 // Catch-all route to serve the SPA index.html for any client-side routes (avoiding ERR_CANNOT_GET on page reloads)
 // Uses native RegExp to bypass path-to-regexp parser and prevent Express 5 compatibility crashes.

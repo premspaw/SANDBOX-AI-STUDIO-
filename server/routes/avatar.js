@@ -105,7 +105,7 @@ export default function createRouter(deps) {
             if (model === 'banana') {
                 // Trigger Google Gemini Imagen Pro multimodal generation in 2K
                 const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
-                const activeModel = 'gemini-3.1-pro-image';
+                const activeModel = 'gemini-3-pro-image-preview';
                 const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
 
                 const imageParts = [];

@@ -32,7 +32,7 @@ STYLE RULES:
 - Natural host banter, not an ad read.
 - Alternate HOST 1 and HOST 2.
 - Include small reactions, agreement, and handoff lines.
-- Keep each segment concise and speakable.
+- Keep each segment concise and speakable. Each segment's dialogue must contain strictly between 21 and 25 words.
 - Each scene's visualCue must specify a DIFFERENT camera angle cut: Scene 1 = wide two-shot, Scene 2 = medium shot on HOST 1, Scene 3 = medium shot on HOST 2, Scene 4+ = over-shoulder or close-up reaction. Always mention: microphones, studio lighting, product on desk if provided. No title cards.
 
 Return ONLY valid JSON:
@@ -121,7 +121,7 @@ ${params.strategyContext}
 8. Use natural filler words: "okay so", "honestly", "literally", "like", "real talk", "no cap", "seriously", "I'm not even joking".
 9. Use short punchy sentences or fragments. Never write long, complex, formal, or polished sentences.
 10. SCRIPT IS SPOKEN WORDS ONLY. No stage directions. No [smiles]. No (pause) in the dialogue text.
-11. WORD COUNT: Strictly 16-22 spoken words per 8-second scene (speak at a natural, relaxed UGC pace — 16 words minimum, 22 words maximum. Never exceed 22 words per scene, or else it is too fast to read/speak and sounds robotic). Total ≈ ${params.sceneCount * 19} words.
+11. WORD COUNT: Strictly 21-25 spoken words per 8-second scene (speak at a natural, relaxed UGC pace — 21 words minimum, 25 words maximum. Never exceed 25 words per scene, or else it is too fast/slow for the talking head tab). Total ≈ ${params.sceneCount * 23} words.
 12. SCENE COUNT: Output EXACTLY ${params.sceneCount} scene(s). No more, no less.
 13. COMPLETE THOUGHTS: Each scene is self-contained — no sentence starts in one scene and ends in another.
 14. End with one clear action — not multiple CTAs. No fake urgency.
@@ -188,7 +188,7 @@ The new version MUST flow seamlessly with the rest of the script and:
 2. Integrate details from the scanned product details above.
 3. Offer a fresh hook, different phrasing, or a new value proposition.
 
-WORD COUNT: Strictly 20-30 words for this 8-second segment.
+WORD COUNT: Strictly 21-25 words for this 8-second segment.
 
 Return ONLY a valid JSON object:
 {

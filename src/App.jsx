@@ -22,6 +22,8 @@ const AgentPage = lazy(() => import('./components/pages/AgentPage'));
 const AvatarStudio = lazy(() => import('./components/pages/AvatarStudio'));
 const LivingAvatar = lazy(() => import('./components/pages/LivingAvatar'));
 const CinematicStudio = lazy(() => import('./components/cinemaStudio/CinematicStudio'));
+const YourVoice = lazy(() => import('./components/pages/YourVoice'));
+
 
 // Beautiful, futuristic stand-by placeholder for the new Avatar Studio
 function AvatarPlaceholder() {
@@ -99,6 +101,7 @@ const FULL_HEIGHT_TABS = new Set([
   'brand-voice',
   'agent',
   'cinematic-studio',
+  'yourvoice',
 ])
 
 function App() {
@@ -276,6 +279,8 @@ function App() {
         return <AgentPage />;
       case 'cinematic-studio':
         return <CinematicStudio />;
+      case 'yourvoice':
+        return <YourVoice />;
       default:
         return null;
     }

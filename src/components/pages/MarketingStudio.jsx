@@ -314,6 +314,7 @@ export default function MarketingStudio() {
     const [zoomedImage, setZoomedImage] = useState(null);
     const [zoomedIndex, setZoomedIndex] = useState(null);
     const [inpaintOpen, setInpaintOpen] = useState(false);
+    const [upscalingItems, setUpscalingItems] = useState({});
     const [showTemplatePanel, setShowTemplatePanel] = useState(true);
     const [customTemplates, setCustomTemplates] = useState({ food: [], restaurant: [], realestate: [], medical: [], other: [] });
     const [showAddModal, setShowAddModal] = useState(false);
@@ -602,6 +603,111 @@ export default function MarketingStudio() {
         setZoomedIndex(null);
     };
 
+    const getGeminiAspectRatio = (size) => {
+        if (!size) return '1:1';
+        if (size.includes('1536x1024') || size.includes('2048x1152') || size.includes('3840x2160') || size.includes('1792x1024')) return '16:9';
+        if (size.includes('1024x1536') || size.includes('2160x3840') || size.includes('1024x1792')) return '9:16';
+        return '1:1';
+    };
+
+    const handleUpscale = async (item, targetRes, e) => {
+        if (e) e.stopPropagation();
+        
+        const showToast = useAppStore.getState().showToast;
+        
+        const isVideo = item.type === 'video' || item.url?.includes('.mp4');
+        if (isVideo) {
+            if (showToast) showToast("Only images can be upscaled.", "error");
+            return;
+        }
+
+        setUpscalingItems(prev => ({ ...prev, [item.url]: targetRes }));
+        closeZoom();
+        setIsGenerating(true);
+        
+        const costKey = 'image_upscale_4k';
+        const requiredCredits = targetRes === '4K' ? 5 : 2;
+
+        try {
+            // Check if user can afford
+            if (!canAfford(costKey, requiredCredits)) {
+                throw new Error(`Insufficient Shorts! You need ${requiredCredits}⚡ to upscale.`);
+            }
+
+            // Deduct credits
+            const spendResult = await spend(costKey, requiredCredits);
+            if (!spendResult.success) {
+                throw new Error(spendResult.reason || 'Failed to authorize credit deduction.');
+            }
+
+            if (showToast) showToast(`Initiating ${targetRes} refinement using Nano Banana...`, "info");
+
+            const prompt = `REFINE TO ${targetRes}: Upscale this image to high resolution. 
+STRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. 
+DO NOT add new objects or change the scene. Enhance only.
+Any written text, characters, letters, numbers, and labels inside the image must be corrected, rendered with clear typography, and made perfectly sharp, legible, and clearly visible.`;
+
+            // Derive aspect ratio from item size
+            const aspect = getGeminiAspectRatio(item.size);
+
+            const payload = {
+                model: targetRes === '4K' ? 'gemini-3-pro-image-preview' : 'gemini-3.1-flash-image-preview', // Call premium Pro model for 4K upscaling/text correction
+                prompt,
+                aspect_ratio: aspect,
+                quality: targetRes,
+                imageSize: targetRes,
+                resolution: targetRes,
+                referenceImages: [item.url], // Pass URL directly — let backend download
+                userId: currentUserId,
+                folder: 'marketing'
+            };
+
+            const resp = await fetch(getApiUrl('/api/generate-image'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || data.message || 'Upscale request failed.');
+
+            if (data.url) {
+                const newItem = {
+                    url: data.url,
+                    ts: Date.now(),
+                    size: targetRes === '4K' ? '3840x2160' : '2048x1152', // high res sizes
+                    engine: `Gemini (${targetRes})`
+                };
+
+                // Add the new upscaled image to the top of the history
+                setGenerationHistory(prev => {
+                    const next = [newItem, ...prev].slice(0, 50);
+                    try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) {}
+                    return next;
+                });
+                
+                setGeneratedImage(data.url);
+                
+                if (showToast) showToast(`Image successfully upscaled to ${targetRes}!`, "success");
+            } else {
+                throw new Error("Upscale API returned no URL.");
+            }
+        } catch (err) {
+            console.error("[Upscale Error]:", err);
+            // Refund credits on failure
+            await refund(costKey, requiredCredits);
+            if (showToast) showToast(`Upscale failed: ${err.message}`, "error");
+        } finally {
+            setIsGenerating(false);
+            setUpscalingItems(prev => {
+                const next = { ...prev };
+                delete next[item.url];
+                return next;
+            });
+            refreshShorts();
+        }
+    };
+
     // ── Download helper (blob fetch to force save-as on cross-origin URLs) ─
     const downloadAsset = async (url, type = 'image') => {
         const ext = type === 'video' ? 'mp4' : 'png';
@@ -682,13 +788,6 @@ export default function MarketingStudio() {
             setPromptText(toVideoPrompt(template.prompt, template.name));
         } else {
             setPromptText(template.prompt);
-        }
-        if (template.imageUrl) {
-            setReferenceImage(template.imageUrl);
-            setReferenceImageBase64(null); // Clear base64 since we are using the URL
-        } else {
-            setReferenceImage(null);
-            setReferenceImageBase64(null);
         }
         setGeneratedImage(null);
     };
@@ -787,13 +886,47 @@ export default function MarketingStudio() {
         }
     };
 
+    // Normalize any image format (AVIF, BMP, TIFF, HEIC, etc.) to PNG via Canvas.
+    // OpenAI images API only accepts: png, jpeg, gif, webp.
+    const normalizeImageForOpenAI = (dataUrl) => new Promise((resolve) => {
+        const SUPPORTED = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+        const mime = dataUrl.match(/data:([^;]+)/)?.[1];
+        if (mime && SUPPORTED.includes(mime.toLowerCase())) {
+            resolve(dataUrl);
+            return;
+        }
+        
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(img, 0, 0);
+                try {
+                    const pngDataUrl = canvas.toDataURL('image/png');
+                    resolve(pngDataUrl);
+                } catch (err) {
+                    console.error('Canvas conversion error:', err);
+                    resolve(dataUrl);
+                }
+            } else {
+                resolve(dataUrl);
+            }
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
+    });
+
     const handleFileUpload = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         const reader = new FileReader();
         reader.onload = async (event) => {
-            const base64 = event.target.result;
+            const rawBase64 = event.target.result;
+            const base64 = await normalizeImageForOpenAI(rawBase64);
             setReferenceImage(base64); // preview immediately
             setReferenceImageBase64(base64); // keep original base64 for Gemini analysis
             // Only set food default prompt for food categories — not real estate / medical
@@ -1340,11 +1473,11 @@ export default function MarketingStudio() {
         {/* Hidden file inputs — at root so pointer-events/stacking context never blocks them */}
         <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
         <input type="file" ref={logoInputRef} className="hidden" accept="image/*"
-            onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = ev => setLogoImage(ev.target.result); r.readAsDataURL(f); }} />
+            onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = async ev => { const norm = await normalizeImageForOpenAI(ev.target.result); setLogoImage(norm); }; r.readAsDataURL(f); }} />
         <input type="file" ref={firstFrameRef} className="hidden" accept="image/*"
-            onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = ev => setFirstFrame(ev.target.result); r.readAsDataURL(f); }} />
+            onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = async ev => { const norm = await normalizeImageForOpenAI(ev.target.result); setFirstFrame(norm); }; r.readAsDataURL(f); }} />
         <input type="file" ref={lastFrameRef} className="hidden" accept="image/*"
-            onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = ev => setLastFrame(ev.target.result); r.readAsDataURL(f); }} />
+            onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = async ev => { const norm = await normalizeImageForOpenAI(ev.target.result); setLastFrame(norm); }; r.readAsDataURL(f); }} />
         <div className="h-full flex flex-col bg-[#0a0a0a] text-white overflow-hidden relative font-sans">
             {/* Header */}
             <div className="flex-none py-2 px-4 border-b border-white/10 flex items-center gap-3 z-10 bg-black/40 backdrop-blur-md">
@@ -1571,9 +1704,14 @@ export default function MarketingStudio() {
                     <button
                         onClick={() => setShowTemplatePanel(v => !v)}
                         title={showTemplatePanel ? 'Hide Templates' : 'Show Templates'}
-                        className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-5 h-14 bg-white/5 hover:bg-white/10 border border-white/10 border-l-0 rounded-r-lg flex items-center justify-center transition-all hover:w-6 group"
+                        className={cn(
+                            "absolute left-0 top-1/2 -translate-y-1/2 z-20 w-5 h-14 rounded-r-lg flex items-center justify-center transition-all group",
+                            showTemplatePanel
+                                ? "bg-[#111113] border border-[#c8f135]/20 border-l-0 text-[#c8f135]/60 hover:text-[#c8f135] hover:border-[#c8f135]/60 hover:bg-[#c8f135]/5 shadow-[0_0_8px_rgba(200,241,53,0.1)] hover:w-6"
+                                : "bg-[#c8f135] border border-[#c8f135] border-l-0 text-black hover:bg-[#d4f545] animate-pulse shadow-[0_0_15px_rgba(200,241,53,0.65)] hover:w-6"
+                        )}
                     >
-                        <ChevronRight className={cn("w-3 h-3 text-white/40 group-hover:text-white/70 transition-transform duration-300", showTemplatePanel ? "" : "rotate-180")} />
+                        <ChevronRight className={cn("w-3.5 h-3.5 transition-transform duration-300", showTemplatePanel ? "text-[#c8f135]/60 group-hover:text-[#c8f135]" : "text-black rotate-180")} />
                     </button>
                     {selectedTemplate ? (
                         <div className="flex-1 flex flex-col h-full overflow-hidden relative">
@@ -1593,7 +1731,8 @@ export default function MarketingStudio() {
                                     <div className="p-2 grid gap-2" style={{gridTemplateColumns:'repeat(auto-fill, minmax(120px, 1fr))'}}>
                                         {/* Generating spinner tile */}
                                         {isGenerating && (
-                                            <div className="w-full rounded-lg border border-[#c8f135]/20 bg-[#0d0d0d] flex flex-col items-center justify-center gap-2 relative overflow-hidden" style={{aspectRatio: getAspectRatio(imageSize)}}>
+                                            <div className="w-full rounded-lg border border-[#c8f135]/20 bg-[#0d0d0d] flex flex-col items-center justify-center gap-2 relative overflow-hidden" 
+                                                style={{aspectRatio: (Object.keys(upscalingItems).length > 0 && generationHistory.find(i => upscalingItems[i.url])) ? getAspectRatio(generationHistory.find(i => upscalingItems[i.url])?.size) : getAspectRatio(imageSize)}}>
                                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent" style={{animation:'shimmer 1.8s infinite', transform:'translateX(-100%)'}} />
                                                 <div className="relative w-8 h-8">
                                                     <div className="absolute inset-0 rounded-full border-2 border-[#c8f135]/20" />
@@ -1818,14 +1957,6 @@ export default function MarketingStudio() {
                                                 referenceImage ? "text-lime-400 bg-lime-500/10 border border-lime-500/30" : "text-white/30 hover:text-white/60 hover:bg-white/5 border border-transparent")}>
                                             <Upload className="w-3 h-3" />
                                             {referenceImage ? 'Photo ✓' : 'Photo'}
-                                        </button>
-
-                                        {/* Upload logo */}
-                                        <button onClick={() => logoInputRef.current?.click()}
-                                            className={cn("flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all",
-                                                logoImage ? "text-orange-400 bg-orange-500/10 border border-orange-500/30" : "text-white/30 hover:text-white/60 hover:bg-white/5 border border-transparent")}>
-                                            <Layers className="w-3 h-3" />
-                                            {logoImage ? 'Logo ✓' : 'Logo'}
                                         </button>
 
                                         {/* Size */}
@@ -2322,16 +2453,54 @@ export default function MarketingStudio() {
                         {/* Action bar at bottom of lightbox */}
                         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
                             {generationHistory.find(i => i.url === zoomedImage)?.type !== 'video' && (
-                            <button
-                                onClick={(e) => { e.stopPropagation(); setGeneratedImage(zoomedImage); setInpaintOpen(true); closeZoom(); }}
-                                className="flex items-center gap-1.5 px-4 py-2 bg-purple-600/90 hover:bg-purple-500 rounded-xl text-xs font-black text-white border border-purple-400/40 transition-all shadow-xl shadow-purple-900/30"
-                            >
-                                <Pencil className="w-3.5 h-3.5" /> Edit
-                            </button>
+                            <>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setGeneratedImage(zoomedImage); setInpaintOpen(true); closeZoom(); }}
+                                    className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-600/90 hover:bg-purple-500 rounded-xl text-[11px] font-black text-white border border-purple-400/40 transition-all shadow-xl shadow-purple-900/30 whitespace-nowrap"
+                                >
+                                    <Pencil className="w-3 h-3" /> Edit
+                                </button>
+                                <button
+                                    disabled={!!upscalingItems[zoomedImage]}
+                                    onClick={(e) => {
+                                        const item = generationHistory.find(i => i.url === zoomedImage) || { url: zoomedImage, size: '1024x1024' };
+                                        handleUpscale(item, '2K', e);
+                                    }}
+                                    className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600/90 hover:bg-blue-500 disabled:opacity-50 rounded-xl text-[11px] font-black text-white border border-blue-400/40 transition-all shadow-xl shadow-blue-900/30 whitespace-nowrap"
+                                >
+                                    {upscalingItems[zoomedImage] === '2K' ? (
+                                        <>
+                                            <Loader2 className="w-3 h-3 animate-spin" /> 2K…
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Zap className="w-3 h-3 fill-amber-400/20 text-amber-400" /> 2K (2⚡)
+                                        </>
+                                    )}
+                                </button>
+                                <button
+                                    disabled={!!upscalingItems[zoomedImage]}
+                                    onClick={(e) => {
+                                        const item = generationHistory.find(i => i.url === zoomedImage) || { url: zoomedImage, size: '1024x1024' };
+                                        handleUpscale(item, '4K', e);
+                                    }}
+                                    className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600/90 hover:bg-indigo-500 disabled:opacity-50 rounded-xl text-[11px] font-black text-white border border-indigo-400/40 transition-all shadow-xl shadow-indigo-900/30 whitespace-nowrap"
+                                >
+                                    {upscalingItems[zoomedImage] === '4K' ? (
+                                        <>
+                                            <Loader2 className="w-3 h-3 animate-spin" /> 4K…
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Zap className="w-3 h-3 fill-amber-400/20 text-amber-400" /> 4K (5⚡)
+                                        </>
+                                    )}
+                                </button>
+                            </>
                             )}
                             <button
                                 onClick={(e) => { e.stopPropagation(); const isVid = zoomedImage?.startsWith('blob:') || generationHistory.find(i => i.url === zoomedImage)?.type === 'video'; downloadAsset(zoomedImage, isVid ? 'video' : 'image'); }}
-                                className="flex items-center gap-1.5 px-4 py-2 bg-black/70 hover:bg-white/10 rounded-xl text-xs font-black text-white/80 border border-white/15 transition-all"
+                                className="flex items-center gap-1.5 px-3.5 py-2 bg-black/70 hover:bg-white/10 rounded-xl text-[11px] font-black text-white/80 border border-white/15 transition-all whitespace-nowrap"
                             >
                                 ↓ Save
                             </button>
@@ -2340,9 +2509,9 @@ export default function MarketingStudio() {
                                 target="_blank"
                                 rel="noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="flex items-center gap-1.5 px-4 py-2 bg-black/70 hover:bg-white/10 rounded-xl text-xs font-black text-white/80 border border-white/15 transition-all"
+                                className="flex items-center gap-1.5 px-3.5 py-2 bg-black/70 hover:bg-white/10 rounded-xl text-[11px] font-black text-white/80 border border-white/15 transition-all whitespace-nowrap"
                             >
-                                <ExternalLink className="w-3.5 h-3.5" /> Open
+                                <ExternalLink className="w-3 h-3" /> Open
                             </a>
                         </div>
                     </motion.div>

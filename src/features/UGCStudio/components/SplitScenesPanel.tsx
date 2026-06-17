@@ -34,14 +34,15 @@ export default function SplitScenesPanel() {
     setSpokenDialog,
     setChatTab,
     showToast,
-    handleApiError
+    handleApiError,
+    thGeneratedImg
   } = useUGC();
 
   if (splitScenes.length === 0) return null;
 
   const sc = splitScenes[activeSplitTab];
   const customRef = sc?.refImage;
-  const fallbackRef = characterImg?.url;
+  const fallbackRef = activeTab === 'talking-head' ? thGeneratedImg : (characterImg?.url || '');
   const effectiveRefImage = customRef || fallbackRef;
   const isCustomRef = !!customRef;
 
@@ -210,9 +211,22 @@ Return ONLY the prompt text, no preamble.`;
 
         {/* Row 2: Dialogue + Reference + Approve container */}
         <div className="flex gap-4 items-center justify-between bg-black/40 border border-white/5 rounded-xl p-3">
-          {/* Left: Dialogue */}
-          <div className="flex-1 text-[10.5px] text-white/80 leading-relaxed font-mono pr-2 text-left">
-            {sc?.dialog}
+          {/* Left: Dialogue (Editable) */}
+          <div className="flex-1 text-left pr-2">
+            <textarea
+              value={sc?.dialog || ''}
+              onChange={(e) => {
+                const newDialog = e.target.value;
+                setSplitScenes((prev: SplitScene[]) =>
+                  prev.map((s: SplitScene, idx: number) =>
+                    idx === activeSplitTab ? { ...s, dialog: newDialog } : s
+                  )
+                );
+              }}
+              rows={3}
+              className="w-full bg-white/5 border border-white/10 hover:border-white/20 rounded-xl px-3 py-2 text-[10.5px] text-white/90 leading-relaxed font-mono resize-none focus:outline-none focus:border-[#c8f135]/40 transition-all scrollbar-thin scrollbar-thumb-white/10"
+              placeholder="Edit dialogue..."
+            />
           </div>
 
           {/* Right: Controls (Reference slot + Approve button) */}
