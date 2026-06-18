@@ -24,7 +24,9 @@ if (!client) {
             setTimeout(() => {
                 try {
                     callback('SIGNED_IN', { access_token: 'local_token', user: { id: 'local_user', email: 'local@example.com' } });
-                } catch (e) {}
+                } catch (e) {
+                    console.warn('[SUPABASE_MOCK] Auth change callback error:', e);
+                }
             }, 0);
             return { data: { subscription: { unsubscribe: () => {} } } };
         },
