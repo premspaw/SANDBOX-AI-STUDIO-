@@ -1478,7 +1478,8 @@ app.use('/api', createImageRouter(deps));
 app.use('/api', createVideoRouter(deps));
 app.use('/api', createSeedanceRouter(deps));
 app.use('/api', createUgcRouter(deps));
-app.use('/api', createForgeRouter(deps));
+app.use('/api/forge', createForgeRouter(deps)); // explicit /api/forge/* prefix (health, analyze, etc.)
+app.use('/api', createForgeRouter(deps));        // legacy paths: /api/suggest-dialogue, /api/director/research, etc.
 app.use('/api', createCarouselRouter(deps));
 app.use('/api', createStorageRouter(deps));
 app.use('/api', createAdminRouter(deps));
