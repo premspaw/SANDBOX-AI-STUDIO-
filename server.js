@@ -1473,17 +1473,42 @@ import createAdminRouter from './server/routes/adminRoutes.js';
 import createAvatarRouter from './server/routes/avatar.js';
 import createYourVoiceRouter from './server/routes/yourVoiceRoutes.js';
 
+// ── Credits ──────────────────────────────────────────────────────────────────
 app.use('/api', createCreditsRouter(deps));
+
+// ── Images ───────────────────────────────────────────────────────────────────
 app.use('/api', createImageRouter(deps));
+
+// ── Video (Veo / Kie) ────────────────────────────────────────────────────────
 app.use('/api', createVideoRouter(deps));
-app.use('/api', createSeedanceRouter(deps));
-app.use('/api', createUgcRouter(deps));
-app.use('/api/forge', createForgeRouter(deps)); // explicit /api/forge/* prefix (health, analyze, etc.)
-app.use('/api', createForgeRouter(deps));        // legacy paths: /api/suggest-dialogue, /api/director/research, etc.
-app.use('/api', createCarouselRouter(deps));
+
+// ── Seedance ─────────────────────────────────────────────────────────────────
+app.use('/api/seedance', createSeedanceRouter(deps)); // frontend: /api/seedance/*
+app.use('/api', createSeedanceRouter(deps));          // legacy: /api/seedance-* or direct
+
+// ── UGC Studio ───────────────────────────────────────────────────────────────
+app.use('/api/ugc', createUgcRouter(deps));           // frontend: /api/ugc/*
+app.use('/api', createUgcRouter(deps));               // legacy: /api/video, /api/speech, etc.
+
+// ── Forge ────────────────────────────────────────────────────────────────────
+app.use('/api/forge', createForgeRouter(deps));       // frontend: /api/forge/*
+app.use('/api', createForgeRouter(deps));             // legacy: /api/suggest-dialogue, /api/director/research, etc.
+
+// ── Carousel Studio ──────────────────────────────────────────────────────────
+app.use('/api/carousel', createCarouselRouter(deps)); // frontend: /api/carousel/*
+app.use('/api', createCarouselRouter(deps));          // legacy direct paths
+
+// ── Storage & Assets ─────────────────────────────────────────────────────────
 app.use('/api', createStorageRouter(deps));
+
+// ── Admin ────────────────────────────────────────────────────────────────────
 app.use('/api', createAdminRouter(deps));
-app.use('/api', createAvatarRouter(deps));
+
+// ── Avatar Studio ─────────────────────────────────────────────────────────────
+app.use('/api/avatar', createAvatarRouter(deps));     // frontend: /api/avatar/*
+app.use('/api', createAvatarRouter(deps));            // legacy paths
+
+// ── Your Voice ───────────────────────────────────────────────────────────────
 app.use('/api', createYourVoiceRouter(deps));
 
 // Catch-all route to serve the SPA index.html for any client-side routes (avoiding ERR_CANNOT_GET on page reloads)
