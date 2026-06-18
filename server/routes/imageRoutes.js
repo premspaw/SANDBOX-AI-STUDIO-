@@ -58,17 +58,58 @@ export default function createRouter(deps) {
         }
     });
 
-    // Proxy Remote Image/Video to bypass browser CORS
+    // Proxy Remote Image/Video — bypasses CORS + fixes ERR_CACHE_OPERATION_NOT_SUPPORTED
+    // Supports HTTP Range requests so Chrome can seek/cache video streams properly.
     router.get('/proxy-image', async (req, res) => {
         try {
             const { url } = req.query;
             if (!url) {
                 return res.status(400).json({ error: 'url parameter is required' });
             }
-            const { buffer, contentType } = await fetchAllowedProxyResource(url);
-            res.setHeader('Content-Type', contentType);
+
+            // Detect video by extension (needs Range + streaming support)
+            const isVideo = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url);
+            const rangeHeader = req.headers['range'];
+
+            // Forward Range header to upstream if present
+            const upstreamHeaders = { 'User-Agent': 'ZerolensProxy/1.0' };
+            if (rangeHeader) upstreamHeaders['Range'] = rangeHeader;
+
+            const upstream = await fetch(url, {
+                headers: upstreamHeaders,
+                redirect: 'follow',
+            });
+
+            if (!upstream.ok && upstream.status !== 206) {
+                return res.status(upstream.status).json({ error: `Upstream error: ${upstream.statusText}` });
+            }
+
+            // CORS headers — always required
             res.setHeader('Access-Control-Allow-Origin', '*');
-            res.send(buffer);
+            res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+
+            const ct = upstream.headers.get('content-type') || (isVideo ? 'video/mp4' : 'application/octet-stream');
+            res.setHeader('Content-Type', ct);
+
+            if (isVideo || rangeHeader) {
+                // ✅ Video streaming: Chrome requires Accept-Ranges + Content-Length to cache & seek
+                res.setHeader('Accept-Ranges', 'bytes');
+                const cl = upstream.headers.get('content-length');
+                if (cl) res.setHeader('Content-Length', cl);
+                const cr = upstream.headers.get('content-range');
+                if (cr) res.setHeader('Content-Range', cr);
+                res.setHeader('Cache-Control', 'public, max-age=3600');
+                res.status(upstream.status === 206 ? 206 : 200);
+
+                // Stream directly — avoid loading entire video into memory
+                const { Readable } = await import('stream');
+                Readable.fromWeb(upstream.body).pipe(res);
+            } else {
+                // Images / small assets — buffer and send
+                const buffer = Buffer.from(await upstream.arrayBuffer());
+                res.setHeader('Cache-Control', 'public, max-age=86400');
+                res.send(buffer);
+            }
         } catch (err) {
             console.error('[Proxy Error]:', err.message);
             res.status(err.status || 500).json({ error: err.message });
@@ -243,7 +284,6 @@ export default function createRouter(deps) {
                     prompt: prompt,
                     n: 1,
                     size: '1024x1024',
-
                 });
 
                 const resultUrl = response.data?.[0]?.url;

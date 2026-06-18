@@ -88,11 +88,15 @@ function SectionEye({ children }) {
 
 const resolveAsset = (url) => {
   if (!url) return url;
-  if (url.startsWith('https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev')) {
-    return `https://res.cloudinary.com/dkkfftfl9/video/fetch/f_auto,q_auto/${encodeURIComponent(url)}`;
+  // Route all R2 videos through the backend proxy to fix:
+  // 1. ERR_CACHE_OPERATION_NOT_SUPPORTED (Chrome can't range-request R2 directly)
+  // 2. Cloudinary /video/fetch returning 400 for R2 URLs
+  if (url.includes('r2.dev') || url.includes('r2.cloudflarestorage.com')) {
+    return getApiUrl(`/api/proxy-image?url=${encodeURIComponent(url)}&cors=1`);
   }
   return url;
 };
+
 
 function SectionTitle({ children }) {
   return (
