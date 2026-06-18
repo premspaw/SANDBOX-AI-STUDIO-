@@ -87,7 +87,11 @@ function SectionEye({ children }) {
 }
 
 const resolveAsset = (url) => {
-  return url; // Stream direct from Supabase CDN to fix buffer lags
+  if (!url) return url;
+  if (url.startsWith('https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev')) {
+    return `https://res.cloudinary.com/dkkfftfl9/video/fetch/f_auto,q_auto/${encodeURIComponent(url)}`;
+  }
+  return url;
 };
 
 function SectionTitle({ children }) {

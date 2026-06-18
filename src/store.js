@@ -285,11 +285,118 @@ export const useAppStore = create((set, get) => ({
     },
 
     generateStoryboard: async (narrative) => {
+        const activeCharacter = get().activeCharacter;
+        if (!activeCharacter) {
+            get().showToast("No active character selected for storyboarding.", "error");
+            return;
+        }
+
         set({ isRendering: true });
-        // Mocking storyboard decomposition logic
-        console.log("Generating storyboard for:", narrative);
-        // This usually calls geminiService.generateStoryboardDescriptions
-        set({ isRendering: false });
+        try {
+            // Import services dynamically to avoid circular dependencies
+            const { 
+                generateStoryboardDescriptions, 
+                generateCharacterImage, 
+                buildConsistencyRefs, 
+                expandPrompt 
+            } = await import('./services/geminiService.js');
+            const { saveStoryboardItem, saveGeneratedAsset } = await import('./services/supabaseService.js');
+
+            // 1. Decompose narrative into scene prompts (default: 4 scenes)
+            const scenePrompts = await generateStoryboardDescriptions(narrative, 4);
+            if (!scenePrompts || scenePrompts.length === 0) {
+                throw new Error("Failed to decompose narrative into scenes.");
+            }
+
+            // 2. Prepare visual references for consistency
+            const references = await buildConsistencyRefs({
+                kit: activeCharacter.identity_kit || get().detailMatrix,
+                anchor: get().anchorImage,
+                wardrobe: get().wardrobeImage,
+                pose: get().poseImage,
+            });
+
+            // 3. Spawns 4 optimistic nodes on the canvas arranged in a line
+            const centerNodeId = get().activeNodeId;
+            const centerNode = get().nodes.find(n => n.id === centerNodeId);
+            const startX = centerNode ? centerNode.position.x : 200;
+            const startY = centerNode ? centerNode.position.y + 200 : 400;
+            
+            const nodeIds = [];
+            for (let i = 0; i < scenePrompts.length; i++) {
+                const nodeId = get().addNode('', `Rendering Scene ${i + 1}...`, true, {
+                    x: startX + i * 250,
+                    y: startY
+                });
+                nodeIds.push(nodeId);
+
+                // Add edges linking the scenes sequentially
+                if (i > 0) {
+                    get().addEdge({
+                        source: nodeIds[i - 1],
+                        target: nodeId,
+                        type: 'neural'
+                    });
+                } else if (centerNodeId) {
+                    get().addEdge({
+                        source: centerNodeId,
+                        target: nodeId,
+                        type: 'neural'
+                    });
+                }
+            }
+
+            // 4. Generate images for the scenes in parallel
+            const renderPromises = nodeIds.map(async (nodeId, i) => {
+                try {
+                    const scenePrompt = scenePrompts[i];
+                    
+                    // Expand the prompt to match visual style
+                    const compiledPrompt = await expandPrompt({
+                        subject: activeCharacter.name,
+                        subjectDescription: activeCharacter.metadata?.imageAnalysis?.description || activeCharacter.personality || 'the subject',
+                        productDetails: get().currentProduct?.description || 'the scene context',
+                        userAction: scenePrompt,
+                        visualStyle: activeCharacter.visualStyle,
+                        duration: 30
+                    });
+
+                    const imageResult = await generateCharacterImage({
+                        prompt: compiledPrompt,
+                        identity_images: references,
+                        product_image: get().currentProduct?.image,
+                        aspectRatio: get().camera.ratio,
+                        resolution: get().camera.resolution
+                    });
+
+                    if (imageResult) {
+                        get().updateNodeData(nodeId, {
+                            image: imageResult,
+                            isOptimistic: false,
+                            label: `Scene ${i + 1}: ${scenePrompt.substring(0, 30)}...`,
+                            resolution: get().camera.resolution
+                        });
+                        saveStoryboardItem(activeCharacter.id, imageResult, get().nodes.length + i);
+                        saveGeneratedAsset(imageResult, 'image', `storyboard_scene_${i + 1}_${Date.now()}.png`);
+                    } else {
+                        get().deleteNode(nodeId);
+                    }
+                } catch (err) {
+                    console.error(`Failed to render scene ${i + 1}:`, err);
+                    get().deleteNode(nodeId);
+                }
+            });
+
+            await Promise.all(renderPromises);
+            get().syncCurrentSession();
+            get().showToast("Storyboard generated successfully!", "success");
+
+        } catch (error) {
+            console.error("Storyboard generation failed:", error);
+            get().showToast(`Storyboard generation failed: ${error.message}`, "error");
+        } finally {
+            set({ isRendering: false });
+        }
     },
 
     syncCurrentSession: async () => {

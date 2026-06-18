@@ -289,7 +289,7 @@ export default function DirectorHUD() {
 
             <div className="flex items-center justify-between p-6 border-b border-white/5">
                 <div>
-                    <h2 className="text-white font-black tracking-[0.3em] text-[11px] flex items-center gap-2 italic uppercase font-bold">
+                    <h2 className="text-white font-black tracking-[0.3em] text-[11px] flex items-center gap-2 italic uppercase">
                         <BrandLogo size={20} className="drop-shadow-[0_0_8px_rgba(212,255,0,0.3)]" />
                         DIRECTOR_CORE_V3
                     </h2>
