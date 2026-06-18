@@ -1,5 +1,5 @@
 import express from 'express';
-import { fetchAllowedProxyResource } from '../utils/safeProxy.js';
+import { fetchAllowedProxyResource, validateProxyUrl } from '../utils/safeProxy.js';
 
 export default function createRouter(deps) {
     const router = express.Router();
@@ -20,14 +20,74 @@ export default function createRouter(deps) {
     router.get('/proxy-image', async (req, res) => {
         try {
             const { url } = req.query;
-            if (!url) return res.status(400).json({ error: 'url param required' });
-            const { buffer, contentType } = await fetchAllowedProxyResource(url);
-            res.set({
-                'Access-Control-Allow-Origin': '*',
-                'Content-Type': contentType,
-                'Cache-Control': 'public, max-age=31536000',
+            if (!url) {
+                return res.status(400).json({ error: 'url parameter is required' });
+            }
+
+            // Secure validation to prevent SSRF
+            const parsedUrl = await validateProxyUrl(url);
+            const finalUrl = parsedUrl.toString();
+
+            // Detect video by extension (needs Range + streaming support)
+            const isVideo = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(finalUrl);
+            const rangeHeader = req.headers['range'];
+
+            // Forward Range header to upstream if present
+            const upstreamHeaders = { 'User-Agent': 'ZerolensProxy/1.0' };
+            if (rangeHeader) upstreamHeaders['Range'] = rangeHeader;
+
+            const upstream = await fetch(finalUrl, {
+                headers: upstreamHeaders,
+                redirect: 'follow',
             });
-            res.send(buffer);
+
+            if (!upstream.ok && upstream.status !== 206) {
+                return res.status(upstream.status).json({ error: `Upstream error: ${upstream.statusText}` });
+            }
+
+            // CORS headers — always required
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+
+            const ct = upstream.headers.get('content-type') || (isVideo ? 'video/mp4' : 'application/octet-stream');
+            res.setHeader('Content-Type', ct);
+
+            if (isVideo || rangeHeader) {
+                // ✅ Video streaming: Chrome requires Accept-Ranges + Content-Length to cache & seek
+                res.setHeader('Accept-Ranges', 'bytes');
+                const cl = upstream.headers.get('content-length');
+                if (cl) res.setHeader('Content-Length', cl);
+                const cr = upstream.headers.get('content-range');
+                if (cr) res.setHeader('Content-Range', cr);
+                res.setHeader('Cache-Control', 'public, max-age=3600');
+                res.status(upstream.status === 206 ? 206 : 200);
+
+                // Stream directly — handle both Node.js streams and Web ReadableStreams
+                if (upstream.body) {
+                    if (typeof upstream.body.pipe === 'function') {
+                        upstream.body.pipe(res);
+                    } else {
+                        const { Readable } = await import('stream');
+                        Readable.fromWeb(upstream.body).pipe(res);
+                    }
+                } else {
+                    res.end();
+                }
+            } else {
+                // Images / small assets — buffer and send
+                let buffer;
+                if (upstream.body && typeof upstream.body.pipe === 'function') {
+                    const chunks = [];
+                    for await (const chunk of upstream.body) {
+                        chunks.push(chunk);
+                    }
+                    buffer = Buffer.concat(chunks);
+                } else {
+                    buffer = Buffer.from(await upstream.arrayBuffer());
+                }
+                res.setHeader('Cache-Control', 'public, max-age=86400');
+                res.send(buffer);
+            }
         } catch (err) {
             console.error('[PROXY-IMAGE]', err.message);
             res.status(err.status || 500).json({ error: err.message });

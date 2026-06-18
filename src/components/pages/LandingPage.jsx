@@ -811,24 +811,34 @@ export default function LandingPage({ onEnter, onPricing }) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // On mount — force autoplay with safety check
+  // Autoplay — wait for browser to confirm video data is ready before calling play()
   useEffect(() => {
-    let isMounted = true;
     const video = videoRef.current;
-    
-    if (video && heroSrc) {
-      video.muted = true;
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          if (error.name !== 'AbortError') {
-            console.warn("[LandingPage] Autoplay failed:", error);
-          }
-        });
-      }
+    if (!video || !heroSrc) return;
+
+    video.muted = true;
+
+    const tryPlay = () => {
+      const p = video.play();
+      if (p) p.catch(err => {
+        if (err.name !== 'AbortError') console.warn('[LandingPage] Autoplay deferred:', err.name);
+      });
+    };
+
+    // If already has data, play immediately
+    if (video.readyState >= 3) {
+      tryPlay();
+      return;
     }
 
-    return () => { isMounted = false; };
+    // Otherwise wait for canplay (or loadedmetadata as a fast fallback)
+    video.addEventListener('canplay', tryPlay, { once: true });
+    video.addEventListener('loadedmetadata', tryPlay, { once: true });
+
+    return () => {
+      video.removeEventListener('canplay', tryPlay);
+      video.removeEventListener('loadedmetadata', tryPlay);
+    };
   }, [heroSrc]);
 
   // Sync video muted state with store
@@ -942,8 +952,7 @@ export default function LandingPage({ onEnter, onPricing }) {
               <video
                 key={heroSrc}
                 ref={videoRef}
-                autoPlay muted loop playsInline preload="auto"
-                crossOrigin="anonymous"
+                muted loop playsInline preload="metadata"
                 src={heroSrc}
                 style={{
                   position: 'absolute',

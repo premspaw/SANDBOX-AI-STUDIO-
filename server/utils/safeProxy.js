@@ -57,7 +57,7 @@ const isPrivateIp = (address) => {
     return true;
 };
 
-const validateProxyUrl = async (rawUrl) => {
+export const validateProxyUrl = async (rawUrl) => {
     let parsed;
     try {
         parsed = new URL(rawUrl);

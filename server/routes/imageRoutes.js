@@ -1,5 +1,5 @@
 import express from 'express';
-import { fetchAllowedProxyResource } from '../utils/safeProxy.js';
+import { fetchAllowedProxyResource, validateProxyUrl } from '../utils/safeProxy.js';
 
 export default function createRouter(deps) {
     const router = express.Router();
@@ -67,15 +67,19 @@ export default function createRouter(deps) {
                 return res.status(400).json({ error: 'url parameter is required' });
             }
 
+            // Secure validation to prevent SSRF
+            const parsedUrl = await validateProxyUrl(url);
+            const finalUrl = parsedUrl.toString();
+
             // Detect video by extension (needs Range + streaming support)
-            const isVideo = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url);
+            const isVideo = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(finalUrl);
             const rangeHeader = req.headers['range'];
 
             // Forward Range header to upstream if present
             const upstreamHeaders = { 'User-Agent': 'ZerolensProxy/1.0' };
             if (rangeHeader) upstreamHeaders['Range'] = rangeHeader;
 
-            const upstream = await fetch(url, {
+            const upstream = await fetch(finalUrl, {
                 headers: upstreamHeaders,
                 redirect: 'follow',
             });
@@ -101,12 +105,29 @@ export default function createRouter(deps) {
                 res.setHeader('Cache-Control', 'public, max-age=3600');
                 res.status(upstream.status === 206 ? 206 : 200);
 
-                // Stream directly — avoid loading entire video into memory
-                const { Readable } = await import('stream');
-                Readable.fromWeb(upstream.body).pipe(res);
+                // Stream directly — handle both Node.js streams and Web ReadableStreams
+                if (upstream.body) {
+                    if (typeof upstream.body.pipe === 'function') {
+                        upstream.body.pipe(res);
+                    } else {
+                        const { Readable } = await import('stream');
+                        Readable.fromWeb(upstream.body).pipe(res);
+                    }
+                } else {
+                    res.end();
+                }
             } else {
                 // Images / small assets — buffer and send
-                const buffer = Buffer.from(await upstream.arrayBuffer());
+                let buffer;
+                if (upstream.body && typeof upstream.body.pipe === 'function') {
+                    const chunks = [];
+                    for await (const chunk of upstream.body) {
+                        chunks.push(chunk);
+                    }
+                    buffer = Buffer.concat(chunks);
+                } else {
+                    buffer = Buffer.from(await upstream.arrayBuffer());
+                }
                 res.setHeader('Cache-Control', 'public, max-age=86400');
                 res.send(buffer);
             }
