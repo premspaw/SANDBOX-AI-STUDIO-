@@ -1,11 +1,20 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { X, ChevronDown, Sparkles, Camera, Check, Loader2, Film } from 'lucide-react';
 import { useUGC, SplitScene } from '../context/UGCContext';
 import { SCENE_STYLES, VIDEO_STYLES } from '../constants/videoStyles';
 import { getApiUrl, resolveUrl } from '../../../config/apiConfig';
 import { fileToBase64 } from '../utils/imageUtils';
 
+const SPEECH_TAGS = [
+  { label: '🤫 Whisper', value: '[whisper]' },
+  { label: '😮 Gasp', value: '[gasp]' },
+  { label: '💨 Sigh', value: '[sigh]' },
+  { label: '😂 Laughs', value: '[laughter]' },
+  { label: '⏳ Pause', value: '[pause]' }
+];
+
 export default function SplitScenesPanel() {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const {
     splitScenes,
     setSplitScenes,
@@ -41,6 +50,34 @@ export default function SplitScenesPanel() {
   if (splitScenes.length === 0) return null;
 
   const sc = splitScenes[activeSplitTab];
+
+  const injectSpeechTag = (tag: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea || !sc) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = sc.dialog || '';
+    
+    // Insert tag at cursor position
+    const before = text.substring(0, start);
+    const after = text.substring(end, text.length);
+    const newDialog = `${before}${tag}${after}`;
+    
+    setSplitScenes((prev: SplitScene[]) =>
+      prev.map((s: SplitScene, idx: number) =>
+        idx === activeSplitTab ? { ...s, dialog: newDialog } : s
+      )
+    );
+
+    // Refocus and place cursor after the injected tag
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + tag.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
+
   const customRef = sc?.refImage;
   const fallbackRef = activeTab === 'talking-head' ? thGeneratedImg : (characterImg?.url || '');
   const effectiveRefImage = customRef || fallbackRef;
@@ -214,6 +251,7 @@ Return ONLY the prompt text, no preamble.`;
           {/* Left: Dialogue (Editable) */}
           <div className="flex-1 text-left pr-2">
             <textarea
+              ref={textareaRef}
               value={sc?.dialog || ''}
               onChange={(e) => {
                 const newDialog = e.target.value;
@@ -227,6 +265,19 @@ Return ONLY the prompt text, no preamble.`;
               className="w-full bg-white/5 border border-white/10 hover:border-white/20 rounded-xl px-3 py-2 text-[10.5px] text-white/90 leading-relaxed font-mono resize-none focus:outline-none focus:border-[#c8f135]/40 transition-all scrollbar-thin scrollbar-thumb-white/10"
               placeholder="Edit dialogue..."
             />
+            {/* Quick injection speech tags */}
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {SPEECH_TAGS.map((tag) => (
+                <button
+                  key={tag.value}
+                  type="button"
+                  onClick={() => injectSpeechTag(tag.value)}
+                  className="px-2 py-0.5 bg-white/3 border border-white/8 hover:border-[#c8f135]/40 hover:bg-[#c8f135]/5 text-white/40 hover:text-[#c8f135] rounded-md text-[8px] font-mono transition-all uppercase cursor-pointer"
+                >
+                  {tag.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Right: Controls (Reference slot + Approve button) */}
