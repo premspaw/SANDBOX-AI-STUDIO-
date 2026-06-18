@@ -5,9 +5,7 @@ import { Sparkles, Zap, X, Plus, Loader2, ChevronDown, Film, Upload } from 'luci
 import { cn } from '../../lib/utils'
 import { AssetsLibrary } from '../panels/AssetsLibrary'
 import { supabase } from '../../lib/supabase'
-
-const ARK_API_KEY = import.meta.env.VITE_ARK_API_KEY
-const ARK_API_BASE = 'https://ark.ap-southeast-1.bytepluses.com/api/v3/contents/generations/tasks'
+import { getApiUrl } from '../../config/apiConfig'
 
 // ── Slot Row sub-component ──────────────────────────────────
 function SlotRow({ label, max, items, color, onAdd, onRemove }) {
@@ -130,23 +128,16 @@ export const Seedance15ProNode = memo(({ id, data }) => {
     }
 
     // ── Poll ModelArk API ──
-    const poll = async (taskId) => {
+    const poll = async (taskId, engine) => {
         setStatus('polling')
         for (let i = 0; i < 60; i++) {
             await new Promise(r => setTimeout(r, 10000)) // Byteplus advises 10s backoff
             try {
-                const res = await fetch(
-                    `${ARK_API_BASE}/${taskId}`,
-                    { 
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${ARK_API_KEY}` 
-                        } 
-                    }
-                )
+                const statusUrl = getApiUrl(`/api/seedance/status/${encodeURIComponent(taskId)}?engine=${encodeURIComponent(engine)}&aspectRatio=${encodeURIComponent(ratio)}`)
+                const res = await fetch(statusUrl)
                 const json = await res.json()
-                if (json.status === 'succeeded') {
-                    const url = json.content?.video_url
+                if (json.status === 'completed') {
+                    const url = json.url
                     setOutputUrl(url)
                     setStatus('done')
                     // Fire event → PromptGenerator filmstrip picks it up
@@ -155,8 +146,8 @@ export const Seedance15ProNode = memo(({ id, data }) => {
                     }))
                     return
                 }
-                if (json.status === 'failed') {
-                    const failReason = json.error?.message || 'Generation failed';
+                if (json.status === 'failed' || json.status === 'error') {
+                    const failReason = json.error || json.message || 'Generation failed';
                     setErrorMsg(failReason.toLowerCase().includes('real person') ? 'Real-Person Policy Flagged: Volcano/BytePlus Ark safety filters restrict generating video from reference images that resemble real people.' : failReason);
                     setStatus('error');
                     return;
@@ -203,26 +194,28 @@ export const Seedance15ProNode = memo(({ id, data }) => {
         }
 
         try {
-            const res = await fetch(ARK_API_BASE, {
+            const model = mode === 'lite-multi' ? 'seedance-1-0-lite-i2v-250428' : 'seedance-1-5-pro-251215'
+            const res = await fetch(getApiUrl('/api/seedance/generate'), {
                 method: 'POST',
                 headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${ARK_API_KEY}` 
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: mode === 'lite-multi' ? 'seedance-1-0-lite-i2v-250428' : 'seedance-1-5-pro-251215',
-                    content: contentBlocks,
-                    generate_audio: generateAudio,
-                    ratio,
+                    engine: 'seedace',
+                    model,
+                    prompt: prompt.trim(),
+                    seedanceContentArray: contentBlocks,
+                    generateAudio,
+                    aspectRatio: ratio,
                     duration,
                     camera_fixed: cameraFixed,
-                    ...(mode === 'pro' ? { resolution } : {}), 
+                    ...(mode === 'pro' ? { resolution } : {}),
                     watermark: false
                 })
             })
             const json = await res.json()
-            if (!json.id) throw new Error(json.error?.message || 'No task ID returned')
-            await poll(json.id)
+            if (!res.ok || !json.requestId) throw new Error(json.error || 'No task ID returned')
+            await poll(json.requestId, json.engine || 'seedace-ark')
         } catch (err) {
             console.error(err)
             let rawMsg = err.message || 'Generation failed'

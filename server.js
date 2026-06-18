@@ -21,6 +21,28 @@ import multer from 'multer';
 import { readFileSync, rmSync } from 'fs';
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
+const normalizeOrigin = (value) => {
+    if (!value) return null;
+    const trimmed = value.trim().replace(/\/+$/, '');
+    if (!trimmed) return null;
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+};
+
+const APP_ORIGIN = normalizeOrigin(process.env.APP_ORIGIN || process.env.PUBLIC_APP_URL || process.env.RAILWAY_PUBLIC_DOMAIN)
+    || (process.env.NODE_ENV === 'production' ? 'https://zerolens.in' : 'http://localhost:5173');
+
+const getAllowedCorsOrigins = () => {
+    const configured = (process.env.CORS_ORIGINS || '')
+        .split(',')
+        .map(normalizeOrigin)
+        .filter(Boolean);
+    const defaults = [APP_ORIGIN];
+    if (process.env.NODE_ENV !== 'production') {
+        defaults.push('http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3002', 'http://127.0.0.1:3002');
+    }
+    return [...new Set([...configured, ...defaults])];
+};
+
 // -------------------------------------------------------------
 // GLOBAL HEADERS INJECTOR (For Restricted API Keys)
 // Ensures all SDK/nodeFetch calls to Google have the required Referer
@@ -30,11 +52,8 @@ const originalFetch = nodeFetch || globalThis.fetch;
 globalThis.fetch = (url, options = {}) => {
     const urlStr = url.toString();
     if (urlStr.includes('googleapis.com')) {
-        console.log(`[FETCH_DEBUG] URL: ${urlStr.substring(0, 80)}`);
-        console.log(`[FETCH_DEBUG] Incoming Headers:`, JSON.stringify(options.headers || {}));
-        
         options.headers = options.headers || {};
-        const referer = 'http://localhost:5173/';
+        const referer = `${APP_ORIGIN}/`;
         
         // Detect if request already has an Authorization header (Vertex AI / OAuth2)
         let hasAuth = false;
@@ -58,11 +77,6 @@ globalThis.fetch = (url, options = {}) => {
                 options.headers['X-Goog-Api-Key'] = process.env.GOOGLE_API_KEY.trim();
             }
         }
-        
-        const finalReferer = (typeof options.headers.get === 'function') 
-            ? options.headers.get('Referer') 
-            : (options.headers['Referer'] || options.headers['referer']);
-        console.log(`[FETCH_DEBUG] Final Referer: ${finalReferer}`);
     }
     return originalFetch(url, options);
 };
@@ -222,19 +236,19 @@ const getGeminiClient = () => {
         _geminiClient = new GoogleGenAI({
             apiKey,
             headers: {
-                'Referer': 'http://localhost:5173/',
-                'Origin': 'http://localhost:5173'
+                'Referer': `${APP_ORIGIN}/`,
+                'Origin': APP_ORIGIN
             },
             fetchOptions: {
                 headers: {
-                    'Referer': 'http://localhost:5173/',
-                    'Origin': 'http://localhost:5173'
+                    'Referer': `${APP_ORIGIN}/`,
+                    'Origin': APP_ORIGIN
                 }
             },
             requestOptions: {
                 headers: {
-                    'Referer': 'http://localhost:5173/',
-                    'Origin': 'http://localhost:5173'
+                    'Referer': `${APP_ORIGIN}/`,
+                    'Origin': APP_ORIGIN
                 }
             }
         });
@@ -384,7 +398,15 @@ const port = process.env.PORT || 3002;
 const storageBase = `https://storage.googleapis.com/${process.env.GCS_BUCKET_NAME || 'zerolensbucket_1'}`;
 
 // Middleware
-app.use(cors());
+const allowedCorsOrigins = getAllowedCorsOrigins();
+app.use(cors({
+    origin(origin, callback) {
+        if (!origin) return callback(null, true);
+        const normalized = normalizeOrigin(origin);
+        return callback(null, allowedCorsOrigins.includes(normalized));
+    },
+    credentials: true
+}));
 app.use(compression());
 
 // SharedArrayBuffer / FFmpeg Export Headers
@@ -1139,7 +1161,7 @@ async function handleSeedanceJob(reqBody) {
     } = reqBody;
 
     const arkApiKey  = process.env.ARK_API_KEY;
-    const kieApiKey  = process.env.KIE_API_KEY || process.env.VITE_KIE_API_KEY;
+    const kieApiKey  = process.env.KIE_API_KEY;
     const preferKie  = process.env.PREFER_KIE === 'true';
 
     const resolvedFirst = firstFrame ? await resolveToPublicUrl(firstFrame, userId) : null;
@@ -1340,6 +1362,17 @@ app.post('/api/webhook/razorpay',
                 else if (amount_in_rs >= 300) { creditsToAdd = 399; targetTier = 'STARTER'; planName = 'Starter'; }
 
                 if (creditsToAdd > 0 && supabaseAdmin) {
+                    const { data: existingPayment } = await supabaseAdmin
+                        .from('billing_history')
+                        .select('id')
+                        .eq('transaction_id', transaction_id)
+                        .maybeSingle();
+
+                    if (existingPayment) {
+                        console.log(`[RAZORPAY_WEBHOOK] Duplicate payment ignored: ${transaction_id}`);
+                        return res.status(200).json({ success: true, duplicate: true });
+                    }
+
                     const { data: profile } = await supabaseAdmin.from('profiles').select('shorts_balance').eq('id', userId).single();
                     const new_balance = (profile?.shorts_balance ?? 0) + creditsToAdd;
 
@@ -1445,9 +1478,7 @@ app.use('/api', createImageRouter(deps));
 app.use('/api', createVideoRouter(deps));
 app.use('/api', createSeedanceRouter(deps));
 app.use('/api', createUgcRouter(deps));
-app.use('/api/ugc', createUgcRouter(deps));
 app.use('/api', createForgeRouter(deps));
-app.use('/api/forge', createForgeRouter(deps));
 app.use('/api', createCarouselRouter(deps));
 app.use('/api', createStorageRouter(deps));
 app.use('/api', createAdminRouter(deps));

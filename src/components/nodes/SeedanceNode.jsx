@@ -7,9 +7,6 @@ import { AssetsLibrary } from '../panels/AssetsLibrary'
 import { supabase } from '../../lib/supabase'
 import { getApiUrl } from '../../config/apiConfig'
 
-const KIE_API_KEY = import.meta.env.VITE_KIE_API_KEY
-const KIE_BASE    = 'https://api.kie.ai'
-
 // ── Price table (per second) ──────────────────────────────
 const PRICE_TABLE = {
     'seedance-2-fast': {
@@ -138,19 +135,18 @@ export const SeedanceNode = memo(({ id, data }) => {
     }
 
     // ── Poll kie.ai task ──
-    const pollTask = async (taskId) => {
+    const pollTask = async (taskId, engine) => {
         setStatus('polling')
         for (let i = 0; i < 120; i++) {
             await new Promise(r => setTimeout(r, 5000))
             setPollMsg(`Polling... ${Math.round((i + 1) * 5)}s`)
             try {
-                const res  = await fetch(`${KIE_BASE}/api/v1/jobs/task?taskId=${taskId}`, {
-                    headers: { Authorization: `Bearer ${KIE_API_KEY}` }
-                })
+                const statusUrl = getApiUrl(`/api/seedance/status/${encodeURIComponent(taskId)}?engine=${encodeURIComponent(engine)}&aspectRatio=${encodeURIComponent(ratio)}`)
+                const res  = await fetch(statusUrl)
                 const json = await res.json()
-                const st   = json.data?.status
-                if (st === 'succeed' || st === 'completed') {
-                    const url = json.data?.videos?.[0]?.url || json.data?.resultUrl
+                const st   = json.status
+                if (st === 'completed') {
+                    const url = json.url
                     if (url) {
                         setOutputUrl(url)
                         setStatus('done')
@@ -176,43 +172,49 @@ export const SeedanceNode = memo(({ id, data }) => {
         setPollMsg('')
 
         try {
-            const input = {
-                prompt:          prompt.trim(),
-                aspect_ratio:    ratio,
-                duration:        duration,
-                resolution:      resolution,
-                generate_audio:  generateAudio,
-                web_search:      false,
-            }
+            const seedanceContentArray = [{ type: 'text', text: prompt.trim() }]
 
             // First / Last frame
-            if (firstFrame?.url) input.first_frame_url = firstFrame.url
-            if (lastFrame?.url)  input.last_frame_url  = lastFrame.url
+            if (firstFrame?.url) {
+                seedanceContentArray.push({ type: 'image_url', image_url: { url: firstFrame.url }, role: 'first_frame' })
+            }
+            if (lastFrame?.url)  {
+                seedanceContentArray.push({ type: 'image_url', image_url: { url: lastFrame.url }, role: 'last_frame' })
+            }
 
             // Reference images (omni-reference)
-            if (images.length > 0)
-                input.reference_image_urls = images.map(i => i.url)
+            images.forEach(i => {
+                seedanceContentArray.push({ type: 'image_url', image_url: { url: i.url }, role: 'reference_image' })
+            })
 
             // Reference videos
-            if (videos.length > 0)
-                input['reference_video_urls '] = videos.map(v => v.url)  // note trailing space per API spec
+            videos.forEach(v => {
+                seedanceContentArray.push({ type: 'video_url', video_url: { url: v.url }, role: 'reference_video' })
+            })
 
             // Reference audio
-            if (audios.length > 0)
-                input.reference_audio_urls = audios.map(a => a.url)
+            audios.forEach(a => {
+                seedanceContentArray.push({ type: 'audio_url', audio_url: { url: a.url }, role: 'reference_audio' })
+            })
 
+            const engine = model === 'seedance-2-fast' ? 'seedance-fast' : 'seedace'
             const body = {
+                engine,
                 model: `bytedance/${model}`,
-                input,
+                prompt: prompt.trim(),
+                seedanceContentArray,
+                aspectRatio: ratio,
+                duration,
+                resolution,
+                generateAudio,
             }
 
             console.log('[SeedanceNode] Payload:', JSON.stringify(body, null, 2))
 
-            const res  = await fetch(`${KIE_BASE}/api/v1/jobs/createTask`, {
+            const res  = await fetch(getApiUrl('/api/seedance/generate'), {
                 method:  'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${KIE_API_KEY}`,
                 },
                 body: JSON.stringify(body),
             })
@@ -220,12 +222,12 @@ export const SeedanceNode = memo(({ id, data }) => {
             const json = await res.json()
             console.log('[SeedanceNode] Response:', json)
 
-            if (json.code !== 200) throw new Error(json.msg || 'Task creation failed')
+            if (!res.ok || !json.success) throw new Error(json.error || 'Task creation failed')
 
-            const taskId = json.data?.taskId
+            const taskId = json.requestId
             if (!taskId) throw new Error('No taskId returned')
 
-            await pollTask(taskId)
+            await pollTask(taskId, json.engine || engine)
 
         } catch (err) {
             console.error('[SeedanceNode] Error:', err)

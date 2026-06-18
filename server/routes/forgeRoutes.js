@@ -3,6 +3,7 @@ import * as cacheService from '../../services/cacheService.js';
 
 export default function createRouter(deps) {
     const router = express.Router();
+    const APP_ORIGIN = (process.env.APP_ORIGIN || process.env.PUBLIC_APP_URL || 'https://zerolens.in').replace(/\/+$/, '');
     const {
         geminiService,
         vectorService,
@@ -72,8 +73,8 @@ export default function createRouter(deps) {
 
             const headers = { 
                 'Content-Type': 'application/json',
-                'Referer': 'http://localhost:5173/',
-                'Origin': 'http://localhost:5173'
+                'Referer': `${APP_ORIGIN}/`,
+                'Origin': APP_ORIGIN
             };
 
             console.log(`[BACKEND] Refining narrative for ${type} using AI Studio (Gemini 2.5)...`);
@@ -135,7 +136,8 @@ export default function createRouter(deps) {
 
             const headers = { 
                 'Content-Type': 'application/json',
-                'Referer': 'http://localhost:5173/' 
+                'Referer': `${APP_ORIGIN}/`,
+                'Origin': APP_ORIGIN
             };
 
             if (apiKey && apiKey.startsWith('AIza')) {

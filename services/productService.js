@@ -2,6 +2,7 @@ import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import fs from 'fs';
 
 const getApiKey = () => process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || '';
+const APP_ORIGIN = (process.env.APP_ORIGIN || process.env.PUBLIC_APP_URL || 'https://zerolens.in').replace(/\/+$/, '');
 
 /**
  * Core product analysis logic using Gemini 2.5 Flash
@@ -59,8 +60,8 @@ export async function analyzeProductItem(image, broadcast) {
                 }
             }, {
                 headers: {
-                    'Referer': 'http://localhost:5173/',
-                    'Origin': 'http://localhost:5173'
+                    'Referer': `${APP_ORIGIN}/`,
+                    'Origin': APP_ORIGIN
                 }
             });
             const result = await model.generateContent([

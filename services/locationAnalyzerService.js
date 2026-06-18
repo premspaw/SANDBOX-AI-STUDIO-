@@ -8,6 +8,7 @@ import fs from 'fs';
 import os from 'os';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+const APP_ORIGIN = (process.env.APP_ORIGIN || process.env.PUBLIC_APP_URL || 'https://zerolens.in').replace(/\/+$/, '');
 
 // ── Multer — same config as wardrobeAnalyzerService ───────────
 export const locationUploadMiddleware = multer({
@@ -59,8 +60,8 @@ export async function analyzeLocationItem(tempFilePath, mimeType) {
             },
         }, {
             headers: {
-                'Referer': 'http://localhost:5173/',
-                'Origin': 'http://localhost:5173'
+                'Referer': `${APP_ORIGIN}/`,
+                'Origin': APP_ORIGIN
             }
         });
 

@@ -15,7 +15,7 @@ export default function createRouter(deps) {
         resolvedLastFrame,
         targetModel
     }) => {
-        const kieApiKey = process.env.KIE_API_KEY || process.env.VITE_KIE_API_KEY;
+        const kieApiKey = process.env.KIE_API_KEY;
         if (!kieApiKey) {
             throw new Error("KIE_API_KEY is not configured on the server, cannot fall back.");
         }
@@ -161,7 +161,7 @@ export default function createRouter(deps) {
                 const preferKie = process.env.PREFER_KIE === 'true';
 
                 if (preferKie || !apiKey) {
-                    const kieApiKey = process.env.KIE_API_KEY || process.env.VITE_KIE_API_KEY;
+                    const kieApiKey = process.env.KIE_API_KEY;
                     if (!kieApiKey) {
                         throw new Error("PREFER_KIE is set or Ark API Key is missing, but KIE_API_KEY is not configured on the server.");
                     }
@@ -209,7 +209,7 @@ export default function createRouter(deps) {
                     if (errorMessage.toLowerCase().includes("real person")) {
                         errorMessage = "The reference image was flagged by safety filters for containing a real person. BytePlus Ark policy prohibits generating videos from real-person photos. Suggestion: Use a stylized/drawn reference image, or switch to a different engine (like Veo 3.1) that has different safety filters.";
                     }
-                    const kieApiKey = process.env.KIE_API_KEY || process.env.VITE_KIE_API_KEY;
+                    const kieApiKey = process.env.KIE_API_KEY;
                     if (kieApiKey) {
                         console.log(`[SEEDANCE-FAST-FALLBACK] Ark task creation failed ("${errorMessage}"). Falling back to Kie.ai...`);
                         try {
@@ -244,12 +244,12 @@ export default function createRouter(deps) {
             // Handle seedace (Seedance 2.0) model
             if (engine === 'seedace') {
                 // We support BOTH Kie.ai and BytePlus Ark for Seedance 2.0 based on env config
-                const kieApiKey = process.env.KIE_API_KEY || process.env.VITE_KIE_API_KEY;
+                const kieApiKey = process.env.KIE_API_KEY;
                 const arkApiKey = process.env.ARK_API_KEY;
                 const preferKie = process.env.PREFER_KIE === 'true';
 
                 // Prefer Volcano/BytePlus Ark if configured and model starts with dreamina, and preferKie is false
-                if (arkApiKey && !preferKie && (req.body.model?.includes('dreamina') || !kieApiKey)) {
+                if (arkApiKey && !preferKie && (req.body.model || !kieApiKey)) {
                     const targetModel = req.body.model || "dreamina-seedance-2-0-260128";
 
                     const payload = {
@@ -408,7 +408,7 @@ export default function createRouter(deps) {
 
             // 2. Handle Kie.ai engine polling
             if (engine === 'seedace-kie' || engine === 'seedace') {
-                const apiKey = process.env.KIE_API_KEY || process.env.VITE_KIE_API_KEY;
+                const apiKey = process.env.KIE_API_KEY;
                 if (!apiKey) throw new Error("Kie.ai API Key missing.");
 
                 const pollResp = await fetch(`https://api.kie.ai/api/v1/jobs/task?taskId=${requestId}`, {

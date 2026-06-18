@@ -20,10 +20,10 @@ export const MARKETING_FOLDER = 'marketing';
 const CDN_BASE = (process.env.GCS_CDN_BASE_URL || 'https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev').replace(/\/$/, '');
 
 // ── Cloudflare R2 client (S3-compatible) ─────────────────────────────────────
-// Hardcoded credentials for immediate use (env vars take precedence)
-const R2_ACCOUNT_ID     = process.env.R2_ACCOUNT_ID     || '4e88f062bf55477ce55ad23d8e7c6394';
-const R2_ACCESS_KEY_ID  = process.env.R2_ACCESS_KEY_ID || '6fed64d113e41fb3ad1115d06b7c7fdf';
-const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || '268f203df31be8aaf0c1a8c0e981beaf3d626cc2968c97cfe3865806c693e25c';
+// Runtime credentials only. Configure these in Railway variables.
+const R2_ACCOUNT_ID     = process.env.R2_ACCOUNT_ID;
+const R2_ACCESS_KEY_ID  = process.env.R2_ACCESS_KEY_ID;
+const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
 const R2_ENDPOINT_URL   = process.env.R2_ENDPOINT || `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 
 const R2_CONFIGURED = !!(R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY);

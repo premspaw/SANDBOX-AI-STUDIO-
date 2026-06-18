@@ -1,4 +1,5 @@
 import express from 'express';
+import { fetchAllowedProxyResource } from '../utils/safeProxy.js';
 
 export default function createRouter(deps) {
     const router = express.Router();
@@ -64,19 +65,13 @@ export default function createRouter(deps) {
             if (!url) {
                 return res.status(400).json({ error: 'url parameter is required' });
             }
-            const { default: fetch } = await import('node-fetch');
-            const response = await fetch(url);
-            if (!response.ok) {
-                return res.status(response.status).json({ error: `Failed to fetch remote resource: ${response.statusText}` });
-            }
-            const contentType = response.headers.get('content-type') || 'application/octet-stream';
-            const buffer = await response.buffer();
+            const { buffer, contentType } = await fetchAllowedProxyResource(url);
             res.setHeader('Content-Type', contentType);
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.send(buffer);
         } catch (err) {
             console.error('[Proxy Error]:', err.message);
-            res.status(500).json({ error: err.message });
+            res.status(err.status || 500).json({ error: err.message });
         }
     });
 

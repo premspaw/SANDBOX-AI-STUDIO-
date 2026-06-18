@@ -1,4 +1,5 @@
 import express from 'express';
+import { fetchAllowedProxyResource } from '../utils/safeProxy.js';
 
 export default function createRouter(deps) {
     const router = express.Router();
@@ -20,19 +21,16 @@ export default function createRouter(deps) {
         try {
             const { url } = req.query;
             if (!url) return res.status(400).json({ error: 'url param required' });
-            const r = await fetch(url);
-            if (!r.ok) return res.status(r.status).send('Upstream error');
-            const contentType = r.headers.get('content-type') || 'image/png';
+            const { buffer, contentType } = await fetchAllowedProxyResource(url);
             res.set({
                 'Access-Control-Allow-Origin': '*',
                 'Content-Type': contentType,
                 'Cache-Control': 'public, max-age=31536000',
             });
-            const buf = await r.arrayBuffer();
-            res.send(Buffer.from(buf));
+            res.send(buffer);
         } catch (err) {
             console.error('[PROXY-IMAGE]', err.message);
-            res.status(500).send('Proxy error');
+            res.status(err.status || 500).json({ error: err.message });
         }
     });
 

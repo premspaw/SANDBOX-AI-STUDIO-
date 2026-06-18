@@ -9,6 +9,7 @@ import os from 'os';
 
 // Initialize SDK
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+const APP_ORIGIN = (process.env.APP_ORIGIN || process.env.PUBLIC_APP_URL || 'https://zerolens.in').replace(/\/+$/, '');
 
 // Multer Config for local temp storage (up to 20MB)
 export const wardrobeUploadMiddleware = multer({
@@ -79,8 +80,8 @@ export async function analyzeWardrobeItem(tempFilePath, mimeType, category) {
             }
         }, {
             headers: {
-                'Referer': 'http://localhost:5173/',
-                'Origin': 'http://localhost:5173'
+                'Referer': `${APP_ORIGIN}/`,
+                'Origin': APP_ORIGIN
             }
         });
 

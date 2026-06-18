@@ -5,6 +5,7 @@ import { analyzeLocationRoute, locationUploadMiddleware } from '../../services/l
 import * as productService from '../../services/productService.js';
 import * as moodBoardService from '../../services/moodBoardService.js';
 import * as masterExportService from '../../services/masterExportService.js';
+import { fetchAllowedProxyResource } from '../utils/safeProxy.js';
 
 export default function createRouter(deps) {
     const router = express.Router();
@@ -665,18 +666,14 @@ Return ONLY valid JSON.`
         try {
             const { url } = req.body;
             if (!url) return res.status(400).json({ error: 'URL is required' });
+
+            const { buffer, contentType } = await fetchAllowedProxyResource(url);
+            const b64 = buffer.toString('base64');
             
-            const r = await fetch(url);
-            if (!r.ok) throw new Error(`Failed to fetch image: ${r.statusText}`);
-            
-            const buf = await r.arrayBuffer();
-            const b64 = Buffer.from(buf).toString('base64');
-            const mime = r.headers.get('content-type') || 'image/jpeg';
-            
-            res.json({ base64: b64, mimeType: mime });
+            res.json({ base64: b64, mimeType: contentType });
         } catch (error) {
             console.error('[UGC API] Proxy Image Error:', error);
-            res.status(500).json({ error: error.message });
+            res.status(error.status || 500).json({ error: error.message });
         }
     });
 

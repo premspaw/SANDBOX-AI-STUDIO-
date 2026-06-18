@@ -70,7 +70,7 @@ function MessageBubble({ msg }) {
 
         while ((match = codeBlockRegex.exec(text)) !== null) {
             if (match.index > lastIndex) {
-                parts.push(<span key={key++} dangerouslySetInnerHTML={{ __html: formatInline(text.slice(lastIndex, match.index)) }} />);
+                parts.push(<span key={key++}>{text.slice(lastIndex, match.index)}</span>);
             }
             parts.push(
                 <div key={key++} className="my-2 rounded-xl overflow-hidden border border-white/10">
@@ -81,9 +81,9 @@ function MessageBubble({ msg }) {
             lastIndex = match.index + match[0].length;
         }
         if (lastIndex < text.length) {
-            parts.push(<span key={key++} dangerouslySetInnerHTML={{ __html: formatInline(text.slice(lastIndex)) }} />);
+            parts.push(<span key={key++}>{text.slice(lastIndex)}</span>);
         }
-        return parts.length > 0 ? parts : <span dangerouslySetInnerHTML={{ __html: formatInline(text) }} />;
+        return parts.length > 0 ? parts : <span>{text}</span>;
     };
 
     const formatInline = (text) => {
