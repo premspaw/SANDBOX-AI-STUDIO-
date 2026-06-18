@@ -3474,7 +3474,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                     <div className="ml-auto flex items-center gap-1.5 px-3 flex-wrap justify-end">
                       <Dropdown label="" value={language} options={LANGUAGES} onChange={setLanguage} direction="up" className="w-[85px] shrink-0" />
                       <Dropdown label="" value={voice} options={VOICES} onChange={setVoice} direction="up" className="w-[80px] shrink-0" />
-                      <Dropdown label="" value={scriptDuration} options={['8 seconds', '16 seconds', '24 seconds', '36 seconds']} onChange={setScriptDuration} direction="up" className="w-[100px] shrink-0" />
+                      <Dropdown label="" value={scriptDuration} options={['8 seconds', '16 seconds', '24 seconds', '36 seconds', '42 seconds']} onChange={setScriptDuration} direction="up" className="w-[100px] shrink-0" />
                       <Dropdown
                         label=""
                         value={SCRIPT_TONES[selectedScriptTone] ? `${SCRIPT_TONES[selectedScriptTone].category}: ${SCRIPT_TONES[selectedScriptTone].name}` : selectedScriptTone}

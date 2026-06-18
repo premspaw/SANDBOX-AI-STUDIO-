@@ -56,4 +56,6 @@ export const SCENE_SEQUENCES: Record<number, string[]> = {
   16: ['HOOK', 'CTA'],
   24: ['HOOK', 'PAYOFF', 'CTA'],
   32: ['HOOK', 'PROBLEM', 'PAYOFF', 'CTA'],
+  36: ['HOOK', 'PROBLEM', 'PAYOFF', 'PROOF', 'CTA'],
+  42: ['HOOK', 'PROBLEM', 'PAYOFF', 'PROOF', 'PAYOFF', 'CTA'],
 };
