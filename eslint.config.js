@@ -29,7 +29,7 @@ export default [
 
   // ── Client-side files: Browser globals ──────────────────────────────────────
   {
-    files: ['src/**/*.{js,jsx,ts,tsx}'],
+    files: ['src/**/*.{js,jsx}'],
     plugins: {
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
