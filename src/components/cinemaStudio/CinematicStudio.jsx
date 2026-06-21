@@ -16,7 +16,7 @@ import {
 import { useShorts } from '../../hooks/useShorts';
 import { useAppStore } from '../../store';
 import { supabase } from '../../lib/supabase';
-import { getApiUrl } from '../../config/apiConfig';
+import { getApiUrl, resolveUrl } from '../../config/apiConfig';
 import { cn } from '../../lib/utils';
 import { ReferencePanel } from './ReferencePanel';
 import { CAMERA_ANGLES, CAMERA_MODELS, ANGLE_NARRATIVES } from './constants';
@@ -1021,7 +1021,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
         });
         if (!resp.ok) {
           let errData = {};
-          try { errData = await resp.json(); } catch(e) {}
+          try { errData = await resp.json(); } catch(e) { /* ignore JSON parsing error */ }
           throw new Error(errData.message || errData.error || `HTTP ${resp.status} - ${resp.statusText}`);
         }
         const data = await resp.json();
@@ -1071,7 +1071,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
   useEffect(() => {
     try {
       localStorage.setItem('cinematic_studio_gallery', JSON.stringify(gallery));
-    } catch (_) {}
+    } catch (_) { /* ignore localStorage quota issues */ }
   }, [gallery]);
 
   const fileInputRef = useRef(null);
@@ -1840,7 +1840,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                           {item.type === 'image' ? (
                             <>
                               <img
-                                src={item.url}
+                                src={resolveUrl(item.url)}
                                 alt={item.prompt}
                                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                               />
@@ -1853,7 +1853,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                             </>
                           ) : (
                             <video
-                              src={item.url}
+                              src={resolveUrl(item.url)}
                               muted
                               loop
                               playsInline
@@ -2293,7 +2293,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                 <div className="flex flex-wrap items-center gap-1.5 px-1 border-b border-white/5 pb-2">
                   {getTaggedRefItems(promptText).map((item) => (
                     <div key={item.id} className="flex items-center gap-1 px-2.5 py-1 bg-black/60 border border-[#c8f135]/40 rounded-lg shadow-md text-[9px] font-black uppercase text-[#D4FF00] tracking-wider shrink-0">
-                      <img src={item.imageUrl} className="w-4 h-4 rounded object-cover border border-white/20" />
+                      <img src={resolveUrl(item.imageUrl)} className="w-4 h-4 rounded object-cover border border-white/20" />
                       <span>@{item.name}</span>
                       <button type="button" onClick={() => handleRemoveTag(item)} className="p-0.5 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors ml-0.5">
                         <X size={10} />

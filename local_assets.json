@@ -1,5 +1,41 @@
 [
   {
+    "id": "local_1782045719676_dpx3k",
+    "name": "test_fallback_1782045718323.png",
+    "type": "image",
+    "url": "https://rddqazvuvvwmxgendcbt.supabase.co/storage/v1/object/public/assets/users/anon/generated/test_fallback_1782045718323.png",
+    "user_id": "local_user",
+    "aspect": "16:9",
+    "created_at": "2026-06-21T12:41:59.676Z"
+  },
+  {
+    "id": "local_1782045701117_uvzmx",
+    "name": "test_fallback_1782045700950.png",
+    "type": "image",
+    "url": "/assets/test_fallback_1782045700950.png",
+    "user_id": "local_user",
+    "aspect": "16:9",
+    "created_at": "2026-06-21T12:41:41.117Z"
+  },
+  {
+    "id": "local_1782041622237_oymfh",
+    "name": "test_fallback_1782041622042.png",
+    "type": "image",
+    "url": "/assets/test_fallback_1782041622042.png",
+    "user_id": "local_user",
+    "aspect": "16:9",
+    "created_at": "2026-06-21T11:33:42.237Z"
+  },
+  {
+    "id": "local_1782037129504_whik7",
+    "name": "test_fallback_1782037129226.png",
+    "type": "image",
+    "url": "/assets/test_fallback_1782037129226.png",
+    "user_id": "local_user",
+    "aspect": "16:9",
+    "created_at": "2026-06-21T10:18:49.504Z"
+  },
+  {
     "id": "local_1781692136039_c33kv",
     "name": "upload_1781692135310.png",
     "type": "image",

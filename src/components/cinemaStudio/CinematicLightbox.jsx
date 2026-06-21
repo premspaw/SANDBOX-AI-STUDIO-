@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { X, Loader2, Zap, Grid, Video, Image as ImageIcon, Pencil, Download, Trash2, Palette, Sparkles, Film, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -105,47 +105,41 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
     }
   };
 
-  const getRenderedImageBounds = () => {
+  const updateOverlay = useCallback(() => {
     const img = gridImgRef.current;
     const container = gridContainerRef.current;
-    if (!img || !container) return null;
+    if (!img || !container) return;
     const containerW = container.clientWidth;
     const containerH = container.clientHeight;
     const natW = img.naturalWidth;
     const natH = img.naturalHeight;
-    if (!natW || !natH) return null;
+    if (!natW || !natH) return;
     const scale = Math.min(containerW / natW, containerH / natH);
     const renderedW = natW * scale;
     const renderedH = natH * scale;
     const offsetX = (containerW - renderedW) / 2;
     const offsetY = (containerH - renderedH) / 2;
-    return { offsetX, offsetY, renderedW, renderedH };
-  };
 
-  const updateOverlay = () => {
-    const bounds = getRenderedImageBounds();
-    if (bounds) {
-      setOverlayStyle({
-        position: 'absolute',
-        left: `${bounds.offsetX}px`,
-        top: `${bounds.offsetY}px`,
-        width: `${bounds.renderedW}px`,
-        height: `${bounds.renderedH}px`,
-      });
-    }
-  };
+    setOverlayStyle({
+      position: 'absolute',
+      left: `${offsetX}px`,
+      top: `${offsetY}px`,
+      width: `${renderedW}px`,
+      height: `${renderedH}px`,
+    });
+  }, []);
 
   useEffect(() => {
     if (lightboxItem && lightboxItem.type === 'image') {
       const timer = setTimeout(updateOverlay, 150);
       return () => clearTimeout(timer);
     }
-  }, [lightboxItem]);
+  }, [lightboxItem, updateOverlay]);
 
   useEffect(() => {
     window.addEventListener('resize', updateOverlay);
     return () => window.removeEventListener('resize', updateOverlay);
-  }, []);
+  }, [updateOverlay]);
 
   const handleCellClick = async (row, col) => {
     const shotNumber = (row * 3) + col + 1;
@@ -285,7 +279,7 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
           {lightboxItem.type === 'image' ? (
             <div ref={gridContainerRef} className="relative w-full h-full flex items-center justify-center p-4">
               <img
-                src={lightboxItem.url}
+                src={resolveUrl(lightboxItem.url)}
                 alt={lightboxItem.prompt}
                 ref={gridImgRef}
                 onLoad={updateOverlay}
@@ -318,7 +312,7 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
             </div>
           ) : (
             <video
-              src={lightboxItem.url}
+              src={resolveUrl(lightboxItem.url)}
               controls
               autoPlay
               loop
@@ -537,7 +531,7 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
               <button
                 onClick={handleEditStory}
                 disabled={isEditingStory || !storyEditInstruction.trim()}
-                className="px-3 py-1.5 bg-blue-500 hover:bg-white disabled:bg-white/10 disabled:text-white/20 text-black text-[9px] font-black uppercase tracking-wider rounded-lg transition-all flex items-center gap-1.5 font-bold"
+                className="px-3 py-1.5 bg-blue-500 hover:bg-white disabled:bg-white/10 disabled:text-white/20 text-black text-[9px] font-black uppercase tracking-wider rounded-lg transition-all flex items-center gap-1.5"
               >
                 {isEditingStory ? (
                   <>

@@ -1,12 +1,21 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { Storage } from '@google-cloud/storage';
 import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
+import { createClient } from '@supabase/supabase-js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// Initialize Supabase Client
+const supabaseUrl = (process.env.VITE_SUPABASE_URL || '').trim();
+const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '').trim();
+const supabase = (supabaseUrl && supabaseKey && supabaseUrl.startsWith('https://'))
+    ? createClient(supabaseUrl, supabaseKey)
+    : null;
 
 // ── Bucket / folder constants ────────────────────────────────────────────────
 const GCS_BUCKET   = process.env.GCS_BUCKET_NAME || 'zerolensbucket_1';
@@ -76,6 +85,29 @@ const toBuffer = (data) => {
     return data;
 };
 
+const uploadToSupabase = async (buffer, fileName, contentType) => {
+    if (!supabase) return null;
+    try {
+        console.log(`[SUPABASE-STORAGE] Uploading ${fileName} → assets...`);
+        const cleanPath = fileName.replace(/\\/g, '/').replace(/\/+/g, '/');
+        const { data, error } = await supabase.storage
+            .from('assets')
+            .upload(cleanPath, buffer, {
+                contentType: contentType,
+                upsert: true
+            });
+        if (error) throw error;
+        const { data: { publicUrl } } = supabase.storage
+            .from('assets')
+            .getPublicUrl(cleanPath);
+        console.log(`[SUPABASE-STORAGE] ✅ Uploaded: ${publicUrl}`);
+        return publicUrl;
+    } catch (err) {
+        console.error('[SUPABASE-STORAGE] Upload Failed:', err.message);
+        return null;
+    }
+};
+
 /**
  * Upload a binary asset — R2 first, GCS fallback.
  * @param {Buffer|string} data
@@ -120,8 +152,30 @@ export const uploadToGCS = async (data, fileName, contentType = 'image/png', tar
         console.log(`[GCS] ✅ Uploaded: ${url}`);
         return url;
     } catch (err) {
-        console.error('[GCS] Upload Failed:', err);
-        throw err;
+        console.error('[GCS] Upload Failed, falling back to Supabase Storage:', err.message);
+        try {
+            const supabaseUrl = await uploadToSupabase(buffer, fileName, contentType);
+            if (supabaseUrl) return supabaseUrl;
+        } catch (subErr) {
+            console.error('[GCS -> SUPABASE] Fallback failed:', subErr.message);
+        }
+
+        // Final fallback: local storage
+        try {
+            const baseName = path.basename(fileName);
+            const publicAssetsDir = path.join(process.cwd(), 'public', 'assets');
+            if (!fs.existsSync(publicAssetsDir)) {
+                fs.mkdirSync(publicAssetsDir, { recursive: true });
+            }
+            const localFilePath = path.join(publicAssetsDir, baseName);
+            fs.writeFileSync(localFilePath, buffer);
+            const url = `/assets/${baseName}`;
+            console.log(`[LOCAL-STORAGE-FALLBACK] ✅ Saved locally: ${url}`);
+            return url;
+        } catch (localErr) {
+            console.error('[LOCAL-STORAGE-FALLBACK] Failed to save locally:', localErr.message);
+            throw err;
+        }
     }
 };
 

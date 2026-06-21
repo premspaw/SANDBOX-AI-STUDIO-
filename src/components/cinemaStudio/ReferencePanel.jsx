@@ -3,6 +3,7 @@ import { Sparkles, X, Upload, ImagePlus, Save } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { AssetsLibrary } from '../panels/AssetsLibrary';
 import { REF_CATEGORIES } from './constants';
+import { resolveUrl } from '../../config/apiConfig';
 
 export const ReferencePanel = ({
     showRefBoard,
@@ -69,7 +70,7 @@ export const ReferencePanel = ({
                                     <div className="flex flex-wrap gap-1.5 mt-1.5">
                                         {stagedRefBoard[category.id].map(item => (
                                             <div key={item.id} className="relative w-10 h-10 rounded-lg overflow-hidden border border-white/10 group bg-black/20 shrink-0">
-                                                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" />
+                                                <img src={resolveUrl(item.imageUrl)} alt={item.name} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" />
                                                 <div className="absolute inset-x-0 bottom-0 bg-black/80 px-1 py-0.5 backdrop-blur-sm border-t border-white/5">
                                                     <p className="text-[5.5px] font-black text-[#D4FF00] uppercase truncate text-center">@{item.name}</p>
                                                 </div>
