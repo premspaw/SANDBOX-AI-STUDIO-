@@ -142,6 +142,7 @@ export default function AgentPage() {
     const [activeTool, setActiveTool] = useState(null);
     const [memory, setMemory] = useState([]);
     const [memoryLoaded, setMemoryLoaded] = useState(false);
+    const [chatLoaded, setChatLoaded] = useState(false);
     const bottomRef = useRef(null);
     const textRef = useRef(null);
 
@@ -265,6 +266,45 @@ export default function AgentPage() {
         }
     };
 
+    // Load chat history from Supabase on mount
+    useEffect(() => {
+        if (!userId || chatLoaded || !supabase) return;
+        const loadChatHistory = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('agent_chats')
+                    .select('messages')
+                    .eq('user_id', userId)
+                    .single();
+                
+                if (!error && data?.messages && Array.isArray(data.messages) && data.messages.length > 0) {
+                    setMessages(data.messages);
+                }
+            } catch (err) {
+                console.warn('[AgentPage] Failed to load chat history:', err.message);
+            } finally {
+                setChatLoaded(true);
+            }
+        };
+        loadChatHistory();
+    }, [userId, chatLoaded]);
+
+    // Save chat history to Supabase
+    const saveChatHistory = async (nextMessages) => {
+        if (!userId || !supabase) return;
+        try {
+            await supabase
+                .from('agent_chats')
+                .upsert({
+                    user_id: userId,
+                    messages: nextMessages,
+                    updated_at: new Date()
+                }, { onConflict: 'user_id' });
+        } catch (err) {
+            console.warn('[AgentPage] Failed to save chat history:', err.message);
+        }
+    };
+
     // Extract memorable facts from AI reply
     const extractMemory = (reply, userMsg) => {
         const facts = [];
@@ -293,6 +333,7 @@ export default function AgentPage() {
         };
         const nextMessages = [...messages, userMsg];
         setMessages(nextMessages);
+        saveChatHistory(nextMessages);
         setIsThinking(true);
 
         try {
@@ -347,7 +388,9 @@ export default function AgentPage() {
                 thinking: data.thinking || null,
                 ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             };
-            setMessages(prev => [...prev, assistantMsg]);
+            const updatedMessages = [...nextMessages, assistantMsg];
+            setMessages(updatedMessages);
+            saveChatHistory(updatedMessages);
 
             // Extract facts from user message and save to R2
             const newFacts = extractMemory(data.text || '', text);
@@ -357,22 +400,27 @@ export default function AgentPage() {
                 saveMemory(updatedMemory);
             }
         } catch (err) {
-            setMessages(prev => [...prev, {
+            const errorMsg = {
                 role: 'assistant',
                 content: `Sorry, something went wrong: ${err.message}`,
                 ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            }]);
+            };
+            const updatedMessages = [...nextMessages, errorMsg];
+            setMessages(updatedMessages);
+            saveChatHistory(updatedMessages);
         } finally {
             setIsThinking(false);
         }
     };
 
     const clearChat = () => {
-        setMessages([{
+        const clearedMessages = [{
             role: 'assistant',
             content: "Chat cleared. What do you want to work on next?",
             ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }]);
+        }];
+        setMessages(clearedMessages);
+        saveChatHistory(clearedMessages);
         setMemory([]);
         saveMemory([]);
     };
