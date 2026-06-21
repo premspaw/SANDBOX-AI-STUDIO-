@@ -725,7 +725,7 @@ const HermesSkillsManager = ({ setStatus }) => {
     const [systemInstructions, setSystemInstructions] = useState('');
     const [isActive, setIsActive] = useState(true);
 
-    const fetchSkills = async () => {
+    const fetchSkills = React.useCallback(async () => {
         setLoading(true);
         try {
             const { data: { session } } = await supabase.auth.getSession();
@@ -742,11 +742,11 @@ const HermesSkillsManager = ({ setStatus }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [setStatus]);
 
     React.useEffect(() => {
         fetchSkills();
-    }, []);
+    }, [fetchSkills]);
 
     const handleEdit = (skill) => {
         setEditingSkill(skill);
