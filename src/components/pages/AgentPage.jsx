@@ -234,7 +234,9 @@ export default function AgentPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, memories: newMemory })
             });
-        } catch (_) {}
+        } catch (err) {
+            console.warn('[AgentPage] Failed to save memory:', err.message);
+        }
     };
 
     // Extract memorable facts from AI reply
