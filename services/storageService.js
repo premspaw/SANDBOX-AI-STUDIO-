@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { Storage } from '@google-cloud/storage';
-import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { createClient } from '@supabase/supabase-js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -249,4 +249,55 @@ export const listAssetsGCS = async (prefix = '', targetBucket) => {
         console.error('[GCS] List Failed:', err);
         return [];
     }
+};
+
+/**
+ * Delete a file from R2 or GCS.
+ */
+export const deleteAssetFromStorage = async (fileName, targetBucket) => {
+    if (r2Client) {
+        try {
+            console.log(`[R2] Deleting ${fileName} from ${R2_BUCKET}...`);
+            await r2Client.send(new DeleteObjectCommand({
+                Bucket: R2_BUCKET,
+                Key:    fileName,
+            }));
+            return true;
+        } catch (err) {
+            console.error('[R2] Delete failed, trying GCS fallback:', err.message);
+        }
+    }
+
+    try {
+        const bkt = targetBucket && targetBucket !== GCS_BUCKET
+            ? gcsStorage.bucket(targetBucket)
+            : gcsBucket;
+        console.log(`[GCS] Deleting ${fileName} from ${targetBucket || GCS_BUCKET}...`);
+        await bkt.file(fileName).delete();
+        return true;
+    } catch (err) {
+        console.error('[GCS] Delete failed, trying Supabase Storage fallback:', err.message);
+        if (supabase) {
+            try {
+                const cleanPath = fileName.replace(/\\/g, '/').replace(/\/+/g, '/');
+                await supabase.storage.from('assets').remove([cleanPath]);
+                return true;
+            } catch (sbErr) {
+                console.error('[SUPABASE-STORAGE] Delete failed:', sbErr.message);
+            }
+        }
+        
+        // Try local file delete fallback
+        try {
+            const baseName = path.basename(fileName);
+            const localFilePath = path.join(process.cwd(), 'public', 'assets', baseName);
+            if (fs.existsSync(localFilePath)) {
+                fs.unlinkSync(localFilePath);
+                return true;
+            }
+        } catch (localErr) {
+            console.error('[LOCAL-STORAGE] Delete failed:', localErr.message);
+        }
+    }
+    return false;
 };

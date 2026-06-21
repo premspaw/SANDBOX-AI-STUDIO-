@@ -1532,6 +1532,108 @@ process.on('unhandledRejection', (reason) => {
     console.error('[UNHANDLED REJECTION] Kept alive:', reason?.message || reason);
 });
 
+// Helper to extract file path/key from storage URL
+function getStorageKeyFromUrl(url) {
+    if (!url) return null;
+    try {
+        const parsed = new URL(url);
+        let pathname = parsed.pathname;
+        if (pathname.startsWith('/')) {
+            pathname = pathname.slice(1);
+        }
+        if (parsed.hostname.includes('storage.googleapis.com')) {
+            const parts = pathname.split('/');
+            parts.shift(); // Remove bucket name prefix
+            return decodeURIComponent(parts.join('/'));
+        }
+        return decodeURIComponent(pathname);
+    } catch (_) {
+        return null;
+    }
+}
+
+// Auto-deletion logic for temporary uploads older than 10 days
+async function cleanupOldUploadedReferenceAssets() {
+    console.log('[CLEANUP] Starting auto-deletion cleanup of reference_upload assets older than 10 days...');
+    const dbClient = supabaseAdmin || supabase;
+    if (!dbClient) {
+        console.warn('[CLEANUP] Supabase client missing. Skipping cleanup.');
+        return;
+    }
+
+    try {
+        const tenDaysAgo = new Date();
+        tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+        const isoString = tenDaysAgo.toISOString();
+
+        console.log(`[CLEANUP] Querying reference_upload assets created before: ${isoString}`);
+
+        // Fetch old assets
+        const { data: oldAssets, error } = await dbClient
+            .from('assets')
+            .select('*')
+            .eq('type', 'reference_upload')
+            .lt('created_at', isoString);
+
+        if (error) throw error;
+        if (!oldAssets || oldAssets.length === 0) {
+            console.log('[CLEANUP] No old reference_upload assets found.');
+            return;
+        }
+
+        console.log(`[CLEANUP] Found ${oldAssets.length} assets to delete.`);
+
+        for (const asset of oldAssets) {
+            try {
+                const storageKey = getStorageKeyFromUrl(asset.url);
+                if (storageKey) {
+                    await storageService.deleteAssetFromStorage(storageKey);
+                }
+                
+                await dbClient.from('assets').delete().eq('id', asset.id);
+                console.log(`[CLEANUP] Successfully deleted asset ID: ${asset.id}, URL: ${asset.url}`);
+            } catch (err) {
+                console.error(`[CLEANUP] Failed to delete asset ID ${asset.id}:`, err.message);
+            }
+        }
+        
+        // Clean local database backup
+        try {
+            if (fs.existsSync(LOCAL_ASSETS_FILE)) {
+                let localAssets = JSON.parse(fs.readFileSync(LOCAL_ASSETS_FILE, 'utf8'));
+                const originalLength = localAssets.length;
+                
+                localAssets = localAssets.filter(asset => {
+                    if (asset.type === 'reference_upload') {
+                        const createdAt = asset.created_at ? new Date(asset.created_at) : null;
+                        if (createdAt && createdAt < tenDaysAgo) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+                
+                if (localAssets.length !== originalLength) {
+                    fs.writeFileSync(LOCAL_ASSETS_FILE, JSON.stringify(localAssets, null, 2), 'utf8');
+                    console.log(`[CLEANUP] Cleaned up ${originalLength - localAssets.length} old reference assets from local_assets.json`);
+                }
+            }
+        } catch (localErr) {
+            console.error('[CLEANUP] Failed to clean local database fallback:', localErr.message);
+        }
+
+        console.log('[CLEANUP] Auto-deletion cleanup complete.');
+    } catch (err) {
+        console.error('[CLEANUP] Cleanup job failed:', err.message);
+    }
+}
+
 httpServer.listen(port, '0.0.0.0', () => {
     console.log(`Server running at http://localhost:${port}`);
+    
+    // Run cleanup on startup (deferred by 10s to let server stabilize)
+    setTimeout(cleanupOldUploadedReferenceAssets, 10000);
+    
+    // Set daily cleanup interval (24 hours)
+    setInterval(cleanupOldUploadedReferenceAssets, 24 * 60 * 60 * 1000);
 });
