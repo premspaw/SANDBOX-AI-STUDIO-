@@ -1,233 +1,84 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, Trash2, Loader2, Sparkles, Image, FileText, Search, Code2, LayoutGrid, Zap, ChevronDown, ChevronUp, Brain, Terminal, Globe } from 'lucide-react';
+import { Calendar, Bot, Sparkles, Image, Video, Download, Trash2, Loader2, Edit3, Settings, Play, CheckCircle2, ChevronRight, Globe, Layers, AlertCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getApiUrl } from '../../config/apiConfig';
 import { useAppStore } from '../../store';
 
-const AGENT_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
-
-const TOOLS = [
-    { id: 'carousel', icon: LayoutGrid, label: 'Carousel', color: 'text-pink-400', desc: 'Design an Instagram carousel' },
-    { id: 'image', icon: Image, label: 'Image Gen', color: 'text-orange-400', desc: 'Generate marketing images' },
-    { id: 'copy', icon: FileText, label: 'Copywriting', color: 'text-blue-400', desc: 'Write social captions & ads' },
-    { id: 'code', icon: Code2, label: 'Code', color: 'text-emerald-400', desc: 'Write or fix code' },
-    { id: 'search', icon: Search, label: 'Research', color: 'text-purple-400', desc: 'Research a topic' },
-    { id: 'strategy', icon: Brain, label: 'Strategy', color: 'text-yellow-400', desc: 'Marketing & brand strategy' },
-];
-
-const SYSTEM_PROMPT = `You are ZeroLens AI — an intelligent creative agent embedded in ZeroLens Studio, a professional content creation platform.
-
-Your capabilities:
-- Generate carousel slide plans (ask for brand/topic/style details)
-- Write marketing copy: captions, ads, scripts, email sequences
-- Create content strategies and brand guidelines
-- Write and review code (React, JavaScript, Python, etc.)
-- Research and summarize topics
-- Help with any creative or technical task
-
-Your personality:
-- Direct, intelligent, and professional
-- You remember context within the conversation
-- You proactively suggest next steps
-- When given a task like "create a carousel", you gather what you need then deliver a structured result
-- Format responses with clear sections, use **bold** for emphasis, use bullet points where helpful
-
-When you help with carousel/image tasks, output a structured plan. When writing code, use code blocks. Always be useful and thorough.
-
-Current platform: AI Studio — a Sass platform for content creators, marketers and brands.`;
-
-const SUGGESTED_PROMPTS = [
-    "Create a 6-slide Instagram carousel about productivity tips for entrepreneurs",
-    "Write 5 Instagram captions for a skincare brand launch",
-    "Build a 30-day content calendar for a fitness brand",
-    "Write a Facebook ad for a $97 online course on social media marketing",
-    "What's the best content strategy for a new B2B SaaS product?",
-    "Review my brand positioning and suggest improvements",
-];
-
-function ToolBadge({ tool }) {
-    const T = tool.icon;
-    return (
-        <span className={cn('inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 border border-white/10', tool.color)}>
-            <T className="w-2.5 h-2.5" /> {tool.label}
-        </span>
-    );
-}
-
-function MessageBubble({ msg }) {
-    const [showRaw, setShowRaw] = useState(false);
-    const isUser = msg.role === 'user';
-
-    const renderContent = (text) => {
-        const parts = [];
-        let remaining = text;
-        let key = 0;
-
-        // Parse code blocks
-        const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
-        let lastIndex = 0;
-        let match;
-
-        while ((match = codeBlockRegex.exec(text)) !== null) {
-            if (match.index > lastIndex) {
-                parts.push(<span key={key++}>{text.slice(lastIndex, match.index)}</span>);
-            }
-            parts.push(
-                <div key={key++} className="my-2 rounded-xl overflow-hidden border border-white/10">
-                    {match[1] && <div className="px-3 py-1 bg-white/5 text-[9px] font-black uppercase tracking-widest text-white/30">{match[1]}</div>}
-                    <pre className="p-3 text-[11px] text-emerald-300 overflow-x-auto bg-black/40 leading-relaxed">{match[2].trim()}</pre>
-                </div>
-            );
-            lastIndex = match.index + match[0].length;
-        }
-        if (lastIndex < text.length) {
-            parts.push(<span key={key++}>{text.slice(lastIndex)}</span>);
-        }
-        return parts.length > 0 ? parts : <span>{text}</span>;
-    };
-
-    const formatInline = (text) => {
-        return text
-            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-black">$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em class="text-white/80">$1</em>')
-            .replace(/^### (.*?)$/gm, '<div class="text-white font-black text-sm mt-3 mb-1">$1</div>')
-            .replace(/^## (.*?)$/gm, '<div class="text-white font-black text-base mt-4 mb-1">$1</div>')
-            .replace(/^# (.*?)$/gm, '<div class="text-white font-black text-lg mt-4 mb-2">$1</div>')
-            .replace(/^- (.*?)$/gm, '<div class="flex gap-2 my-0.5"><span class="text-white/30 mt-0.5">•</span><span>$1</span></div>')
-            .replace(/^\d+\. (.*?)$/gm, (_, p1, offset, str) => {
-                const num = str.slice(0, offset).split('\n').filter(l => /^\d+\./.test(l)).length + 1;
-                return `<div class="flex gap-2 my-0.5"><span class="text-white/30 font-black min-w-[1rem]">${num}.</span><span>${p1}</span></div>`;
-            })
-            .replace(/\n/g, '<br/>');
-    };
-
-    return (
-        <div className={cn('flex gap-3', isUser ? 'justify-end' : 'justify-start')}>
-            {!isUser && (
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0 mt-0.5 shadow-lg shadow-violet-900/40">
-                    <Bot className="w-4 h-4 text-white" />
-                </div>
-            )}
-            <div className={cn(
-                'max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
-                isUser
-                    ? 'bg-gradient-to-br from-violet-600/30 to-indigo-600/20 border border-violet-500/20 text-white ml-auto'
-                    : 'bg-white/[0.04] border border-white/8 text-white/80'
-            )}>
-                {msg.tool && <div className="mb-2"><ToolBadge tool={TOOLS.find(t => t.id === msg.tool) || TOOLS[0]} /></div>}
-                <div className="text-[13px] leading-relaxed">{renderContent(msg.content)}</div>
-                {msg.thinking && (
-                    <button onClick={() => setShowRaw(!showRaw)}
-                        className="mt-2 flex items-center gap-1 text-[9px] text-white/20 hover:text-white/40 transition-colors">
-                        <Brain className="w-2.5 h-2.5" />
-                        {showRaw ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
-                        {showRaw ? 'Hide' : 'Show'} reasoning
-                    </button>
-                )}
-                {showRaw && msg.thinking && (
-                    <pre className="mt-2 text-[10px] text-white/20 whitespace-pre-wrap border-t border-white/5 pt-2">{msg.thinking}</pre>
-                )}
-                <div className="mt-1 text-[9px] text-white/15">{msg.ts}</div>
-            </div>
-            {isUser && (
-                <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-black text-white/50">
-                    U
-                </div>
-            )}
-        </div>
-    );
-}
-
 export default function AgentPage() {
     const userProfile = useAppStore(state => state.userProfile);
-    const userId = userProfile?.id;
+    const userId = userProfile?.id || 'anon';
 
-    const [messages, setMessages] = useState([
-        {
-            role: 'assistant',
-            content: `Hey! I'm **ZeroLens AI** — your creative agent powered by NVIDIA Nemotron 120B.\n\nI can help you with:\n- Instagram carousels & content plans\n- Marketing copy & ad scripts\n- Brand strategy & positioning\n- Code, research, and anything else\n\nWhat do you want to create today?`,
-            ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    // Form inputs
+    const [topic, setTopic] = useState('');
+    const [brandName, setBrandName] = useState(userProfile?.brand_voice?.brandName || '');
+    const [audience, setAudience] = useState(userProfile?.brand_voice?.whatTheyDo || '');
+    const [tone, setTone] = useState('cinematic');
+    const [duration, setDuration] = useState('3'); // 3, 5, 7 days
+    
+    const [isGeneratingCalendar, setIsGeneratingCalendar] = useState(false);
+    const [calendarData, setCalendarData] = useState(null);
+
+    // Active card for details view
+    const [activeDayIndex, setActiveDayIndex] = useState(null);
+
+    // State to track media generation per day
+    // format: { [dayIndex]: { status: 'idle' | 'generating' | 'completed' | 'failed', url: '', progressText: '', type: 'image' | 'video' } }
+    const [generationStates, setGenerationStates] = useState({});
+
+    // Sync brand name from store when it loads
+    useEffect(() => {
+        if (userProfile?.brand_voice?.brandName && !brandName) {
+            setBrandName(userProfile.brand_voice.brandName);
         }
-    ]);
-    const [input, setInput] = useState('');
-    const [isThinking, setIsThinking] = useState(false);
-    const [activeTool, setActiveTool] = useState(null);
-    const [memory, setMemory] = useState([]);
-    const [memoryLoaded, setMemoryLoaded] = useState(false);
-    const bottomRef = useRef(null);
-    const textRef = useRef(null);
+        if (userProfile?.brand_voice?.whatTheyDo && !audience) {
+            setAudience(userProfile.brand_voice.whatTheyDo);
+        }
+    }, [userProfile]);
 
-    // Load memory from R2 on mount
-    useEffect(() => {
-        if (!userId || memoryLoaded) return;
-        fetch(getApiUrl(`/api/agent/memory?userId=${userId}`))
-            .then(r => r.json())
-            .then(data => {
-                if (Array.isArray(data.memories) && data.memories.length > 0) {
-                    setMemory(data.memories);
-                }
-                setMemoryLoaded(true);
-            })
-            .catch(() => setMemoryLoaded(true));
-    }, [userId, memoryLoaded]);
+    const handleGenerateCalendar = async () => {
+        if (!topic.trim()) return;
+        setIsGeneratingCalendar(true);
+        setCalendarData(null);
+        setGenerationStates({});
+        setActiveDayIndex(null);
 
-    // Save memory to R2
-    const saveMemory = async (newMemory) => {
-        if (!userId) return;
-        try {
-            await fetch(getApiUrl('/api/agent/memory'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, memories: newMemory })
-            });
-        } catch (_) {}
-    };
+        const promptText = `Generate a ${duration}-day content calendar campaign for:
+- Topic: ${topic}
+- Brand Name: ${brandName || 'Not specified'}
+- Target Audience: ${audience || 'General public'}
+- Style/Tone: ${tone}
 
-    // Extract memorable facts from AI reply
-    const extractMemory = (reply, userMsg) => {
-        const facts = [];
-        const brandMatch = userMsg.match(/(?:brand|company|business)[:\s]+([\w\s&.'-]{2,30})/i);
-        if (brandMatch) facts.push(`Brand: ${brandMatch[1].trim()}`);
-        const colorMatch = userMsg.match(/#[0-9a-fA-F]{3,6}|\b(red|blue|green|black|white|purple|orange|pink|gold|navy)\b/i);
-        if (colorMatch) facts.push(`Brand color: ${colorMatch[0]}`);
-        const topicMatch = userMsg.match(/(?:about|topic|niche)[:\s]+([\w\s&]{2,40})/i);
-        if (topicMatch) facts.push(`Topic interest: ${topicMatch[1].trim()}`);
-        return facts;
-    };
+Please output the calendar as a structured JSON object.`;
 
-    useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, isThinking]);
+        const CALENDAR_SYSTEM_PROMPT = `You are Hermes, a world-class Social Media Strategist and GenAI Creative Director.
+Your task is to generate a premium social media Content Calendar based on the user's campaign topic, brand details, tone, and duration.
 
-    const handleSend = async (text = input.trim()) => {
-        if (!text || isThinking) return;
-        setInput('');
-
-        const userMsg = {
-            role: 'user',
-            content: text,
-            tool: activeTool,
-            ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
-        const nextMessages = [...messages, userMsg];
-        setMessages(nextMessages);
-        setIsThinking(true);
+Return ONLY a valid JSON object matching this structure exactly (do not output any markdown block, code formatting, or other text outside the JSON):
+{
+  "theme": "A high-level catchy title for this campaign",
+  "audienceSummary": "Brief summary of the target audience",
+  "calendar": [
+    {
+      "day": 1,
+      "platform": "Instagram",
+      "type": "video",
+      "title": "Title of the post",
+      "hook": "Scroll-stopping hook",
+      "caption": "Highly engaging caption with hashtags",
+      "visualPrompt": "Detailed visual prompt for generating the image/video matching this post (e.g. 'Cinematic close-up of gourmet dessert, gold dust, volumetric lighting...')",
+      "suggestedModel": "seedance-1-5-pro-251215"
+    }
+  ]
+}`;
 
         try {
-            const history = nextMessages.map(m => ({
-                role: m.role === 'assistant' ? 'assistant' : 'user',
-                content: m.tool
-                    ? `[Tool: ${TOOLS.find(t => t.id === m.tool)?.label || m.tool}]\n${m.content}`
-                    : m.content
-            }));
-
             const resp = await fetch(getApiUrl('/api/agent/chat'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    history,
-                    systemPrompt: SYSTEM_PROMPT + (activeTool ? `\n\nCurrent task mode: ${TOOLS.find(t => t.id === activeTool)?.label} — ${TOOLS.find(t => t.id === activeTool)?.desc}` : ''),
-                    memory,
+                    history: [{ role: 'user', content: promptText }],
+                    systemPrompt: CALENDAR_SYSTEM_PROMPT,
+                    memory: [],
                     userId,
                 })
             });
@@ -235,191 +86,514 @@ export default function AgentPage() {
             const data = await resp.json();
             if (!resp.ok) throw new Error(data.error || `Error ${resp.status}`);
 
-            const assistantMsg = {
-                role: 'assistant',
-                content: data.text || '',
-                thinking: data.thinking || null,
-                ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            };
-            setMessages(prev => [...prev, assistantMsg]);
-
-            // Extract facts from user message and save to R2
-            const newFacts = extractMemory(data.text || '', text);
-            if (newFacts.length > 0) {
-                const updatedMemory = [...new Set([...memory, ...newFacts])].slice(-50);
-                setMemory(updatedMemory);
-                saveMemory(updatedMemory);
+            // Parse response JSON
+            let cleanText = data.text || '';
+            const jsonMatch = cleanText.match(/```json\n?([\s\S]*?)```/) || cleanText.match(/{[\s\S]*}/);
+            const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : cleanText;
+            const parsed = JSON.parse(jsonStr.trim());
+            
+            setCalendarData(parsed);
+            if (parsed.calendar?.length > 0) {
+                setActiveDayIndex(0);
             }
         } catch (err) {
-            setMessages(prev => [...prev, {
-                role: 'assistant',
-                content: `Sorry, something went wrong: ${err.message}`,
-                ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            }]);
+            console.error('Failed to generate calendar:', err);
+            alert(`Generation failed: ${err.message}. Please try again.`);
         } finally {
-            setIsThinking(false);
+            setIsGeneratingCalendar(false);
         }
     };
 
-    const clearChat = () => {
-        setMessages([{
-            role: 'assistant',
-            content: "Chat cleared. What do you want to work on next?",
-            ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }]);
-        setMemory([]);
-        saveMemory([]);
+    // Trigger Image generation
+    const generateImage = async (dayIndex, visualPrompt, model = 'nano-banana-2') => {
+        setGenerationStates(prev => ({
+            ...prev,
+            [dayIndex]: { status: 'generating', progressText: 'Generating premium image...', url: '', type: 'image' }
+        }));
+
+        try {
+            const resp = await fetch(getApiUrl('/api/generate-image'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: visualPrompt,
+                    model: model,
+                    userId
+                })
+            });
+
+            const result = await resp.json();
+            if (!resp.ok) throw new Error(result.error || `Server returned ${resp.status}`);
+
+            if (!result.url) throw new Error("No image URL returned from server.");
+
+            setGenerationStates(prev => ({
+                ...prev,
+                [dayIndex]: { status: 'completed', url: result.url, progressText: '', type: 'image' }
+            }));
+        } catch (err) {
+            console.error("Image generation failed:", err);
+            setGenerationStates(prev => ({
+                ...prev,
+                [dayIndex]: { status: 'failed', progressText: err.message, url: '', type: 'image' }
+            }));
+        }
+    };
+
+    // Trigger Video generation (Seedance) & Poll status
+    const generateVideo = async (dayIndex, visualPrompt) => {
+        setGenerationStates(prev => ({
+            ...prev,
+            [dayIndex]: { status: 'generating', progressText: 'Creating video task...', url: '', type: 'video' }
+        }));
+
+        try {
+            // 1. Create seedance task
+            const resp = await fetch(getApiUrl('/api/seedance/generate'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    engine: 'seedance-fast',
+                    prompt: visualPrompt,
+                    duration: 5,
+                    aspectRatio: '9:16',
+                    userId
+                })
+            });
+
+            const result = await resp.json();
+            if (!resp.ok) throw new Error(result.error || `Server returned ${resp.status}`);
+
+            const { requestId, engine } = result;
+            if (!requestId) throw new Error("No task requestId returned from server.");
+
+            setGenerationStates(prev => ({
+                ...prev,
+                [dayIndex]: { status: 'generating', progressText: 'Video in queue... (approx 30s)', url: '', type: 'video' }
+            }));
+
+            // 2. Poll status
+            let attempts = 0;
+            const maxAttempts = 40; // 200 seconds max
+            
+            const interval = setInterval(async () => {
+                attempts++;
+                if (attempts > maxAttempts) {
+                    clearInterval(interval);
+                    setGenerationStates(prev => ({
+                        ...prev,
+                        [dayIndex]: { status: 'failed', progressText: 'Generation timed out.', url: '', type: 'video' }
+                    }));
+                    return;
+                }
+
+                try {
+                    const statusResp = await fetch(getApiUrl(`/api/seedance/status/${requestId}?userId=${userId}&aspectRatio=9:16&engine=${engine || 'seedance-fast'}`));
+                    const statusResult = await statusResp.json();
+                    
+                    if (statusResult.status === 'completed') {
+                        clearInterval(interval);
+                        setGenerationStates(prev => ({
+                            ...prev,
+                            [dayIndex]: { status: 'completed', url: statusResult.url, progressText: '', type: 'video' }
+                        }));
+                    } else if (statusResult.status === 'failed') {
+                        clearInterval(interval);
+                        setGenerationStates(prev => ({
+                            ...prev,
+                            [dayIndex]: { status: 'failed', progressText: statusResult.error || 'Generation failed.', url: '', type: 'video' }
+                        }));
+                    } else {
+                        // Still processing
+                        setGenerationStates(prev => ({
+                            ...prev,
+                            [dayIndex]: { 
+                                status: 'generating', 
+                                progressText: `Generating video... (${attempts * 5}s)`, 
+                                url: '', 
+                                type: 'video' 
+                            }
+                        }));
+                    }
+                } catch (pollErr) {
+                    console.warn("Polling error:", pollErr);
+                }
+            }, 5000);
+
+        } catch (err) {
+            console.error("Video generation failed:", err);
+            setGenerationStates(prev => ({
+                ...prev,
+                [dayIndex]: { status: 'failed', progressText: err.message, url: '', type: 'video' }
+            }));
+        }
+    };
+
+    // Update single post field in calendarState
+    const handleUpdateCalendarField = (dayIndex, field, value) => {
+        setCalendarData(prev => {
+            const updated = [...prev.calendar];
+            updated[dayIndex] = {
+                ...updated[dayIndex],
+                [field]: value
+            };
+            return {
+                ...prev,
+                calendar: updated
+            };
+        });
     };
 
     return (
-        <div className="h-full flex bg-[#07070f] text-white overflow-hidden">
-            {/* LEFT: Tools + Memory sidebar */}
-            <div className="w-64 shrink-0 flex flex-col border-r border-white/8 bg-black/30">
-                {/* Header */}
-                <div className="px-4 py-4 border-b border-white/8">
-                    <div className="flex items-center gap-2 mb-1">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-900/50">
-                            <Bot className="w-3.5 h-3.5 text-white" />
-                        </div>
-                        <div>
-                            <p className="text-[11px] font-black text-white tracking-tight">ZeroLens AI</p>
-                            <p className="text-[9px] text-white/30">Nemotron 120B · OpenRouter</p>
-                        </div>
+        <div className="h-full flex bg-[#07070f] text-white overflow-hidden font-sans">
+            {/* LEFT SIDEBAR: Planner Inputs */}
+            <div className="w-80 shrink-0 flex flex-col border-r border-white/8 bg-black/40 backdrop-blur-xl p-5 overflow-y-auto custom-scrollbar">
+                <div className="flex items-center gap-2 mb-6 border-b border-white/8 pb-4">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+                        <Bot className="w-4 h-4 text-white" />
                     </div>
-                    <div className="mt-2 flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-[9px] text-white/30 uppercase tracking-widest">Online via OpenRouter</span>
+                    <div>
+                        <h2 className="text-sm font-black text-white uppercase tracking-wider">Hermes Planner</h2>
+                        <p className="text-[9px] text-[#AADD00] uppercase tracking-widest font-bold">Content Studio v2.0</p>
                     </div>
                 </div>
 
-                {/* Tools */}
-                <div className="p-3 border-b border-white/8">
-                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-2">Task Mode</p>
+                <div className="space-y-5 flex-1">
                     <div className="space-y-1">
-                        {TOOLS.map(tool => {
-                            const Icon = tool.icon;
-                            const active = activeTool === tool.id;
-                            return (
-                                <button key={tool.id}
-                                    onClick={() => setActiveTool(active ? null : tool.id)}
-                                    className={cn(
-                                        'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-all',
-                                        active
-                                            ? 'bg-white/10 border border-white/15'
-                                            : 'hover:bg-white/5 border border-transparent'
-                                    )}>
-                                    <Icon className={cn('w-3.5 h-3.5 shrink-0', active ? tool.color : 'text-white/30')} />
-                                    <div>
-                                        <p className={cn('text-[10px] font-black', active ? 'text-white' : 'text-white/50')}>{tool.label}</p>
-                                        <p className="text-[9px] text-white/20 leading-tight">{tool.desc}</p>
-                                    </div>
-                                    {active && <div className={cn('ml-auto w-1.5 h-1.5 rounded-full', tool.color.replace('text-', 'bg-'))} />}
-                                </button>
-                            );
-                        })}
+                        <label className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Campaign Topic / Keyword</label>
+                        <input
+                            type="text"
+                            value={topic}
+                            onChange={(e) => setTopic(e.target.value)}
+                            placeholder="e.g. Productivity secrets for SaaS founders"
+                            className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white placeholder-white/20 outline-none focus:border-[#AADD00] transition-colors"
+                        />
                     </div>
-                </div>
 
-                {/* Memory */}
-                <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
-                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-2">Session Memory</p>
-                    {memory.length === 0 ? (
-                        <p className="text-[10px] text-white/15 leading-relaxed">Memory builds as you chat. Key facts about your brand, goals and preferences are stored here.</p>
-                    ) : (
-                        <div className="space-y-1.5">
-                            {memory.map((m, i) => (
-                                <div key={i} className="text-[10px] text-white/40 bg-white/3 rounded-lg px-2.5 py-1.5 border border-white/5 leading-relaxed">
-                                    {m}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                    <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Brand Name</label>
+                        <input
+                            type="text"
+                            value={brandName}
+                            onChange={(e) => setBrandName(e.target.value)}
+                            placeholder="e.g. ZeroLens"
+                            className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white placeholder-white/20 outline-none focus:border-[#AADD00] transition-colors"
+                        />
+                    </div>
 
-                {/* Clear */}
-                <div className="p-3 border-t border-white/8">
-                    <button onClick={clearChat}
-                        className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[10px] font-black text-white/30 hover:text-white/60 hover:bg-white/5 border border-white/8 transition-all uppercase tracking-wider">
-                        <Trash2 className="w-3 h-3" /> Clear Chat
+                    <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Target Audience</label>
+                        <input
+                            type="text"
+                            value={audience}
+                            onChange={(e) => setAudience(e.target.value)}
+                            placeholder="e.g. Freelancers, creators"
+                            className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white placeholder-white/20 outline-none focus:border-[#AADD00] transition-colors"
+                        />
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Tone & Visual Style</label>
+                        <select
+                            value={tone}
+                            onChange={(e) => setTone(e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-[#AADD00] transition-colors"
+                        >
+                            <option value="cinematic">Cinematic & Cinematic Lighting</option>
+                            <option value="bold">Bold & Streetwear High Contrast</option>
+                            <option value="luxury">Luxury & Soft Accent gold</option>
+                            <option value="minimalist">Minimalist Apple Style</option>
+                            <option value="cyberpunk">Cyberpunk Neon Noir</option>
+                        </select>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Duration (Days)</label>
+                        <select
+                            value={duration}
+                            onChange={(e) => setDuration(e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-[#AADD00] transition-colors"
+                        >
+                            <option value="3">3-Day Fast Campaign</option>
+                            <option value="5">5-Day Launch Sequence</option>
+                            <option value="7">7-Day Full Weekly Flow</option>
+                        </select>
+                    </div>
+
+                    <button
+                        onClick={handleGenerateCalendar}
+                        disabled={isGeneratingCalendar || !topic.trim()}
+                        className="w-full py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center gap-2"
+                    >
+                        {isGeneratingCalendar ? (
+                            <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                Analyzing Niche...
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles className="w-3.5 h-3.5" />
+                                Generate Campaign
+                            </>
+                        )}
                     </button>
                 </div>
+
+                {calendarData && (
+                    <div className="mt-6 pt-4 border-t border-white/8">
+                        <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl text-left">
+                            <span className="text-[8px] font-black uppercase bg-[#AADD00]/10 border border-[#AADD00]/30 text-[#AADD00] px-2 py-0.5 rounded-full">Active Campaign</span>
+                            <h4 className="text-xs font-bold text-white mt-2 truncate">{calendarData.theme}</h4>
+                            <p className="text-[10px] text-white/40 mt-1 leading-snug">{calendarData.audienceSummary}</p>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {/* RIGHT: Chat area */}
-            <div className="flex-1 flex flex-col min-w-0">
-                {/* Top bar */}
-                <div className="flex items-center gap-3 px-5 py-3 border-b border-white/8 bg-black/20 shrink-0">
-                    <Zap className="w-4 h-4 text-violet-400" />
-                    <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50">ZeroLens AI</span>
-                    {activeTool && (() => {
-                        const t = TOOLS.find(x => x.id === activeTool);
-                        const Icon = t.icon;
-                        return (
-                            <div className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-wider', t.color)}>
-                                <Icon className="w-2.5 h-2.5" /> {t.label} Mode
-                            </div>
-                        );
-                    })()}
-                    <div className="ml-auto flex items-center gap-2 text-[9px] text-white/20 uppercase tracking-widest">
-                        <Globe className="w-3 h-3" /> {AGENT_MODEL.split('/')[1]?.split(':')[0]}
+            {/* MAIN PANEL: Calendar view / Details view */}
+            <div className="flex-1 flex flex-col min-w-0 bg-[#040409]">
+                {/* Header */}
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-white/8 bg-black/20 shrink-0">
+                    <Calendar className="w-4 h-4 text-[#AADD00]" />
+                    <span className="text-xs font-black uppercase tracking-[0.2em] text-white/50">AI Content Calendar Studio</span>
+                </div>
+
+                {!calendarData && !isGeneratingCalendar ? (
+                    /* Initial Empty State */
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                        <div className="w-16 h-16 rounded-2xl bg-white/[0.02] border border-white/10 flex items-center justify-center mb-6 shadow-xl relative overflow-hidden">
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-blue-500/20 rounded-full blur-md" />
+                            <Calendar className="w-6 h-6 text-zinc-400 z-10" />
+                        </div>
+                        <h3 className="text-xl font-bold tracking-tight uppercase text-white/80">No Active Calendar</h3>
+                        <p className="text-xs text-white/30 max-w-sm mt-2 leading-relaxed">
+                            Input your topic, brand, and target audience in the sidebar, and let Hermes generate a fully scheduled visual content campaign with automated assets!
+                        </p>
                     </div>
-                </div>
-
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 custom-scrollbar">
-                    {/* Suggested prompts — only show if just the greeting */}
-                    {messages.length === 1 && (
-                        <div className="grid grid-cols-2 gap-2 mb-2">
-                            {SUGGESTED_PROMPTS.map((p, i) => (
-                                <button key={i} onClick={() => handleSend(p)}
-                                    className="text-left text-[11px] text-white/40 bg-white/[0.025] border border-white/8 rounded-xl px-3 py-2.5 hover:bg-white/[0.05] hover:text-white/60 hover:border-white/15 transition-all leading-snug">
-                                    {p}
-                                </button>
-                            ))}
+                ) : isGeneratingCalendar ? (
+                    /* Generating Loader State */
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                        <div className="relative w-16 h-16 mb-6">
+                            <div className="absolute inset-0 rounded-full border border-white/5" />
+                            <div className="absolute inset-0 rounded-full border-t-2 border-l-2 border-[#AADD00] animate-spin" />
                         </div>
-                    )}
-
-                    {messages.map((msg, i) => (
-                        <MessageBubble key={i} msg={msg} />
-                    ))}
-
-                    {isThinking && (
-                        <div className="flex gap-3 justify-start">
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-violet-900/40">
-                                <Bot className="w-4 h-4 text-white" />
-                            </div>
-                            <div className="bg-white/[0.04] border border-white/8 rounded-2xl px-4 py-3 flex items-center gap-2">
-                                <Loader2 className="w-3.5 h-3.5 text-violet-400 animate-spin" />
-                                <span className="text-[12px] text-white/30">ZeroLens AI is thinking…</span>
-                            </div>
-                        </div>
-                    )}
-                    <div ref={bottomRef} />
-                </div>
-
-                {/* Input */}
-                <div className="p-4 border-t border-white/8 bg-black/20 shrink-0">
-                    <div className="flex gap-2 items-end">
-                        <div className="flex-1 bg-white/[0.04] border border-white/10 rounded-2xl px-4 py-3 focus-within:border-violet-500/40 transition-colors">
-                            <textarea
-                                ref={textRef}
-                                value={input}
-                                onChange={e => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px'; }}
-                                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                                placeholder={activeTool ? `Ask ZeroLens AI to help with ${TOOLS.find(t => t.id === activeTool)?.label}…` : "Ask ZeroLens AI anything… (Enter to send, Shift+Enter for new line)"}
-                                rows={1}
-                                className="w-full bg-transparent text-sm text-white placeholder-white/20 outline-none resize-none leading-relaxed"
-                                style={{ maxHeight: 160 }}
-                            />
-                        </div>
-                        <button onClick={() => handleSend()}
-                            disabled={!input.trim() || isThinking}
-                            className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95 transition-all shadow-lg shadow-violet-900/40 shrink-0">
-                            {isThinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                        </button>
+                        <h3 className="text-lg font-bold uppercase tracking-widest text-[#AADD00]">Hermes is Thinking...</h3>
+                        <p className="text-xs text-white/30 mt-2 max-w-xs leading-relaxed">
+                            Analyzing target audience keywords, mapping emotional triggers, and generating visual content prompts...
+                        </p>
                     </div>
-                    <p className="text-[9px] text-white/15 mt-2 text-center">ZeroLens AI · NVIDIA Nemotron 120B via OpenRouter · Free</p>
-                </div>
+                ) : (
+                    /* Main Calendar Content Grid */
+                    <div className="flex-1 flex overflow-hidden">
+                        {/* Day Cards List (Left part of main) */}
+                        <div className="w-[55%] border-r border-white/8 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+                            <div className="flex justify-between items-center mb-2">
+                                <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400">Scheduled Posts</h3>
+                                <span className="text-[10px] text-zinc-500 font-mono">{calendarData.calendar?.length} Days</span>
+                            </div>
+
+                            <div className="space-y-3">
+                                {calendarData.calendar?.map((post, index) => {
+                                    const isActive = activeDayIndex === index;
+                                    const mediaState = generationStates[index];
+                                    
+                                    return (
+                                        <div key={index}
+                                            onClick={() => setActiveDayIndex(index)}
+                                            className={cn(
+                                                'p-4 rounded-xl border text-left cursor-pointer transition-all relative overflow-hidden',
+                                                isActive 
+                                                    ? 'bg-white/[0.04] border-blue-500/50 shadow-lg shadow-blue-500/5' 
+                                                    : 'bg-white/[0.01] border-white/5 hover:bg-white/[0.02] hover:border-white/10'
+                                            )}
+                                        >
+                                            {/* Glow overlay for active */}
+                                            {isActive && (
+                                                <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 rounded-full blur-xl pointer-events-none" />
+                                            )}
+
+                                            <div className="flex justify-between items-center mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-black text-blue-400">DAY {post.day}</span>
+                                                    <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-bold">{post.platform}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    {post.type === 'video' ? <Video size={12} className="text-[#AADD00]" /> : <Image size={12} className="text-orange-400" />}
+                                                    <span className="text-[9px] font-black uppercase tracking-wider text-zinc-500">{post.type}</span>
+                                                </div>
+                                            </div>
+
+                                            <h4 className="font-bold text-white text-xs leading-snug">{post.title}</h4>
+                                            
+                                            <div className="mt-2 flex justify-between items-center">
+                                                <p className="text-[10px] text-zinc-400 italic line-clamp-1 flex-1 pr-4">"{post.hook}"</p>
+                                                
+                                                {/* Media status pill */}
+                                                {mediaState && (
+                                                    <span className={cn(
+                                                        'text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0',
+                                                        mediaState.status === 'completed' && 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
+                                                        mediaState.status === 'generating' && 'bg-blue-500/15 text-blue-400 border border-blue-500/30 animate-pulse',
+                                                        mediaState.status === 'failed' && 'bg-red-500/15 text-red-400 border border-red-500/30'
+                                                    )}>
+                                                        {mediaState.status}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Detailed Editor + Asset Generation (Right part of main) */}
+                        {activeDayIndex !== null && calendarData.calendar?.[activeDayIndex] && (() => {
+                            const post = calendarData.calendar[activeDayIndex];
+                            const mediaState = generationStates[activeDayIndex] || { status: 'idle', url: '', progressText: '' };
+                            
+                            return (
+                                <div className="flex-1 overflow-y-auto p-6 flex flex-col justify-between custom-scrollbar bg-black/10">
+                                    <div className="space-y-5">
+                                        <div className="flex justify-between items-start border-b border-white/5 pb-4">
+                                            <div>
+                                                <span className="text-[9px] font-black uppercase bg-blue-500/10 border border-blue-500/30 text-blue-400 px-2.5 py-0.5 rounded-full">Day {post.day} Editor</span>
+                                                <h3 className="text-base font-bold text-white mt-2 leading-snug">{post.title}</h3>
+                                            </div>
+                                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{post.platform}</span>
+                                        </div>
+
+                                        {/* Editable copywriting fields */}
+                                        <div className="space-y-3">
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black uppercase tracking-wider text-zinc-500">Post Title</label>
+                                                <input
+                                                    type="text"
+                                                    value={post.title}
+                                                    onChange={(e) => handleUpdateCalendarField(activeDayIndex, 'title', e.target.value)}
+                                                    className="w-full bg-black/30 border border-white/5 rounded-xl p-3 text-xs text-white outline-none focus:border-blue-500 transition-colors"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black uppercase tracking-wider text-zinc-500">Scroll-stopping Hook</label>
+                                                <input
+                                                    type="text"
+                                                    value={post.hook}
+                                                    onChange={(e) => handleUpdateCalendarField(activeDayIndex, 'hook', e.target.value)}
+                                                    className="w-full bg-black/30 border border-white/5 rounded-xl p-3 text-xs text-white outline-none focus:border-blue-500 transition-colors"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black uppercase tracking-wider text-zinc-500">Caption & Hashtags</label>
+                                                <textarea
+                                                    value={post.caption}
+                                                    onChange={(e) => handleUpdateCalendarField(activeDayIndex, 'caption', e.target.value)}
+                                                    rows={4}
+                                                    className="w-full bg-black/30 border border-white/5 rounded-xl p-3 text-xs text-white outline-none focus:border-blue-500 transition-colors resize-none leading-relaxed"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black uppercase tracking-wider text-zinc-500">Hermes Engineered Visual Prompt</label>
+                                                <textarea
+                                                    value={post.visualPrompt}
+                                                    onChange={(e) => handleUpdateCalendarField(activeDayIndex, 'visualPrompt', e.target.value)}
+                                                    rows={3}
+                                                    className="w-full bg-black/30 border border-white/5 rounded-xl p-3 text-xs text-white outline-none focus:border-blue-500 transition-colors resize-none font-mono text-[11px] leading-relaxed"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Visual Generation Panel */}
+                                    <div className="mt-8 pt-5 border-t border-white/5">
+                                        <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 relative overflow-hidden min-h-[160px] flex flex-col justify-between">
+                                            
+                                            {mediaState.status === 'idle' && (
+                                                <div className="flex-1 flex flex-col items-center justify-center text-center py-4">
+                                                    <Layers className="w-8 h-8 text-zinc-600 mb-2" />
+                                                    <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">No Visual Asset Generated</h4>
+                                                    <p className="text-[10px] text-zinc-500 max-w-xs mt-1">
+                                                        Trigger the AI generation model to create a dedicated {post.type} based on the prompt.
+                                                    </p>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (post.type === 'video') {
+                                                                generateVideo(activeDayIndex, post.visualPrompt);
+                                                            } else {
+                                                                generateImage(activeDayIndex, post.visualPrompt);
+                                                            }
+                                                        }}
+                                                        className="mt-4 px-6 py-2.5 rounded-full font-bold text-[10px] uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-teal-500 hover:scale-105 active:scale-95 transition-all text-black flex items-center gap-1.5"
+                                                    >
+                                                        <Play size={10} className="fill-black text-black" /> Generate {post.type}
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {mediaState.status === 'generating' && (
+                                                <div className="flex-1 flex flex-col items-center justify-center text-center py-6">
+                                                    <Loader2 className="w-8 h-8 text-emerald-400 animate-spin mb-3" />
+                                                    <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-widest">AI Engine Running</h4>
+                                                    <p className="text-[10px] text-zinc-500 mt-1">{mediaState.progressText}</p>
+                                                </div>
+                                            )}
+
+                                            {mediaState.status === 'failed' && (
+                                                <div className="flex-1 flex flex-col items-center justify-center text-center py-4">
+                                                    <AlertCircle className="w-8 h-8 text-red-400 mb-2" />
+                                                    <h4 className="text-xs font-bold text-red-400 uppercase tracking-widest">Generation Failed</h4>
+                                                    <p className="text-[10px] text-red-400/60 max-w-xs mt-1 leading-snug">{mediaState.progressText}</p>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (post.type === 'video') {
+                                                                generateVideo(activeDayIndex, post.visualPrompt);
+                                                            } else {
+                                                                generateImage(activeDayIndex, post.visualPrompt);
+                                                            }
+                                                        }}
+                                                        className="mt-4 px-5 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full text-[10px] font-bold uppercase transition-all"
+                                                    >
+                                                        Retry Generation
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {mediaState.status === 'completed' && (
+                                                <div className="space-y-4">
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <span className="text-[10px] font-black uppercase text-emerald-400 flex items-center gap-1">
+                                                            <CheckCircle2 size={12} /> Asset Ready
+                                                        </span>
+                                                        <a 
+                                                            href={mediaState.url} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            download={`day-${post.day}-${post.type}.png`}
+                                                            className="text-[9px] font-black uppercase tracking-wider text-zinc-400 hover:text-white flex items-center gap-1 transition-all bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg"
+                                                        >
+                                                            <Download size={10} /> Download
+                                                        </a>
+                                                    </div>
+
+                                                    <div className="w-full aspect-video bg-black rounded-xl overflow-hidden border border-white/10 flex items-center justify-center">
+                                                        {mediaState.type === 'video' ? (
+                                                            <video src={mediaState.url} controls className="w-full h-full object-contain" />
+                                                        ) : (
+                                                            <img src={mediaState.url} className="w-full h-full object-contain" alt="Generated post media" />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                    </div>
+                )}
             </div>
         </div>
     );
