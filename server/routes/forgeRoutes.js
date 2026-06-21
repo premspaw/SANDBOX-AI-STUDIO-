@@ -286,6 +286,24 @@ export default function createRouter(deps) {
                 return res.status(400).json({ error: 'message is required' });
             }
 
+            // Fetch active admin skills from Supabase if available
+            let adminSkillsText = '';
+            if (supabase) {
+                try {
+                    const { data: skills, error } = await supabase
+                        .from('hermes_skills')
+                        .select('name, system_instructions')
+                        .eq('is_active', true);
+                    
+                    if (!error && skills && skills.length > 0) {
+                        adminSkillsText = '\n\nADMIN-PROVIDED EXPERT SKILLS:\n' + 
+                            skills.map(s => `### Skill: ${s.name}\n${s.system_instructions}`).join('\n\n');
+                    }
+                } catch (dbErr) {
+                    console.warn('[Hermes Chat] Failed to fetch admin skills from Supabase:', dbErr.message);
+                }
+            }
+
             const systemPrompt = `You are Hermes, a world-class GenAI Creative Director and Expert Prompt Engineer.
 Your mission is to help users generate stunning premium images and videos, and design beautiful Instagram carousels.
 
@@ -293,7 +311,7 @@ USER CONTEXT:
 - Carousel Type: ${carouselType?.label || 'Not specified'}
 - Art Direction: ${artDirection || 'cinematic'}
 - Typography: ${typography || 'cinematic'}
-- Brand: ${brandName || 'Not specified'}
+- Brand: ${brandName || 'Not specified'}${adminSkillsText}
 
 YOUR CRITICAL ROLES:
 1. DESIGN & CAROUSEL CREATIVE DIRECTION:

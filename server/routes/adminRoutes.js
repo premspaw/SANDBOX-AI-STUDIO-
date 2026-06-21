@@ -1192,6 +1192,84 @@ The response MUST be a JSON object with the following fields:
         }
     });
 
+    // List Hermes skills (secured: admin only)
+    router.get('/admin/hermes-skills', async (req, res) => {
+        try {
+            await requireAdmin(req);
+            const client = supabaseAdmin || supabase;
+            if (!client) return res.json({ skills: [] });
+
+            const { data: skills, error } = await client
+                .from('hermes_skills')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            res.json({ skills: skills || [] });
+        } catch (error) {
+            console.error('List Hermes Skills Error:', error);
+            res.status(error.status || 500).json({ error: error.message });
+        }
+    });
+
+    // Save/Update Hermes skill (secured: admin only)
+    router.post('/admin/hermes-skills', async (req, res) => {
+        try {
+            await requireAdmin(req);
+            const client = supabaseAdmin || supabase;
+            if (!client) throw new Error('Database not configured');
+
+            const { id, name, description, system_instructions, is_active } = req.body;
+            if (!name || !system_instructions) {
+                return res.status(400).json({ error: 'name and system_instructions are required' });
+            }
+
+            const skillData = {
+                name,
+                description,
+                system_instructions,
+                is_active: is_active !== false,
+                updated_at: new Date().toISOString()
+            };
+
+            if (id) {
+                skillData.id = id;
+            }
+
+            const { data, error } = await client
+                .from('hermes_skills')
+                .upsert([skillData], { onConflict: 'id' })
+                .select();
+
+            if (error) throw error;
+            res.json({ success: true, skill: data?.[0] });
+        } catch (error) {
+            console.error('Save Hermes Skill Error:', error);
+            res.status(error.status || 500).json({ error: error.message });
+        }
+    });
+
+    // Delete Hermes skill (secured: admin only)
+    router.delete('/admin/hermes-skills/:id', async (req, res) => {
+        try {
+            await requireAdmin(req);
+            const client = supabaseAdmin || supabase;
+            if (!client) throw new Error('Database not configured');
+
+            const { id } = req.params;
+            const { error } = await client
+                .from('hermes_skills')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            res.json({ success: true, deletedId: id });
+        } catch (error) {
+            console.error('Delete Hermes Skill Error:', error);
+            res.status(error.status || 500).json({ error: error.message });
+        }
+    });
+
     // Helper functions for SB API (Supabase direct REST)
     function sbH() {
         return {

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { LANDING_ASSETS as INITIAL_ASSETS } from '../../config/landingAssets';
 import { getApiUrl } from '../../config/apiConfig';
 import { AssetsLibrary } from './AssetsLibrary';
-import { Search, Database, Image as ImageIcon, Video, Music, X, Upload, Trash2, CheckCircle2 } from 'lucide-react';
+import { Search, Database, Image as ImageIcon, Video, Music, X, Upload, Trash2, CheckCircle2, Brain } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export const AssetManager = () => {
@@ -238,6 +238,12 @@ export const AssetManager = () => {
                             className={`text-xs font-bold tracking-widest uppercase pb-1 border-b-2 transition-all ${activeTab === 'templates' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-zinc-500 hover:text-white'}`}
                         >
                             Scene Templates
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('hermes')}
+                            className={`text-xs font-bold tracking-widest uppercase pb-1 border-b-2 transition-all ${activeTab === 'hermes' ? 'border-blue-500 text-blue-400' : 'border-transparent text-zinc-500 hover:text-white'}`}
+                        >
+                            Hermes Skills
                         </button>
                     </div>
                 </div>
@@ -578,6 +584,10 @@ export const AssetManager = () => {
                     <section className="h-full">
                         <AssetsLibrary compact={true} />
                     </section>
+                ) : activeTab === 'hermes' ? (
+                    <section className="h-full overflow-y-auto pr-2 custom-scrollbar">
+                        <HermesSkillsManager setStatus={setStatus} />
+                    </section>
                 ) : (
                     <section className="space-y-6">
                         <div className="flex justify-between items-center">
@@ -700,6 +710,262 @@ export const AssetManager = () => {
                     background: rgba(255, 255, 255, 0.2);
                 }
             `}</style>
+        </div>
+    );
+};
+
+const HermesSkillsManager = ({ setStatus }) => {
+    const [skills, setSkills] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [editingSkill, setEditingSkill] = useState(null);
+    const [showForm, setShowForm] = useState(false);
+    
+    const [name, setName] = useState('');
+    const [description, setDescription] = useState('');
+    const [systemInstructions, setSystemInstructions] = useState('');
+    const [isActive, setIsActive] = useState(true);
+
+    const fetchSkills = async () => {
+        setLoading(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const headers = {};
+            if (session?.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
+            const response = await fetch(getApiUrl('/api/admin/hermes-skills'), { headers });
+            const data = await response.json();
+            setSkills(data.skills || []);
+        } catch (err) {
+            console.error("Failed to fetch Hermes skills:", err);
+            setStatus({ type: 'error', message: 'Failed to fetch Hermes skills.' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    React.useEffect(() => {
+        fetchSkills();
+    }, []);
+
+    const handleEdit = (skill) => {
+        setEditingSkill(skill);
+        setName(skill.name);
+        setDescription(skill.description || '');
+        setSystemInstructions(skill.system_instructions);
+        setIsActive(skill.is_active);
+        setShowForm(true);
+    };
+
+    const handleCreate = () => {
+        setEditingSkill(null);
+        setName('');
+        setDescription('');
+        setSystemInstructions('');
+        setIsActive(true);
+        setShowForm(true);
+    };
+
+    const handleSave = async (e) => {
+        e.preventDefault();
+        if (!name.trim() || !systemInstructions.trim()) {
+            setStatus({ type: 'error', message: 'Name and System Instructions are required.' });
+            return;
+        }
+
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const headers = { 'Content-Type': 'application/json' };
+            if (session?.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
+
+            const payload = {
+                id: editingSkill?.id || undefined,
+                name: name.trim(),
+                description: description.trim(),
+                system_instructions: systemInstructions.trim(),
+                is_active: isActive
+            };
+
+            const response = await fetch(getApiUrl('/api/admin/hermes-skills'), {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(payload)
+            });
+            const resData = await response.json();
+
+            if (resData.success) {
+                setStatus({ type: 'success', message: `Skill "${name}" successfully saved!` });
+                setShowForm(false);
+                fetchSkills();
+            } else {
+                throw new Error(resData.error || 'Failed to save Hermes skill');
+            }
+        } catch (err) {
+            console.error(err);
+            setStatus({ type: 'error', message: err.message });
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this Hermes skill?")) return;
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const headers = {};
+            if (session?.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
+
+            const response = await fetch(getApiUrl(`/api/admin/hermes-skills/${id}`), {
+                method: 'DELETE',
+                headers
+            });
+
+            if (response.ok) {
+                setStatus({ type: 'success', message: 'Hermes skill deleted.' });
+                fetchSkills();
+            } else {
+                const resData = await response.json();
+                throw new Error(resData.error || 'Failed to delete skill');
+            }
+        } catch (err) {
+            console.error(err);
+            setStatus({ type: 'error', message: err.message });
+        }
+    };
+
+    return (
+        <div className="space-y-6 pb-12">
+            {showForm ? (
+                <form onSubmit={handleSave} className="space-y-4 bg-black/40 border border-white/10 rounded-2xl p-6">
+                    <h3 className="text-lg font-bold text-blue-400 italic">
+                        {editingSkill ? 'Edit Hermes Skill' : 'Create New Hermes Skill'}
+                    </h3>
+                    
+                    <div className="space-y-1">
+                        <label className="text-[10px] text-zinc-400 uppercase tracking-widest block">Skill Name</label>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="e.g. AIDA Copywriting, Hook Optimizer..."
+                            className="w-full bg-black/60 border border-white/10 rounded-lg p-3 text-sm focus:border-blue-500 outline-none transition-colors"
+                        />
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[10px] text-zinc-400 uppercase tracking-widest block">Description</label>
+                        <input
+                            type="text"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Brief summary of what this skill does"
+                            className="w-full bg-black/60 border border-white/10 rounded-lg p-3 text-sm focus:border-blue-500 outline-none transition-colors"
+                        />
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[10px] text-zinc-400 uppercase tracking-widest block">System Prompt / Instructions</label>
+                        <textarea
+                            value={systemInstructions}
+                            onChange={(e) => setSystemInstructions(e.target.value)}
+                            rows={8}
+                            placeholder="Provide the exact rules, constraints, and instructions that Hermes should follow when this skill is active..."
+                            className="w-full bg-black/60 border border-white/10 rounded-lg p-3 text-sm focus:border-blue-500 outline-none transition-colors font-mono"
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            id="isActive"
+                            checked={isActive}
+                            onChange={(e) => setIsActive(e.target.checked)}
+                            className="rounded border-zinc-700 bg-zinc-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-zinc-900"
+                        />
+                        <label htmlFor="isActive" className="text-xs text-zinc-300">Skill is Active (Hermes will automatically adopt these instructions)</label>
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                        <button
+                            type="submit"
+                            className="px-6 py-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white font-semibold text-xs transition-all"
+                        >
+                            Save Skill
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShowForm(false)}
+                            className="px-6 py-2 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white font-semibold text-xs transition-all"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            ) : (
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h3 className="text-xl font-bold text-blue-400 italic">Hermes Skills Manager</h3>
+                            <p className="text-xs text-zinc-500">Inject custom storytelling, reel writing, or copy templates directly into Hermes agent prompts.</p>
+                        </div>
+                        <button
+                            onClick={handleCreate}
+                            className="text-[10px] bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 px-4 py-2 rounded-full border border-blue-600/30 transition-all font-black uppercase"
+                        >
+                            + ADD NEW SKILL
+                        </button>
+                    </div>
+
+                    {loading ? (
+                        <div className="text-zinc-500 italic py-6 text-center">Loading Hermes skills from database...</div>
+                    ) : (
+                        <div className="grid gap-4">
+                            {skills.map((skill) => (
+                                <div key={skill.id} className="p-5 bg-white/5 rounded-2xl border border-white/10 flex justify-between items-start gap-4">
+                                    <div className="space-y-2 flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="font-bold text-white text-sm">{skill.name}</h4>
+                                            <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase ${skill.is_active ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400' : 'bg-zinc-800 border border-white/5 text-zinc-500'}`}>
+                                                {skill.is_active ? 'Active' : 'Inactive'}
+                                            </span>
+                                        </div>
+                                        {skill.description && (
+                                            <p className="text-xs text-zinc-400 leading-relaxed">{skill.description}</p>
+                                        )}
+                                        <details className="cursor-pointer text-[10px] text-zinc-500 hover:text-white transition-colors">
+                                            <summary className="font-semibold select-none outline-none">Show prompt instructions</summary>
+                                            <pre className="mt-2 p-3 bg-black/50 border border-white/5 rounded-lg font-mono text-[9px] text-zinc-400 whitespace-pre-wrap leading-relaxed">
+                                                {skill.system_instructions}
+                                            </pre>
+                                        </details>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => handleEdit(skill)}
+                                            className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-xs font-semibold transition-all"
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(skill.id)}
+                                            className="px-3 py-1.5 bg-red-950/20 hover:bg-red-950/40 text-red-400 border border-red-950/30 rounded-lg text-xs font-semibold transition-all"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                            {skills.length === 0 && (
+                                <div className="p-12 text-center text-zinc-500 italic border border-white/5 bg-white/[0.01] rounded-2xl">
+                                    No custom skills created yet. Click "Add New Skill" to begin training Hermes!
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
