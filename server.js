@@ -403,6 +403,10 @@ app.use(cors({
     origin(origin, callback) {
         if (!origin) return callback(null, true);
         const normalized = normalizeOrigin(origin);
+        if (process.env.NODE_ENV !== 'production') {
+            const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(normalized);
+            if (isLocal) return callback(null, true);
+        }
         return callback(null, allowedCorsOrigins.includes(normalized));
     },
     credentials: true
@@ -1399,10 +1403,14 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Rate Limiting
 const apiLimiter = rateLimit({
     windowMs: 1 * 60 * 1000,
-    max: 150,
+    max: 500,
     message: { error: 'Too many requests' },
     standardHeaders: true,
     legacyHeaders: false,
+    skip: (req) => {
+        const ip = req.ip || req.connection?.remoteAddress || '';
+        return ip.includes('127.0.0.1') || ip.includes('::1') || ip.includes('localhost');
+    }
 });
 app.use('/api/', apiLimiter);
 

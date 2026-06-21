@@ -26,6 +26,65 @@ import { CinematicLightbox } from './CinematicLightbox';
 import { StoryboardEditor } from './StoryboardEditor';
 import { buildSeedanceContentArray } from './SeedanceEngine';
 
+/* ─── URL NORMALIZATION & DEDUPLICATION HELPERS ─────────────────── */
+const getNormalizedPath = (url) => {
+  if (!url || typeof url !== 'string') return '';
+  let target = url;
+  if (target.includes('/api/proxy-image')) {
+    try {
+      const u = new URL(target.startsWith('http') ? target : `http://localhost${target}`);
+      const decoded = u.searchParams.get('url');
+      if (decoded) {
+        target = decoded;
+      }
+    } catch (_) {
+      // Ignore URL parsing errors for proxy queries
+    }
+  }
+  try {
+    if (target.startsWith('http://') || target.startsWith('https://')) {
+      return new URL(target).pathname;
+    }
+  } catch (_) {
+    // Ignore URL parsing errors for absolute paths
+  }
+  if (target.startsWith('/')) {
+    return target;
+  }
+  if (!target.includes(':') && !target.startsWith('data:') && !target.startsWith('blob:')) {
+    return '/' + target;
+  }
+  return target;
+};
+
+const deduplicateGallery = (items) => {
+  if (!Array.isArray(items)) return [];
+  const seenPaths = new Set();
+  const result = [];
+  for (const item of items) {
+    if (!item || !item.url) continue;
+    const path = getNormalizedPath(item.url);
+    if (!path) continue;
+    if (seenPaths.has(path)) {
+      const existingIdx = result.findIndex(r => getNormalizedPath(r.url) === path);
+      if (existingIdx !== -1) {
+        const existing = result[existingIdx];
+        const isExistingTemp = typeof existing.id === 'number';
+        const isCurrentTemp = typeof item.id === 'number';
+        if (isExistingTemp && !isCurrentTemp) {
+          result[existingIdx] = { ...existing, ...item };
+        } else {
+          result[existingIdx] = { ...item, ...existing };
+        }
+      }
+      continue;
+    }
+    seenPaths.add(path);
+    result.push(item);
+  }
+  return result;
+};
+
 /* ─── CONSTANTS ─────────────────────────────────────────────── */
 const VARIATIONS_OPTIONS = [
   { value: 1, label: '1 Generation', desc: 'Single credit cost' },
@@ -543,16 +602,20 @@ export default function CinematicStudio() {
         if (!item) return false;
         const itemId = String(item.id || '');
         const itemUrl = String(item.url || '');
-        return !itemId.startsWith('default_') && !itemUrl.includes('landing-assets');
+        // Exclude only by type flag or by being in an /uploads/ or /reference/ folder path
+        if (item.type === 'reference_upload') return false;
+        const isRefFolder = itemUrl.includes('/uploads/') || itemUrl.includes('/reference/');
+        return !itemId.startsWith('default_') && !itemUrl.includes('landing-assets') && !isRefFolder;
       });
-      if (filtered.length !== parsed.length) {
+      const deduped = deduplicateGallery(filtered);
+      if (deduped.length !== parsed.length) {
         try {
-          localStorage.setItem('cinematic_studio_gallery', JSON.stringify(filtered));
+          localStorage.setItem('cinematic_studio_gallery', JSON.stringify(deduped));
         } catch (e) {
           // ignore quota
         }
       }
-      return filtered;
+      return deduped;
     } catch {
       return [];
     }
@@ -564,45 +627,60 @@ export default function CinematicStudio() {
     const fetchAssets = async () => {
       if (!userId || userId === 'anon') return;
       try {
-        const resp = await fetch(getApiUrl(`/api/list-assets?userId=${userId}`));
+        const resp = await fetch(getApiUrl(`/api/ugc/assets/${userId}`));
         if (!resp.ok) return;
         const data = await resp.json();
         if (data.assets && Array.isArray(data.assets) && active) {
-          // Format server assets to match our gallery item structure
-          const loadedAssets = data.assets.map(asset => ({
-            id: asset.id,
-            type: asset.type === 'video' ? 'video' : 'image',
-            url: asset.url,
-            prompt: asset.prompt || '',
-            engine: asset.engine || (asset.type === 'video' ? 'Veo 3.1' : 'Nano Banana 2'),
-            aspect: asset.aspect || '16:9',
-            ts: asset.created_at ? new Date(asset.created_at).getTime() : Date.now()
-          }));
+          // Format server assets to match our gallery item structure, filtering out reference uploads
+          const loadedAssets = data.assets
+            .filter(asset => {
+              // Exclude reference_upload type and assets stored in /uploads/ or /reference/ folders
+              if (asset.type === 'reference_upload') return false;
+              const url = asset.url || '';
+              const isRefFolder = url.includes('/uploads/') || url.includes('/reference/');
+              return !isRefFolder;
+            })
+            .map(asset => {
+              let aspectVal = asset.aspect || '16:9';
+              if (asset.metadata) {
+                try {
+                  const meta = typeof asset.metadata === 'string' ? JSON.parse(asset.metadata) : asset.metadata;
+                  aspectVal = meta.aspect || meta.aspectRatio || meta.aspect_ratio || aspectVal;
+                } catch (_) { /* ignore malformed metadata JSON */ }
+              }
+              return {
+                id: asset.id,
+                type: asset.type === 'video' ? 'video' : 'image',
+                url: asset.url,
+                prompt: asset.prompt || '',
+                engine: asset.engine || (asset.type === 'video' ? 'Veo 3.1' : 'Nano Banana 2'),
+                aspect: aspectVal,
+                ts: asset.created_at ? new Date(asset.created_at).getTime() : Date.now()
+              };
+            });
           
           if (loadedAssets.length > 0) {
             setGallery(prev => {
-              // Filter out default placeholders from the list to avoid mixing if we have actual user data
+              // Filter out local-only temp items (still generating) that aren't on the server yet
               const defaultsFilter = (item) => String(item.id).startsWith('default_') || (typeof item.id === 'number' && item.id < 10);
-              const userItems = prev.filter(item => !defaultsFilter(item));
+              const localTempItems = prev.filter(item => 
+                !defaultsFilter(item) && (
+                  item.url?.startsWith('blob:') ||
+                  item.url?.startsWith('data:') ||
+                  item.loading
+                )
+              );
               
-              // Build a lookup of server aspect ratios by URL so we can update cached items
-              const serverAspectByUrl = {};
-              loadedAssets.forEach(a => { if (a.url && a.aspect) serverAspectByUrl[a.url] = a.aspect; });
-
-              // Update existing items' aspect from server data (fixes stale localStorage cache)
-              const updatedUserItems = userItems.map(item => {
-                if (serverAspectByUrl[item.url]) {
-                  return { ...item, aspect: serverAspectByUrl[item.url] };
-                }
-                return item;
-              });
-
-              const existingUrls = new Set(updatedUserItems.map(item => item.url));
-              const newItems = loadedAssets.filter(item => !existingUrls.has(item.url));
+              // Server is the source of truth — start from server data, then add any local temp items not yet on server
+              const serverPaths = new Set(loadedAssets.map(a => getNormalizedPath(a.url)));
+              const unsynced = localTempItems.filter(item => !serverPaths.has(getNormalizedPath(item.url)));
               
-              const combined = [...updatedUserItems, ...newItems];
+              const combined = deduplicateGallery([...loadedAssets, ...unsynced]);
               return combined.length > 0 ? combined : prev;
             });
+          } else {
+            // Server returned no assets — clear the gallery (don't keep stale localStorage data)
+            setGallery(prev => prev.filter(item => item.loading || item.url?.startsWith('blob:') || item.url?.startsWith('data:')));
           }
         }
       } catch (err) {
@@ -981,6 +1059,51 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
     if (textareaRef.current) textareaRef.current.focus()
   }
 
+  const compressImage = (file, maxWidth = 1024, maxHeight = 1024, quality = 0.8) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Convert to jpeg data URL (resizing and compressing)
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(dataUrl);
+        };
+        img.onerror = () => {
+          // Fallback to original reader result on error
+          resolve(event.target.result);
+        };
+      };
+      reader.onerror = () => {
+        resolve('');
+      };
+    });
+  };
+
   const handleRefUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !activeRefUploadCategory) return;
@@ -993,78 +1116,85 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
     e.target.value = '';
   };
 
-
-
   const processPendingRefUpload = async (name, category) => {
     if (!pendingRefUpload) return;
     const { file, type } = pendingRefUpload;
     setPendingRefUpload(null);
 
     setIsUploadingRef(true);
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64 = reader.result;
+    
+    try {
       const isVideo = file.type.startsWith('video/');
       const isAudio = file.type.startsWith('audio/');
+      const isImage = file.type.startsWith('image/');
       const assetType = isVideo ? 'video' : isAudio ? 'audio' : 'image';
       const ext = isVideo ? 'mp4' : isAudio ? 'mp3' : 'png';
-      try {
-        const resp = await fetch(getApiUrl('/api/save-asset'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            imageData: base64, 
-            type: assetType,
-            fileName: `ref_${Date.now()}.${ext}`,
-            userId: userId
-          })
+      
+      let base64;
+      if (isImage) {
+        base64 = await compressImage(file);
+      } else {
+        base64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(file);
         });
-        if (!resp.ok) {
-          let errData = {};
-          try { errData = await resp.json(); } catch(e) { /* ignore JSON parsing error */ }
-          throw new Error(errData.message || errData.error || `HTTP ${resp.status} - ${resp.statusText}`);
-        }
-        const data = await resp.json();
-        const url = data.url || data.path || base64;
-        
-        const finalName = (name.trim() || `Ref_${Date.now().toString().slice(-4)}`).replace(/\s+/g, '');
-        
-        const newItem = {
-          id: crypto.randomUUID(),
-          name: finalName,
-          category: category,
-          imageUrl: url
-        };
-        
-        if (type === 'board') {
-          addRefItem(newItem);
-        } else {
-          const singleAllowed = ['locations', 'wardrobes', 'moods'];
-          const updater = (prev) => {
-            const currentList = prev[category] || [];
-            if (singleAllowed.includes(category)) {
-              return { ...prev, [category]: [newItem] };
-            }
-            return { ...prev, [category]: [...currentList, newItem] };
-          };
-          setStagedRefBoard(updater);
-          setRefBoard(prev => {
-            const updated = updater(prev);
-            localStorage.setItem(`refBoard_video`, JSON.stringify(updated));
-            return updated;
-          });
-          const showToast = useAppStore.getState().showToast;
-          if (showToast) showToast(`Added @${finalName} to Library!`, "success");
-        }
-      } catch (err) {
-        console.error("Ref upload failed:", err);
-        const showToast = useAppStore.getState().showToast;
-        if (showToast) showToast("Upload failed: " + err.message, "error");
-      } finally {
-        setIsUploadingRef(false);
       }
-    };
-    reader.readAsDataURL(file);
+
+      const resp = await fetch(getApiUrl('/api/save-asset'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          imageData: base64, 
+          type: assetType,
+          fileName: `ref_${Date.now()}.${ext}`,
+          userId: userId
+        })
+      });
+      if (!resp.ok) {
+        let errData = {};
+        try { errData = await resp.json(); } catch(e) { /* ignore JSON parsing error */ }
+        throw new Error(errData.message || errData.error || `HTTP ${resp.status} - ${resp.statusText}`);
+      }
+      const data = await resp.json();
+      const url = data.url || data.path || base64;
+      
+      const finalName = (name.trim() || `Ref_${Date.now().toString().slice(-4)}`).replace(/\s+/g, '');
+      
+      const newItem = {
+        id: crypto.randomUUID(),
+        name: finalName,
+        category: category,
+        imageUrl: url
+      };
+      
+      if (type === 'board') {
+        addRefItem(newItem);
+      } else {
+        const singleAllowed = ['locations', 'wardrobes', 'moods'];
+        const updater = (prev) => {
+          const currentList = prev[category] || [];
+          if (singleAllowed.includes(category)) {
+            return { ...prev, [category]: [newItem] };
+          }
+          return { ...prev, [category]: [...currentList, newItem] };
+        };
+        setStagedRefBoard(updater);
+        setRefBoard(prev => {
+          const updated = updater(prev);
+          localStorage.setItem(`refBoard_video`, JSON.stringify(updated));
+          return updated;
+        });
+        const showToast = useAppStore.getState().showToast;
+        if (showToast) showToast(`Added @${finalName} to Library!`, "success");
+      }
+    } catch (err) {
+      console.error("Ref upload failed:", err);
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast("Upload failed: " + err.message, "error");
+    } finally {
+      setIsUploadingRef(false);
+    }
   };
 
 
@@ -1143,58 +1273,66 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
     setIsUploading(true);
     setErrorMsg('');
 
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const previewUrl = ev.target.result;
+    try {
+      const isVideo = file.type.startsWith('video/');
+      const isAudio = file.type.startsWith('audio/');
+      const isImage = file.type.startsWith('image/');
+      const assetType = isVideo ? 'video' : isAudio ? 'audio' : 'image';
+      const ext = isVideo ? 'mp4' : isAudio ? 'mp3' : 'png';
+
+      let previewUrl;
+      if (isImage) {
+        previewUrl = await compressImage(file);
+      } else {
+        previewUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => resolve(ev.target.result);
+          reader.readAsDataURL(file);
+        });
+      }
+
       if (uploadTarget === 'first' || activeTab === 'image') {
         setFirstFramePreview(previewUrl);
       } else {
         setLastFramePreview(previewUrl);
       }
 
-      try {
-        const isVideo = file.type.startsWith('video/');
-        const isAudio = file.type.startsWith('audio/');
-        const assetType = isVideo ? 'video' : isAudio ? 'audio' : 'image';
-        const ext = isVideo ? 'mp4' : isAudio ? 'mp3' : 'png';
+      const resp = await fetch(getApiUrl('/api/save-asset'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          imageData: previewUrl, 
+          type: 'reference_upload',
+          fileName: `ref_frame_${Date.now()}.${ext}`,
+          userId: userId,
+          folder: 'reference'
+        })
+      });
+      
+      if (!resp.ok) throw new Error('Failed to save asset via API');
+      
+      const data = await resp.json();
+      const publicUrl = data.url || data.path || previewUrl;
 
-        const resp = await fetch(getApiUrl('/api/save-asset'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            imageData: previewUrl, 
-            type: assetType,
-            fileName: `frame_${Date.now()}.${ext}`,
-            userId: userId
-          })
-        });
-        
-        if (!resp.ok) throw new Error('Failed to save asset via API');
-        
-        const data = await resp.json();
-        const publicUrl = data.url || data.path || previewUrl;
-
-        if (uploadTarget === 'first' || activeTab === 'image') {
-          setFirstFrameImage(publicUrl);
-        } else {
-          setLastFrameImage(publicUrl);
-        }
-      } catch (err) {
-        console.error('[Cinema Upload]:', err);
-        setErrorMsg(`Upload failed: ${err.message}`);
-        const showToast = useAppStore.getState().showToast;
-        if (showToast) showToast(`Upload failed: ${err.message}`, "error");
-        if (uploadTarget === 'first' || activeTab === 'image') {
-          setFirstFramePreview('');
-        } else {
-          setLastFramePreview('');
-        }
-      } finally {
-        setIsUploading(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
+      if (uploadTarget === 'first' || activeTab === 'image') {
+        setFirstFrameImage(publicUrl);
+      } else {
+        setLastFrameImage(publicUrl);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('[Cinema Upload]:', err);
+      setErrorMsg(`Upload failed: ${err.message}`);
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast(`Upload failed: ${err.message}`, "error");
+      if (uploadTarget === 'first' || activeTab === 'image') {
+        setFirstFramePreview('');
+      } else {
+        setLastFramePreview('');
+      }
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleClearRef = (target) => {
@@ -2010,10 +2148,18 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                 onClick={() => { setStagedRefBoard({ ...refBoard }); setShowRefBoard(true); }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border bg-fuchsia-500/10 border-fuchsia-500/20 text-fuchsia-400 hover:bg-fuchsia-500/20 hover:border-fuchsia-500/30 transition-all shrink-0 origin-bottom"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border bg-fuchsia-500/10 border-fuchsia-500/20 text-fuchsia-400 hover:bg-fuchsia-500/20 hover:border-fuchsia-500/30 transition-all shrink-0 origin-bottom"
                 title="Open Reference Board to stage Characters, Locations, Wardrobes, Props, and Moods"
               >
-                <Users size={8} className="text-fuchsia-400" />
+                {allRefItems.length > 0 && allRefItems[0].imageUrl ? (
+                  <img 
+                    src={resolveUrl(allRefItems[0].imageUrl)} 
+                    alt="Ref Preview" 
+                    className="w-3.5 h-3.5 rounded-full object-cover border border-white/20 shrink-0" 
+                  />
+                ) : (
+                  <Users size={8} className="text-fuchsia-400" />
+                )}
                 <span>Refs</span>
                 {allRefItems.length > 0 && (
                   <span className="w-3.5 h-3.5 rounded-full bg-fuchsia-500 text-white text-[6px] font-black flex items-center justify-center shrink-0 ml-0.5">
@@ -2381,7 +2527,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                     <div className="flex flex-col items-center gap-1 p-1 bg-white/[0.02] border border-white/5 rounded-xl relative group">
                       {firstFramePreview ? (
                         <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-zinc-900 group/slot shadow-lg">
-                          <img src={firstFramePreview} alt="Style Reference" className="w-full h-full object-cover" />
+                          <img src={resolveUrl(firstFramePreview)} alt="Style Reference" className="w-full h-full object-cover" />
                           <button
                             onClick={() => handleClearRef('first')}
                             className="absolute inset-0 bg-black/60 opacity-0 group-hover/slot:opacity-100 flex items-center justify-center transition-opacity text-red-400"
@@ -2415,7 +2561,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                         {/* First Frame Slot */}
                         {firstFramePreview ? (
                           <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/10 bg-zinc-900 group/slot shadow-lg">
-                            <img src={firstFramePreview} alt="Start Frame" className="w-full h-full object-cover" />
+                            <img src={resolveUrl(firstFramePreview)} alt="Start Frame" className="w-full h-full object-cover" />
                             <button
                               onClick={() => handleClearRef('first')}
                               className="absolute inset-0 bg-black/60 opacity-0 group-hover/slot:opacity-100 flex items-center justify-center transition-opacity text-red-400"
@@ -2448,7 +2594,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                         {/* Last Frame Slot */}
                         {lastFramePreview ? (
                           <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/10 bg-zinc-900 group/slot shadow-lg">
-                            <img src={lastFramePreview} alt="End Frame" className="w-full h-full object-cover" />
+                            <img src={resolveUrl(lastFramePreview)} alt="End Frame" className="w-full h-full object-cover" />
                             <button
                               onClick={() => handleClearRef('last')}
                               className="absolute inset-0 bg-black/60 opacity-0 group-hover/slot:opacity-100 flex items-center justify-center transition-opacity text-red-400"

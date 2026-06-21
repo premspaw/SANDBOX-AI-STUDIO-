@@ -11,6 +11,37 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { getApiUrl } from '../../../config/apiConfig';
 
+// ── URL Normalization Helper ──────────────────────────────────────────────────
+const getNormalizedPath = (url: string | undefined | null): string => {
+  if (!url || typeof url !== 'string') return '';
+  let target = url;
+  if (target.includes('/api/proxy-image')) {
+    try {
+      const u = new URL(target.startsWith('http') ? target : `http://localhost${target}`);
+      const decoded = u.searchParams.get('url');
+      if (decoded) {
+        target = decoded;
+      }
+    } catch (_) {
+      // Ignore URL parsing errors for proxy queries
+    }
+  }
+  try {
+    if (target.startsWith('http://') || target.startsWith('https://')) {
+      return new URL(target).pathname;
+    }
+  } catch (_) {
+    // Ignore URL parsing errors for absolute paths
+  }
+  if (target.startsWith('/')) {
+    return target;
+  }
+  if (!target.includes(':') && !target.startsWith('data:') && !target.startsWith('blob:')) {
+    return '/' + target;
+  }
+  return target;
+};
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface GalleryItem {
   id: string;
@@ -50,16 +81,17 @@ const idScore = (id: string): number => {
   return 3;                                            // stable DB id
 };
 
-// ── Deduplicate array: keep best entry per URL, sort newest-first ─────────────
+// ── Deduplicate array: keep best entry per URL path, sort newest-first ─────────
 // "Best" = higher idScore (prefer stable DB id over temp id),
 //          or if tied, keep the one with a non-blob URL.
 const dedup = (items: GalleryItem[]): GalleryItem[] => {
-  const byUrl = new Map<string, GalleryItem>();
+  const byPath = new Map<string, GalleryItem>();
   for (const item of items) {
     if (!item?.url) continue;
-    const existing = byUrl.get(item.url);
+    const path = getNormalizedPath(item.url);
+    const existing = byPath.get(path);
     if (!existing) {
-      byUrl.set(item.url, item);
+      byPath.set(path, item);
     } else {
       const newScore = idScore(item.id);
       const oldScore = idScore(existing.id);
@@ -69,18 +101,22 @@ const dedup = (items: GalleryItem[]): GalleryItem[] => {
         (newScore === oldScore && !item.url.startsWith('blob:') && existing.url.startsWith('blob:'))
       ) {
         // Merge: keep the better id/createdAt but retain all other fields
-        byUrl.set(item.url, { ...existing, ...item });
+        byPath.set(path, { ...existing, ...item });
       }
     }
   }
-  return [...byUrl.values()].sort((a, b) => getTimestamp(b) - getTimestamp(a));
+  return [...byPath.values()].sort((a, b) => getTimestamp(b) - getTimestamp(a));
 };
 
 // ── Filter: remove junk and optionally dead blob URLs ────────────────────────
 const isValidItem = (item: any, allowBlob = true): boolean => {
   if (!item?.url) return false;
-  if (item.type === 'marketing_template') return false;
-  if (item.url.includes('/marketing/') || item.url.includes('marketing_template')) return false;
+  if (item.type === 'marketing_template' || item.type === 'reference_upload') return false;
+  // Allow generated marketing assets (like those from Cinematic Studio) but exclude templates
+  if (item.url.includes('/marketing/templates/') || item.url.includes('marketing_template')) return false;
+  // Only exclude items stored in /uploads/ or /reference/ folders (not by filename prefix)
+  const isRefFolder = item.url.includes('/uploads/') || item.url.includes('/reference/');
+  if (isRefFolder) return false;
   if (!allowBlob && item.url.startsWith('blob:')) return false;
   return true;
 };
@@ -183,10 +219,10 @@ export function useUGCGallery(currentUserId: string) {
           }));
 
         setGallery(prev => {
-          // Replace any temp-id entry whose URL is found in DB with the stable DB id
-          const dbByUrl = new Map<string, GalleryItem>(dbItems.map(i => [i.url, i]));
+          // Replace any temp-id entry whose URL path is found in DB with the stable DB id
+          const dbByPath = new Map<string, GalleryItem>(dbItems.map(i => [getNormalizedPath(i.url), i]));
           const updatedPrev = prev.map(item => {
-            const dbMatch = dbByUrl.get(item.url);
+            const dbMatch = dbByPath.get(getNormalizedPath(item.url));
             if (dbMatch) {
               return { ...item, id: dbMatch.id, createdAt: item.createdAt || dbMatch.createdAt };
             }
@@ -205,7 +241,7 @@ export function useUGCGallery(currentUserId: string) {
   const addToGallery = useCallback((item: GalleryItem) => {
     setGallery(prev => {
       const itemWithTime: GalleryItem = { ...item, createdAt: item.createdAt || Date.now() };
-      const existingIdx = prev.findIndex(i => !i.loading && i.url && i.url === item.url);
+      const existingIdx = prev.findIndex(i => !i.loading && i.url && getNormalizedPath(i.url) === getNormalizedPath(item.url));
       let next: GalleryItem[];
       if (existingIdx !== -1) {
         // Update in-place (e.g. blob URL re-submitted after failure)

@@ -7,7 +7,7 @@ import { cn } from '../../lib/utils';
 import { useShorts } from '../../hooks/useShorts';
 import { useAppStore } from '../../store';
 import { InpaintEditor } from '../common/InpaintEditor';
-import { getApiUrl } from '../../config/apiConfig';
+import { getApiUrl, resolveUrl } from '../../config/apiConfig';
 import { buildSeedanceContentArray } from '../cinemaStudio/SeedanceEngine';
 import { AddTemplateModal } from './AddTemplateModal';
 
@@ -271,6 +271,8 @@ const VIDEO_TEMPLATES = {
     other: [],
 };
 
+const LS_KEY = 'marketing_custom_templates';
+
 export default function MarketingStudio() {
     const userProfile = useAppStore(state => state.userProfile);
     const currentUserId = userProfile?.id || null;
@@ -404,7 +406,7 @@ export default function MarketingStudio() {
                     if (url) {
                         setGenerationHistory(prev => {
                             const next = [{ url, ts: Date.now(), size: imageSize, type: 'video' }, ...prev].slice(0, 50);
-                            try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) {}
+                            try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) { /* ignore */ }
                             return next;
                         });
                         refreshShorts();
@@ -520,7 +522,9 @@ export default function MarketingStudio() {
                 }));
                 setCustomTemplates(parsed);
             }
-        } catch (_) {}
+        } catch (_) {
+            /* ignore */
+        }
 
         fetch(getApiUrl('/api/marketing/templates'))
             .then(r => r.ok ? r.json() : Promise.reject(r.status))
@@ -544,7 +548,7 @@ export default function MarketingStudio() {
                     });
                 });
                 setCustomTemplates(grouped);
-                try { localStorage.setItem(LS_KEY, JSON.stringify(grouped)); } catch (_) {}
+                try { localStorage.setItem(LS_KEY, JSON.stringify(grouped)); } catch (_) { /* ignore */ }
             })
             .catch(err => console.warn('[Templates] DB unavailable, using localStorage cache:', err))
             .finally(() => setTemplatesLoading(false));
@@ -557,7 +561,7 @@ export default function MarketingStudio() {
         });
         setCustomTemplates(prev => {
             const next = updated(prev);
-            try { localStorage.setItem(LS_KEY, JSON.stringify(next)); } catch (_) {}
+            try { localStorage.setItem(LS_KEY, JSON.stringify(next)); } catch (_) { /* ignore */ }
             return next;
         });
         fetch(getApiUrl('/api/marketing/templates'), {
@@ -574,7 +578,7 @@ export default function MarketingStudio() {
     const handleDeleteCustom = async (tplId) => {
         setCustomTemplates(prev => {
             const next = { ...prev, [activeCategory]: prev[activeCategory].filter(t => t.id !== tplId) };
-            try { localStorage.setItem(LS_KEY, JSON.stringify(next)); } catch (_) {}
+            try { localStorage.setItem(LS_KEY, JSON.stringify(next)); } catch (_) { /* ignore */ }
             return next;
         });
         fetch(getApiUrl(`/api/marketing/templates/${tplId}`), { method: 'DELETE' }).catch(() => {}); // best-effort
@@ -682,7 +686,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                 // Add the new upscaled image to the top of the history
                 setGenerationHistory(prev => {
                     const next = [newItem, ...prev].slice(0, 50);
-                    try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) {}
+                    try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) { /* ignore */ }
                     return next;
                 });
                 
@@ -1181,7 +1185,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
 
                     setGenerationHistory(prev => {
                         const next = [{ url: directUrl, ts: Date.now(), size: imageSize, type: 'video' }, ...prev].slice(0, 50);
-                        try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) {}
+                        try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) { /* ignore */ }
                         return next;
                     });
 
@@ -1228,7 +1232,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                 console.log('[Marketing] Background archiving complete:', publicUrl);
                                 setGenerationHistory(prev => {
                                     const next = prev.map(item => item.url === directUrl ? { ...item, url: publicUrl } : item);
-                                    try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) {}
+                                    try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) { /* ignore */ }
                                     return next;
                                 });
                             }
@@ -1349,7 +1353,9 @@ Any written text, characters, letters, numbers, and labels inside the image must
                     }
 
                     templateEnglish = parts.filter(Boolean).join(' ');
-                } catch (_) {}
+                } catch (_) {
+                    /* ignore */
+                }
             } else {
                 userInstruction = promptText?.trim() || '';
             }
@@ -1452,7 +1458,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
             setGeneratedImage(newUrl);
             setGenerationHistory(prev => {
                 const next = [{ url: newUrl, ts: Date.now(), size: imageSize }, ...prev].slice(0, 50);
-                try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) {}
+                try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) { /* ignore */ }
                 return next;
             });
             
@@ -1894,7 +1900,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                                     className={cn("w-10 h-10 rounded-lg border-2 border-dashed flex items-center justify-center transition-all overflow-hidden",
                                                         firstFrame ? "border-blue-400/60" : "border-white/15 hover:border-white/30")}>
                                                     {firstFrame
-                                                        ? <img src={firstFrame} className="w-full h-full object-cover rounded" alt="first" />
+                                                        ? <img src={resolveUrl(firstFrame)} className="w-full h-full object-cover rounded" alt="first" />
                                                         : <span className="text-white/25 text-lg font-black">+</span>}
                                                 </button>
                                             </div>
@@ -1905,7 +1911,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                                     className={cn("w-10 h-10 rounded-lg border-2 border-dashed flex items-center justify-center transition-all overflow-hidden",
                                                         lastFrame ? "border-blue-400/60" : "border-white/15 hover:border-white/30")}>
                                                     {lastFrame
-                                                        ? <img src={lastFrame} className="w-full h-full object-cover rounded" alt="last" />
+                                                        ? <img src={resolveUrl(lastFrame)} className="w-full h-full object-cover rounded" alt="last" />
                                                         : <span className="text-white/25 text-lg font-black">+</span>}
                                                 </button>
                                             </div>
@@ -1920,7 +1926,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                         <div className="flex items-center gap-2 px-3 pt-2.5">
                                             {referenceImage && (
                                                 <div className="relative group w-9 h-9 rounded-lg overflow-hidden border border-lime-500/40 flex-shrink-0">
-                                                    <img src={referenceImage} className="w-full h-full object-cover" alt="ref" />
+                                                    <img src={resolveUrl(referenceImage)} className="w-full h-full object-cover" alt="ref" />
                                                     <button onClick={() => { setReferenceImage(null); setReferenceImageMeta(null); setReferenceImageBase64(null); }}
                                                         className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                         <X className="w-3 h-3 text-white" />
@@ -2578,7 +2584,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                     setGeneratedImage(newUrl);
                     setGenerationHistory(prev => {
                         const next = [{ url: newUrl, ts: Date.now() }, ...prev].slice(0, 50);
-                        try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) {}
+                        try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) { /* ignore */ }
                         return next;
                     });
                     setInpaintOpen(false);

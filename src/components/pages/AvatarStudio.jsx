@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../../store';
 import { useAvatarStudio } from '../../hooks/useAvatarStudio';
+import { resolveUrl } from '../../config/apiConfig';
 import {
   History, Sparkles, UploadCloud, Trash2, Camera, Film,
   ShieldAlert, ChevronRight, ChevronDown, User, MapPin, Box, Bone, PersonStanding
@@ -218,7 +219,7 @@ export default function AvatarStudio() {
                     </label>
                   ) : (
                     <div className="relative h-28 rounded-xl overflow-hidden border border-white/10 group bg-zinc-950">
-                      <img src={studio.refPreview} alt="Likeness" className="w-full h-full object-cover" />
+                      <img src={resolveUrl(studio.refPreview)} alt="Likeness" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <button
                           type="button"
@@ -256,7 +257,7 @@ export default function AvatarStudio() {
                     </label>
                   ) : (
                     <div className="relative h-28 rounded-xl overflow-hidden border border-white/10 group bg-zinc-950">
-                      <img src={studio.wardrobeRefPreview} alt="Wardrobe" className="w-full h-full object-cover" />
+                      <img src={resolveUrl(studio.wardrobeRefPreview)} alt="Wardrobe" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <button
                           type="button"
@@ -294,7 +295,7 @@ export default function AvatarStudio() {
                     </label>
                   ) : (
                     <div className="relative h-28 rounded-xl overflow-hidden border border-white/10 group bg-zinc-950">
-                      <img src={studio.propRefPreview} alt="Prop" className="w-full h-full object-cover" />
+                      <img src={resolveUrl(studio.propRefPreview)} alt="Prop" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <button
                           type="button"

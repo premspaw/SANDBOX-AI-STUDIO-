@@ -311,17 +311,19 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
               )}
             </div>
           ) : (
-            <video
-              src={resolveUrl(lightboxItem.url)}
-              controls
-              autoPlay
-              loop
-              playsInline
-              className={cn(
-                "max-h-[75vh] object-contain shadow-2xl rounded-2xl",
-                lightboxItem.aspect === '9:16' ? 'aspect-[9/16]' : lightboxItem.aspect === '1:1' ? 'aspect-square' : 'aspect-video w-full'
-              )}
-            />
+            <div className="relative w-full h-full flex items-center justify-center p-4">
+              <video
+                src={resolveUrl(lightboxItem.url)}
+                controls
+                autoPlay
+                loop
+                playsInline
+                className={cn(
+                  "max-h-[75vh] object-contain shadow-2xl rounded-2xl",
+                  lightboxItem.aspect === '9:16' ? 'aspect-[9/16] h-full' : lightboxItem.aspect === '1:1' ? 'aspect-square h-full' : 'aspect-video w-full'
+                )}
+              />
+            </div>
           )}
         </div>
 

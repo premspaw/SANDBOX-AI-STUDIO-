@@ -162,7 +162,9 @@ export default function createRouter(deps) {
             const ext = type === 'video' ? 'mp4' : type === 'audio' ? 'mp3' : 'png';
             const mimeType = type === 'video' ? 'video/mp4' : type === 'audio' ? 'audio/mpeg' : 'image/png';
             const name = fileName || `gen_${userId || 'anon'}_${Date.now()}.${ext}`;
-            let gcsPath = `users/${userId || 'anon'}/generated/${name}`;
+            // Reference uploads (ref_, upload_) go to /uploads/ so gallery filters exclude them
+            const isRefUpload = name.startsWith('ref_') || name.startsWith('upload_');
+            let gcsPath = `users/${userId || 'anon'}/${isRefUpload ? 'uploads' : 'generated'}/${name}`;
 
             if (imageData.startsWith('data:')) {
                 const base64Str = imageData.split(',')[1];
@@ -180,23 +182,27 @@ export default function createRouter(deps) {
                 }
             }
 
-            // Save locally to local_assets.json
-            saveLocalAsset({
-                name,
-                type,
-                url: publicUrl,
-                user_id: userId || 'local_user',
-                aspect: aspect
-            });
+            // Reference uploads are NOT gallery items — skip local_assets.json save
+            if (!isRefUpload) {
+                saveLocalAsset({
+                    name,
+                    type,
+                    url: publicUrl,
+                    user_id: userId || 'local_user',
+                    aspect: aspect
+                });
+            }
 
             let insertedId = `asset_${Date.now()}`;
             const dbClient = supabaseAdmin || supabase;
             if (dbClient && userId) {
+                // Use 'reference_upload' type for ref items so gallery queries can filter them out
+                const dbType = isRefUpload ? 'reference_upload' : type;
                 const { data: dbData, error: dbError } = await dbClient
                     .from('assets')
                     .insert([{
                         name,
-                        type,
+                        type: dbType,
                         url: publicUrl,
                         user_id: userId,
                         created_at: new Date().toISOString(),
@@ -281,20 +287,28 @@ export default function createRouter(deps) {
 
             const base64Str = image.split(',')[1] || image;
             const buffer = Buffer.from(base64Str, 'base64');
-            const name = filename || `upload_${Date.now()}.${ext}`;
-            const filePath = `users/${userId || 'anon'}/${folder || 'uploads'}/${name}`;
+
+            // Determine if this is a reference upload or a generated asset
+            const isRefUpload = folder === 'reference' || folder === 'uploads';
+            const namePrefix = isRefUpload ? 'ref_' : 'gen_';
+            const name = filename || `${namePrefix}${Date.now()}.${ext}`;
+            const storagePath = isRefUpload ? 'uploads' : (folder || 'generated');
+            const filePath = `users/${userId || 'anon'}/${storagePath}/${name}`;
+            const dbType = isRefUpload ? 'reference_upload' : type;
 
             const publicUrl = await storageService.uploadToGCS(buffer, filePath, mimeType, BUCKET_NAME);
             
-            // Save locally to local_assets.json
-            saveLocalAsset({
-                name,
-                type,
-                url: publicUrl,
-                user_id: userId || 'local_user',
-                aspect: aspect,
-                metadata: { folder: folder || 'uploads' }
-            });
+            // Only save generated assets to local_assets.json (not reference uploads)
+            if (!isRefUpload) {
+                saveLocalAsset({
+                    name,
+                    type,
+                    url: publicUrl,
+                    user_id: userId || 'local_user',
+                    aspect: aspect,
+                    metadata: { folder: storagePath }
+                });
+            }
 
             // Save to assets database table in Supabase
             const dbClient = supabaseAdmin || supabase;
@@ -302,13 +316,13 @@ export default function createRouter(deps) {
                 try {
                     await dbClient.from('assets').insert([{
                         name,
-                        type,
+                        type: dbType,
                         url: publicUrl,
                         user_id: userId,
                         created_at: new Date().toISOString(),
-                        metadata: { aspect, folder: folder || 'uploads' }
+                        metadata: { aspect, folder: storagePath }
                     }]);
-                    console.log(`[UPLOAD-ASSET] Saved uploaded ${type} to DB for user ${userId}`);
+                    console.log(`[UPLOAD-ASSET] Saved ${dbType} to DB for user ${userId}`);
                 } catch (dbErr) {
                     console.warn('[UPLOAD-ASSET] DB insert failed:', dbErr.message);
                 }
