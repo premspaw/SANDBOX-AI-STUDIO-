@@ -171,6 +171,32 @@ export default function AgentPage() {
         return saved ? JSON.parse(saved) : [];
     });
 
+    // Memory Import UI States
+    const [showMemoryImport, setShowMemoryImport] = useState(false);
+    const [importMemoryText, setImportMemoryText] = useState('');
+
+    const handleImportMemories = async () => {
+        if (!importMemoryText.trim()) return;
+        const newFacts = importMemoryText
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 2);
+        
+        if (newFacts.length > 0) {
+            const updatedMemory = [...new Set([...memory, ...newFacts])].slice(-50);
+            setMemory(updatedMemory);
+            await saveMemory(updatedMemory);
+            setImportMemoryText('');
+            setShowMemoryImport(false);
+        }
+    };
+
+    const handleDeleteMemory = async (index) => {
+        const updatedMemory = memory.filter((_, idx) => idx !== index);
+        setMemory(updatedMemory);
+        await saveMemory(updatedMemory);
+    };
+
     // Save configurations
     useEffect(() => {
         localStorage.setItem('hermes_custom_persona', customPersona);
@@ -414,16 +440,90 @@ export default function AgentPage() {
 
                 {/* Memory */}
                 <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
-                    <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 mb-2.5">Persistent Memories</p>
+                    <div className="flex items-center justify-between mb-2.5">
+                        <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30">Persistent Memories</p>
+                        <button 
+                            onClick={() => setShowMemoryImport(!showMemoryImport)}
+                            className="text-[9px] font-black uppercase tracking-wider text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1"
+                        >
+                            <Plus className="w-2.5 h-2.5" /> Import
+                        </button>
+                    </div>
+
+                    {showMemoryImport && (
+                        <div className="mb-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[9px] font-black text-indigo-300 uppercase tracking-wider">Bulk Import</span>
+                                <button 
+                                    onClick={() => {
+                                        setImportMemoryText("Brand: zeroLens\nTone: energetic, professional, direct\nTarget Audience: marketing teams, content creators\nVisual Style: high contrast, cinematic lighting, modern neon accent");
+                                    }}
+                                    className="text-[8px] font-bold text-white/40 hover:text-white/70 transition-colors underline"
+                                >
+                                    Use Template
+                                </button>
+                            </div>
+                            
+                            <textarea
+                                value={importMemoryText}
+                                onChange={(e) => setImportMemoryText(e.target.value)}
+                                placeholder="Paste memories (one per line, e.g. Brand: zeroLens)"
+                                className="w-full h-24 bg-black/40 border border-white/5 rounded-lg p-2 text-[10px] text-white placeholder-white/20 focus:outline-none focus:border-indigo-500/50 resize-none font-sans"
+                            />
+
+                            <div className="text-[9px] text-white/40 leading-relaxed bg-black/20 p-2 rounded-lg border border-white/[0.02]">
+                                <span className="font-bold text-indigo-300/80">How Hermes uses this:</span> These facts are automatically injected as custom context in your copywriting, reel script writing, and video generation modes to maintain brand consistency.
+                            </div>
+
+                            <div className="flex gap-1.5 justify-end">
+                                <button 
+                                    onClick={() => {
+                                        setShowMemoryImport(false);
+                                        setImportMemoryText('');
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg text-[9px] font-bold text-white/45 hover:text-white/70 hover:bg-white/5 border border-transparent transition-all uppercase tracking-wider"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={handleImportMemories}
+                                    disabled={!importMemoryText.trim()}
+                                    className="px-3 py-1 rounded-lg text-[9px] font-bold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 disabled:hover:bg-indigo-600 transition-all uppercase tracking-wider shadow-md shadow-indigo-950/50"
+                                >
+                                    Confirm
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {memory.length === 0 ? (
-                        <p className="text-[10px] text-white/20 leading-relaxed bg-white/[0.01] border border-white/5 rounded-xl p-3">
-                            Hermes constructs memories as you converse. Brand profiles, tones, and target niches populate here.
-                        </p>
+                        <div className="space-y-2">
+                            <p className="text-[10px] text-white/20 leading-relaxed bg-white/[0.01] border border-white/5 rounded-xl p-3">
+                                Hermes constructs memories as you converse. Brand profiles, tones, and target niches populate here. You can also import them directly.
+                            </p>
+                            <div className="text-[9px] text-white/30 leading-relaxed bg-white/[0.01] border border-white/5 rounded-xl p-3">
+                                <span className="font-bold text-indigo-400/80 block mb-1">💡 Pro-tip: How to use memories</span>
+                                Add facts like:
+                                <ul className="list-disc pl-3 mt-1 space-y-0.5">
+                                    <li>Brand: BrandName</li>
+                                    <li>Audience: Fitness Enthusiasts</li>
+                                    <li>Tone: Humorous & casual</li>
+                                    <li>Topic: Vegan healthy meals</li>
+                                </ul>
+                            </div>
+                        </div>
                     ) : (
                         <div className="space-y-1.5">
                             {memory.map((m, i) => (
-                                <div key={i} className="text-[10px] text-white/60 bg-white/[0.02] border border-white/5 rounded-lg px-2.5 py-1.5 leading-relaxed font-medium">
+                                <div key={i} className="group relative text-[10px] text-white/60 bg-white/[0.02] border border-white/5 rounded-lg px-2.5 py-1.5 pr-7 leading-relaxed font-medium transition-all hover:bg-white/[0.04] hover:border-white/10">
                                     {m}
+                                    <button 
+                                        onClick={() => handleDeleteMemory(i)}
+                                        className="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 transition-all duration-150 p-0.5"
+                                        title="Delete memory"
+                                    >
+                                        <X className="w-2.5 h-2.5" />
+                                    </button>
                                 </div>
                             ))}
                         </div>
