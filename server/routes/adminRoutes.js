@@ -91,8 +91,8 @@ export default function createRouter(deps) {
             if (!Array.isArray(history) || history.length === 0) {
                 return res.status(400).json({ error: 'history is required' });
             }
-            const openaiKey = process.env.OPENAI_API_KEY;
-            if (!openaiKey) return res.status(500).json({ error: 'OPENAI_API_KEY not set' });
+            const openaiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
+            if (!openaiKey) return res.status(500).json({ error: 'OPENROUTER_API_KEY not set' });
 
             const memoryBlock = memory.length > 0
                 ? `\n\n[SESSION MEMORY]\n${memory.map((m, i) => `${i + 1}. ${m}`).join('\n')}`
@@ -103,21 +103,31 @@ export default function createRouter(deps) {
                 ...history
             ];
 
-            const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+            // Use OpenRouter if OPENROUTER_API_KEY is set, otherwise fall back to OpenAI
+            const isOpenRouter = !!process.env.OPENROUTER_API_KEY;
+            const apiUrl = isOpenRouter
+                ? 'https://openrouter.ai/api/v1/chat/completions'
+                : 'https://api.openai.com/v1/chat/completions';
+            const model = isOpenRouter
+                ? (process.env.OPENROUTER_MODEL || 'nousresearch/hermes-3-llama-3.1-405b:free')
+                : 'gpt-4.1';
+
+            const resp = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${openaiKey}`,
+                    ...(isOpenRouter && { 'HTTP-Referer': 'http://localhost:5173', 'X-Title': 'ZeroLens AI Studio' }),
                 },
                 body: JSON.stringify({
-                    model: 'gpt-4.1',
+                    model,
                     messages,
                     max_tokens: 4096,
                     temperature: 0.75,
                 })
             });
             const data = await resp.json();
-            if (!resp.ok) return res.status(resp.status).json({ error: data?.error?.message || 'OpenAI error' });
+            if (!resp.ok) return res.status(resp.status).json({ error: data?.error?.message || 'API error' });
             const text = data.choices?.[0]?.message?.content || '';
             res.json({ text });
         } catch (err) {
