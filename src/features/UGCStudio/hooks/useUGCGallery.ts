@@ -198,16 +198,10 @@ export function useUGCGallery(currentUserId: string) {
   const [galleryTab, setGalleryTab] = useState<'all' | 'image' | 'video'>('all');
   const [galleryExpandItem, setGalleryExpandItem] = useState<GalleryItem | null>(null);
 
-  // ── Load from IDB on mount (merges with localStorage seed) ──────────────
-  useEffect(() => {
-    loadGalleryFromIDB().then(idbItems => {
-      const valid = idbItems.filter(i => isValidItem(i, false));
-      if (valid.length !== idbItems.length) saveGalleryToIDB(valid);
-      setGallery(prev => dedup([...prev, ...valid]));
-    });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Merge user assets from REST API on login ─────────────────────────────
+  // ── Server fetch is the sole source of truth (user-scoped) ────────────────
+  // We intentionally do NOT load from IndexedDB on mount — it was a shared
+  // store that leaked admin/other-user data and showed broken images.
+  // Instead, the server fetch replaces the gallery and re-populates IDB.
   useEffect(() => {
     if (!currentUserId) return;
     fetch(getApiUrl(`/api/ugc/assets/${currentUserId}`))
@@ -219,8 +213,7 @@ export function useUGCGallery(currentUserId: string) {
         return r.json();
       })
       .then(({ assets }) => {
-        if (!Array.isArray(assets) || assets.length === 0) return;
-        const dbItems: GalleryItem[] = assets
+        const dbItems: GalleryItem[] = (Array.isArray(assets) ? assets : [])
           .filter((a: any) => isValidItem(a, false))
           .map((a: any) => ({
             id: String(a.id),
@@ -233,17 +226,17 @@ export function useUGCGallery(currentUserId: string) {
           }));
 
         setGallery(prev => {
-          // Replace any temp-id entry whose URL path is found in DB with the stable DB id
-          const dbByPath = new Map<string, GalleryItem>(dbItems.map(i => [getNormalizedPath(i.url), i]));
-          const updatedPrev = prev.map(item => {
-            const dbMatch = dbByPath.get(getNormalizedPath(item.url));
-            if (dbMatch) {
-              return { ...item, id: dbMatch.id, createdAt: item.createdAt || dbMatch.createdAt };
-            }
-            return item;
-          });
-          // Merge and deduplicate across both arrays
-          return dedup([...updatedPrev, ...dbItems]);
+          // Keep only local in-flight items (blob/data URLs, loading placeholders)
+          const localOnly = prev.filter(item =>
+            item.loading ||
+            item.url?.startsWith('blob:') ||
+            item.url?.startsWith('data:')
+          );
+          const merged = dedup([...localOnly, ...dbItems]);
+          // Re-save clean data to IDB so next cold-start is fast
+          saveGalleryToIDB(merged);
+          persistToLS(merged, currentUserId);
+          return merged;
         });
       })
       .catch(err => console.error('[Gallery Assets Load Error]', err));

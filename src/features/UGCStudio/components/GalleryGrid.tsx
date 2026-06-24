@@ -85,10 +85,16 @@ export default function GalleryGrid() {
     ? 'Generating Creator Image...'
     : (imageProgressMsg || 'Generating Image...');
 
+  // Track images that failed to load so we can hide them
+  const [brokenIds, setBrokenIds] = useState<Set<string>>(new Set());
+  const markBroken = useCallback((id: string) => {
+    setBrokenIds(prev => { const next = new Set(prev); next.add(id); return next; });
+  }, []);
+
   // Separate loading placeholders from real items, then sort newest-first by generation time
   const loadingItems = gallery.filter(item => item.loading);
   const realItems = gallery
-    .filter(item => !item.loading && item.url)
+    .filter(item => !item.loading && item.url && !brokenIds.has(item.id))
     .sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
 
   return (
@@ -200,7 +206,12 @@ export default function GalleryGrid() {
                     </div>
                   ) : (
                     <div className="w-full h-full relative bg-black/60 flex items-center justify-center overflow-hidden">
-                      <img src={resolveUrl(item.url)} alt={`gen-${idx}`} className="w-full h-full object-cover" />
+                      <img
+                        src={resolveUrl(item.url)}
+                        alt={`gen-${idx}`}
+                        className="w-full h-full object-cover"
+                        onError={() => markBroken(item.id)}
+                      />
                     </div>
                   )}
                   {/* NEW badge — always on the freshest item (idx 0 after sort) */}
