@@ -227,7 +227,9 @@ export default function YourVoice() {
         const data = await resp.json();
         if (resp.ok && data.history) {
           setHistory(data.history);
-          localStorage.setItem('yourvoice_history', JSON.stringify(data.history));
+          if (userProfile?.id) {
+            localStorage.setItem(`yourvoice_history_${userProfile.id}`, JSON.stringify(data.history));
+          }
           return;
         }
       } catch (err) {
@@ -238,7 +240,8 @@ export default function YourVoice() {
 
       // Local storage fallback
       try {
-        const savedHistory = localStorage.getItem('yourvoice_history');
+        const histKey = userProfile?.id ? `yourvoice_history_${userProfile.id}` : null;
+        const savedHistory = histKey ? localStorage.getItem(histKey) : null;
         if (savedHistory) {
           setHistory(JSON.parse(savedHistory));
         }
@@ -253,7 +256,10 @@ export default function YourVoice() {
   const saveHistory = (newHistory) => {
     setHistory(newHistory);
     try {
-      localStorage.setItem('yourvoice_history', JSON.stringify(newHistory));
+      const histKey = userProfile?.id ? `yourvoice_history_${userProfile.id}` : null;
+      if (histKey) {
+        localStorage.setItem(histKey, JSON.stringify(newHistory));
+      }
     } catch (err) {
       console.warn('Failed to save history to localStorage:', err);
     }

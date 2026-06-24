@@ -127,8 +127,13 @@ const IDB_STORE = 'gallery';
 
 const openIDB = (): Promise<IDBDatabase> =>
   new Promise((resolve, reject) => {
-    const req = indexedDB.open(IDB_NAME, 1);
-    req.onupgradeneeded = () => { req.result.createObjectStore(IDB_STORE, { keyPath: 'id' }); };
+    const req = indexedDB.open(IDB_NAME, 2); // bumped version to create per-user store if needed
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+      }
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
@@ -159,23 +164,32 @@ const loadGalleryFromIDB = async (): Promise<GalleryItem[]> => {
 };
 
 // ── Persist only https items to localStorage ──────────────────────────────────
-const persistToLS = (items: GalleryItem[]) => {
+const getLSKey = (userId: string) =>
+  userId && userId !== 'anon' ? `ugc_generation_history_${userId}` : null;
+
+const persistToLS = (items: GalleryItem[], userId: string) => {
+  const key = getLSKey(userId);
+  if (!key) return; // Don't persist for anonymous / unidentified users
   try {
     const safe = items.filter(i => i.url && !i.loading && !i.url.startsWith('data:') && !i.url.startsWith('blob:'));
-    localStorage.setItem('ugc_generation_history', JSON.stringify(safe));
+    localStorage.setItem(key, JSON.stringify(safe));
   } catch { /* ignore quota */ }
 };
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 export function useUGCGallery(currentUserId: string) {
+  const lsKey = getLSKey(currentUserId);
+
   const [gallery, setGallery] = useState<GalleryItem[]>(() => {
+    // Start empty for unidentified/anon users — server fetch will populate.
+    if (!lsKey) return [];
     try {
-      const saved = localStorage.getItem('ugc_generation_history');
+      const saved = localStorage.getItem(lsKey);
       const parsed: any[] = saved ? JSON.parse(saved) : [];
       // On cold start: drop blobs (they're dead) and deduplicate
       const valid = parsed.filter(i => isValidItem(i, false));
       if (valid.length !== parsed.length) {
-        try { localStorage.setItem('ugc_generation_history', JSON.stringify(valid)); } catch { /* ignore */ }
+        try { localStorage.setItem(lsKey, JSON.stringify(valid)); } catch { /* ignore */ }
       }
       return dedup(valid);
     } catch { return []; }
@@ -250,11 +264,11 @@ export function useUGCGallery(currentUserId: string) {
         next = [itemWithTime, ...prev];
       }
       const deduped = dedup(next).slice(0, 100);
-      persistToLS(deduped);
+      persistToLS(deduped, currentUserId);
       saveGalleryToIDB(deduped);
       return deduped;
     });
-  }, []);
+  }, [currentUserId]);
 
   // ── updateGalleryItem ─────────────────────────────────────────────────────
   // After updating (e.g. blob→https URL swap), re-dedup to remove any URL twin.
@@ -262,11 +276,11 @@ export function useUGCGallery(currentUserId: string) {
     setGallery(prev => {
       const next = prev.map(item => item.id === id ? { ...item, ...updates } : item);
       const deduped = dedup(next);
-      persistToLS(deduped);
+      persistToLS(deduped, currentUserId);
       saveGalleryToIDB(deduped);
       return deduped;
     });
-  }, []);
+  }, [currentUserId]);
 
   return {
     gallery,

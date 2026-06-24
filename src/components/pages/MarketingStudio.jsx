@@ -276,6 +276,8 @@ const LS_KEY = 'marketing_custom_templates';
 export default function MarketingStudio() {
     const userProfile = useAppStore(state => state.userProfile);
     const currentUserId = userProfile?.id || null;
+    // Per-user localStorage key so admin-generated images never bleed into other users' galleries
+    const mktLSKey = currentUserId ? `marketing_generation_history_${currentUserId}` : null;
     const userShorts = useAppStore(state => state.userShorts);
     const userCredits = userShorts ?? 0;
     const isAdmin = userProfile?.email === 'premspaw@gmail.com';
@@ -356,8 +358,10 @@ export default function MarketingStudio() {
     });
     const [referenceImageMeta, setReferenceImageMeta] = useState(null);
     const [generationHistory, setGenerationHistory] = useState(() => {
+        // Start empty for unidentified users — prevents loading admin's cached images.
+        if (!currentUserId) return [];
         try {
-            const saved = localStorage.getItem('marketing_generation_history');
+            const saved = localStorage.getItem(`marketing_generation_history_${currentUserId}`);
             return saved ? JSON.parse(saved) : [];
         } catch { return []; }
     });
@@ -406,7 +410,7 @@ export default function MarketingStudio() {
                     if (url) {
                         setGenerationHistory(prev => {
                             const next = [{ url, ts: Date.now(), size: imageSize, type: 'video' }, ...prev].slice(0, 50);
-                            try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) { /* ignore */ }
+                                                        try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
                             return next;
                         });
                         refreshShorts();
@@ -686,7 +690,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                 // Add the new upscaled image to the top of the history
                 setGenerationHistory(prev => {
                     const next = [newItem, ...prev].slice(0, 50);
-                    try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) { /* ignore */ }
+                                                try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
                     return next;
                 });
                 
@@ -1185,7 +1189,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
 
                     setGenerationHistory(prev => {
                         const next = [{ url: directUrl, ts: Date.now(), size: imageSize, type: 'video' }, ...prev].slice(0, 50);
-                        try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) { /* ignore */ }
+                                                    try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
                         return next;
                     });
 
@@ -1232,7 +1236,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                 console.log('[Marketing] Background archiving complete:', publicUrl);
                                 setGenerationHistory(prev => {
                                     const next = prev.map(item => item.url === directUrl ? { ...item, url: publicUrl } : item);
-                                    try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) { /* ignore */ }
+                                                                try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
                                     return next;
                                 });
                             }
@@ -1458,7 +1462,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
             setGeneratedImage(newUrl);
             setGenerationHistory(prev => {
                 const next = [{ url: newUrl, ts: Date.now(), size: imageSize }, ...prev].slice(0, 50);
-                try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) { /* ignore */ }
+                                            try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
                 return next;
             });
             
@@ -2584,7 +2588,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                     setGeneratedImage(newUrl);
                     setGenerationHistory(prev => {
                         const next = [{ url: newUrl, ts: Date.now() }, ...prev].slice(0, 50);
-                        try { localStorage.setItem('marketing_generation_history', JSON.stringify(next)); } catch (_) { /* ignore */ }
+                                                    try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
                         return next;
                     });
                     setInpaintOpen(false);

@@ -594,9 +594,16 @@ export default function CinematicStudio() {
   const [errorMsg, setErrorMsg] = useState('');
 
   // Gallery (all generated items)
+  // Key is per-user so admin-generated assets never bleed into other users' galleries.
+  const galleryLSKey = userId && userId !== 'anon'
+    ? `cinematic_studio_gallery_${userId}`
+    : null;
+
   const [gallery, setGallery] = useState(() => {
+    // If we don't know the user yet, start empty — server fetch will populate.
+    if (!galleryLSKey) return [];
     try {
-      const cached = localStorage.getItem('cinematic_studio_gallery');
+      const cached = localStorage.getItem(galleryLSKey);
       const parsed = cached ? JSON.parse(cached) : [];
       const filtered = parsed.filter(item => {
         if (!item) return false;
@@ -610,7 +617,7 @@ export default function CinematicStudio() {
       const deduped = deduplicateGallery(filtered);
       if (deduped.length !== parsed.length) {
         try {
-          localStorage.setItem('cinematic_studio_gallery', JSON.stringify(deduped));
+          localStorage.setItem(galleryLSKey, JSON.stringify(deduped));
         } catch (e) {
           // ignore quota
         }
@@ -1199,10 +1206,11 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
 
 
   useEffect(() => {
+    if (!galleryLSKey) return; // Don't persist when user is not identified
     try {
-      localStorage.setItem('cinematic_studio_gallery', JSON.stringify(gallery));
+      localStorage.setItem(galleryLSKey, JSON.stringify(gallery));
     } catch (_) { /* ignore localStorage quota issues */ }
-  }, [gallery]);
+  }, [gallery, galleryLSKey]);
 
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
