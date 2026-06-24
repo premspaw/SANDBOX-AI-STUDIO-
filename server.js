@@ -19,6 +19,7 @@ import nodeFetch from 'node-fetch';
 import { decode } from 'base64-arraybuffer';
 import multer from 'multer';
 import { readFileSync, rmSync } from 'fs';
+import { isValidUuid } from './server/utils/validateUuid.js';
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 const normalizeOrigin = (value) => {
@@ -210,19 +211,33 @@ const getVertexToken = async () => {
 // Initial Token Check
 getVertexToken().catch(() => {});
 
-// ── OpenAI SDK + Raw Helper ──────────────────────────────────────────────────
+// ── OpenAI/OpenRouter SDK + Raw Helper ───────────────────────────────────────
+const _LLM_API_KEY = () => process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
 const OPENAI_API_KEY = () => process.env.OPENAI_API_KEY;
-const getOpenAIClient = () => new OpenAI({ apiKey: OPENAI_API_KEY() });
+const _IS_OPENROUTER = () => !!process.env.OPENROUTER_API_KEY;
+const getOpenAIClient = () => {
+    if (_IS_OPENROUTER()) {
+        return new OpenAI({ apiKey: _LLM_API_KEY(), baseURL: 'https://openrouter.ai/api/v1' });
+    }
+    return new OpenAI({ apiKey: OPENAI_API_KEY() });
+};
 const openaiChat = async (messages, model = 'gpt-4o', jsonMode = false) => {
-    const apiKey = OPENAI_API_KEY();
-    if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    const apiKey = _LLM_API_KEY();
+    if (!apiKey) throw new Error('OPENROUTER_API_KEY not configured');
+    const isOR = _IS_OPENROUTER();
+    const apiUrl = isOR ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
+    const actualModel = isOR ? (process.env.OPENROUTER_MODEL || 'nousresearch/hermes-3-llama-3.1-405b:free') : model;
+    const resp = await fetch(apiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ model, messages, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}) })
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            ...(isOR && { 'HTTP-Referer': 'http://localhost:5173', 'X-Title': 'ZeroLens AI Studio' }),
+        },
+        body: JSON.stringify({ model: actualModel, messages, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}) })
     });
     const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error?.message || 'OpenAI chat error');
+    if (!resp.ok) throw new Error(data.error?.message || 'LLM chat error');
     return data.choices?.[0]?.message?.content;
 };
 
@@ -625,7 +640,7 @@ async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9', 
         });
 
         const dbClient = supabaseAdmin || supabase;
-        if (dbClient && userId) {
+        if (dbClient && isValidUuid(userId)) {
             try {
                 await dbClient.from('assets').insert([{
                     name, type: 'video', url: publicUrl,
@@ -663,7 +678,7 @@ async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg
         });
 
         const dbClient = supabaseAdmin || supabase;
-        if (dbClient && userId) {
+        if (dbClient && isValidUuid(userId)) {
             try {
                 await dbClient.from('assets').insert([{
                     name, type: 'image', url: publicUrl,

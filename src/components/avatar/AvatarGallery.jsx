@@ -8,10 +8,12 @@ export default function AvatarGallery({
   onLoadGeneration
 }) {
   const [filterType, setFilterType] = useState('all'); // 'all' | 'sheet' | 'scene'
+  const [brokenIds, setBrokenIds] = useState(new Set());
 
   if (!isOpen) return null;
 
   const filteredGallery = gallery.filter(item => {
+    if (brokenIds.has(item.id)) return false;
     if (filterType === 'all') return true;
     return item.type === filterType;
   });
@@ -141,6 +143,7 @@ export default function AvatarGallery({
                       alt={item.character_name}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       loading="lazy"
+                      onError={() => setBrokenIds(prev => { const next = new Set(prev); next.add(item.id); return next; })}
                     />
                     
                     {/* Floating Indicators */}

@@ -366,6 +366,7 @@ export default function MarketingStudio() {
         } catch { return []; }
     });
     const [gallerySearch, setGallerySearch] = useState('');
+    const [brokenGalleryUrls, setBrokenGalleryUrls] = useState(new Set());
     const [activeTag, setActiveTag] = useState(null);
     const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
 
@@ -1752,7 +1753,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                                 <span className="text-[7px] text-[#c8f135] font-bold uppercase tracking-widest animate-pulse">Generating…</span>
                                             </div>
                                         )}
-                                        {generationHistory.map((item, idx) => (
+                                        {generationHistory.filter(item => !brokenGalleryUrls.has(item.url)).map((item, idx) => (
                                             <motion.div key={item.ts}
                                                 initial={{ opacity: 0, scale: 0.95 }}
                                                 animate={{ opacity: 1, scale: 1 }}
@@ -1775,7 +1776,9 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                                         </div>
                                                       </div>
                                                     : <div className="w-full h-full relative bg-black/60 overflow-hidden">
-                                                        <img src={item.url} alt={`gen-${idx}`} className="w-full h-full object-cover" />
+                                                        <img src={item.url} alt={`gen-${idx}`} className="w-full h-full object-cover"
+                                                          onError={() => setBrokenGalleryUrls(prev => { const next = new Set(prev); next.add(item.url); return next; })}
+                                                        />
                                                       </div>
                                                 }
                                                 {/* NEW badge */}

@@ -1,6 +1,7 @@
 import express from 'express';
 import { readFileSync, rmSync } from 'fs';
 import { generateCarousel as generateCarouselHTML } from '../../services/carouselGenerator.js';
+import { isValidUuid } from '../utils/validateUuid.js';
 
 export default function createRouter(deps) {
     const router = express.Router();
@@ -216,7 +217,7 @@ export default function createRouter(deps) {
                     });
 
                     const dbClient = supabaseAdmin || supabase;
-                    if (dbClient && userId && userId !== 'anon') {
+                    if (dbClient && isValidUuid(userId)) {
                         try {
                             await dbClient.from('assets').insert([{
                                 name: `Carousel Slide ${i + 1} (${brand?.name || 'Zerolens'})`,
@@ -281,7 +282,7 @@ export default function createRouter(deps) {
                             });
 
                             const dbClient = supabaseAdmin || supabase;
-                            if (dbClient && userId && userId !== 'anon') {
+                            if (dbClient && isValidUuid(userId)) {
                                 try {
                                     await dbClient.from('assets').insert([{
                                         name: `Carousel Slide ${i + 1} (Fallback - ${brand?.name || 'Zerolens'})`,

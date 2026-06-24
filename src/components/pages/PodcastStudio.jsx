@@ -460,6 +460,7 @@ export default function PodcastStudio() {
 
   // gallery
   const [gallery, setGallery] = useState([]);
+  const [brokenGalleryIds, setBrokenGalleryIds] = useState(new Set());
   const addToGallery = (item) => setGallery(prev => [item, ...prev].slice(0, 60));
 
   // dialogue
@@ -1103,11 +1104,13 @@ Return ONLY valid JSON: { "lines": [{ "hostId": 0, "text": "...", "type": "Intro
                 <button onClick={() => setGallery([])} className="text-[7px] text-gray-600 hover:text-red-400 transition-colors uppercase tracking-widest">Clear</button>
               </div>
               <div className="px-3 pb-3 grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: '#222 transparent' }}>
-                {gallery.map(item => (
+                {gallery.filter(item => !brokenGalleryIds.has(item.id)).map(item => (
                   <div key={item.id} className="relative aspect-square rounded-lg overflow-hidden border border-white/10 group cursor-pointer"
                     onClick={() => { if (item.url) { const a = document.createElement('a'); a.href = item.url; a.download = `podcast_img_${item.id}.png`; a.click(); } }}
                   >
-                    <img src={item.url} className="w-full h-full object-cover" alt="" />
+                    <img src={item.url} className="w-full h-full object-cover" alt=""
+                      onError={() => setBrokenGalleryIds(prev => { const next = new Set(prev); next.add(item.id); return next; })}
+                    />
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <Download size={14} className="text-white" />
                     </div>

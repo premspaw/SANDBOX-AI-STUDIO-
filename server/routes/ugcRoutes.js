@@ -6,6 +6,7 @@ import * as productService from '../../services/productService.js';
 import * as moodBoardService from '../../services/moodBoardService.js';
 import * as masterExportService from '../../services/masterExportService.js';
 import { fetchAllowedProxyResource } from '../utils/safeProxy.js';
+import { isValidUuid } from '../utils/validateUuid.js';
 
 export default function createRouter(deps) {
     const router = express.Router();
@@ -607,13 +608,8 @@ Return ONLY valid JSON.`
                 userId = 'local_user';
             }
 
-            // Only query Supabase if userId is a valid UUID.
-            // The assets.user_id column is UUID type — passing non-UUID strings
-            // like "local_user" or "anon" causes a Postgres type error.
-            const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-
             let dbData = [];
-            if (supabase && isValidUuid) {
+            if (supabase && isValidUuid(userId)) {
                 try {
                     const { data, error } = await supabase
                         .from('assets')

@@ -1,6 +1,7 @@
 // Storage Routes Handler
 import express from 'express';
 import { fetchAllowedProxyResource, validateProxyUrl } from '../utils/safeProxy.js';
+import { isValidUuid } from '../utils/validateUuid.js';
 
 export default function createRouter(deps) {
     const router = express.Router();
@@ -128,7 +129,7 @@ export default function createRouter(deps) {
                 });
 
                 const dbClient = supabaseAdmin || supabase;
-                if (dbClient && userId) {
+                if (dbClient && isValidUuid(userId)) {
                     console.log(`[DB-SAVE] Attempting insert for User: ${userId}, Type: ${type}`);
                     
                     const { data: insertedData, error: dbError } = await dbClient.from('assets').insert([{
@@ -195,7 +196,7 @@ export default function createRouter(deps) {
 
             let insertedId = `asset_${Date.now()}`;
             const dbClient = supabaseAdmin || supabase;
-            if (dbClient && userId) {
+            if (dbClient && isValidUuid(userId)) {
                 // Use 'reference_upload' type for ref items so gallery queries can filter them out
                 const dbType = isRefUpload ? 'reference_upload' : type;
                 const { data: dbData, error: dbError } = await dbClient
@@ -312,7 +313,7 @@ export default function createRouter(deps) {
 
             // Save to assets database table in Supabase
             const dbClient = supabaseAdmin || supabase;
-            if (dbClient && userId) {
+            if (dbClient && isValidUuid(userId)) {
                 try {
                     await dbClient.from('assets').insert([{
                         name,
