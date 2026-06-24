@@ -607,8 +607,13 @@ Return ONLY valid JSON.`
                 userId = 'local_user';
             }
 
+            // Only query Supabase if userId is a valid UUID.
+            // The assets.user_id column is UUID type — passing non-UUID strings
+            // like "local_user" or "anon" causes a Postgres type error.
+            const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+
             let dbData = [];
-            if (supabase) {
+            if (supabase && isValidUuid) {
                 try {
                     const { data, error } = await supabase
                         .from('assets')
