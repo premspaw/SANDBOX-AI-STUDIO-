@@ -11,6 +11,8 @@ export default function createRouter(deps) {
         resolution,
         generateAudio,
         resolvedIdentity,
+        resolvedVideos,
+        resolvedAudios,
         resolvedFirstFrame,
         resolvedLastFrame,
         targetModel
@@ -24,14 +26,15 @@ export default function createRouter(deps) {
             prompt: prompt,
             aspect_ratio: (aspectRatio || "16:9").replace(':', '/'),
             duration: Number(duration) || 5,
-            resolution: resolution === '4k' ? '1080p' : (resolution || '1080p'),
+            resolution: resolution || '720p',
             generate_audio: !!generateAudio,
-            web_search: false,
-            identity_images: resolvedIdentity,
-            referenceImages: resolvedIdentity
+            web_search: false
         };
         if (resolvedFirstFrame) input.first_frame_url = resolvedFirstFrame;
         if (resolvedLastFrame) input.last_frame_url = resolvedLastFrame;
+        if (resolvedIdentity?.length > 0) input.reference_image_urls = resolvedIdentity;
+        if (resolvedVideos?.length > 0) input.reference_video_urls = resolvedVideos;
+        if (resolvedAudios?.length > 0) input.reference_audio_urls = resolvedAudios;
 
         console.log(`[SEEDANCE-KIE-FALLBACK] Creating task via Kie.ai:`, JSON.stringify(input, null, 2));
 
@@ -92,10 +95,13 @@ export default function createRouter(deps) {
             const resLower = (resolution || '720p').toLowerCase();
 
             if (engine === 'seedance-fast') {
-                const costPerSec = resLower === '480p' ? 6 : 12;
+                const costPerSec = resLower === '480p' ? 9 : 20;
                 requiredCredits = costPerSec * durationNum;
             } else if (engine === 'seedace') {
-                const costPerSec = (resLower === '1080p' || resLower === '4k') ? 41 : (resLower === '480p' ? 7 : 16);
+                const costPerSec = resLower === '4k' ? 124 : (resLower === '1080p' ? 61 : (resLower === '480p' ? 11 : 24));
+                requiredCredits = costPerSec * durationNum;
+            } else if (engine === 'seedance-mini') {
+                const costPerSec = resLower === '480p' ? 6 : 12;
                 requiredCredits = costPerSec * durationNum;
             }
 
@@ -155,6 +161,18 @@ export default function createRouter(deps) {
                 });
             }
 
+            // Extract video and audio references from resolved content array
+            let resolvedVideos = [];
+            let resolvedAudios = [];
+            if (content.length > 0) {
+                resolvedVideos = content
+                    .filter(c => c.role === 'reference_video' && (c.video_url?.url || c.image_url?.url))
+                    .map(c => c.video_url?.url || c.image_url?.url);
+                resolvedAudios = content
+                    .filter(c => c.role === 'reference_audio' && (c.audio_url?.url || c.image_url?.url))
+                    .map(c => c.audio_url?.url || c.image_url?.url);
+            }
+
             // Handle seedance-fast model
             if (engine === 'seedance-fast') {
                 const apiKey = process.env.ARK_API_KEY;
@@ -173,6 +191,8 @@ export default function createRouter(deps) {
                         resolution,
                         generateAudio,
                         resolvedIdentity,
+                        resolvedVideos,
+                        resolvedAudios,
                         resolvedFirstFrame,
                         resolvedLastFrame,
                         targetModel: 'bytedance/seedance-2-fast'
@@ -220,6 +240,8 @@ export default function createRouter(deps) {
                                 resolution,
                                 generateAudio,
                                 resolvedIdentity,
+                                resolvedVideos,
+                                resolvedAudios,
                                 resolvedFirstFrame,
                                 resolvedLastFrame,
                                 targetModel: 'bytedance/seedance-2-fast'
@@ -288,6 +310,8 @@ export default function createRouter(deps) {
                                     resolution,
                                     generateAudio,
                                     resolvedIdentity,
+                                    resolvedVideos,
+                                    resolvedAudios,
                                     resolvedFirstFrame,
                                     resolvedLastFrame,
                                     targetModel: 'bytedance/seedance-2-fast'
@@ -317,14 +341,15 @@ export default function createRouter(deps) {
                         prompt: finalPrompt,
                         aspect_ratio: (aspectRatio || "16:9").replace(':', '/'),
                         duration: Number(duration) || 5,
-                        resolution: resolution === '4k' ? '1080p' : (resolution || '1080p'),
+                        resolution: resolution || '720p',
                         generate_audio: !!generateAudio,
-                        web_search: false,
-                        identity_images: resolvedIdentity,
-                        referenceImages: resolvedIdentity
+                        web_search: false
                     };
                     if (resolvedFirstFrame) input.first_frame_url = resolvedFirstFrame;
                     if (resolvedLastFrame) input.last_frame_url = resolvedLastFrame;
+                    if (resolvedIdentity.length > 0) input.reference_image_urls = resolvedIdentity;
+                    if (resolvedVideos.length > 0) input.reference_video_urls = resolvedVideos;
+                    if (resolvedAudios.length > 0) input.reference_audio_urls = resolvedAudios;
 
                     console.log(`[SEEDANCE-2.0-KIE] Creating task via Kie.ai:`, JSON.stringify(input, null, 2));
 
@@ -335,7 +360,7 @@ export default function createRouter(deps) {
                             'Authorization': `Bearer ${kieApiKey}`
                         },
                         body: JSON.stringify({
-                            model: req.body.model || 'bytedance/seedance-2-fast',
+                            model: req.body.model || 'bytedance/seedance-2',
                             input
                         })
                     });
@@ -352,6 +377,63 @@ export default function createRouter(deps) {
                     console.log(`[SEEDANCE-2.0-KIE] Task created successfully: ${taskId}`);
                     return res.json({ success: true, requestId: taskId, engine: 'seedace-kie' });
                 }
+            }
+
+            // Handle seedance-mini model — routes only through Kie.ai (no Ark)
+            if (engine === 'seedance-mini') {
+                const kieApiKey = process.env.KIE_API_KEY;
+                if (!kieApiKey) {
+                    throw new Error("KIE_API_KEY is not configured on the server, cannot run seedance-mini.");
+                }
+
+                const resolutionMini = resolution === '4k' ? '720p' : (resolution || '720p');
+
+                const miniInput = {
+                    prompt: finalPrompt,
+                    aspect_ratio: (aspectRatio || "16:9").replace(':', '/'),
+                    duration: Number(duration) || 5,
+                    generate_audio: !!generateAudio,
+                    resolution: resolutionMini,
+                    web_search: false
+                };
+
+                if (resolvedFirstFrame) miniInput.first_frame_url = resolvedFirstFrame;
+                if (resolvedLastFrame) miniInput.last_frame_url = resolvedLastFrame;
+                if (resolvedIdentity.length > 0) {
+                    miniInput.reference_image_urls = resolvedIdentity;
+                }
+                if (resolvedVideos.length > 0) {
+                    miniInput.reference_video_urls = resolvedVideos;
+                }
+                if (resolvedAudios.length > 0) {
+                    miniInput.reference_audio_urls = resolvedAudios;
+                }
+
+                console.log(`[SEEDANCE-MINI] Creating task via Kie.ai:`, JSON.stringify(miniInput, null, 2));
+
+                const createResp = await fetch("https://api.kie.ai/api/v1/jobs/createTask", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${kieApiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: req.body.model || 'bytedance/seedance-2-mini',
+                        input: miniInput
+                    })
+                });
+
+                const createData = await createResp.json();
+                if (createData.code !== 200) {
+                    throw new Error(`Kie.ai Error: ${createData.msg || JSON.stringify(createData)}`);
+                }
+                const taskId = createData.data?.taskId;
+                if (!taskId) {
+                    throw new Error("Kie.ai task creation succeeded but did not return a taskId.");
+                }
+
+                console.log(`[SEEDANCE-MINI] Task created successfully: ${taskId}`);
+                return res.json({ success: true, requestId: taskId, engine: 'seedance-mini' });
             }
 
             throw new Error(`Unsupported engine: ${engine}`);
@@ -407,7 +489,7 @@ export default function createRouter(deps) {
             }
 
             // 2. Handle Kie.ai engine polling
-            if (engine === 'seedace-kie' || engine === 'seedace') {
+            if (engine === 'seedace-kie' || engine === 'seedace' || engine === 'seedance-mini') {
                 const apiKey = process.env.KIE_API_KEY;
                 if (!apiKey) throw new Error("Kie.ai API Key missing.");
 

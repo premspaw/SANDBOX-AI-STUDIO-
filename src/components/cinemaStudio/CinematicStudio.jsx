@@ -140,8 +140,9 @@ const ENGINES = [
   { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — 5⚡/s (9⚡/s audio)', cost: 5 },
   { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3.1 Fast',     icon: '⚡', desc: 'Google Fast — 3⚡/s (5⚡/s audio)',         cost: 3 },
   { id: 'veo-3.1-lite-generate-preview', label: 'Veo 3.1 Lite',     icon: '🍃', desc: 'Google Lite — 2⚡/s (3⚡/s audio)',           cost: 2 },
-  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 12⚡/s (480p/1080p)',          cost: 12 },
-  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 16⚡/s (480p/1080p)', cost: 16 },
+  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 20⚡/s (720p) / 9⚡/s (480p)',          cost: 20 },
+  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 11⚡/s (480p) / 24⚡/s (720p) / 61⚡/s (1080p) / 124⚡/s (4K)', cost: 24 },
+  { id: 'seedance-mini',                 label: 'Seedance Mini',    icon: '🧊', desc: 'ByteDance — 12⚡/s (720p) / 6⚡/s (480p)',  cost: 12 },
   { id: 'omni',                          label: 'Omni',            icon: '🌐', desc: 'Multi-modal fusion engine — 6⚡/s',             cost: 6 },
   { id: 'omni-flash',                    label: 'Omni Flash',      icon: '✨', desc: 'Omni fast — 4⚡/s',           cost: 4 },
 ];
@@ -166,6 +167,7 @@ const ASPECT_OPTIONS = [
 ];
 
 const RESOLUTION_OPTIONS = [
+  { value: '480p', label: '480p', desc: 'Standard definition — fastest generation' },
   { value: '720p', label: '720p', desc: 'Standard definition — faster generation' },
   { value: '1080p', label: '1080p', desc: 'Full HD — recommended quality' },
   { value: '4k', label: '4K', desc: 'Ultra HD — cinematic sharpness' }
@@ -547,7 +549,7 @@ export default function CinematicStudio() {
 
   // Adjust resolution & duration options dynamically for Seedance & Veo 3.1 engines
   useEffect(() => {
-    const isSeed = activeEngine === 'seedance-fast' || activeEngine === 'seedace';
+    const isSeed = activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini';
     const isVeo3 = activeEngine.startsWith('veo-3.1') || activeEngine === 'omni' || activeEngine === 'omni-flash';
     
     if (isVeo3) {
@@ -557,8 +559,11 @@ export default function CinematicStudio() {
         else setDuration(8);
       }
     } else if (isSeed) {
-      if (resolution === '4k') {
-        setResolution('1080p');
+      const maxRes = activeEngine === 'seedace' ? '4k' : '720p';
+      const resIdx = ['480p', '720p', '1080p', '4k'].indexOf(resolution);
+      const maxIdx = ['480p', '720p', '1080p', '4k'].indexOf(maxRes);
+      if (resIdx > maxIdx) {
+        setResolution(maxRes);
       }
       if (![5, 10, 15].includes(duration)) {
         if (duration <= 7) setDuration(5);
@@ -1245,10 +1250,14 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
       return costPerSec * duration;
     }
     if (engineId === 'seedance-fast') {
-      return 12 * duration;
+      return (resolution === '480p' ? 9 : 20) * duration;
     }
     if (engineId === 'seedace') {
-      return 16 * duration;
+      const costPerSec = resolution === '4k' ? 124 : (resolution === '1080p' ? 61 : (resolution === '480p' ? 11 : 24));
+      return costPerSec * duration;
+    }
+    if (engineId === 'seedance-mini') {
+      return (resolution === '480p' ? 6 : 12) * duration;
     }
     return (ENGINES.find(e => e.id === engineId)?.cost || 4) * duration;
   };
@@ -1357,7 +1366,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
   /* ─── SEEDANCE POLL ──────────────────────────────────────── */
   const pollSeedanceTask = async (taskId, activePrompt, activeRatio, engine) => {
     setStatus('polling');
-    const engineLabel = engine.includes('fast') ? 'Seedance Fast' : 'Seedance 2.0';
+    const engineLabel = engine.includes('fast') ? 'Seedance Fast' : engine.includes('mini') ? 'Seedance Mini' : 'Seedance 2.0';
 
     for (let i = 0; i < 120; i++) {
       await new Promise(r => setTimeout(r, 6000));
@@ -1504,7 +1513,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
     const activeRatio = aspectRatio;
     const taggedItems = getTaggedRefItems(basePrompt);
     const compiled = getCompiledPrompt();
-    const resVal = resolution === '720p' ? '1K' : resolution === '1080p' ? '2K' : '4K';
+    const resVal = resolution === '480p' ? 'SD' : resolution === '720p' ? '1K' : resolution === '1080p' ? '2K' : '4K';
 
     if (activeTab === 'image') {
       let finalSize = '1024x1024';
@@ -1544,6 +1553,20 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
         return {
           engine: activeEngine,
           model: activeEngine === 'seedance-fast' ? 'dreamina-seedance-2-0-fast-260128' : 'dreamina-seedance-2-0-260128',
+          seedanceContentArray,
+          duration,
+          aspectRatio: activeRatio,
+          resolution,
+          userId,
+          generateAudio
+        };
+      }
+
+      if (activeEngine === 'seedance-mini') {
+        const seedanceContentArray = buildSeedanceContentArray(compiled, taggedItems, firstFrameImage, lastFrameImage);
+        return {
+          engine: activeEngine,
+          model: 'bytedance/seedance-2-mini',
           seedanceContentArray,
           duration,
           aspectRatio: activeRatio,
@@ -1646,7 +1669,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
           const seedVal = Math.floor(Math.random() * 1000000);
           const tweakedPrompt = `${finalPrompt} [seed: ${seedVal}]`;
 
-          const resVal = resolution === '720p' ? '1K' : resolution === '1080p' ? '2K' : '4K';
+          const resVal = resolution === '480p' ? 'SD' : resolution === '720p' ? '1K' : resolution === '1080p' ? '2K' : '4K';
           const _adminTrialOn = localStorage.getItem('useAdminTrialApiKey') === 'true';
           const _adminKey = localStorage.getItem('adminTrialApiKey') || '';
           const _imgHeaders = { 'Content-Type': 'application/json' };
@@ -1703,7 +1726,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
       return;
     }
 
-    if (activeEngine !== 'seedace' && activeEngine !== 'seedance-fast') {
+    if (activeEngine !== 'seedace' && activeEngine !== 'seedance-fast' && activeEngine !== 'seedance-mini') {
       try {
         let targetModel = activeEngine;
         let engineLabel = ENGINES.find(e => e.id === activeEngine)?.label || 'Veo 3.1';
@@ -1783,7 +1806,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
         if (showToast) showToast(cleanErr, "error");
         await triggerRefund('cinematic_video_generation');
       }
-    } else if (activeEngine === 'seedance-fast' || activeEngine === 'seedace') {
+    } else if (activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini') {
       try {
         if (variationCount > 1) {
           const showToast = useAppStore.getState().showToast;
@@ -1792,6 +1815,8 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
 
         const modelParam = activeEngine === 'seedance-fast'
           ? 'dreamina-seedance-2-0-fast-260128'
+          : activeEngine === 'seedance-mini'
+          ? 'bytedance/seedance-2-mini'
           : 'dreamina-seedance-2-0-260128';
 
         const seedanceContentArray = buildSeedanceContentArray(compiledPrompt, taggedItems, firstFrameImage, lastFrameImage);
@@ -2691,6 +2716,12 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                                   ? `Google Fast — ${resolution === '4k' ? (generateAudio ? '38⚡/s' : '31⚡/s') : resolution === '1080p' ? (generateAudio ? '15⚡/s' : '12⚡/s') : (generateAudio ? '12⚡/s' : '10⚡/s')}`
                                   : eng.id === 'veo-3.1-lite-generate-preview'
                                   ? `Google Lite — ${resolution === '4k' || resolution === '1080p' ? (generateAudio ? '10⚡/s' : '6⚡/s') : (generateAudio ? '6⚡/s' : '4⚡/s')}`
+                                  : eng.id === 'seedance-fast'
+                                  ? `ByteDance — ${resolution === '480p' ? '9⚡/s' : '20⚡/s'} (${resolution === '480p' ? '480p' : '720p'})`
+                                  : eng.id === 'seedace'
+                                  ? `ByteDance — ${resolution === '4k' ? '124⚡/s' : resolution === '1080p' ? '61⚡/s' : resolution === '480p' ? '11⚡/s' : '24⚡/s'} (${resolution})`
+                                  : eng.id === 'seedance-mini'
+                                  ? `ByteDance — ${resolution === '480p' ? '6⚡/s' : '12⚡/s'} (${resolution === '480p' ? '480p' : '720p'})`
                                   : eng.desc}
                               </p>
                             </div>
@@ -2774,21 +2805,23 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                   {/* RESOLUTION DROPDOWN */}
                   <UpwardDropdown
                     icon={<Tv size={9} />}
-                    label={activeTab === 'image' ? (resolution === '720p' ? '1K' : resolution === '1080p' ? '2K' : '4K') : resolution}
+                    label={activeTab === 'image' ? (resolution === '480p' ? 'SD' : resolution === '720p' ? '1K' : resolution === '1080p' ? '2K' : '4K') : resolution}
                     accentColor="lime"
                   >
                     {(close) => (
                       <div className="space-y-0.5 w-48">
                         {RESOLUTION_OPTIONS.filter(opt => {
-                          const isSeed = activeEngine === 'seedance-fast' || activeEngine === 'seedace';
-                          if (isSeed && opt.value === '4k') return false;
+                          const isSeedance = activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini';
+                          const no4k = activeEngine === 'seedance-fast' || activeEngine === 'seedance-mini';
+                          if (opt.value === '480p' && !isSeedance) return false;
+                          if (no4k && opt.value === '4k') return false;
                           return true;
                         }).map((opt, i) => {
                           const displayLabel = activeTab === 'image'
-                            ? (opt.value === '720p' ? '1K' : opt.value === '1080p' ? '2K' : '4K')
+                            ? (opt.value === '480p' ? 'SD' : opt.value === '720p' ? '1K' : opt.value === '1080p' ? '2K' : '4K')
                             : opt.label;
                           const displayDesc = activeTab === 'image'
-                            ? (opt.value === '720p' ? 'Standard resolution' : opt.value === '1080p' ? 'High resolution (2K)' : 'Ultra-high definition (4K)')
+                            ? (opt.value === '480p' ? 'Standard definition' : opt.value === '720p' ? 'Standard resolution' : opt.value === '1080p' ? 'High resolution (2K)' : 'Ultra-high definition (4K)')
                             : opt.desc;
                           return (
                             <motion.button
@@ -2880,7 +2913,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                         <div className="space-y-0.5">
                           {(() => {
                             const isVeo3 = activeEngine.startsWith('veo-3.1') || activeEngine === 'omni' || activeEngine === 'omni-flash';
-                            const isSeedance = activeEngine === 'seedance-fast' || activeEngine === 'seedace';
+                            const isSeedance = activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini';
                             const currentDurationOptions = isVeo3 
                               ? VEO_DURATION_OPTIONS 
                               : (isSeedance ? SEEDANCE_DURATION_OPTIONS : DURATION_OPTIONS);
@@ -2931,7 +2964,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                   )}
 
                   {/* AUDIO TOGGLE (Video only, Seedance & Veo 3.1 engines) */}
-                  {activeTab === 'video' && (activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine.startsWith('veo-3.1')) && (
+                  {activeTab === 'video' && (activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini' || activeEngine.startsWith('veo-3.1')) && (
                     <button
                       type="button"
                       onClick={() => setGenerateAudio(!generateAudio)}

@@ -9,6 +9,7 @@ import { getApiUrl } from '../../config/apiConfig';
 import { useAppStore } from '../../store';
 import { supabase } from '../../lib/supabase';
 
+const HERMES_API = 'http://localhost:8642';
 const AGENT_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
 
 // Restricted to Content Creation, Scriptwriting, Reels, and Visual Prompts
@@ -129,11 +130,14 @@ export default function AgentPage() {
     const userProfile = useAppStore(state => state.userProfile);
     const userId = userProfile?.id;
 
+    // Hermes Bridge session
+    const [hermesSessionId, setHermesSessionId] = useState(null);
+
     // Chat State
     const [messages, setMessages] = useState([
         {
             role: 'assistant',
-            content: `Hey! I'm **ZeroLens AI** — your creative agent powered by NVIDIA Nemotron 120B.\n\nI can help you with:\n- Instagram carousels & content plans\n- Storytelling scripts & viral Reels copy\n- High-fidelity video and image prompt engineering\n- Weekly content calendars & brand voice strategy\n\nWhat do you want to create today?`,
+            content: `Hey! I'm **ZeroLens AI** — your creative agent.\n\nI can help you with:\n- Instagram carousels & content plans\n- Storytelling scripts & viral Reels copy\n- High-fidelity video and image prompt engineering\n- Weekly content calendars & brand voice strategy\n\nWhat do you want to create today?`,
             ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         }
     ]);
@@ -289,6 +293,54 @@ export default function AgentPage() {
         loadChatHistory();
     }, [userId, chatLoaded]);
 
+    // Create or reuse Hermes bridge session across page refreshes
+    useEffect(() => {
+        let cancelled = false;
+        const existingId = localStorage.getItem('hermes_session_id');
+        const createSession = () => {
+            fetch(`${HERMES_API}/api/sessions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    system_prompt: `You are a friendly teacher explaining to a 5-year-old. Keep responses VERY short (max 3 sentences). Use simple words. Use visual formatting: bullet points, line breaks, and emojis to make it fun and easy to understand. NO long paragraphs. NO technical jargon. Answer like you are talking to a curious child.
+
+--- VISION PROMPT (copy this for ZeroLens image/video generation) ---
+Generate detailed, cinematic prompts for ZeroLens image/video models. Include: subject, lighting, mood, camera angle, composition, color palette, style reference (e.g., cinematic, anime, photorealistic), motion description (for video). Use descriptive adjectives. Format as a single paragraph or structured bullet list. Example: "A golden retriever puppy playing in a sunlit meadow at golden hour, shallow depth of field, warm tones, cinematic shot, slow-motion wagging tail, 4K."`
+                }),
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (!cancelled && data.session_id) {
+                        localStorage.setItem('hermes_session_id', data.session_id);
+                        setHermesSessionId(data.session_id);
+                    }
+                })
+                .catch(err => console.warn('[AgentPage] Hermes bridge unavailable:', err.message));
+        };
+        if (existingId) {
+            fetch(`${HERMES_API}/api/sessions/${existingId}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: '', history: [] }),
+            })
+                .then(r => {
+                    if (r.ok) {
+                        if (!cancelled) setHermesSessionId(existingId);
+                    } else {
+                        localStorage.removeItem('hermes_session_id');
+                        createSession();
+                    }
+                })
+                .catch(() => {
+                    localStorage.removeItem('hermes_session_id');
+                    createSession();
+                });
+        } else {
+            createSession();
+        }
+        return () => { cancelled = true; };
+    }, []);
+
     // Save chat history to Supabase
     const saveChatHistory = async (nextMessages) => {
         if (!userId || !supabase) return;
@@ -337,46 +389,12 @@ export default function AgentPage() {
         setIsThinking(true);
 
         try {
-            const history = nextMessages.map(m => ({
-                role: m.role === 'assistant' ? 'assistant' : 'user',
-                content: m.tool
-                    ? `[Tool: ${TOOLS.find(t => t.id === m.tool)?.label || m.tool}]\n${m.content}`
-                    : m.content
-            }));
+            if (!hermesSessionId) throw new Error('Hermes bridge session not ready');
 
-            // Assemble dynamic system prompt combining base prompt + custom settings
-            let compiledSystemPrompt = SYSTEM_PROMPT;
-            
-            if (customPersona.trim()) {
-                compiledSystemPrompt += `\n\n[CUSTOM PERSONA / SOUL.md]\n${customPersona.trim()}`;
-            }
-
-            // Append instructions from selected active skills
-            const selectedSkillsData = dbSkills.filter(s => activeSkills.includes(s.name));
-            if (selectedSkillsData.length > 0) {
-                compiledSystemPrompt += `\n\n[ACTIVE SPECIALIST SKILLS]:`;
-                selectedSkillsData.forEach(s => {
-                    compiledSystemPrompt += `\n### Skill: ${s.name}\n${s.system_instructions}`;
-                });
-            }
-
-            if (workspaceTarget) {
-                compiledSystemPrompt += `\n\n[WORKSPACE INSTRUCTIONS]\nTarget target instructions are bound to: ${workspaceTarget}`;
-            }
-
-            if (activeTool) {
-                compiledSystemPrompt += `\n\n[CURRENT TASK MODE]\nMode: ${TOOLS.find(t => t.id === activeTool)?.label} — ${TOOLS.find(t => t.id === activeTool)?.desc}`;
-            }
-
-            const resp = await fetch(getApiUrl('/api/agent/chat'), {
+            const resp = await fetch(`${HERMES_API}/api/sessions/${hermesSessionId}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    history,
-                    systemPrompt: compiledSystemPrompt,
-                    memory,
-                    userId,
-                })
+                body: JSON.stringify({ message: text }),
             });
 
             const data = await resp.json();
@@ -385,7 +403,7 @@ export default function AgentPage() {
             const assistantMsg = {
                 role: 'assistant',
                 content: data.text || '',
-                thinking: data.thinking || null,
+                thinking: null,
                 ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             };
             const updatedMessages = [...nextMessages, assistantMsg];
@@ -423,6 +441,10 @@ export default function AgentPage() {
         saveChatHistory(clearedMessages);
         setMemory([]);
         saveMemory([]);
+        if (hermesSessionId) {
+            fetch(`${HERMES_API}/api/sessions/${hermesSessionId}/clear`, { method: 'POST' })
+                .catch(err => console.warn('[AgentPage] Failed to clear Hermes session:', err.message));
+        }
     };
 
     const toggleSkill = (skillName) => {
@@ -432,6 +454,27 @@ export default function AgentPage() {
                 : [...prev, skillName]
         );
     };
+
+    if (!userProfile) {
+        const setActiveTab = useAppStore.getState().setActiveTab;
+        return (
+            <div className="h-full flex items-center justify-center bg-[#06060c] text-white">
+                <div className="text-center max-w-md px-6">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-violet-900/50">
+                        <Bot className="w-8 h-8 text-white" />
+                    </div>
+                    <h2 className="text-xl font-black text-white mb-2">Sign in to use Hermes AI</h2>
+                    <p className="text-sm text-white/40 leading-relaxed mb-6">
+                        You need an account to chat with Hermes. Your credits and chat history are tied to your profile.
+                    </p>
+                    <button onClick={() => setActiveTab('auth')}
+                        className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-sm hover:from-violet-500 hover:to-indigo-500 transition-all shadow-xl shadow-violet-900/30">
+                        Sign In
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-full flex bg-[#06060c] text-white overflow-hidden font-sans relative">
@@ -449,7 +492,6 @@ export default function AgentPage() {
                         </div>
                         <div>
                             <p className="text-xs font-black text-white tracking-tight uppercase italic">Hermes AI</p>
-                            <p className="text-[9px] text-white/45 font-mono">Nemotron 128B · Creative</p>
                         </div>
                     </div>
                     <div className="mt-2 flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full w-fit">
@@ -670,7 +712,7 @@ export default function AgentPage() {
                             {isThinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                         </button>
                     </div>
-                    <p className="text-[9px] text-white/20 mt-2 text-center font-mono">Hermes AI · NVIDIA Nemotron 128B via OpenRouter · Creative Mode</p>
+                    <p className="text-[9px] text-white/20 mt-2 text-center font-mono">Hermes AI · Creative Mode</p>
                 </div>
             </div>
 

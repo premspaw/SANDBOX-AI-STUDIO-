@@ -8,6 +8,7 @@
     "start:prod": "pm2 start server.js -i max --node-args=\"--max-old-space-size=4096\"",
     "dev": "vite",
     "server": "npx kill-port 3002 && node --max-old-space-size=4096 server.js",
+    "hermes": "cd server && start-hermes-bridge.bat",
     "build": "vite build",
     "lint": "eslint \"src/**/*.{js,jsx}\"",
     "preview": "vite preview"
