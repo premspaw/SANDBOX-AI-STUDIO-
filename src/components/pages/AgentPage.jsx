@@ -745,8 +745,8 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include on
                             </div>
                             <button onClick={() => handleSend()}
                                 disabled={!input.trim() || isThinking}
-                                className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white disabled:opacity-25 disabled:cursor-not-allowed hover:scale-105 active:scale-95 transition-all duration-150 shadow-lg shadow-indigo-500/20 shrink-0 hover:shadow-indigo-500/30">
-                                {isThinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                className="w-11 h-11 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white disabled:opacity-20 disabled:cursor-not-allowed hover:scale-[1.03] active:scale-95 transition-all duration-150 shadow-[0_0_16px_rgba(99,102,241,0.25)] shrink-0 hover:shadow-[0_0_24px_rgba(99,102,241,0.4)]">
+                                {isThinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <div className="relative w-4 h-4"><Send className="w-4 h-4 absolute inset-0" /><div className="absolute -inset-1 bg-indigo-400/20 rounded blur-sm" /></div>}
                             </button>
                         </div>
                     </div>
