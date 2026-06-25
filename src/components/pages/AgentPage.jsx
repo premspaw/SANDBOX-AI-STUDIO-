@@ -92,18 +92,18 @@ function MessageBubble({ msg }) {
     return (
         <div className={cn('flex gap-3', isUser ? 'justify-end' : 'justify-start')}>
             {!isUser && (
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0 mt-0.5 shadow-lg shadow-violet-900/40">
-                    <Bot className="w-4 h-4 text-white" />
+                <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0 mt-1 shadow-lg shadow-violet-900/30">
+                    <Bot className="w-3.5 h-3.5 text-white" />
                 </div>
             )}
             <div className={cn(
-                'max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
+                'max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
                 isUser
-                    ? 'bg-gradient-to-br from-violet-600/30 to-indigo-600/20 border border-violet-500/20 text-white ml-auto'
-                    : 'bg-white/[0.04] border border-white/8 text-white/80'
+                    ? 'bg-gradient-to-br from-violet-600/25 to-indigo-600/15 border border-violet-500/15 text-white/90 ml-auto shadow-sm'
+                    : 'bg-white/[0.03] border border-white/[0.06] text-white/80'
             )}>
                 {msg.tool && <div className="mb-2"><ToolBadge tool={TOOLS.find(t => t.id === msg.tool)} /></div>}
-                <div className="text-[13px] leading-relaxed">{renderContent(msg.content)}</div>
+                <div className="text-[14px] leading-relaxed">{renderContent(msg.content)}</div>
                 {msg.thinking && (
                     <button onClick={() => setShowRaw(!showRaw)}
                         className="mt-2 flex items-center gap-1 text-[9px] text-white/20 hover:text-white/40 transition-colors">
@@ -115,11 +115,11 @@ function MessageBubble({ msg }) {
                 {showRaw && msg.thinking && (
                     <pre className="mt-2 text-[10px] text-white/20 whitespace-pre-wrap border-t border-white/5 pt-2">{msg.thinking}</pre>
                 )}
-                <div className="mt-1 text-[9px] text-white/15">{msg.ts}</div>
+                <div className="mt-1.5 text-[10px] text-white/20">{msg.ts}</div>
             </div>
             {isUser && (
-                <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-black text-white/50">
-                    U
+                <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-white/10 to-white/5 border border-white/[0.08] flex items-center justify-center shrink-0 mt-1 shadow-sm">
+                    <User className="w-3.5 h-3.5 text-white/40" />
                 </div>
             )}
         </div>
@@ -661,88 +661,94 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include on
                 </div>
             </div>
 
-            {/* RIGHT: Chat area */}
-            <div className="flex-1 flex flex-col min-w-0">
+            {/* RIGHT: Chat area — premium centered layout */}
+            <div className="flex-1 flex flex-col min-w-0 bg-[#08080e]">
                 {/* Top bar */}
-                <div className="flex items-center gap-3 px-5 py-3.5 border-b border-white/5 bg-[#0a0a14]/40 shrink-0">
-                    <Zap className="w-4 h-4 text-indigo-400" />
-                    <span className="text-xs font-black uppercase tracking-[0.2em] text-white/70 italic">Hermes AI Director</span>
-                    {activeTool && (() => {
-                        const t = TOOLS.find(x => x.id === activeTool);
-                        if (!t) return null;
-                        const Icon = t.icon;
-                        return (
-                            <div className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-wider', t.color)}>
-                                <Icon className="w-2.5 h-2.5" /> {t.label} Active
-                            </div>
-                        );
-                    })()}
-                    
-                    {/* Settings Trigger */}
-                    <button 
-                        onClick={() => setIsConfigOpen(!isConfigOpen)}
-                        className={cn(
-                            "ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-bold tracking-wider uppercase transition-all duration-200",
-                            isConfigOpen 
-                                ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-300"
-                                : "bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10"
-                        )}
-                    >
-                        <Sliders className="w-3.5 h-3.5" /> Configuration
-                    </button>
-                </div>
-
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 custom-scrollbar">
-                    {/* Suggested prompts — only show if just the greeting */}
-                    {messages.length === 1 && (
-                        <div className="grid grid-cols-2 gap-2 mb-2">
-                            {SUGGESTED_PROMPTS.map((p, i) => (
-                                <button key={i} onClick={() => handleSend(p)}
-                                    className="text-left text-[11px] text-white/50 bg-white/[0.015] border border-white/5 rounded-2xl px-4 py-3 hover:bg-white/[0.04] hover:text-white/80 hover:border-white/10 transition-all duration-200 leading-snug shadow-sm">
-                                    {p}
-                                </button>
-                            ))}
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-white/[0.04] bg-[#0a0a14]/60 backdrop-blur-xl shrink-0">
+                    <div className="flex items-center gap-3 max-w-4xl w-full mx-auto">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500/80 to-indigo-600/80 flex items-center justify-center shadow-lg shadow-violet-900/30">
+                            <Zap className="w-4 h-4 text-white" />
                         </div>
-                    )}
-
-                    {messages.map((msg, i) => (
-                        <MessageBubble key={i} msg={msg} />
-                    ))}
-
-                    {isThinking && (
-                        <div className="flex gap-3 justify-start">
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-violet-900/40">
-                                <Bot className="w-4 h-4 text-white" />
-                            </div>
-                            <div className="bg-white/[0.04] border border-white/8 rounded-2xl px-4 py-3 flex items-center gap-2">
-                                <Loader2 className="w-3.5 h-3.5 text-indigo-400 animate-spin" />
-                                <span className="text-[12px] text-white/30">Hermes is shaping concepts…</span>
-                            </div>
-                        </div>
-                    )}
-                    <div ref={bottomRef} />
-                </div>
-
-                {/* Input — fixed at bottom */}
-                <div className="p-3 border-t border-white/5 bg-[#0a0a14]/60 backdrop-blur-sm shrink-0">
-                    <div className="flex gap-2 items-end max-w-4xl mx-auto w-full">
-                        <div className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-3.5 py-2.5 focus-within:border-indigo-500/40 focus-within:bg-white/[0.04] transition-all duration-200 shadow-sm">
-                            <textarea
-                                ref={textRef}
-                                value={input}
-                                onChange={e => { setInput(e.target.value); }}
-                                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                                placeholder={activeTool ? `Instruct Hermes on ${TOOLS.find(t => t.id === activeTool)?.label || activeTool}…` : "Ask Hermes for scripting, reel concepts, or visual prompts…"}
-                                rows={1}
-                                className="w-full bg-transparent text-sm text-white placeholder-white/20 outline-none resize-none leading-relaxed max-h-[120px] overflow-y-auto"
-                            />
-                        </div>
-                        <button onClick={() => handleSend()}
-                            disabled={!input.trim() || isThinking}
-                            className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95 transition-all duration-150 shadow-lg shadow-indigo-500/20 shrink-0">
-                            {isThinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        <span className="text-sm font-black tracking-tight text-white/80">Hermes AI</span>
+                        {activeTool && (() => {
+                            const t = TOOLS.find(x => x.id === activeTool);
+                            if (!t) return null;
+                            const Icon = t.icon;
+                            return (
+                                <div className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-[9px] font-bold uppercase tracking-wider', t.color)}>
+                                    <Icon className="w-2.5 h-2.5" /> {t.label}
+                                </div>
+                            );
+                        })()}
+                        <button 
+                            onClick={() => setIsConfigOpen(!isConfigOpen)}
+                            className={cn(
+                                "ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] font-semibold tracking-wide transition-all duration-200",
+                                isConfigOpen 
+                                    ? "bg-indigo-500/15 border-indigo-500/30 text-indigo-300"
+                                    : "bg-white/[0.03] border-white/[0.06] text-white/40 hover:text-white/70 hover:bg-white/[0.06]"
+                            )}
+                        >
+                            <Sliders className="w-3 h-3" /> Settings
                         </button>
+                    </div>
+                </div>
+
+                {/* Messages — centered with max-width like ChatGPT */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
+                        {messages.length === 1 && (
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                {SUGGESTED_PROMPTS.map((p, i) => (
+                                    <button key={i} onClick={() => handleSend(p)}
+                                        className="text-left text-[12px] text-white/50 bg-white/[0.02] border border-white/[0.06] rounded-2xl px-4 py-3.5 hover:bg-white/[0.05] hover:text-white/80 hover:border-white/[0.10] transition-all duration-200 leading-relaxed shadow-sm">
+                                        {p}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {messages.map((msg, i) => (
+                            <MessageBubble key={i} msg={msg} />
+                        ))}
+
+                        {isThinking && (
+                            <div className="flex gap-3 justify-start">
+                                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-violet-900/30">
+                                    <Bot className="w-4 h-4 text-white" />
+                                </div>
+                                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-3 flex items-center gap-2.5">
+                                    <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+                                    <span className="text-[13px] text-white/30 font-medium">Thinking...</span>
+                                </div>
+                            </div>
+                        )}
+                        <div ref={bottomRef} />
+                    </div>
+                </div>
+
+                {/* Input — premium fixed bottom */}
+                <div className="border-t border-white/[0.04] bg-[#0a0a14]/80 backdrop-blur-xl shrink-0">
+                    <div className="max-w-3xl mx-auto px-4 py-4">
+                        <div className="flex gap-2.5 items-end">
+                            <div className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-4 py-3.5 focus-within:border-indigo-500/40 focus-within:bg-white/[0.06] focus-within:shadow-[0_0_20px_rgba(99,102,241,0.06)] transition-all duration-200">
+                                <textarea
+                                    ref={textRef}
+                                    value={input}
+                                    onChange={e => { setInput(e.target.value); }}
+                                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                                    placeholder={activeTool ? `Instruct Hermes on ${TOOLS.find(t => t.id === activeTool)?.label || activeTool}…` : "Message Hermes..."}
+                                    rows={1}
+                                    className="w-full bg-transparent text-[14px] text-white placeholder-white/20 outline-none resize-none leading-relaxed max-h-[160px] overflow-y-auto"
+                                    style={{ minHeight: '24px' }}
+                                />
+                            </div>
+                            <button onClick={() => handleSend()}
+                                disabled={!input.trim() || isThinking}
+                                className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white disabled:opacity-25 disabled:cursor-not-allowed hover:scale-105 active:scale-95 transition-all duration-150 shadow-lg shadow-indigo-500/20 shrink-0 hover:shadow-indigo-500/30">
+                                {isThinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
