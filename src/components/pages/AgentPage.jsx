@@ -14,11 +14,11 @@ const AGENT_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
 
 // Restricted to Content Creation, Scriptwriting, Reels, and Visual Prompts
 const TOOLS = [
-    { id: 'carousel', icon: LayoutGrid, label: 'Carousel Brief', color: 'text-pink-400', desc: 'Design Instagram carousels & briefs' },
-    { id: 'script', icon: FileText, label: 'Scriptwriting / Reel', color: 'text-blue-400', desc: 'Write viral reels, scripts & shorts' },
-    { id: 'video_prompt', icon: Sparkles, label: 'Video Prompter', color: 'text-orange-400', desc: 'Engineered prompts for video tools' },
-    { id: 'image_prompt', icon: Image, label: 'Image Prompter', color: 'text-purple-400', desc: 'Engineered prompts for image tools' },
-    { id: 'calendar', icon: Brain, label: 'Content Strategy', color: 'text-yellow-400', desc: 'Content calendar & brand strategy' },
+    { id: 'video_prompt', icon: Sparkles, label: 'Video Promo', color: 'text-orange-400', desc: 'Veo3 / Seedance prompt engineering' },
+    { id: 'script', icon: FileText, label: 'Script Writer', color: 'text-blue-400', desc: 'Reels, ads, storytelling' },
+    { id: 'image_prompt', icon: Image, label: 'Image Generator', color: 'text-purple-400', desc: 'Visual prompts for image models' },
+    { id: 'calendar', icon: Brain, label: '30-Day Content Plan', color: 'text-yellow-400', desc: 'Social media calendar & posting strategy' },
+    { id: 'carousel', icon: LayoutGrid, label: 'Carousel Brief', color: 'text-pink-400', desc: 'Instagram carousel planning' },
 ];
 
 const SYSTEM_PROMPT = `You are ZeroLens AI — an intelligent creative agent embedded in ZeroLens Studio, a professional content creation platform.
@@ -520,37 +520,31 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include on
                     </div>
                 </div>
 
-                {/* Tools — dynamic from Hermes bridge */}
+                {/* Tools — curated creative modes */}
                 <div className="p-3 border-b border-white/5">
                     <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 mb-2.5">Studio Task Modes</p>
                     <div className="space-y-1">
-                        {hermesToolsets.length > 0 ? hermesToolsets.map(toolName => {
-                            const matched = TOOLS.find(t => toolName.toLowerCase().includes(t.id));
-                            const label = matched ? matched.label : toolName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                            const Icon = matched ? matched.icon : Zap;
-                            const color = matched ? matched.color : 'text-white/50';
-                            const desc = matched ? matched.desc : `${toolName} toolset`;
-                            const active = activeTool === toolName;
+                        {TOOLS.map(tool => {
+                            const Icon = tool.icon;
+                            const active = activeTool === tool.id;
                             return (
-                                <button key={toolName}
-                                    onClick={() => setActiveTool(active ? null : toolName)}
+                                <button key={tool.id}
+                                    onClick={() => setActiveTool(active ? null : tool.id)}
                                     className={cn(
                                         'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-all duration-200 border',
                                         active
                                             ? 'bg-gradient-to-r from-white/[0.06] to-white/[0.02] border-white/10 shadow-inner'
                                             : 'hover:bg-white/[0.03] border-transparent'
                                     )}>
-                                    <Icon className={cn('w-3.5 h-3.5 shrink-0 transition-colors duration-200', active ? color : 'text-white/30')} />
+                                    <Icon className={cn('w-3.5 h-3.5 shrink-0 transition-colors duration-200', active ? tool.color : 'text-white/30')} />
                                     <div className="min-w-0">
-                                        <p className={cn('text-[10px] font-black tracking-wide', active ? 'text-white' : 'text-white/60')}>{label}</p>
-                                        <p className="text-[9px] text-white/35 truncate leading-tight mt-0.5">{desc}</p>
+                                        <p className={cn('text-[10px] font-black tracking-wide', active ? 'text-white' : 'text-white/60')}>{tool.label}</p>
+                                        <p className="text-[9px] text-white/35 truncate leading-tight mt-0.5">{tool.desc}</p>
                                     </div>
-                                    {active && <div className={cn('ml-auto w-1.5 h-1.5 rounded-full shadow-lg shadow-current', color)} />}
+                                    {active && <div className={cn('ml-auto w-1.5 h-1.5 rounded-full shadow-lg shadow-current', tool.color)} />}
                                 </button>
                             );
-                        }) : (
-                            <p className="text-[10px] text-white/20 italic text-center py-4">Connecting to Hermes...</p>
-                        )}
+                        })}
                     </div>
                 </div>
 
@@ -662,7 +656,7 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include on
                     <Zap className="w-4 h-4 text-indigo-400" />
                     <span className="text-xs font-black uppercase tracking-[0.2em] text-white/70 italic">Hermes AI Director</span>
                     {activeTool && (() => {
-                        const t = TOOLS.find(x => x.id === activeTool) || TOOLS.find(x => activeTool.toLowerCase().includes(x.id));
+                        const t = TOOLS.find(x => x.id === activeTool);
                         if (!t) return null;
                         const Icon = t.icon;
                         return (
@@ -718,28 +712,26 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include on
                     <div ref={bottomRef} />
                 </div>
 
-                {/* Input */}
-                <div className="p-4 border-t border-white/5 bg-[#0a0a14]/40 shrink-0">
+                {/* Input — fixed at bottom */}
+                <div className="p-3 border-t border-white/5 bg-[#0a0a14]/60 backdrop-blur-sm shrink-0">
                     <div className="flex gap-2 items-end max-w-4xl mx-auto w-full">
-                        <div className="flex-1 bg-white/[0.02] border border-white/5 rounded-2xl px-4 py-3 focus-within:border-indigo-500/40 focus-within:bg-white/[0.03] transition-all">
+                        <div className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-3.5 py-2.5 focus-within:border-indigo-500/40 focus-within:bg-white/[0.04] transition-all duration-200 shadow-sm">
                             <textarea
                                 ref={textRef}
                                 value={input}
-                                onChange={e => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px'; }}
+                                onChange={e => { setInput(e.target.value); }}
                                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                                placeholder={activeTool ? `Instruct Hermes on ${(TOOLS.find(t => t.id === activeTool) || TOOLS.find(t => activeTool.toLowerCase().includes(t.id)))?.label || activeTool.replace(/_/g, ' ')}…` : "Ask Hermes for scripting, reel concepts, or visual prompts…"}
+                                placeholder={activeTool ? `Instruct Hermes on ${TOOLS.find(t => t.id === activeTool)?.label || activeTool}…` : "Ask Hermes for scripting, reel concepts, or visual prompts…"}
                                 rows={1}
-                                className="w-full bg-transparent text-sm text-white placeholder-white/20 outline-none resize-none leading-relaxed"
-                                style={{ maxHeight: 160 }}
+                                className="w-full bg-transparent text-sm text-white placeholder-white/20 outline-none resize-none leading-relaxed max-h-[120px] overflow-y-auto"
                             />
                         </div>
                         <button onClick={() => handleSend()}
                             disabled={!input.trim() || isThinking}
-                            className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95 transition-all shadow-lg shadow-indigo-500/20 shrink-0">
+                            className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95 transition-all duration-150 shadow-lg shadow-indigo-500/20 shrink-0">
                             {isThinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                         </button>
                     </div>
-                    <p className="text-[9px] text-white/20 mt-2 text-center font-mono">Hermes AI · Creative Mode</p>
                 </div>
             </div>
 

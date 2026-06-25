@@ -46,7 +46,10 @@ def _make_agent(session_id: str, system_prompt: str | None = None):
     runtime_kwargs = _resolve_runtime_agent_kwargs()
     model = _resolve_gateway_model()
     config = _load_gateway_config()
-    enabled_toolsets = sorted(_get_platform_tools(config, "api_server"))
+    enabled_toolsets = sorted(
+        t for t in _get_platform_tools(config, "api_server")
+        if t not in {"file", "vision"}
+    )
 
     return AIAgent(
         model=model,
