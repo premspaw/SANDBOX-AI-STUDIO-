@@ -97,13 +97,13 @@ function MessageBubble({ msg }) {
                 </div>
             )}
             <div className={cn(
-                'max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
+                'max-w-[85%] rounded-2xl px-5 py-3.5 leading-relaxed',
                 isUser
                     ? 'bg-gradient-to-br from-violet-600/25 to-indigo-600/15 border border-violet-500/15 text-white/90 ml-auto shadow-sm'
                     : 'bg-white/[0.03] border border-white/[0.06] text-white/80'
             )}>
                 {msg.tool && <div className="mb-2"><ToolBadge tool={TOOLS.find(t => t.id === msg.tool)} /></div>}
-                <div className="text-[14px] leading-relaxed">{renderContent(msg.content)}</div>
+                <div className="text-[15px] leading-relaxed tracking-wide">{renderContent(msg.content)}</div>
                 {msg.thinking && (
                     <button onClick={() => setShowRaw(!showRaw)}
                         className="mt-2 flex items-center gap-1 text-[9px] text-white/20 hover:text-white/40 transition-colors">
@@ -512,7 +512,7 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include on
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#6366f1]/5 rounded-full blur-[140px] pointer-events-none -z-10 animate-pulse" />
 
             {/* LEFT: Tools + Memory sidebar */}
-            <div className="w-64 shrink-0 flex flex-col border-r border-white/5 bg-[#0a0a14]/60 backdrop-blur-xl">
+            <div className="w-56 shrink-0 flex flex-col border-r border-white/5 bg-[#0a0a14]/60 backdrop-blur-xl">
                 {/* Header */}
                 <div className="px-4 py-4 border-b border-white/5">
                     <div className="flex items-center gap-2 mb-1">
@@ -729,8 +729,8 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include on
 
                 {/* Input — premium fixed bottom */}
                 <div className="border-t border-white/[0.04] bg-[#0a0a14]/80 backdrop-blur-xl shrink-0">
-                    <div className="max-w-3xl mx-auto px-4 py-4">
-                        <div className="flex gap-2.5 items-end">
+                    <div className="max-w-3xl mx-auto px-4 py-3">
+                        <div className="flex gap-3 items-end">
                             <div className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-4 py-3.5 focus-within:border-indigo-500/40 focus-within:bg-white/[0.06] focus-within:shadow-[0_0_20px_rgba(99,102,241,0.06)] transition-all duration-200">
                                 <textarea
                                     ref={textRef}
@@ -739,14 +739,14 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include on
                                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                                     placeholder={activeTool ? `Instruct Hermes on ${TOOLS.find(t => t.id === activeTool)?.label || activeTool}…` : "Message Hermes..."}
                                     rows={1}
-                                    className="w-full bg-transparent text-[14px] text-white placeholder-white/20 outline-none resize-none leading-relaxed max-h-[160px] overflow-y-auto"
+                                    className="w-full bg-transparent text-[14px] text-white placeholder-white/25 outline-none resize-none leading-relaxed max-h-[160px] overflow-y-auto"
                                     style={{ minHeight: '24px' }}
                                 />
                             </div>
                             <button onClick={() => handleSend()}
                                 disabled={!input.trim() || isThinking}
-                                className="w-11 h-11 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white disabled:opacity-20 disabled:cursor-not-allowed hover:scale-[1.03] active:scale-95 transition-all duration-150 shadow-[0_0_16px_rgba(99,102,241,0.25)] shrink-0 hover:shadow-[0_0_24px_rgba(99,102,241,0.4)]">
-                                {isThinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <div className="relative w-4 h-4"><Send className="w-4 h-4 absolute inset-0" /><div className="absolute -inset-1 bg-indigo-400/20 rounded blur-sm" /></div>}
+                                className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white disabled:opacity-20 disabled:cursor-not-allowed hover:from-indigo-400 hover:to-indigo-500 active:scale-95 transition-all duration-150 shadow-[0_0_20px_rgba(99,102,241,0.3)] shrink-0 hover:shadow-[0_0_30px_rgba(99,102,241,0.5)]">
+                                {isThinking ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                             </button>
                         </div>
                     </div>
