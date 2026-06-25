@@ -132,6 +132,7 @@ export default function AgentPage() {
 
     // Hermes Bridge session
     const [hermesSessionId, setHermesSessionId] = useState(null);
+    const [sessionReady, setSessionReady] = useState(false);
     const [hermesToolsets, setHermesToolsets] = useState([]);
 
     // Chat State
@@ -299,6 +300,13 @@ export default function AgentPage() {
         let cancelled = false;
         const existingId = localStorage.getItem('hermes_session_id');
         const createSession = () => {
+        const finish = (id) => {
+            if (!cancelled) {
+                setHermesSessionId(id);
+                setSessionReady(true);
+            }
+        };
+        const createSession = () => {
             fetch(`${HERMES_API}/api/sessions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -323,10 +331,13 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include on
                 .then(data => {
                     if (!cancelled && data.session_id) {
                         localStorage.setItem('hermes_session_id', data.session_id);
-                        setHermesSessionId(data.session_id);
+                        finish(data.session_id);
                     }
                 })
-                .catch(err => console.warn('[AgentPage] Hermes bridge unavailable:', err.message));
+                .catch(err => {
+                    console.warn('[AgentPage] Hermes bridge unavailable:', err.message);
+                    if (!cancelled) setSessionReady(false);
+                });
         };
         if (existingId) {
             fetch(`${HERMES_API}/api/sessions/${existingId}`, {
@@ -334,7 +345,7 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include on
             })
                 .then(r => {
                     if (r.ok) {
-                        if (!cancelled) setHermesSessionId(existingId);
+                        if (!cancelled) finish(existingId);
                     } else {
                         localStorage.removeItem('hermes_session_id');
                         createSession();
@@ -409,7 +420,7 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include on
         setIsThinking(true);
 
         try {
-            if (!hermesSessionId) throw new Error('Hermes bridge session not ready');
+            if (!sessionReady || !hermesSessionId) throw new Error('Hermes bridge session not ready');
 
             const resp = await fetch(`${HERMES_API}/api/sessions/${hermesSessionId}/chat`, {
                 method: 'POST',
@@ -514,9 +525,9 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include on
                             <p className="text-xs font-black text-white tracking-tight uppercase italic">Hermes AI</p>
                         </div>
                     </div>
-                    <div className="mt-2 flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full w-fit">
-                        <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-[8px] text-emerald-400 font-bold uppercase tracking-wider">Ready</span>
+                    <div className={cn("mt-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full w-fit border", sessionReady ? "bg-emerald-500/10 border-emerald-500/20" : "bg-yellow-500/10 border-yellow-500/20")}>
+                        <div className={cn("w-1 h-1 rounded-full animate-pulse", sessionReady ? "bg-emerald-400" : "bg-yellow-400")} />
+                        <span className={cn("text-[8px] font-bold uppercase tracking-wider", sessionReady ? "text-emerald-400" : "text-yellow-400")}>{sessionReady ? "Ready" : "Connecting"}</span>
                     </div>
                 </div>
 
@@ -524,7 +535,9 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include on
                 <div className="p-3 border-b border-white/5">
                     <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 mb-2.5">Studio Task Modes</p>
                     <div className="space-y-1">
-                        {TOOLS.map(tool => {
+                        {!sessionReady ? (
+                            <p className="text-[10px] text-white/20 italic text-center py-4">Connecting to Hermes...</p>
+                        ) : TOOLS.map(tool => {
                             const Icon = tool.icon;
                             const active = activeTool === tool.id;
                             return (
