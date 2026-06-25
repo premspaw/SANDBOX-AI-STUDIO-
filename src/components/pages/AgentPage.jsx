@@ -132,6 +132,7 @@ export default function AgentPage() {
 
     // Hermes Bridge session
     const [hermesSessionId, setHermesSessionId] = useState(null);
+    const [hermesToolsets, setHermesToolsets] = useState([]);
 
     // Chat State
     const [messages, setMessages] = useState([
@@ -302,10 +303,20 @@ export default function AgentPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    system_prompt: `You are a friendly teacher explaining to a 5-year-old. Keep responses VERY short (max 3 sentences). Use simple words. Use visual formatting: bullet points, line breaks, and emojis to make it fun and easy to understand. NO long paragraphs. NO technical jargon. Answer like you are talking to a curious child.
+                    system_prompt: `Talk like a real human. Not a robot.
+
+Never combine two sentences into one line.
+Each sentence MUST start on a new line.
+No paragraphs.
+
+You can use emojis, bullet points, or markdown in your chat responses. But keep them out of the image/video prompts you generate — those should be clean and prompt-friendly.
+
+You are Hermes — a creative agent with your own style. Be direct. Be real. Sound like a person.
+
+If the user asks for a script, story, or caption — just write it. One sentence per line.
 
 --- VISION PROMPT (copy this for ZeroLens image/video generation) ---
-Generate detailed, cinematic prompts for ZeroLens image/video models. Include: subject, lighting, mood, camera angle, composition, color palette, style reference (e.g., cinematic, anime, photorealistic), motion description (for video). Use descriptive adjectives. Format as a single paragraph or structured bullet list. Example: "A golden retriever puppy playing in a sunlit meadow at golden hour, shallow depth of field, warm tones, cinematic shot, slow-motion wagging tail, 4K."`
+Generate detailed, cinematic prompts for ZeroLens image/video models. Include only: subject, lighting, mood, camera angle, composition, color palette, style reference (e.g., cinematic, anime, photorealistic), motion description (for video). Use descriptive adjectives. No emojis, no bullets, no markdown here. Format as clean text. Example: "A golden retriever puppy playing in a sunlit meadow at golden hour, shallow depth of field, warm tones, cinematic shot, slow-motion wagging tail, 4K."`
                 }),
             })
                 .then(r => r.json())
@@ -318,10 +329,8 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include: s
                 .catch(err => console.warn('[AgentPage] Hermes bridge unavailable:', err.message));
         };
         if (existingId) {
-            fetch(`${HERMES_API}/api/sessions/${existingId}/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: '', history: [] }),
+            fetch(`${HERMES_API}/api/sessions/${existingId}`, {
+                method: 'GET',
             })
                 .then(r => {
                     if (r.ok) {
@@ -340,6 +349,17 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include: s
         }
         return () => { cancelled = true; };
     }, []);
+
+    // Fetch Hermes native toolsets when session is ready
+    useEffect(() => {
+        if (!hermesSessionId) return;
+        fetch(`${HERMES_API}/api/sessions/${hermesSessionId}/toolsets`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.toolsets) setHermesToolsets(data.toolsets);
+            })
+            .catch(() => {});
+    }, [hermesSessionId]);
 
     // Save chat history to Supabase
     const saveChatHistory = async (nextMessages) => {
@@ -500,31 +520,37 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include: s
                     </div>
                 </div>
 
-                {/* Tools */}
+                {/* Tools — dynamic from Hermes bridge */}
                 <div className="p-3 border-b border-white/5">
                     <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 mb-2.5">Studio Task Modes</p>
                     <div className="space-y-1">
-                        {TOOLS.map(tool => {
-                            const Icon = tool.icon;
-                            const active = activeTool === tool.id;
+                        {hermesToolsets.length > 0 ? hermesToolsets.map(toolName => {
+                            const matched = TOOLS.find(t => toolName.toLowerCase().includes(t.id));
+                            const label = matched ? matched.label : toolName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                            const Icon = matched ? matched.icon : Zap;
+                            const color = matched ? matched.color : 'text-white/50';
+                            const desc = matched ? matched.desc : `${toolName} toolset`;
+                            const active = activeTool === toolName;
                             return (
-                                <button key={tool.id}
-                                    onClick={() => setActiveTool(active ? null : tool.id)}
+                                <button key={toolName}
+                                    onClick={() => setActiveTool(active ? null : toolName)}
                                     className={cn(
                                         'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-all duration-200 border',
                                         active
                                             ? 'bg-gradient-to-r from-white/[0.06] to-white/[0.02] border-white/10 shadow-inner'
                                             : 'hover:bg-white/[0.03] border-transparent'
                                     )}>
-                                    <Icon className={cn('w-3.5 h-3.5 shrink-0 transition-colors duration-200', active ? tool.color : 'text-white/30')} />
+                                    <Icon className={cn('w-3.5 h-3.5 shrink-0 transition-colors duration-200', active ? color : 'text-white/30')} />
                                     <div className="min-w-0">
-                                        <p className={cn('text-[10px] font-black tracking-wide', active ? 'text-white' : 'text-white/60')}>{tool.label}</p>
-                                        <p className="text-[9px] text-white/35 truncate leading-tight mt-0.5">{tool.desc}</p>
+                                        <p className={cn('text-[10px] font-black tracking-wide', active ? 'text-white' : 'text-white/60')}>{label}</p>
+                                        <p className="text-[9px] text-white/35 truncate leading-tight mt-0.5">{desc}</p>
                                     </div>
-                                    {active && <div className={cn('ml-auto w-1.5 h-1.5 rounded-full shadow-lg shadow-current', tool.color)} />}
+                                    {active && <div className={cn('ml-auto w-1.5 h-1.5 rounded-full shadow-lg shadow-current', color)} />}
                                 </button>
                             );
-                        })}
+                        }) : (
+                            <p className="text-[10px] text-white/20 italic text-center py-4">Connecting to Hermes...</p>
+                        )}
                     </div>
                 </div>
 
@@ -636,7 +662,8 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include: s
                     <Zap className="w-4 h-4 text-indigo-400" />
                     <span className="text-xs font-black uppercase tracking-[0.2em] text-white/70 italic">Hermes AI Director</span>
                     {activeTool && (() => {
-                        const t = TOOLS.find(x => x.id === activeTool);
+                        const t = TOOLS.find(x => x.id === activeTool) || TOOLS.find(x => activeTool.toLowerCase().includes(x.id));
+                        if (!t) return null;
                         const Icon = t.icon;
                         return (
                             <div className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-wider', t.color)}>
@@ -700,7 +727,7 @@ Generate detailed, cinematic prompts for ZeroLens image/video models. Include: s
                                 value={input}
                                 onChange={e => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px'; }}
                                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                                placeholder={activeTool ? `Instruct Hermes on ${TOOLS.find(t => t.id === activeTool)?.label}…` : "Ask Hermes for scripting, reel concepts, or visual prompts…"}
+                                placeholder={activeTool ? `Instruct Hermes on ${(TOOLS.find(t => t.id === activeTool) || TOOLS.find(t => activeTool.toLowerCase().includes(t.id)))?.label || activeTool.replace(/_/g, ' ')}…` : "Ask Hermes for scripting, reel concepts, or visual prompts…"}
                                 rows={1}
                                 className="w-full bg-transparent text-sm text-white placeholder-white/20 outline-none resize-none leading-relaxed"
                                 style={{ maxHeight: 160 }}

@@ -46,10 +46,7 @@ def _make_agent(session_id: str, system_prompt: str | None = None):
     runtime_kwargs = _resolve_runtime_agent_kwargs()
     model = _resolve_gateway_model()
     config = _load_gateway_config()
-    enabled_toolsets = sorted(
-        t for t in _get_platform_tools(config, "api_server")
-        if t not in {"browser", "image_gen", "cronjob", "todo", "delegation", "code_execution"}
-    )
+    enabled_toolsets = sorted(_get_platform_tools(config, "api_server"))
 
     return AIAgent(
         model=model,
@@ -127,6 +124,26 @@ async def handle_chat(request):
     })
 
 
+async def handle_get_session(request):
+    session_id = request.match_info.get("session_id")
+    if session_id not in _sessions:
+        return web.json_response({"error": "Session not found"}, status=404)
+    return web.json_response({
+        "session_id": session_id,
+        "exists": True,
+        "history_count": len(_sessions[session_id]["history"]),
+    })
+
+
+async def handle_get_session_toolsets(request):
+    session_id = request.match_info.get("session_id")
+    if session_id not in _sessions:
+        return web.json_response({"error": "Session not found"}, status=404)
+    agent = _sessions[session_id]["agent"]
+    tools = sorted(getattr(agent, "enabled_toolsets", []))
+    return web.json_response({"toolsets": tools})
+
+
 async def handle_clear_session(request):
     session_id = request.match_info.get("session_id")
     if session_id not in _sessions:
@@ -149,27 +166,33 @@ async def handle_health(request):
 
 @web.middleware
 async def cors_middleware(request, handler):
+    origin = request.headers.get("Origin", "*")
     if request.method == "OPTIONS":
         return web.Response(
             headers={
-                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Origin": origin,
                 "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PATCH, DELETE",
-                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Max-Age": "86400",
             }
         )
     try:
         response = await handler(request)
     except web.HTTPException as ex:
         response = ex
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Origin"] = origin
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
 
 def build_app():
     app = web.Application(middlewares=[cors_middleware])
     app.router.add_post("/api/sessions", handle_create_session)
+    app.router.add_get("/api/sessions/{session_id}", handle_get_session)
     app.router.add_post("/api/sessions/{session_id}/chat", handle_chat)
+    app.router.add_get("/api/sessions/{session_id}/toolsets", handle_get_session_toolsets)
     app.router.add_post("/api/sessions/{session_id}/clear", handle_clear_session)
     app.router.add_get("/health", handle_health)
     return app
