@@ -299,7 +299,6 @@ export default function AgentPage() {
     useEffect(() => {
         let cancelled = false;
         const existingId = localStorage.getItem('hermes_session_id');
-        const createSession = () => {
         const finish = (id) => {
             if (!cancelled) {
                 setHermesSessionId(id);
