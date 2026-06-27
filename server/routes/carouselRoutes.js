@@ -135,6 +135,9 @@ export default function createRouter(deps) {
                         
                         while (retries <= MAX_RETRIES) {
                             try {
+                                if (!process.env.OPENAI_API_KEY) {
+                                    throw new Error('OPENAI_API_KEY is not configured in your .env file.');
+                                }
                                 const OpenAI = (await import('openai')).default;
                                 const openai = new OpenAI({ 
                                     apiKey: process.env.OPENAI_API_KEY,
@@ -238,6 +241,9 @@ export default function createRouter(deps) {
                         console.error(`[Carousel-nano-banana-2] Slide ${i + 1} TIMEOUT — FALLING BACK to GPT Image 2`);
                         
                         try {
+                            if (!process.env.OPENAI_API_KEY) {
+                                throw new Error('OPENAI_API_KEY is not configured in your .env file.');
+                            }
                             const OpenAI = (await import('openai')).default;
                             const openai = new OpenAI({ 
                                 apiKey: process.env.OPENAI_API_KEY,

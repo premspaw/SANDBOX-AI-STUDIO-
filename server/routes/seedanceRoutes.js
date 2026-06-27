@@ -24,7 +24,7 @@ export default function createRouter(deps) {
 
         const input = {
             prompt: prompt,
-            aspect_ratio: (aspectRatio || "16:9").replace(':', '/'),
+            aspect_ratio: (aspectRatio || "16:9"),
             duration: Number(duration) || 5,
             resolution: resolution || '720p',
             generate_audio: !!generateAudio,
@@ -339,7 +339,7 @@ export default function createRouter(deps) {
 
                     const input = {
                         prompt: finalPrompt,
-                        aspect_ratio: (aspectRatio || "16:9").replace(':', '/'),
+                        aspect_ratio: (aspectRatio || "16:9"),
                         duration: Number(duration) || 5,
                         resolution: resolution || '720p',
                         generate_audio: !!generateAudio,
@@ -390,7 +390,7 @@ export default function createRouter(deps) {
 
                 const miniInput = {
                     prompt: finalPrompt,
-                    aspect_ratio: (aspectRatio || "16:9").replace(':', '/'),
+                    aspect_ratio: (aspectRatio || "16:9"),
                     duration: Number(duration) || 5,
                     generate_audio: !!generateAudio,
                     resolution: resolutionMini,
@@ -475,10 +475,19 @@ export default function createRouter(deps) {
                     const finalUrl = pollData.content?.video_url;
                     if (!finalUrl) throw new Error("No result video URL found in succeeded task.");
 
-                    console.log(`[SEEDANCE-STATUS-ARK] Downloading video: ${finalUrl}`);
-                    const videoResp = await fetch(finalUrl);
-                    const ab = await videoResp.arrayBuffer();
-                    const supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, folder);
+                    let supabaseUrl;
+                    try {
+                        console.log(`[SEEDANCE-STATUS-ARK] Downloading video: ${finalUrl}`);
+                        const videoResp = await fetch(finalUrl, { signal: AbortSignal.timeout(60000) });
+                        if (!videoResp.ok) throw new Error(`HTTP ${videoResp.status}`);
+                        const ab = await videoResp.arrayBuffer();
+                        if (!ab || ab.byteLength === 0) throw new Error('Empty response');
+                        console.log(`[SEEDANCE-STATUS-ARK] Downloaded ${(ab.byteLength / 1024 / 1024).toFixed(1)}MB, uploading to Supabase...`);
+                        supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, folder);
+                    } catch (dlErr) {
+                        console.warn(`[SEEDANCE-STATUS-ARK] Download/upload failed (${dlErr.message}), returning Ark URL directly`);
+                        supabaseUrl = finalUrl;
+                    }
 
                     return res.json({ status: 'completed', url: supabaseUrl });
                 } else if (state === 'failed') {
@@ -493,31 +502,57 @@ export default function createRouter(deps) {
                 const apiKey = process.env.KIE_API_KEY;
                 if (!apiKey) throw new Error("Kie.ai API Key missing.");
 
-                const pollResp = await fetch(`https://api.kie.ai/api/v1/jobs/task?taskId=${requestId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${apiKey}`
-                    }
-                });
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                let pollResp;
+                try {
+                    pollResp = await fetch(`https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${requestId}`, {
+                        headers: { 'Authorization': `Bearer ${apiKey}` },
+                        signal: controller.signal
+                    });
+                } finally {
+                    clearTimeout(timeoutId);
+                }
                 const pollData = await pollResp.json();
 
                 if (pollData.code !== 200) {
                     throw new Error(`Kie.ai Polling Failed: ${pollData.msg || JSON.stringify(pollData)}`);
                 }
 
-                const state = pollData.data?.status; // succeed, completed, processing, failed, etc.
+                const state = pollData.data?.state || pollData.data?.status; // success, fail, generating, queuing, waiting
                 console.log(`[SEEDANCE-STATUS-KIE] ${requestId}: ${state}`);
 
-                if (state === 'succeed' || state === 'completed') {
-                    const finalUrl = pollData.data?.videos?.[0]?.url || pollData.data?.resultUrl;
+                if (state === 'success' || state === 'succeed' || state === 'completed') {
+                    let finalUrl = pollData.data?.videos?.[0]?.url || pollData.data?.resultUrl;
+                    if (!finalUrl && pollData.data?.resultJson) {
+                        try {
+                            const parsed = typeof pollData.data.resultJson === 'string'
+                                ? JSON.parse(pollData.data.resultJson)
+                                : pollData.data.resultJson;
+                            finalUrl = parsed?.resultUrls?.[0] || parsed?.video_url;
+                        } catch (e) {
+                            console.warn('[SEEDANCE-STATUS-KIE] Failed to parse resultJson:', e.message);
+                        }
+                    }
                     if (!finalUrl) throw new Error("No result video URL found in completed Kie task.");
 
-                    console.log(`[SEEDANCE-STATUS-KIE] Downloading video: ${finalUrl}`);
-                    const videoResp = await fetch(finalUrl);
-                    const ab = await videoResp.arrayBuffer();
-                    const supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, folder);
+                    // Try to download and re-host on our storage (failsafe: return Kie URL directly)
+                    let supabaseUrl;
+                    try {
+                        console.log(`[SEEDANCE-STATUS-KIE] Downloading video: ${finalUrl}`);
+                        const videoResp = await fetch(finalUrl, { signal: AbortSignal.timeout(60000) });
+                        if (!videoResp.ok) throw new Error(`HTTP ${videoResp.status}`);
+                        const ab = await videoResp.arrayBuffer();
+                        if (!ab || ab.byteLength === 0) throw new Error('Empty response');
+                        console.log(`[SEEDANCE-STATUS-KIE] Downloaded ${(ab.byteLength / 1024 / 1024).toFixed(1)}MB, uploading to Supabase...`);
+                        supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, folder);
+                    } catch (dlErr) {
+                        console.warn(`[SEEDANCE-STATUS-KIE] Download/upload failed (${dlErr.message}), returning Kie URL directly`);
+                        supabaseUrl = finalUrl;
+                    }
 
                     return res.json({ status: 'completed', url: supabaseUrl });
-                } else if (state === 'failed' || state === 'error') {
+                } else if (state === 'fail' || state === 'failed' || state === 'error') {
                     return res.json({ status: 'failed', error: pollData.data?.failMsg || 'Kie.ai generation failed' });
                 }
 
@@ -526,7 +561,7 @@ export default function createRouter(deps) {
 
             throw new Error(`Unsupported status check engine: ${engine}`);
         } catch (error) {
-            console.error('[SEEDANCE-STATUS-ERR]', error);
+            console.error('[SEEDANCE-STATUS-ERR]', error.message, error.stack?.split('\n').slice(0, 3).join(' '));
             res.status(500).json({ status: 'error', message: error.message });
         }
     });

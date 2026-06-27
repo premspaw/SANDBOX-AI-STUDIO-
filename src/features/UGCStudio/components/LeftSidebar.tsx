@@ -110,7 +110,7 @@ export default function LeftSidebar() {
   };
 
   return (
-    <div className="relative flex shrink-0 h-full">
+    <div className="absolute md:relative flex shrink-0 h-full z-[45]">
       <motion.div
         animate={{ width: isSidebarOpen ? 280 : 0, opacity: isSidebarOpen ? 1 : 0 }}
         transition={{ duration: 0.25, ease: 'easeInOut' }}
@@ -812,7 +812,7 @@ export default function LeftSidebar() {
             {/* Scene Style Selector — controls both image + video */}
             {activeTab !== 'podcast' && (
               <div>
-                <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.15em] mb-1 block flex items-center gap-1">
+                <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.15em] mb-1 flex items-center gap-1">
                   <Film size={7} className="text-[#c8f135]" /> Scene Style
                   <span className="text-white/10 font-normal normal-case tracking-normal"> · applies to image &amp; video</span>
                 </span>

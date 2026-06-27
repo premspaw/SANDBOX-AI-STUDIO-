@@ -4,7 +4,7 @@
  * Engines: Veo 3.1 (Google) + Seedance 2.0 (Kie.ai)
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -512,6 +512,8 @@ export default function CinematicStudio() {
   const [copiedPayload, setCopiedPayload] = useState(false);
   const [generateAudio, setGenerateAudio] = useState(() => localStorage.getItem('cs_generateAudio') === 'true');
 
+  const isSeed = useMemo(() => activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini', [activeEngine]);
+
   // Persist settings to localStorage
   useEffect(() => {
     localStorage.setItem('cs_activeTab', activeTab);
@@ -578,6 +580,16 @@ export default function CinematicStudio() {
       }
     }
   }, [activeEngine, resolution, duration]);
+
+  // Clear first/last frame when switching to seedance engines
+  useEffect(() => {
+    if (isSeed) {
+      setFirstFrameImage('');
+      setFirstFramePreview('');
+      setLastFrameImage('');
+      setLastFramePreview('');
+    }
+  }, [isSeed]);
 
   const handleCameraChange = (camId) => {
     const cam = CAMERA_MODELS.find(c => c.id === camId) || CAMERA_MODELS[0];
@@ -945,18 +957,19 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
   };
 
   // ── REFERENCE BOARD STATE & PERSISTENCE ────────────────────────────────────
+  const defaultRefBoard = { characters: [], locations: [], wardrobes: [], props: [], moods: [], ref_images: [], ref_videos: [], ref_audios: [] };
   const loadRefBoard = (m) => {
     try {
       const saved = localStorage.getItem(`refBoard_${m}`)
-      return saved ? JSON.parse(saved) : { characters: [], locations: [], wardrobes: [], props: [], moods: [] }
+      return saved ? { ...defaultRefBoard, ...JSON.parse(saved) } : { ...defaultRefBoard }
     } catch (e) {
       console.error(`Failed to load refBoard for ${m}:`, e)
-      return { characters: [], locations: [], wardrobes: [], props: [], moods: [] }
+      return { ...defaultRefBoard }
     }
   }
 
   const [videoRefBoard, setVideoRefBoard] = useState(() => loadRefBoard('video'))
-  const [stagedRefBoard, setStagedRefBoard] = useState({ characters: [], locations: [], wardrobes: [], props: [], moods: [] })
+  const [stagedRefBoard, setStagedRefBoard] = useState({ ...defaultRefBoard })
 
   // Active board based on mode
   const refBoard = videoRefBoard
@@ -988,6 +1001,9 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
     wardrobes:  [...new IdMap([...(refBoard.wardrobes || []),  ...(stagedRefBoard.wardrobes || []) ].map(i => [i.id, i])).values()],
     props:      [...new IdMap([...(refBoard.props || []),      ...(stagedRefBoard.props || [])     ].map(i => [i.id, i])).values()],
     moods:      [...new IdMap([...(refBoard.moods || []),      ...(stagedRefBoard.moods || [])     ].map(i => [i.id, i])).values()],
+    ref_images: [...new IdMap([...(refBoard.ref_images || []), ...(stagedRefBoard.ref_images || [])].map(i => [i.id, i])).values()],
+    ref_videos: [...new IdMap([...(refBoard.ref_videos || []), ...(stagedRefBoard.ref_videos || [])].map(i => [i.id, i])).values()],
+    ref_audios: [...new IdMap([...(refBoard.ref_audios || []), ...(stagedRefBoard.ref_audios || [])].map(i => [i.id, i])).values()],
   }
   const allRefItems = [
     ...mergedBoard.characters.map(i => ({ ...i, category: 'character', prefix: 'char' })),
@@ -996,6 +1012,13 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
     ...mergedBoard.props.map(i => ({ ...i, category: 'prop', prefix: 'prop' })),
     ...mergedBoard.moods.map(i => ({ ...i, category: 'mood', prefix: 'mood' })),
   ]
+
+  // Seedance-specific reference media (separate from @mention system)
+  const seedanceRefs = {
+    ref_images: mergedBoard.ref_images || [],
+    ref_videos: mergedBoard.ref_videos || [],
+    ref_audios: mergedBoard.ref_audios || [],
+  }
 
   const addRefItem = (item) => {
     const categoryKey = item.category.endsWith('s') ? item.category : item.category + 's'
@@ -1209,6 +1232,87 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
     }
   };
 
+  // ── SEEDANCE REFERENCE UPLOAD & REMOVE ────────────────────────────
+  const handleSeedanceRefUpload = async (file, categoryId) => {
+    if (!file) return;
+    setIsUploadingRef(true);
+    try {
+      const isVideoFile = file.type.startsWith('video/');
+      const isAudioFile = file.type.startsWith('audio/');
+      const isImageFile = file.type.startsWith('image/');
+      const assetType = isVideoFile ? 'video' : isAudioFile ? 'audio' : 'image';
+      const ext = isVideoFile ? 'mp4' : isAudioFile ? 'mp3' : 'png';
+
+      let base64;
+      if (isImageFile) {
+        base64 = await compressImage(file);
+      } else {
+        base64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        });
+      }
+
+      const resp = await fetch(getApiUrl('/api/save-asset'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageData: base64,
+          type: assetType,
+          fileName: `seedref_${Date.now()}.${ext}`,
+          userId: userId
+        })
+      });
+
+      if (!resp.ok) {
+        let errData = {};
+        try { errData = await resp.json(); } catch (_) { /* noop */ }
+        throw new Error(errData.message || errData.error || `HTTP ${resp.status}`);
+      }
+
+      const data = await resp.json();
+      const url = data.url || data.path || base64;
+      const label = isVideoFile ? 'VID' : isAudioFile ? 'AUD' : 'IMG';
+      const name = `${label}_${Date.now().toString().slice(-4)}`;
+
+      const newItem = { id: crypto.randomUUID(), name, url, imageUrl: url };
+
+      const updater = (prev) => {
+        const currentList = prev[categoryId] || [];
+        return { ...prev, [categoryId]: [...currentList, newItem] };
+      };
+
+      setStagedRefBoard(updater);
+      setRefBoard(prev => {
+        const updated = updater(prev);
+        localStorage.setItem('refBoard_video', JSON.stringify(updated));
+        return updated;
+      });
+
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast(`Seedance reference added (${label})`, 'success');
+    } catch (err) {
+      console.error('[Seedance Ref Upload] Failed:', err);
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast('Upload failed: ' + err.message, 'error');
+    } finally {
+      setIsUploadingRef(false);
+    }
+  };
+
+  const handleRemoveSeedanceRef = (itemId, categoryId) => {
+    const updater = (prev) => ({
+      ...prev,
+      [categoryId]: (prev[categoryId] || []).filter(i => i.id !== itemId)
+    });
+    setStagedRefBoard(updater);
+    setRefBoard(prev => {
+      const updated = updater(prev);
+      localStorage.setItem('refBoard_video', JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   useEffect(() => {
     if (!galleryLSKey) return; // Don't persist when user is not identified
@@ -1404,7 +1508,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
           setPollMsg('');
           const showToast = useAppStore.getState().showToast;
           if (showToast) showToast(cleanErr, "error");
-          await triggerRefund('cinematic_video_generation_failed');
+          await triggerRefund('cinematic_video_generation');
           return;
         }
       } catch (pollErr) {
@@ -1418,7 +1522,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
     setPollMsg('');
     const showToast = useAppStore.getState().showToast;
     if (showToast) showToast(timeoutMsg, "error");
-    await triggerRefund('cinematic_video_generation_failed');
+    await triggerRefund('cinematic_video_generation');
   };
 
   const getCompiledPrompt = () => {
@@ -1549,7 +1653,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
       const identity_gcs_uris = taggedItems.map(item => ({ name: item.name, uri: item.imageUrl }));
 
       if (activeEngine === 'seedance-fast' || activeEngine === 'seedace') {
-        const seedanceContentArray = buildSeedanceContentArray(compiled, taggedItems, firstFrameImage, lastFrameImage);
+        const seedanceContentArray = buildSeedanceContentArray(compiled, taggedItems, null, null, seedanceRefs);
         return {
           engine: activeEngine,
           model: activeEngine === 'seedance-fast' ? 'dreamina-seedance-2-0-fast-260128' : 'dreamina-seedance-2-0-260128',
@@ -1563,7 +1667,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
       }
 
       if (activeEngine === 'seedance-mini') {
-        const seedanceContentArray = buildSeedanceContentArray(compiled, taggedItems, firstFrameImage, lastFrameImage);
+        const seedanceContentArray = buildSeedanceContentArray(compiled, taggedItems, null, null, seedanceRefs);
         return {
           engine: activeEngine,
           model: 'bytedance/seedance-2-mini',
@@ -1819,7 +1923,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
           ? 'bytedance/seedance-2-mini'
           : 'dreamina-seedance-2-0-260128';
 
-        const seedanceContentArray = buildSeedanceContentArray(compiledPrompt, taggedItems, firstFrameImage, lastFrameImage);
+        const seedanceContentArray = buildSeedanceContentArray(compiledPrompt, taggedItems, null, null, seedanceRefs);
 
         const resp = await fetch(getApiUrl('/api/seedance/generate'), {
           method: 'POST',
@@ -2587,8 +2691,8 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                         </button>
                       )}
                     </div>
-                  ) : (
-                    /* ── VIDEO MODE: DUAL SLOTS ── */
+                  ) : !isSeed ? (
+                    /* ── VIDEO MODE: DUAL SLOTS (hidden for Seedance — use @ references instead) ── */
                     <div className="flex flex-col items-center gap-1.5 p-1.5 bg-white/[0.02] border border-white/5 rounded-2xl relative group">
                       <div className="flex items-center gap-1.5">
                         {/* First Frame Slot */}
@@ -2655,7 +2759,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                         )}
                       </div>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
@@ -3095,6 +3199,10 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
         setLibPickerTarget={setLibPickerTarget}
         addRefItem={addRefItem}
         setActiveRefUploadCategory={setActiveRefUploadCategory}
+        isSeedance={isSeed}
+        seedanceRefs={seedanceRefs}
+        onSeedanceRefUpload={handleSeedanceRefUpload}
+        onRemoveSeedanceRef={handleRemoveSeedanceRef}
       />
 
       {/* PERSPECTIVE & FRAMING VISUAL MODAL */}

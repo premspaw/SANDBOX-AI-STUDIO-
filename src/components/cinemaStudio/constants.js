@@ -1,4 +1,4 @@
-import { Film, Video, Smartphone, Camera, Sparkles, Zap, FastForward, MonitorPlay, Plus, Users, Map, Package, Sun } from 'lucide-react';
+import { Film, Video, Smartphone, Camera, Sparkles, Zap, FastForward, MonitorPlay, Plus, Users, Map, Package, Sun, ImagePlus, Music } from 'lucide-react';
 
 export const CAMERA_ANGLES = [
     { id: 'extreme_wide', label: 'Extreme Wide', desc: 'Vast landscape', img: '/assets/angle_extreme_wide.jpeg' },
@@ -365,6 +365,12 @@ export const REF_CATEGORIES = [
     { id: 'wardrobes', label: 'Wardrobe', desc: 'One Wardrobe Ref', icon: Package, color: 'text-orange-400' },
     { id: 'props', label: 'Props', desc: 'Multiple Props', icon: Plus, color: 'text-yellow-400' },
     { id: 'moods', label: 'Mood/Style', desc: 'One Mood Ref', icon: Sparkles, color: 'text-purple-400' }
+];
+
+export const SEEDANCE_REF_CATEGORIES = [
+    { id: 'ref_images', label: 'Reference Images', desc: 'Up to 9 images', icon: ImagePlus, color: 'text-cyan-400', accept: 'image/*', maxItems: 9 },
+    { id: 'ref_videos', label: 'Reference Videos', desc: 'Up to 3 videos (2–15s)', icon: Video, color: 'text-rose-400', accept: 'video/mp4,video/quicktime', maxItems: 3 },
+    { id: 'ref_audios', label: 'Reference Audio', desc: 'Up to 3 audio (2–15s)', icon: Music, color: 'text-amber-400', accept: 'audio/mpeg,audio/wav', maxItems: 3 },
 ];
 
 export const PRO_LIGHTING_TRANSFORMS = [

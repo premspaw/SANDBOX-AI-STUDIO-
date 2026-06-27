@@ -19,7 +19,8 @@ export const buildSeedanceMiniPayload = ({
     duration,
     resolution,
     generateAudio,
-    nsfwChecker
+    nsfwChecker,
+    seedanceRefs
 }) => {
     const input = {
         prompt: compiledPrompt?.trim() || '',
@@ -50,6 +51,28 @@ export const buildSeedanceMiniPayload = ({
                 refImages.push(url);
             }
         });
+    }
+
+    // Merge Seedance-specific reference media
+    if (seedanceRefs) {
+        if (seedanceRefs.ref_images) {
+            seedanceRefs.ref_images.forEach(item => {
+                const url = item.url || item.imageUrl;
+                if (url && !refImages.includes(url)) refImages.push(url);
+            });
+        }
+        if (seedanceRefs.ref_videos) {
+            seedanceRefs.ref_videos.forEach(item => {
+                const url = item.url || item.imageUrl;
+                if (url && !refVideos.includes(url)) refVideos.push(url);
+            });
+        }
+        if (seedanceRefs.ref_audios) {
+            seedanceRefs.ref_audios.forEach(item => {
+                const url = item.url || item.imageUrl;
+                if (url && !refAudios.includes(url)) refAudios.push(url);
+            });
+        }
     }
 
     if (refImages.length > 0) input.reference_image_urls = refImages;

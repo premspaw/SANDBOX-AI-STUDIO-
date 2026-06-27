@@ -1,4 +1,4 @@
-import { Robot, FilmSlate, GearSix, CaretLeft, CaretRight, FolderOpen, Users, ShieldCheck, VideoCamera, Coins, SquaresFour, Aperture, Megaphone, UserFocus, MicrophoneStage, UsersThree, ChatCircle, Microphone } from '@phosphor-icons/react'
+import { Robot, FilmSlate, GearSix, CaretLeft, CaretRight, FolderOpen, Users, ShieldCheck, VideoCamera, Coins, SquaresFour, Aperture, Megaphone, UserFocus, MicrophoneStage, UsersThree, ChatCircle, Microphone, Palette } from '@phosphor-icons/react'
 
 import logo from '../../assets/acs-icon.svg'
 import BrandLogo from '../common/BrandLogo'
@@ -50,7 +50,7 @@ function SidebarNavItem({ item, activeTab, setActiveTab, isCollapsed, mouseY }) 
                 transformOrigin: isCollapsed ? 'center' : 'left center',
                 position: 'relative'
             }}
-            onClick={() => setActiveTab(item.id)}
+            onClick={() => item.onClick ? item.onClick() : setActiveTab(item.id)}
             className={cn(
                 "w-full flex items-center py-2.5 rounded-xl border-[1px] border-transparent group/navitem overflow-visible relative transition-[background-color,border-color,color,opacity] duration-300",
                 isActive
@@ -110,6 +110,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
         { id: 'brand-voice', label: 'Brand Voice', icon: MicrophoneStage, color: 'text-[#D4FF00]', bgColor: 'bg-[#D4FF00]', hoverColor: 'group-hover/navitem:text-[#D4FF00]', glow: 'shadow-[0_0_15px_rgba(212,255,0,0.15)]' },
         { id: 'yourvoice', label: 'Your Voice', icon: Microphone, color: 'text-[#c8f135]', bgColor: 'bg-[#c8f135]', hoverColor: 'group-hover/navitem:text-[#c8f135]', glow: 'shadow-[0_0_15px_rgba(200,241,53,0.3)] sidebar-glow-pulse' },
         { id: 'assets', label: 'Assets Library', icon: FolderOpen, color: 'text-[#AADD00]', bgColor: 'bg-[#AADD00]', hoverColor: 'group-hover/navitem:text-[#AADD00]', glow: 'shadow-[0_0_15px_rgba(96,165,250,0.1)]' },
+        { id: 'design', label: 'Design', icon: Palette, color: 'text-purple-400', bgColor: 'bg-purple-400', hoverColor: 'group-hover/navitem:text-purple-400', glow: 'shadow-[0_0_15px_rgba(192,132,252,0.25)]', onClick: () => window.open('http://127.0.0.1:7456', '_blank') },
         { id: 'settings', label: 'Settings', icon: GearSix, color: 'text-neutral-300', bgColor: 'bg-neutral-300', hoverColor: 'group-hover/navitem:text-neutral-300', glow: 'shadow-[0_0_15px_rgba(163,163,163,0.4)]' },
         { id: 'agent', label: 'ZeroLens AI', icon: Robot, color: 'text-violet-400', bgColor: 'bg-violet-400', hoverColor: 'group-hover/navitem:text-violet-400', glow: 'shadow-[0_0_15px_rgba(167,139,250,0.2)]' },
         { id: 'directors-cut', label: "Director's Cut", icon: FilmSlate, color: 'text-cyan-400', bgColor: 'bg-cyan-400', hoverColor: 'group-hover/navitem:text-cyan-400', glow: 'shadow-[0_0_15px_rgba(34,211,238,0.1)]' },
@@ -169,7 +170,11 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                 className="flex-1 min-h-0 px-2 space-y-2 relative overflow-y-auto overflow-x-hidden custom-scrollbar"
                 onMouseLeave={() => mouseY.set(Infinity)}
             >
-                {navItems.map((item) => (
+                {navItems.filter(item => 
+                    item.id !== 'admin' || isAdmin
+                ).filter(item =>
+                    item.id !== 'design' || isAdmin
+                ).map((item) => (
                     <SidebarNavItem
                         key={item.id}
                         item={item}

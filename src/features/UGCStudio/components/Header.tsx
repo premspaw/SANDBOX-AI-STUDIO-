@@ -22,7 +22,7 @@ export default function Header() {
       </div>
       <div className="w-px h-5 bg-white/10 flex-shrink-0" />
       {/* Mode Filter Tabs */}
-      <div className="flex gap-1.5">
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar max-w-[calc(100vw-160px)] md:max-w-none py-1 select-none shrink-0" style={{ scrollbarWidth: 'none' }}>
         {[
           { id: 'ugc', label: 'UGC', icon: Film },
           { id: 'podcast', label: 'Podcast', icon: Volume2 },
@@ -40,7 +40,7 @@ export default function Header() {
                   setRenderMode('video');
                 }
               }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'bg-[#c8f135]/15 border border-[#c8f135]/40 text-[#c8f135]'
                   : 'bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10'

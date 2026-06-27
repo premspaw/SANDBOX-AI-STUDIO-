@@ -107,12 +107,11 @@ export default function createRouter(deps) {
 
                 // Stream directly — handle both Node.js streams and Web ReadableStreams
                 if (upstream.body) {
-                    if (typeof upstream.body.pipe === 'function') {
-                        upstream.body.pipe(res);
-                    } else {
-                        const { Readable } = await import('stream');
-                        Readable.fromWeb(upstream.body).pipe(res);
-                    }
+                    const stream = typeof upstream.body.pipe === 'function'
+                        ? upstream.body
+                        : (await import('stream')).Readable.fromWeb(upstream.body);
+                    stream.on('error', () => res.end());
+                    stream.pipe(res);
                 } else {
                     res.end();
                 }
@@ -133,7 +132,9 @@ export default function createRouter(deps) {
             }
         } catch (err) {
             console.error('[Proxy Error]:', err.message);
-            res.status(err.status || 500).json({ error: err.message });
+            if (!res.headersSent) {
+                res.status(err.status || 500).json({ error: err.message });
+            }
         }
     });
 

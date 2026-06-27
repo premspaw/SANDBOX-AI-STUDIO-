@@ -86,7 +86,7 @@ export default function SplitScenesPanel() {
   return (
     <div className="mx-4 mt-2 bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-xl">
       {/* Tab headers */}
-      <div className="flex border-b border-white/10">
+      <div className="flex border-b border-white/10 overflow-x-auto no-scrollbar" style={{ scrollbarWidth: 'none' }}>
         {splitScenes.map((sc, i) => (
           <button key={i} onClick={() => { 
             setActiveSplitTab(i); 
@@ -94,13 +94,13 @@ export default function SplitScenesPanel() {
             setSelectedPromptVariant(0); 
             setVideoPrompt(splitScenes[i]?.prompt || '');
           }}
-            className={`flex-1 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all ${
+            className={`min-w-[90px] sm:flex-1 py-2 text-[8px] font-black uppercase tracking-widest transition-all ${
               activeSplitTab === i ? 'bg-[#c8f135]/15 text-[#c8f135] border-b-2 border-[#c8f135]' : 'text-white/30 hover:text-white/60'
             }`}>
             {sc.label}
           </button>
         ))}
-        <button onClick={() => { setSplitScenes([]); setSpokenDialog(''); }} className="px-2 text-white/20 hover:text-white/50 transition-colors"><X size={9} /></button>
+        <button onClick={() => { setSplitScenes([]); setSpokenDialog(''); }} className="px-3 text-white/20 hover:text-white/50 transition-colors shrink-0 ml-auto border-l border-white/10"><X size={9} /></button>
       </div>
       {/* Active scene: Dialogue + Controls */}
       <div className="p-3 space-y-2.5 relative">
@@ -247,9 +247,9 @@ Return ONLY the prompt text, no preamble.`;
         </div>
 
         {/* Row 2: Dialogue + Reference + Approve container */}
-        <div className="flex gap-4 items-center justify-between bg-black/40 border border-white/5 rounded-xl p-3">
+        <div className="flex flex-col md:flex-row gap-3 md:gap-4 items-stretch md:items-center justify-between bg-black/40 border border-white/5 rounded-xl p-3">
           {/* Left: Dialogue (Editable) */}
-          <div className="flex-1 text-left pr-2">
+          <div className="flex-1 text-left w-full">
             <textarea
               ref={textareaRef}
               value={sc?.dialog || ''}
@@ -281,10 +281,10 @@ Return ONLY the prompt text, no preamble.`;
           </div>
 
           {/* Right: Controls (Reference slot + Approve button) */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex flex-row items-center gap-3 w-full md:w-auto justify-between md:justify-end shrink-0 pt-2 md:pt-0 border-t border-white/5 md:border-t-0">
             {/* Reference Image Slot */}
             {isCustomRef ? (
-              <div className="flex items-center gap-2 px-2.5 py-1.5 bg-[#c8f135]/5 border border-[#c8f135]/20 rounded-xl relative animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 px-2.5 py-1.5 bg-[#c8f135]/5 border border-[#c8f135]/20 rounded-xl relative animate-in fade-in duration-200 shrink-0">
                 <img
                   src={resolveUrl(customRef)}
                   alt="Scene Ref"
@@ -309,7 +309,7 @@ Return ONLY the prompt text, no preamble.`;
                 </button>
               </div>
             ) : (
-              <div className="flex gap-1.5 items-stretch">
+              <div className="flex gap-1.5 items-stretch shrink-0">
                 <label className="flex items-center gap-2 px-2.5 py-1.5 bg-white/3 border border-dashed border-white/10 hover:border-[#c8f135]/40 hover:bg-[#c8f135]/5 rounded-xl cursor-pointer transition-all text-left">
                   <input
                     type="file"
@@ -359,7 +359,7 @@ Return ONLY the prompt text, no preamble.`;
                 generateVideo(finalPrompt, effectiveRefImage || undefined);
               }}
               disabled={isGeneratingVideo}
-              className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 cursor-pointer flex items-center gap-2 ${
+              className={`flex-1 md:flex-none px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 ${
                 isGeneratingVideo
                   ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
                   : 'bg-[#c8f135]/10 border border-[#c8f135]/40 text-[#c8f135] hover:bg-[#c8f135]/20 hover:border-[#c8f135]/70 hover:shadow-[0_0_20px_rgba(200,241,53,0.15)] active:scale-[0.98]'
@@ -368,7 +368,7 @@ Return ONLY the prompt text, no preamble.`;
               {isGeneratingVideo ? (
                 <>
                   <Loader2 size={11} className="animate-spin text-white/50" />
-                  <span className="text-white/40">{videoProgressMsg || 'Rendering…'}</span>
+                  <span className="text-white/40 text-[8.5px]">{videoProgressMsg || 'Rendering…'}</span>
                 </>
               ) : (
                 <>

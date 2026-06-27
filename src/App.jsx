@@ -102,6 +102,7 @@ const FULL_HEIGHT_TABS = new Set([
   'agent',
   'cinematic-studio',
   'yourvoice',
+  'design',
 ])
 
 function App() {
@@ -281,6 +282,8 @@ function App() {
         return <CinematicStudio />;
       case 'yourvoice':
         return <YourVoice />;
+      case 'design':
+        return null;
       default:
         return null;
     }

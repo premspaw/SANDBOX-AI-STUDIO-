@@ -662,7 +662,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         initial={false}
         animate={{ width: isSidebarOpen ? 288 : 0, opacity: isSidebarOpen ? 1 : 0 }}
         transition={{ duration: 0.25, ease: 'easeInOut' }}
-        className="shrink-0 border-r border-[#1e1e24] bg-[#080808] flex flex-col overflow-hidden"
+        className="absolute md:relative shrink-0 h-full border-r border-[#1e1e24] bg-[#080808] flex flex-col overflow-hidden z-[45]"
       >
 
         {/* Realtor Upload */}
@@ -895,25 +895,27 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
               className="bg-[#0e0e10]/95 backdrop-blur-2xl border border-[#1e1e24] rounded-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.6)] overflow-visible"
             >
               {/* Tab switcher: Script | Video */}
-              <div className="flex items-center gap-0 border-b border-[#1e1e24]">
-                {(['script', 'video'] as const).map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => { setChatTab(tab); setIsChatCollapsed(false); }}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-3.5 text-[9px] font-black uppercase tracking-widest transition-all border-b-2 ${
-                      chatTab === tab
-                        ? 'border-[#c8f135] text-[#c8f135] bg-[#c8f135]/5'
-                        : 'border-transparent text-white/30 hover:text-white/60'
-                    }`}
-                  >
-                    {tab === 'script' ? <FileText size={10} /> : <Film size={10} />}
-                    {tab === 'script' ? 'Room Script' : 'Video Generator'}
-                  </button>
-                ))}
+              <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 border-b border-[#1e1e24] p-2 md:p-0 relative">
+                <div className="flex items-center gap-0 w-full md:w-auto">
+                  {(['script', 'video'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => { setChatTab(tab); setIsChatCollapsed(false); }}
+                      className={`flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-4 md:px-5 py-3 text-[9px] font-black uppercase tracking-widest transition-all border-b-2 ${
+                        chatTab === tab
+                          ? 'border-[#c8f135] text-[#c8f135] bg-[#c8f135]/5'
+                          : 'border-transparent text-white/30 hover:text-white/60'
+                      }`}
+                    >
+                      {tab === 'script' ? <FileText size={10} /> : <Film size={10} />}
+                      {tab === 'script' ? 'Room Script' : 'Video Generator'}
+                    </button>
+                  ))}
+                </div>
 
                 {/* Tour Style Dropdown */}
                 {chatTab === 'script' && (
-                  <div className="ml-auto mr-2 relative group">
+                  <div className="ml-0 md:ml-auto mr-2 relative group self-start md:self-auto py-1">
                     <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black uppercase text-white/60 hover:text-[#c8f135] hover:border-[#c8f135]/40 transition-all">
                       <Sparkles size={10} className="text-[#c8f135]" />
                       <span>Style: {tourStyle}</span>
@@ -937,7 +939,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                 <button
                   onClick={() => setIsChatCollapsed(!isChatCollapsed)}
                   title={isChatCollapsed ? 'Expand chat' : 'Collapse chat'}
-                  className={`shrink-0 w-6 h-6 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-[#c8f135] hover:border-[#c8f135]/40 transition-all ${chatTab !== 'script' ? 'ml-auto mr-2' : 'mr-2'}`}
+                  className={`absolute right-2 top-2.5 md:relative md:right-0 md:top-0 shrink-0 w-6 h-6 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-[#c8f135] hover:border-[#c8f135]/40 transition-all ${chatTab !== 'script' ? 'md:ml-auto md:mr-2' : 'md:mr-2'}`}
                 >
                   <motion.div animate={{ rotate: isChatCollapsed ? 180 : 0 }} transition={{ duration: 0.2 }}>
                     <ChevronDown size={11} />
@@ -949,10 +951,11 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
               <motion.div
                 animate={{ height: isChatCollapsed ? 0 : 'auto', opacity: isChatCollapsed ? 0 : 1 }}
                 transition={{ duration: 0.22, ease: 'easeInOut' }}
-                className="overflow-hidden"
+                className="max-h-[50vh] md:max-h-none overflow-y-auto custom-scrollbar"
+                style={{ overflowX: 'hidden' }}
               >
                 {chatTab === 'script' ? (
-                  <div className="p-4 grid grid-cols-2 gap-4">
+                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Left: Script */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-3">
@@ -1005,7 +1008,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                     </div>
                   </div>
                 ) : (
-                  <div className="p-4 grid grid-cols-3 gap-4 items-stretch">
+                  <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
                     {/* Column 1: Active Room Shot generation */}
                     <div className="flex flex-col justify-between p-3 bg-white/5 border border-white/10 rounded-xl">
                       <div className="flex items-center justify-between mb-2">

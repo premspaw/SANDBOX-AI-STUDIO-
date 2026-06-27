@@ -215,11 +215,15 @@ getVertexToken().catch(() => {});
 const _LLM_API_KEY = () => process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
 const OPENAI_API_KEY = () => process.env.OPENAI_API_KEY;
 const _IS_OPENROUTER = () => !!process.env.OPENROUTER_API_KEY;
-const getOpenAIClient = () => {
-    if (_IS_OPENROUTER()) {
+const getOpenAIClient = (forceOfficial = false) => {
+    if (!forceOfficial && _IS_OPENROUTER()) {
         return new OpenAI({ apiKey: _LLM_API_KEY(), baseURL: 'https://openrouter.ai/api/v1' });
     }
-    return new OpenAI({ apiKey: OPENAI_API_KEY() });
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+        throw new Error('OPENAI_API_KEY is not configured in your .env file. OpenAI image generation requires an official OpenAI API key.');
+    }
+    return new OpenAI({ apiKey });
 };
 const openaiChat = async (messages, model = 'gpt-4o', jsonMode = false) => {
     const apiKey = _LLM_API_KEY();
@@ -768,7 +772,7 @@ async function resolveToPublicUrl(imgData, userId) {
 async function handleKieVeo(req, res) {
     try {
         const { prompt, firstFrame, duration, userId } = req.body;
-        const apiKey = process.env.KLING_API_KEY;
+        const apiKey = process.env.KIE_API_KEY || process.env.KLING_API_KEY;
         const imgUrl = await resolveToPublicUrl(firstFrame, userId);
 
         const resp = await fetch("https://api.kie.ai/api/v1/jobs/createTask", {
@@ -789,7 +793,7 @@ async function handleKieVeo(req, res) {
 async function handleKling(req, res) {
     try {
         const { prompt, firstFrame, lastFrame, duration, userId } = req.body;
-        const apiKey = process.env.KLING_API_KEY;
+        const apiKey = process.env.KIE_API_KEY || process.env.KLING_API_KEY;
         const [imgUrl, tailUrl] = await Promise.all([
             resolveToPublicUrl(firstFrame, userId),
             resolveToPublicUrl(lastFrame, userId)
@@ -838,7 +842,9 @@ async function resolveImageToBuffer(imgSrc) {
 async function handleOpenAI(req, res) {
     try {
         const { model, prompt, quality, size, image, secondImage, userId, folder, format, output_format, output_compression, background } = req.body;
-        const openai = getOpenAIClient();
+        
+        // Force the official OpenAI client for image generation/edits since OpenRouter does not support it
+        const openai = getOpenAIClient(true);
         const isEdit = !!image;
         const finalFormat = output_format || format || 'png';
 
@@ -886,10 +892,12 @@ async function handleOpenAI(req, res) {
             if (finalSize === '1792x1024') finalSize = '1536x1024';
             if (finalSize === '1024x1792') finalSize = '1024x1536';
 
+            const finalQuality = quality === 'hd' || quality === 'high' ? 'high' : (quality === 'low' ? 'low' : 'medium');
+
             response = await openai.images.generate({
                 model: (model === 'dall-e-2') ? 'dall-e-2' : 'gpt-image-2',
                 prompt,
-                quality: quality === 'hd' || quality === 'high' ? 'high' : (quality === 'low' ? 'low' : 'medium'),
+                quality: finalQuality,
                 size: finalSize,
                 n: 1,
                 output_format: finalFormat,
@@ -931,6 +939,7 @@ async function handleOpenAI(req, res) {
 
         res.json({ url });
     } catch (error) {
+        console.error('[handleOpenAI Error]:', error.message);
         res.status(500).json({ error: error.message });
     }
 }
@@ -1068,8 +1077,10 @@ async function handleGoogle(req, res) {
 
             const b64 = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
             if (!b64) {
-                console.error("[Imagen Empty Body]:", JSON.stringify(result, null, 2));
-                throw new Error("Google API returned no image candidates");
+                const finishReason = candidate?.finishReason || 'N/A';
+                const promptFeedback = result.promptFeedback;
+                console.error("[Imagen Empty Body] finishReason:", finishReason, "promptFeedback:", JSON.stringify(promptFeedback), "full:", JSON.stringify(result).slice(0, 2000));
+                throw new Error(`Google API returned no image candidates. finishReason: ${finishReason}${promptFeedback?.blockReason ? `, blockReason: ${promptFeedback.blockReason}` : ''}${result.error?.message ? `, apiError: ${result.error.message}` : ''}`);
             }
 
             const url = await uploadImageToSupabase(Buffer.from(b64, 'base64'), userId, 'image/jpeg', undefined, folder, mappedRatio);

@@ -26,6 +26,7 @@ HERMES_ROOT = Path(os.environ.get("LOCALAPPDATA", "")) / "hermes" / "hermes-agen
 sys.path.insert(0, str(HERMES_ROOT))
 sys.path.insert(0, str(HERMES_ROOT / "venv" / "Lib" / "site-packages"))
 
+import aiohttp
 from aiohttp import web
 
 HOST = os.environ.get("HERMES_HOST", "127.0.0.1")
@@ -93,6 +94,60 @@ async def handle_create_session(request):
     return web.json_response({"session_id": session_id}, status=201)
 
 
+GEMINI_VISION_MODEL = os.environ.get("GEMINI_VISION_MODEL", "gemini-2.5-flash")
+GCP_PROJECT_ID = os.environ.get("GOOGLE_PROJECT_ID", "gen-lang-client-0438096272")
+GCP_LOCATION = os.environ.get("GOOGLE_LOCATION", "us-central1")
+
+async def _call_gemini_vision(message: str, attachments: list, system_prompt: str = "") -> str:
+    """Call Gemini API with vision support. Handles multiple image attachments and both AIza API keys and AQ. OAuth tokens."""
+    api_key = os.environ.get("GOOGLE_API_KEY", "")
+    if not api_key:
+        return "Error: GOOGLE_API_KEY not configured on server."
+
+    is_vertex_token = api_key.startswith("ya29.")
+
+    parts = []
+    if system_prompt:
+        parts.append({"text": f"[System]\n{system_prompt}\n\n[User]\n{message}"})
+    else:
+        parts.append({"text": message})
+
+    for att in attachments:
+        base64_data = att.get("data", "")
+        if "," in base64_data:
+            base64_data = base64_data.split(",", 1)[1]
+        mime_type = att.get("type", "image/jpeg")
+        parts.append({"inline_data": {"mime_type": mime_type, "data": base64_data}})
+
+    payload = {"contents": [{"parts": parts}]}
+
+    try:
+        if is_vertex_token:
+            url = f"https://{GCP_LOCATION}-aiplatform.googleapis.com/v1/projects/{GCP_PROJECT_ID}/locations/{GCP_LOCATION}/publishers/google/models/{GEMINI_VISION_MODEL}:generateContent"
+            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        else:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_VISION_MODEL}:generateContent?key={api_key}"
+            headers = {"Content-Type": "application/json"}
+
+        logger.info("Calling Gemini vision endpoint for model %s (vertex=%s)", GEMINI_VISION_MODEL, is_vertex_token)
+        async with aiohttp.ClientSession() as sess:
+            async with sess.post(url, json=payload, headers=headers) as resp:
+                data = await resp.json()
+                if not resp.ok:
+                    err_detail = data.get("error", {}).get("message", str(data))
+                    logger.warning("Gemini vision API error (HTTP %s): %s", resp.status, err_detail)
+                    return f"Error: Gemini API returned {resp.status} — {err_detail}"
+
+        candidate = data.get("candidates", [{}])[0]
+        text = candidate.get("content", {}).get("parts", [{}])[0].get("text", "")
+        finish_reason = candidate.get("finishReason", "UNKNOWN")
+        logger.info("Gemini vision response finish_reason=%s text_len=%d", finish_reason, len(text))
+        return text or f"Image analyzed (finish_reason={finish_reason}) but no text returned."
+    except Exception as e:
+        logger.warning("Gemini vision call failed: %s", e)
+        return f"Error processing image: {e}"
+
+
 async def handle_chat(request):
     session_id = request.match_info.get("session_id")
     if session_id not in _sessions:
@@ -109,11 +164,20 @@ async def handle_chat(request):
 
     session = _sessions[session_id]
     agent = session["agent"]
+    attachments = body.get("attachments") or []
+    image_attachments = [a for a in attachments if a.get("data") and a.get("type", "").startswith("image/")]
+    has_images = len(image_attachments) > 0
+    system_prompt = session.get("system_prompt", "")
 
-    result = await _run_agent(agent, message, session["history"])
+    if has_images:
+        # Use Gemini API directly for vision (all images sent)
+        final_text = await _call_gemini_vision(message, image_attachments, system_prompt)
+    else:
+        # Use Hermes agent for text-only
+        result = await _run_agent(agent, message, session["history"])
+        final_text = result.get("final_response", "") or ""
 
-    final_text = result.get("final_response", "") or ""
-    session["history"].append({"role": "user", "content": message})
+    session["history"].append({"role": "user", "content": message, "has_images": has_images})
     session["history"].append({"role": "assistant", "content": final_text})
 
     return web.json_response({
@@ -190,8 +254,10 @@ async def cors_middleware(request, handler):
     return response
 
 
+MAX_BODY_SIZE = int(os.environ.get("HERMES_MAX_BODY_SIZE", "50")) * 1024 * 1024
+
 def build_app():
-    app = web.Application(middlewares=[cors_middleware])
+    app = web.Application(middlewares=[cors_middleware], client_max_size=MAX_BODY_SIZE)
     app.router.add_post("/api/sessions", handle_create_session)
     app.router.add_get("/api/sessions/{session_id}", handle_get_session)
     app.router.add_post("/api/sessions/{session_id}/chat", handle_chat)

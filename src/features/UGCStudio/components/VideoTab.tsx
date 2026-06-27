@@ -29,7 +29,7 @@ export default function VideoTab() {
   return (
     <div className="px-3 pt-3 pb-2">
       {/* Chat box + Generate button */}
-      <div className="flex gap-2 items-stretch">
+      <div className="flex flex-col sm:flex-row gap-2 items-stretch">
 
         {/* Professional Chat Input */}
         <div className="flex-1 flex flex-col border border-white/[0.08] focus-within:border-[#c8f135]/30 rounded-2xl transition-all duration-200 overflow-hidden bg-[#0d0d0f]">
@@ -185,7 +185,7 @@ export default function VideoTab() {
         <button
           onClick={splitScenes.length > 0 ? generateAllSceneVideos : () => generateVideo(videoPrompt || undefined)}
           disabled={isGeneratingVideo}
-          className="w-24 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all shrink-0"
+          className="w-full sm:w-24 h-11 sm:h-auto rounded-2xl flex flex-row sm:flex-col items-center justify-center gap-1.5 sm:gap-1 transition-all shrink-0 py-2 sm:py-0"
           style={{
             backgroundColor: isGeneratingVideo ? 'rgba(255,255,255,0.04)' : '#c8f135',
             color: isGeneratingVideo ? 'rgba(255,255,255,0.2)' : 'black',
@@ -213,5 +213,3 @@ export default function VideoTab() {
     </div>
   );
 }
-
-

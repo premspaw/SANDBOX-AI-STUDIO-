@@ -198,8 +198,8 @@ export default function createRouter(deps) {
                 console.log(`[Avatar Board] Transferring image to Cloudflare R2: ${outputFileName}`);
                 r2Url = await storageService.uploadToGCS(buffer, outputFileName, 'image/png');
             } else {
-                // Trigger GPT Image 2 image generation
-                const openai = getOpenAIClient();
+                // Trigger GPT Image 2 image generation (Force official client to prevent OpenRouter proxying)
+                const openai = getOpenAIClient(true);
                 
                 // Prepend visual likeness/subject description for GPT Image 2 if any reference photo is provided
                 if (refImageUrl || wardrobeRefUrl || propRefUrl) {

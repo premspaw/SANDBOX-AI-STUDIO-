@@ -4,7 +4,8 @@ import { Upload, User, Box, FileText, Camera, Play, Pause, Wand2, Loader2, Volum
 import * as LucideIcons from 'lucide-react';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
-import { supabase } from '../../lib/supabase';
+import { supabase as rawSupabase } from '../../lib/supabase';
+const supabase = rawSupabase as any;
 import { useAppStore } from '../../store';
 import { useShorts } from '../../hooks/useShorts';
 import {
@@ -550,7 +551,7 @@ export default function UGC() {
   const [gpt2Quality, setGpt2Quality] = useState<'low' | 'medium' | 'high'>('low');
   const [isGalleryOpen, setIsGalleryOpen] = useState(true);
   const [inpaintImg, setInpaintImg] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth > 768 : true);
   const [attachedRefImage, setAttachedRefImage] = useState<string | null>(null);
   const [spokenDialog, setSpokenDialog] = useState<string>('');
   const [splitScenes, setSplitScenes] = useState<{label: string; dialog: string; prompt: string; refImage?: string | null}[]>([]);
@@ -3437,41 +3438,43 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                 className="bg-[#0e0e10]/95 backdrop-blur-2xl border border-[#1e1e24] rounded-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.6)] overflow-visible"
               >
                 {/* ── Tab switcher: Script | Video ── */}
-                <div className="relative z-50 flex items-center gap-0 border-b border-[#1e1e24]">
-                  {([
-                    { id: 'script' as const, label: activeTab === 'podcast' ? 'Podcast Script' : activeTab === 'talking-head' ? 'Image' : 'Script', icon: activeTab === 'talking-head' ? Camera : FileText },
-                    { id: 'video' as const, label: activeTab === 'podcast' ? 'Podcast Clip' : activeTab === 'talking-head' ? 'Talking Head Video' : 'Video', icon: Film },
-                  ] as {id: 'script'|'video', label: string, icon: any}[]).map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => { setChatTab(tab.id); setIsChatCollapsed(false); }}
-                      className={`flex items-center gap-1.5 px-5 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all border-b-2 ${
-                        chatTab === tab.id
-                          ? 'border-[#c8f135] text-[#c8f135] bg-[#c8f135]/5'
-                          : 'border-transparent text-white/30 hover:text-white/60'
-                      }`}
-                    >
-                      <tab.icon size={10} />
-                      {tab.label}
-                    </button>
-                  ))}
-                  {isAdmin && (
-                    <button onClick={() => { setIsAdmin(false); showToast('Admin mode OFF', 'error'); }}
-                      className="ml-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#00ffe0]/15 border border-[#00ffe0]/30 text-[#00ffe0] text-[7px] font-black uppercase tracking-widest hover:bg-red-500/20 hover:border-red-500/40 hover:text-red-400 transition-all"
-                      title="Admin mode ON — click to deactivate">
-                      <ShieldCheck size={8} /> Admin
-                    </button>
-                  )}
+                <div className="relative z-50 flex flex-col md:flex-row md:items-center gap-2 md:gap-0 border-b border-[#1e1e24] p-2 md:p-0">
+                  <div className="flex items-center gap-0 w-full md:w-auto">
+                    {([
+                      { id: 'script' as const, label: activeTab === 'podcast' ? 'Podcast Script' : activeTab === 'talking-head' ? 'Image' : 'Script', icon: activeTab === 'talking-head' ? Camera : FileText },
+                      { id: 'video' as const, label: activeTab === 'podcast' ? 'Podcast Clip' : activeTab === 'talking-head' ? 'Talking Head Video' : 'Video', icon: Film },
+                    ] as {id: 'script'|'video', label: string, icon: any}[]).map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => { setChatTab(tab.id); setIsChatCollapsed(false); }}
+                        className={`flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-4 md:px-5 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all border-b-2 ${
+                          chatTab === tab.id
+                            ? 'border-[#c8f135] text-[#c8f135] bg-[#c8f135]/5'
+                            : 'border-transparent text-white/30 hover:text-white/60'
+                        }`}
+                      >
+                        <tab.icon size={10} />
+                        {tab.label}
+                      </button>
+                    ))}
+                    {isAdmin && (
+                      <button onClick={() => { setIsAdmin(false); showToast('Admin mode OFF', 'error'); }}
+                        className="ml-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#00ffe0]/15 border border-[#00ffe0]/30 text-[#00ffe0] text-[7px] font-black uppercase tracking-widest hover:bg-red-500/20 hover:border-red-500/40 hover:text-red-400 transition-all shrink-0"
+                        title="Admin mode ON — click to deactivate">
+                        <ShieldCheck size={8} /> Admin
+                      </button>
+                    )}
+                  </div>
                   {/* error pill pushed right */}
                   {videoError && (
-                    <div className="ml-auto mr-3 flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20">
-                      <AlertCircle size={9} className="text-red-400" />
+                    <div className="ml-0 md:ml-auto mr-3 flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20 max-w-max">
+                      <AlertCircle size={9} className="text-red-400 text-xs shrink-0" />
                       <span className="text-[8px] font-black text-red-400 uppercase tracking-widest truncate max-w-[140px]">{videoError}</span>
                     </div>
                   )}
                   {/* Script-tab dropdowns pushed right */}
                   {chatTab === 'script' && (
-                    <div className="ml-auto flex items-center gap-1.5 px-3 flex-wrap justify-end">
+                    <div className="ml-0 md:ml-auto flex items-center gap-1.5 px-2 md:px-3 overflow-x-auto no-scrollbar py-1" style={{ scrollbarWidth: 'none' }}>
                       <Dropdown label="" value={language} options={LANGUAGES} onChange={setLanguage} direction="up" className="w-[85px] shrink-0" />
                       <Dropdown label="" value={voice} options={VOICES} onChange={setVoice} direction="up" className="w-[80px] shrink-0" />
                       <Dropdown label="" value={scriptDuration} options={['8 seconds', '16 seconds', '24 seconds', '36 seconds', '42 seconds']} onChange={setScriptDuration} direction="up" className="w-[100px] shrink-0" />
@@ -3484,16 +3487,15 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                           if (key) setSelectedScriptTone(key);
                         }}
                         direction="up"
-                        className="w-[155px] shrink-0"
+                        className="w-[140px] md:w-[155px] shrink-0"
                       />
-
                     </div>
                   )}
                   {/* Collapse / expand toggle — far right */}
                   <button
                     onClick={() => setIsChatCollapsed(c => !c)}
                     title={isChatCollapsed ? 'Expand chat' : 'Collapse chat'}
-                    className="ml-auto mr-2 shrink-0 w-6 h-6 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-[#c8f135] hover:border-[#c8f135]/40 transition-all"
+                    className="absolute right-2 top-2.5 md:relative md:right-0 md:top-0 md:ml-auto md:mr-2 shrink-0 w-6 h-6 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-[#c8f135] hover:border-[#c8f135]/40 transition-all"
                   >
                     <motion.div animate={{ rotate: isChatCollapsed ? 180 : 0 }} transition={{ duration: 0.2 }}>
                       <ChevronDown size={11} />
@@ -3505,7 +3507,8 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                 <motion.div
                   animate={{ height: isChatCollapsed ? 0 : 'auto', opacity: isChatCollapsed ? 0 : 1 }}
                   transition={{ duration: 0.22, ease: 'easeInOut' }}
-                  style={{ overflow: 'hidden' }}
+                  className="max-h-[50vh] md:max-h-none overflow-y-auto custom-scrollbar"
+                  style={{ overflowX: 'hidden' }}
                 >
 
 
