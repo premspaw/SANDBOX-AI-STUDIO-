@@ -16,55 +16,222 @@ export function StoryboardEditor({
   const [engine, setEngine] = useState('gemini-3.1-flash-image-preview');
   const [isGeneratingStoryboard, setIsGeneratingStoryboard] = useState(false);
 
+  const getCreditCost = () => {
+    return engine === 'gpt-image-2' ? 3 : 2;
+  };
+
   // Storyboard Preloaded Blueprints Map
   const STORY_TEMPLATES = {
     story1: {
-      label: "Story 1: Netflix Movie Storyboard Sheet",
-      prompt: `Create a single cinematic storyboard image based on the attached reference image. The storyboard should contain multiple connected scenes in one frame, showing a complete visual story progression from start to finish. Maintain the exact same character face, hairstyle, outfit, body proportions, environment, lighting, and visual identity from the reference image throughout all panels.
+      label: "Story 1: Netflix Cinematic Story Sheet",
+      prompt: `You are generating a SINGLE vertical poster image that functions as a professional Netflix-style multi-panel storyboard. All panels must be seamlessly merged into one cohesive vertical composition.
 
-Design the storyboard like a premium movie concept board with 6–8 cinematic frames merged into one composition. Include different camera angles such as close-up, medium shot, wide shot, side profile, low-angle hero shot, over-the-shoulder shot, and dramatic final scene.
+CRITICAL — CHARACTER CONSISTENCY: Preserve the exact face structure, facial features, skin tone, hair color, hairstyle, eye shape, outfit, and body proportions from the reference image across ALL panels. Do not alter or reinterpret the character in any frame.
 
-The story should flow naturally:
-- Introduction scene
-- Character preparation scene
-- Action/movement scene
-- Emotional close-up scene
-- Main hero moment
-- Cinematic climax
-- Wide environmental shot
-- Powerful ending frame
+PANEL LAYOUT: Arrange 6–8 cinematic frames divided by thin matte-black film strip borders into a single vertical poster. Each panel must have a distinct camera angle:
+Panel 1 — Wide establishing shot of environment, character entering frame
+Panel 2 — Medium waist-up shot, character aware, scanning surroundings
+Panel 3 — Close-up of face, micro-expression of tension or curiosity
+Panel 4 — Action beat — movement, dynamic angle, motion blur on edges
+Panel 5 — Over-the-shoulder shot revealing what the character sees
+Panel 6 — Low-angle hero shot, character standing resolute
+Panel 7 — Emotional peak — extreme close-up of eyes, depth of field bokeh
+Panel 8 — Wide cinematic outro, character small against grand environment
 
-Add professional film-style panel divisions, cinematic color grading, realistic shadows, depth of field, movie production storyboard layout, visual continuity between scenes, ultra-realistic details, DSLR photography quality, commercial advertisement style, highly detailed skin texture, dynamic composition, 8K resolution, masterpiece quality.
+VISUAL STYLE: Netflix cinematic color grading, teal-orange LUT, volumetric lighting, 35mm film grain, anamorphic lens flares, shallow depth of field, photorealistic skin detail, 8K resolution quality, masterpiece composition. All panels must share identical lighting logic and color palette.
 
-Make it look like a Netflix movie storyboard sheet, all scenes combined into one premium vertical poster, visually connected and telling a complete cinematic story in a single image.`
+OUTPUT: One single seamless vertical image. No white space. No text. No watermarks.`
     },
     story2: {
-      label: "Story 2: High-Octane Action Blockbuster Sequence",
-      prompt: `Create a single high-octane cinematic storyboard poster based on the attached reference image. The sheet should merge 6–8 highly dynamic frames into one continuous visual story showing an epic action sequence. Maintain absolute character face, hair, costume, and visual identity consistency from the reference throughout all frames.
+      label: "Story 2: High-Octane Action Blockbuster",
+      prompt: `You are generating a SINGLE vertical action storyboard poster — 6–8 panels fused into one seamless vertical image, styled like a premium Hollywood action blockbuster concept sheet.
 
-The action sequence must flow chronologically:
-- Tension rising: character gearing up, focused epic eyes close-up
-- Sudden threat: action triggered, low-angle running/sprinting shot
-- Mid-air leap: dramatic camera pan following a high-impact stunt
-- Defensive maneuver: dodging under volumetric smoke, sparks flying
-- Climax confrontation: character landing powerful heroic blow, high-impact lens flare
-- Aftermath: standing amidst debris in a wide cinematic landscape shot
+CRITICAL — CHARACTER CONSISTENCY: Lock the exact face, hair, skin tone, physique, and costume from the reference image across every single panel. No variation allowed. Same person, same outfit, different angles and moments.
 
-Include bold film division lanes, neon orange and deep blue cinematic color grading, rich particles, realistic depth of field, and dynamic IMAX-style compositions. Tell the complete blockbuster scene progression in a single masterpiece poster.`
+PANEL SEQUENCE — must flow chronologically as one unbroken action beat:
+Panel 1 — Tight close-up of character's eyes: intense focus, brow slightly furrowed, dramatic rim light
+Panel 2 — Medium shot: body tensed, weight shifting, preparing for movement — environment reflects incoming threat
+Panel 3 — Full-body sprint: low tracking angle, camera slightly tilted, motion blur on legs, dust kicking up
+Panel 4 — Mid-air suspension frame: character in dramatic leap, frozen at apex, debris or sparks passing by
+Panel 5 — Impact frame: landing or collision moment, shockwave energy ripple, environmental destruction
+Panel 6 — Counter-attack close shot: arm or hand in powerful extension motion, face side-lit dramatically
+Panel 7 — Recovery beat: character straightening up, smoke/particle debris settling, wide shoulders confident
+Panel 8 — Cinematic final frame: wide shot, character centered in destroyed environment, camera low, sky dramatic
+
+VISUAL STYLE: IMAX action film color grade, deep navy and burning orange palette, smoke particles, lens flare bursts, volumetric god rays, motion blur, cinematic grain, Dolby Vision HDR contrast, hyper-realistic detail, 8K quality. Thin dark panel borders separating frames.
+
+OUTPUT: One single seamless vertical image. No text labels. No watermarks.`
     },
     story3: {
-      label: "Story 3: Sci-Fi Cyberpunk Neon Odyssey",
-      prompt: `Create a single futuristic sci-fi storyboard poster based on the attached reference image. Merge 6–8 visually stunning cyberpunk frames into one cohesive vertical poster showing a high-tech visual narrative. Maintain absolute visual identity, face, and clothing consistency from the reference image in all scenes.
+      label: "Story 3: Cyberpunk Neon Odyssey",
+      prompt: `You are generating a SINGLE vertical sci-fi cyberpunk storyboard poster — 6–8 panels fused into one seamless vertical image. The style references Blade Runner 2049, Ghost in the Shell, and Akira — maximum world density.
 
-The sci-fi odyssey must flow chronologically:
-- Cyberpunk city overview: towering neon skyscrapers, hover-vehicles passing
-- Glitch interface: character accessing floating green holographic displays, close-up
-- Silent stealth: sneaking through rain-soaked dark alleys, neon signs reflecting
-- Confrontation: low-angle faceoff under glowing volumetric searchlights
-- Tech activation: glowing cybernetic lines on character lighting up, camera push-in
-- Final departure: walking away towards a neon horizon, wide atmospheric shot
+CRITICAL — CHARACTER CONSISTENCY: Maintain the exact face geometry, skin tone, hair, and outfit from the reference image in every panel. The character may have subtle cybernetic enhancements but the core identity must remain identical throughout.
 
-Add distinct film-strip division borders, cybernetic HUD elements, rich teal and magenta color grading, heavy fog, rain textures, dynamic lighting, and hyper-detailed Unreal Engine 5 concept art quality.`
+PANEL SEQUENCE — one complete cyberpunk narrative arc:
+Panel 1 — Extreme wide shot: character tiny against a towering neon megacity at night, rain falling, holographic billboards
+Panel 2 — Street level medium shot: character walking through rain-soaked alley, neon signs reflecting in puddles underfoot
+Panel 3 — Close-up: character's face lit by a floating holographic interface, green data streams reflecting in eyes
+Panel 4 — Over-the-shoulder: character looking at a massive glowing data vault or encrypted door, teal and purple light
+Panel 5 — Tension beat: character crouching behind cover, scanning, shadows dramatic, heat shimmer from ground vents
+Panel 6 — System activation: cybernetic circuit lines glowing along character's skin/clothing, energy radiating outward
+Panel 7 — Confrontation: face-to-face with a threat or figure, both silhouetted against intense purple-white backlight
+Panel 8 — Departure: character walking away into the neon fog, lone figure, city humming, atmospheric and cinematic
+
+VISUAL STYLE: Cyberpunk color grade — deep teal shadows, magenta and cyan neon, amber street glow, heavy volumetric fog, rain streaks, holographic HUD overlays in panels 3 and 6, film grain, anamorphic bokeh on background neon, Unreal Engine 5 photorealism quality. Thin holographic-blue panel dividers.
+
+OUTPUT: One single seamless vertical image. No text labels. No watermarks.`
+    },
+    story4: {
+      label: "Story 4: Custom Director's Cut (Your Angle + Brief)",
+      prompt: `You are a senior Hollywood storyboard artist. Generate a SINGLE vertical storyboard poster containing 6–8 cinematic panels fused seamlessly into one image, based entirely on the director's brief and chosen angle provided below.
+
+CRITICAL — CHARACTER CONSISTENCY: Copy the exact face structure, skin tone, hair color, hairstyle, eye shape, outfit, and body proportions from the reference image into EVERY panel without any deviation. Same person. Same clothes. Only camera angle and scene context changes.
+
+DIRECTOR'S ANGLE & BRIEF:
+[USER STORY SCENARIO BRIEF: {storyBrief}]
+
+PANEL CONSTRUCTION RULES:
+- Read the user brief carefully and extract the core narrative arc
+- Divide the story into 6–8 distinct beats: setup → tension → action → peak → resolution
+- Assign a unique camera angle to each panel — no two panels should use the same framing
+- Camera angles to choose from: extreme wide, wide, medium, close-up, extreme close-up, low-angle, high-angle, bird's-eye, Dutch tilt, over-the-shoulder, POV, two-shot
+- Each panel must advance the story — no repeated moments or filler frames
+- Panels must read top-to-bottom as a coherent visual narrative
+
+VISUAL STYLE RULES:
+- Match the color grade and mood to the tone of the user's brief:
+  → Drama/emotion: warm amber + deep shadow, 35mm grain, shallow depth of field
+  → Action/thriller: high contrast blue-orange, motion blur, lens flares
+  → Sci-fi/fantasy: teal-magenta neon, volumetric fog, glowing practical lights
+  → Horror/dark: desaturated + single harsh practical light, heavy vignette
+  → Romance/character: soft golden hour, bokeh, intimate framing
+- Photorealistic, 8K quality, anamorphic lens aesthetics
+- Thin matte-black panel dividers between frames
+- All panels share the same lighting logic and color palette
+
+OUTPUT: One single seamless vertical image. No text overlays. No watermarks. No captions.`
+    },
+    story5: {
+      label: "Story 5: Universal Cinematic Storyboard",
+      prompt: `INPUT
+
+Reference Images
+Use the uploaded image(s) as the ONLY identity reference.
+If multiple images are uploaded, treat them as different angles of the SAME PERSON.
+
+User Story Prompt
+{storyBrief}
+
+⸻
+
+DIRECTOR MODE
+You are an Oscar-winning cinematographer, film director, storyboard artist, and concept designer.
+Convert the user’s prompt into a cinematic visual sequence.
+Do not simply create nine random camera angles.
+Create a continuous visual story.
+Every frame should naturally lead into the next.
+Think like a real movie.
+
+⸻
+
+CHARACTER LOCK
+Use the uploaded reference images as the only source of truth.
+Analyze every uploaded image before generation.
+Preserve exactly:
+• face shape
+• skull structure
+• forehead
+• eyebrows
+• eyes
+• eyelids
+• iris spacing
+• nose
+• lips
+• jawline
+• chin
+• ears
+• hairstyle
+• hairline
+• facial hair
+• skin tone
+• body proportions
+• height
+• physique
+• clothing
+• accessories
+Identity Accuracy: 100%
+Character Consistency: Maximum
+Never redesign the face.
+Never beautify.
+Never replace the person.
+Never generate another identity.
+
+⸻
+
+STORY CONTINUITY
+All nine images belong to the SAME scene.
+Same character.
+Same clothing.
+Same hairstyle.
+Same lighting.
+Same weather.
+Same time of day.
+Same location unless the user’s prompt explicitly changes location.
+Each frame should continue naturally from the previous frame.
+The character should move naturally through the environment.
+
+⸻
+
+AUTOMATIC SHOT PLANNING
+Without user instruction, automatically create cinematic coverage such as:
+Frame 1: Establishing Shot
+Frame 2: Wide Shot
+Frame 3: Medium Wide
+Frame 4: Medium Shot
+Frame 5: Close-up Emotional Shot
+Frame 6: Over-the-Shoulder
+Frame 7: Profile / Side Shot
+Frame 8: Dynamic Hero Angle
+Frame 9: Final Cinematic Ending Frame
+Choose the best composition based on the story.
+Do NOT repeat similar compositions.
+Every frame should reveal new visual information.
+
+⸻
+
+CINEMATIC LANGUAGE
+Use realistic filmmaking techniques:
+Establishing Shot, Master Shot, Wide Shot, Medium Shot, Cowboy Shot, Close-up, Extreme Close-up, Over-the-Shoulder, POV Shot, Tracking Shot, Dolly Shot, Push-in, Pull-back, Low Angle, High Angle, Dutch Angle (only if dramatically justified), Crane Shot, Drone Shot, Foreground Framing, Rack Focus, Natural Blocking, Visual Storytelling.
+
+⸻
+
+CAMERA
+ARRI Alexa 65, Sony Venice 2, RED V-Raptor, Cooke Anamorphic Lens, Zeiss Supreme Prime.
+Natural depth of field, professional composition, Hollywood framing, real lens compression, film-quality perspective.
+
+⸻
+
+LIGHTING
+Physically accurate lighting, soft cinematic shadows, natural skin rendering, global illumination, volumetric lighting, real reflections, HDR, film color science.
+
+⸻
+
+VISUAL STYLE
+Hollywood Feature Film, Netflix Original, AAA Game Cinematic, Luxury Editorial, IMAX, Photorealistic, Ultra Detailed, 8K, Film Still, Movie Frame, Production Quality.
+
+⸻
+
+OUTPUT
+Generate a premium 3×3 storyboard grid.
+Nine connected cinematic frames.
+The storyboard must tell one continuous visual story from beginning to end.
+Each frame should have a different camera angle, composition, focal length, and emotional purpose while maintaining perfect character and environment continuity.
+
+⸻
+
+NEGATIVE PROMPT
+identity drift, different face, different hairstyle, different clothing, different body proportions, different environment, different lighting, different weather, face swap, beauty filter, cartoon, anime, illustration, CGI look, duplicate character, duplicate pose, repeated camera angle, cropped body, missing limbs, extra fingers, blurry, noisy, watermark, logo, text, labels, artifacts, oversaturated colors, unrealistic anatomy, inconsistent scene continuity.`
     }
   };
 
@@ -76,7 +243,8 @@ Add distinct film-strip division borders, cybernetic HUD elements, rich teal and
     if (showToast) showToast("Drafting multi-frame storyboard panel...", "info");
 
     try {
-      const spendResult = await useAppStore.getState().spendShorts(userId, 5, 'image_grid_multishot'); // deduct 5 credits
+      const credits = getCreditCost();
+      const spendResult = await useAppStore.getState().spendShorts(userId, credits, 'image_grid_multishot'); // deduct credits based on engine
       if (!spendResult.success) {
         setIsGeneratingStoryboard(false);
         onClose();
@@ -89,16 +257,28 @@ Add distinct film-strip division borders, cybernetic HUD elements, rich teal and
       }
 
       // Dynamic combined prompt payload
-      const combinedPrompt = `${STORY_TEMPLATES[selectedStoryTemplate]?.prompt || ''}
+      let combinedPrompt = '';
+      if (selectedStoryTemplate === 'story4') {
+        combinedPrompt = STORY_TEMPLATES.story4.prompt.replace('{storyBrief}', storyBrief);
+      } else if (selectedStoryTemplate === 'story5') {
+        combinedPrompt = STORY_TEMPLATES.story5.prompt.replace('{storyBrief}', storyBrief);
+      } else {
+        combinedPrompt = `${STORY_TEMPLATES[selectedStoryTemplate]?.prompt || ''}
 
 [USER STORY SCENARIO BRIEF: Describe the specific actions or narrative detail to embed within the storyboard frames: "${storyBrief}"]`;
+      }
+
+      const referenceAspect = lightboxItem.aspect || '16:9';
 
       const payload = {
         model: engine,
         prompt: combinedPrompt,
-        aspect_ratio: '9:16', // Vertical premium storyboards
+        aspect_ratio: referenceAspect,
         referenceImages: [lightboxItem.url],
-        userId
+        userId,
+        ...(selectedStoryTemplate === 'story5' && {
+          negativePrompt: "identity drift, different face, different hairstyle, different clothing, different body proportions, different environment, different lighting, different weather, face swap, beauty filter, cartoon, anime, illustration, CGI look, duplicate character, duplicate pose, repeated camera angle, cropped body, missing limbs, extra fingers, blurry, noisy, watermark, logo, text, labels, artifacts, oversaturated colors, unrealistic anatomy, inconsistent scene continuity."
+        })
       };
 
       const resp = await fetch(getApiUrl('/api/generate-image'), {
@@ -120,7 +300,7 @@ Add distinct film-strip division borders, cybernetic HUD elements, rich teal and
           url: data.url,
           prompt: `Storyboard: ${storyBrief.split('.')[0]}`,
           engine: `${engine === 'gpt-image-2' ? 'GPT-2' : 'Nano Banana 2'} (Storyboard)`,
-          aspect: "9:16",
+          aspect: referenceAspect,
           ts: Date.now()
         };
 
@@ -240,7 +420,7 @@ Add distinct film-strip division borders, cybernetic HUD elements, rich teal and
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" /> Generate Storyboard (5⚡)
+                  <Sparkles className="w-3.5 h-3.5" /> Generate Storyboard ({getCreditCost()}⚡)
                 </span>
               )}
             </button>

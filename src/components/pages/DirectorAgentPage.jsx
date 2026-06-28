@@ -12,6 +12,7 @@ import { cn } from '../../lib/utils';
 import { getApiUrl } from '../../config/apiConfig';
 import { useAppStore } from '../../store';
 import { supabase } from '../../lib/supabase';
+import { AssetsLibrary } from '../panels/AssetsLibrary';
 
 const HERMES_API = 'http://localhost:8642';
 
@@ -91,6 +92,47 @@ const REF_CATEGORIES = [
     { id: 'video', label: 'Video', icon: Video, color: 'from-red-500 to-orange-600', desc: 'Video clips, B-roll, motion refs' },
 ];
 
+const CATEGORY_FIELDS = {
+    character: [
+        { name: 'characterName', label: 'Character Name', type: 'text', placeholder: 'e.g. Detective Miller, John Doe, Protagonist' },
+        { name: 'age', label: 'Age', type: 'text', placeholder: 'e.g. 20s, 30s, Teenager, Elder' },
+        { name: 'gender', label: 'Gender', type: 'select', options: ['Select Gender', 'Male', 'Female', 'Non-Binary', 'Androgynous', 'Custom'] },
+        { name: 'hair', label: 'Hair Details', type: 'text', placeholder: 'e.g. Short dark hair, blonde curls' },
+        { name: 'wardrobe', label: 'Outfit Details', type: 'text', placeholder: 'e.g. Black leather jacket, futuristic armor' },
+        { name: 'ethnicity', label: 'Ethnicity/Skin Tone', type: 'text', placeholder: 'e.g. Caucasian, Hispanic, Fair skin' },
+        { name: 'expression', label: 'Facial Expression', type: 'text', placeholder: 'e.g. Neutral, intense gaze, smiling' },
+        { name: 'body', label: 'Body Type/Details', type: 'text', placeholder: 'e.g. Athletic build, tall, rugged' },
+    ],
+    location: [
+        { name: 'locationName', label: 'Location Name', type: 'text', placeholder: 'e.g. Melancholic Cafe, Neon Alleyway, Kitchen Set' },
+        { name: 'environment', label: 'Environment', type: 'select', options: ['Select Environment', 'Indoor', 'Outdoor', 'Studio Set', 'Mixed'] },
+        { name: 'placeType', label: 'Place Type', type: 'text', placeholder: 'e.g. Kitchen, Hall, Cafe, Office, Alleyway, Desert' },
+        { name: 'lighting', label: 'Lighting & Mood', type: 'text', placeholder: 'e.g. Neon twilight, high-contrast chiaroscuro, dim candlelit' },
+        { name: 'style', label: 'Architecture Style', type: 'text', placeholder: 'e.g. Cyberpunk, Victorian gothic, minimalist scandinavian' },
+        { name: 'timeOfDay', label: 'Time of Day', type: 'text', placeholder: 'e.g. Golden hour, midnight, early morning' }
+    ],
+    prop: [
+        { name: 'propName', label: 'Prop Name', type: 'text', placeholder: 'e.g. Vintage Camera, Police Badge, Ancient Dagger' },
+        { name: 'material', label: 'Material/Texture', type: 'text', placeholder: 'e.g. Brushed steel, polished mahogany, cracked ceramic' },
+        { name: 'scale', label: 'Scale/Size', type: 'select', options: ['Select Scale', 'Micro (jewelry)', 'Small (handheld)', 'Medium (backpack)', 'Large (furniture)', 'Giant (building/vehicle)'] },
+        { name: 'reflectivity', label: 'Reflective Surface', type: 'text', placeholder: 'e.g. High glossy, chrome mirror, matte finish' },
+        { name: 'details', label: 'Object Specifications', type: 'textarea', placeholder: 'e.g. Vintage Leica camera with a worn brown leather strap' }
+    ],
+    wardrobe: [
+        { name: 'wardrobeName', label: 'Wardrobe Name', type: 'text', placeholder: 'e.g. Main Cyberpunk Suit, Formal Gown' },
+        { name: 'style', label: 'Clothing Style', type: 'text', placeholder: 'e.g. Techwear, formal tuxedo, vintage 70s casual' },
+        { name: 'color', label: 'Primary Colors', type: 'text', placeholder: 'e.g. Crimson red, obsidian black, holographic teal' },
+        { name: 'fabric', label: 'Fabric/Texture', type: 'text', placeholder: 'e.g. Distressed denim, heavy canvas, silk blend' },
+        { name: 'details', label: 'Accessories/Details', type: 'text', placeholder: 'e.g. Golden buttons, high collars, combat boots' }
+    ],
+    video: [
+        { name: 'videoName', label: 'Video Name', type: 'text', placeholder: 'e.g. Drone Flyover B-roll, Tracking Shot' },
+        { name: 'motion', label: 'Camera Movement', type: 'text', placeholder: 'e.g. Slow tracking shot, fast dolly zoom, crane tilt down' },
+        { name: 'subject', label: 'Subject Action', type: 'text', placeholder: 'e.g. Walking slowly, running from danger, talking on phone' },
+        { name: 'framerate', label: 'Framerate/Speed', type: 'select', options: ['Select Speed', 'Normal speed (24fps)', 'Slow motion (60fps)', 'Ultra slow-mo (120fps)', 'Timelapse'] }
+    ]
+};
+
 function ParticlesBackground() {
     const canvasRef = useRef(null);
     useEffect(() => {
@@ -125,7 +167,9 @@ function ParticlesBackground() {
                 if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
+                ctx.shadowBlur = 4;
+                ctx.shadowColor = 'rgba(167, 139, 250, 0.4)';
+                ctx.fillStyle = `rgba(167, 139, 250, ${p.opacity})`;
                 ctx.fill();
             }
             animId = requestAnimationFrame(animate);
@@ -255,7 +299,7 @@ function RefThumbnail({ file, category, onRemove }) {
             setAnalysis({ dimensions: `${img.width}×${img.height}`, orientation: isPortrait ? 'Portrait' : 'Landscape', size: (file.size / 1024).toFixed(0) + ' KB' });
         };
         img.src = file.data;
-    }, [file]);
+    }, [file, isVideo]);
 
     return (
         <div className="group relative glass-card rounded-xl overflow-hidden hover:border-white/15 transition-all duration-300 hover:scale-[1.02]">
@@ -271,21 +315,29 @@ function RefThumbnail({ file, category, onRemove }) {
                     <div className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/10"><Play className="w-5 h-5 text-white ml-0.5" /></div>
                 </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="absolute bottom-0 left-0 right-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                <div className="flex items-center gap-1.5">
+            
+            {/* Custom hover detail panel */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/85 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-2.5">
+                {file.details && Object.keys(file.details).length > 0 && (
+                    <div className="space-y-1 mb-2 max-h-[60%] overflow-y-auto no-scrollbar border-b border-white/5 pb-1.5">
+                        {Object.entries(file.details).map(([k, v]) => (
+                            <p key={k} className="text-[7.5px] text-white/70 font-semibold tracking-wide leading-tight">
+                                <span className="text-violet-400 capitalize font-bold">{k.replace(/([A-Z])/g, ' $1')}:</span> {v}
+                            </p>
+                        ))}
+                    </div>
+                )}
+                <div className="flex items-center gap-1.5 mt-auto">
                     {analysis && (
-                        <>
-                            <span className="text-[7px] text-white/60 font-mono bg-black/60 px-1.5 py-0.5 rounded-md">{analysis.dimensions}</span>
-                            <span className="text-[7px] text-white/60 font-mono bg-black/60 px-1.5 py-0.5 rounded-md">{analysis.orientation}</span>
-                        </>
+                        <span className="text-[7px] text-white/40 font-mono bg-white/5 px-1.5 py-0.5 rounded">{analysis.dimensions}</span>
                     )}
-                    {isVideo && <span className="text-[7px] text-white/60 font-mono bg-black/60 px-1.5 py-0.5 rounded-md">{(file.size / 1024 / 1024).toFixed(1)} MB</span>}
-                    <button onClick={() => onRemove(category, file.id)} className="ml-auto w-5 h-5 rounded-md bg-red-500/80 flex items-center justify-center hover:bg-red-500 transition-colors">
-                        <X className="w-3 h-3 text-white" />
+                    {isVideo && <span className="text-[7px] text-white/40 font-mono bg-white/5 px-1.5 py-0.5 rounded">{(file.size / 1024 / 1024).toFixed(1)} MB</span>}
+                    <button onClick={() => onRemove(category, file.id)} className="ml-auto px-2 py-0.5 rounded bg-red-500/20 hover:bg-red-500/40 text-red-400 border border-red-500/25 transition-all text-[8px] font-black uppercase tracking-wider">
+                        Delete
                     </button>
                 </div>
             </div>
+            
             <div className="absolute top-1.5 left-1.5">
                 <span className="text-[6px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-black/60 text-white/70">{file.categoryLabel}</span>
             </div>
@@ -293,7 +345,106 @@ function RefThumbnail({ file, category, onRemove }) {
     );
 }
 
-function ReferenceSection({ category, references, onUpload, onRemove }) {
+function ReferenceDetailsModal({ pendingRef, modalDetails, setModalDetails, onSave, onCancel }) {
+    if (!pendingRef) return null;
+    const category = pendingRef.category;
+    const fields = CATEGORY_FIELDS[category] || [];
+
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
+            <div className="w-full max-w-md bg-[#0a0a14] border border-white/[0.08] rounded-3xl overflow-hidden shadow-2xl relative z-10 flex flex-col animate-float">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-violet-500/10 rounded-full blur-[80px] pointer-events-none -z-10" />
+                
+                {/* Header */}
+                <div className="p-5 border-b border-white/[0.04] bg-black/20 flex justify-between items-center">
+                    <div>
+                        <h3 className="text-xs font-black text-violet-400 uppercase tracking-widest">Add {pendingRef.categoryLabel} details</h3>
+                        <p className="text-[8px] text-white/30 uppercase font-mono tracking-widest mt-0.5">Specify Reference Parameters</p>
+                    </div>
+                    <button onClick={onCancel} className="p-1.5 hover:bg-white/10 rounded-xl text-white/40 hover:text-white transition-all">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+
+                {/* Form Body */}
+                <div className="p-5 space-y-4 overflow-y-auto max-h-[50vh] custom-scrollbar">
+                    {/* Image Preview */}
+                    <div className="flex gap-4 items-center p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04]">
+                        <div className="w-14 h-14 rounded-xl overflow-hidden bg-black/40 flex items-center justify-center shrink-0 border border-white/5">
+                            {pendingRef.type?.startsWith('video/') ? (
+                                <video src={pendingRef.data} className="w-full h-full object-cover" muted />
+                            ) : (
+                                <img src={pendingRef.data} alt="preview" className="w-full h-full object-cover" />
+                            )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <p className="text-[10px] text-white/80 font-bold truncate">{pendingRef.name}</p>
+                            <p className="text-[8px] text-white/30 font-mono">{(pendingRef.size / 1024).toFixed(0)} KB</p>
+                        </div>
+                    </div>
+
+                    {/* Parameter Fields */}
+                    <div className="space-y-3">
+                        {fields.map(field => (
+                            <div key={field.name} className="space-y-1.5">
+                                <label className="text-[9px] font-black uppercase text-white/45 tracking-wider font-mono">
+                                    {field.label}
+                                </label>
+                                {field.type === 'select' ? (
+                                    <select 
+                                        value={modalDetails[field.name] || ''}
+                                        onChange={(e) => setModalDetails(prev => ({ ...prev, [field.name]: e.target.value }))}
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none focus:border-violet-500/50 transition-colors"
+                                    >
+                                        {field.options.map(opt => (
+                                            <option key={opt} value={opt} className="bg-[#0c0c14] text-white">
+                                                {opt}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : field.type === 'textarea' ? (
+                                    <textarea 
+                                        value={modalDetails[field.name] || ''}
+                                        onChange={(e) => setModalDetails(prev => ({ ...prev, [field.name]: e.target.value }))}
+                                        placeholder={field.placeholder}
+                                        rows={2}
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs text-white placeholder-white/20 outline-none focus:border-violet-500/50 transition-colors resize-none font-sans"
+                                    />
+                                ) : (
+                                    <input 
+                                        type="text"
+                                        value={modalDetails[field.name] || ''}
+                                        onChange={(e) => setModalDetails(prev => ({ ...prev, [field.name]: e.target.value }))}
+                                        placeholder={field.placeholder}
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs text-white placeholder-white/20 outline-none focus:border-violet-500/50 transition-colors"
+                                    />
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="p-5 border-t border-white/[0.04] bg-black/20 flex gap-3 justify-end">
+                    <button 
+                        onClick={onCancel}
+                        className="px-4 py-2 rounded-xl text-[9px] font-bold text-white/50 hover:text-white hover:bg-white/5 border border-white/5 transition-all uppercase tracking-wider"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={onSave}
+                        className="px-5 py-2 rounded-xl text-[9px] font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-xl shadow-violet-950/50 transition-all uppercase tracking-wider"
+                    >
+                        Add Reference
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function ReferenceSection({ category, references, onUpload, onRemove, onSelectFromGallery }) {
     const fileRef = useRef(null);
     const CatIcon = category.icon;
     const items = references.filter(r => r.category === category.id);
@@ -310,9 +461,14 @@ function ReferenceSection({ category, references, onUpload, onRemove }) {
                         <p className="text-[8px] text-white/30">{category.desc}</p>
                     </div>
                 </div>
-                <button onClick={() => fileRef.current?.click()} className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center text-white/40 hover:text-white/70 hover:bg-white/[0.06] transition-all duration-150">
-                    <Plus className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-1.5">
+                    <button onClick={() => onSelectFromGallery(category.id)} className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center text-white/40 hover:text-white/70 hover:bg-white/[0.06] transition-all duration-150" title="Select from Gallery">
+                        <FolderOpen className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => fileRef.current?.click()} className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center text-white/40 hover:text-white/70 hover:bg-white/[0.06] transition-all duration-150" title="Upload File">
+                        <Plus className="w-3.5 h-3.5" />
+                    </button>
+                </div>
                 <input ref={fileRef} type="file" accept={category.id === 'video' ? 'video/*' : 'image/*'} onChange={(e) => onUpload(e, category.id)} className="hidden" />
             </div>
             {items.length === 0 ? (
@@ -329,7 +485,7 @@ function ReferenceSection({ category, references, onUpload, onRemove }) {
     );
 }
 
-function ReferenceBoard({ references, onUpload, onRemove, onClose }) {
+function ReferenceBoard({ references, onUpload, onRemove, onClose, onSelectFromGallery }) {
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -342,7 +498,7 @@ function ReferenceBoard({ references, onUpload, onRemove, onClose }) {
             </div>
             <div className="grid grid-cols-2 gap-3">
                 {REF_CATEGORIES.map(cat => (
-                    <ReferenceSection key={cat.id} category={cat} references={references} onUpload={onUpload} onRemove={onRemove} />
+                    <ReferenceSection key={cat.id} category={cat} references={references} onUpload={onUpload} onRemove={onRemove} onSelectFromGallery={onSelectFromGallery} />
                 ))}
             </div>
         </div>
@@ -351,26 +507,26 @@ function ReferenceBoard({ references, onUpload, onRemove, onClose }) {
 
 function DirectorHero({ onSend }) {
     return (
-        <div className="relative overflow-hidden rounded-3xl mb-6">
-            <div className="absolute inset-0 bg-gradient-to-br from-violet-900/20 via-indigo-900/10 to-transparent animate-gradient" />
-            <div className="relative hero-overlay p-8 md:p-12">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-2xl shadow-violet-900/50 animate-float">
-                        <Film className="w-6 h-6 text-white" />
+        <div className="relative overflow-hidden rounded-3xl mb-6 border border-white/[0.08] bg-gradient-to-br from-violet-950/20 via-indigo-950/15 to-[#05050a]/40 shadow-2xl shadow-violet-950/10 backdrop-blur-xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-indigo-500/5 to-transparent animate-gradient" />
+            <div className="relative hero-overlay p-8 md:p-10">
+                <div className="flex items-center gap-4.5 mb-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-[0_0_30px_rgba(139,92,246,0.3)] shadow-violet-500/30 animate-float border border-violet-400/20">
+                        <Film className="w-7 h-7 text-white" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-violet-400/70">ZeroLens Studio</p>
-                        <h1 className="text-2xl font-bold apple-text-heading text-gradient-primary">Director Agent</h1>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] bg-violet-500/10 border border-violet-500/20 text-violet-300 px-2.5 py-0.5 rounded-full w-fit">ZeroLens Studio</p>
+                        <h1 className="text-3xl font-black italic uppercase tracking-tighter bg-gradient-to-r from-violet-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent mt-1">Director Agent</h1>
                     </div>
                 </div>
-                <p className="text-sm text-white/50 max-w-2xl leading-relaxed mb-6 apple-text">
+                <p className="text-xs text-white/50 max-w-2xl leading-relaxed mb-6 apple-text font-medium">
                     Upload reference images, describe your vision, and let the Director Agent analyze, plan, and generate production-ready cinematic prompts — just like a professional filmmaker.
                 </p>
                 <div className="flex flex-wrap gap-2">
                     {DIRECTORS.map((d) => (
-                        <div key={d.name} className="px-3 py-1.5 rounded-full glass-card text-[10px]">
-                            <span className="text-white/70 font-medium">{d.name}</span>
-                            <span className="text-white/30 ml-1">· {d.focus}</span>
+                        <div key={d.name} className="px-3.5 py-1.5 rounded-xl bg-white/[0.02] border border-white/[0.06] text-[10px] hover:bg-white/[0.04] transition-all duration-300">
+                            <span className="text-white/80 font-bold tracking-wide">{d.name}</span>
+                            <span className="text-white/30 ml-1.5 font-medium">· {d.focus}</span>
                         </div>
                     ))}
                 </div>
@@ -471,7 +627,7 @@ function MessageBubble({ msg }) {
     );
 }
 
-export default function DirectorAgentPage() {
+export default function DirectorAgentPage({ activeTool, setActiveTool }) {
     const userProfile = useAppStore(state => state.userProfile);
     const userId = userProfile?.id;
 
@@ -495,6 +651,10 @@ export default function DirectorAgentPage() {
     const bottomRef = useRef(null);
     const textRef = useRef(null);
 
+    const [pendingRef, setPendingRef] = useState(null);
+    const [modalDetails, setModalDetails] = useState({});
+    const [galleryPickerCategory, setGalleryPickerCategory] = useState(null);
+
     const processRefImage = (file, category) => new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -507,12 +667,79 @@ export default function DirectorAgentPage() {
     const handleRefUpload = async (e, category) => {
         const files = e.target.files;
         if (!files?.length) return;
-        const newRefs = [];
-        for (const file of files) {
-            newRefs.push(await processRefImage(file, category));
-        }
-        setReferences(prev => [...prev, ...newRefs]);
+        const fileData = await processRefImage(files[0], category);
+        
+        // Open modal
+        setPendingRef(fileData);
+        
+        // Initialize details fields
+        const fields = CATEGORY_FIELDS[category] || [];
+        const initialDetails = {};
+        fields.forEach(f => {
+            initialDetails[f.name] = f.type === 'select' ? f.options[0] : '';
+        });
+        setModalDetails(initialDetails);
+        
         if (e.target) e.target.value = '';
+    };
+
+    const handleSavePendingRef = () => {
+        if (!pendingRef) return;
+        // Clean out default select values
+        const cleanedDetails = {};
+        Object.entries(modalDetails).forEach(([k, v]) => {
+            if (v && !v.startsWith('Select ')) {
+                cleanedDetails[k] = v;
+            }
+        });
+        
+        // Find if a custom name is entered for this reference category
+        const inputName = cleanedDetails.characterName 
+            || cleanedDetails.locationName 
+            || cleanedDetails.propName 
+            || cleanedDetails.wardrobeName 
+            || cleanedDetails.videoName 
+            || pendingRef.name;
+
+        const refWithDetails = {
+            ...pendingRef,
+            name: inputName,
+            details: cleanedDetails
+        };
+        setReferences(prev => [...prev, refWithDetails]);
+        setPendingRef(null);
+        setModalDetails({});
+    };
+
+    const handleSelectFromGallery = (url, item) => {
+        const catId = galleryPickerCategory;
+        const cat = REF_CATEGORIES.find(c => c.id === catId);
+        
+        const fileData = {
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            name: item.name || 'Gallery Item',
+            type: item.type === 'video' ? 'video/mp4' : 'image/jpeg',
+            size: 0,
+            data: url,
+            category: catId,
+            categoryLabel: cat?.label || catId,
+            ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        
+        setGalleryPickerCategory(null);
+        setPendingRef(fileData);
+        
+        const fields = CATEGORY_FIELDS[catId] || [];
+        const initialDetails = {};
+        fields.forEach(f => {
+            initialDetails[f.name] = f.type === 'select' ? f.options[0] : '';
+        });
+        
+        // Pre-fill name if available
+        if (item.name) {
+            initialDetails[catId + 'Name'] = item.name;
+        }
+        setModalDetails(initialDetails);
     };
 
     const handleRefRemove = (category, id) => setReferences(prev => prev.filter(r => !(r.category === category && r.id === id)));
@@ -577,23 +804,65 @@ export default function DirectorAgentPage() {
     const PROMPT_VERSION = '6';
     useEffect(() => {
         let cancelled = false;
+        let retryInterval = null;
+
         const storedVersion = localStorage.getItem('director_prompt_version');
-        if (storedVersion !== PROMPT_VERSION) { localStorage.removeItem('director_session_id'); localStorage.setItem('director_prompt_version', PROMPT_VERSION); }
-        const existingId = localStorage.getItem('director_session_id');
-        const finish = (id) => { if (!cancelled) { setHermesSessionId(id); setSessionReady(true); } };
-        const createSession = () => {
-            fetch(`${HERMES_API}/api/sessions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ system_prompt: SYSTEM_PROMPT }) })
-                .then(r => r.json())
-                .then(data => { if (!cancelled && data.session_id) { localStorage.setItem('director_session_id', data.session_id); finish(data.session_id); } })
-                .catch(err => { console.warn('[DirectorAgent] Bridge unavailable:', err.message); if (!cancelled) setSessionReady(false); });
+        if (storedVersion !== PROMPT_VERSION) { 
+            localStorage.removeItem('director_session_id'); 
+            localStorage.setItem('director_prompt_version', PROMPT_VERSION); 
+        }
+
+        const checkOrCreateSession = async () => {
+            const existingId = localStorage.getItem('director_session_id');
+            if (existingId) {
+                try {
+                    const r = await fetch(`${HERMES_API}/api/sessions/${existingId}`);
+                    if (r.ok) {
+                        if (!cancelled) {
+                            setHermesSessionId(existingId);
+                            setSessionReady(true);
+                            if (retryInterval) clearInterval(retryInterval);
+                        }
+                        return;
+                    }
+                } catch (e) {
+                    console.debug('[DirectorAgent] Error checking session:', e);
+                }
+                localStorage.removeItem('director_session_id');
+            }
+
+            try {
+                const r = await fetch(`${HERMES_API}/api/sessions`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ system_prompt: SYSTEM_PROMPT }) 
+                });
+                const data = await r.json();
+                if (data.session_id && !cancelled) {
+                    localStorage.setItem('director_session_id', data.session_id);
+                    setHermesSessionId(data.session_id);
+                    setSessionReady(true);
+                    if (retryInterval) clearInterval(retryInterval);
+                }
+            } catch (err) {
+                console.warn('[DirectorAgent] Bridge unavailable, retrying in 4 seconds...');
+                if (!cancelled) setSessionReady(false);
+            }
         };
-        if (existingId) {
-            fetch(`${HERMES_API}/api/sessions/${existingId}`)
-                .then(r => { if (r.ok) { if (!cancelled) finish(existingId); } else { localStorage.removeItem('director_session_id'); createSession(); } })
-                .catch(() => { localStorage.removeItem('director_session_id'); createSession(); });
-        } else { createSession(); }
-        return () => { cancelled = true; };
-    }, []);
+
+        checkOrCreateSession();
+
+        retryInterval = setInterval(() => {
+            if (!sessionReady && !cancelled) {
+                checkOrCreateSession();
+            }
+        }, 4000);
+
+        return () => {
+            cancelled = true;
+            if (retryInterval) clearInterval(retryInterval);
+        };
+    }, [sessionReady]);
 
     const saveChatHistory = async (nextMessages) => {
         if (!userId || !supabase) return;
@@ -606,7 +875,20 @@ export default function DirectorAgentPage() {
     const handleSend = async (text = input.trim()) => {
         const hasRefs = references.length > 0;
         if ((!text && !hasRefs) || isThinking) return;
-        const refContext = hasRefs ? `[REFERENCE BOARD: ${references.length} images attached]\n${references.map(r => `  - [${r.categoryLabel}] ${r.name}`).join('\n')}\n\n` : '';
+        const refContext = hasRefs 
+            ? `[REFERENCE BOARD: ${references.length} references attached]\n${references.map((r, idx) => {
+                let desc = `  - Reference #${idx + 1} [${r.categoryLabel}] File: ${r.name}`;
+                if (r.details && Object.keys(r.details).length > 0) {
+                    const detailStrings = Object.entries(r.details)
+                        .filter(([_, v]) => v)
+                        .map(([k, v]) => `${k}: ${v}`);
+                    if (detailStrings.length > 0) {
+                        desc += ` (Metadata -> ${detailStrings.join(' | ')})`;
+                    }
+                }
+                return desc;
+            }).join('\n')}\n\n`
+            : '';
         const fullText = text ? `${refContext}${text}` : refContext.trim();
         if (!fullText) return;
         setInput('');
@@ -634,8 +916,12 @@ export default function DirectorAgentPage() {
                 .map(s => `[SKILL: ${s.name}]\n${s.system_instructions}`)
                 .join('\n\n');
             const skillsBlock = activeSkillInstructions ? `\n\n[ACTIVE SKILLS]\n${activeSkillInstructions}\n[/ACTIVE SKILLS]\n` : '';
+            
+            // Inject custom persona details if set
+            const personaBlock = customPersona ? `\n\n[DIRECTOR PERSONA INSTRUCTIONS]\n${customPersona}\n[/DIRECTOR PERSONA INSTRUCTIONS]\n` : '';
+            
             const toolLabel = 'DIRECTOR MODE';
-            const toolPrefixed = `[${toolLabel}]\n${fullText}${skillsBlock}`;
+            const toolPrefixed = `[${toolLabel}]\n${fullText}${personaBlock}${skillsBlock}`;
             const attachments = references.length > 0 ? references.map(r => ({ name: r.name, type: r.type, data: r.data, category: r.categoryLabel })) : undefined;
             const resp = await fetch(`${HERMES_API}/api/sessions/${hermesSessionId}/chat`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -736,11 +1022,18 @@ export default function DirectorAgentPage() {
                         {!sessionReady ? <LoadingSkeleton lines={3} variant="inline" />
                         : TOOLS.map(tool => {
                             const Icon = tool.icon;
+                            const active = activeTool === tool.id;
                             return (
-                                <button key={tool.id} className={cn('w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all duration-300 border group', 'hover:bg-white/[0.02] border-transparent')}>
-                                    <div className="w-7 h-7 rounded-lg bg-white/[0.02] group-hover:bg-white/[0.04] flex items-center justify-center transition-all duration-300"><Icon className="w-3 h-3 text-white/30 transition-colors" /></div>
+                                <button key={tool.id} 
+                                    onClick={() => setActiveTool && setActiveTool(active ? null : tool.id)}
+                                    className={cn('w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all duration-300 border group', 
+                                        active ? 'bg-violet-500/10 border-violet-500/20 shadow-md shadow-violet-950/20' : 'hover:bg-white/[0.02] border-transparent'
+                                    )}>
+                                    <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-300',
+                                        active ? 'bg-violet-500/25 border border-violet-400/25' : 'bg-white/[0.02] group-hover:bg-white/[0.04]'
+                                    )}><Icon className={cn('w-3 h-3 transition-colors', active ? tool.color : 'text-white/30 group-hover:text-white/50')} /></div>
                                     <div className="min-w-0">
-                                        <p className="text-[10px] font-semibold tracking-wide apple-text text-white/50 group-hover:text-white/70">{tool.label}</p>
+                                        <p className={cn('text-[10px] font-semibold tracking-wide apple-text transition-colors', active ? 'text-white font-bold' : 'text-white/50 group-hover:text-white/70')}>{tool.label}</p>
                                         <p className="text-[8px] text-white/30 truncate leading-tight mt-0.5">{tool.desc}</p>
                                     </div>
                                 </button>
@@ -814,6 +1107,7 @@ export default function DirectorAgentPage() {
                         <ReferenceBoard
                             references={references} onUpload={handleRefUpload} onRemove={handleRefRemove}
                             onClose={() => setShowReferenceBoard(false)}
+                            onSelectFromGallery={(cat) => setGalleryPickerCategory(cat)}
                         />
 
                         {/* Pipeline */}
@@ -969,6 +1263,55 @@ export default function DirectorAgentPage() {
                                 </div>
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            <ReferenceDetailsModal 
+                pendingRef={pendingRef} 
+                modalDetails={modalDetails} 
+                setModalDetails={setModalDetails} 
+                onSave={handleSavePendingRef} 
+                onCancel={() => { setPendingRef(null); setModalDetails({}); }}
+            />
+
+            {galleryPickerCategory && (
+                <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-[9999] p-6">
+                    <div className="w-full max-w-5xl h-[85vh] bg-[#08080e] border border-white/[0.08] rounded-3xl overflow-hidden shadow-2xl relative z-10 flex flex-col">
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-violet-500/5 rounded-full blur-[100px] pointer-events-none -z-10" />
+                        
+                        {/* Header */}
+                        <div className="p-5 border-b border-white/[0.04] bg-black/20 flex justify-between items-center shrink-0">
+                            <div>
+                                <h3 className="text-xs font-black text-violet-400 uppercase tracking-widest">Select {REF_CATEGORIES.find(c => c.id === galleryPickerCategory)?.label} Reference from Gallery</h3>
+                                <p className="text-[8px] text-white/30 uppercase font-mono tracking-widest mt-0.5">Choose any of your previously generated or uploaded assets</p>
+                            </div>
+                            <button onClick={() => setGalleryPickerCategory(null)} className="p-1.5 hover:bg-white/10 rounded-xl text-white/40 hover:text-white transition-all">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Content Area */}
+                        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar min-h-0 min-w-0">
+                            <AssetsLibrary 
+                                compact={true} 
+                                defaultTab={
+                                    galleryPickerCategory === 'character' ? 'characters' : 
+                                    galleryPickerCategory === 'video' ? 'videos' : 'images'
+                                } 
+                                onSelectReference={handleSelectFromGallery}
+                            />
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-4 border-t border-white/[0.04] bg-black/20 flex justify-end shrink-0">
+                            <button 
+                                onClick={() => setGalleryPickerCategory(null)}
+                                className="px-5 py-2.5 rounded-xl text-[9px] font-bold text-white/50 hover:text-white hover:bg-white/5 border border-white/5 transition-all uppercase tracking-wider"
+                            >
+                                Close Gallery
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

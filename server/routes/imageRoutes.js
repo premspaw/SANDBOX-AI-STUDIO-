@@ -79,13 +79,30 @@ export default function createRouter(deps) {
             const upstreamHeaders = { 'User-Agent': 'ZerolensProxy/1.0' };
             if (rangeHeader) upstreamHeaders['Range'] = rangeHeader;
 
-            const upstream = await fetch(finalUrl, {
-                headers: upstreamHeaders,
-                redirect: 'follow',
-            });
+            let upstream;
+            let lastErr;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    upstream = await fetch(finalUrl, {
+                        headers: upstreamHeaders,
+                        redirect: 'follow',
+                        timeout: 6000
+                    });
+                    if (upstream.ok || upstream.status === 206) {
+                        break;
+                    }
+                    if (attempt < 3) await new Promise(r => setTimeout(r, 600));
+                } catch (err) {
+                    lastErr = err;
+                    if (attempt < 3) await new Promise(r => setTimeout(r, 600));
+                }
+            }
 
-            if (!upstream.ok && upstream.status !== 206) {
-                return res.status(upstream.status).json({ error: `Upstream error: ${upstream.statusText}` });
+            if (!upstream || (!upstream.ok && upstream.status !== 206)) {
+                const status = upstream ? upstream.status : 500;
+                const statusText = upstream ? upstream.statusText : (lastErr ? lastErr.message : 'Unknown proxy fetch error');
+                console.error(`[Proxy Error]: Failed to fetch ${finalUrl} after 3 attempts. Status: ${status}, Error: ${statusText}`);
+                return res.status(status).json({ error: `Upstream error: ${statusText}` });
             }
 
             // CORS headers — always required
@@ -94,6 +111,13 @@ export default function createRouter(deps) {
 
             const ct = upstream.headers.get('content-type') || (isVideo ? 'video/mp4' : 'application/octet-stream');
             res.setHeader('Content-Type', ct);
+
+            // Force download if requested via query parameter
+            const downloadFilename = req.query.download;
+            if (downloadFilename) {
+                const encodedFilename = encodeURIComponent(downloadFilename);
+                res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`);
+            }
 
             if (isVideo || rangeHeader) {
                 // ✅ Video streaming: Chrome requires Accept-Ranges + Content-Length to cache & seek
@@ -158,8 +182,14 @@ export default function createRouter(deps) {
             const targetUserId = user ? user.id : userId;
             const { default: fetch } = await import('node-fetch');
 
-            // 1. Deduct credits: Gemini/Banana Pro inpaint costs 5 credits, GPT/OpenAI costs 5 credits
-            const requiredCredits = 5;
+            // 1. Deduct credits: Nano Banana 2 inpaint costs 2 credits, GPT inpaint costs 3 credits
+            let requiredCredits = 2; // Default for Nano Banana 2
+            if (model === 'gpt' || model === 'gpt-image-2') {
+                requiredCredits = 3;
+            } else if (model === 'gemini-3-pro-image-preview' || model === 'nano-banana-pro' || model === 'pro') {
+                requiredCredits = 5;
+            }
+
             if (targetUserId) {
                 console.log(`[Inpaint] Consuming ${requiredCredits} credits for user: ${targetUserId} using model: ${model}`);
                 await consumeCredits(targetUserId, requiredCredits);
@@ -185,10 +215,10 @@ export default function createRouter(deps) {
 
             let buffer;
 
-            if (model === 'gemini') {
-                // Call premium Gemini 3.1 Pro Image model (Nano Banana Pro 1K) with native multimodal inpainting
+            if (model === 'gemini' || model === 'nano-banana-2' || model === 'gemini-3.1-flash-image-preview') {
+                // Call Gemini 3.1 Flash Image model (Nano Banana 2) with native multimodal inpainting
                 const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
-                const activeModel = 'gemini-3-pro-image-preview';
+                const activeModel = 'gemini-3.1-flash-image-preview';
                 const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
 
                 console.log('[Inpaint] Querying Google Gemini 3.1 Multimodal Inpainting...');

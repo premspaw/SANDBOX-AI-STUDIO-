@@ -11,6 +11,16 @@ const DEFAULT_ALLOWED_HOSTS = [
     'cloudflarestorage.com'
 ];
 
+// Add custom CDN host if configured
+if (process.env.GCS_CDN_BASE_URL) {
+    try {
+        const cdnHost = new URL(process.env.GCS_CDN_BASE_URL).hostname;
+        if (cdnHost && !DEFAULT_ALLOWED_HOSTS.includes(cdnHost)) {
+            DEFAULT_ALLOWED_HOSTS.push(cdnHost);
+        }
+    } catch (_) {}
+}
+
 const MAX_REDIRECTS = 3;
 const DEFAULT_MAX_BYTES = 50 * 1024 * 1024;
 

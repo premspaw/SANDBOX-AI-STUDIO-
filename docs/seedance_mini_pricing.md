@@ -1,7 +1,7 @@
 # Seedance Mini — ZeroLens Pricing Guide
 
 > **1 Credit = ₹1 INR** · All prices include **40% platform margin** over raw API cost.
-> Exchange rate: **1 USD = ₹85 INR**
+> Exchange rate: **1 USD = ₹95 INR**
 
 ---
 
@@ -23,10 +23,10 @@
 
 | Tier | Raw INR/s | +40% Margin (INR/s) | Credits/s | 5s Clip | 10s Clip | 15s Clip |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **720P** — No video | ₹8.71 | **₹12.20** | **12/s** | 60 Cr | 120 Cr | 180 Cr |
-| **720P** — With video | ₹5.31 | **₹7.44** | **7/s** | 35 Cr | 70 Cr | 105 Cr |
-| **480P** — No video | ₹4.04 | **₹5.65** | **6/s** | 30 Cr | 60 Cr | 90 Cr |
-| **480P** — With video | ₹2.55 | **₹3.57** | **4/s** | 20 Cr | 40 Cr | 60 Cr |
+| **720P** — No video | ₹9.74 | **₹13.63** | **15/s** | 75 Cr | 150 Cr | 225 Cr |
+| **720P** — With video | ₹5.94 | **₹8.31** | **10/s** | 50 Cr | 100 Cr | 150 Cr |
+| **480P** — No video | ₹4.51 | **₹6.32** | **10/s** | 50 Cr | 100 Cr | 150 Cr |
+| **480P** — With video | ₹2.85 | **₹3.99** | **5/s** | 25 Cr | 50 Cr | 75 Cr |
 
 ---
 
@@ -36,8 +36,8 @@ Since the codebase uses a single per-second rate per resolution:
 
 | Resolution | Credits/s | Reasoning |
 | :--- | :--- | :--- |
-| **720P** | **12/s** | Default: no-video rate (higher, covers both cases) |
-| **480P** | **6/s** | Default: no-video rate |
+| **720P** | **15/s** | Default: no-video rate (higher, covers both cases) |
+| **480P** | **10/s** | Default: no-video rate |
 
 ---
 
@@ -45,9 +45,9 @@ Since the codebase uses a single per-second rate per resolution:
 
 | Engine | Credits/s | 5s Cost | 10s Cost |
 | :--- | :--- | :--- | :--- |
-| Seedance Fast | 12/s | 60 Cr | 120 Cr |
-| Seedance 2.0 | 16/s | 80 Cr | 160 Cr |
-| **Seedance Mini** | **12/s (720P) / 6/s (480P)** | **60/30 Cr** | **120/60 Cr** |
+| Seedance Fast | 25/s | 125 Cr | 250 Cr |
+| Seedance 2.0 | 30/s | 150 Cr | 300 Cr |
+| **Seedance Mini** | **15/s (720P) / 10/s (480P)** | **75/50 Cr** | **150/100 Cr** |
 | Veo 3.1 Fast | 3-5/s | 15-25 Cr | 30-50 Cr |
 
-Seedance Mini is competitive with Seedance Fast at 720P, and **50% cheaper at 480P**.
+Seedance Mini is competitive with Seedance Fast at 720P, and **33% cheaper at 480P**.

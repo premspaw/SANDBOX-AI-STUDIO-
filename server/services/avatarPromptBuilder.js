@@ -12,34 +12,178 @@ const BOARDS = {
 
     POSE: `Create a single high-resolution, densely packed character pose reference sheet titled "POSE BOARD" using the attached photo of the character as the single source of truth for face, hair, body proportions and outfit. The character must be identical across every panel. All on-image labels in ENGLISH. Editorial animation-reference layout with a dark near-black background, thin yellow neon accent light, faint film-grain overlay, and studio reference UI. Include a large full-body hero standing shot with metadata block: NAME · AGE · BUILD · HEIGHT · OUTFIT · POSE LANGUAGE · CENTER OF GRAVITY · DOMINANT HAND · PURPOSE: animation and video-generation reference. PANEL 01 — BASIC POSES (5 full-body shots): STAND · SIT · WALK · RUN · JUMP. PANEL 02 — ACTION POSES (5 dynamic shots): FIGHT STANCE · THROW · DODGE · CLIMB · LAND. PANEL 03 — EXPRESSIONS (5 tight headshots): NEUTRAL · LAUGH · ANGRY · SAD · SURPRISED. PANEL 04 — ANGLE COVERAGE (4 standing portraits): FRONT · 3/4 · SIDE · BACK. PANEL 05 — COLOR PALETTE (6 HEX swatches). Bottom: "Use this pose sheet as a visual reference for consistent animation of the character across all generations." Style: Animation Ready · Realistic · Cinematic. Photorealistic. 8K, fine grain, cinematic color grading.`,
 
-    CHARACTER: `Create a single high-resolution, densely packed character reference sheet titled "CHARACTER BOARD" using the attached photos as the single source of truth. The same person must appear in every panel — same age, same facial features, and same outfit. If a wardrobe/outfit reference image is attached or described, strictly reproduce the clothing style, garments, and textures from that wardrobe reference across all panels. All on-image labels in ENGLISH. Editorial reference-board layout with a dark near-black background, thin yellow neon accent light, faint film-grain overlay, and production-grade character-design UI. Include a large hero portrait with metadata block: NAME · AGE · HEIGHT · BUILD · HAIR · EYES · FEATURES · OUTFIT · CHARACTER · MOOD. PANEL 01 — VIEWS (5 full-body shots, neutral backdrop): FRONT · 3/4 LEFT · SIDE LEFT · BACK · 3/4 RIGHT. PANEL 02 — EXPRESSIONS (5 tight headshots): NEUTRAL · SMILE · THOUGHTFUL · FOCUSED · SERIOUS. PANEL 03 — DETAILS (2 macros): face/eyes close-up · distinctive outfit detail. PANEL 04 — OUTFIT FLAT-LAYS (5 isolated product shots on dark background): jacket · shirt · trousers · watch · shoes. PANEL 05 — LIGHTING/MOOD (4 same-pose portraits): SOFT DAYLIGHT · WARM TUNGSTEN INTERIOR · COOL BLUE NIGHT · HARD CINEMATIC SIDE-LIGHT. PANEL 06 — COLOR PALETTE (6 HEX swatches). 
+    CHARACTER: `Use the uploaded image(s) as the ONLY identity reference. Preserve the exact facial identity with maximum accuracy. Do not beautify, stylize, or redesign the face. Lock the person's facial features, hairstyle, skin tone, facial proportions, body proportions, age, expression, and overall likeness across every panel. 
+ 
+## LAYOUT 
+ 
+Three clean vertical panels on a seamless light gray studio background.
 
-# IDENTITY LOCK (HIGHEST PRIORITY)
-Use all uploaded reference images as a single identity dataset. Treat every image as the same person from different angles. Cross-reference every image before generating the character sheet. Do not average, reinterpret, beautify, stylize, or redesign the person's appearance. Reproduce the subject with the highest possible facial identity accuracy.
+**Left Panel**
+Large close-up portrait (head and shoulders only), looking directly at the camera with a neutral expression.
 
-## FACE ANALYSIS
-Analyze and preserve every facial characteristic exactly as shown in the reference images, including: overall head shape, face width and height ratio, skull proportions, forehead height/width, hairline shape/position, hair texture/curl/density/volume, sideburns, ear shape/placement, eye shape/size/spacing, eyelid shape, eyebrow thickness/curvature/spacing, nose bridge/width/tip, nostril shape, philtrum length, lip thickness, mouth width, cupid's bow, jawline, chin shape/projection, cheekbone structure, facial asymmetry, natural skin texture, skin tone, beard/stubble pattern, and neck thickness.
-Preserve all natural asymmetry exactly as in the reference. Do NOT attempt to make the face more symmetrical. Do NOT "improve" facial proportions. Do NOT smooth skin. Do NOT enlarge the eyes. Do NOT sharpen the jaw. Do NOT slim the nose. Do NOT alter the lips. Do NOT change the expression. Do NOT make the subject younger or older.
+**Center Panel**
+Full-body front view.
 
-## IDENTITY CONSISTENCY
-Every panel must depict the exact same individual. The face in every panel must be indistinguishable from the reference. The front view, back view and portrait must all correspond to the same skull structure, facial proportions and hairstyle. Identity consistency is more important than artistic interpretation. If multiple reference images disagree slightly because of lens distortion, lighting or expression, prioritize the shared anatomical structure rather than averaging or inventing new features.
+**Right Panel**
+Full-body back view.
 
-## MULTI-REFERENCE MODE
-Use all uploaded reference images simultaneously. One image may define facial structure. One may define hairstyle. One may define wardrobe/clothing (if wardrobe image is attached). Combine them only to reconstruct the same real person. Never mix identities. Never hallucinate missing facial features. Never infer beauty enhancements. Never generate a generic face.
+The portrait should occupy approximately 45% of the total canvas width.
 
-## PRIORITY ORDER
-1. Exact facial identity (highest priority)
-2. Facial proportions
-3. Hairline and hairstyle
-4. Natural facial asymmetry
-5. Body proportions
-6. Clothing/wardrobe accuracy (matching wardrobe reference image if attached)
-7. Lighting and composition
-If there is any conflict between style and identity, always preserve identity.
+The two full-body panels should each occupy approximately 27.5% of the canvas width.
 
-IDENTITY LOCK: MAXIMUM | FACIAL CONSISTENCY: 100% | CHARACTER CONSISTENCY: 100% | NO IDENTITY DRIFT | NO BEAUTIFICATION | NO FACE REINTERPRETATION
+Maintain generous spacing between panels.
 
-Bottom: "Use this character board as a visual reference for consistent depiction of the character across all generations." Style: Modern · Realistic · Cinematic. Photorealistic. 8K, fine grain, cinematic color grading.`,
+Rounded canvas corners.
+
+Minimal, premium presentation.
+
+No text.
+
+No labels.
+
+No borders around the figures.
+
+No logos.
+
+No watermarks.
+
+## CHARACTER
+
+Use exactly the same person in every panel.
+
+The face must be identical.
+
+The hairstyle must be identical.
+
+The body proportions must be identical.
+
+The clothing must be identical.
+
+The scale must remain identical between front and back views.
+
+No identity drift.
+
+NAME · AGE · HEIGHT · BUILD · HAIR · EYES · FEATURES · OUTFIT · CHARACTER · MOOD
+
+## BODY
+
+Natural realistic adult proportions.
+
+Approximately 5'9" tall.
+
+Long realistic legs.
+
+Natural arm length.
+
+Shoulders proportional to body.
+
+Slim but realistic physique.
+
+No oversized head.
+
+No shortened legs.
+
+No stretched torso.
+
+No cartoon proportions.
+
+## POSE
+
+Neutral A-pose.
+
+Arms relaxed naturally beside the body.
+
+Hands open.
+
+Feet shoulder-width apart.
+
+Standing perfectly upright.
+
+Looking straight ahead in the front view.
+
+Looking straight away from the camera in the back view.
+
+No action pose.
+
+No bent knees.
+
+No weight shift.
+
+No tilted shoulders.
+
+## CAMERA
+
+Orthographic character-sheet style.
+
+Eye-level camera.
+
+85mm portrait lens appearance.
+
+No perspective distortion.
+
+Perfect vertical alignment.
+
+Entire body visible from head to shoes.
+
+Nothing cropped.
+
+## OUTFIT & PROPS
+
+Keep the clothing and props exactly the same as the uploaded references unless explicitly changed.
+
+Preserve:
+
+* Fabric and garment structures
+* Wrinkles, stitching, and seams
+* Shoes and footwear details
+* Accessories and props (bags, glasses, jewelry, tools)
+* Colors, fit, and materials textures
+
+## LIGHTING
+
+Soft studio lighting.
+
+Neutral daylight color.
+
+Very soft shadows.
+
+High-end photography.
+
+Photorealistic skin.
+
+Realistic fabric texture.
+
+Clean cinematic lighting.
+
+## STYLE
+
+Style: Modern · Realistic · Cinematic. Photorealistic. 8K, fine grain, cinematic color grading.
+
+Luxury editorial fashion presentation.
+
+Film production character sheet.
+
+AAA game character reference.
+
+Concept art presentation board.
+
+Ultra photorealistic.
+
+8K.
+
+Extremely sharp face.
+
+Highly detailed skin texture.
+
+Natural colors.
+
+Minimalist composition.
+
+Identity locked.
+
+## NEGATIVE PROMPT
+
+anime, cartoon, illustration, CGI, stylized face, beauty filter, different face, different hairstyle, inconsistent identity, inconsistent proportions, oversized head, short legs, stretched body, perspective distortion, tilted camera, cropped body, cropped shoes, duplicate limbs, extra fingers, smiling, exaggerated expression, low quality, blurry, noisy, oversaturated, text, labels, watermark, logo, props, background clutter, asymmetrical face, different clothing, different accessories, different body shape, identity drift.`,
 
     CREATURE: `Create a single high-resolution, densely packed creature reference sheet titled "CREATURE BOARD" using the attached image of the creature as the single source of truth for anatomy, skin/scale/fur texture, color and proportions. The creature must be identical across every panel. All on-image labels in ENGLISH. Editorial creature-design board layout with a dark near-black background, thin yellow neon accent light, faint film-grain overlay, and VFX-studio creature-design UI. Include a large hero portrait with metadata block: NAME/SPECIES · AGE · SIZE · WEIGHT · HABITAT · DIET · TEMPERAMENT · DISTINCT FEATURES (3-5 bullets) · ABILITIES/TRAITS (3-4 bullets) · LORE NOTE. PANEL 01 — VIEWS (5 full-body angles): FRONT · 3/4 LEFT · SIDE LEFT · BACK · 3/4 RIGHT. PANEL 02 — EXPRESSIONS/EMOTIONS (5 head close-ups): CALM · HUNTING · ROARING · CURIOUS · WOUNDED. PANEL 03 — ANATOMY DETAILS (4 macros): EYES · TEETH/MOUTH · SKIN/SCALES/FUR TEXTURE · CLAW/LIMB/WING. PANEL 04 — SCALE COMPARISON (beside 1.8m human + 30cm ruler). PANEL 05 — BEHAVIOR/POSES (4 environmental shots): RESTING · STALKING · ATTACKING · FLEEING. PANEL 06 — COLOR PALETTE (6 HEX swatches). Bottom: "Use this creature board as a visual reference for consistent depiction of the creature across all generations." Style: VFX Ready · Realistic · Cinematic. Photorealistic. 8K, fine grain, cinematic color grading.`
 };
@@ -105,15 +249,20 @@ export function buildBoardPrompt(boardType, additionalContext = '', model = 'gpt
         );
     } else if (boardType === 'CHARACTER') {
         const name = boardMeta.name || 'Character';
-        const age = boardMeta.age || '25';
-        const gender = boardMeta.gender || 'Person';
-        const ethnicity = boardMeta.ethnicity || 'Natural';
-        const build = boardMeta.build || 'Standard';
-        const outfit = boardMeta.outfit || 'Cohesive outfit';
-        const hair = boardMeta.hair || 'Cohesive hair style';
-        const vibe = boardMeta.personality || 'Neutral';
+        const age = boardMeta.age || '';
+        const gender = boardMeta.gender || '';
+        const ethnicity = boardMeta.ethnicity || '';
+        const build = boardMeta.build || '';
+        const outfit = boardMeta.outfit || '';
+        const hair = boardMeta.hair || '';
+        const vibe = boardMeta.personality || '';
         
-        const charMetadata = `NAME: "${name}" · AGE: "${age}" · HEIGHT: '1.75m' · BUILD: "${build}" · HAIR: "${hair}" · EYES: 'Matching' · FEATURES: "Gender: ${gender} · Ethnicity/Skin: ${ethnicity}" · OUTFIT: "${outfit}" · CHARACTER: "${vibe}" · MOOD: 'Consistent'`;
+        let featuresParts = [];
+        if (gender) featuresParts.push(`Gender: ${gender}`);
+        if (ethnicity) featuresParts.push(`Ethnicity/Skin: ${ethnicity}`);
+        const featuresStr = featuresParts.length > 0 ? featuresParts.join(' · ') : 'Natural';
+
+        const charMetadata = `NAME: "${name}"${age ? ` · AGE: "${age}"` : ''} · HEIGHT: '1.75m'${build ? ` · BUILD: "${build}"` : ''}${hair ? ` · HAIR: "${hair}"` : ''} · EYES: 'Matching' · FEATURES: "${featuresStr}"${outfit ? ` · OUTFIT: "${outfit}"` : ''}${vibe ? ` · CHARACTER: "${vibe}"` : ''} · MOOD: 'Consistent'`;
         
         compiledPrompt = compiledPrompt.replace(
             `NAME · AGE · HEIGHT · BUILD · HAIR · EYES · FEATURES · OUTFIT · CHARACTER · MOOD`,

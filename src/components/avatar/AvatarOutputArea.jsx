@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, Bookmark, Sparkles, AlertCircle, Copy, Check, ChevronDown, ChevronUp, Pencil, Maximize2, X, CheckCircle2, Loader2 } from 'lucide-react';
+import { Download, Bookmark, Sparkles, AlertCircle, Copy, Check, ChevronDown, ChevronUp, Pencil, Maximize2, X, CheckCircle2, Loader2, Wand2, DownloadCloud } from 'lucide-react';
 import { InpaintEditor } from '../common/InpaintEditor';
 
 const LOADING_STATUSES = [
@@ -50,63 +50,19 @@ export default function AvatarOutputArea({
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0D0F0A] border border-white/5 rounded-3xl overflow-hidden relative min-h-[500px]">
+    <div className="flex-1 flex flex-col bg-white/[0.01] border border-white/5 rounded-3xl overflow-hidden relative min-h-[500px] backdrop-blur-xl">
       
       {/* Top Bar / Metadata */}
-      <div className="border-b border-white/5 px-6 py-4 flex items-center justify-between bg-zinc-950/40 backdrop-blur-sm z-10">
-        <div className="flex items-center gap-2">
+      <div className="border-b border-white/5 px-6 py-4.5 flex items-center justify-between bg-black/40 backdrop-blur-md z-10">
+        <div className="flex items-center gap-2.5">
           <span className="flex h-2 w-2 relative">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C8F135] opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-[#C8F135]"></span>
           </span>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#C8F135]">
-            Cinematic Viewport
+          <span className="text-[9px] font-black uppercase tracking-[0.25em] text-[#C8F135]">
+            Reference Viewport
           </span>
         </div>
-        
-        {generatedImage && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsExpanded(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/5 hover:border-white/10 bg-zinc-900/40 text-white/70 hover:text-white transition-all text-[10px] font-black uppercase tracking-wider"
-            >
-              <Maximize2 className="w-3.5 h-3.5 text-[#C8F135]" />
-              Expand
-            </button>
-            <button
-              onClick={() => setInpaintOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-500/30 hover:border-purple-500/50 bg-purple-950/20 text-purple-300 hover:text-purple-200 hover:bg-purple-950/40 transition-all text-[10px] font-black uppercase tracking-wider"
-            >
-              <Pencil className="w-3.5 h-3.5 text-purple-400" />
-              Brush Edit
-            </button>
-            <button
-              onClick={saveToGallery}
-              disabled={saving || savedOk}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all text-[10px] font-black uppercase tracking-wider disabled:opacity-70 ${
-                savedOk
-                  ? 'border-[#C8F135]/40 bg-[#C8F135]/10 text-[#C8F135]'
-                  : 'border-white/5 hover:border-white/10 bg-zinc-900/40 text-white/70 hover:text-white'
-              }`}
-            >
-              {saving ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : savedOk ? (
-                <CheckCircle2 className="w-3.5 h-3.5" />
-              ) : (
-                <Bookmark className="w-3.5 h-3.5" />
-              )}
-              {savedOk ? 'Saved!' : 'Save to Library'}
-            </button>
-            <button
-              onClick={downloadImage}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#C8F135] text-black hover:scale-[1.02] active:scale-95 transition-all text-[10px] font-black uppercase tracking-wider shadow-lg shadow-[#C8F135]/15"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Download PNG
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Main Canvas Viewport */}
@@ -137,17 +93,17 @@ export default function AvatarOutputArea({
 
         {/* 2. Success / Display State */}
         {!generating && generatedImage && (
-          <div className="flex flex-col gap-4 items-center z-10 w-full max-w-[500px]">
-            <div className="w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl relative group flex items-center justify-center bg-zinc-950">
+          <div className="flex flex-col gap-5 items-center z-10 w-full max-w-[1000px] lg:max-w-[1100px] max-h-full">
+            <div className="w-full max-h-[50vh] min-h-[220px] rounded-2xl overflow-hidden border border-white/10 shadow-2xl relative group flex items-center justify-center bg-zinc-950">
               <img
                 src={generatedImage}
                 alt="Generated Avatar Studio Output"
-                className="w-full h-auto object-contain object-center transition-all duration-700 hover:scale-[1.02]"
+                className="max-w-full max-h-[50vh] w-auto h-auto object-contain object-center transition-all duration-700 hover:scale-[1.01]"
               />
               {/* Floating Expand/Maximize Button */}
               <button
                 onClick={() => setIsExpanded(true)}
-                className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white text-black hover:bg-white/90 hover:scale-110 active:scale-95 transition-all flex items-center justify-center shadow-lg border border-white/10 z-20 group/btn"
+                className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/80 text-white hover:bg-white hover:text-black hover:scale-110 active:scale-95 transition-all flex items-center justify-center shadow-lg border border-white/10 z-20 group/btn"
                 title="Expand Viewport"
               >
                 <Maximize2 className="w-4.5 h-4.5 transition-transform group-hover/btn:scale-110" />
@@ -158,23 +114,23 @@ export default function AvatarOutputArea({
               </span>
             </div>
             
-            {/* LARGE ACTION BUTTONS DIRECTLY BELOW IMAGE (DOWN) */}
-            <div className="w-full flex items-center gap-3">
+            {/* LARGE PREMIUM ACTION BUTTONS DIRECTLY BELOW IMAGE */}
+            <div className="w-full max-w-3xl lg:max-w-4xl flex items-center gap-3.5 mt-1">
               <button
                 type="button"
                 onClick={() => setIsExpanded(true)}
-                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-white/5 hover:border-white/10 bg-zinc-900/40 text-white/70 hover:text-white transition-all text-xs font-black uppercase tracking-wider active:scale-95"
+                className="group flex-1 flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl border border-white/5 bg-zinc-950/40 text-white/80 hover:text-white hover:border-[#C8F135]/40 hover:bg-[#C8F135]/5 shadow-[0_4px_12px_rgba(0,0,0,0.5)] transition-all text-xs font-black uppercase tracking-wider active:scale-95"
               >
-                <Maximize2 className="w-3.5 h-3.5 text-[#C8F135]" />
+                <Maximize2 className="w-3.5 h-3.5 text-[#C8F135] transition-transform duration-300 group-hover:scale-110" />
                 <span>Expand</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setInpaintOpen(true)}
-                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-purple-500/20 hover:border-purple-500/40 bg-purple-950/15 text-purple-300 hover:text-purple-200 hover:bg-purple-950/30 transition-all text-xs font-black uppercase tracking-wider active:scale-95"
+                className="group flex-1 flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl border border-purple-500/20 bg-purple-950/10 text-purple-300 hover:text-purple-200 hover:border-purple-500/40 hover:bg-purple-950/20 shadow-[0_4px_12px_rgba(0,0,0,0.5)] transition-all text-xs font-black uppercase tracking-wider active:scale-95"
               >
-                <Pencil className="w-3.5 h-3.5 text-purple-400" />
+                <Wand2 className="w-3.5 h-3.5 text-purple-400 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
                 <span>Brush Edit</span>
               </button>
               
@@ -182,28 +138,28 @@ export default function AvatarOutputArea({
                 type="button"
                 onClick={saveToGallery}
                 disabled={saving || savedOk}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border transition-all text-xs font-black uppercase tracking-wider active:scale-95 disabled:opacity-70 ${
+                className={`group flex-1 flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl border transition-all text-xs font-black uppercase tracking-wider active:scale-95 disabled:opacity-70 shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${
                   savedOk
-                    ? 'border-[#C8F135]/50 bg-[#C8F135]/15 text-[#C8F135] animate-none'
-                    : 'border-[#C8F135]/25 hover:border-[#C8F135]/40 bg-[#C8F135]/5 text-[#C8F135] hover:text-white hover:bg-[#C8F135]/15 animate-pulse hover:animate-none'
+                    ? 'border-[#C8F135]/40 bg-[#C8F135]/15 text-[#C8F135]'
+                    : 'border-[#C8F135]/15 bg-[#C8F135]/5 text-[#C8F135] hover:text-white hover:border-[#C8F135]/30 hover:bg-[#C8F135]/10'
                 }`}
               >
                 {saving ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : savedOk ? (
-                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#C8F135]" />
                 ) : (
-                  <Bookmark className="w-3.5 h-3.5" />
+                  <Bookmark className="w-3.5 h-3.5 text-[#C8F135] transition-transform duration-300 group-hover:scale-110" />
                 )}
-                <span>{saving ? 'Saving...' : savedOk ? 'Saved to Assets!' : 'Save to Assets'}</span>
+                <span>{saving ? 'Saving...' : savedOk ? 'Saved!' : 'Save to Assets'}</span>
               </button>
               
               <button
                 type="button"
                 onClick={downloadImage}
-                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#C8F135] text-black hover:bg-[#b0d62d] transition-all text-xs font-black uppercase tracking-wider active:scale-95 shadow-lg shadow-[#C8F135]/10"
+                className="group flex-1 flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl bg-[#C8F135] text-black hover:bg-[#bef264] shadow-[0_4px_20px_rgba(200,241,53,0.2)] hover:shadow-[0_4px_25px_rgba(200,241,53,0.45)] transition-all text-xs font-black uppercase tracking-wider active:scale-95"
               >
-                <Download className="w-3.5 h-3.5" />
+                <DownloadCloud className="w-3.5 h-3.5 transition-transform duration-300 group-hover:-translate-y-0.5" />
                 <span>Download</span>
               </button>
             </div>
@@ -212,17 +168,24 @@ export default function AvatarOutputArea({
 
         {/* 3. Empty / Placeholder State */}
         {!generating && !generatedImage && (
-          <div className="text-center space-y-5 z-10 max-w-md">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-zinc-950 border border-white/5 flex items-center justify-center text-white/30 shadow-inner">
-              <Sparkles className="w-7 h-7" />
+          <div className="text-center space-y-6 z-10 max-w-md relative p-8 rounded-3xl bg-white/[0.01] border border-white/5 backdrop-blur-sm">
+            {/* Visual tech crosshairs */}
+            <div className="absolute top-3 left-3 w-3 h-3 border-t border-l border-white/10" />
+            <div className="absolute top-3 right-3 w-3 h-3 border-t border-r border-white/10" />
+            <div className="absolute bottom-3 left-3 w-3 h-3 border-b border-l border-white/10" />
+            <div className="absolute bottom-3 right-3 w-3 h-3 border-b border-r border-white/10" />
+            
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-black/40 border border-white/5 flex items-center justify-center text-white/40 shadow-inner relative group-hover:scale-105 transition-transform duration-300">
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-[#C8F135]/10 to-transparent opacity-50" />
+              <Sparkles className="w-6 h-6 text-[#C8F135]/80" />
             </div>
             
-            <div className="space-y-1.5">
-              <h3 className="text-sm font-black uppercase tracking-[0.15em] text-white">
-                Studio Viewport Primed
+            <div className="space-y-2">
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent">
+                Viewport Standby
               </h3>
-              <p className="text-[11px] text-white/35 max-w-xs mx-auto leading-relaxed">
-                Provide character demographics, select costume and angles, and hit generate to watch your vision come to life.
+              <p className="text-[10px] text-white/30 max-w-xs mx-auto leading-relaxed font-medium">
+                Set engine parameters, fill in details or attach reference photos, and execute creation to generate storyboard panels.
               </p>
             </div>
           </div>

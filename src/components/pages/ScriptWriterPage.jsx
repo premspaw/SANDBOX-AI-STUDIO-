@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FileText, Send, Loader2, User, Bot, Trash2, Plus, Zap, Sliders, X, Copy, Check, Film, Clapperboard, Megaphone, Monitor, BookOpen, Globe, Mic, Youtube, Sparkles } from 'lucide-react';
+import { FileText, Send, Loader2, User, Bot, Trash2, Plus, Zap, Sliders, X, Copy, Check, Film, Clapperboard, Megaphone, Monitor, BookOpen, Globe, Mic, Youtube, Sparkles, ArrowLeft } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getApiUrl } from '../../config/apiConfig';
 import { useAppStore } from '../../store';
@@ -42,7 +42,7 @@ const SUGGESTED = {
     ugc: ['UGC script for a skincare product', 'Authentic review script for a gadget', 'Day-in-the-life UGC storyboard'],
 };
 
-export default function ScriptWriterPage() {
+export default function ScriptWriterPage({ activeTool, setActiveTool }) {
     const userProfile = useAppStore(state => state.userProfile);
     const [activeType, setActiveType] = useState('reels');
     const [messages, setMessages] = useState([
@@ -135,6 +135,11 @@ export default function ScriptWriterPage() {
             <div className="flex-1 flex flex-col min-w-0 bg-[#08080e]">
                 <div className="flex items-center gap-3 px-5 py-3 border-b border-white/[0.04] bg-[#0a0a14]/30 backdrop-blur-xl shrink-0">
                     <div className="flex items-center gap-2">
+                        {setActiveTool && (
+                            <button onClick={() => setActiveTool(null)} className="mr-1.5 p-1.5 hover:bg-white/5 rounded-xl text-white/40 hover:text-white transition-all border border-white/5 flex items-center justify-center" title="Back to Assistant">
+                                <ArrowLeft size={14} />
+                            </button>
+                        )}
                         <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500/80 to-indigo-600/80 flex items-center justify-center"><Zap className="w-3.5 h-3.5 text-white" /></div>
                         <span className="text-sm font-semibold text-white/70">{SCRIPT_TYPES.find(s => s.id === activeType)?.label}</span>
                         <span className="text-[8px] text-white/30 font-mono bg-white/5 px-2 py-0.5 rounded-md">{SCRIPT_TYPES.find(s => s.id === activeType)?.template}</span>

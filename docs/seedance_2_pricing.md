@@ -1,7 +1,7 @@
 # Seedance 2.0 (bytedance/seedance-2) — ZeroLens Pricing Guide
 
 > **1 Credit = ₹1 INR** · All prices include **40% platform margin** over raw API cost.
-> Exchange rate: **1 USD = ₹85 INR**
+> Exchange rate: **1 USD = ₹95 INR**
 
 ---
 
@@ -24,14 +24,14 @@
 
 | Tier | Raw INR/s | +40% Margin (INR/s) | Credits/s | 5s Clip | 10s Clip |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **4K** — No video | ₹88.40 | **₹123.76** | **124/s** | 620 Cr | 1240 Cr |
-| **4K** — With video | ₹54.40 | **₹76.16** | **76/s** | 380 Cr | 760 Cr |
-| **1080P** — No video | ₹43.35 | **₹60.69** | **61/s** | 305 Cr | 610 Cr |
-| **1080P** — With video | ₹26.35 | **₹36.89** | **37/s** | 185 Cr | 370 Cr |
-| **720P** — No video | ₹17.43 | **₹24.40** | **24/s** | 120 Cr | 240 Cr |
-| **720P** — With video | ₹10.63 | **₹14.88** | **15/s** | 75 Cr | 150 Cr |
-| **480P** — No video | ₹8.08 | **₹11.31** | **11/s** | 55 Cr | 110 Cr |
-| **480P** — With video | ₹4.85 | **₹6.78** | **7/s** | 35 Cr | 70 Cr |
+| **4K** — No video | ₹98.80 | **₹138.32** | **140/s** | 700 Cr | 1400 Cr |
+| **4K** — With video | ₹60.80 | **₹85.12** | **90/s** | 450 Cr | 900 Cr |
+| **1080P** — No video | ₹48.45 | **₹67.83** | **70/s** | 350 Cr | 700 Cr |
+| **1080P** — With video | ₹29.45 | **₹41.23** | **45/s** | 225 Cr | 450 Cr |
+| **720P** — No video | ₹19.48 | **₹27.27** | **30/s** | 150 Cr | 300 Cr |
+| **720P** — With video | ₹11.88 | **₹16.63** | **20/s** | 100 Cr | 200 Cr |
+| **480P** — No video | ₹9.03 | **₹12.64** | **15/s** | 75 Cr | 150 Cr |
+| **480P** — With video | ₹5.46 | **₹7.65** | **10/s** | 50 Cr | 100 Cr |
 
 ---
 
@@ -39,10 +39,10 @@
 
 | Resolution | Credits/s | Reasoning |
 | :--- | :--- | :--- |
-| **4K** | **124/s** | No-video rate (higher, covers both cases) |
-| **1080P** | **61/s** | No-video rate |
-| **720P** | **24/s** | No-video rate |
-| **480P** | **11/s** | No-video rate |
+| **4K** | **140/s** | No-video rate (higher, covers both cases) |
+| **1080P** | **70/s** | No-video rate |
+| **720P** | **30/s** | No-video rate |
+| **480P** | **15/s** | No-video rate |
 
 ---
 
@@ -50,6 +50,6 @@
 
 | Engine | 4K/s | 1080p/s | 720p/s | 480p/s |
 | :--- | :--- | :--- | :--- | :--- |
-| Seedance 2.0 | **124/s** | **61/s** | **24/s** | **11/s** |
-| Seedance Fast | — | — | 20/s | 9/s |
-| Seedance Mini | — | — | 12/s | 6/s |
+| Seedance 2.0 | **140/s** | **70/s** | **30/s** | **15/s** |
+| Seedance Fast | — | — | 25/s | 15/s |
+| Seedance Mini | — | — | 15/s | 10/s |

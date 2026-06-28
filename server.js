@@ -946,7 +946,7 @@ async function handleOpenAI(req, res) {
 
 async function handleGoogle(req, res) {
     try {
-        const { model, modelEngine, prompt, aspect_ratio, aspectRatio, userId, firstFrame, lastFrame, referenceImages = [], quality, resolution, imageSize, size, folder } = req.body;
+        const { model, modelEngine, prompt, negativePrompt, negative_prompt, aspect_ratio, aspectRatio, userId, firstFrame, lastFrame, referenceImages = [], quality, resolution, imageSize, size, folder } = req.body;
         const targetModel = model || modelEngine;
         // Admin trial key takes priority (only injected by admins via Settings > Admin tab)
         const adminTrialKey = req.headers?.['x-admin-trial-key'] || '';
@@ -1048,7 +1048,8 @@ async function handleGoogle(req, res) {
                         responseModalities: ["IMAGE"],
                         imageConfig: {
                             aspectRatio: mappedRatio,
-                            imageSize: finalImageSize
+                            imageSize: finalImageSize,
+                            negativePrompt: negativePrompt || negative_prompt || undefined
                         }
                     }
                 })

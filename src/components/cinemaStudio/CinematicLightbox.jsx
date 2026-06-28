@@ -16,6 +16,7 @@ export function CinematicLightbox({
   setShowInpaint,
   setShowStoryboard,
   upscalingItems,
+  setUpscalingItems,
   setFirstFrameImage,
   setFirstFramePreview,
   setLastFrameImage,
@@ -32,12 +33,11 @@ export function CinematicLightbox({
   const [storyEditInstruction, setStoryEditInstruction] = useState('');
   const [isEditingStory, setIsEditingStory] = useState(false);
 
-  // Edit Story Panel Handler using Gemini
   const handleEditStory = async () => {
     if (!storyEditInstruction.trim() || !lightboxItem?.url) return;
     setIsEditingStory(true);
     const showToast = useAppStore.getState().showToast;
-    if (showToast) showToast("Regenerating image using Gemini...", "info");
+    if (showToast) showToast("Initiating narrative edit using Gemini...", "info");
 
     try {
       const spendResult = await useAppStore.getState().spendShorts(userId, 2, 'image_upscale_4k'); // deduct 2 credits for edit
@@ -52,8 +52,33 @@ export function CinematicLightbox({
         return;
       }
 
+      const draftId = Date.now();
+      const draftItem = {
+        id: draftId,
+        type: 'image',
+        url: lightboxItem.url,
+        prompt: `${lightboxItem.prompt || 'Subject'} (Editing: "${storyEditInstruction}")`,
+        engine: `${lightboxItem.engine || 'Nano Banana 2'} (Editing...)`,
+        aspect: lightboxItem.aspect || "16:9",
+        ts: draftId,
+        isDraft: true
+      };
+
+      // Add draft placeholder to the gallery and trigger the loading overlay
+      setGallery(prev => [draftItem, ...prev]);
+      if (setUpscalingItems) {
+        setUpscalingItems(prev => ({ ...prev, [draftId]: true }));
+      }
+
+      // Close the modal, lightbox, and clear inputs immediately to keep UI active
+      const activeInstruction = storyEditInstruction;
+      setShowEditStoryModal(false);
+      setStoryEditInstruction('');
+      setLightboxItem(null);
+      setIsEditingStory(false);
+
       const prompt = `REGENERATE / EDIT IMAGE:
-Edit this image according to this brief/instruction: "${storyEditInstruction}".
+Edit this image according to this brief/instruction: "${activeInstruction}".
 STRICT RULE: Keep the exact same subject identity, scene structure, lighting, and composition. Only apply the requested change. 
 [Subject and Context: ${lightboxItem.prompt || 'Cinematic photo'}]`;
 
@@ -65,43 +90,55 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
         userId
       };
 
-      const resp = await fetch(getApiUrl('/api/generate-image'), {
+      // Perform fetch request in the background
+      fetch(getApiUrl('/api/generate-image'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
+      })
+      .then(async (resp) => {
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          throw new Error(errData.message || errData.error || "Regeneration failed");
+        }
+        return resp.json();
+      })
+      .then((data) => {
+        if (data.url) {
+          const newItem = {
+            id: Date.now(),
+            type: 'image',
+            url: data.url,
+            prompt: `${lightboxItem.prompt || 'Subject'} (Edited: ${activeInstruction})`,
+            engine: `${lightboxItem.engine || 'Nano Banana 2'} (Edited)`,
+            aspect: lightboxItem.aspect || "16:9",
+            ts: Date.now()
+          };
+
+          // Swap placeholder draft with finished item, remove loading overlay, and focus lightbox on it
+          setGallery(prev => [newItem, ...prev.filter(i => i.id !== draftId)]);
+          if (setUpscalingItems) {
+            setUpscalingItems(prev => ({ ...prev, [draftId]: false }));
+          }
+          setLightboxItem(newItem);
+          if (showToast) showToast("Image successfully edited & saved to gallery!", "success");
+        } else {
+          throw new Error("No URL returned from server.");
+        }
+      })
+      .catch((err) => {
+        console.error("Background regeneration failed:", err);
+        setGallery(prev => prev.filter(i => i.id !== draftId));
+        if (setUpscalingItems) {
+          setUpscalingItems(prev => ({ ...prev, [draftId]: false }));
+        }
+        if (showToast) showToast(`Edit failed: ${err.message}`, "error");
       });
 
-      if (!resp.ok) {
-        const errData = await resp.json().catch(() => ({}));
-        throw new Error(errData.message || errData.error || "Regeneration failed");
-      }
-      const data = await resp.json();
-
-      if (data.url) {
-        const newItem = {
-          id: Date.now(),
-          type: 'image',
-          url: data.url,
-          prompt: `${lightboxItem.prompt} (Edited: ${storyEditInstruction})`,
-          engine: `${lightboxItem.engine} (Edited)`,
-          aspect: lightboxItem.aspect || "16:9",
-          ts: Date.now()
-        };
-
-        setGallery(prev => [newItem, ...prev]);
-        setLightboxItem(newItem);
-
-        if (showToast) showToast("Image successfully edited & saved to gallery!", "success");
-        setShowEditStoryModal(false);
-        setStoryEditInstruction('');
-      } else {
-        throw new Error("No URL returned from server.");
-      }
     } catch (err) {
-      console.error("Regeneration failed:", err);
-      if (showToast) showToast(`Edit failed: ${err.message}`, "error");
-    } finally {
+      console.error("Regeneration trigger failed:", err);
       setIsEditingStory(false);
+      if (showToast) showToast(`Edit trigger failed: ${err.message}`, "error");
     }
   };
 
@@ -145,6 +182,21 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
     const shotNumber = (row * 3) + col + 1;
     const showToast = useAppStore.getState().showToast;
     if (showToast) showToast(`Extracting Angle ${shotNumber}...`, "info");
+
+    // Clean prompt and engine to remove any "Grid" or "Storyboard" markers so that the extracted single image
+    // does not trigger the interactive grid overlay UI.
+    let cleanPrompt = lightboxItem.prompt || 'Subject';
+    cleanPrompt = cleanPrompt
+      .replace(/Multi-Angle 3x3 Grid:\s*/gi, '')
+      .replace(/\s*-?\s*Grid/gi, '')
+      .replace(/^Storyboard:\s*/gi, '')
+      .replace(/\s*-?\s*Storyboard/gi, '')
+      .split('.')[0];
+    if (!cleanPrompt.trim()) cleanPrompt = 'Subject';
+    
+    let cleanEngine = (lightboxItem.engine || 'Nano Banana 2')
+      .replace(/\s*\(Grid\)/gi, '')
+      .replace(/\s*\(Storyboard\)/gi, '');
 
     // Load secure CORS-safe proxied version in background to avoid browser canvas taint
     const loadProxiedImage = () => {
@@ -195,14 +247,14 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
         id: Date.now(),
         type: 'image',
         url: url,
-        prompt: `${lightboxItem.prompt ? lightboxItem.prompt.split('.')[0] : 'Subject'} - Extracted Angle ${shotNumber}`,
-        engine: `${lightboxItem.engine} (Angle ${shotNumber})`,
+        prompt: `${cleanPrompt} - Extracted Angle ${shotNumber}`,
+        engine: `${cleanEngine} (Angle ${shotNumber})`,
         aspect: lightboxItem.aspect || "16:9",
         ts: Date.now()
       };
 
       setGallery(prev => [newItem, ...prev]);
-      setLightboxItem(newItem);
+      setLightboxItem(null);
       if (showToast) showToast(`Angle ${shotNumber} successfully saved to gallery!`, "success");
 
       // Auto-trigger 2K upscale / refinement immediately as a new image!
@@ -229,13 +281,13 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
           id: Date.now(),
           type: 'image',
           url: croppedUrlBase64,
-          prompt: `${lightboxItem.prompt ? lightboxItem.prompt.split('.')[0] : 'Subject'} - Extracted Angle ${shotNumber}`,
-          engine: `${lightboxItem.engine} (Angle ${shotNumber})`,
+          prompt: `${cleanPrompt} - Extracted Angle ${shotNumber}`,
+          engine: `${cleanEngine} (Angle ${shotNumber})`,
           aspect: lightboxItem.aspect || "16:9",
           ts: Date.now()
         };
         setGallery(prev => [newItem, ...prev]);
-        setLightboxItem(newItem);
+        setLightboxItem(null);
         if (showToast) showToast(`Angle ${shotNumber} extracted to gallery (session fallback).`, "success");
 
         // Auto-trigger 2K upscale / refinement immediately as a new image on fallback!
@@ -288,7 +340,10 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                   lightboxItem.aspect === '9:16' ? 'aspect-[9/16]' : lightboxItem.aspect === '1:1' ? 'aspect-square' : 'aspect-video w-full'
                 )}
               />
-              {(lightboxItem.prompt?.includes('Grid') || lightboxItem.engine?.includes('Grid')) && overlayStyle.width && (
+              {(lightboxItem.prompt?.toLowerCase().includes('grid') || 
+                lightboxItem.engine?.toLowerCase().includes('grid') || 
+                lightboxItem.prompt?.toLowerCase().includes('storyboard') || 
+                lightboxItem.engine?.toLowerCase().includes('storyboard')) && overlayStyle.width && (
                 <div style={overlayStyle} className="z-10 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(200,241,53,0.15)]">
                   <div className="w-full h-full grid grid-cols-3 grid-rows-3" style={{ pointerEvents: 'auto' }}>
                     {[...Array(9)].map((_, i) => (

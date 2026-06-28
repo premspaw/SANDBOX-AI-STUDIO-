@@ -140,9 +140,9 @@ const ENGINES = [
   { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — 5⚡/s (9⚡/s audio)', cost: 5 },
   { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3.1 Fast',     icon: '⚡', desc: 'Google Fast — 3⚡/s (5⚡/s audio)',         cost: 3 },
   { id: 'veo-3.1-lite-generate-preview', label: 'Veo 3.1 Lite',     icon: '🍃', desc: 'Google Lite — 2⚡/s (3⚡/s audio)',           cost: 2 },
-  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 20⚡/s (720p) / 9⚡/s (480p)',          cost: 20 },
-  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 11⚡/s (480p) / 24⚡/s (720p) / 61⚡/s (1080p) / 124⚡/s (4K)', cost: 24 },
-  { id: 'seedance-mini',                 label: 'Seedance Mini',    icon: '🧊', desc: 'ByteDance — 12⚡/s (720p) / 6⚡/s (480p)',  cost: 12 },
+  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 25⚡/s (720p) / 15⚡/s (480p)',          cost: 25 },
+  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 15⚡/s (480p) / 30⚡/s (720p) / 70⚡/s (1080p) / 140⚡/s (4K)', cost: 30 },
+  { id: 'seedance-mini',                 label: 'Seedance Mini',    icon: '🧊', desc: 'ByteDance — 15⚡/s (720p) / 10⚡/s (480p)',  cost: 15 },
   { id: 'omni',                          label: 'Omni',            icon: '🌐', desc: 'Multi-modal fusion engine — 6⚡/s',             cost: 6 },
   { id: 'omni-flash',                    label: 'Omni Flash',      icon: '✨', desc: 'Omni fast — 4⚡/s',           cost: 4 },
 ];
@@ -853,25 +853,26 @@ DO NOT add new objects or change the scene. Enhance only.
       if (showToast) showToast("Drafting 3x3 multi-angle grid using Nano Banana...", "info");
 
       const anglesPrompt = `### 9-FRAME CINEMATIC GRID DIRECTIVE
-Create a tight 3x3 contact sheet of 9 high-end cinematic photographs. In a single composite, no borders. 
+Create a tight 3x3 contact sheet containing 9 high-end cinematic photographs. 
+STRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as "PORTRAIT", "WIDE", "FRAME", etc.) on any of the images.
 
-### THE SUBJECT: Match the reference subject visual details
-- IDENTITY: Match the EXACT facial features, clothing, and textures from the provided reference image.
-- LOCATION: Maintain the environmental context from the reference across all frames.
+### SUBJECT & ENVIRONMENT CONSISTENCY:
+- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.
+- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.
 
-### THE 9 UNIQUE CAMERA SETUPS (RADICAL DIVERSITY REQUIRED):
-[FRAME 1: THE PORTRAIT] Extreme close-up. Face and eyes only. Macro lens. Heavy bokeh.
-[FRAME 2: THE WIDE] Long shot. Full environment scale. Subject is small. Epic architecture.
-[FRAME 3: THE TEXTURE] Macro detail. Extreme tight on clothing/fabric/saree only. No face.
-[FRAME 4: THE LOW ANGLE] Ground level looking up. Heroic, powerful perspective. Sky behind.
-[FRAME 5: THE DRONE] Bird's eye view. Looking straight down from above. Overhead pattern.
-[FRAME 6: THE MEDIUM] Waist up. Soft side lighting. 50mm lens aesthetics.
-[FRAME 7: THE SILHOUETTE] Dramatic rim lighting. Near-dark atmosphere. Strong edge light.
-[FRAME 8: THE POV] Action first-person view. Subject's hands visible in foreground.
-[FRAME 9: THE FULL SHOT] Head to toe. Frontal vertical composition. Full outfit visible.
+### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):
+- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.
+- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.
+- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).
+- Frame 4: A low-angle dramatic shot looking slightly up at the subject.
+- Frame 5: An overhead high-angle drone-style shot looking down at the subject.
+- Frame 6: A medium shot from the waist up with natural lighting.
+- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.
+- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.
+- Frame 9: A full-body shot showing the subject from head to toe.
 
-### MANDATORY VARIATION RULE:
-Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal length. Never repeat a camera height. No text, labels, or grid lines.`;
+### STYLING & NEGATIVE INSTRUCTIONS:
+STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.`;
 
       const resp = await fetch(getApiUrl('/api/generate-image'), {
         method: 'POST',
@@ -879,6 +880,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
         body: JSON.stringify({
           model: 'gemini-3.1-flash-image-preview',
           prompt: anglesPrompt,
+          negativePrompt: "text, watermark, logo, labels, words, overlays, numbers, subtitles, letters, borders, frames, gridlines, grid lines, dividers, lines, caption, name tags, stamps, text banners, signatures",
           aspectRatio: item.aspect || '16:9',
           size: item.aspect === '9:16' ? '1024x1792' : item.aspect === '1:1' ? '1024x1024' : '1792x1024',
           userId,
@@ -1354,14 +1356,14 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
       return costPerSec * duration;
     }
     if (engineId === 'seedance-fast') {
-      return (resolution === '480p' ? 9 : 20) * duration;
+      return (resolution === '480p' ? 15 : 25) * duration;
     }
     if (engineId === 'seedace') {
-      const costPerSec = resolution === '4k' ? 124 : (resolution === '1080p' ? 61 : (resolution === '480p' ? 11 : 24));
+      const costPerSec = resolution === '4k' ? 140 : (resolution === '1080p' ? 70 : (resolution === '480p' ? 15 : 30));
       return costPerSec * duration;
     }
     if (engineId === 'seedance-mini') {
-      return (resolution === '480p' ? 6 : 12) * duration;
+      return (resolution === '480p' ? 10 : 15) * duration;
     }
     return (ENGINES.find(e => e.id === engineId)?.cost || 4) * duration;
   };
@@ -1609,6 +1611,15 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
       }
     }
 
+    // Auto-include Mood/Style reference alignment directive if present and not already tagged
+    const moodRef = mergedBoard.moods?.[0];
+    if (moodRef?.imageUrl) {
+      const isAlreadyTagged = taggedItems.some(item => item.id === moodRef.id);
+      if (!isAlreadyTagged) {
+        compiledPrompt = `${compiledPrompt}\n\n[STYLE REFERENCE DIRECTIVE]\nMatch the overall aesthetic, color grading, lighting, composition style, and mood of the attached style reference image.`;
+      }
+    }
+
     return compiledPrompt;
   };
 
@@ -1627,6 +1638,11 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
       const reqRefImages = [];
       if (firstFrameImage) {
         reqRefImages.push(firstFrameImage);
+      }
+      // Auto-include staged/saved Mood/Style reference image from the Reference Board if present
+      const moodItem = mergedBoard.moods?.[0];
+      if (moodItem?.imageUrl && !reqRefImages.includes(moodItem.imageUrl)) {
+        reqRefImages.push(moodItem.imageUrl);
       }
       taggedItems.forEach(item => {
         if (item.imageUrl && !reqRefImages.includes(item.imageUrl)) {
@@ -1758,6 +1774,11 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
         if (firstFrameImage) {
           reqRefImages.push(firstFrameImage);
         }
+        // Auto-include staged/saved Mood/Style reference image from the Reference Board if present
+        const moodItem = mergedBoard.moods?.[0];
+        if (moodItem?.imageUrl && !reqRefImages.includes(moodItem.imageUrl)) {
+          reqRefImages.push(moodItem.imageUrl);
+        }
         identity_images.forEach(img => {
           if (!reqRefImages.includes(img)) reqRefImages.push(img);
         });
@@ -1801,7 +1822,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
         });
 
         const urls = await Promise.all(promises);
-        const engineLabel = IMAGE_ENGINES.find(e => e.id === activeEngine)?.label || 'Imagen 3 Pro';
+        const engineLabel = IMAGE_ENGINES.find(e => e.id === activeEngine)?.label || 'Nano Banana 2';
         
         const newItems = urls.map((url, idx) => ({
           id: Date.now() + idx,
@@ -1820,7 +1841,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
       } catch (err) {
         setStatus('error');
         setPollMsg('');
-        const label = IMAGE_ENGINES.find(e => e.id === activeEngine)?.label || 'Imagen 3 Pro';
+        const label = IMAGE_ENGINES.find(e => e.id === activeEngine)?.label || 'Nano Banana 2';
         const cleanErr = cleanErrorMessage(err.message || `${label} engine failed.`);
         setErrorMsg(cleanErr);
         const showToast = useAppStore.getState().showToast;
@@ -2779,7 +2800,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                   <UpwardDropdown
                     icon={<Zap size={9} />}
                     label={(activeTab === 'image' ? IMAGE_ENGINES : ENGINES).find(e => e.id === activeEngine)?.label || 'Engine'}
-                    badge={`${requiredCredits} ⚡`}
+                    badge={`${getRequiredCredits(activeEngine)} ⚡`}
                     accentColor="fuchsia"
                   >
                     {(close) => (
@@ -2821,11 +2842,11 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                                   : eng.id === 'veo-3.1-lite-generate-preview'
                                   ? `Google Lite — ${resolution === '4k' || resolution === '1080p' ? (generateAudio ? '10⚡/s' : '6⚡/s') : (generateAudio ? '6⚡/s' : '4⚡/s')}`
                                   : eng.id === 'seedance-fast'
-                                  ? `ByteDance — ${resolution === '480p' ? '9⚡/s' : '20⚡/s'} (${resolution === '480p' ? '480p' : '720p'})`
+                                  ? `ByteDance — ${resolution === '480p' ? '15⚡/s' : '25⚡/s'} (${resolution === '480p' ? '480p' : '720p'})`
                                   : eng.id === 'seedace'
-                                  ? `ByteDance — ${resolution === '4k' ? '124⚡/s' : resolution === '1080p' ? '61⚡/s' : resolution === '480p' ? '11⚡/s' : '24⚡/s'} (${resolution})`
+                                  ? `ByteDance — ${resolution === '4k' ? '140⚡/s' : resolution === '1080p' ? '70⚡/s' : resolution === '480p' ? '15⚡/s' : '30⚡/s'} (${resolution})`
                                   : eng.id === 'seedance-mini'
-                                  ? `ByteDance — ${resolution === '480p' ? '6⚡/s' : '12⚡/s'} (${resolution === '480p' ? '480p' : '720p'})`
+                                  ? `ByteDance — ${resolution === '480p' ? '10⚡/s' : '15⚡/s'} (${resolution === '480p' ? '480p' : '720p'})`
                                   : eng.desc}
                               </p>
                             </div>
@@ -3080,7 +3101,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
                       )}
                       title={activeEngine.startsWith('veo-3.1') ? "Generate synchronized audio with Google Veo 3.1" : "Generate synchronized audio with Seedance 2.0"}
                     >
-                      <span>🔊 Audio: {generateAudio ? 'ON' : 'OFF'}</span>
+                      <span className="text-[10px]">{generateAudio ? '🔊' : '🔇'}</span>
                     </button>
                   )}
 
@@ -3173,6 +3194,7 @@ Each frame must be a SHOCKING contrast from its neighbors. Never repeat a focal 
             setShowInpaint={setShowInpaint}
             setShowStoryboard={setShowStoryboard}
             upscalingItems={upscalingItems}
+            setUpscalingItems={setUpscalingItems}
             setFirstFrameImage={setFirstFrameImage}
             setFirstFramePreview={setFirstFramePreview}
             setLastFrameImage={setLastFrameImage}

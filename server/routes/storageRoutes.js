@@ -38,13 +38,30 @@ export default function createRouter(deps) {
             const upstreamHeaders = { 'User-Agent': 'ZerolensProxy/1.0' };
             if (rangeHeader) upstreamHeaders['Range'] = rangeHeader;
 
-            const upstream = await fetch(finalUrl, {
-                headers: upstreamHeaders,
-                redirect: 'follow',
-            });
+            let upstream;
+            let lastErr;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    upstream = await fetch(finalUrl, {
+                        headers: upstreamHeaders,
+                        redirect: 'follow',
+                        timeout: 6000
+                    });
+                    if (upstream.ok || upstream.status === 206) {
+                        break;
+                    }
+                    if (attempt < 3) await new Promise(r => setTimeout(r, 600));
+                } catch (err) {
+                    lastErr = err;
+                    if (attempt < 3) await new Promise(r => setTimeout(r, 600));
+                }
+            }
 
-            if (!upstream.ok && upstream.status !== 206) {
-                return res.status(upstream.status).json({ error: `Upstream error: ${upstream.statusText}` });
+            if (!upstream || (!upstream.ok && upstream.status !== 206)) {
+                const status = upstream ? upstream.status : 500;
+                const statusText = upstream ? upstream.statusText : (lastErr ? lastErr.message : 'Unknown proxy fetch error');
+                console.error(`[Proxy Error]: Failed to fetch ${finalUrl} after 3 attempts. Status: ${status}, Error: ${statusText}`);
+                return res.status(status).json({ error: `Upstream error: ${statusText}` });
             }
 
             // CORS headers — always required
@@ -53,6 +70,13 @@ export default function createRouter(deps) {
 
             const ct = upstream.headers.get('content-type') || (isVideo ? 'video/mp4' : 'application/octet-stream');
             res.setHeader('Content-Type', ct);
+
+            // Force download if requested via query parameter
+            const downloadFilename = req.query.download;
+            if (downloadFilename) {
+                const encodedFilename = encodeURIComponent(downloadFilename);
+                res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`);
+            }
 
             if (isVideo || rangeHeader) {
                 // ✅ Video streaming: Chrome requires Accept-Ranges + Content-Length to cache & seek

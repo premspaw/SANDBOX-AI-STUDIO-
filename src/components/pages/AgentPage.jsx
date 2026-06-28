@@ -48,6 +48,69 @@ export default function AgentPage() {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isThinking]);
 
+    const PROMPT_VERSION = '2'; // version for agent prompt cache
+    useEffect(() => {
+        let cancelled = false;
+        let retryInterval = null;
+
+        const storedVersion = localStorage.getItem('agent_prompt_version');
+        if (storedVersion !== PROMPT_VERSION) { 
+            localStorage.removeItem('agent_session_id'); 
+            localStorage.setItem('agent_prompt_version', PROMPT_VERSION); 
+        }
+
+        const checkOrCreateSession = async () => {
+            const existingId = localStorage.getItem('agent_session_id');
+            if (existingId) {
+                try {
+                    const r = await fetch(`${HERMES_API}/api/sessions/${existingId}`);
+                    if (r.ok) {
+                        if (!cancelled) {
+                            setHermesSessionId(existingId);
+                            setSessionReady(true);
+                            if (retryInterval) clearInterval(retryInterval);
+                        }
+                        return;
+                    }
+                } catch (e) {
+                    console.debug('[AgentPage] Error verifying session:', e);
+                }
+                localStorage.removeItem('agent_session_id');
+            }
+
+            try {
+                const r = await fetch(`${HERMES_API}/api/sessions`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ system_prompt: SYSTEM_PROMPT }) 
+                });
+                const data = await r.json();
+                if (data.session_id && !cancelled) {
+                    localStorage.setItem('agent_session_id', data.session_id);
+                    setHermesSessionId(data.session_id);
+                    setSessionReady(true);
+                    if (retryInterval) clearInterval(retryInterval);
+                }
+            } catch (err) {
+                console.warn('[AgentPage] Bridge unavailable, retrying in 4 seconds...');
+                if (!cancelled) setSessionReady(false);
+            }
+        };
+
+        checkOrCreateSession();
+
+        retryInterval = setInterval(() => {
+            if (!sessionReady && !cancelled) {
+                checkOrCreateSession();
+            }
+        }, 4000);
+
+        return () => {
+            cancelled = true;
+            if (retryInterval) clearInterval(retryInterval);
+        };
+    }, [sessionReady]);
+
     const handleToolClick = (toolId) => {
         setActiveTool(activeTool === toolId ? null : toolId);
     };
@@ -61,6 +124,12 @@ export default function AgentPage() {
         const nextMessages = [...messages, userMsg];
         setMessages(nextMessages);
         setIsThinking(true);
+
+        if (!sessionReady || !hermesSessionId) {
+            setMessages([...nextMessages, { role: 'assistant', content: "Error: AI Session is not initialized. Please verify that the Hermes Agent Bridge is running and try again.", ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+            setIsThinking(false);
+            return;
+        }
 
         try {
             const toolLabel = activeTool ? TOOLS.find(t => t.id === activeTool)?.label || activeTool : null;
@@ -102,13 +171,13 @@ export default function AgentPage() {
 
     // Director, Script, and Carousel render their own full-page UI
     if (activeTool === 'director') {
-        return <DirectorAgentPage />;
+        return <DirectorAgentPage activeTool={activeTool} setActiveTool={setActiveTool} />;
     }
     if (activeTool === 'script') {
-        return <ScriptWriterPage />;
+        return <ScriptWriterPage activeTool={activeTool} setActiveTool={setActiveTool} />;
     }
     if (activeTool === 'carousel') {
-        return <CarouselBriefPage />;
+        return <CarouselBriefPage activeTool={activeTool} setActiveTool={setActiveTool} />;
     }
 
     return (
@@ -118,6 +187,10 @@ export default function AgentPage() {
                     <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center"><Bot className="w-4 h-4 text-white" /></div>
                         <p className="text-xs font-black text-white tracking-tight">ZeroLens AI</p>
+                    </div>
+                    <div className={cn("mt-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full w-fit border", sessionReady ? "bg-emerald-500/10 border-emerald-500/20" : "bg-yellow-500/10 border-yellow-500/20")}>
+                        <div className={cn("w-1 h-1 rounded-full animate-pulse", sessionReady ? "bg-emerald-400" : "bg-yellow-400")} />
+                        <span className={cn("text-[7px] font-bold uppercase tracking-wider", sessionReady ? "text-emerald-400" : "text-yellow-400")}>{sessionReady ? "Session Ready" : "Connecting"}</span>
                     </div>
                 </div>
                 <div className="p-3 border-b border-white/5">

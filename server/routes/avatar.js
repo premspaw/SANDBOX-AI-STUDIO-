@@ -23,6 +23,23 @@ export default function createRouter(deps) {
         return Buffer.from(base64Str, 'base64');
     };
 
+    const resolveImageToBuffer = async (imgSrc) => {
+        if (!imgSrc) return null;
+        if (imgSrc.startsWith('http://') || imgSrc.startsWith('https://')) {
+            const resp = await fetch(imgSrc);
+            if (!resp.ok) throw new Error(`Failed to fetch image from URL: ${resp.statusText}`);
+            const mimeType = resp.headers.get('content-type') || 'image/png';
+            const buffer = await resp.buffer();
+            return { buffer, mimeType };
+        }
+        if (imgSrc.startsWith('data:')) {
+            const [header, b64] = imgSrc.split(',');
+            const mimeType = header.match(/:(.*?);/)?.[1] || 'image/png';
+            return { buffer: Buffer.from(b64, 'base64'), mimeType };
+        }
+        return { buffer: Buffer.from(imgSrc, 'base64'), mimeType: 'image/png' };
+    };
+
     /**
      * POST /api/avatar/upload-ref
      * Body: { image: string (base64), userId: string }
@@ -68,6 +85,8 @@ export default function createRouter(deps) {
             const {
                 boardType,
                 refImageUrl,       // character likeness
+                leftProfileRefUrl, // optional left profile likeness
+                rightProfileRefUrl,// optional right profile likeness
                 wardrobeRefUrl,    // wardrobe/outfit
                 propRefUrl,        // prop/accessory
                 additionalContext = '',
@@ -83,17 +102,53 @@ export default function createRouter(deps) {
             if (!boardType) {
                 return res.status(400).json({ error: 'Board type is required.' });
             }
-            if (!refImageUrl && !wardrobeRefUrl && !propRefUrl) {
-                return res.status(400).json({ error: 'At least one reference photo is required.' });
-            }
 
             // 1. Charge credits conditionally (5 credits for Nano Banana Pro, 3 for GPT Image 2)
             const requiredCredits = model === 'banana' ? 5 : 3;
             console.log(`[Avatar Board] Consuming ${requiredCredits} credits for user: ${userId} using engine: ${model}`);
             await consumeCredits(userId, requiredCredits);
 
+            const isValidImageUrl = (url) => {
+                if (!url) return false;
+                const s = String(url).trim().toLowerCase();
+                return s !== '' && s !== 'null' && s !== 'undefined' && s !== 'none';
+            };
+            const hasRefImage = isValidImageUrl(refImageUrl) || 
+                               isValidImageUrl(leftProfileRefUrl) || 
+                               isValidImageUrl(rightProfileRefUrl) || 
+                               isValidImageUrl(wardrobeRefUrl) || 
+                               isValidImageUrl(propRefUrl);
+
             // 2. Build the master prompt
             let prompt = buildBoardPrompt(boardType, additionalContext, model, boardMeta);
+            if (!hasRefImage) {
+                // Remove reference image requirements/mentions in prompt templates
+                prompt = prompt
+                    .replace(/Use the uploaded image\(s\) as the ONLY identity reference\./gi, '')
+                    .replace(/Preserve the exact facial identity with maximum accuracy\./gi, '')
+                    .replace(/Do not beautify, stylize, or redesign the face\./gi, '')
+                    .replace(/Lock the person's facial features, hairstyle, skin tone, facial proportions, body proportions, age, expression, and overall likeness across every panel\./gi, '')
+                    .replace(/using the attached (photo|photos|image) of the (character|creature|object|location)? as the single source of truth/gi, 'based on the description')
+                    .replace(/using the attached (photo|photos|image) as the single source of truth/gi, 'based on the description')
+                    .replace(/using the attached (photo|photos|image) as the single source keyframe/gi, 'based on the description')
+                    .replace(/using the attached (photo|photos|image)/gi, 'based on the description')
+                    .replace(/attached photo of the character as the single source of truth/gi, 'character description')
+                    .replace(/attached photos as the single source of truth/gi, 'character description')
+                    .replace(/attached photo of the location as the single source of truth/gi, 'location description')
+                    .replace(/attached photo of the object as the single source of truth/gi, 'object description')
+                    .replace(/attached image of the creature as the single source of truth/gi, 'creature description')
+                    .replace(/attached photo as the single source keyframe/gi, 'scene description')
+                    .replace(/Keep the clothing and props exactly the same as the uploaded references unless explicitly changed\./gi, 'Generate the clothing and props based on the description parameters.')
+                    .replace(/uploaded references/gi, 'description parameters')
+                    .replace(/uploaded reference/gi, 'description parameters')
+                    .replace(/uploaded image/gi, 'description')
+                    .replace(/# IDENTITY LOCK[\s\S]*?(?=##|$)/gi, '') // Remove identity lock details if no reference photo is uploaded
+                    .replace(/## FACE ANALYSIS[\s\S]*?(?=##|$)/gi, '')
+                    .replace(/## IDENTITY CONSISTENCY[\s\S]*?(?=##|$)/gi, '')
+                    .replace(/## MULTI-REFERENCE MODE[\s\S]*?(?=##|$)/gi, '')
+                    .replace(/## PRIORITY ORDER[\s\S]*?(?=IDENTITY LOCK:|$)/gi, '')
+                    .replace(/IDENTITY LOCK: MAXIMUM \| FACIAL CONSISTENCY: 100% \| CHARACTER CONSISTENCY: 100% \| NO IDENTITY DRIFT \| NO BEAUTIFICATION \| NO FACE REINTERPRETATION/gi, '');
+            }
             if (aspectRatio && aspectRatio !== '1:1') {
                 prompt += `\n\nEnsure the final output has a composition matching a ${aspectRatio} widescreen cinematic aspect ratio.`;
             }
@@ -111,6 +166,8 @@ export default function createRouter(deps) {
                 const imageParts = [];
                 const urlsToFetch = [];
                 if (refImageUrl) urlsToFetch.push({ type: 'character likeness', url: refImageUrl });
+                if (leftProfileRefUrl) urlsToFetch.push({ type: 'left profile likeness', url: leftProfileRefUrl });
+                if (rightProfileRefUrl) urlsToFetch.push({ type: 'right profile likeness', url: rightProfileRefUrl });
                 if (wardrobeRefUrl) urlsToFetch.push({ type: 'wardrobe reference', url: wardrobeRefUrl });
                 if (propRefUrl) urlsToFetch.push({ type: 'prop reference', url: propRefUrl });
 
@@ -135,12 +192,14 @@ export default function createRouter(deps) {
 
                 // Prepend visual anchoring guidelines to help Gemini synthesize them visually
                 let multiRefNotes = '';
-                if (refImageUrl) multiRefNotes += `- The first image represents the character facial likeness, identity, and facial features.\n`;
-                if (wardrobeRefUrl) multiRefNotes += `- The second image represents the wardrobe/outfit styling, garments, and clothing details.\n`;
-                if (propRefUrl) multiRefNotes += `- The third image represents key prop/accessory design and detailing.\n`;
+                if (refImageUrl) multiRefNotes += `- The main face image represents the character's facial likeness, identity, and features from the front.\n`;
+                if (leftProfileRefUrl) multiRefNotes += `- The left profile image represents the character's facial likeness and features from the left profile side.\n`;
+                if (rightProfileRefUrl) multiRefNotes += `- The right profile image represents the character's facial likeness and features from the right profile side.\n`;
+                if (wardrobeRefUrl) multiRefNotes += `- The wardrobe reference image represents the wardrobe/outfit styling, garments, and details.\n`;
+                if (propRefUrl) multiRefNotes += `- The prop reference image represents key prop/accessory design and detailing.\n`;
 
                 if (multiRefNotes) {
-                    prompt = `[Dynamic Visual Source Anchoring Guidelines:\n${multiRefNotes}Please visually synthesize all provided reference images seamlessly while maintaining the character identity, outfit, and prop aesthetics exactly as pictured in the respective reference images across all storyboard panels.]\n\n${prompt}`;
+                    prompt = `[Dynamic Visual Source Anchoring Guidelines:\n${multiRefNotes}Please visually synthesize all provided reference images seamlessly while maintaining the character identity (matching profile angles if provided), outfit, and prop aesthetics exactly as pictured in the respective reference images across all storyboard panels.]\n\n${prompt}`;
                 }
 
                 const parts = [...imageParts, { text: prompt }];
@@ -202,40 +261,55 @@ export default function createRouter(deps) {
                 const openai = getOpenAIClient(true);
                 
                 // Prepend visual likeness/subject description for GPT Image 2 if any reference photo is provided
-                if (refImageUrl || wardrobeRefUrl || propRefUrl) {
+                 if (refImageUrl || leftProfileRefUrl || rightProfileRefUrl || wardrobeRefUrl || propRefUrl) {
                     try {
                         console.log('[Avatar Board] Intercepting gpt-image-2 request to extract visual details using gpt-4o vision...');
                         
-                        const visionPrompt = `Analyze the provided reference images.
-- The first image represents the character's facial likeness, hair, and biological features.
-- The second image (if provided) represents the wardrobe/outfit style, colors, and textures to use.
-- The third image (if provided) represents the key prop/accessory design and detailing.
+                        const visionPrompt = `Analyze the provided reference images in detail.
+- The main face likeness image (and profile images if provided) represents the character's facial likeness, features, and shape.
+- The wardrobe image (if provided) represents the clothing style, colors, and textures.
+- The prop image (if provided) represents the key prop/accessory design.
 
-Synthesize all this information into a highly detailed, extremely precise and unified physical description of the character, their outfit, and their props under 140 words. Do not refer to the images as 'Image 1' or 'the first image' in your final description. Focus entirely on absolute descriptions of visual traits (face, hair, eyes, body, full outfit details, fabrics, prop structure, and aesthetic) to allow an AI image generator to recreate them with absolute fidelity.`;
+Provide a highly detailed, extremely precise, and unified physical description of this character, their facial features, their outfit, and their props. 
+
+Specifically describe:
+1. FACIAL LIKENESS: Define their exact face shape, estimated age, ethnicity/skin tone, eye shape/color, eyebrow structure, nose shape, lip thickness, cheekbones, jawline, facial hair (e.g. beard/stubble), hairstyle, hair color/texture, and any distinctive facial features. Be extremely specific so an AI image generator can recreate their face likeness with high accuracy.
+2. OUTFIT/WARDROBE: Describe the garment types, colors, materials/textures (e.g., denim, leather, cotton), stitching, fit, footwear, and any logos or details visible.
+3. PROPS/ACCESSORIES: Describe any props or objects (e.g., bags, tools, equipment) including their shapes, materials, and colors.
+
+Limit the entire description to under 300 words. Do not refer to the images as "image 1" or "the uploaded photo"; write it as a direct physical description of a person. Focus entirely on absolute visual traits.`;
                         
                         const userContent = [{ type: 'text', text: visionPrompt }];
                         if (refImageUrl) userContent.push({ type: 'image_url', image_url: { url: refImageUrl } });
+                        if (leftProfileRefUrl) userContent.push({ type: 'image_url', image_url: { url: leftProfileRefUrl } });
+                        if (rightProfileRefUrl) userContent.push({ type: 'image_url', image_url: { url: rightProfileRefUrl } });
                         if (wardrobeRefUrl) userContent.push({ type: 'image_url', image_url: { url: wardrobeRefUrl } });
                         if (propRefUrl) userContent.push({ type: 'image_url', image_url: { url: propRefUrl } });
 
-                        const messages = [
-                            {
-                                role: 'user',
-                                content: userContent
-                            }
-                        ];
-                        
-                        const likenessDescription = await openaiChat(messages, 'gpt-4o');
+                        const response = await openai.chat.completions.create({
+                            model: 'gpt-4o',
+                            messages: [
+                                {
+                                    role: 'user',
+                                    content: userContent
+                                }
+                            ]
+                        });
+                        const likenessDescription = response.choices?.[0]?.message?.content || '';
                         console.log(`[Avatar Board] Subject description extracted successfully: "${likenessDescription.substring(0, 100)}..."`);
                         
-                        prompt = `[Reference Likeness/Subject Details: ${likenessDescription}]\n\n${prompt}`;
+                        prompt = `The character's physical appearance is as follows:\n${likenessDescription}\n\n${prompt}`;
+                        
+                        // Replace the generic "Use the uploaded image(s) as the ONLY identity reference." with the specific description reference
+                        prompt = prompt.replace(
+                            /Use the uploaded image\(s\) as the ONLY identity reference\./gi,
+                            'Use the physical appearance details described above as the ONLY identity reference.'
+                        );
                     } catch (visionErr) {
                         console.warn('[Avatar Board] Warning: Failed to extract visual likeness via OpenAI Vision:', visionErr.message);
                     }
                 }
 
-                console.log('[Avatar Board] Querying OpenAI GPT Image 2...');
-                
                 const sizeMap = {
                     '1:1': '1024x1024',
                     '16:9': '1536x1024',
@@ -243,13 +317,59 @@ Synthesize all this information into a highly detailed, extremely precise and un
                 };
                 const gptSize = sizeMap[aspectRatio] || '1024x1024';
 
-                const response = await openai.images.generate({
-                    model: 'gpt-image-2',
-                    prompt,
-                    quality: 'high',
-                    size: gptSize,
-                    n: 1
-                });
+                let response;
+                if (hasRefImage) {
+                    const { toFile } = await import('openai');
+                    const resolved = await resolveImageToBuffer(refImageUrl || leftProfileRefUrl || rightProfileRefUrl || wardrobeRefUrl || propRefUrl);
+                    if (!resolved) throw new Error('Failed to resolve reference image to buffer.');
+                    const { buffer: rawBuf } = resolved;
+                    const imageFile = await toFile(rawBuf, 'reference.png', { type: 'image/png' });
+
+                    const imagesList = [imageFile];
+                    
+                    if (leftProfileRefUrl) {
+                        try {
+                            const resL = await resolveImageToBuffer(leftProfileRefUrl);
+                            if (resL) imagesList.push(await toFile(resL.buffer, 'left_profile.png', { type: 'image/png' }));
+                        } catch (e) { console.warn('[Avatar Board] Failed to add left profile to edit list:', e.message); }
+                    }
+                    if (rightProfileRefUrl) {
+                        try {
+                            const resR = await resolveImageToBuffer(rightProfileRefUrl);
+                            if (resR) imagesList.push(await toFile(resR.buffer, 'right_profile.png', { type: 'image/png' }));
+                        } catch (e) { console.warn('[Avatar Board] Failed to add right profile to edit list:', e.message); }
+                    }
+                    if (wardrobeRefUrl) {
+                        try {
+                            const resW = await resolveImageToBuffer(wardrobeRefUrl);
+                            if (resW) imagesList.push(await toFile(resW.buffer, 'wardrobe.png', { type: 'image/png' }));
+                        } catch (e) { console.warn('[Avatar Board] Failed to add wardrobe to edit list:', e.message); }
+                    }
+                    if (propRefUrl) {
+                        try {
+                            const resP = await resolveImageToBuffer(propRefUrl);
+                            if (resP) imagesList.push(await toFile(resP.buffer, 'prop.png', { type: 'image/png' }));
+                        } catch (e) { console.warn('[Avatar Board] Failed to add prop to edit list:', e.message); }
+                    }
+
+                    console.log('[Avatar Board] Querying OpenAI GPT Image 2 (Edits/Reference)...');
+                    response = await openai.images.edit({
+                        model: 'gpt-image-2',
+                        image: imagesList.length > 1 ? imagesList : imageFile,
+                        prompt,
+                        size: gptSize,
+                        n: 1
+                    });
+                } else {
+                    console.log('[Avatar Board] Querying OpenAI GPT Image 2 (Generate)...');
+                    response = await openai.images.generate({
+                        model: 'gpt-image-2',
+                        prompt,
+                        quality: 'high',
+                        size: gptSize,
+                        n: 1
+                    });
+                }
 
                 let buffer;
                 const b64 = response.data?.[0]?.b64_json;
@@ -303,7 +423,7 @@ Synthesize all this information into a highly detailed, extremely precise and un
                         type: boardType,
                         character_name: characterName,
                         style: 'Reference Board',
-                        ref_image_url: refImageUrl || wardrobeRefUrl || propRefUrl || '',
+                        ref_image_url: refImageUrl || leftProfileRefUrl || rightProfileRefUrl || wardrobeRefUrl || propRefUrl || '',
                         output_url: r2Url,
                         prompt: prompt,
                         metadata: {
@@ -311,6 +431,8 @@ Synthesize all this information into a highly detailed, extremely precise and un
                             additionalContext,
                             model,
                             refImageUrl,
+                            leftProfileRefUrl,
+                            rightProfileRefUrl,
                             wardrobeRefUrl,
                             propRefUrl
                         }

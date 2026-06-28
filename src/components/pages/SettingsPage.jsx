@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, CreditCard, Shield, Bell, LogOut, Save, Loader2, Coins, CheckSquare, Square, Zap, ChevronRight, Key, Sparkles, TrendingUp, Clock } from 'lucide-react';
+import { User, Mail, CreditCard, Shield, Bell, LogOut, Save, Loader2, Coins, CheckSquare, Square, Zap, ChevronRight, Key, Sparkles, TrendingUp, Clock, Gem, Fingerprint, ShieldCheck, BellRing, KeyRound } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store';
 

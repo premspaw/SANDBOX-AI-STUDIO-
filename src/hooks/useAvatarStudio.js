@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { getApiUrl } from '../config/apiConfig';
+import { useState, useEffect, useCallback } from 'react';
+import { getApiUrl, resolveUrl } from '../config/apiConfig';
 import { supabase } from '../lib/supabase';
 import { useShorts } from './useShorts';
 
@@ -10,6 +10,14 @@ export function useAvatarStudio(userId = 'anon') {
     const [refImageUrl, setRefImageUrl] = useState('');
     const [refPreview, setRefPreview] = useState('');
     const [uploadingRef, setUploadingRef] = useState(false);
+
+    const [leftProfileRefUrl, setLeftProfileRefUrl] = useState('');
+    const [leftProfileRefPreview, setLeftProfileRefPreview] = useState('');
+    const [uploadingLeftProfile, setUploadingLeftProfile] = useState(false);
+
+    const [rightProfileRefUrl, setRightProfileRefUrl] = useState('');
+    const [rightProfileRefPreview, setRightProfileRefPreview] = useState('');
+    const [uploadingRightProfile, setUploadingRightProfile] = useState(false);
 
     const [wardrobeRefUrl, setWardrobeRefUrl] = useState('');
     const [wardrobeRefPreview, setWardrobeRefPreview] = useState('');
@@ -37,7 +45,7 @@ export function useAvatarStudio(userId = 'anon') {
     const [activeModel, setActiveModel] = useState('gpt2'); // 'gpt2' or 'banana'
 
     // --- ASPECT RATIO SELECTION ---
-    const [aspectRatio, setAspectRatio] = useState('9:16'); // '9:16', '16:9', '1:1'
+    const [aspectRatio, setAspectRatio] = useState('16:9'); // '9:16', '16:9', '1:1'
 
     // --- GENERATION ENGINE STATE ---
     const [generating, setGenerating] = useState(false);
@@ -49,7 +57,7 @@ export function useAvatarStudio(userId = 'anon') {
     const [gallery, setGallery] = useState([]);
 
     // --- LOAD GALLERY FROM DB ON MOUNT ---
-    const fetchGallery = async () => {
+    const fetchGallery = useCallback(async () => {
         if (!supabase || userId === 'anon') return;
         try {
             console.log(`[Avatar Studio] Loading history for user ${userId}...`);
@@ -65,17 +73,35 @@ export function useAvatarStudio(userId = 'anon') {
         } catch (err) {
             console.warn('[Avatar Studio] Failed to fetch gallery history:', err.message);
         }
-    };
+    }, [userId]);
 
     useEffect(() => {
         fetchGallery();
-    }, [userId]);
+    }, [fetchGallery]);
 
     // --- PHOTO UPLOAD UTILITY ---
     const uploadRef = async (file, type = 'character') => {
-        const setPreview = type === 'wardrobe' ? setWardrobeRefPreview : (type === 'prop' ? setPropRefPreview : setRefPreview);
-        const setUrl = type === 'wardrobe' ? setWardrobeRefUrl : (type === 'prop' ? setPropRefUrl : setRefImageUrl);
-        const setUploading = type === 'wardrobe' ? setUploadingWardrobe : (type === 'prop' ? setUploadingProp : setUploadingRef);
+        let setPreview = setRefPreview;
+        let setUrl = setRefImageUrl;
+        let setUploading = setUploadingRef;
+
+        if (type === 'wardrobe') {
+            setPreview = setWardrobeRefPreview;
+            setUrl = setWardrobeRefUrl;
+            setUploading = setUploadingWardrobe;
+        } else if (type === 'prop') {
+            setPreview = setPropRefPreview;
+            setUrl = setPropRefUrl;
+            setUploading = setUploadingProp;
+        } else if (type === 'left_profile') {
+            setPreview = setLeftProfileRefPreview;
+            setUrl = setLeftProfileRefUrl;
+            setUploading = setUploadingLeftProfile;
+        } else if (type === 'right_profile') {
+            setPreview = setRightProfileRefPreview;
+            setUrl = setRightProfileRefUrl;
+            setUploading = setUploadingRightProfile;
+        }
 
         if (!file) {
             setUrl('');
@@ -118,11 +144,6 @@ export function useAvatarStudio(userId = 'anon') {
 
     // --- GENERATE BOARD ---
     const generateBoard = async () => {
-        if (!refImageUrl && !wardrobeRefUrl && !propRefUrl) {
-            setError('Please upload at least one reference image first.');
-            return;
-        }
-
         setGenerating(true);
         setError('');
         setGeneratedImage('');
@@ -135,6 +156,8 @@ export function useAvatarStudio(userId = 'anon') {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     refImageUrl,
+                    leftProfileRefUrl,
+                    rightProfileRefUrl,
                     wardrobeRefUrl,
                     propRefUrl,
                     boardType: activeBoard,
@@ -253,20 +276,27 @@ export function useAvatarStudio(userId = 'anon') {
         const filename = `zerolens-${nameClean}-board-${timestamp}.png`;
         
         try {
-            const resp = await fetch(generatedImage);
-            if (!resp.ok) throw new Error('Response was not OK');
-            const blob = await resp.blob();
-            const blobUrl = URL.createObjectURL(blob);
-            
+            // For base64 or blob URLs, download directly in the client browser
+            if (generatedImage.startsWith('data:') || generatedImage.startsWith('blob:')) {
+                const a = document.createElement('a');
+                a.href = generatedImage;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                return;
+            }
+
+            // For external URLs, route through backend proxy with 'download' query parameter to force download immediately to PC
+            const downloadUrl = getApiUrl(`/api/proxy-image?url=${encodeURIComponent(generatedImage)}&download=${encodeURIComponent(filename)}`);
             const a = document.createElement('a');
-            a.href = blobUrl;
+            a.href = downloadUrl;
             a.download = filename;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(blobUrl);
         } catch (err) {
-            console.warn('[AvatarStudio] Blob download failed, falling back to direct link:', err);
+            console.warn('[AvatarStudio] Proxy download failed, falling back to direct link:', err);
             const a = document.createElement('a');
             a.href = generatedImage;
             a.download = filename;
@@ -284,6 +314,20 @@ export function useAvatarStudio(userId = 'anon') {
         uploadRef,
         uploadingRef,
         
+        // left profile
+        leftProfileRefUrl,
+        leftProfileRefPreview,
+        uploadingLeftProfile,
+        setLeftProfileRefUrl,
+        setLeftProfileRefPreview,
+
+        // right profile
+        rightProfileRefUrl,
+        rightProfileRefPreview,
+        uploadingRightProfile,
+        setRightProfileRefUrl,
+        setRightProfileRefPreview,
+
         // wardrobe
         wardrobeRefUrl,
         wardrobeRefPreview,
