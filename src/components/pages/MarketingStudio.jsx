@@ -44,13 +44,9 @@ const VEO_DURATION_OPTIONS = [
 ];
 
 const SIZE_OPTIONS = [
-  { value: 'auto',      label: 'Auto',      desc: 'Auto-adjust aspect ratio', w: 12, h: 12, ratio: 'Auto' },
-  { value: '1024x1792', label: 'Story',     desc: '9:16 vertical video/story', w: 9, h: 16, ratio: '9:16' },
-  { value: '1024x1536', label: 'Portrait',  desc: '2:3 portrait banner', w: 10, h: 15, ratio: '2:3' },
   { value: '1024x1024', label: 'Square',    desc: '1:1 social post', w: 12, h: 12, ratio: '1:1' },
-  { value: '1536x1024', label: 'Landscape', desc: '3:2 standard landscape', w: 15, h: 10, ratio: '3:2' },
-  { value: '1792x1024', label: 'Wide',      desc: '16:9 widescreen', w: 16, h: 9, ratio: '16:9' },
-  { value: '1536x2048', label: 'Poster',    desc: '3:4 high-impact print', w: 9, h: 12, ratio: '3:4' },
+  { value: '1792x1024', label: 'Landscape', desc: '16:9 widescreen', w: 16, h: 9, ratio: '16:9' },
+  { value: '1024x1792', label: 'Story',     desc: '9:16 vertical video/story', w: 9, h: 16, ratio: '9:16' },
 ];
 
 
@@ -69,9 +65,18 @@ function UpwardDropdown({ children, icon, label, badge, accentColor = 'fuchsia' 
   const openDropdown = () => {
     if (!open && triggerRef.current) {
       const r = triggerRef.current.getBoundingClientRect();
+      let left = r.left + r.width / 2;
+      const width = 260; // min-w of panel
+      const margin = 10;
+      const halfWidth = width / 2;
+      if (left - halfWidth < margin) {
+        left = halfWidth + margin;
+      } else if (left + halfWidth > window.innerWidth - margin) {
+        left = window.innerWidth - halfWidth - margin;
+      }
       setPos({
         bottom: window.innerHeight - r.top + 8,
-        left: r.left + r.width / 2,
+        left: left,
       });
     }
     setOpen(v => !v);
@@ -119,7 +124,7 @@ function UpwardDropdown({ children, icon, label, badge, accentColor = 'fuchsia' 
         onClick={openDropdown}
         type="button"
         className={cn(
-          "flex items-center gap-1 px-2 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border backdrop-blur-xl transition-colors shrink-0 origin-bottom",
+          "flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border backdrop-blur-xl transition-colors shrink-0 origin-bottom",
           open
             ? `${c.bg} ${c.border} ${c.text}`
             : "bg-black/60 border-white/10 text-gray-500 hover:text-white"
@@ -492,7 +497,7 @@ export default function MarketingStudio() {
 
     useEffect(() => {
         if (generateMode === 'image' && imageEngine === 'gpt-image-2') {
-            const validValues = ['1024x1024', '1536x1024', '1024x1536', '2048x2048', '2048x1152', '3840x2160', '2160x3840'];
+            const validValues = ['1024x1024', '2048x1152', '2160x3840'];
             if (!validValues.includes(imageSize)) {
                 setImageSize('1024x1024');
             }
@@ -503,12 +508,8 @@ export default function MarketingStudio() {
         if (generateMode === 'image' && imageEngine === 'gpt-image-2') {
             return [
                 { value: '1024x1024', label: 'Square',    desc: '1:1 social post', w: 12, h: 12, ratio: '1:1' },
-                { value: '1536x1024', label: 'Landscape', desc: '3:2 standard landscape', w: 15, h: 10, ratio: '3:2' },
-                { value: '1024x1536', label: 'Portrait',  desc: '2:3 portrait banner', w: 10, h: 15, ratio: '2:3' },
-                { value: '2048x2048', label: '2K Square', desc: 'High-res square banner', w: 12, h: 12, ratio: '1:1' },
-                { value: '2048x1152', label: '2K Landscape', desc: '2K widescreen presentation', w: 16, h: 9, ratio: '16:9' },
-                { value: '3840x2160', label: '4K Landscape', desc: 'Ultra-HD widescreen', w: 16, h: 9, ratio: '16:9' },
-                { value: '2160x3840', label: '4K Portrait',  desc: 'Ultra-HD vertical display', w: 9, h: 16, ratio: '9:16' }
+                { value: '2048x1152', label: 'Landscape', desc: '16:9 widescreen', w: 16, h: 9, ratio: '16:9' },
+                { value: '2160x3840', label: 'Story',     desc: '9:16 vertical video/story', w: 9, h: 16, ratio: '9:16' }
             ];
         }
         return SIZE_OPTIONS;
@@ -799,6 +800,10 @@ Any written text, characters, letters, numbers, and labels inside the image must
             setPromptText(template.prompt);
         }
         setGeneratedImage(null);
+        // On mobile, automatically close the template panel once a template is selected
+        if (window.innerWidth < 768) {
+            setShowTemplatePanel(false);
+        }
     };
 
     // Update prompt when switching between Image/Video modes
@@ -1521,9 +1526,21 @@ Any written text, characters, letters, numbers, and labels inside the image must
             <div className="flex-1 flex overflow-hidden relative">
                 {/* Left Panel: Categories & Templates */}
                 <div className={cn(
-                    "border-r border-white/10 flex flex-col bg-black/20 transition-all duration-300 overflow-hidden flex-shrink-0",
-                    showTemplatePanel ? "w-1/3 min-w-[280px] max-w-[400px]" : "w-0 min-w-0 border-r-0"
+                    "border-white/10 flex flex-col bg-[#0a0a0a] transition-all duration-300 overflow-hidden flex-shrink-0",
+                    showTemplatePanel 
+                        ? "w-full absolute inset-y-0 left-0 z-20 border-r md:relative md:w-1/3 md:min-w-[280px] md:max-w-[400px]" 
+                        : "w-0 min-w-0 border-r-0 absolute md:relative"
                 )}>
+                    {/* Mobile Header with close button */}
+                    <div className="md:hidden flex items-center justify-between p-3.5 border-b border-white/10 bg-black/40">
+                        <span className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em]">Templates</span>
+                        <button
+                            onClick={() => setShowTemplatePanel(false)}
+                            className="flex items-center justify-center p-1 rounded-lg hover:bg-white/5 text-white/60 hover:text-white"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
 
 
                     {/* Image / Video tab switcher */}
@@ -1922,10 +1939,6 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                                         : <span className="text-white/25 text-lg font-black">+</span>}
                                                 </button>
                                             </div>
-                                            <div className="flex flex-col justify-end pb-1">
-                                                <span className="text-[8px] text-white/20">Upload start &amp; end frames</span>
-                                                <span className="text-[7px] text-blue-400/50">Veo 3 interpolation</span>
-                                            </div>
                                         </div>
                                     )}
                                     {/* Uploaded thumbnails row (only when images present) */}
@@ -1962,11 +1975,13 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                         className="w-full bg-transparent text-sm text-white/80 placeholder:text-white/25 outline-none resize-none px-4 pt-3 pb-1 leading-relaxed"
                                     />
 
-                                    {/* Bottom toolbar row */}
-                                    <div className="flex items-center gap-1.5 px-3 pb-2.5 pt-1">
+                                 {/* Bottom toolbar row */}
+                                 <div className="flex flex-col gap-2 pb-2 pt-1">
+                                     {/* Pills container */}
+                                     <div className="flex items-center gap-1.5 px-3 overflow-x-auto no-scrollbar flex-nowrap w-full">
                                         {/* Upload photo */}
                                         <button onClick={() => fileInputRef.current?.click()}
-                                            className={cn("flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all",
+                                            className={cn("flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
                                                 referenceImage ? "text-lime-400 bg-lime-500/10 border border-lime-500/30" : "text-white/30 hover:text-white/60 hover:bg-white/5 border border-transparent")}>
                                             <Upload className="w-3 h-3" />
                                             {referenceImage ? 'Photo ✓' : 'Photo'}
@@ -1975,7 +1990,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                         {/* Size */}
                                          <UpwardDropdown
                                              icon={<LayoutGrid size={8} />}
-                                             label={`Size: ${getAvailableSizes().find(s => s.value === imageSize)?.label || 'Auto'}`}
+                                             label={getAvailableSizes().find(s => s.value === imageSize)?.label || 'Auto'}
                                              accentColor="fuchsia"
                                          >
                                              {(close) => (
@@ -2158,8 +2173,8 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                          <UpwardDropdown
                                              icon={<Zap size={8} />}
                                              label={generateMode === 'image' 
-                                                 ? `Engine: ${IMAGE_ENGINES.find(e => e.id === imageEngine)?.label || 'GPT Pro'}`
-                                                 : `Engine: ${ENGINES.find(e => e.id === videoEngine)?.label || 'Veo Fast'}`}
+                                                 ? (imageEngine === 'nano-banana-2' ? 'NB2' : imageEngine === 'gpt-image-2' ? 'GPT2' : imageEngine === 'nano-banana-pro' ? 'NB Pro' : 'GPT Pro')
+                                                 : (videoEngine === 'veo-3.1-generate-preview' ? 'Veo Std' : videoEngine === 'veo-3.1-fast-generate-preview' ? 'Veo Fast' : videoEngine === 'veo-3.1-lite-generate-preview' ? 'Veo Lite' : videoEngine === 'seedance-fast' ? 'Seed Fast' : videoEngine === 'seedace' ? 'Seed 2.0' : 'Veo Fast')}
                                              accentColor="lime"
                                          >
                                              {(close) => (
@@ -2331,7 +2346,6 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                                  }}
                                              </UpwardDropdown>
                                          )}
-
                                          {/* Audio toggle (only in video mode) */}
                                          {generateMode === 'video' && (
                                              <motion.button
@@ -2340,20 +2354,24 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                                  whileTap={{ scale: 0.95 }}
                                                  onClick={() => setGenerateAudio(!generateAudio)}
                                                  className={cn(
-                                                     "flex items-center gap-1 px-2.5 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border transition-colors shrink-0",
+                                                     "flex items-center justify-center w-8 h-8 rounded-full text-[12px] font-black uppercase tracking-wider border transition-colors shrink-0",
                                                      generateAudio
                                                          ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-400"
                                                          : "bg-black/60 border-white/10 text-gray-500 hover:text-white"
                                                  )}
+                                                 title={generateAudio ? "Audio: ON" : "Audio: OFF"}
                                              >
-                                                 <span>🎵 Audio: {generateAudio ? "ON" : "OFF"}</span>
+                                                 <span>🎵</span>
                                              </motion.button>
                                          )}
+                                        </div>
 
+                                         {/* Generate Button Row */}
+                                         <div className="px-3 flex w-full">
                                         {/* Generate */}
                                         <button onClick={handleGenerate} disabled={isGenerating}
                                             className={cn(
-                                                "ml-auto flex items-center gap-2 px-4 py-1.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                                                "w-full md:w-auto md:ml-auto flex items-center justify-center gap-1.5 px-3.5 py-1 rounded-full font-black text-[9px] uppercase tracking-wider transition-all mt-2 md:mt-0",
                                                 isGenerating ? "bg-white/5 text-white/30 cursor-not-allowed" : "bg-gradient-to-r from-lime-400 to-emerald-500 text-black hover:scale-105 shadow-[0_0_16px_rgba(132,204,22,0.3)]"
                                             )}>
                                             {isGenerating
@@ -2365,6 +2383,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                                 </>
                                             }
                                         </button>
+                                        </div>
                                     </div>
                                 </div>{/* end main bar */}
                                 </div>{/* end bottom row */}

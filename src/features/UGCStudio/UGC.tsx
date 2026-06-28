@@ -3475,19 +3475,19 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                   {/* Script-tab dropdowns pushed right */}
                   {chatTab === 'script' && (
                     <div className="ml-0 md:ml-auto flex items-center gap-1.5 px-2 md:px-3 overflow-x-auto no-scrollbar py-1" style={{ scrollbarWidth: 'none' }}>
-                      <Dropdown label="" value={language} options={LANGUAGES} onChange={setLanguage} direction="up" className="w-[85px] shrink-0" />
-                      <Dropdown label="" value={voice} options={VOICES} onChange={setVoice} direction="up" className="w-[80px] shrink-0" />
-                      <Dropdown label="" value={scriptDuration} options={['8 seconds', '16 seconds', '24 seconds', '36 seconds', '42 seconds']} onChange={setScriptDuration} direction="up" className="w-[100px] shrink-0" />
+                      <Dropdown label="" value={language} options={LANGUAGES} onChange={setLanguage} direction="up" className="w-[72px] md:w-[85px] shrink-0" />
+                      <Dropdown label="" value={voice} options={VOICES} onChange={setVoice} direction="up" className="w-[62px] md:w-[80px] shrink-0" />
+                      <Dropdown label="" value={scriptDuration} options={['8 seconds', '16 seconds', '24 seconds', '36 seconds', '42 seconds']} onChange={setScriptDuration} direction="up" className="w-[82px] md:w-[100px] shrink-0" />
                       <Dropdown
                         label=""
-                        value={SCRIPT_TONES[selectedScriptTone] ? `${SCRIPT_TONES[selectedScriptTone].category}: ${SCRIPT_TONES[selectedScriptTone].name}` : selectedScriptTone}
+                        value={SCRIPT_TONES[selectedScriptTone] ? SCRIPT_TONES[selectedScriptTone].name : selectedScriptTone}
                         options={Object.values(SCRIPT_TONES).map((t: any) => `${t.category}: ${t.name}`)}
                         onChange={(val: string) => {
                           const key = Object.keys(SCRIPT_TONES).find(k => `${SCRIPT_TONES[k].category}: ${SCRIPT_TONES[k].name}` === val);
                           if (key) setSelectedScriptTone(key);
                         }}
                         direction="up"
-                        className="w-[140px] md:w-[155px] shrink-0"
+                        className="w-[80px] md:w-[120px] shrink-0"
                       />
                     </div>
                   )}
