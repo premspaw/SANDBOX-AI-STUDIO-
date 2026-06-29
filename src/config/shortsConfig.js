@@ -21,6 +21,8 @@ export const SHORTS_COST = {
     veo_fast: 20,
     veo_full: 80,
     kling: 15,
+    kling_motion_std: 14,
+    kling_motion_pro: 18,
 
     // Seedance (Base Cost Per Second)
     seedance_fast: 12,

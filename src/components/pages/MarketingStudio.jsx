@@ -22,7 +22,7 @@ const ENGINES = [
 const IMAGE_ENGINES = [
   { id: 'nano-banana-2',   label: 'Nano Banana 2',   icon: '🎨', desc: 'Google highest-fidelity photo gen — 2⚡ flat rate', cost: 2 },
   { id: 'nano-banana-pro', label: 'Nano Banana Pro', icon: '💎', desc: 'Google maximum fidelity image engine — 5⚡ flat rate', cost: 5 },
-  { id: 'gpt-image-2',     label: 'GPT Image Pro',   icon: '🤖', desc: 'OpenAI layout & text design — 2⚡ to 5⚡ variable rate',        cost: 3 },
+  { id: 'gpt-image-2',     label: 'GPT Image Pro',   icon: '🤖', desc: 'OpenAI layout & text design — 3⚡ to 10⚡ variable rate',        cost: 5 },
 ];
 
 const DURATION_OPTIONS = [
@@ -290,8 +290,7 @@ export default function MarketingStudio() {
     const [templateTab, setTemplateTab] = useState('image'); // 'image' | 'video'
     const [activeVideoCategory, setActiveVideoCategory] = useState('product');
     const [selectedTemplate, setSelectedTemplate] = useState(null);
-    const [referenceImage, setReferenceImage] = useState(null);
-    const [referenceImageBase64, setReferenceImageBase64] = useState(null);
+    const [referenceImages, setReferenceImages] = useState([]); // Array of { id, url, base64, meta }
     const [logoImage, setLogoImage] = useState(null);
     const [isPostProcessing, setIsPostProcessing] = useState(false);
     const [editInstruction, setEditInstruction] = useState('');
@@ -361,7 +360,7 @@ export default function MarketingStudio() {
         tagline: '',
         timings: '',
     });
-    const [referenceImageMeta, setReferenceImageMeta] = useState(null);
+    // Meta details are now stored inline within the referenceImages array elements
     const [generationHistory, setGenerationHistory] = useState(() => {
         // Start empty for unidentified users — prevents loading admin's cached images.
         if (!currentUserId) return [];
@@ -443,9 +442,9 @@ export default function MarketingStudio() {
         const duration = customDuration ?? videoDuration;
         if (generateMode === 'image') {
             if (engineId === 'gpt-image-2') {
-                if (quality === 'low') return 2;
-                if (quality === 'high') return 5;
-                return 3; // default medium
+                if (quality === 'low') return 3;
+                if (quality === 'high') return 10;
+                return 5; // default medium (HD)
             }
             return IMAGE_ENGINES.find(e => e.id === engineId)?.cost || 2;
         }
@@ -846,7 +845,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                     specialIngredients,
                     brandColors,
                     selectedStyle,
-                    referenceImage
+                    referenceImage: referenceImages[0]?.url || null
                 })
             });
             const data = await resp.json();
@@ -934,51 +933,79 @@ Any written text, characters, letters, numbers, and labels inside the image must
     });
 
     const handleFileUpload = async (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
 
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            const rawBase64 = event.target.result;
-            const base64 = await normalizeImageForOpenAI(rawBase64);
-            setReferenceImage(base64); // preview immediately
-            setReferenceImageBase64(base64); // keep original base64 for Gemini analysis
-            // Only set food default prompt for food categories — not real estate / medical
-            if (activeCategory !== 'realestate' && activeCategory !== 'medical') setPromptText(`Ultra-clean modern recipe infographic. Showcase the attached food image in a visually appealing finished form—sliced, plated, or portioned—floating slightly in perspective or angled view. Arrange ingredients, steps, and tips around the dish in a dynamic editorial layout, not restricted to top-down. Ingredients Section: Include icons or mini illustrations for each ingredient with quantities. Arrange them in clusters, lists, or circular flows connected visually to the dish. Steps Section: Show preparation steps with numbered panels, arrows, or lines, forming a logical flow around the main dish. Include small cooking icons (knife, pan, oven, timer) where helpful. Additional Info: Total calories, prep/cook time, servings, spice level—displayed as clean bubbles or badges near the dish. Visual Style: Editorial infographic meets lifestyle food photography. Vibrant, natural food colors, subtle drop shadows, clean vector icons, modern typography, soft gradients for step panels. Composition: Finished meal as hero visual in perspective or angled view. Ingredients and steps flow dynamically around the dish. Clear visual hierarchy: dish > steps > ingredients > optional stats. Enough negative space to keep design airy and readable. Soft natural studio lighting, minimal textured or gradient background. Output: 1080x1080, ultra-crisp, social-feed optimized, no watermarks.`);
-            setIsAnalyzing(true);
-            try {
-                // Upload to GCS marketing bucket + analyze in parallel
-                const [uploadResp, analyzeResp] = await Promise.all([
-                    fetch(getApiUrl('/api/marketing/upload-reference'), {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image: base64, userId: currentUserId })
-                    }),
-                    fetch(getApiUrl('/api/marketing/analyze-image'), {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image: base64 })
-                    })
-                ]);
+        const remaining = 9 - referenceImages.length;
+        if (remaining <= 0) {
+            alert("You can upload a maximum of 9 reference images.");
+            return;
+        }
+        const filesToUpload = files.slice(0, remaining);
 
-                const uploadData = await uploadResp.json();
-                if (uploadData.url) {
-                    setReferenceImage(uploadData.url); // swap base64 preview → GCS URL
-                    setReferenceImageMeta({ url: uploadData.url, bucket: uploadData.bucket, storage: uploadData.storage });
-                }
+        filesToUpload.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const rawBase64 = event.target.result;
+                const base64 = await normalizeImageForOpenAI(rawBase64);
 
-                const analyzeData = await analyzeResp.json();
-                if (analyzeData.dish_name) {
-                    setRecipeData(analyzeData);
+                const tempId = Math.random().toString();
+                const newImg = { id: tempId, url: base64, base64 };
+                setReferenceImages(prev => [...prev, newImg]);
+
+                // Run analysis/default prompt only for the first image
+                const isFirstImage = index === 0 && referenceImages.length === 0;
+
+                if (selectedTemplate && isFirstImage && activeCategory !== 'realestate' && activeCategory !== 'medical') {
                     setPromptText(`Ultra-clean modern recipe infographic. Showcase the attached food image in a visually appealing finished form—sliced, plated, or portioned—floating slightly in perspective or angled view. Arrange ingredients, steps, and tips around the dish in a dynamic editorial layout, not restricted to top-down. Ingredients Section: Include icons or mini illustrations for each ingredient with quantities. Arrange them in clusters, lists, or circular flows connected visually to the dish. Steps Section: Show preparation steps with numbered panels, arrows, or lines, forming a logical flow around the main dish. Include small cooking icons (knife, pan, oven, timer) where helpful. Additional Info: Total calories, prep/cook time, servings, spice level—displayed as clean bubbles or badges near the dish. Visual Style: Editorial infographic meets lifestyle food photography. Vibrant, natural food colors, subtle drop shadows, clean vector icons, modern typography, soft gradients for step panels. Composition: Finished meal as hero visual in perspective or angled view. Ingredients and steps flow dynamically around the dish. Clear visual hierarchy: dish > steps > ingredients > optional stats. Enough negative space to keep design airy and readable. Soft natural studio lighting, minimal textured or gradient background. Output: 1080x1080, ultra-crisp, social-feed optimized, no watermarks.`);
                 }
-            } catch (err) {
-                console.error("Upload/Analysis failed:", err);
-            } finally {
-                setIsAnalyzing(false);
-            }
-        };
-        reader.readAsDataURL(file);
+
+                setIsAnalyzing(true);
+                try {
+                    const [uploadResp, analyzeResp] = isFirstImage
+                        ? await Promise.all([
+                            fetch(getApiUrl('/api/marketing/upload-reference'), {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ image: base64, userId: currentUserId })
+                            }),
+                            fetch(getApiUrl('/api/marketing/analyze-image'), {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ image: base64 })
+                            })
+                          ])
+                        : await Promise.all([
+                            fetch(getApiUrl('/api/marketing/upload-reference'), {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ image: base64, userId: currentUserId })
+                            })
+                          ]);
+
+                    const uploadData = await uploadResp.json();
+                    if (uploadData.url) {
+                        setReferenceImages(prev => prev.map(item =>
+                            item.id === tempId
+                                ? { ...item, url: uploadData.url, meta: { url: uploadData.url, bucket: uploadData.bucket, storage: uploadData.storage } }
+                                : item
+                        ));
+                    }
+
+                    if (isFirstImage && analyzeResp) {
+                        const analyzeData = await analyzeResp.json();
+                        if (analyzeData.dish_name) {
+                            setRecipeData(analyzeData);
+                        }
+                    }
+                } catch (err) {
+                    console.error("Upload/Analysis failed:", err);
+                } finally {
+                    setIsAnalyzing(false);
+                }
+            };
+            reader.readAsDataURL(file);
+        });
     };
 
     const handleBrandImage = async () => {
@@ -1045,7 +1072,10 @@ Any written text, characters, letters, numbers, and labels inside the image must
     };
 
     const handleGenerate = async () => {
-        if (!selectedTemplate) return;
+        if (!selectedTemplate && !promptText.trim() && referenceImages.length === 0) {
+            alert('Please select a template, upload an image, or enter a prompt first.');
+            return;
+        }
 
         const requiredCredits = getRequiredCredits(generateMode === 'image' ? imageEngine : videoEngine);
         const costKey = generateMode === 'image' ? imageEngine : videoEngine;
@@ -1111,7 +1141,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                     const ai = getAI();
 
                     // Get active image (firstFrame, reference, or uploaded)
-                    const activeImage = firstFrame || referenceImageBase64 || referenceImage || null;
+                    const activeImage = firstFrame || referenceImages[0]?.base64 || referenceImages[0]?.url || null;
                     if (!activeImage) { 
                         throw new Error('Please upload a First Frame image for video generation.'); 
                     }
@@ -1387,8 +1417,8 @@ Any written text, characters, letters, numbers, and labels inside the image must
                     re.tagline ? `Tagline: "${re.tagline}".` : '',
                     re.agent_name ? `Agent: ${re.agent_name}.` : '',
                     !isCustomPrompt
-                        ? (referenceImage ? `Use the uploaded property photo as the main visual. Enhance lighting and composition.` : `Show a premium exterior or interior shot of a ${re.property_type || 'modern property'}.`)
-                        : (referenceImage && !userInstruction.toLowerCase().includes('photo') && !userInstruction.toLowerCase().includes('image') ? `Use the uploaded property photo as the main visual.` : ''),
+                        ? (referenceImages.length > 0 ? `Use the uploaded property photos as the main visual. Enhance lighting and composition.` : `Show a premium exterior or interior shot of a ${re.property_type || 'modern property'}.`)
+                        : (referenceImages.length > 0 && !userInstruction.toLowerCase().includes('photo') && !userInstruction.toLowerCase().includes('image') ? `Use the uploaded property photos as the main visual.` : ''),
                     !isCustomPrompt ? `Luxury real estate aesthetic, golden hour or bright daylight, architectural photography style, photorealistic. No watermarks.` : `Photorealistic, high resolution. No watermarks.`
                 ].filter(Boolean).join(' ');
             } else if (isMedical) {
@@ -1406,20 +1436,20 @@ Any written text, characters, letters, numbers, and labels inside the image must
                 const isCustomPrompt = !!(userInstruction || templateEnglish);
                 const dishDesc = recipeData.dish_name
                     ? `a dish called "${recipeData.dish_name}"`
-                    : referenceImage ? 'the food shown in the reference photo' : 'a gourmet food dish';
+                    : referenceImages.length > 0 ? 'the food shown in the reference photos' : 'a gourmet food dish';
 
                 const baseInstruction = userInstruction
                     || (templateEnglish
-                        ? (referenceImage
-                            ? `Take the food from the reference photo (${dishDesc}) and apply this visual treatment: ${templateEnglish}`
+                        ? (referenceImages.length > 0
+                            ? `Take the food from the reference photos (${dishDesc}) and apply this visual treatment: ${templateEnglish}`
                             : `Create an image of ${dishDesc}. ${templateEnglish}`)
-                        : (referenceImage
+                        : (referenceImages.length > 0
                             ? `Recreate ${dishDesc} as a stunning premium food marketing image with ${selectedStyle} editorial style, soft studio lighting, shallow depth of field.`
                             : `Create a stunning premium food marketing image of ${dishDesc} with ${selectedStyle} editorial style, soft studio lighting, shallow depth of field.`));
 
                 textPrompt = [
                     baseInstruction,
-                    referenceImage && !isCustomPrompt ? `Match the dish appearance, plating, colors and ingredients from the reference photo exactly.` : '',
+                    referenceImages.length > 0 && !isCustomPrompt ? `Match the dish appearance, plating, colors and ingredients from the reference photos exactly.` : '',
                     specialIngredients.length > 0 ? `Prominently feature: ${specialIngredients.join(', ')}.` : '',
                     `Color palette: ${brandColors[0]} and ${brandColors[1]}.`,
                     `Photorealistic, high resolution, no watermarks, no logos.`
@@ -1427,11 +1457,12 @@ Any written text, characters, letters, numbers, and labels inside the image must
             }
 
             // Use base64 if available, otherwise fall back to URL.
-            // Logo: if there's a reference image, logo goes as secondImage for multi-image edit.
-            // If there's NO reference image but there IS a logo, use the logo as the primary image
+            // Logo: if there's reference images, logo goes as secondImage for multi-image edit.
+            // If there's NO reference images but there IS a logo, use the logo as the primary image
             // so gpt-image-2 can use it in edit mode (incorporating it into the design).
-            const imageToSend = referenceImageBase64 || referenceImage || (logoImage ? logoImage : undefined);
-            const secondImageToSend = (imageToSend && logoImage && (referenceImageBase64 || referenceImage))
+            const payloadReferenceImages = referenceImages.map(img => img.base64 || img.url);
+            const imageToSend = referenceImages[0]?.base64 || referenceImages[0]?.url || (logoImage ? logoImage : undefined);
+            const secondImageToSend = (imageToSend && logoImage && referenceImages.length > 0)
                 ? logoImage
                 : undefined;
             const payload = {
@@ -1442,6 +1473,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                 userId: currentUserId,
                 image: imageToSend,
                 secondImage: secondImageToSend,
+                referenceImages: payloadReferenceImages,
                 folder: 'marketing',
                 ...(imageEngine === 'gpt-image-2' ? {
                     format: imageFormat,
@@ -1487,7 +1519,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
     return (
         <>
         {/* Hidden file inputs — at root so pointer-events/stacking context never blocks them */}
-        <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
+        <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" multiple />
         <input type="file" ref={logoInputRef} className="hidden" accept="image/*"
             onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = async ev => { const norm = await normalizeImageForOpenAI(ev.target.result); setLogoImage(norm); }; r.readAsDataURL(f); }} />
         <input type="file" ref={firstFrameRef} className="hidden" accept="image/*"
@@ -1505,6 +1537,20 @@ Any written text, characters, letters, numbers, and labels inside the image must
                 <div className="w-px h-5 bg-white/10 flex-shrink-0" />
                 {/* Filter Tabs */}
                 <div className="flex gap-1.5 overflow-x-auto no-scrollbar flex-1">
+                    {/* Templates toggle button on mobile */}
+                    <button
+                        onClick={() => setShowTemplatePanel(v => !v)}
+                        className={cn(
+                            "md:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all flex-shrink-0 border",
+                            showTemplatePanel
+                                ? "bg-orange-500/20 text-orange-300 border-orange-500/30"
+                                : "bg-[#c8f135] text-black border-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.75)] animate-pulse"
+                        )}
+                    >
+                        <LayoutGrid className="w-2.5 h-2.5" />
+                        <span>Templates</span>
+                    </button>
+
                     {CATEGORIES.map(cat => (
                         <button
                             key={cat.id}
@@ -1728,21 +1774,28 @@ Any written text, characters, letters, numbers, and labels inside the image must
 
                 {/* Right Panel: ChatGPT-style Asset Configuration */}
                 <div className="flex-1 flex flex-col bg-[#0f0f11] relative">
-                    {/* Toggle button — sticks to left edge */}
+                    {/* Toggle button — sticks to left edge (or right edge when open on mobile) */}
                     <button
                         onClick={() => setShowTemplatePanel(v => !v)}
                         title={showTemplatePanel ? 'Hide Templates' : 'Show Templates'}
                         className={cn(
-                            "absolute left-0 top-1/2 -translate-y-1/2 z-20 w-5 h-14 rounded-r-lg flex items-center justify-center transition-all group",
+                            "absolute top-1/2 -translate-y-1/2 z-30 w-5 h-14 flex items-center justify-center transition-all group",
                             showTemplatePanel
-                                ? "bg-[#111113] border border-[#c8f135]/20 border-l-0 text-[#c8f135]/60 hover:text-[#c8f135] hover:border-[#c8f135]/60 hover:bg-[#c8f135]/5 shadow-[0_0_8px_rgba(200,241,53,0.1)] hover:w-6"
-                                : "bg-[#c8f135] border border-[#c8f135] border-l-0 text-black hover:bg-[#d4f545] animate-pulse shadow-[0_0_15px_rgba(200,241,53,0.65)] hover:w-6"
+                                ? "bg-[#c8f135] text-black shadow-[0_0_15px_rgba(200,241,53,0.85)] md:bg-[#111113] md:text-[#c8f135]/60 md:border md:border-[#c8f135]/20 md:border-l-0 md:shadow-none hover:bg-[#c8f135] hover:text-black md:hover:bg-[#c8f135]/5 md:hover:border-[#c8f135]/60 md:hover:text-[#c8f135]"
+                                : "bg-[#c8f135] border border-[#c8f135] border-l-0 text-black hover:bg-[#d4f545] animate-pulse shadow-[0_0_20px_rgba(200,241,53,0.85)] hover:w-6",
+                            showTemplatePanel
+                                ? "right-0 left-auto rounded-l-lg rounded-r-none md:right-auto md:left-0 md:rounded-r-lg md:rounded-l-none"
+                                : "left-0 rounded-r-lg"
                         )}
                     >
-                        <ChevronRight className={cn("w-3.5 h-3.5 transition-transform duration-300", showTemplatePanel ? "text-[#c8f135]/60 group-hover:text-[#c8f135]" : "text-black rotate-180")} />
+                        <ChevronRight className={cn(
+                            "w-3.5 h-3.5 transition-transform duration-300",
+                            showTemplatePanel 
+                                ? "text-black md:text-[#c8f135]/60 group-hover:text-black md:group-hover:text-[#c8f135] rotate-180" 
+                                : "text-black rotate-0"
+                        )} />
                     </button>
-                    {selectedTemplate ? (
-                        <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+                    <div className="flex-1 flex flex-col h-full overflow-hidden relative">
 
                             {/* ── UGC-STYLE FIXED GRID ── */}
                             <div className="flex-1 overflow-y-auto bg-[#0a0a0a] custom-scrollbar" style={{paddingBottom:'80px', minHeight:0}}>
@@ -1846,7 +1899,9 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                             <ImageIcon className="w-7 h-7 text-white/15" />
                                         </div>
                                         <p className="text-[10px] text-white/20 font-black uppercase tracking-widest">Generated assets appear here</p>
-                                        <p className="text-[8px] text-white/10 font-mono">{selectedTemplate?.name} · hit Generate to start</p>
+                                        <p className="text-[8px] text-white/10 font-mono">
+                                            {selectedTemplate ? `${selectedTemplate.name} · ` : ''}write a prompt or choose a template to start
+                                        </p>
                                     </div>
                                 )}
                             </div>
@@ -1942,17 +1997,17 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                         </div>
                                     )}
                                     {/* Uploaded thumbnails row (only when images present) */}
-                                    {(referenceImage || logoImage) && (
-                                        <div className="flex items-center gap-2 px-3 pt-2.5">
-                                            {referenceImage && (
-                                                <div className="relative group w-9 h-9 rounded-lg overflow-hidden border border-lime-500/40 flex-shrink-0">
-                                                    <img src={resolveUrl(referenceImage)} className="w-full h-full object-cover" alt="ref" />
-                                                    <button onClick={() => { setReferenceImage(null); setReferenceImageMeta(null); setReferenceImageBase64(null); }}
+                                    {(referenceImages.length > 0 || logoImage) && (
+                                        <div className="flex items-center gap-2 px-3 pt-2.5 flex-wrap">
+                                            {referenceImages.map((img, index) => (
+                                                <div key={img.id || index} className="relative group w-9 h-9 rounded-lg overflow-hidden border border-lime-500/40 flex-shrink-0">
+                                                    <img src={resolveUrl(img.url)} className="w-full h-full object-cover" alt={`ref-${index}`} />
+                                                    <button onClick={() => setReferenceImages(prev => prev.filter((_, i) => i !== index))}
                                                         className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                         <X className="w-3 h-3 text-white" />
                                                     </button>
                                                 </div>
-                                            )}
+                                            ))}
                                             {logoImage && (
                                                 <div className="relative group w-9 h-9 rounded-lg overflow-hidden border border-orange-500/40 bg-white/5 flex-shrink-0">
                                                     <img src={logoImage} className="w-full h-full object-contain p-0.5" alt="logo" />
@@ -1970,21 +2025,21 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                         value={promptText}
                                         onChange={e => setPromptText(e.target.value)}
                                         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !isGenerating) { e.preventDefault(); handleGenerate(); } }}
-                                        placeholder={activeCategory === 'realestate' ? "Describe the property visual… (Shift+Enter for new line)" : referenceImage ? "Add extra instructions… or just hit Generate" : "Describe what you want to create… (Shift+Enter for new line)"}
+                                        placeholder={activeCategory === 'realestate' ? "Describe the property visual… (Shift+Enter for new line)" : referenceImages.length > 0 ? "Add extra instructions… or just hit Generate" : "Describe what you want to create… (Shift+Enter for new line)"}
                                         rows={2}
                                         className="w-full bg-transparent text-sm text-white/80 placeholder:text-white/25 outline-none resize-none px-4 pt-3 pb-1 leading-relaxed"
                                     />
 
                                  {/* Bottom toolbar row */}
-                                 <div className="flex flex-col gap-2 pb-2 pt-1">
+                                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 pb-2 pt-1">
                                      {/* Pills container */}
-                                     <div className="flex items-center gap-1.5 px-3 overflow-x-auto no-scrollbar flex-nowrap w-full">
+                                     <div className="flex items-center gap-1.5 px-3 overflow-x-auto no-scrollbar flex-nowrap flex-1 min-w-0">
                                         {/* Upload photo */}
                                         <button onClick={() => fileInputRef.current?.click()}
                                             className={cn("flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
-                                                referenceImage ? "text-lime-400 bg-lime-500/10 border border-lime-500/30" : "text-white/30 hover:text-white/60 hover:bg-white/5 border border-transparent")}>
+                                                referenceImages.length > 0 ? "text-lime-400 bg-lime-500/10 border border-lime-500/30" : "text-white/30 hover:text-white/60 hover:bg-white/5 border border-transparent")}>
                                             <Upload className="w-3 h-3" />
-                                            {referenceImage ? 'Photo ✓' : 'Photo'}
+                                            {referenceImages.length > 0 ? `Photos (${referenceImages.length}) ✓` : 'Photo'}
                                         </button>
 
                                         {/* Size */}
@@ -2074,7 +2129,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                                                          quality === opt.value ? "text-violet-400" : "text-white/70"
                                                                      )}>{opt.label}</p>
                                                                      <p className="text-[7.5px] text-gray-600 truncate">
-                                                                         {opt.desc} {imageEngine === 'gpt-image-2' && `· ₹${getGenerateCostINR(opt.value, imageSize)}`}
+                                                                         {opt.desc}
                                                                      </p>
                                                                  </div>
                                                                  {quality === opt.value && (
@@ -2367,7 +2422,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                         </div>
 
                                          {/* Generate Button Row */}
-                                         <div className="px-3 flex w-full">
+                                          <div className="px-3 md:px-0 md:pr-3 flex w-full md:w-auto flex-shrink-0">
                                         {/* Generate */}
                                         <button onClick={handleGenerate} disabled={isGenerating}
                                             className={cn(
@@ -2391,13 +2446,6 @@ Any written text, characters, letters, numbers, and labels inside the image must
                             </div>{/* end floating gradient wrapper */}
 
                         </div>
-                    ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center text-white/30 h-full p-8 text-center">
-                            <Wand2 className="w-20 h-20 mb-6 opacity-20" />
-                            <h2 className="text-2xl font-black uppercase tracking-widest mb-2">Select a Template</h2>
-                            <p className="max-w-md text-sm">Choose a base template from the left panel to begin crafting your high-converting marketing asset.</p>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>

@@ -442,6 +442,86 @@ export default function createRouter(deps) {
         }
     });
 
+    // Kling Motion Control Generation
+    router.post('/kling/motion-control', async (req, res) => {
+        try {
+            let user;
+            try {
+                user = await requireAuth(req);
+            } catch (authErr) {
+                if (process.env.NODE_ENV === 'production') {
+                    return res.status(401).json({ error: 'Authentication required to generate motion control video.' });
+                }
+            }
+
+            const { prompt, input_url, video_url, mode = 'std', character_orientation = 'video', background_source = 'input_video', userId } = req.body;
+            const apiKey = process.env.KLING_API_KEY;
+
+            if (!apiKey) throw new Error("Kling API Key not configured. Please add KLING_API_KEY to your environment.");
+
+            const targetUserId = user ? user.id : userId;
+            const duration = req.body.duration || 5;
+            const rate = mode === 'pro' ? 18 : 14;
+            const requiredCredits = Math.ceil(rate * duration);
+
+            if (targetUserId) {
+                const creditReason = req.body.creditReason || `kling_motion_control_${mode}`;
+                console.log(`[KLING-MOTION] Consuming ${requiredCredits} credits for user: ${targetUserId} (reason: ${creditReason})`);
+                await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
+            }
+
+            console.log(`[KLING-MOTION] Resolving assets for user ${targetUserId}...`);
+            const [imgUrl, vidUrl] = await Promise.all([
+                resolveToPublicUrl(input_url, targetUserId),
+                resolveToPublicUrl(video_url, targetUserId)
+            ]);
+
+            if (!imgUrl) throw new Error("Kling Motion Control requires a subject reference image URL.");
+            if (!vidUrl) throw new Error("Kling Motion Control requires a motion reference video URL.");
+
+            const payload = {
+                model: "kling-3.0/motion-control",
+                callBackUrl: req.body.callBackUrl || "https://zerolens.app/api/callback",
+                input: {
+                    prompt: prompt || "",
+                    input_urls: [imgUrl],
+                    video_urls: [vidUrl],
+                    mode,
+                    character_orientation,
+                    background_source
+                }
+            };
+
+            console.log(`[KLING-MOTION] Creating task on Kie.ai...`);
+            const createResp = await fetch("https://api.kie.ai/api/v1/jobs/createTask", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const createData = await createResp.json();
+            if (createData.code !== 200) throw new Error(`Kling Motion Task Creation Failed: ${createData.msg || 'Unknown Error'}`);
+
+            const taskId = createData.data.taskId;
+            console.log(`[KLING-MOTION] Task Created: ${taskId}`);
+
+            if (updateJobStatus) {
+                await updateJobStatus(taskId, 'processing', {
+                    prompt: prompt || 'Motion Control Video',
+                    model: 'kling-3.0/motion-control'
+                });
+            }
+
+            res.json({ success: true, requestId: taskId });
+        } catch (error) {
+            console.error('[KLING-MOTION-ERR]', error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
     // ─────────────────────────────────────────────────────────────
     // POST /video/generate — Unified BullMQ-queued video generation
     // Supports: provider = "veo" | "seedance" | "openai"

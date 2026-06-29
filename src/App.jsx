@@ -11,6 +11,7 @@ import { useAppStore } from './store';
 const AuthPage = lazy(() => import('./components/pages/AuthPage'));
 const AssetsLibrary = lazy(() => import('./components/panels/AssetsLibrary').then(m => ({ default: m.AssetsLibrary })));
 const UGC = lazy(() => import('./features/UGCStudio/UGC'));
+const MotionControl = lazy(() => import('./features/MotionControl/MotionControl'));
 const PlaygroundCanvas = lazy(() => import('./components/canvas/PlaygroundCanvas').then(m => ({ default: m.PlaygroundCanvas })));
 const AssetManager = lazy(() => import('./components/panels/AssetManager').then(m => ({ default: m.AssetManager })));
 const MarketingStudio = lazy(() => import('./components/pages/MarketingStudio'));
@@ -93,6 +94,7 @@ const FULL_HEIGHT_TABS = new Set([
   'marketing',
   'carousel',
   'ugc',
+  'motion-control',
   'assets',
   'admin',
   'auth',
@@ -268,6 +270,8 @@ function App() {
         return <CarouselStudio userId={userProfile?.id} />;
       case 'ugc':
         return <UGC />;
+      case 'motion-control':
+        return <MotionControl />;
       case 'admin':
         return <AssetManager />;
       case 'settings':

@@ -13,6 +13,7 @@ const FULL_BLEED_TABS = new Set([
     'marketing',
     'carousel',
     'ugc',
+    'motion-control',
     'assets',
     'admin',
     'auth',
