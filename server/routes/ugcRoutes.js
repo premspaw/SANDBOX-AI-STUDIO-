@@ -12,6 +12,7 @@ export default function createRouter(deps) {
     const router = express.Router();
     const {
         consumeCredits,
+        claimOrCreateSpend,
         getVertexToken,
         upload,
         getGeminiClient,
@@ -38,7 +39,8 @@ export default function createRouter(deps) {
 
             // Video synthesis is expensive
             const modelCredits = model === 'veo-fast' ? 3 : 5;
-            await consumeCredits(userId, modelCredits);
+            const creditReason = req.body.creditReason || 'veo_fast';
+            await claimOrCreateSpend(userId, modelCredits, creditReason);
 
             console.log(`[Video API] Starting generation: model=${model}, dur=${duration}, res=${resolution}, ratio=${aspect_ratio}`);
             console.log(`[Video API] Script preview: "${script.substring(0, 50)}..."`);

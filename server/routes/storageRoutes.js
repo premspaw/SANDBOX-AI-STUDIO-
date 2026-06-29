@@ -133,6 +133,10 @@ export default function createRouter(deps) {
             const fileName = req.body.fileName || `asset_${Date.now()}.png`;
             
             const aspect = req.body.aspect || req.body.aspectRatio || req.body.aspect_ratio || '16:9';
+            const prompt = req.body.prompt || req.body.promptText || '';
+            const engine = req.body.engine || req.body.model || '';
+            const isGrid = !!req.body.isGrid;
+            const extraMetadata = isGrid ? { isGrid: true } : {};
             
             if (!imageData) throw new Error("No asset data provided");
 
@@ -149,7 +153,10 @@ export default function createRouter(deps) {
                     type: type,
                     url: imageData,
                     user_id: userId || 'local_user',
-                    aspect: aspect
+                    aspect: aspect,
+                    metadata: { aspect, ...extraMetadata },
+                    prompt,
+                    engine
                 });
 
                 const dbClient = supabaseAdmin || supabase;
@@ -162,7 +169,9 @@ export default function createRouter(deps) {
                         url: imageData,
                         user_id: userId,
                         created_at: new Date().toISOString(),
-                        metadata: { aspect }
+                        metadata: { aspect, ...extraMetadata },
+                        prompt,
+                        engine
                     }]).select();
 
                     if (dbError) {
@@ -214,7 +223,10 @@ export default function createRouter(deps) {
                     type,
                     url: publicUrl,
                     user_id: userId || 'local_user',
-                    aspect: aspect
+                    aspect: aspect,
+                    metadata: { aspect, ...extraMetadata },
+                    prompt,
+                    engine
                 });
             }
 
@@ -231,7 +243,9 @@ export default function createRouter(deps) {
                         url: publicUrl,
                         user_id: userId,
                         created_at: new Date().toISOString(),
-                        metadata: { aspect }
+                        metadata: { aspect, ...extraMetadata },
+                        prompt,
+                        engine
                     }])
                     .select();
                 if (dbError) {

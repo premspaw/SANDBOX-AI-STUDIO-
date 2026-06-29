@@ -1,16 +1,28 @@
 import { GoogleGenAI } from "@google/genai";
 import { getApiUrl } from "../config/apiConfig.js";
 
+const arrayBufferToBase64 = (buffer) => {
+    if (typeof globalThis.Buffer !== 'undefined') {
+        return globalThis.Buffer.from(buffer).toString('base64');
+    }
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+};
+
 const getAIConfig = () => {
     const storeKey = typeof window !== 'undefined' && window.__VEO_API_KEY__;
     const apiKey = storeKey ||
-        (typeof process !== 'undefined' ? process.env.GOOGLE_API_KEY : null) ||
+        (typeof globalThis.process !== 'undefined' ? globalThis.process.env.GOOGLE_API_KEY : null) ||
         (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_GOOGLE_API_KEY : null) ||
         '';
         
     const isToken = apiKey.startsWith('AQ.') || apiKey.startsWith('ya29.');
-    const projectId = (typeof process !== 'undefined' ? process.env.GOOGLE_PROJECT_ID : null) || 'gen-lang-client-0438096272';
-    const location = (typeof process !== 'undefined' ? process.env.GOOGLE_LOCATION : null) || 'us-central1';
+    const projectId = (typeof globalThis.process !== 'undefined' ? globalThis.process.env.GOOGLE_PROJECT_ID : null) || 'gen-lang-client-0438096272';
+    const location = (typeof globalThis.process !== 'undefined' ? globalThis.process.env.GOOGLE_LOCATION : null) || 'us-central1';
     
     const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://sandbox-ai-studio.up.railway.app';
     return { apiKey, isToken, projectId, location, origin: currentOrigin };
@@ -81,7 +93,7 @@ export const cacheUniverseBible = async (bible) => {
         // Use standard generative-ai for standard requests, but we need the new SDK for caching
         const storeKey = typeof window !== 'undefined' && window.__VEO_API_KEY__;
         const apiKey = storeKey ||
-            (typeof process !== 'undefined' ? process.env.GOOGLE_API_KEY : null) ||
+            (typeof globalThis.process !== 'undefined' ? globalThis.process.env.GOOGLE_API_KEY : null) ||
             (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_GOOGLE_API_KEY : null) ||
             '';
 
@@ -691,7 +703,7 @@ export const generateLipSyncVideo = async (image, prompt, bible = null, opts = {
                 const response = await fetch(getApiUrl('/api/ugc/video'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image, script: prompt, bible, model, duration, resolution, aspect_ratio })
+                    body: JSON.stringify({ image, script: prompt, bible, model, duration, resolution, aspect_ratio, creditReason: 'veo_fast' })
                 });
 
                 if (response.ok) {
@@ -721,7 +733,7 @@ export const generateLipSyncVideo = async (image, prompt, bible = null, opts = {
             if (!imgResp.ok) throw new Error(`Failed to fetch reference image: ${imgResp.status}`);
             const imgBuffer = await imgResp.arrayBuffer();
             imageMime = imgResp.headers.get('content-type') || 'image/png';
-            imageBase64 = Buffer.from(imgBuffer).toString('base64');
+            imageBase64 = arrayBufferToBase64(imgBuffer);
         }
 
         // Build the Veo API payload
@@ -759,7 +771,7 @@ const getBase64FromUrl = async (url) => {
     if (typeof window === 'undefined') {
         const buffer = await response.arrayBuffer();
         const contentType = response.headers.get('content-type') || 'image/png';
-        return `data:${contentType};base64,${Buffer.from(buffer).toString('base64')}`;
+        return `data:${contentType};base64,${arrayBufferToBase64(buffer)}`;
     } else {
         const blob = await response.blob();
         return new Promise((resolve, reject) => {
@@ -1247,7 +1259,7 @@ export async function analyzeUGCContext(characterImage, productImage, metadata =
             if (img.startsWith('http')) {
                 const resp = await fetch(img);
                 const buffer = await resp.arrayBuffer();
-                return { inlineData: { mimeType: resp.headers.get('content-type') || 'image/png', data: Buffer.from(buffer).toString('base64') } };
+                return { inlineData: { mimeType: resp.headers.get('content-type') || 'image/png', data: arrayBufferToBase64(buffer) } };
             }
             return null;
         };

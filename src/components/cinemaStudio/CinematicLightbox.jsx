@@ -28,6 +28,17 @@ export function CinematicLightbox({
   const gridContainerRef = useRef(null);
   const [overlayStyle, setOverlayStyle] = useState({});
 
+  const isGridActive = lightboxItem && (
+    lightboxItem.isGrid ||
+    lightboxItem.prompt?.toLowerCase().includes('grid') ||
+    lightboxItem.engine?.toLowerCase().includes('grid') ||
+    lightboxItem.prompt?.toLowerCase().includes('storyboard') ||
+    lightboxItem.engine?.toLowerCase().includes('storyboard') ||
+    lightboxItem.prompt?.toLowerCase().includes('contact sheet') ||
+    lightboxItem.prompt?.toLowerCase().includes('9-frame') ||
+    lightboxItem.prompt?.toLowerCase().includes('3x3')
+  );
+
   // Edit Story States
   const [showEditStoryModal, setShowEditStoryModal] = useState(false);
   const [storyEditInstruction, setStoryEditInstruction] = useState('');
@@ -87,7 +98,8 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
         prompt: prompt,
         aspect_ratio: lightboxItem.aspect || '16:9',
         referenceImages: [lightboxItem.url],
-        userId
+        userId,
+        creditReason: 'image_upscale_4k'
       };
 
       // Perform fetch request in the background
@@ -233,7 +245,12 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
         body: JSON.stringify({ 
           imageData: croppedUrlBase64, 
           fileName: `crop_${Date.now()}.png`,
-          userId: userId
+          userId: userId,
+          type: 'image',
+          aspect: lightboxItem.aspect || '16:9',
+          prompt: `${cleanPrompt} - Extracted Angle ${shotNumber}`,
+          engine: `${cleanEngine} (Angle ${shotNumber})`,
+          isGrid: false
         })
       });
       if (!resp.ok) {
@@ -250,7 +267,8 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
         prompt: `${cleanPrompt} - Extracted Angle ${shotNumber}`,
         engine: `${cleanEngine} (Angle ${shotNumber})`,
         aspect: lightboxItem.aspect || "16:9",
-        ts: Date.now()
+        ts: Date.now(),
+        isGrid: false
       };
 
       setGallery(prev => [newItem, ...prev]);
@@ -284,7 +302,8 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
           prompt: `${cleanPrompt} - Extracted Angle ${shotNumber}`,
           engine: `${cleanEngine} (Angle ${shotNumber})`,
           aspect: lightboxItem.aspect || "16:9",
-          ts: Date.now()
+          ts: Date.now(),
+          isGrid: false
         };
         setGallery(prev => [newItem, ...prev]);
         setLightboxItem(null);
@@ -340,10 +359,7 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                   lightboxItem.aspect === '9:16' ? 'aspect-[9/16]' : lightboxItem.aspect === '1:1' ? 'aspect-square' : 'aspect-video w-full'
                 )}
               />
-              {(lightboxItem.prompt?.toLowerCase().includes('grid') || 
-                lightboxItem.engine?.toLowerCase().includes('grid') || 
-                lightboxItem.prompt?.toLowerCase().includes('storyboard') || 
-                lightboxItem.engine?.toLowerCase().includes('storyboard')) && overlayStyle.width && (
+              {isGridActive && overlayStyle.width && (
                 <div style={overlayStyle} className="z-10 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(200,241,53,0.15)]">
                   <div className="w-full h-full grid grid-cols-3 grid-rows-3" style={{ pointerEvents: 'auto' }}>
                     {[...Array(9)].map((_, i) => (
@@ -407,7 +423,7 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
             </div>
 
             {/* Interactive hint for 3x3 sheets */}
-            {(lightboxItem.prompt?.includes('Grid') || lightboxItem.engine?.includes('Grid')) && (
+            {isGridActive && (
               <div className="p-3 bg-[#c8f135]/5 border border-[#c8f135]/15 rounded-xl text-[9px] leading-relaxed text-[#c8f135]/90 animate-pulse">
                 <span className="font-black uppercase tracking-wider block mb-0.5">💡 Interactive Extraction</span>
                 This is a 3x3 multi-angle grid. Click directly on any of the 9 cells on the left to extract it as a standalone high-fidelity image in your gallery.

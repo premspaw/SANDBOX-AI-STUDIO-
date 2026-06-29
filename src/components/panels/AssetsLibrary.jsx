@@ -879,7 +879,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
     };
 
     return (
-        <div className="h-full flex flex-col bg-[#020202] text-white font-mono">
+        <div className="h-full flex flex-col bg-[#020202] text-white font-mono min-h-0 flex-1">
             {/* Header */}
             {!compact && (
                 <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-sm relative shrink-0">

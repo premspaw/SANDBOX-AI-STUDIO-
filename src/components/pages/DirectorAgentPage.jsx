@@ -1292,7 +1292,7 @@ export default function DirectorAgentPage({ activeTool, setActiveTool }) {
                         </div>
 
                         {/* Content Area */}
-                        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar min-h-0 min-w-0">
+                        <div className="flex-1 overflow-hidden min-h-0 flex flex-col p-6">
                             <AssetsLibrary 
                                 compact={true} 
                                 defaultTab={

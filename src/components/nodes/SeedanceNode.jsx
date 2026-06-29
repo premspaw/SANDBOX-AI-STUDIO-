@@ -526,7 +526,7 @@ export const SeedanceNode = memo(({ id, data }) => {
                                 accept={galleryTarget === 'video' ? 'video/*' : galleryTarget === 'audio' ? 'audio/*' : 'image/*'}
                                 onChange={handleFileUpload} />
                         </div>
-                        <div className="flex-1 overflow-hidden">
+                        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
                             <AssetsLibrary
                                 compact={true}
                                 defaultTab={galleryTarget === 'video' ? 'videos' : 'images'}

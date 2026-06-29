@@ -276,6 +276,7 @@ identity drift, different face, different hairstyle, different clothing, differe
         aspect_ratio: referenceAspect,
         referenceImages: [lightboxItem.url],
         userId,
+        creditReason: 'image_grid_multishot',
         ...(selectedStoryTemplate === 'story5' && {
           negativePrompt: "identity drift, different face, different hairstyle, different clothing, different body proportions, different environment, different lighting, different weather, face swap, beauty filter, cartoon, anime, illustration, CGI look, duplicate character, duplicate pose, repeated camera angle, cropped body, missing limbs, extra fingers, blurry, noisy, watermark, logo, text, labels, artifacts, oversaturated colors, unrealistic anatomy, inconsistent scene continuity."
         })

@@ -556,7 +556,7 @@ async function requireAuth(req) {
     return data.user;
 }
 
-async function consumeCredits(userId, cost) {
+async function consumeCredits(userId, cost, reason = 'generation') {
     if (!supabase) {
         if (process.env.NODE_ENV === 'production') {
             const err = new Error('Credit system is unavailable');
@@ -587,7 +587,77 @@ async function consumeCredits(userId, cost) {
         err.status = 500;
         throw err;
     }
+
+    // Write audit log to shorts_transactions so client-side refunds work properly
+    try {
+        await supabase.from('shorts_transactions').insert({
+            user_id: userId,
+            amount: -cost,
+            action_type: reason,
+            created_at: new Date().toISOString()
+        });
+        console.log(`[consumeCredits] ✅ Logged transaction in database for user ${userId}: spent ${cost} credits (reason: ${reason}).`);
+    } catch (logErr) {
+        console.warn('[consumeCredits] Failed to write audit log:', logErr.message);
+    }
+
     return true;
+}
+
+async function claimOrCreateSpend(userId, cost, reason = 'generation') {
+    if (!supabase) {
+        if (process.env.NODE_ENV === 'production') {
+            const err = new Error('Credit system is unavailable');
+            err.status = 503;
+            throw err;
+        }
+        return true;
+    }
+
+    if (!userId) {
+        if (process.env.NODE_ENV !== 'production') {
+            return true; // Dev mode fallback
+        }
+        const err = new Error('Sign in required');
+        err.status = 401;
+        throw err;
+    }
+
+    // 1. Look for a recent unclaimed spend transaction from the client
+    const thirtySecondsAgo = new Date(Date.now() - 30 * 1000).toISOString();
+    try {
+        const { data: txs, error: fetchErr } = await supabase
+            .from('shorts_transactions')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('amount', -cost)
+            .eq('action_type', reason)
+            .is('reason', null) // null means unclaimed/unused
+            .gte('created_at', thirtySecondsAgo)
+            .order('created_at', { ascending: true })
+            .limit(1);
+
+        if (!fetchErr && txs && txs.length > 0) {
+            const txId = txs[0].id;
+            // Try to claim it
+            const { error: claimErr } = await supabase
+                .from('shorts_transactions')
+                .update({ reason: 'claimed' })
+                .eq('id', txId)
+                .is('reason', null);
+
+            if (!claimErr) {
+                console.log(`[Credits] ✅ Claimed recent client-side transaction ${txId} for user ${userId} (${reason}). No extra charge.`);
+                return true;
+            }
+        }
+    } catch (err) {
+        console.warn('[claimOrCreateSpend] Failed to check/claim existing transaction:', err.message);
+    }
+
+    // 2. If no valid transaction found, deduct credits now (server-side fallback)
+    console.log(`[Credits] No recent transaction found for user ${userId} (${reason}). Charging now...`);
+    return await consumeCredits(userId, cost, reason);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -625,7 +695,7 @@ function findVideoInResponse(obj) {
     return null;
 }
 
-async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9', folder = 'generated') {
+async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9', folder = 'generated', prompt = '', engine = '', extraMetadata = {}) {
     const name = `veo_${userId || 'anon'}_${Date.now()}.mp4`;
     const filePath = `users/${userId || 'anon'}/${folder}/${name}`;
 
@@ -640,7 +710,9 @@ async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9', 
             url: publicUrl,
             user_id: userId || 'local_user',
             aspect: aspectRatio,
-            metadata: { folder }
+            metadata: { folder, ...extraMetadata },
+            prompt: prompt,
+            engine: engine
         });
 
         const dbClient = supabaseAdmin || supabase;
@@ -649,7 +721,9 @@ async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9', 
                 await dbClient.from('assets').insert([{
                     name, type: 'video', url: publicUrl,
                     user_id: userId, created_at: new Date().toISOString(),
-                    metadata: { aspect: aspectRatio, folder }
+                    metadata: { aspect: aspectRatio, folder, ...extraMetadata },
+                    prompt: prompt,
+                    engine: engine
                 }]);
             } catch (e) {
                 console.warn('[DB]', e.message);
@@ -663,7 +737,7 @@ async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9', 
 }
 
 
-async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg', targetBucket = MARKETING_BUCKET, folder = `${MARKETING_FOLDER}/generated`, aspectRatio = '1:1') {
+async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg', targetBucket = MARKETING_BUCKET, folder = `${MARKETING_FOLDER}/generated`, aspectRatio = '1:1', prompt = '', engine = '', extraMetadata = {}) {
     const ext = mimeType.split('/')[1] || 'jpg';
     const name = `gen_${userId || 'anon'}_${Date.now()}.${ext}`;
     let filePath = (userId && userId !== 'anon') ? `users/${userId}/${folder}/${name}` : `${folder}/anon/${name}`;
@@ -678,7 +752,9 @@ async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg
             url: publicUrl,
             user_id: userId || 'local_user',
             aspect: aspectRatio,
-            metadata: { folder }
+            metadata: { folder, ...extraMetadata },
+            prompt: prompt,
+            engine: engine
         });
 
         const dbClient = supabaseAdmin || supabase;
@@ -687,7 +763,9 @@ async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg
                 await dbClient.from('assets').insert([{
                     name, type: 'image', url: publicUrl,
                     user_id: userId, created_at: new Date().toISOString(),
-                    metadata: { aspect: aspectRatio, folder }
+                    metadata: { aspect: aspectRatio, folder, ...extraMetadata },
+                    prompt: prompt,
+                    engine: engine
                 }]);
             } catch (e) {
                 console.warn('[DB]', e.message);
@@ -928,13 +1006,18 @@ async function handleOpenAI(req, res) {
         if (size === '1536x1024' || size === '1792x1024') aspectRatio = '16:9';
         else if (size === '1024x1536' || size === '1024x1792') aspectRatio = '9:16';
 
+        const isGrid = !!req.body.isGrid;
+        const extraMetadata = isGrid ? { isGrid: true } : {};
         const url = await uploadImageToSupabase(
             imageBuffer,
             userId,
             'image/png',
             undefined,
             folder,
-            aspectRatio
+            aspectRatio,
+            prompt || '',
+            model || 'DALL-E 3',
+            extraMetadata
         );
 
         res.json({ url });
@@ -1010,7 +1093,12 @@ async function handleGoogle(req, res) {
                     }
                 }
             }
-            parts.push({ text: prompt });
+            let compiledPrompt = prompt || '';
+            const neg = negativePrompt || negative_prompt;
+            if (neg) {
+                compiledPrompt += ` [Avoid including: ${neg}]`;
+            }
+            parts.push({ text: compiledPrompt });
 
             const activeRatio = aspect_ratio || aspectRatio || '1:1';
             const validRatios = ['1:1', '16:9', '9:16', '3:4', '4:3'];
@@ -1048,8 +1136,7 @@ async function handleGoogle(req, res) {
                         responseModalities: ["IMAGE"],
                         imageConfig: {
                             aspectRatio: mappedRatio,
-                            imageSize: finalImageSize,
-                            negativePrompt: negativePrompt || negative_prompt || undefined
+                            imageSize: finalImageSize
                         }
                     }
                 })
@@ -1084,7 +1171,19 @@ async function handleGoogle(req, res) {
                 throw new Error(`Google API returned no image candidates. finishReason: ${finishReason}${promptFeedback?.blockReason ? `, blockReason: ${promptFeedback.blockReason}` : ''}${result.error?.message ? `, apiError: ${result.error.message}` : ''}`);
             }
 
-            const url = await uploadImageToSupabase(Buffer.from(b64, 'base64'), userId, 'image/jpeg', undefined, folder, mappedRatio);
+            const isGrid = !!req.body.isGrid;
+            const extraMetadata = isGrid ? { isGrid: true } : {};
+            const url = await uploadImageToSupabase(
+                Buffer.from(b64, 'base64'), 
+                userId, 
+                'image/jpeg', 
+                undefined, 
+                folder, 
+                mappedRatio, 
+                prompt || '', 
+                model || 'Nano Banana 2', 
+                extraMetadata
+            );
             res.json({ url });
         }
     } catch (err) {
@@ -1181,7 +1280,7 @@ async function handleVeoJob(reqBody) {
 
     if (!videoBuffer) throw new Error('Could not extract video buffer from Veo response');
     console.log(`[VEO-JOB] ✅ Downloaded (${Math.round(videoBuffer.length / 1024)}KB), uploading to storage...`);
-    return await uploadVideoToSupabase(videoBuffer, userId, validAspectRatio);
+    return await uploadVideoToSupabase(videoBuffer, userId, validAspectRatio, 'generated', prompt || '', model || 'Veo 3.1');
 }
 
 async function handleSeedanceJob(reqBody) {
@@ -1285,7 +1384,7 @@ async function handleSeedanceJob(reqBody) {
                 console.log(`[SEEDANCE-JOB] ✅ Video ready, uploading to storage...`);
                 const videoResp = await fetch(finalUrl);
                 const ab = await videoResp.arrayBuffer();
-                return await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio);
+                return await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, 'generated', prompt || '', engine || 'Seedance');
             }
             if (attempts % 5 === 0) console.log(`[SEEDANCE-JOB] Processing... (${attempts * 6}s elapsed)`);
         } catch (e) {
@@ -1474,6 +1573,7 @@ const deps = {
     upload,
     requireAuth,
     consumeCredits,
+    claimOrCreateSpend,
     handleGoogle,
     handleOpenAI,
     handleKling,

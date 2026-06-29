@@ -51,6 +51,7 @@ export default function createRouter(deps) {
         VERTEX_PROJECT_ID,
         requireAuth,
         consumeCredits,
+        claimOrCreateSpend,
         videoQueue,
         updateJobStatus
     } = deps;
@@ -82,8 +83,8 @@ export default function createRouter(deps) {
                 }
             }
 
-            const { image, motionPrompt, duration = 8, aspectRatio = '16:9', nodeId, userId, generateAudio, resolution = '1080p', model } = req.body;
-            if (!motionPrompt) throw new Error('No motion prompt provided');
+            const { image, motionPrompt, prompt, duration = 8, aspectRatio = '16:9', nodeId, userId, generateAudio, resolution = '1080p', model } = req.body;
+            if (!motionPrompt && !prompt) throw new Error('No motion prompt provided');
 
             const targetUserId = user ? user.id : userId;
 
@@ -95,8 +96,9 @@ export default function createRouter(deps) {
             }
 
             if (targetUserId) {
-                console.log(`[VEO-I2V] Consuming ${requiredCredits} credits for user: ${targetUserId}`);
-                await consumeCredits(targetUserId, requiredCredits);
+                const creditReason = req.body.creditReason || 'cinematic_video_generation';
+                console.log(`[VEO-I2V] Consuming/Claiming ${requiredCredits} credits for user: ${targetUserId} (reason: ${creditReason})`);
+                await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
             }
 
             const taskId = nodeId ? `veo-${nodeId}` : 'veo-default';
@@ -257,7 +259,7 @@ export default function createRouter(deps) {
                     }
                 }
                 
-                const publicUrl = await uploadVideoToSupabase(videoBuffer, userId, validAspectRatio);
+                const publicUrl = await uploadVideoToSupabase(videoBuffer, userId, validAspectRatio, 'generated', motionPrompt || prompt || '', model || 'Veo 3.1');
                 videoUrl = publicUrl;
             } else if (video.uri) {
                 console.log(`[VEO-I2V] Downloading URI: ${video.uri}`);
@@ -283,7 +285,7 @@ export default function createRouter(deps) {
                     }
                 }
                 
-                const publicUrl = await uploadVideoToSupabase(videoBuffer, userId, validAspectRatio);
+                const publicUrl = await uploadVideoToSupabase(videoBuffer, userId, validAspectRatio, 'generated', motionPrompt || prompt || '', model || 'Veo 3.1');
                 videoUrl = publicUrl;
             }
 
@@ -341,8 +343,9 @@ export default function createRouter(deps) {
             const requiredCredits = 15; // Kling costs 15 credits
 
             if (targetUserId) {
-                console.log(`[KLING-GEN] Consuming ${requiredCredits} credits for user: ${targetUserId}`);
-                await consumeCredits(targetUserId, requiredCredits);
+                const creditReason = req.body.creditReason || 'cinematic_video_generation';
+                console.log(`[KLING-GEN] Consuming/Claiming ${requiredCredits} credits for user: ${targetUserId} (reason: ${creditReason})`);
+                await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
             }
 
             console.log(`[KLING-ASYNC] Resolving assets for user ${targetUserId}...`);
@@ -419,9 +422,13 @@ export default function createRouter(deps) {
                 if (!finalUrl) throw new Error("No result URL found.");
                 
                 // Archive to Supabase
+                const jobInfo = (await getJobStatus(requestId)) || {};
+                const prompt = jobInfo.prompt || '';
+                const model = jobInfo.model || 'Kling';
+
                 const videoResp = await fetch(finalUrl);
                 const ab = await videoResp.arrayBuffer();
-                const supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio);
+                const supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, 'generated', prompt, model);
                 
                 return res.json({ status: 'completed', url: supabaseUrl });
             } else if (state === 'fail') {
@@ -482,8 +489,9 @@ export default function createRouter(deps) {
             }
 
             if (targetUserId) {
-                console.log(`[VIDEO-GENERATE] Consuming ${requiredCredits} credits | user: ${targetUserId} | provider: ${provider}`);
-                await consumeCredits(targetUserId, requiredCredits);
+                const creditReason = req.body.creditReason || 'cinematic_video_generation';
+                console.log(`[VIDEO-GENERATE] Consuming/Claiming ${requiredCredits} credits | user: ${targetUserId} | provider: ${provider} (reason: ${creditReason})`);
+                await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
             }
 
             // --- Route to BullMQ if Redis is connected ---

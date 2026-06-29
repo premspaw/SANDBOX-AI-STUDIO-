@@ -1,5 +1,1325 @@
 [
   {
+    "id": "local_1782733518243_98khq",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782733517619.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782733517619.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: this is my cafe location@location - Extracted Angle 5]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-29T11:45:18.243Z"
+  },
+  {
+    "id": "local_1782733493645_ycogu",
+    "name": "crop_1782733493344.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782733493344.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "this is my cafe location@location - Extracted Angle 5",
+    "engine": "Nano Banana 2 (Angle 5)",
+    "created_at": "2026-06-29T11:44:53.645Z"
+  },
+  {
+    "id": "local_1782733471080_mz1dt",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782733470537.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782733470537.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-29T11:44:31.081Z"
+  },
+  {
+    "id": "local_1782733442924_l5ma3",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782733442219.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782733442219.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "this is my cafe location@location. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[REFERENCE ALIGNMENT DIRECTIVES]\nReference: @location (LOCATION) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1782733393346.png [seed: 155325]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-29T11:44:02.924Z"
+  },
+  {
+    "id": "local_1782731948891_pjh9s",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782731948344.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782731948344.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "@location. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[REFERENCE ALIGNMENT DIRECTIVES]\nReference: @location (LOCATION) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1782731900168.png [seed: 824591]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-29T11:19:08.891Z"
+  },
+  {
+    "id": "local_1782731833894_5hd7l",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782731833558.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782731833558.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "1:1",
+    "metadata": {
+      "folder": "marketing"
+    },
+    "prompt": "U Color palette: #FF0000 and #000000. Photorealistic, high resolution, no watermarks, no logos.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-29T11:17:13.894Z"
+  },
+  {
+    "id": "local_1782731245765_cgz8r",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782731245411.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782731245411.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REGENERATE / EDIT IMAGE:\nEdit this image according to this brief/instruction: \"remove the human perosn form the image \".\nSTRICT RULE: Keep the exact same subject identity, scene structure, lighting, and composition. Only apply the requested change. \n[Subject and Context: see this my need in @coffe. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[REFERENCE ALIGNMENT DIRECTIVES]\nReference: @coffe (LOCATION) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1782729598290.png (Brush Edited) (Brush Edited)]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-29T11:07:25.765Z"
+  },
+  {
+    "id": "local_1782730428465_xnfa9",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782730428099.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782730428099.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-29T10:53:48.465Z"
+  },
+  {
+    "id": "local_1782729654766_ut0ur",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782729654318.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782729654318.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "see this my need in @coffe. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[REFERENCE ALIGNMENT DIRECTIVES]\nReference: @coffe (LOCATION) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1782729598290.png [seed: 695526]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-29T10:40:54.766Z"
+  },
+  {
+    "id": "local_1782729255277_awnha",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782729254756.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782729254756.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "see this my @location  need in. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[REFERENCE ALIGNMENT DIRECTIVES]\nReference: @location (LOCATION) - /assets/ref_1782726485754.png [seed: 736909]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-29T10:34:15.277Z"
+  },
+  {
+    "id": "local_1782729206829_v6hcq",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782729205803.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782729205803.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "wide. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[STYLE REFERENCE DIRECTIVE]\nMatch the overall aesthetic, color grading, lighting, composition style, and mood of the attached style reference image. [seed: 241724]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-29T10:33:26.829Z"
+  },
+  {
+    "id": "local_1782729200897_7kdyq",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782729200080.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782729200080.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "wide. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[STYLE REFERENCE DIRECTIVE]\nMatch the overall aesthetic, color grading, lighting, composition style, and mood of the attached style reference image. [seed: 143559]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-29T10:33:20.897Z"
+  },
+  {
+    "id": "local_1782725004673_ra490",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782725004335.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782725004335.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-29T09:23:24.673Z"
+  },
+  {
+    "id": "local_1782724969815_30wvr",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782724969357.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782724969357.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REGENERATE / EDIT IMAGE:\nEdit this image according to this brief/instruction: \"remove the peson the image\".\nSTRICT RULE: Keep the exact same subject identity, scene structure, lighting, and composition. Only apply the requested change. \n[Subject and Context: @location see this mycafe (Edited: make it in day mode  in day light) - Extracted Angle 2]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-29T09:22:49.815Z"
+  },
+  {
+    "id": "local_1782724900812_sen7y",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782724899631.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782724899631.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: @location see this mycafe (Edited: make it in day mode  in day light) - Extracted Angle 2]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-29T09:21:40.816Z"
+  },
+  {
+    "id": "local_1782724872037_djrr0",
+    "name": "crop_1782724871644.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782724871644.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "@location see this mycafe (Edited: make it in day mode  in day light) - Extracted Angle 2",
+    "engine": "Nano Banana 2 + Edit + Edit (Edited) (Angle 2)",
+    "created_at": "2026-06-29T09:21:12.037Z"
+  },
+  {
+    "id": "local_1782724865067_1po7f",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782724864751.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782724864751.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REGENERATE / EDIT IMAGE:\nEdit this image according to this brief/instruction: \"make to day light in day time\".\nSTRICT RULE: Keep the exact same subject identity, scene structure, lighting, and composition. Only apply the requested change. \n[Subject and Context: @location see this mycafe. Perspective: Wide Shot framing.. Captured on Sony Venice 2, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 24mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[REFERENCE ALIGNMENT DIRECTIVES]\nReference: @location (LOCATION) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1782724164872.png\n\n[STYLE REFERENCE DIRECTIVE]\nMatch the overall aesthetic, color grading, lighting, composition style, and mood of the attached style reference image. (Brush Edited) (Brush Edited)]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-29T09:21:05.067Z"
+  },
+  {
+    "id": "local_1782724808537_a289d",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782724808214.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782724808214.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REGENERATE / EDIT IMAGE:\nEdit this image according to this brief/instruction: \"make it in day mode  in day light\".\nSTRICT RULE: Keep the exact same subject identity, scene structure, lighting, and composition. Only apply the requested change. \n[Subject and Context: Multi-Angle 3x3 Grid: @location see this mycafe]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-29T09:20:08.537Z"
+  },
+  {
+    "id": "local_1782724774924_6x0oo",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782724774468.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782724774468.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-29T09:19:34.924Z"
+  },
+  {
+    "id": "local_1782724242656_4dl90",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782724241343.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782724241343.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "@location see this mycafe. Perspective: Wide Shot framing.. Captured on Sony Venice 2, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 24mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[REFERENCE ALIGNMENT DIRECTIVES]\nReference: @location (LOCATION) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1782724164872.png\n\n[STYLE REFERENCE DIRECTIVE]\nMatch the overall aesthetic, color grading, lighting, composition style, and mood of the attached style reference image. [seed: 373316]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-29T09:10:42.656Z"
+  },
+  {
+    "id": "local_1782678822658_75wi2",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782678822367.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782678822367.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REGENERATE / EDIT IMAGE:\nEdit this image according to this brief/instruction: \"remove the person for the scence \".\nSTRICT RULE: Keep the exact same subject identity, scene structure, lighting, and composition. Only apply the requested change. \n[Subject and Context: standing in fire see this big fire a back pose @prem a location at. Perspective: Medium Shot framing.. Captured on ARRI Alexa 35, equipped with ARRI Signature Prime glass optics (modern, clean, ultra-premium cinematic blockbuster look with natural highlights) using a 35mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[REFERENCE ALIGNMENT DIRECTIVES]\nReference: @prem (CHARACTER) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1782550302826.png\n\n[FACE SYMMETRY DIRECTIVE]\nMake the face 100% symmetrical, matching the exact facial structure and features of the attached character reference image.\n\n[STYLE REFERENCE DIRECTIVE]\nMatch the overall aesthetic, color grading, lighting, composition style, and mood of the attached style reference image. (Edited: see there is is chain around his neck pls remove that )]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T20:33:42.658Z"
+  },
+  {
+    "id": "local_1782678656119_4b0if",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782678655861.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782678655861.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T20:30:56.119Z"
+  },
+  {
+    "id": "local_1782678611219_ahz7k",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782678610857.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782678610857.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REGENERATE / EDIT IMAGE:\nEdit this image according to this brief/instruction: \"see there is is chain around his neck pls remove that \".\nSTRICT RULE: Keep the exact same subject identity, scene structure, lighting, and composition. Only apply the requested change. \n[Subject and Context: standing in fire see this big fire a back pose @prem a location at. Perspective: Medium Shot framing.. Captured on ARRI Alexa 35, equipped with ARRI Signature Prime glass optics (modern, clean, ultra-premium cinematic blockbuster look with natural highlights) using a 35mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[REFERENCE ALIGNMENT DIRECTIVES]\nReference: @prem (CHARACTER) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1782550302826.png\n\n[FACE SYMMETRY DIRECTIVE]\nMake the face 100% symmetrical, matching the exact facial structure and features of the attached character reference image.\n\n[STYLE REFERENCE DIRECTIVE]\nMatch the overall aesthetic, color grading, lighting, composition style, and mood of the attached style reference image.]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T20:30:11.219Z"
+  },
+  {
+    "id": "local_1782678547847_fxa1d",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782678547273.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782678547273.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "standing in fire see this big fire a back pose @prem a location at. Perspective: Medium Shot framing.. Captured on ARRI Alexa 35, equipped with ARRI Signature Prime glass optics (modern, clean, ultra-premium cinematic blockbuster look with natural highlights) using a 35mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[REFERENCE ALIGNMENT DIRECTIVES]\nReference: @prem (CHARACTER) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1782550302826.png\n\n[FACE SYMMETRY DIRECTIVE]\nMake the face 100% symmetrical, matching the exact facial structure and features of the attached character reference image.\n\n[STYLE REFERENCE DIRECTIVE]\nMatch the overall aesthetic, color grading, lighting, composition style, and mood of the attached style reference image. [seed: 425075]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-28T20:29:07.847Z"
+  },
+  {
+    "id": "local_1782678377595_f57u8",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782678377028.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782678377028.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "standing in fire see this big fire a back pose @prem a location at @location. Perspective: Medium Shot framing.. Captured on ARRI Alexa 35, equipped with ARRI Signature Prime glass optics (modern, clean, ultra-premium cinematic blockbuster look with natural highlights) using a 35mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[REFERENCE ALIGNMENT DIRECTIVES]\nReference: @prem (CHARACTER) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1782550302826.png\nReference: @location (LOCATION) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1782561098754.png\n\n[FACE SYMMETRY DIRECTIVE]\nMake the face 100% symmetrical, matching the exact facial structure and features of the attached character reference image. [seed: 180550]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-28T20:26:17.595Z"
+  },
+  {
+    "id": "local_1782677513967_wh0lm",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782677513263.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782677513263.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REGENERATE / EDIT IMAGE:\nEdit this image according to this brief/instruction: \"see theere some  chain on his neck around remove that and make this short  cinematic\n\".\nSTRICT RULE: Keep the exact same subject identity, scene structure, lighting, and composition. Only apply the requested change. \n[Subject and Context: he fire up  all the bills cinematic shorts for fire - Extracted Angle 9 (Upscaled) - Extracted Angle 2 (Upscaled) (Brush Edited) - Extracted Angle 7 (Brush Edited) (Brush Edited) (Edited: c pose chage need from back side of the  camera faceing back\n) - Extracted Angle 8 (Upscaled) (Brush Edited) (Edited: make him turn like camera shuoul d see the back of him ) (Brush Edited)]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T20:11:53.967Z"
+  },
+  {
+    "id": "local_1782677432700_vcgse",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782677432315.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782677432315.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T20:10:32.700Z"
+  },
+  {
+    "id": "local_1782676466691_2yll2",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782676466364.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782676466364.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T19:54:26.691Z"
+  },
+  {
+    "id": "local_1782676327820_owomu",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782676327573.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782676327573.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REGENERATE / EDIT IMAGE:\nEdit this image according to this brief/instruction: \"make him turn like camera shuoul d see the back of him \".\nSTRICT RULE: Keep the exact same subject identity, scene structure, lighting, and composition. Only apply the requested change. \n[Subject and Context: he fire up  all the bills cinematic shorts for fire - Extracted Angle 9 (Upscaled) - Extracted Angle 2 (Upscaled) (Brush Edited) - Extracted Angle 7 (Brush Edited) (Brush Edited) (Edited: c pose chage need from back side of the  camera faceing back\n) - Extracted Angle 8 (Upscaled) (Brush Edited)]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T19:52:07.820Z"
+  },
+  {
+    "id": "local_1782676075526_xnpb8",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782676074905.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782676074905.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: he fire up  all the bills cinematic shorts for fire - Extracted Angle 9 (Upscaled) - Extracted Angle 2 (Upscaled) (Brush Edited) - Extracted Angle 7 (Brush Edited) (Brush Edited) (Edited: c pose chage need from back side of the  camera faceing back\n) - Extracted Angle 8]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T19:47:55.526Z"
+  },
+  {
+    "id": "local_1782676055185_wqoys",
+    "name": "crop_1782676054808.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782676054808.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "he fire up  all the bills cinematic shorts for fire - Extracted Angle 9 (Upscaled) - Extracted Angle 2 (Upscaled) (Brush Edited) - Extracted Angle 7 (Brush Edited) (Brush Edited) (Edited: c pose chage need from back side of the  camera faceing back\n) - Extracted Angle 8",
+    "engine": "Nano Banana 2 (Angle 9) (2K) (Angle 2) (2K) + Edit (Angle 7) + Edit + Edit (Edited) (Angle 8)",
+    "created_at": "2026-06-28T19:47:35.185Z"
+  },
+  {
+    "id": "local_1782676045842_874cb",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782676045331.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782676045331.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "replce the face eaaxctly as @prem. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with ARRI Signature Prime glass optics (modern, clean, ultra-premium cinematic blockbuster look with natural highlights) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[REFERENCE ALIGNMENT DIRECTIVES]\nReference: @prem (CHARACTER) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1782550302826.png\n\n[FACE SYMMETRY DIRECTIVE]\nMake the face 100% symmetrical, matching the exact facial structure and features of the attached character reference image. [seed: 86983]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-28T19:47:25.842Z"
+  },
+  {
+    "id": "local_1782675970448_xberq",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782675970065.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782675970065.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T19:46:10.448Z"
+  },
+  {
+    "id": "local_1782675942119_adcqc",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782675941603.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782675941603.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "replce the face eaaxctly as @prem. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[REFERENCE ALIGNMENT DIRECTIVES]\nReference: @prem (CHARACTER) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1782550302826.png\n\n[FACE SYMMETRY DIRECTIVE]\nMake the face 100% symmetrical, matching the exact facial structure and features of the attached character reference image. [seed: 929024]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-28T19:45:42.119Z"
+  },
+  {
+    "id": "local_1782675510604_0fype",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782675510296.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782675510296.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "You are a senior Hollywood storyboard artist. Generate a SINGLE vertical storyboard poster containing 6–8 cinematic panels fused seamlessly into one image, based entirely on the director's brief and chosen angle provided below.\n\nCRITICAL — CHARACTER CONSISTENCY: Copy the exact face structure, skin tone, hair color, hairstyle, eye shape, outfit, and body proportions from the reference image into EVERY panel without any deviation. Same person. Same clothes. Only camera angle and scene context changes.\n\nDIRECTOR'S ANGLE & BRIEF:\n[USER STORY SCENARIO BRIEF: he fire up the bills in beach \n]\n\nPANEL CONSTRUCTION RULES:\n- Read the user brief carefully and extract the core narrative arc\n- Divide the story into 6–8 distinct beats: setup → tension → action → peak → resolution\n- Assign a unique camera angle to each panel — no two panels should use the same framing\n- Camera angles to choose from: extreme wide, wide, medium, close-up, extreme close-up, low-angle, high-angle, bird's-eye, Dutch tilt, over-the-shoulder, POV, two-shot\n- Each panel must advance the story — no repeated moments or filler frames\n- Panels must read top-to-bottom as a coherent visual narrative\n\nVISUAL STYLE RULES:\n- Match the color grade and mood to the tone of the user's brief:\n  → Drama/emotion: warm amber + deep shadow, 35mm grain, shallow depth of field\n  → Action/thriller: high contrast blue-orange, motion blur, lens flares\n  → Sci-fi/fantasy: teal-magenta neon, volumetric fog, glowing practical lights\n  → Horror/dark: desaturated + single harsh practical light, heavy vignette\n  → Romance/character: soft golden hour, bokeh, intimate framing\n- Photorealistic, 8K quality, anamorphic lens aesthetics\n- Thin matte-black panel dividers between frames\n- All panels share the same lighting logic and color palette\n\nOUTPUT: One single seamless vertical image. No text overlays. No watermarks. No captions.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T19:38:30.604Z"
+  },
+  {
+    "id": "local_1782675450679_p452y",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782675450430.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782675450430.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T19:37:30.679Z"
+  },
+  {
+    "id": "local_1782675413327_zovrf",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782675412990.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782675412990.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REGENERATE / EDIT IMAGE:\nEdit this image according to this brief/instruction: \"c pose chage need from back side of the  camera faceing back\n\".\nSTRICT RULE: Keep the exact same subject identity, scene structure, lighting, and composition. Only apply the requested change. \n[Subject and Context: he fire up  all the bills cinematic shorts for fire - Extracted Angle 9 (Upscaled) - Extracted Angle 2 (Upscaled) (Brush Edited) - Extracted Angle 7 (Brush Edited) (Brush Edited)]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T19:36:53.328Z"
+  },
+  {
+    "id": "local_1782674368004_jo5f1",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782674367394.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782674367394.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: he fire up  all the bills cinematic shorts for fire - Extracted Angle 9 (Upscaled) - Extracted Angle 2 (Upscaled) (Brush Edited) - Extracted Angle 7]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T19:19:28.004Z"
+  },
+  {
+    "id": "local_1782674343470_40tbt",
+    "name": "crop_1782674343195.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782674343195.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "he fire up  all the bills cinematic shorts for fire - Extracted Angle 9 (Upscaled) - Extracted Angle 2 (Upscaled) (Brush Edited) - Extracted Angle 7",
+    "engine": "Nano Banana 2 (Angle 9) (2K) (Angle 2) (2K) + Edit (Angle 7)",
+    "created_at": "2026-06-28T19:19:03.471Z"
+  },
+  {
+    "id": "local_1782674330154_1m7et",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782674329740.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782674329740.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T19:18:50.155Z"
+  },
+  {
+    "id": "local_1782674296032_p67qz",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782674295537.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782674295537.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "need a back side short of this refrence image. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 850962]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-28T19:18:16.032Z"
+  },
+  {
+    "id": "local_1782674167346_1kd6t",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782674166944.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782674166944.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T19:16:07.346Z"
+  },
+  {
+    "id": "local_1782672104676_gyzgk",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782672104139.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782672104139.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: he fire up  all the bills cinematic shorts for fire - Extracted Angle 9 (Upscaled) - Extracted Angle 2 (Upscaled) - Extracted Angle 5]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T18:41:44.677Z"
+  },
+  {
+    "id": "local_1782672080014_dvchs",
+    "name": "crop_1782672079736.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782672079736.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "he fire up  all the bills cinematic shorts for fire - Extracted Angle 9 (Upscaled) - Extracted Angle 2 (Upscaled) - Extracted Angle 5",
+    "engine": "Nano Banana 2 (Angle 9) (2K) (Angle 2) (2K) (Angle 5)",
+    "created_at": "2026-06-28T18:41:20.014Z"
+  },
+  {
+    "id": "local_1782672057424_9igbi",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782672057163.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782672057163.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T18:40:57.425Z"
+  },
+  {
+    "id": "local_1782671933198_awmur",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671932616.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671932616.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: he fire up  all the bills cinematic shorts for fire - Extracted Angle 9 (Upscaled) - Extracted Angle 2]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T18:38:53.198Z"
+  },
+  {
+    "id": "local_1782671909000_o3pn9",
+    "name": "crop_1782671908647.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782671908647.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "he fire up  all the bills cinematic shorts for fire - Extracted Angle 9 (Upscaled) - Extracted Angle 2",
+    "engine": "Nano Banana 2 (Angle 9) (2K) (Angle 2)",
+    "created_at": "2026-06-28T18:38:29.000Z"
+  },
+  {
+    "id": "local_1782671894986_tpjhb",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671894293.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671894293.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T18:38:14.986Z"
+  },
+  {
+    "id": "local_1782671366407_1r754",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671365940.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671365940.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: he fire up  all the bills cinematic shorts for fire - Extracted Angle 9]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T18:29:26.408Z"
+  },
+  {
+    "id": "local_1782671341681_duzkq",
+    "name": "crop_1782671341352.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782671341352.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "he fire up  all the bills cinematic shorts for fire - Extracted Angle 9",
+    "engine": "Nano Banana 2 (Angle 9)",
+    "created_at": "2026-06-28T18:29:01.681Z"
+  },
+  {
+    "id": "local_1782671273251_ukmbw",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671272630.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671272630.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "You are generating a SINGLE vertical poster image that functions as a professional Netflix-style multi-panel storyboard. All panels must be seamlessly merged into one cohesive vertical composition.\n\nCRITICAL — CHARACTER CONSISTENCY: Preserve the exact face structure, facial features, skin tone, hair color, hairstyle, eye shape, outfit, and body proportions from the reference image across ALL panels. Do not alter or reinterpret the character in any frame.\n\nPANEL LAYOUT: Arrange 6–8 cinematic frames divided by thin matte-black film strip borders into a single vertical poster. Each panel must have a distinct camera angle:\nPanel 1 — Wide establishing shot of environment, character entering frame\nPanel 2 — Medium waist-up shot, character aware, scanning surroundings\nPanel 3 — Close-up of face, micro-expression of tension or curiosity\nPanel 4 — Action beat — movement, dynamic angle, motion blur on edges\nPanel 5 — Over-the-shoulder shot revealing what the character sees\nPanel 6 — Low-angle hero shot, character standing resolute\nPanel 7 — Emotional peak — extreme close-up of eyes, depth of field bokeh\nPanel 8 — Wide cinematic outro, character small against grand environment\n\nVISUAL STYLE: Netflix cinematic color grading, teal-orange LUT, volumetric lighting, 35mm film grain, anamorphic lens flares, shallow depth of field, photorealistic skin detail, 8K resolution quality, masterpiece composition. All panels must share identical lighting logic and color palette.\n\nOUTPUT: One single seamless vertical image. No white space. No text. No watermarks.\n\n[USER STORY SCENARIO BRIEF: Describe the specific actions or narrative detail to embed within the storyboard frames: \"he fire up  all the bills cinematic shorts for fire\"]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T18:27:53.252Z"
+  },
+  {
+    "id": "local_1782671167374_1h43v",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671166408.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671166408.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: Subject - Extracted Angle 7]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T18:26:07.374Z"
+  },
+  {
+    "id": "local_1782671166201_cchfc",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671165456.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671165456.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: Subject - Extracted Angle 9]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T18:26:06.201Z"
+  },
+  {
+    "id": "local_1782671141974_doy7y",
+    "name": "crop_1782671141491.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782671141491.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "aspect": "9:16"
+    },
+    "prompt": "Subject - Extracted Angle 7",
+    "engine": "Nano Banana 2 (Angle 7)",
+    "created_at": "2026-06-28T18:25:41.974Z"
+  },
+  {
+    "id": "local_1782671139031_3hxka",
+    "name": "crop_1782671138559.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782671138559.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "aspect": "9:16"
+    },
+    "prompt": "Subject - Extracted Angle 9",
+    "engine": "Nano Banana 2 (Angle 9)",
+    "created_at": "2026-06-28T18:25:39.031Z"
+  },
+  {
+    "id": "local_1782671118910_ikavq",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671118165.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671118165.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T18:25:18.910Z"
+  },
+  {
+    "id": "local_1782671063104_kc7rk",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671062361.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671062361.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T18:24:23.104Z"
+  },
+  {
+    "id": "local_1782667980395_cc83f",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667978580.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667978580.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "close up. Perspective: Medium Shot framing.. Captured on ARRI Alexa 35, equipped with ARRI Signature Prime glass optics (modern, clean, ultra-premium cinematic blockbuster look with natural highlights) using a 35mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 146661]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-28T17:33:00.395Z"
+  },
+  {
+    "id": "local_1782667603770_llw03",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667602572.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667602572.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context:  (Brush Edited) (Brush Edited)]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T17:26:43.771Z"
+  },
+  {
+    "id": "local_1782667591463_qbijj",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667589715.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667589715.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "close up. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with ARRI Signature Prime glass optics (modern, clean, ultra-premium cinematic blockbuster look with natural highlights) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 205882]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-28T17:26:31.463Z"
+  },
+  {
+    "id": "local_1782667316222_2plwv",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667315065.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667315065.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: mak all bills in this pic as  indian bills - Extracted Angle 3]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T17:21:56.222Z"
+  },
+  {
+    "id": "local_1782667289765_yj84y",
+    "name": "crop_1782667289510.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782667289510.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "mak all bills in this pic as  indian bills - Extracted Angle 3",
+    "engine": "nano-banana-2 (Angle 3)",
+    "created_at": "2026-06-28T17:21:29.765Z"
+  },
+  {
+    "id": "local_1782667275006_uu2ns",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667271897.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667271897.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T17:21:15.006Z"
+  },
+  {
+    "id": "local_1782665914852_n02jn",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782665914282.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782665914282.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: he  spliess the petrol on bills and take his litter and fire it up a cinmatic visual  - Extracted Angle 4 (Brush Edited)]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T16:58:34.852Z"
+  },
+  {
+    "id": "local_1782665353675_nhb0d",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782665352333.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782665352333.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "make this ref pic no litter in his hand. Perspective: Cowboy Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 50mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 843310]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-28T16:49:13.675Z"
+  },
+  {
+    "id": "local_1782665271895_7ujbx",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782665269953.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782665269953.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: he about to lit the fire thriugh litter\n\n - Extracted Angle 8]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T16:47:51.896Z"
+  },
+  {
+    "id": "local_1782665247713_d7hba",
+    "name": "crop_1782665246886.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782665246886.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "he about to lit the fire thriugh litter\n\n - Extracted Angle 8",
+    "engine": "Nano Banana 2 (Angle 8)",
+    "created_at": "2026-06-28T16:47:27.713Z"
+  },
+  {
+    "id": "local_1782665203769_tfh67",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782665202995.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782665202995.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "You are generating a SINGLE vertical poster image that functions as a professional Netflix-style multi-panel storyboard. All panels must be seamlessly merged into one cohesive vertical composition.\n\nCRITICAL — CHARACTER CONSISTENCY: Preserve the exact face structure, facial features, skin tone, hair color, hairstyle, eye shape, outfit, and body proportions from the reference image across ALL panels. Do not alter or reinterpret the character in any frame.\n\nPANEL LAYOUT: Arrange 6–8 cinematic frames divided by thin matte-black film strip borders into a single vertical poster. Each panel must have a distinct camera angle:\nPanel 1 — Wide establishing shot of environment, character entering frame\nPanel 2 — Medium waist-up shot, character aware, scanning surroundings\nPanel 3 — Close-up of face, micro-expression of tension or curiosity\nPanel 4 — Action beat — movement, dynamic angle, motion blur on edges\nPanel 5 — Over-the-shoulder shot revealing what the character sees\nPanel 6 — Low-angle hero shot, character standing resolute\nPanel 7 — Emotional peak — extreme close-up of eyes, depth of field bokeh\nPanel 8 — Wide cinematic outro, character small against grand environment\n\nVISUAL STYLE: Netflix cinematic color grading, teal-orange LUT, volumetric lighting, 35mm film grain, anamorphic lens flares, shallow depth of field, photorealistic skin detail, 8K resolution quality, masterpiece composition. All panels must share identical lighting logic and color palette.\n\nOUTPUT: One single seamless vertical image. No white space. No text. No watermarks.\n\n[USER STORY SCENARIO BRIEF: Describe the specific actions or narrative detail to embed within the storyboard frames: \"he about to lit the fire thriugh litter\n\n\"]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T16:46:43.769Z"
+  },
+  {
+    "id": "local_1782665091765_sl3y8",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782665089503.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782665089503.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T16:44:51.765Z"
+  },
+  {
+    "id": "local_1782664978723_moagh",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782664976636.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782664976636.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "in the refrence just remove the little and make the right hand put in the pocket. Perspective: Cowboy Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 50mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 66407]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-28T16:42:58.723Z"
+  },
+  {
+    "id": "local_1782664884699_nujl1",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782664883643.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782664883643.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "make his hand in pocket like grabbing the litter no  need little in new oic. Perspective: Cowboy Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 50mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 497690]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-28T16:41:24.699Z"
+  },
+  {
+    "id": "local_1782664791513_h9a4a",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782664789872.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782664789872.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "mkae it no little in his hand  his hand in the pocket. Perspective: Medium Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 35mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 384396]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-28T16:39:51.513Z"
+  },
+  {
+    "id": "local_1782664627110_qayuy",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782664625618.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782664625618.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: he  spliess the petrol on bills and take his litter and fire it up a cinmatic visual  - Extracted Angle 5]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T16:37:07.110Z"
+  },
+  {
+    "id": "local_1782664601035_fkwy5",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782664599186.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782664599186.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: he  spliess the petrol on bills and take his litter and fire it up a cinmatic visual  - Extracted Angle 4]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T16:36:41.035Z"
+  },
+  {
+    "id": "local_1782664600639_h806k",
+    "name": "crop_1782664599761.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782664599761.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "he  spliess the petrol on bills and take his litter and fire it up a cinmatic visual  - Extracted Angle 5",
+    "engine": "Nano Banana 2 (Angle 5)",
+    "created_at": "2026-06-28T16:36:40.639Z"
+  },
+  {
+    "id": "local_1782664574944_4qkv6",
+    "name": "crop_1782664572024.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782664572024.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "he  spliess the petrol on bills and take his litter and fire it up a cinmatic visual  - Extracted Angle 4",
+    "engine": "Nano Banana 2 (Angle 4)",
+    "created_at": "2026-06-28T16:36:14.944Z"
+  },
+  {
+    "id": "local_1782664553571_4vaw8",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782664553069.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782664553069.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "You are a senior Hollywood storyboard artist. Generate a SINGLE vertical storyboard poster containing 6–8 cinematic panels fused seamlessly into one image, based entirely on the director's brief and chosen angle provided below.\n\nCRITICAL — CHARACTER CONSISTENCY: Copy the exact face structure, skin tone, hair color, hairstyle, eye shape, outfit, and body proportions from the reference image into EVERY panel without any deviation. Same person. Same clothes. Only camera angle and scene context changes.\n\nDIRECTOR'S ANGLE & BRIEF:\n[USER STORY SCENARIO BRIEF: he  spliess the petrol on bills and take his litter and fire it up a cinmatic visual ]\n\nPANEL CONSTRUCTION RULES:\n- Read the user brief carefully and extract the core narrative arc\n- Divide the story into 6–8 distinct beats: setup → tension → action → peak → resolution\n- Assign a unique camera angle to each panel — no two panels should use the same framing\n- Camera angles to choose from: extreme wide, wide, medium, close-up, extreme close-up, low-angle, high-angle, bird's-eye, Dutch tilt, over-the-shoulder, POV, two-shot\n- Each panel must advance the story — no repeated moments or filler frames\n- Panels must read top-to-bottom as a coherent visual narrative\n\nVISUAL STYLE RULES:\n- Match the color grade and mood to the tone of the user's brief:\n  → Drama/emotion: warm amber + deep shadow, 35mm grain, shallow depth of field\n  → Action/thriller: high contrast blue-orange, motion blur, lens flares\n  → Sci-fi/fantasy: teal-magenta neon, volumetric fog, glowing practical lights\n  → Horror/dark: desaturated + single harsh practical light, heavy vignette\n  → Romance/character: soft golden hour, bokeh, intimate framing\n- Photorealistic, 8K quality, anamorphic lens aesthetics\n- Thin matte-black panel dividers between frames\n- All panels share the same lighting logic and color palette\n\nOUTPUT: One single seamless vertical image. No text overlays. No watermarks. No captions.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T16:35:53.571Z"
+  },
+  {
+    "id": "local_1782663798638_92fh9",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782663797521.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782663797521.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "the back side bills re the fall on ground make little visible it slittle blur now. Perspective: Medium Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 35mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 59731]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-28T16:23:18.638Z"
+  },
+  {
+    "id": "local_1782663706458_dzsuz",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782663705569.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782663705569.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "the back side bills re the fall on ground make little visible it slittle blur now. Perspective: Medium Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 35mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[STYLE REFERENCE DIRECTIVE]\nMatch the overall aesthetic, color grading, lighting, composition style, and mood of the attached style reference image. [seed: 223390]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-28T16:21:46.458Z"
+  },
+  {
+    "id": "local_1782663195226_qibc8",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782663189893.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782663189893.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "mak all bills in this pic as  indian bills. Perspective: Medium Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 35mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[STYLE REFERENCE DIRECTIVE]\nMatch the overall aesthetic, color grading, lighting, composition style, and mood of the attached style reference image. [seed: 682003]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-28T16:13:15.226Z"
+  },
+  {
+    "id": "local_1782663098701_3xzts",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782663096761.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782663096761.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "make this indian bills. Perspective: Medium Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 35mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[STYLE REFERENCE DIRECTIVE]\nMatch the overall aesthetic, color grading, lighting, composition style, and mood of the attached style reference image. [seed: 524309]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-06-28T16:11:38.702Z"
+  },
+  {
+    "id": "local_1782662852625_t6w5g",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782662851622.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782662851622.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: he take his litter  colose and  he ill fire up the indian bills\n - Extracted Angle 2]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T16:07:32.625Z"
+  },
+  {
+    "id": "local_1782662851201_zq1w6",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782662850179.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782662850179.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: he take his litter  colose and  he ill fire up the indian bills\n - Extracted Angle 7]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T16:07:31.201Z"
+  },
+  {
+    "id": "local_1782662826876_ihbta",
+    "name": "crop_1782662826125.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782662826125.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "he take his litter  colose and  he ill fire up the indian bills\n - Extracted Angle 7",
+    "engine": "Nano Banana 2 (Angle 7)",
+    "created_at": "2026-06-28T16:07:06.876Z"
+  },
+  {
+    "id": "local_1782662826620_xpyu5",
+    "name": "crop_1782662826122.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782662826122.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "he take his litter  colose and  he ill fire up the indian bills\n - Extracted Angle 2",
+    "engine": "Nano Banana 2 (Angle 2)",
+    "created_at": "2026-06-28T16:07:06.620Z"
+  },
+  {
+    "id": "local_1782662768753_nfe7w",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782662768116.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782662768116.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "You are generating a SINGLE vertical poster image that functions as a professional Netflix-style multi-panel storyboard. All panels must be seamlessly merged into one cohesive vertical composition.\n\nCRITICAL — CHARACTER CONSISTENCY: Preserve the exact face structure, facial features, skin tone, hair color, hairstyle, eye shape, outfit, and body proportions from the reference image across ALL panels. Do not alter or reinterpret the character in any frame.\n\nPANEL LAYOUT: Arrange 6–8 cinematic frames divided by thin matte-black film strip borders into a single vertical poster. Each panel must have a distinct camera angle:\nPanel 1 — Wide establishing shot of environment, character entering frame\nPanel 2 — Medium waist-up shot, character aware, scanning surroundings\nPanel 3 — Close-up of face, micro-expression of tension or curiosity\nPanel 4 — Action beat — movement, dynamic angle, motion blur on edges\nPanel 5 — Over-the-shoulder shot revealing what the character sees\nPanel 6 — Low-angle hero shot, character standing resolute\nPanel 7 — Emotional peak — extreme close-up of eyes, depth of field bokeh\nPanel 8 — Wide cinematic outro, character small against grand environment\n\nVISUAL STYLE: Netflix cinematic color grading, teal-orange LUT, volumetric lighting, 35mm film grain, anamorphic lens flares, shallow depth of field, photorealistic skin detail, 8K resolution quality, masterpiece composition. All panels must share identical lighting logic and color palette.\n\nOUTPUT: One single seamless vertical image. No white space. No text. No watermarks.\n\n[USER STORY SCENARIO BRIEF: Describe the specific actions or narrative detail to embed within the storyboard frames: \"he take his litter  colose and  he ill fire up the indian bills\n\"]",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T16:06:08.753Z"
+  },
+  {
+    "id": "local_1782662669409_2rkyt",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782662668519.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782662668519.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image-preview",
+    "created_at": "2026-06-28T16:04:29.409Z"
+  },
+  {
+    "id": "local_1782661441528_bex19",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782661440558.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782661440558.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "created_at": "2026-06-28T15:44:01.528Z"
+  },
+  {
+    "id": "local_1782661110021_iycp1",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782661109549.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782661109549.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "created_at": "2026-06-28T15:38:30.021Z"
+  },
+  {
+    "id": "local_1782661109753_sz591",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782661109026.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782661109026.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "created_at": "2026-06-28T15:38:29.753Z"
+  },
+  {
+    "id": "local_1782659905646_f8asl",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782659905246.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782659905246.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "created_at": "2026-06-28T15:18:25.646Z"
+  },
+  {
+    "id": "local_1782659624933_lxlte",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782659623981.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782659623981.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "created_at": "2026-06-28T15:13:44.933Z"
+  },
+  {
+    "id": "local_1782659623629_9il1r",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782659622623.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782659622623.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "created_at": "2026-06-28T15:13:43.629Z"
+  },
+  {
+    "id": "local_1782647438469_rr7qc",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782647437551.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782647437551.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "1:1",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "created_at": "2026-06-28T11:50:38.470Z"
+  },
+  {
     "id": "local_1782589659013_xvy6z",
     "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782589658582.jpeg",
     "type": "image",

@@ -5,6 +5,7 @@ export default function createRouter(deps) {
     const router = express.Router();
     const {
         consumeCredits,
+        claimOrCreateSpend,
         handleGoogle,
         handleOpenAI,
         openaiChat,
@@ -44,8 +45,9 @@ export default function createRouter(deps) {
             }
 
             if (targetUserId) {
-                console.log(`[Generate Image] Consuming ${requiredCredits} credits for user: ${targetUserId} using model: ${model}`);
-                await consumeCredits(targetUserId, requiredCredits);
+                const creditReason = req.body.creditReason || 'cinematic_image_generation';
+                console.log(`[Generate Image] Consuming/Claiming ${requiredCredits} credits for user: ${targetUserId} using model: ${model} (reason: ${creditReason})`);
+                await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
             }
 
             if (model === 'gpt-image-2' || model === 'gpt-image-1' || model?.startsWith('gpt') || model?.startsWith('dall')) {

@@ -413,7 +413,7 @@ export const NanoBananaNode = memo(({ id, data }) => {
                             </div>
                             <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
                         </div>
-                        <div className="flex-1 overflow-hidden">
+                        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
                             <AssetsLibrary compact={true} onSelectReference={handleGalleryPick} />
                         </div>
                     </motion.div>

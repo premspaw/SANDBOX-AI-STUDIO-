@@ -233,42 +233,43 @@ export const ReferencePanel = ({
 
                 <input type="file" ref={refUploadInputRef} className="hidden" accept="image/*,video/mp4,audio/mp3" onChange={handleRefUpload} />
 
-                {showLibPicker && (
-                    <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
-                        <div onClick={() => setShowLibPicker(false)} className="absolute inset-0 bg-black/70 backdrop-blur-md" />
-                        <div className="relative w-full max-w-2xl bg-[#0e0e0e] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
-                            <div className="p-4 border-b border-white/5 flex items-center justify-between">
-                                <h4 className="text-sm font-bold text-white uppercase tracking-widest">Select {libPickerTarget?.toUpperCase() || 'Reference'}</h4>
-                                <button onClick={() => setShowLibPicker(false)} className="p-1 hover:bg-white/10 rounded-full transition-colors"><X className="w-4 h-4 text-gray-400" /></button>
-                            </div>
-                            <div className="flex-1 overflow-hidden p-4">
-                                <AssetsLibrary compact={true} defaultTab={libPickerTarget === 'characters' ? 'matrix' : 'images'} onSelectReference={(url, item) => {
-                                    // Parse and clean name to make it a valid @mention identifier
-                                    let cleanName = item.name || 'Reference';
-                                    if (cleanName.toUpperCase().startsWith('NAME:')) {
-                                        const parts = cleanName.split(',');
-                                        cleanName = parts[0].substring(5).trim();
-                                    }
-                                    if (cleanName.includes(' — ')) {
-                                        cleanName = cleanName.split(' — ')[0].trim();
-                                    }
-                                    const name = cleanName.replace(/[^\w]/g, '');
+            </div>
 
-                                    const category = libPickerTarget?.replace(/s$/, '') || item.category || (item.isCharacter ? 'character' : 'mood');
-                                    addRefItem({
-                                        id: crypto.randomUUID(),
-                                        name,
-                                        category,
-                                        imageUrl: url,
-                                        isMatrix: !!(item.isMatrix || item.identity_kit?.matrix)
-                                    });
-                                    setShowLibPicker(false);
-                                }} />
-                            </div>
+            {showLibPicker && (
+                <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+                    <div onClick={() => setShowLibPicker(false)} className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+                    <div className="relative w-full max-w-2xl bg-[#0e0e0e] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
+                        <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-white uppercase tracking-widest">Select {libPickerTarget?.toUpperCase() || 'Reference'}</h4>
+                            <button onClick={() => setShowLibPicker(false)} className="p-1 hover:bg-white/10 rounded-full transition-colors"><X className="w-4 h-4 text-gray-400" /></button>
+                        </div>
+                        <div className="flex-1 overflow-hidden min-h-0 flex flex-col p-4">
+                            <AssetsLibrary compact={true} defaultTab={libPickerTarget === 'characters' ? 'matrix' : 'images'} onSelectReference={(url, item) => {
+                                // Parse and clean name to make it a valid @mention identifier
+                                let cleanName = item.name || 'Reference';
+                                if (cleanName.toUpperCase().startsWith('NAME:')) {
+                                    const parts = cleanName.split(',');
+                                    cleanName = parts[0].substring(5).trim();
+                                }
+                                if (cleanName.includes(' — ')) {
+                                    cleanName = cleanName.split(' — ')[0].trim();
+                                }
+                                const name = cleanName.replace(/[^\w]/g, '');
+
+                                const category = libPickerTarget?.replace(/s$/, '') || item.category || (item.isCharacter ? 'character' : 'mood');
+                                addRefItem({
+                                    id: crypto.randomUUID(),
+                                    name,
+                                    category,
+                                    imageUrl: url,
+                                    isMatrix: !!(item.isMatrix || item.identity_kit?.matrix)
+                                });
+                                setShowLibPicker(false);
+                            }} />
                         </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 };

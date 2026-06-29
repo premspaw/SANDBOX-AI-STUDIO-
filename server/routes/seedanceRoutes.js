@@ -2,7 +2,7 @@ import express from 'express';
 
 export default function createRouter(deps) {
     const router = express.Router();
-    const { uploadVideoToSupabase, resolveToPublicUrl, requireAuth, consumeCredits } = deps;
+    const { uploadVideoToSupabase, resolveToPublicUrl, requireAuth, consumeCredits, claimOrCreateSpend } = deps;
 
     const generateKieTask = async ({
         prompt,
@@ -106,8 +106,9 @@ export default function createRouter(deps) {
             }
 
             if (targetUserId) {
-                console.log(`[SEEDANCE-GEN] Consuming ${requiredCredits} credits for user: ${targetUserId} (duration: ${durationNum}s, res: ${resLower})`);
-                await consumeCredits(targetUserId, requiredCredits);
+                const creditReason = req.body.creditReason || 'cinematic_video_generation';
+                console.log(`[SEEDANCE-GEN] Consuming/Claiming ${requiredCredits} credits for user: ${targetUserId} (duration: ${durationNum}s, res: ${resLower}, reason: ${creditReason})`);
+                await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
             }
 
             console.log(`[SEEDANCE-GEN] Initiating generation | engine: ${engine} | duration: ${duration}s | ratio: ${aspectRatio} | audio: ${generateAudio}`);

@@ -518,7 +518,7 @@ export const Seedance15ProNode = memo(({ id, data }) => {
                         </div>
 
                         {/* Gallery Content */}
-                        <div className="flex-1 overflow-hidden">
+                        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
                             <AssetsLibrary
                                 compact={true}
                                 defaultTab={'images'}

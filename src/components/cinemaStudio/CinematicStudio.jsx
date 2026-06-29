@@ -666,20 +666,31 @@ export default function CinematicStudio() {
             })
             .map(asset => {
               let aspectVal = asset.aspect || '16:9';
+              let isGridVal = false;
               if (asset.metadata) {
                 try {
                   const meta = typeof asset.metadata === 'string' ? JSON.parse(asset.metadata) : asset.metadata;
                   aspectVal = meta.aspect || meta.aspectRatio || meta.aspect_ratio || aspectVal;
+                  isGridVal = !!meta.isGrid;
                 } catch (_) { /* ignore malformed metadata JSON */ }
               }
+              const cleanPrompt = asset.prompt || '';
+              const cleanEngine = asset.engine || (asset.type === 'video' ? 'Veo 3.1' : 'Nano Banana 2');
+              const finalIsGrid = isGridVal || 
+                                  cleanPrompt.toLowerCase().includes('grid') || 
+                                  cleanPrompt.toLowerCase().includes('contact sheet') || 
+                                  cleanPrompt.toLowerCase().includes('9-frame') || 
+                                  cleanPrompt.toLowerCase().includes('3x3') || 
+                                  cleanEngine.toLowerCase().includes('grid');
               return {
                 id: asset.id,
                 type: asset.type === 'video' ? 'video' : 'image',
                 url: asset.url,
-                prompt: asset.prompt || '',
-                engine: asset.engine || (asset.type === 'video' ? 'Veo 3.1' : 'Nano Banana 2'),
+                prompt: cleanPrompt,
+                engine: cleanEngine,
                 aspect: aspectVal,
-                ts: asset.created_at ? new Date(asset.created_at).getTime() : Date.now()
+                ts: asset.created_at ? new Date(asset.created_at).getTime() : Date.now(),
+                isGrid: finalIsGrid
               };
             });
           
@@ -786,7 +797,8 @@ DO NOT add new objects or change the scene. Enhance only.
         imageSize: '2K',
         resolution: '2K',
         referenceImages: [item.url], // Pass URL directly — let backend download to escape browser CORS limitations!
-        userId
+        userId,
+        creditReason: 'image_upscale_4k'
       };
 
       const resp = await fetch(getApiUrl('/api/generate-image'), {
@@ -884,7 +896,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           aspectRatio: item.aspect || '16:9',
           size: item.aspect === '9:16' ? '1024x1792' : item.aspect === '1:1' ? '1024x1024' : '1792x1024',
           userId,
-          referenceImages: [item.url]
+          referenceImages: [item.url],
+          creditReason: 'image_grid_multishot',
+          isGrid: true
         })
       });
 
@@ -899,7 +913,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           prompt: `Multi-Angle 3x3 Grid: ${item.prompt ? item.prompt.split('.')[0] : 'Subject'}`,
           engine: `${item.engine} (Grid)`,
           aspect: item.aspect || "16:9",
-          ts: Date.now()
+          ts: Date.now(),
+          isGrid: true
         };
 
         setGallery(prev => [newItem, ...prev]);
@@ -1470,7 +1485,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   };
 
   /* ─── SEEDANCE POLL ──────────────────────────────────────── */
-  const pollSeedanceTask = async (taskId, activePrompt, activeRatio, engine) => {
+  const pollSeedanceTask = async (taskId, activePrompt, activeRatio, engine, tempId = null) => {
     setStatus('polling');
     const engineLabel = engine.includes('fast') ? 'Seedance Fast' : engine.includes('mini') ? 'Seedance Mini' : 'Seedance 2.0';
 
@@ -1487,7 +1502,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         if (st === 'completed') {
           const url = json.url;
           if (url) {
-            setGallery(prev => [{
+            const finishedItem = {
               id: Date.now(),
               type: 'video',
               url: url,
@@ -1495,7 +1510,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               engine: engineLabel,
               aspect: activeRatio,
               ts: Date.now()
-            }, ...prev]);
+            };
+
+            setGallery(prev => {
+              if (tempId && prev.some(item => item.id === tempId)) {
+                return prev.map(item => item.id === tempId ? finishedItem : item);
+              }
+              return [finishedItem, ...prev];
+            });
+
             setStatus('idle');
             setPollMsg('');
             refreshShorts();
@@ -1504,6 +1527,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         }
 
         if (st === 'failed' || st === 'error') {
+          if (tempId) {
+            setGallery(prev => prev.filter(item => item.id !== tempId));
+          }
           setStatus('error');
           const cleanErr = cleanErrorMessage(json.error || json.message || `${engineLabel} generation failed.`);
           setErrorMsg(cleanErr);
@@ -1517,6 +1543,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         console.warn('[Seedance Poll Error]:', pollErr.message);
         continue;
       }
+    }
+    if (tempId) {
+      setGallery(prev => prev.filter(item => item.id !== tempId));
     }
     setStatus('error');
     const timeoutMsg = `${engineLabel} compilation timed out.`;
@@ -1745,11 +1774,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     const identity_images = taggedItems.map(item => item.imageUrl).filter(Boolean);
     const identity_gcs_uris = taggedItems.map(item => ({ name: item.name, uri: item.imageUrl }));
 
-    // Deduct credits
+    // Deduct credits for each variation separately to prevent double-charging and match backend verification
     try {
-      const spendResult = await spendShorts(userId, requiredCredits, activeTab === 'image' ? 'cinematic_image_generation' : 'cinematic_video_generation');
-      if (!spendResult.success) {
-        throw new Error(spendResult.reason || 'Failed to authorize credit deduction.');
+      const singleCost = getRequiredCredits(activeEngine);
+      const spendPromises = Array.from({ length: variationCount }).map(() =>
+        spendShorts(userId, singleCost, activeTab === 'image' ? 'cinematic_image_generation' : 'cinematic_video_generation')
+      );
+      const spendResults = await Promise.all(spendPromises);
+      if (spendResults.some(r => !r.success)) {
+        throw new Error('Failed to authorize credit deduction.');
       }
     } catch (err) {
       setStatus('error');
@@ -1783,6 +1816,19 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           if (!reqRefImages.includes(img)) reqRefImages.push(img);
         });
 
+        const engineLabel = IMAGE_ENGINES.find(e => e.id === activeEngine)?.label || 'Nano Banana 2';
+
+        // Pre-populate gallery with placeholder loading items
+        const tempItems = Array.from({ length: variationCount }).map((_, idx) => ({
+          id: `temp-image-${Date.now()}-${idx}`,
+          type: 'image',
+          loading: true,
+          prompt: finalPrompt,
+          aspect: activeRatio,
+          ts: Date.now() + (variationCount - idx)
+        }));
+        setGallery(prev => [...tempItems, ...prev]);
+
         if (variationCount > 1) {
           setPollMsg(`Developing ${variationCount} variations...`);
         }
@@ -1791,6 +1837,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
         // Execute generations in parallel
         const promises = Array.from({ length: variationCount }).map(async (_, idx) => {
+          const tempId = tempItems[idx].id;
           const seedVal = Math.floor(Math.random() * 1000000);
           const tweakedPrompt = `${finalPrompt} [seed: ${seedVal}]`;
 
@@ -1800,41 +1847,48 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           const _imgHeaders = { 'Content-Type': 'application/json' };
           if (_adminTrialOn && _adminKey) _imgHeaders['x-admin-trial-key'] = _adminKey;
 
-          const resp = await fetch(getApiUrl('/api/generate-image'), {
-            method: 'POST',
-            headers: _imgHeaders,
-            body: JSON.stringify({
-              model: activeEngine,
-              prompt: tweakedPrompt,
-              size: finalSize,
-              aspectRatio: activeRatio,
-              imageSize: resVal,
-              resolution: resVal,
-              userId,
-              referenceImages: reqRefImages
-            })
-          });
+          try {
+            const resp = await fetch(getApiUrl('/api/generate-image'), {
+              method: 'POST',
+              headers: _imgHeaders,
+              body: JSON.stringify({
+                model: activeEngine,
+                prompt: tweakedPrompt,
+                size: finalSize,
+                aspectRatio: activeRatio,
+                imageSize: resVal,
+                resolution: resVal,
+                userId,
+                referenceImages: reqRefImages,
+                creditReason: 'cinematic_image_generation'
+              })
+            });
 
-          const data = await resp.json();
-          if (!resp.ok) throw new Error(data.error || `Image variation ${idx + 1} failed.`);
-          if (!data.url) throw new Error(`Variation ${idx + 1} returned no URL.`);
-          return data.url;
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || `Image variation ${idx + 1} failed.`);
+            if (!data.url) throw new Error(`Variation ${idx + 1} returned no URL.`);
+
+            // Replace placeholder in gallery immediately
+            const finishedItem = {
+              id: Date.now() + idx + Math.random(),
+              type: 'image',
+              url: data.url,
+              prompt: finalPrompt,
+              engine: engineLabel,
+              aspect: activeRatio,
+              ts: Date.now()
+            };
+            setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
+            return data.url;
+          } catch (err) {
+            // Remove the placeholder if this variation failed
+            setGallery(prev => prev.filter(item => item.id !== tempId));
+            throw err;
+          }
         });
 
-        const urls = await Promise.all(promises);
-        const engineLabel = IMAGE_ENGINES.find(e => e.id === activeEngine)?.label || 'Nano Banana 2';
+        await Promise.all(promises);
         
-        const newItems = urls.map((url, idx) => ({
-          id: Date.now() + idx,
-          type: 'image',
-          url,
-          prompt: finalPrompt,
-          engine: engineLabel,
-          aspect: activeRatio,
-          ts: Date.now()
-        }));
-
-        setGallery(prev => [...newItems, ...prev]);
         setStatus('idle');
         setPollMsg('');
         refreshShorts();
@@ -1862,6 +1916,17 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           targetModel = 'veo-3.1-fast-generate-preview';
         }
 
+        // Pre-populate gallery with placeholder loading items
+        const tempItems = Array.from({ length: variationCount }).map((_, idx) => ({
+          id: `temp-video-${Date.now()}-${idx}`,
+          type: 'video',
+          loading: true,
+          prompt: compiledPrompt,
+          aspect: activeRatio,
+          ts: Date.now() + (variationCount - idx)
+        }));
+        setGallery(prev => [...tempItems, ...prev]);
+
         if (variationCount > 1) {
           setPollMsg(`Rendering ${variationCount} video variations...`);
         }
@@ -1870,6 +1935,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
         // Execute generations in parallel
         const promises = Array.from({ length: variationCount }).map(async (_, idx) => {
+          const tempId = tempItems[idx].id;
           const seedVal = Math.floor(Math.random() * 1000000);
           const tweakedPrompt = `${compiledPrompt} [seed: ${seedVal}]`;
 
@@ -1878,46 +1944,54 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           const _veoHeaders = { 'Content-Type': 'application/json' };
           if (_veoAdminOn && _veoAdminKey) _veoHeaders['x-admin-trial-key'] = _veoAdminKey;
 
-          const resp = await fetch(getApiUrl('/api/veo-i2v'), {
-            method: 'POST',
-            headers: _veoHeaders,
-            body: JSON.stringify({
-              image: firstFrameImage || undefined,
-              firstFrameImage: firstFrameImage || undefined,
-              lastFrameImage: lastFrameImage || undefined,
-              imageEnd: lastFrameImage || undefined,
-              motionPrompt: tweakedPrompt,
-              duration,
-              aspectRatio: activeRatio,
-              resolution,
-              model: targetModel,
-              identity_images,
-              identity_gcs_uris,
-              referenceImages: identity_images,
-              userId,
-              generateAudio
-            })
-          });
+          try {
+            const resp = await fetch(getApiUrl('/api/veo-i2v'), {
+              method: 'POST',
+              headers: _veoHeaders,
+              body: JSON.stringify({
+                image: firstFrameImage || undefined,
+                firstFrameImage: firstFrameImage || undefined,
+                lastFrameImage: lastFrameImage || undefined,
+                imageEnd: lastFrameImage || undefined,
+                motionPrompt: tweakedPrompt,
+                duration,
+                aspectRatio: activeRatio,
+                resolution,
+                model: targetModel,
+                identity_images,
+                identity_gcs_uris,
+                referenceImages: identity_images,
+                userId,
+                generateAudio,
+                creditReason: 'cinematic_video_generation'
+              })
+            });
 
-          const data = await resp.json();
-          if (!resp.ok) throw new Error(data.error || `Video variation ${idx + 1} failed.`);
-          if (!data.videoUrl) throw new Error(`Variation ${idx + 1} returned no videoUrl.`);
-          return data.videoUrl;
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || `Video variation ${idx + 1} failed.`);
+            if (!data.videoUrl) throw new Error(`Variation ${idx + 1} returned no videoUrl.`);
+
+            // Replace placeholder in gallery immediately
+            const finishedItem = {
+              id: Date.now() + idx + Math.random(),
+              type: 'video',
+              url: data.videoUrl,
+              prompt: compiledPrompt,
+              engine: engineLabel,
+              aspect: activeRatio,
+              ts: Date.now()
+            };
+            setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
+            return data.videoUrl;
+          } catch (err) {
+            // Remove the placeholder if this variation failed
+            setGallery(prev => prev.filter(item => item.id !== tempId));
+            throw err;
+          }
         });
 
-        const urls = await Promise.all(promises);
+        await Promise.all(promises);
 
-        const newItems = urls.map((url, idx) => ({
-          id: Date.now() + idx,
-          type: 'video',
-          url,
-          prompt: compiledPrompt,
-          engine: engineLabel,
-          aspect: activeRatio,
-          ts: Date.now()
-        }));
-
-        setGallery(prev => [...newItems, ...prev]);
         setStatus('idle');
         setPollMsg('');
         refreshShorts();
@@ -1932,6 +2006,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         await triggerRefund('cinematic_video_generation');
       }
     } else if (activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini') {
+      const tempId = `temp-seedance-${Date.now()}`;
       try {
         if (variationCount > 1) {
           const showToast = useAppStore.getState().showToast;
@@ -1946,6 +2021,17 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
         const seedanceContentArray = buildSeedanceContentArray(compiledPrompt, taggedItems, null, null, seedanceRefs);
 
+        // Pre-populate gallery with placeholder loading item
+        const tempItem = {
+          id: tempId,
+          type: 'video',
+          loading: true,
+          prompt: compiledPrompt,
+          aspect: activeRatio,
+          ts: Date.now()
+        };
+        setGallery(prev => [tempItem, ...prev]);
+
         const resp = await fetch(getApiUrl('/api/seedance/generate'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1957,7 +2043,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             aspectRatio: activeRatio,
             resolution,
             userId,
-            generateAudio
+            generateAudio,
+            creditReason: 'cinematic_video_generation'
           })
         });
 
@@ -1967,8 +2054,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         const taskId = json.requestId;
         if (!taskId) throw new Error('No task ID returned from backend.');
 
-        await pollSeedanceTask(taskId, basePrompt, activeRatio, json.engine || activeEngine);
+        await pollSeedanceTask(taskId, basePrompt, activeRatio, json.engine || activeEngine, tempId);
       } catch (err) {
+        // Remove the placeholder on failure
+        setGallery(prev => prev.filter(item => item.id !== tempId));
         setStatus('error');
         const label = ENGINES.find(e => e.id === activeEngine)?.label || 'Seedance';
         const cleanErr = cleanErrorMessage(err.message || `${label} engine failed.`);
@@ -1986,7 +2075,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   // Distribute gallery items into 5 columns for responsive masonry Grid flow
   const renderItems = [];
-  if (isBusy) {
+  const hasLoadingItems = gallery.some(item => item.loading);
+  if (isBusy && !hasLoadingItems) {
     renderItems.push({ isLoader: true });
   }
   renderItems.push(...gallery);
@@ -2090,14 +2180,18 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               {columnsData.map((colItems, colIdx) => (
                 <div key={colIdx} className="flex flex-col gap-3">
                   {colItems.map((item, itemIdx) => {
-                    if (item.isLoader) {
+                    if (item.isLoader || item.loading) {
+                      const isImageLoader = item.type === 'image' || (item.isLoader && activeTab === 'image');
                       return (
-                        <div key="loader" className="rounded-2xl border border-fuchsia-500/15 bg-black/60 backdrop-blur-lg overflow-hidden">
-                          <div className="aspect-video flex flex-col items-center justify-center p-6 space-y-4">
+                        <div key={item.id || "loader"} className="rounded-2xl border border-fuchsia-500/15 bg-black/60 backdrop-blur-lg overflow-hidden">
+                          <div className={cn(
+                            "flex flex-col items-center justify-center p-6 space-y-4",
+                            item.aspect === '9:16' ? 'aspect-[9/16]' : item.aspect === '1:1' ? 'aspect-square' : 'aspect-video'
+                          )}>
                             <div className="relative w-14 h-14">
                               <div className="absolute inset-0 rounded-full border-2 border-white/5" />
                               <div className="absolute inset-0 rounded-full border-2 border-t-fuchsia-400 border-r-transparent border-b-transparent border-l-transparent animate-spin" />
-                              {activeTab === 'image' ? (
+                              {isImageLoader ? (
                                 <ImageIcon className="absolute inset-0 m-auto w-5 h-5 text-fuchsia-400" />
                               ) : (
                                 <Film className="absolute inset-0 m-auto w-5 h-5 text-fuchsia-400" />
@@ -2105,9 +2199,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                             </div>
                             <div className="text-center space-y-1.5">
                               <span className="text-[8px] font-black uppercase text-fuchsia-400/80 tracking-[0.2em] block">
-                                {pollMsg || (activeTab === 'image' ? 'Developing canvas' : 'Compiling frames')}
+                                {item.loading ? (item.type === 'image' ? 'Developing canvas' : 'Compiling frames') : (pollMsg || (activeTab === 'image' ? 'Developing canvas' : 'Compiling frames'))}
                               </span>
-                              {activeTab === 'image' ? (
+                              {isImageLoader ? (
                                 <p className="text-white/60 text-xs font-black uppercase tracking-widest text-center max-w-xs animate-pulse">
                                   🎨 Sketching fine details...
                                 </p>
