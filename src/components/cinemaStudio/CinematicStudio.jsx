@@ -3009,6 +3009,42 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                           </p>
                         </div>
 
+                        {/* Image Editing / Ref Board Hacks (At the very top!) */}
+                        <div className="space-y-1">
+                          <p className="text-[8px] font-black text-rose-400 uppercase tracking-wider px-1">✂️ Edit & Remix (Image-to-Image)</p>
+                          <div className="space-y-1">
+                            {[
+                              { label: 'Change the character', value: 'Change the character: keep style, setting, and composition, but swap the subject to [new subject]' },
+                              { label: 'Adjust the composition', value: 'Adjust the composition: change camera angle or framing to [new framing]', resetCamera: true },
+                              { label: 'Alter the action', value: 'Alter the action: modify what the character is doing to [new action]' },
+                              { label: 'Swap the setting', value: 'Swap the setting: change environment/background to [new background]' },
+                              { label: 'Rethink the style', value: 'Rethink the style: change visual medium/color grade to [new style]', resetCamera: true }
+                            ].map(edit => (
+                              <button
+                                key={edit.label}
+                                type="button"
+                                onClick={() => {
+                                  setPromptText(prev => prev ? `${prev}, ${edit.value}` : edit.value);
+                                  if (edit.resetCamera && firstFramePreview) {
+                                    setCameraMovement('none');
+                                    setAngle('wide');
+                                    setCamera('arri');
+                                  }
+                                  close();
+                                }}
+                                className="w-full text-left px-2 py-1.5 rounded-xl bg-white/[0.02] hover:bg-rose-500/10 text-white/80 hover:text-rose-400 text-[9px] truncate border border-white/5 hover:border-rose-500/20 transition-all flex items-center justify-between"
+                              >
+                                <span>{edit.label}</span>
+                                {edit.resetCamera && firstFramePreview ? (
+                                  <span className="text-[6.5px] text-rose-400/60 font-bold uppercase tracking-wider">Reset Cam</span>
+                                ) : (
+                                  <span className="text-[7px] text-gray-600 font-mono font-medium">Add helper</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
                         {/* Standard Recipe */}
                         <div className="space-y-1">
                           <p className="text-[8px] font-black text-white/40 uppercase tracking-wider px-1">Prompt Recipe</p>
@@ -3052,90 +3088,30 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                           </div>
                         </div>
 
-                        {/* Compositions */}
+                        {/* Lighting Styles */}
                         <div className="space-y-1">
-                          <p className="text-[8px] font-black text-fuchsia-400 uppercase tracking-wider px-1">📸 Compositions & Lighting</p>
+                          <p className="text-[8px] font-black text-fuchsia-400 uppercase tracking-wider px-1">💡 Lighting Styles</p>
                           <div className="grid grid-cols-2 gap-1">
                             {[
-                              { label: 'Eye-level Shot', value: 'eye-level camera shot' },
-                              { label: 'Profile Portrait', value: 'profile portrait shot' },
-                              { label: 'Wide-angle Scene', value: 'wide-angle scenic panoramic shot' },
-                              { label: 'Close-up Shot', value: 'extreme close-up detail shot' },
-                              { label: 'Rim Lighting', value: 'dramatic teal and magenta rim lighting' },
-                              { label: 'Neon Glow', value: 'illuminated by high-contrast neon cursive signage' }
-                            ].map(comp => (
+                              { label: 'Sunset Golden Hour', value: 'warm soft golden hour sunlight, low sun angle' },
+                              { label: 'Dramatic Rim Light', value: 'dramatic teal and magenta rim lighting' },
+                              { label: 'Neon Glow', value: 'illuminated by high-contrast neon cursive signage' },
+                              { label: 'Volumetric Fog', value: 'dramatic volumetric lighting casting long shadows through light fog' },
+                              { label: 'Cyberpunk Neon', value: 'intense futuristic neon cyberpunk lighting, magenta and teal colors' },
+                              { label: 'Chiaroscuro', value: 'high-contrast chiaroscuro lighting, deep shadows and strong highlights' },
+                              { label: 'Soft Studio Light', value: 'professional three-point soft studio lighting, clean gray backdrop' },
+                              { label: 'Rainy Reflections', value: 'rain-slicked streets reflecting wet neon city lights' }
+                            ].map(light => (
                               <button
-                                key={comp.label}
+                                key={light.label}
                                 type="button"
                                 onClick={() => {
-                                  setPromptText(prev => prev ? `${prev}, ${comp.value}` : comp.value);
+                                  setPromptText(prev => prev ? `${prev}, ${light.value}` : light.value);
                                   close();
                                 }}
                                 className="text-left px-2 py-1.5 rounded-xl bg-white/[0.02] hover:bg-fuchsia-500/10 text-white/80 hover:text-fuchsia-400 text-[9px] truncate border border-white/5 hover:border-fuchsia-500/20 transition-all"
                               >
-                                {comp.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Special Directives */}
-                        <div className="space-y-1">
-                          <p className="text-[8px] font-black text-cyan-400 uppercase tracking-wider px-1">💡 Advanced Prompt Hacks</p>
-                          <div className="space-y-1">
-                            {[
-                              { label: 'Render Precise Text', value: 'a wooden sign illustrating local wildlife with text "YOUR_WORD" in a bold cursive font' },
-                              { label: 'Timeline / Diagram', value: 'a craft-style visual diagram displaying evaporation and condensation' },
-                              { label: 'Product Mockups', value: 'three distinct variations of a product mockup, side-by-side' },
-                              { label: 'Subject Consistency', value: 'character profile of a woman named [Name] with a distinct hairstyle to maintain subject look' }
-                            ].map(dir => (
-                              <button
-                                key={dir.label}
-                                type="button"
-                                onClick={() => {
-                                  setPromptText(prev => prev ? `${prev}, ${dir.value}` : dir.value);
-                                  close();
-                                }}
-                                className="w-full text-left px-2 py-1.5 rounded-xl bg-white/[0.02] hover:bg-cyan-500/10 text-white/80 hover:text-cyan-400 text-[9px] truncate border border-white/5 hover:border-cyan-500/20 transition-all flex items-center justify-between"
-                              >
-                                <span>{dir.label}</span>
-                                <span className="text-[7px] text-gray-600 font-mono font-medium">Add helper</span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Image Editing / Ref Board Hacks */}
-                        <div className="space-y-1">
-                          <p className="text-[8px] font-black text-rose-400 uppercase tracking-wider px-1">✂️ Edit & Remix (Image-to-Image)</p>
-                          <div className="space-y-1">
-                            {[
-                              { label: 'Change the character', value: 'Change the character: keep style, setting, and composition, but swap the subject to [new subject]' },
-                              { label: 'Adjust the composition', value: 'Adjust the composition: change camera angle or framing to [new framing]', resetCamera: true },
-                              { label: 'Alter the action', value: 'Alter the action: modify what the character is doing to [new action]' },
-                              { label: 'Swap the setting', value: 'Swap the setting: change environment/background to [new background]' },
-                              { label: 'Rethink the style', value: 'Rethink the style: change visual medium/color grade to [new style]', resetCamera: true }
-                            ].map(edit => (
-                              <button
-                                key={edit.label}
-                                type="button"
-                                onClick={() => {
-                                  setPromptText(prev => prev ? `${prev}, ${edit.value}` : edit.value);
-                                  if (edit.resetCamera && firstFramePreview) {
-                                    setCameraMovement('none');
-                                    setAngle('wide');
-                                    setCamera('arri');
-                                  }
-                                  close();
-                                }}
-                                className="w-full text-left px-2 py-1.5 rounded-xl bg-white/[0.02] hover:bg-rose-500/10 text-white/80 hover:text-rose-400 text-[9px] truncate border border-white/5 hover:border-rose-500/20 transition-all flex items-center justify-between"
-                              >
-                                <span>{edit.label}</span>
-                                {edit.resetCamera && firstFramePreview ? (
-                                  <span className="text-[6.5px] text-rose-400/60 font-bold uppercase tracking-wider">Reset Cam</span>
-                                ) : (
-                                  <span className="text-[7px] text-gray-600 font-mono font-medium">Add helper</span>
-                                )}
+                                {light.label}
                               </button>
                             ))}
                           </div>
