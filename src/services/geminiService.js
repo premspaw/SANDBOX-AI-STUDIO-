@@ -1,6 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 import { getApiUrl } from "../config/apiConfig.js";
-import { useAppStore } from "../store.js";
 
 const arrayBufferToBase64 = (buffer) => {
     if (typeof globalThis.Buffer !== 'undefined') {
@@ -22,12 +21,14 @@ const getAIConfig = () => {
         '';
 
     try {
-        const userProfile = useAppStore.getState().userProfile;
-        if (userProfile?.role === 'admin' || userProfile?.email === 'premspaw@gmail.com') {
-            apiKey = window.__ADMIN_GOOGLE_API_KEY__ || import.meta.env.VITE_ADMIN_GOOGLE_API_KEY || apiKey;
+        if (typeof window !== 'undefined' && window.__ADMIN_GOOGLE_API_KEY__) {
+            apiKey = window.__ADMIN_GOOGLE_API_KEY__;
+        } else if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_ADMIN_GOOGLE_API_KEY) {
+            // Optional fallback if needed in frontend build
+            apiKey = import.meta.env.VITE_ADMIN_GOOGLE_API_KEY;
         }
     } catch (e) {
-        console.debug("useAppStore getState not available", e);
+        console.debug("admin api key not available", e);
     }
         
     const isToken = apiKey.startsWith('AQ.') || apiKey.startsWith('ya29.');
