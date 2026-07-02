@@ -620,10 +620,10 @@ async function consumeCredits(userId, cost, reason = 'generation') {
 
     const client = supabaseAdmin || supabase;
 
-    // Fetch current profile with balance and brand_voice
+    // Fetch current profile with balance
     const { data: profile, error: fetchErr } = await client
         .from('profiles')
-        .select('shorts_balance, brand_voice')
+        .select('shorts_balance')
         .eq('id', userId)
         .single();
 
@@ -633,9 +633,7 @@ async function consumeCredits(userId, cost, reason = 'generation') {
         throw err;
     }
 
-    const brandVoice = profile?.brand_voice || {};
-    const fractionalShorts = brandVoice.fractional_shorts || 0;
-    const currentBalance = (profile?.shorts_balance ?? 0) + fractionalShorts;
+    const currentBalance = profile?.shorts_balance ?? 0;
 
     if (currentBalance < cost) {
         const err = new Error('Insufficient credits');
@@ -643,17 +641,12 @@ async function consumeCredits(userId, cost, reason = 'generation') {
         throw err;
     }
 
-    const newTotalBalance = currentBalance - cost;
-    const newIntBalance = Math.floor(newTotalBalance);
-    const newFractBalance = Number((newTotalBalance - newIntBalance).toFixed(4));
+    const newBalance = currentBalance - cost;
 
     // Update profile
     const { error: updateErr } = await client
         .from('profiles')
-        .update({ 
-            shorts_balance: newIntBalance,
-            brand_voice: { ...brandVoice, fractional_shorts: newFractBalance }
-        })
+        .update({ shorts_balance: newBalance })
         .eq('id', userId);
 
     if (updateErr) {
@@ -666,7 +659,7 @@ async function consumeCredits(userId, cost, reason = 'generation') {
     try {
         await client.from('shorts_transactions').insert({
             user_id: userId,
-            amount: -Math.round(cost),
+            amount: -cost,
             action_type: reason,
             created_at: new Date().toISOString()
         });

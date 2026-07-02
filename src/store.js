@@ -596,9 +596,7 @@ export const useAppStore = create((set, get) => ({
         try {
             const now = Date.now();
             if (_profileCache[userId] && (now - (_profileCacheAt[userId] || 0)) < PROFILE_CACHE_TTL) {
-                const cached = _profileCache[userId];
-                const totalShorts = (cached.shorts_balance ?? 50) + (cached.brand_voice?.fractional_shorts ?? 0);
-                set({ userProfile: cached, userShorts: totalShorts });
+                set({ userProfile: _profileCache[userId], userShorts: _profileCache[userId].shorts_balance ?? 50 });
                 return;
             }
 
@@ -645,8 +643,7 @@ export const useAppStore = create((set, get) => ({
             if (data) {
                 _profileCache[userId] = data;
                 _profileCacheAt[userId] = Date.now();
-                const totalShorts = (data.shorts_balance ?? 50) + (data.brand_voice?.fractional_shorts ?? 0);
-                set({ userProfile: data, userShorts: totalShorts });
+                set({ userProfile: data, userShorts: data.shorts_balance ?? 50 });
 
                 if (data.role === 'admin' || data.email === 'premspaw@gmail.com') {
                     (async () => {
@@ -682,20 +679,16 @@ export const useAppStore = create((set, get) => ({
         }
         const cached = _profileCache[userId];
         if (cached) {
-            const totalShorts = (cached.shorts_balance ?? 50) + (cached.brand_voice?.fractional_shorts ?? 0);
-            set({ userShorts: totalShorts });
+            set({ userShorts: cached.shorts_balance ?? cached.credits ?? 50 });
             return;
         }
         try {
             const { data } = await supabase
                 .from('profiles')
-                .select('shorts_balance, brand_voice')
+                .select('shorts_balance')
                 .eq('id', userId)
                 .single();
-            if (data) {
-                const totalShorts = (data.shorts_balance ?? 50) + (data.brand_voice?.fractional_shorts ?? 0);
-                set({ userShorts: totalShorts });
-            }
+            if (data) set({ userShorts: data.shorts_balance ?? 50 });
         } catch (err) {
             console.error('Store: Fetch balance failed', err);
         }
