@@ -17,6 +17,7 @@ export function StoryboardEditor({
   const [isGeneratingStoryboard, setIsGeneratingStoryboard] = useState(false);
 
   const getCreditCost = () => {
+    if (engine === 'gemini-3.1-flash-lite') return 1;
     return engine === 'gpt-image-2' ? 3 : 2;
   };
 
@@ -300,7 +301,7 @@ identity drift, different face, different hairstyle, different clothing, differe
           type: 'image',
           url: data.url,
           prompt: `Storyboard: ${storyBrief.split('.')[0]}`,
-          engine: `${engine === 'gpt-image-2' ? 'GPT-2' : 'Nano Banana 2'} (Storyboard)`,
+          engine: `${engine === 'gpt-image-2' ? 'GPT-2' : engine === 'gemini-3.1-flash-lite' ? 'NB2 Lite' : 'Nano Banana 2'} (Storyboard)`,
           aspect: referenceAspect,
           ts: Date.now()
         };
@@ -389,6 +390,7 @@ identity drift, different face, different hairstyle, different clothing, differe
                 onChange={e => setEngine(e.target.value)}
                 className="w-full bg-black border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none focus:border-emerald-500"
               >
+                <option value="gemini-3.1-flash-lite" className="bg-[#111] text-white">Nano Banana 2 Lite (NB2 Lite)</option>
                 <option value="gemini-3.1-flash-image-preview" className="bg-[#111] text-white">Nano Banana 2 (Flash)</option>
                 <option value="gpt-image-2" className="bg-[#111] text-white">GPT 2 (OpenAI)</option>
               </select>

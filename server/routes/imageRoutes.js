@@ -41,6 +41,8 @@ export default function createRouter(deps) {
                 requiredCredits = 3; // OpenAI DALL-E costs 3 credits
             } else if (modelLower.includes('pro')) {
                 requiredCredits = 3;
+            } else if (modelLower === 'nano-banana-2-lite' || modelLower === 'nb2-lite' || modelLower === 'gemini-3.1-flash-lite') {
+                requiredCredits = 0.5;
             } else if (modelLower === 'nano-banana' || modelLower === 'banana') {
                 requiredCredits = 1;
             }
@@ -191,6 +193,8 @@ export default function createRouter(deps) {
                 requiredCredits = 3;
             } else if (model === 'gemini-3-pro-image-preview' || model === 'nano-banana-pro' || model === 'pro') {
                 requiredCredits = 5;
+            } else if (model === 'nano-banana-2-lite' || model === 'nb2-lite' || model === 'gemini-3.1-flash-lite') {
+                requiredCredits = 1;
             }
 
             if (targetUserId) {
@@ -218,9 +222,14 @@ export default function createRouter(deps) {
 
             let buffer;
 
-            if (model === 'gemini' || model === 'nano-banana-2' || model === 'gemini-3.1-flash-image-preview') {
+            if (model === 'gemini' || model === 'nano-banana-2' || model === 'gemini-3.1-flash-image-preview' || model === 'nano-banana-2-lite' || model === 'nb2-lite' || model === 'gemini-3.1-flash-lite' || model === 'nano-banana-pro' || model === 'gemini-3-pro-image-preview') {
                 const apiKey = await resolveGoogleApiKey(req, targetUserId);
-                const activeModel = 'gemini-3.1-flash-image-preview';
+                let activeModel = 'gemini-3.1-flash-image-preview';
+                if (model === 'nano-banana-2-lite' || model === 'nb2-lite' || model === 'gemini-3.1-flash-lite') {
+                    activeModel = 'gemini-3.1-flash-lite';
+                } else if (model === 'nano-banana-pro' || model === 'gemini-3-pro-image-preview') {
+                    activeModel = 'gemini-3-pro-image-preview';
+                }
                 const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
 
                 console.log('[Inpaint] Querying Google Gemini 3.1 Multimodal Inpainting...');

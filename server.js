@@ -1108,6 +1108,8 @@ async function handleGoogle(req, res) {
             let activeModel = model || 'gemini-3.1-flash-image-preview';
             if (activeModel === 'nano-banana-2' || activeModel === 'nano-banana') {
                 activeModel = 'gemini-3.1-flash-image-preview';
+            } else if (activeModel === 'nano-banana-2-lite' || activeModel === 'nb2-lite' || activeModel === 'gemini-3.1-flash-lite') {
+                activeModel = 'gemini-3.1-flash-lite';
             } else if (activeModel === 'nano-banana-pro' || activeModel === 'pro') {
                 activeModel = 'gemini-3-pro-image-preview';
             }
