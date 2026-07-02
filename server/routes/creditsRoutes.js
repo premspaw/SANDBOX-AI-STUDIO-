@@ -27,23 +27,31 @@ export default function createRouter(deps) {
             // 1. Fetch current balance (server-side, bypasses RLS intentionally)
             const { data: profile, error: fetchErr } = await client
                 .from('profiles')
-                .select('shorts_balance')
+                .select('shorts_balance, brand_voice')
                 .eq('id', user.id)
                 .single();
 
             if (fetchErr) throw fetchErr;
 
-            const currentBalance = profile?.shorts_balance ?? 0;
+            const brandVoice = profile?.brand_voice || {};
+            const fractionalShorts = brandVoice.fractional_shorts || 0;
+            const currentBalance = (profile?.shorts_balance ?? 0) + fractionalShorts;
+
             if (currentBalance < amount) {
                 return res.status(402).json({ error: 'Insufficient credits.', balance: currentBalance });
             }
 
-            const newBalance = currentBalance - amount;
+            const newTotalBalance = currentBalance - amount;
+            const newIntBalance = Math.floor(newTotalBalance);
+            const newFractBalance = Number((newTotalBalance - newIntBalance).toFixed(4));
 
             // 2. Deduct balance
             const { error: updateErr } = await client
                 .from('profiles')
-                .update({ shorts_balance: newBalance })
+                .update({ 
+                    shorts_balance: newIntBalance,
+                    brand_voice: { ...brandVoice, fractional_shorts: newFractBalance }
+                })
                 .eq('id', user.id);
 
             if (updateErr) throw updateErr;
@@ -51,13 +59,13 @@ export default function createRouter(deps) {
             // 3. Audit log
             await client.from('shorts_transactions').insert({
                 user_id: user.id,
-                amount: -amount,
+                amount: -Math.round(amount),
                 action_type: reason,
                 created_at: new Date().toISOString()
             });
 
-            console.log(`[CREDITS] ✅ Spent ${amount} credits for user ${user.id} (${reason}). New balance: ${newBalance}`);
-            res.json({ success: true, newBalance });
+            console.log(`[CREDITS] ✅ Spent ${amount} credits for user ${user.id} (${reason}). New balance: ${newTotalBalance}`);
+            res.json({ success: true, newBalance: newTotalBalance });
 
         } catch (err) {
             console.error('[CREDITS_SPEND_ERROR]:', err);
@@ -88,7 +96,7 @@ export default function createRouter(deps) {
             // 1. Fetch current balance
             const { data: profile, error: fetchErr } = await client
                 .from('profiles')
-                .select('shorts_balance')
+                .select('shorts_balance, brand_voice')
                 .eq('id', user.id)
                 .single();
 
@@ -96,12 +104,13 @@ export default function createRouter(deps) {
 
             // 2. Security validation: Verify user has a matching spend transaction in the last 15 minutes
             const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+            const roundedAmount = Math.round(amount);
             
             const { data: recentSpends, error: spendErr } = await client
                 .from('shorts_transactions')
                 .select('*')
                 .eq('user_id', user.id)
-                .eq('amount', -amount)
+                .eq('amount', -roundedAmount)
                 .eq('action_type', reason)
                 .gte('created_at', fifteenMinutesAgo);
 
@@ -119,7 +128,7 @@ export default function createRouter(deps) {
                 .from('shorts_transactions')
                 .select('*')
                 .eq('user_id', user.id)
-                .eq('amount', amount)
+                .eq('amount', roundedAmount)
                 .eq('action_type', `refund_${reason}`)
                 .gte('created_at', fifteenMinutesAgo);
 
@@ -132,13 +141,21 @@ export default function createRouter(deps) {
                 return res.status(403).json({ error: 'Forbidden: This transaction has already been refunded.' });
             }
 
-            const currentBalance = profile?.shorts_balance ?? 0;
-            const newBalance = currentBalance + amount;
+            const brandVoice = profile?.brand_voice || {};
+            const fractionalShorts = brandVoice.fractional_shorts || 0;
+            const currentBalance = (profile?.shorts_balance ?? 0) + fractionalShorts;
+            const newTotalBalance = currentBalance + amount;
+
+            const newIntBalance = Math.floor(newTotalBalance);
+            const newFractBalance = Number((newTotalBalance - newIntBalance).toFixed(4));
 
             // 3. Refund balance
             const { error: updateErr } = await client
                 .from('profiles')
-                .update({ shorts_balance: newBalance })
+                .update({ 
+                    shorts_balance: newIntBalance,
+                    brand_voice: { ...brandVoice, fractional_shorts: newFractBalance }
+                })
                 .eq('id', user.id);
 
             if (updateErr) throw updateErr;
@@ -146,13 +163,13 @@ export default function createRouter(deps) {
             // 4. Audit log
             await client.from('shorts_transactions').insert({
                 user_id: user.id,
-                amount: amount,
+                amount: roundedAmount,
                 action_type: `refund_${reason}`,
                 created_at: new Date().toISOString()
             });
 
-            console.log(`[CREDITS] ✅ Refunded ${amount} credits for user ${user.id} (${reason}). New balance: ${newBalance}`);
-            res.json({ success: true, newBalance });
+            console.log(`[CREDITS] ✅ Refunded ${amount} credits for user ${user.id} (${reason}). New balance: ${newTotalBalance}`);
+            res.json({ success: true, newBalance: newTotalBalance });
 
         } catch (err) {
             console.error('[CREDITS_REFUND_ERROR]:', err);
