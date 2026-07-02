@@ -10,7 +10,8 @@ export default function createRouter(deps) {
         handleOpenAI,
         openaiChat,
         geminiService,
-        requireAuth
+        requireAuth,
+        resolveGoogleApiKey
     } = deps;
 
     // Generate Image (Multi-Model Support)
@@ -28,18 +29,18 @@ export default function createRouter(deps) {
             const { model } = req.body;
             const targetUserId = user ? user.id : req.body.userId;
 
-            // Deduct credits based on the model
-            let requiredCredits = 2; // Default (Gemini 3.1 Flash Image preview / Nano Banana 2)
+            // Deduct credits based on the model (halved)
+            let requiredCredits = 1; // Default (Gemini 3.1 Flash Image preview / Nano Banana 2)
             const modelLower = (model || '').toLowerCase();
             if (modelLower === 'gpt-image-2') {
                 const q = (req.body.quality || 'medium').toLowerCase();
-                if (q === 'low') requiredCredits = 2;
-                else if (q === 'high') requiredCredits = 5;
-                else requiredCredits = 3; // medium / auto
+                if (q === 'low') requiredCredits = 1;
+                else if (q === 'high') requiredCredits = 3;
+                else requiredCredits = 2; // medium / auto
             } else if (modelLower.includes('gpt') || modelLower.includes('openai') || modelLower.includes('dall')) {
-                requiredCredits = 5; // OpenAI DALL-E costs 5 credits
+                requiredCredits = 3; // OpenAI DALL-E costs 3 credits
             } else if (modelLower.includes('pro')) {
-                requiredCredits = 5;
+                requiredCredits = 3;
             } else if (modelLower === 'nano-banana' || modelLower === 'banana') {
                 requiredCredits = 1;
             }
@@ -218,8 +219,7 @@ export default function createRouter(deps) {
             let buffer;
 
             if (model === 'gemini' || model === 'nano-banana-2' || model === 'gemini-3.1-flash-image-preview') {
-                // Call Gemini 3.1 Flash Image model (Nano Banana 2) with native multimodal inpainting
-                const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+                const apiKey = await resolveGoogleApiKey(req, targetUserId);
                 const activeModel = 'gemini-3.1-flash-image-preview';
                 const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
 

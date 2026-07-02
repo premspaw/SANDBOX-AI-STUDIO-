@@ -521,6 +521,66 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         finalPrompt += " -- cinematic ultra-realistic video, lifelike textures, highly realistic lighting, natural human motion. Focus on realism rather than commercial premium aesthetics.";
       }
 
+      if (videoGenMode === 'omni-flash') {
+        let imageToSend = '';
+        if (imagePayload) {
+          imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
+        }
+
+        const headers: any = { 'Content-Type': 'application/json' };
+        const customKey = getApiKey();
+        if (customKey) headers['x-admin-trial-key'] = customKey;
+
+        const resp = await fetch(getApiUrl('/api/omni-i2v'), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            image: imageToSend || undefined,
+            motionPrompt: finalPrompt.substring(0, 1000),
+            duration: room.duration,
+            aspectRatio: aspectRatio === '1:1' ? '9:16' : aspectRatio as any,
+            resolution: '720p',
+            model: 'gemini-omni-flash-preview',
+            userId: userId,
+            generateAudio: includeAudio,
+            creditReason: 'ugc_video_generation'
+          })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Omni generation failed.');
+        if (!data.videoUrl) throw new Error('Omni returned no video URL.');
+
+        const directUrl = data.videoUrl;
+        const timelineId = `room-${room.id}-${Date.now()}`;
+
+        // Update room with generated video instantly using direct URL
+        setRooms(prev => prev.map(r =>
+          r.id === room.id ? { ...r, generatedVideo: directUrl } : r
+        ));
+
+        // Add to gallery + timeline instantly using direct URL
+        updateGalleryItem(galleryId, { loading: false, url: directUrl, prompt: finalPrompt });
+
+        // Add to timeline
+        setTimeline(prev => [
+          ...prev,
+          {
+            id: timelineId,
+            url: directUrl,
+            start: 0,
+            end: room.duration,
+            duration: room.duration,
+            type: 'video'
+          }
+        ]);
+
+        showToast(`${room.label} done ✓`, 'success');
+        setGeneratingRoomId(null);
+        setVideoProgressMsg('');
+        return;
+      }
+
       const veoModel = videoGenMode === 'veo3'
         ? 'veo-3.1-generate-preview'
         : videoGenMode === 'veo_lite'

@@ -12,17 +12,18 @@ import { buildSeedanceContentArray } from '../cinemaStudio/SeedanceEngine';
 import { AddTemplateModal } from './AddTemplateModal';
 
 const ENGINES = [
-  { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — 5⚡/s (9⚡/s audio)', cost: 5 },
-  { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3.1 Fast',     icon: '⚡', desc: 'Google Fast — 3⚡/s (5⚡/s audio)',         cost: 3 },
-  { id: 'veo-3.1-lite-generate-preview', label: 'Veo 3.1 Lite',     icon: '🍃', desc: 'Google Lite — 2⚡/s (3⚡/s audio)',           cost: 2 },
-  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 12⚡/s (480p/1080p)',          cost: 12 },
-  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 16⚡/s (480p/1080p)', cost: 16 },
+  { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — 2.5⚡/s (4.5⚡/s audio)', cost: 2.5 },
+  { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3.1 Fast',     icon: '⚡', desc: 'Google Fast — 1.5⚡/s (2.5⚡/s audio)',         cost: 1.5 },
+  { id: 'veo-3.1-lite-generate-preview', label: 'Veo 3.1 Lite',     icon: '🍃', desc: 'Google Lite — 1⚡/s (1.5⚡/s audio)',           cost: 1 },
+  { id: 'omni-flash',                    label: 'Omni Flash',      icon: '✨', desc: 'Omni fast — 1.6⚡/s (2.75⚡/s audio)',                           cost: 1.6 },
+  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 6⚡/s (480p/1080p)',          cost: 6 },
+  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 8⚡/s (480p/1080p)', cost: 8 },
 ];
 
 const IMAGE_ENGINES = [
-  { id: 'nano-banana-2',   label: 'Nano Banana 2',   icon: '🎨', desc: 'Google highest-fidelity photo gen — 2⚡ flat rate', cost: 2 },
-  { id: 'nano-banana-pro', label: 'Nano Banana Pro', icon: '💎', desc: 'Google maximum fidelity image engine — 5⚡ flat rate', cost: 5 },
-  { id: 'gpt-image-2',     label: 'GPT Image Pro',   icon: '🤖', desc: 'OpenAI layout & text design — 3⚡ to 10⚡ variable rate',        cost: 5 },
+  { id: 'nano-banana-2',   label: 'Nano Banana 2',   icon: '🎨', desc: 'Google highest-fidelity photo gen — 1⚡ flat rate', cost: 1 },
+  { id: 'nano-banana-pro', label: 'Nano Banana Pro', icon: '💎', desc: 'Google maximum fidelity image engine — 3⚡ flat rate', cost: 3 },
+  { id: 'gpt-image-2',     label: 'GPT Image Pro',   icon: '🤖', desc: 'OpenAI layout & text design — 1⚡ to 5⚡ variable rate',        cost: 2 },
 ];
 
 const DURATION_OPTIONS = [
@@ -41,6 +42,12 @@ const VEO_DURATION_OPTIONS = [
   { value: 4,  label: '4 Seconds',  desc: 'Quick cut — fast-paced narrative' },
   { value: 6,  label: '6 Seconds',  desc: 'Standard — balanced movement' },
   { value: 8,  label: '8 Seconds',  desc: 'Extended — maximum duration' },
+];
+
+const OMNI_DURATION_OPTIONS = [
+  { value: 4,  label: '4 Seconds',  desc: 'Quick cut — fast-paced narrative' },
+  { value: 6,  label: '6 Seconds',  desc: 'Standard — balanced movement' },
+  { value: 10, label: '10 Seconds', desc: 'Maximum duration — full cinematic action' },
 ];
 
 const SIZE_OPTIONS = [
@@ -300,6 +307,7 @@ export default function MarketingStudio() {
     const [videoEngine, setVideoEngine] = useState('veo-3.1-fast-generate-preview');
     const [videoDuration, setVideoDuration] = useState(8);
     const [generateAudio, setGenerateAudio] = useState(false);
+    const [omniTask, setOmniTask] = useState('auto');
     const [imageFormat, setImageFormat] = useState('png'); // 'png' | 'jpeg' | 'webp'
     const [imageCompression, setImageCompression] = useState(80); // 0-100
     const [imageBackground, setImageBackground] = useState('auto'); // 'auto' | 'opaque'
@@ -377,6 +385,9 @@ export default function MarketingStudio() {
     const { spend, refund, canAfford, refresh: refreshShorts } = useShorts();
 
     const getApiKey = () => {
+        if (userProfile?.role === 'admin' || userProfile?.email === 'premspaw@gmail.com') {
+            return window.__ADMIN_GOOGLE_API_KEY__ || import.meta.env.VITE_ADMIN_GOOGLE_API_KEY || localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
+        }
         return localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
     };
 
@@ -442,38 +453,49 @@ export default function MarketingStudio() {
         const duration = customDuration ?? videoDuration;
         if (generateMode === 'image') {
             if (engineId === 'gpt-image-2') {
-                if (quality === 'low') return 3;
-                if (quality === 'high') return 10;
-                return 5; // default medium (HD)
+                if (quality === 'low') return 1;
+                if (quality === 'high') return 5;
+                return 3; // default medium (HD)
             }
-            return IMAGE_ENGINES.find(e => e.id === engineId)?.cost || 2;
+            return IMAGE_ENGINES.find(e => e.id === engineId)?.cost || 1;
+        }
+        if (engineId === 'omni-flash') {
+            const costPerSec = generateAudio ? 8 : 6; // halved from 15 : 12
+            return Math.ceil(costPerSec * 1.1 * duration);
         }
         if (engineId.startsWith('veo-3.1') || engineId === 'veo3') {
-            let costPerSec = 10;
+            let costPerSec = 5;
             const modelId = engineId === 'veo3' ? 'veo-3.1-generate-preview' : engineId;
             if (modelId === 'veo-3.1-generate-preview') {
-                costPerSec = generateAudio ? 54 : 30;
+                costPerSec = generateAudio ? 27 : 15; // halved from 54 : 30
             } else if (modelId === 'veo-3.1-fast-generate-preview') {
-                costPerSec = generateAudio ? 15 : 12;
+                costPerSec = generateAudio ? 8 : 6; // halved from 15 : 12
             } else if (modelId === 'veo-3.1-lite-generate-preview') {
-                costPerSec = generateAudio ? 10 : 6;
+                costPerSec = generateAudio ? 5 : 3; // halved from 10 : 6
             }
             return costPerSec * duration;
         }
         if (engineId === 'seedance-fast') {
-            return 12 * duration;
+            return 6 * duration; // halved from 12
         }
         if (engineId === 'seedace' || engineId === 'seedance2') {
-            return 16 * duration;
+            return 8 * duration; // halved from 16
         }
         return (ENGINES.find(e => e.id === engineId)?.cost || 4) * duration;
     };
 
     useEffect(() => {
+        const isOmni = videoEngine === 'omni' || videoEngine === 'omni-flash';
         const isSeed = videoEngine === 'seedance-fast' || videoEngine === 'seedace';
         const isVeo3 = videoEngine.startsWith('veo-3.1');
         
-        if (isVeo3) {
+        if (isOmni) {
+            if (![4, 6, 10].includes(videoDuration)) {
+                if (videoDuration < 5) setVideoDuration(4);
+                else if (videoDuration < 8) setVideoDuration(6);
+                else setVideoDuration(10);
+            }
+        } else if (isVeo3) {
             if (![4, 6, 8].includes(videoDuration)) {
                 if (videoDuration < 5) setVideoDuration(4);
                 else if (videoDuration < 8) setVideoDuration(6);
@@ -1102,9 +1124,60 @@ Any written text, characters, letters, numbers, and labels inside the image must
 
         if (generateMode === 'video') {
             try {
+                const isOmni = videoEngine === 'omni' || videoEngine === 'omni-flash';
                 const isSeed = videoEngine === 'seedance-fast' || videoEngine === 'seedace';
                 
-                if (isSeed) {
+                if (isOmni) {
+                    setPollMsg('Gemini Omni rendering video...');
+                    const aspectMap = {
+                        '1536x1024': '16:9',
+                        '1024x1536': '9:16',
+                        '1024x1024': '16:9',
+                        '1024x1792': '9:16',
+                        '1792x1024': '16:9'
+                    };
+                    const targetModel = videoEngine === 'omni' ? 'gemini-omni-preview' : 'gemini-omni-flash-preview';
+
+                    // Convert staged reference images to expected structure
+                    const ref_images = referenceImages.map(img => ({
+                        url: img.url || img.base64
+                    }));
+
+                    const _headers = { 'Content-Type': 'application/json' };
+                    const customKey = getApiKey();
+                    if (customKey) _headers['x-admin-trial-key'] = customKey;
+
+                    const resp = await fetch(getApiUrl('/api/omni-i2v'), {
+                        method: 'POST',
+                        headers: _headers,
+                        body: JSON.stringify({
+                            image: firstFrame || referenceImages[0]?.url || referenceImages[0]?.base64 || undefined,
+                            firstFrameImage: firstFrame || undefined,
+                            lastFrameImage: lastFrame || undefined,
+                            imageEnd: lastFrame || undefined,
+                            motionPrompt: promptText || 'Cinematic product video',
+                            duration: videoDuration,
+                            aspectRatio: aspectMap[imageSize] || '9:16',
+                            resolution: '1080p',
+                            model: targetModel,
+                            ref_images,
+                            userId: currentUserId,
+                            generateAudio,
+                            task: omniTask,
+                            creditReason: 'marketing_video_generation'
+                        })
+                    });
+
+                    const data = await resp.json();
+                    if (!resp.ok) throw new Error(data.error || 'Omni generation failed.');
+                    if (!data.videoUrl) throw new Error('Omni returned no videoUrl.');
+
+                    setGenerationHistory(prev => {
+                        const next = [{ url: data.videoUrl, ts: Date.now(), size: imageSize, type: 'video' }, ...prev].slice(0, 50);
+                        try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
+                        return next;
+                    });
+                } else if (isSeed) {
                     // Seedance video generation path
                     const modelParam = videoEngine === 'seedance-fast'
                         ? 'dreamina-seedance-2-0-fast-260128'
@@ -1968,6 +2041,8 @@ Any written text, characters, letters, numbers, and labels inside the image must
 
                                 {/* ── Main bar ── */}
                                 <div className="flex-1 bg-[#1c1c21]/95 backdrop-blur-xl border border-white/12 rounded-2xl shadow-2xl overflow-hidden">
+                                    
+
 
                                     {/* First / Last frame uploads — video mode only */}
                                     {generateMode === 'video' && (
@@ -2224,6 +2299,71 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                               </UpwardDropdown>
                                           )}
 
+                                          {/* OMNI TASK DROPDOWN (Video only, Omni engine only) */}
+                                          {generateMode === 'video' && (videoEngine === 'omni' || videoEngine === 'omni-flash') && (
+                                              <UpwardDropdown
+                                                  icon={<Sparkles size={8} />}
+                                                  label={(() => {
+                                                      const taskLabels = {
+                                                          auto: 'Auto inference',
+                                                          text_to_video: 'Text-to-Video',
+                                                          image_to_video: 'Image-to-Video',
+                                                          reference_to_video: 'Reference-to-Video',
+                                                          edit: 'Stateful Edit'
+                                                      };
+                                                      return taskLabels[omniTask] || 'Task';
+                                                  })()}
+                                                  accentColor="violet"
+                                              >
+                                                  {(close) => (
+                                                      <div className="space-y-0.5">
+                                                          {[
+                                                              { id: 'auto', label: 'Auto Inference', icon: '✨', desc: 'Let the model infer task from inputs' },
+                                                              { id: 'text_to_video', label: 'Text-to-Video', icon: '📝', desc: 'Generate video from text prompt' },
+                                                              { id: 'image_to_video', label: 'Image-to-Video', icon: '🖼️', desc: 'Generate video from start image' },
+                                                              { id: 'reference_to_video', label: 'Reference-to-Video', icon: '🔗', desc: 'Generate using references' },
+                                                              { id: 'edit', label: 'Stateful Edit', icon: '✏️', desc: 'Stateful video editing interaction' },
+                                                          ].map((opt, i) => (
+                                                              <motion.button
+                                                                  key={opt.id}
+                                                                  initial={{ opacity: 0, y: 8 }}
+                                                                  animate={{ opacity: 1, y: 0 }}
+                                                                  transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
+                                                                  onClick={() => { setOmniTask(opt.id); close(); }}
+                                                                  className={cn(
+                                                                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
+                                                                      omniTask === opt.id
+                                                                          ? "bg-violet-500/10 border border-violet-500/25"
+                                                                          : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                                                                  )}
+                                                              >
+                                                                  <div className={cn(
+                                                                      "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
+                                                                      omniTask === opt.id
+                                                                          ? "bg-violet-500/20 text-violet-400"
+                                                                          : "bg-white/5 text-gray-500"
+                                                                  )}>
+                                                                      <span className="text-[10px]">{opt.icon}</span>
+                                                                  </div>
+                                                                  <div className="flex-1 min-w-0">
+                                                                      <p className={cn(
+                                                                          "text-[10px] font-black uppercase tracking-wider truncate",
+                                                                          omniTask === opt.id ? "text-violet-400" : "text-white/70"
+                                                                      )}>{opt.label}</p>
+                                                                      <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
+                                                                  </div>
+                                                                  {omniTask === opt.id && (
+                                                                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-violet-400 flex items-center justify-center shrink-0">
+                                                                          <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                                                      </motion.div>
+                                                                  )}
+                                                              </motion.button>
+                                                          ))}
+                                                      </div>
+                                                  )}
+                                              </UpwardDropdown>
+                                          )}
+
                                          {/* Engine */}
                                          <UpwardDropdown
                                              icon={<Zap size={8} />}
@@ -2337,13 +2477,16 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                                  accentColor="cyan"
                                              >
                                                  {(close) => {
+                                                     const isOmni = videoEngine === 'omni' || videoEngine === 'omni-flash';
                                                      const isSeed = videoEngine === 'seedance-fast' || videoEngine === 'seedace';
                                                      const isVeo3 = videoEngine.startsWith('veo-3.1') || videoEngine === 'veo3';
-                                                     const opts = isVeo3 
-                                                         ? VEO_DURATION_OPTIONS 
-                                                         : isSeed 
-                                                             ? SEEDANCE_DURATION_OPTIONS 
-                                                             : DURATION_OPTIONS;
+                                                     const opts = isOmni 
+                                                         ? OMNI_DURATION_OPTIONS 
+                                                         : isVeo3 
+                                                             ? VEO_DURATION_OPTIONS 
+                                                             : isSeed 
+                                                                 ? SEEDANCE_DURATION_OPTIONS 
+                                                                 : DURATION_OPTIONS;
                                                      const maxOptValue = Math.max(...opts.map(o => o.value));
                                                      
                                                      return (

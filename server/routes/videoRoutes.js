@@ -50,6 +50,7 @@ export default function createRouter(deps) {
         broadcastComplete,
         VERTEX_PROJECT_ID,
         requireAuth,
+        resolveGoogleApiKey,
         consumeCredits,
         claimOrCreateSpend,
         videoQueue,
@@ -88,11 +89,11 @@ export default function createRouter(deps) {
 
             const targetUserId = user ? user.id : userId;
 
-            // Deduct credits: veo_fast costs 20 credits, veo_full/standard costs 80 credits
-            let requiredCredits = 20; // Default
+            // Deduct credits: veo_fast costs 10 credits, veo_full/standard costs 40 credits (halved)
+            let requiredCredits = 10; // Default
             const modelLower = (model || '').toLowerCase();
             if (modelLower.includes('full') || modelLower.includes('high') || duration > 6) {
-                requiredCredits = 80;
+                requiredCredits = 40;
             }
 
             if (targetUserId) {
@@ -145,12 +146,7 @@ export default function createRouter(deps) {
             let modelName = req.body.model || 'veo-3.1-generate-preview';
             let operation;
 
-            // Admin trial key takes priority over production key (only injected by admins via Settings > Admin tab)
-            const adminTrialKey = req.headers['x-admin-trial-key'] || '';
-            const apiKey = adminTrialKey || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
-            if (adminTrialKey) {
-                console.log(`[VEO-I2V] ⚡ ADMIN TRIAL MODE — Using admin-supplied trial API key instead of production key.`);
-            }
+            const apiKey = await resolveGoogleApiKey(req, targetUserId);
             const token = await getVertexToken();
             if (!token && !apiKey) throw new Error('Failed to acquire service account token or API key for Veo I2V');
 
@@ -165,7 +161,6 @@ export default function createRouter(deps) {
                 headers['Authorization'] = `Bearer ${token}`;
                 console.log(`[VEO-I2V] Calling REST API via Service Account for project: ${VERTEX_PROJECT_ID}`);
             }
-
 
             const restResponse = await fetch(endpoint, {
                 method: 'POST',
@@ -340,7 +335,7 @@ export default function createRouter(deps) {
             if (!apiKey) throw new Error("Kling API Key not configured. Please add KLING_API_KEY to your environment.");
 
             const targetUserId = user ? user.id : userId;
-            const requiredCredits = 15; // Kling costs 15 credits
+            const requiredCredits = 7; // Kling costs 7 credits (halved from 15)
 
             if (targetUserId) {
                 const creditReason = req.body.creditReason || 'cinematic_video_generation';
@@ -461,7 +456,7 @@ export default function createRouter(deps) {
 
             const targetUserId = user ? user.id : userId;
             const duration = req.body.duration || 5;
-            const rate = mode === 'pro' ? 18 : 14;
+            const rate = mode === 'pro' ? 9 : 7; // halved from 18 : 14
             const requiredCredits = Math.ceil(rate * duration);
 
             if (targetUserId) {
@@ -556,16 +551,16 @@ export default function createRouter(deps) {
 
             if (provider === 'veo') {
                 const modelLower = (model || '').toLowerCase();
-                requiredCredits = (modelLower.includes('full') || modelLower.includes('high') || durationNum > 6) ? 80 : 20;
+                requiredCredits = (modelLower.includes('full') || modelLower.includes('high') || durationNum > 6) ? 40 : 10;
             } else if (provider === 'seedance') {
                 const eng = engine || 'seedance-fast';
                 if (eng === 'seedance-fast') {
-                    requiredCredits = (resLower === '480p' ? 6 : 12) * durationNum;
+                    requiredCredits = (resLower === '480p' ? 3 : 6) * durationNum;
                 } else {
-                    requiredCredits = ((resLower === '1080p' || resLower === '4k') ? 41 : resLower === '480p' ? 7 : 16) * durationNum;
+                    requiredCredits = ((resLower === '1080p' || resLower === '4k') ? 20 : resLower === '480p' ? 3 : 8) * durationNum;
                 }
             } else if (provider === 'openai') {
-                requiredCredits = 5;
+                requiredCredits = 2;
             }
 
             if (targetUserId) {

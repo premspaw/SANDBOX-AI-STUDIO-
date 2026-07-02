@@ -107,6 +107,9 @@ export default function UGC() {
   const [activeTab, setActiveTab] = useState<'ugc' | 'podcast' | 'talking-head' | 'home-tour' | 'edit'>('ugc');
 
   const getApiKey = () => {
+    if (userProfile?.role === 'admin' || (userProfile as any)?.email === 'premspaw@gmail.com') {
+      return (window as any).__ADMIN_GOOGLE_API_KEY__ || import.meta.env.VITE_ADMIN_GOOGLE_API_KEY || localStorage.getItem('GOOGLE_API_KEY') || (window as any).aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
+    }
     return localStorage.getItem('GOOGLE_API_KEY') || (window as any).aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
   };
 
@@ -318,11 +321,11 @@ export default function UGC() {
   const [thGeneratedImg, setThGeneratedImg] = useState<string>('');
   const [thGeneratedVideo, setThGeneratedVideo] = useState<string>('');
   const [thScript, setThScript] = useState<string>('');
-  const [thEngine, setThEngine] = useState<'veo3' | 'veo_fast' | 'veo_lite'>('veo_fast');
+  const [thEngine, setThEngine] = useState<'veo3' | 'veo_fast' | 'veo_lite' | 'omni-flash'>('veo_fast');
   const [thIsGeneratingImg, setThIsGeneratingImg] = useState(false);
   const [thIsGeneratingVideo, setThIsGeneratingVideo] = useState(false);
   const [thVideoProgress, setThVideoProgress] = useState('');
-  const [thDuration, setThDuration] = useState<'4' | '6' | '8'>('8');
+  const [thDuration, setThDuration] = useState<'4' | '6' | '8' | '10'>('8');
   const [thAspectRatio, setThAspectRatio] = useState<'9:16' | '16:9'>('9:16');
 
   const [voiceSampleFile, setVoiceSampleFile] = useState<File | null>(null);
@@ -332,7 +335,7 @@ export default function UGC() {
   const [isAnalyzingVoice, setIsAnalyzingVoice] = useState(false);
   const [imageStyle, setImageStyle] = useState<'studio' | 'ultra-realistic' | 'iphone' | 'short' | 'normal' | 'cinematic'>('ultra-realistic');
   const [aspectRatio, setAspectRatio] = useState<'9:16' | '16:9' | '1:1'>('9:16');
-  const [durationSeconds, setDurationSeconds] = useState<'4' | '6' | '8'>('8');
+  const [durationSeconds, setDurationSeconds] = useState<'4' | '6' | '8' | '10'>('8');
   const [includeAudio, setIncludeAudio] = useState(true);
   const [videoResolution, setVideoResolution] = useState<'720p' | '1080p'>('720p');
   const [selectedVideoStyle, setSelectedVideoStyle] = useState<'calm' | 'energetic' | 'action' | 'professional' | 'casual' | 'storytelling'>('calm');
@@ -560,7 +563,7 @@ export default function UGC() {
   const [selectedPromptVariant, setSelectedPromptVariant] = useState(0);
   const [chatTab, setChatTab] = useState<'script' | 'video'>('script');
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
-  const [videoGenMode, setVideoGenMode] = useState<'veo_fast' | 'veo3' | 'veo_lite' | 'montage'>('veo_fast');
+  const [videoGenMode, setVideoGenMode] = useState<'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash'>('veo_fast');
   const [showVideoMontageOptions, setShowVideoMontageOptions] = useState(true);
   const [showLiveGuide, setShowLiveGuide] = useState(false);
   const [showPromptDropdown, setShowPromptDropdown] = useState(false);
@@ -2188,6 +2191,63 @@ Return a detailed JSON with:
       };
       if (imagePayload) videoRequest.image = imagePayload;
 
+      if (thEngine === 'omni-flash') {
+        setThVideoProgress('Submitting to Gemini Omni Flash...');
+        let imageToSend = '';
+        if (imagePayload) {
+          imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
+        }
+
+        const headers: any = { 'Content-Type': 'application/json' };
+        const customKey = getApiKey();
+        if (customKey) headers['x-admin-trial-key'] = customKey;
+
+        const resp = await fetch(getApiUrl('/api/omni-i2v'), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            image: imageToSend || undefined,
+            motionPrompt: talkingPrompt,
+            duration: parseInt(thDuration),
+            aspectRatio: thAspectRatio,
+            resolution: '720p',
+            model: 'gemini-omni-flash-preview',
+            userId: currentUserId,
+            generateAudio: true,
+            creditReason: 'ugc_video_generation'
+          })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Omni generation failed.');
+        if (!data.videoUrl) throw new Error('Omni returned no video URL.');
+
+        const videoUrl = data.videoUrl;
+        const res = await fetch(videoUrl);
+        const blob = await res.blob();
+        const localUrl = URL.createObjectURL(blob);
+        const tempId = Date.now().toString();
+
+        setThGeneratedVideo(localUrl);
+        addToGallery({ id: tempId, type: 'video', url: localUrl });
+        showToast('Talking Head video ready!', 'success');
+
+        uploadToSupabase(blob, 'video', talkingPrompt, currentUserId)
+          .then(publicUrl => {
+            if (publicUrl) {
+              updateGalleryItem(tempId, { url: publicUrl });
+              setThGeneratedVideo(publicUrl);
+            }
+          })
+          .catch(err => {
+            console.error('[Background Upload] Talking head upload failed:', err);
+          });
+
+        setThIsGeneratingVideo(false);
+        setThVideoProgress('');
+        return;
+      }
+
       const operation = await (ai.models as any).generateVideo(videoRequest);
       let op = operation;
       setThVideoProgress('Rendering frames…');
@@ -2378,6 +2438,15 @@ Return a detailed JSON with:
       } else {
         costPerSec = audioOn ? 6 : 4;
       }
+    } else if (engine === 'omni-flash') {
+      if (is4K) {
+        costPerSec = audioOn ? 38 : 31;
+      } else if (is1080p) {
+        costPerSec = audioOn ? 15 : 12;
+      } else {
+        costPerSec = audioOn ? 12 : 10;
+      }
+      return Math.ceil(costPerSec * 1.1 * duration);
     }
 
     return costPerSec * duration;
@@ -2447,8 +2516,80 @@ Return a detailed JSON with:
             : 'veo-3.1-fast-generate-preview';
 
         const resolvedAspectRatio = isTalkingHead ? thAspectRatio : (aspectRatio === '1:1' ? '9:16' : aspectRatio as any);
-        const resolvedDuration = isTalkingHead ? parseInt(thDuration) : Math.min(parseInt(durationSeconds), 8);
+        const resolvedDuration = isTalkingHead 
+          ? parseInt(thDuration) 
+          : resolvedEngine === 'omni-flash'
+          ? parseInt(durationSeconds)
+          : Math.min(parseInt(durationSeconds), 8);
         const resolvedIncludeAudio = isTalkingHead ? true : includeAudio;
+
+        if (resolvedEngine === 'omni-flash') {
+          setVideoProgressMsg(`Shot ${i + 1}/${splitScenes.length} · Submitting to Gemini Omni Flash...`);
+          let imageToSend = '';
+          if (imagePayload) {
+            imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
+          }
+
+          const headers: any = { 'Content-Type': 'application/json' };
+          const customKey = getApiKey();
+          if (customKey) headers['x-admin-trial-key'] = customKey;
+
+          const resp = await fetch(getApiUrl('/api/omni-i2v'), {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              image: imageToSend || undefined,
+              motionPrompt: prompt.substring(0, 1000),
+              duration: resolvedDuration,
+              aspectRatio: resolvedAspectRatio,
+              resolution: '720p',
+              model: 'gemini-omni-flash-preview',
+              userId: currentUserId,
+              generateAudio: resolvedIncludeAudio,
+              creditReason: 'ugc_video_generation'
+            })
+          });
+
+          const data = await resp.json();
+          if (!resp.ok) throw new Error(data.error || 'Omni generation failed.');
+          if (!data.videoUrl) throw new Error('Omni returned no video URL.');
+
+          const videoUrl = data.videoUrl;
+          const res = await fetch(videoUrl);
+          const blob = await res.blob();
+          const localUrl = URL.createObjectURL(blob);
+          const tempId = Date.now().toString();
+
+          // Immediately push to gallery and timeline using local URL
+          addToGallery({ id: tempId, type: 'video', url: localUrl });
+          const timelineId = `shot-${i}-${Date.now()}`;
+          setTimeline((prev: TimelineItem[]) => [
+            ...prev,
+            {
+              id: timelineId,
+              url: localUrl,
+              start: 0,
+              end: resolvedDuration,
+              duration: resolvedDuration,
+              type: 'video' as const,
+            },
+          ]);
+          showToast(`Shot ${i + 1} done ✓`, 'success');
+
+          // Upload to Supabase in the background
+          uploadToSupabase(blob, 'video', prompt, currentUserId).then((publicUrl) => {
+            if (publicUrl) {
+              updateGalleryItem(tempId, { url: publicUrl });
+              setTimeline((prev: TimelineItem[]) =>
+                prev.map((t) => (t.id === timelineId ? { ...t, url: publicUrl } : t))
+              );
+            }
+          }).catch((err) => {
+            console.error('[Background Upload] Shot upload failed:', err);
+          });
+
+          continue; // Move to next scene
+        }
 
         const videoRequest: any = {
           model: veoModel,
@@ -2927,9 +3068,52 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         }
       }
 
+      const engine = activeTab === 'talking-head' ? thEngine : videoGenMode;
+
+      if (engine === 'omni-flash') {
+        setVideoProgressMsg('Submitting to Gemini Omni Flash...');
+        const resolvedAspectRatio = activeTab === 'talking-head' ? thAspectRatio : (aspectRatio === '1:1' ? '9:16' : aspectRatio as any);
+        const resolvedDuration = activeTab === 'talking-head' ? parseInt(thDuration) : parseInt(durationSeconds);
+        const resolvedIncludeAudio = activeTab === 'talking-head' ? true : includeAudio;
+
+        let imageToSend = '';
+        if (imagePayload) {
+          imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
+        }
+
+        const headers: any = { 'Content-Type': 'application/json' };
+        const customKey = getApiKey();
+        if (customKey) headers['x-admin-trial-key'] = customKey;
+
+        const resp = await fetch(getApiUrl('/api/omni-i2v'), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            image: imageToSend || undefined,
+            motionPrompt: promptText.substring(0, 1000),
+            duration: resolvedDuration,
+            aspectRatio: resolvedAspectRatio,
+            resolution: '720p',
+            model: 'gemini-omni-flash-preview',
+            userId: currentUserId,
+            generateAudio: resolvedIncludeAudio,
+            creditReason: 'ugc_video_generation'
+          })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Omni generation failed.');
+        if (!data.videoUrl) throw new Error('Omni returned no video URL.');
+
+        setGeneratedVideo(data.videoUrl);
+        setIsGeneratingVideo(false);
+        setVideoProgressMsg('');
+        showToast('Video scene generated successfully!', 'success');
+        return;
+      }
+
       setVideoProgressMsg('Igniting the Motion Engine...');
 
-      const engine = activeTab === 'talking-head' ? thEngine : videoGenMode;
       const veoModel = engine === 'veo3'
         ? 'veo-3.1-generate-preview'
         : engine === 'veo_lite'

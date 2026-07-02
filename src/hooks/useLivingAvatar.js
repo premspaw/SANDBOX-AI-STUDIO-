@@ -82,6 +82,10 @@ export function useLivingAvatar() {
 
   // Retrieve API Key
   const getApiKey = () => {
+    const userProfile = useAppStore.getState().userProfile;
+    if (userProfile?.role === 'admin' || userProfile?.email === 'premspaw@gmail.com') {
+      return window.__ADMIN_GOOGLE_API_KEY__ || import.meta.env.VITE_ADMIN_GOOGLE_API_KEY || localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
+    }
     return localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
   };
 
@@ -423,7 +427,9 @@ export function useLivingAvatar() {
     if (wsRef.current) {
       try {
         wsRef.current.close();
-      } catch (e) {}
+      } catch (err) {
+        console.debug("WebSocket close failed", err);
+      }
       wsRef.current = null;
     }
 
@@ -437,7 +443,9 @@ export function useLivingAvatar() {
     if (scriptProcessorRef.current) {
       try {
         scriptProcessorRef.current.disconnect();
-      } catch (e) {}
+      } catch (err) {
+        console.debug("Script processor disconnect failed", err);
+      }
       scriptProcessorRef.current = null;
     }
 
@@ -445,7 +453,9 @@ export function useLivingAvatar() {
     if (audioContextRef.current) {
       try {
         audioContextRef.current.close();
-      } catch (e) {}
+      } catch (err) {
+        console.debug("AudioContext close failed", err);
+      }
       audioContextRef.current = null;
     }
 
@@ -491,7 +501,9 @@ export function useLivingAvatar() {
       try {
         const micSourceNode = audioContext.createMediaStreamSource(micStreamRef.current);
         micSourceNode.connect(audioDestination);
-      } catch (e) {}
+      } catch (err) {
+        console.debug("Mic source connection failed", err);
+      }
     }
     if (outputGainNodeRef.current) {
       outputGainNodeRef.current.connect(audioDestination);
@@ -558,7 +570,9 @@ export function useLivingAvatar() {
     if (recordAudioDestRef.current) {
       try {
         recordAudioDestRef.current.disconnect();
-      } catch (e) {}
+      } catch (err) {
+        console.debug("Audio destination disconnect failed", err);
+      }
       recordAudioDestRef.current = null;
     }
   };
@@ -773,6 +787,7 @@ export function useLivingAvatar() {
     return () => {
       disconnect();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {

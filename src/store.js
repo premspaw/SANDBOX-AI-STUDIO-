@@ -640,6 +640,27 @@ export const useAppStore = create((set, get) => ({
                 _profileCache[userId] = data;
                 _profileCacheAt[userId] = Date.now();
                 set({ userProfile: data, userShorts: data.shorts_balance ?? 50 });
+
+                if (data.role === 'admin' || data.email === 'premspaw@gmail.com') {
+                    (async () => {
+                        try {
+                            const sessionToken = (await supabase.auth.getSession())?.data?.session?.access_token;
+                            if (sessionToken) {
+                                const resp = await fetch(getApiUrl('/api/admin/google-key'), {
+                                    headers: { 'Authorization': `Bearer ${sessionToken}` }
+                                });
+                                if (resp.ok) {
+                                    const resData = await resp.json();
+                                    if (resData.apiKey) {
+                                        window.__ADMIN_GOOGLE_API_KEY__ = resData.apiKey;
+                                    }
+                                }
+                            }
+                        } catch (keyErr) {
+                            console.warn("Failed to fetch admin API key:", keyErr);
+                        }
+                    })();
+                }
             }
         } catch (err) {
             console.error('Store: Fetch profile failed', err);

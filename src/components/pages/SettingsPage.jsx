@@ -62,7 +62,7 @@ export default function SettingsPage() {
             setLoading(false);
         };
         loadUser();
-    }, []);
+    }, [fetchUserProfile]);
 
     // Sync profile data into form when it loads
     useEffect(() => {
@@ -72,7 +72,7 @@ export default function SettingsPage() {
             setSecurityAlerts(profile.security_alerts ?? true);
             setTwoFactorEnabled(profile.two_factor_enabled ?? false);
         }
-    }, [profile]);
+    }, [profile, authUser?.user_metadata?.full_name]);
 
     // Load billing history when tab changes
     useEffect(() => {
@@ -401,10 +401,10 @@ export default function SettingsPage() {
                                                     <Coins size={9} className="text-[#bef264]" /> Monthly Allowance
                                                 </div>
                                                 <div className="text-lg font-black text-white">
-                                                    {currentTier === 'STARTER' ? '300 Credits' :
-                                                     currentTier === 'INFLUENCER' ? '2,000 Credits' :
-                                                     currentTier === 'DIRECTOR' ? '5,499 Credits' :
-                                                     currentTier === 'ENTERPRISE' ? '10,999 Credits' : '50 Free'}
+                                                    {currentTier === 'STARTER' ? '400 Credits' :
+                                                     currentTier === 'INFLUENCER' ? '2,500 Credits' :
+                                                     currentTier === 'DIRECTOR' ? '5,500 Credits' :
+                                                     currentTier === 'ENTERPRISE' ? '11,000 Credits' : '50 Free'}
                                                 </div>
                                             </div>
                                             <div className="p-4 bg-black/20 border border-white/5 rounded-xl">

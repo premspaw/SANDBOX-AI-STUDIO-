@@ -188,26 +188,26 @@ export default function createRouter(deps) {
 
             switch (planId.toLowerCase()) {
                 case 'starter':
-                    creditsToAdd = 399;
+                    creditsToAdd = 400;
                     newTier = 'STARTER';
                     priceAmount = 399;
                     planName = 'Starter';
                     break;
                 case 'influencer':
-                    creditsToAdd = 1999;
+                    creditsToAdd = 2500;
                     newTier = 'INFLUENCER';
                     priceAmount = 1999;
                     planName = 'Influencer';
                     break;
                 case 'director':
-                    creditsToAdd = 4999;
+                    creditsToAdd = 5500;
                     newTier = 'DIRECTOR';
                     priceAmount = 4999;
                     planName = 'Director';
                     break;
                 case 'enterprise':
                 case 'business':
-                    creditsToAdd = 9999;
+                    creditsToAdd = 11000;
                     newTier = 'ENTERPRISE';
                     priceAmount = 9999;
                     planName = 'Enterprise';
@@ -215,7 +215,7 @@ export default function createRouter(deps) {
                 case 'topup-1000':
                 case '1000':
                 case '900':
-                    creditsToAdd = 1000;
+                    creditsToAdd = 2000;
                     newTier = null;
                     priceAmount = 900;
                     planName = '1000-Credits Pack';
@@ -223,7 +223,7 @@ export default function createRouter(deps) {
                 case 'topup-4500':
                 case '4500':
                 case '4000':
-                    creditsToAdd = 4500;
+                    creditsToAdd = 9000;
                     newTier = null;
                     priceAmount = 4000;
                     planName = '4500-Credits Pack';
@@ -231,7 +231,7 @@ export default function createRouter(deps) {
                 case 'topup-10000':
                 case '10000':
                 case '9000':
-                    creditsToAdd = 10000;
+                    creditsToAdd = 20000;
                     newTier = null;
                     priceAmount = 9000;
                     planName = '10000-Credits Pack';

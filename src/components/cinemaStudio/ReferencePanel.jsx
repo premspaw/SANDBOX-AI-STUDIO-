@@ -22,6 +22,7 @@ export const ReferencePanel = ({
     addRefItem,
     setActiveRefUploadCategory,
     isSeedance = false,
+    isOmni = false,
     seedanceRefs = { ref_images: [], ref_videos: [], ref_audios: [] },
     onSeedanceRefUpload,
     onRemoveSeedanceRef,
@@ -131,13 +132,13 @@ export const ReferencePanel = ({
                         </div>
                     ))}
 
-                    {/* ── SEEDANCE REFERENCES SECTION ── */}
+                    {/* ── SEEDANCE/OMNI REFERENCES SECTION ── */}
                     {isSeedance && (
                         <div className="mt-1">
                             <div className="flex items-center gap-2 mb-2">
                                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-fuchsia-500/30 to-transparent" />
                                 <span className="text-[8px] font-black text-fuchsia-400 uppercase tracking-[0.2em] shrink-0 flex items-center gap-1">
-                                    <Film className="w-3 h-3" /> Seedance References
+                                    <Film className="w-3 h-3" /> {isOmni ? 'Omni References' : 'Seedance References'}
                                 </span>
                                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-fuchsia-500/30 to-transparent" />
                             </div>
@@ -157,6 +158,16 @@ export const ReferencePanel = ({
                                                     <span className="text-[7px] text-white/30 font-bold uppercase tracking-widest mt-0.5 block">
                                                         {cat.desc} · {items.length}/{cat.maxItems}
                                                     </span>
+                                                    {isOmni && cat.id === 'ref_videos' && (
+                                                        <span className="text-[6.5px] text-rose-400/80 font-bold uppercase tracking-wider block mt-1 leading-none">
+                                                            ⚠️ Limited: Max 3s reference length
+                                                        </span>
+                                                    )}
+                                                    {isOmni && cat.id === 'ref_audios' && (
+                                                        <span className="text-[6.5px] text-amber-400/80 font-bold uppercase tracking-wider block mt-1 leading-none">
+                                                            ⚠️ Limited: Audio references unsupported
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                             <button

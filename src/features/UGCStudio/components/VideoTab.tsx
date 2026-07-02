@@ -51,6 +51,8 @@ export default function VideoTab() {
               ? 'Describe your video scene — Veo Fast generates an 8-sec clip…'
               : videoGenMode === 'veo_lite'
               ? 'Describe your video scene — Veo Lite generates a fast clip…'
+              : videoGenMode === 'omni-flash'
+              ? 'Describe your video scene — Gemini Omni Flash generates up to a 10-sec clip…'
               : 'Describe your video scene — Veo 3 HQ generates a premium clip…'}
           />
           {/* Pills toolbar — flush to bottom, no extra bg */}
@@ -65,11 +67,14 @@ export default function VideoTab() {
                 <option value="veo_lite" className="bg-[#0c0c0c] text-white">🍃 VEO LITE</option>
                 <option value="veo_fast" className="bg-[#0c0c0c] text-white">⚡ VEO FAST</option>
                 <option value="veo3" className="bg-[#0c0c0c] text-white">🎬 VEO 3 HQ</option>
+                <option value="omni-flash" className="bg-[#0c0c0c] text-white">✨ OMNI FLASH</option>
               </select>
               {videoGenMode === 'veo_lite' ? (
                 <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none leading-none">🍃</span>
               ) : videoGenMode === 'veo3' ? (
                 <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none leading-none">🎬</span>
+              ) : videoGenMode === 'omni-flash' ? (
+                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none leading-none">✨</span>
               ) : (
                 <Zap size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
               )}
@@ -101,6 +106,9 @@ export default function VideoTab() {
                 <option value="4" className="bg-[#0c0c0c] text-white">4 SEC</option>
                 <option value="6" className="bg-[#0c0c0c] text-white">6 SEC</option>
                 <option value="8" className="bg-[#0c0c0c] text-white">8 SEC</option>
+                {videoGenMode === 'omni-flash' && (
+                  <option value="10" className="bg-[#0c0c0c] text-white">10 SEC</option>
+                )}
               </select>
               <Clock size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
               <ChevronDown size={7} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />

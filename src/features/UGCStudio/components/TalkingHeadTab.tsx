@@ -45,7 +45,7 @@ export const TalkingHeadTab: React.FC = () => {
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-1">
           <span className="text-[7px] font-black text-white/25 uppercase tracking-widest">Engine</span>
-          {([['veo_lite', '🍃 Lite'], ['veo_fast', '⚡ Fast'], ['veo3', '🎬 HQ']] as const).map(([val, lbl]) => (
+          {([['veo_lite', '🍃 Lite'], ['veo_fast', '⚡ Fast'], ['veo3', '🎬 HQ'], ['omni-flash', '✨ Omni']] as const).map(([val, lbl]) => (
             <button
               key={val}
               type="button"
@@ -73,11 +73,11 @@ export const TalkingHeadTab: React.FC = () => {
 
         <div className="flex items-center gap-1">
           <span className="text-[7px] font-black text-white/25 uppercase tracking-widest">Dur</span>
-          {(['4', '6', '8'] as const).map(s => (
+          {(thEngine === 'omni-flash' ? ['4', '6', '8', '10'] : ['4', '6', '8'] as const).map(s => (
             <button
               key={s}
               type="button"
-              onClick={() => setThDuration(s)}
+              onClick={() => setThDuration(s as any)}
               className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${thDuration === s ? 'bg-[#c8f135] text-black border-[#c8f135]' : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'}`}
             >
               {s}s

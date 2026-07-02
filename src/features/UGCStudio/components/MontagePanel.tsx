@@ -108,7 +108,8 @@ export const MontagePanel: React.FC = () => {
     analyzeProductForMontage,
     generateMontageReferenceImage,
     showVideoMontageOptions: showMontageOptions,
-    setShowVideoMontageOptions: setShowMontageOptions
+    setShowVideoMontageOptions: setShowMontageOptions,
+    videoGenMode
   } = useUGC();
 
   const { spend, refund } = useShorts();
@@ -158,6 +159,53 @@ export const MontagePanel: React.FC = () => {
       } else if (activeProductImg) {
         setVideoProgressMsg('Loading Product Reference...');
         imageBase64 = await resizeImage(activeProductImg.file);
+      }
+
+      if (videoGenMode === 'omni-flash') {
+        setVideoProgressMsg('Submitting to Gemini Omni Flash...');
+        let imageToSend = '';
+        if (imageBase64) {
+          imageToSend = `data:${imageMime};base64,${imageBase64}`;
+        }
+
+        const headers: any = { 'Content-Type': 'application/json' };
+        const customKey = getApiKey();
+        if (customKey) headers['x-admin-trial-key'] = customKey;
+
+        const resp = await fetch(getApiUrl('/api/omni-i2v'), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            image: imageToSend || undefined,
+            motionPrompt: option.prompt.substring(0, 1000),
+            duration: duration,
+            aspectRatio: aspectRatio === '1:1' ? '9:16' : aspectRatio,
+            resolution: '720p',
+            model: 'gemini-omni-flash-preview',
+            userId: currentUserId,
+            generateAudio: montageAudioEnabled,
+            creditReason: 'ugc_video_generation'
+          })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Omni generation failed.');
+        if (!data.videoUrl) throw new Error('Omni returned no video URL.');
+
+        setMontageGeneratedImg('');
+        addToGallery({ id: Date.now().toString(), type: 'video', url: data.videoUrl });
+        addToTimeline({
+          id: `montage-${Date.now()}`,
+          url: data.videoUrl,
+          start: 0,
+          end: duration,
+          duration: duration,
+          type: 'video'
+        });
+        showToast('Montage video generated successfully!', 'success');
+        setIsGeneratingVideo(false);
+        setVideoProgressMsg('');
+        return;
       }
 
       setVideoProgressMsg(`Submitting to Veo-3...`);

@@ -137,20 +137,19 @@ function CyclingLoadingText() {
 }
 
 const ENGINES = [
-  { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — 5⚡/s (9⚡/s audio)', cost: 5 },
-  { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3.1 Fast',     icon: '⚡', desc: 'Google Fast — 3⚡/s (5⚡/s audio)',         cost: 3 },
-  { id: 'veo-3.1-lite-generate-preview', label: 'Veo 3.1 Lite',     icon: '🍃', desc: 'Google Lite — 2⚡/s (3⚡/s audio)',           cost: 2 },
-  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 25⚡/s (720p) / 15⚡/s (480p)',          cost: 25 },
-  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 15⚡/s (480p) / 30⚡/s (720p) / 70⚡/s (1080p) / 140⚡/s (4K)', cost: 30 },
-  { id: 'seedance-mini',                 label: 'Seedance Mini',    icon: '🧊', desc: 'ByteDance — 15⚡/s (720p) / 10⚡/s (480p)',  cost: 15 },
-  { id: 'omni',                          label: 'Omni',            icon: '🌐', desc: 'Multi-modal fusion engine — 6⚡/s',             cost: 6 },
-  { id: 'omni-flash',                    label: 'Omni Flash',      icon: '✨', desc: 'Omni fast — 4⚡/s',           cost: 4 },
+  { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — 2.5⚡/s (4.5⚡/s audio)', cost: 2.5 },
+  { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3.1 Fast',     icon: '⚡', desc: 'Google Fast — 1.5⚡/s (2.5⚡/s audio)',         cost: 1.5 },
+  { id: 'veo-3.1-lite-generate-preview', label: 'Veo 3.1 Lite',     icon: '🍃', desc: 'Google Lite — 1⚡/s (1.5⚡/s audio)',           cost: 1 },
+  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 12⚡/s (720p) / 7⚡/s (480p)',          cost: 12 },
+  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 7⚡/s (480p) / 15⚡/s (720p) / 35⚡/s (1080p) / 70⚡/s (4K)', cost: 15 },
+  { id: 'seedance-mini',                 label: 'Seedance Mini',    icon: '🧊', desc: 'ByteDance — 7⚡/s (720p) / 5⚡/s (480p)',  cost: 7 },
+  { id: 'omni-flash',                    label: 'Omni Flash',      icon: '✨', desc: 'Omni fast — 1.6⚡/s (2.75⚡/s audio)',           cost: 1.6 },
 ];
 
 const IMAGE_ENGINES = [
-  { id: 'nano-banana-2',   label: 'Nano Banana 2',   icon: '🎨', desc: 'Google highest-fidelity photo gen — 2⚡ flat rate', cost: 2 },
-  { id: 'nano-banana-pro', label: 'Nano Banana Pro', icon: '💎', desc: 'Google maximum fidelity image engine — 5⚡ flat rate', cost: 5 },
-  { id: 'gpt-image-2',     label: 'GPT Image Pro',   icon: '🤖', desc: 'OpenAI layout & text design — 3⚡ flat rate',                 cost: 3 },
+  { id: 'nano-banana-2',   label: 'Nano Banana 2',   icon: '🎨', desc: 'Google highest-fidelity photo gen — 1⚡ flat rate', cost: 1 },
+  { id: 'nano-banana-pro', label: 'Nano Banana Pro', icon: '💎', desc: 'Google maximum fidelity image engine — 3⚡ flat rate', cost: 3 },
+  { id: 'gpt-image-2',     label: 'GPT Image Pro',   icon: '🤖', desc: 'OpenAI layout & text design — 2⚡ flat rate',                 cost: 2 },
 ];
 
 const STYLE_OPTIONS = [
@@ -183,6 +182,12 @@ const SEEDANCE_DURATION_OPTIONS = [
   { value: 5,  label: '5 Seconds',  desc: 'Quick burst — ideal for ads' },
   { value: 10, label: '10 Seconds', desc: 'Standard narrative length' },
   { value: 15, label: '15 Seconds', desc: 'Extended scene — maximum duration' },
+];
+
+const OMNI_DURATION_OPTIONS = [
+  { value: 4,  label: '4 Seconds',  desc: 'Quick cut — fast-paced narrative' },
+  { value: 6,  label: '6 Seconds',  desc: 'Standard — balanced movement' },
+  { value: 10, label: '10 Seconds', desc: 'Maximum duration — full cinematic action' },
 ];
 
 const VEO_DURATION_OPTIONS = [
@@ -511,8 +516,11 @@ export default function CinematicStudio() {
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedPayload, setCopiedPayload] = useState(false);
   const [generateAudio, setGenerateAudio] = useState(() => localStorage.getItem('cs_generateAudio') === 'true');
+  const [omniTask, setOmniTask] = useState(() => localStorage.getItem('cs_omniTask') || 'auto');
 
   const isSeed = useMemo(() => activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini', [activeEngine]);
+  const isOmni = useMemo(() => activeEngine === 'omni' || activeEngine === 'omni-flash', [activeEngine]);
+  const isExtendedRefBoard = useMemo(() => isSeed || isOmni, [isSeed, isOmni]);
 
   // Persist settings to localStorage
   useEffect(() => {
@@ -524,6 +532,7 @@ export default function CinematicStudio() {
     localStorage.setItem('cs_variationCount', String(variationCount));
     localStorage.setItem('cs_duration', String(duration));
     localStorage.setItem('cs_camera', camera);
+    localStorage.setItem('cs_omniTask', omniTask);
     localStorage.setItem('cs_lens', lens);
     localStorage.setItem('cs_angle', angle);
     localStorage.setItem('cs_lensModel', lensModel);
@@ -538,7 +547,7 @@ export default function CinematicStudio() {
     }
   }, [
     activeTab, imageStyle, activeEngine, aspectRatio, resolution,
-    variationCount, duration, camera, lens, angle, lensModel, cameraMovement, generateAudio
+    variationCount, duration, camera, omniTask, lens, angle, lensModel, cameraMovement, generateAudio
   ]);
 
   // Automatically take default lens for selected Camera + Angle (framing & perspective)
@@ -549,12 +558,19 @@ export default function CinematicStudio() {
     setLens(defaultLens);
   }, [camera, angle]);
 
-  // Adjust resolution & duration options dynamically for Seedance & Veo 3.1 engines
+  // Adjust resolution & duration options dynamically for Seedance, Veo 3.1 & Omni engines
   useEffect(() => {
     const isSeed = activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini';
-    const isVeo3 = activeEngine.startsWith('veo-3.1') || activeEngine === 'omni' || activeEngine === 'omni-flash';
+    const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash';
+    const isVeo3 = activeEngine.startsWith('veo-3.1');
     
-    if (isVeo3) {
+    if (isOmniEngine) {
+      if (![4, 6, 10].includes(duration)) {
+        if (duration < 5) setDuration(4);
+        else if (duration < 8) setDuration(6);
+        else setDuration(10);
+      }
+    } else if (isVeo3) {
       if (![4, 6, 8].includes(duration)) {
         if (duration < 5) setDuration(4);
         else if (duration < 8) setDuration(6);
@@ -1342,45 +1358,56 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   const textareaRef = useRef(null);
   const getRequiredCredits = (engineId) => {
     if (activeTab === 'image') {
-      return IMAGE_ENGINES.find(e => e.id === engineId)?.cost || 2;
+      return IMAGE_ENGINES.find(e => e.id === engineId)?.cost || 1;
     }
     if (engineId.startsWith('veo-3.1') || engineId === 'veo3') {
-      let costPerSec = 10;
+      let costPerSec = 5;
       const modelId = engineId === 'veo3' ? 'veo-3.1-generate-preview' : engineId;
       if (modelId === 'veo-3.1-generate-preview') {
         if (resolution === '4k') {
-          costPerSec = generateAudio ? 80 : 54;
+          costPerSec = generateAudio ? 40 : 27; // halved from 80 : 54
         } else {
-          costPerSec = generateAudio ? 54 : 30;
+          costPerSec = generateAudio ? 27 : 15; // halved from 54 : 30
         }
       } else if (modelId === 'veo-3.1-fast-generate-preview') {
         if (resolution === '4k') {
-          costPerSec = generateAudio ? 38 : 31;
+          costPerSec = generateAudio ? 19 : 15; // halved from 38 : 31
         } else if (resolution === '1080p') {
-          costPerSec = generateAudio ? 15 : 12;
+          costPerSec = generateAudio ? 8 : 6; // halved from 15 : 12
         } else { // 720p
-          costPerSec = generateAudio ? 12 : 10;
+          costPerSec = generateAudio ? 6 : 5; // halved from 12 : 10
         }
       } else if (modelId === 'veo-3.1-lite-generate-preview') {
         if (resolution === '4k' || resolution === '1080p') {
-          costPerSec = generateAudio ? 10 : 6;
+          costPerSec = generateAudio ? 5 : 3; // halved from 10 : 6
         } else { // 720p
-          costPerSec = generateAudio ? 6 : 4;
+          costPerSec = generateAudio ? 3 : 2; // halved from 6 : 4
         }
       }
       return costPerSec * duration;
     }
     if (engineId === 'seedance-fast') {
-      return (resolution === '480p' ? 15 : 25) * duration;
+      return (resolution === '480p' ? 7 : 12) * duration; // halved from 15 : 25
     }
     if (engineId === 'seedace') {
-      const costPerSec = resolution === '4k' ? 140 : (resolution === '1080p' ? 70 : (resolution === '480p' ? 15 : 30));
+      const costPerSec = resolution === '4k' ? 70 : (resolution === '1080p' ? 35 : (resolution === '480p' ? 7 : 15)); // halved from 140 : 70 : 15 : 30
       return costPerSec * duration;
     }
     if (engineId === 'seedance-mini') {
-      return (resolution === '480p' ? 10 : 15) * duration;
+      return (resolution === '480p' ? 5 : 7) * duration; // halved from 10 : 15
     }
-    return (ENGINES.find(e => e.id === engineId)?.cost || 4) * duration;
+    if (engineId === 'omni-flash') {
+      let costPerSec = 6;
+      if (resolution === '4k') {
+        costPerSec = generateAudio ? 19 : 15; // halved from 38 : 31
+      } else if (resolution === '1080p') {
+        costPerSec = generateAudio ? 8 : 6; // halved from 15 : 12
+      } else { // 720p
+        costPerSec = generateAudio ? 6 : 5; // halved from 12 : 10
+      }
+      return Math.ceil(costPerSec * 1.1 * duration);
+    }
+    return (ENGINES.find(e => e.id === engineId)?.cost || 2) * duration;
   };
 
   const isBusy = status === 'generating' || status === 'polling';
@@ -1691,8 +1718,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       };
     } else {
       let targetModel = activeEngine;
-      if (activeEngine === 'omni') targetModel = 'veo-3.1-generate-preview';
-      else if (activeEngine === 'omni-flash') targetModel = 'veo-3.1-fast-generate-preview';
+      if (activeEngine === 'omni') targetModel = 'gemini-omni-preview';
+      else if (activeEngine === 'omni-flash') targetModel = 'gemini-omni-flash-preview';
 
       const identity_images = taggedItems.map(item => item.imageUrl).filter(Boolean);
       const identity_gcs_uris = taggedItems.map(item => ({ name: item.name, uri: item.imageUrl }));
@@ -1737,6 +1764,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         identity_images,
         identity_gcs_uris,
         referenceImages: identity_images,
+        ref_images: seedanceRefs.ref_images || [],
+        ref_videos: seedanceRefs.ref_videos || [],
+        ref_audios: seedanceRefs.ref_audios || [],
+        task: omniTask,
         generateAudio
       };
     }
@@ -1911,9 +1942,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         let engineLabel = ENGINES.find(e => e.id === activeEngine)?.label || 'Veo 3.1';
         
         if (activeEngine === 'omni') {
-          targetModel = 'veo-3.1-generate-preview';
+          targetModel = 'gemini-omni-preview';
         } else if (activeEngine === 'omni-flash') {
-          targetModel = 'veo-3.1-fast-generate-preview';
+          targetModel = 'gemini-omni-flash-preview';
         }
 
         // Pre-populate gallery with placeholder loading items
@@ -1945,7 +1976,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           if (_veoAdminOn && _veoAdminKey) _veoHeaders['x-admin-trial-key'] = _veoAdminKey;
 
           try {
-            const resp = await fetch(getApiUrl('/api/veo-i2v'), {
+            const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash';
+            const endpointUrl = isOmniEngine ? '/api/omni-i2v' : '/api/veo-i2v';
+            const resp = await fetch(getApiUrl(endpointUrl), {
               method: 'POST',
               headers: _veoHeaders,
               body: JSON.stringify({
@@ -1961,6 +1994,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                 identity_images,
                 identity_gcs_uris,
                 referenceImages: identity_images,
+                ref_images: seedanceRefs.ref_images || [],
+                ref_videos: seedanceRefs.ref_videos || [],
+                ref_audios: seedanceRefs.ref_audios || [],
+                task: omniTask,
                 userId,
                 generateAudio,
                 creditReason: 'cinematic_video_generation'
@@ -2637,6 +2674,71 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   )}
                 </UpwardDropdown>
               )}
+
+              {/* OMNI TASK DROPDOWN (Video only, Omni engine only) */}
+              {activeTab === 'video' && isOmni && (
+                <UpwardDropdown
+                  icon={<Sparkles size={9} />}
+                  label={(() => {
+                    const taskLabels = {
+                      auto: 'Auto inference',
+                      text_to_video: 'Text-to-Video',
+                      image_to_video: 'Image-to-Video',
+                      reference_to_video: 'Reference-to-Video',
+                      edit: 'Stateful Edit'
+                    };
+                    return taskLabels[omniTask] || 'Task';
+                  })()}
+                  accentColor="violet"
+                >
+                  {(close) => (
+                    <div className="space-y-0.5">
+                      {[
+                        { id: 'auto', label: 'Auto Inference', icon: '✨', desc: 'Let the model infer task from inputs' },
+                        { id: 'text_to_video', label: 'Text-to-Video', icon: '📝', desc: 'Generate video from text prompt' },
+                        { id: 'image_to_video', label: 'Image-to-Video', icon: '🖼️', desc: 'Generate video from start image' },
+                        { id: 'reference_to_video', label: 'Reference-to-Video', icon: '🔗', desc: 'Generate using references' },
+                        { id: 'edit', label: 'Stateful Edit', icon: '✏️', desc: 'Stateful video editing interaction' },
+                      ].map((opt, i) => (
+                        <motion.button
+                          key={opt.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
+                          onClick={() => { setOmniTask(opt.id); close(); }}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
+                            omniTask === opt.id
+                              ? "bg-violet-500/10 border border-violet-500/25"
+                              : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
+                            omniTask === opt.id
+                              ? "bg-violet-500/20 text-violet-400"
+                              : "bg-white/5 text-gray-500"
+                          )}>
+                            <span className="text-[10px]">{opt.icon}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={cn(
+                              "text-[10px] font-black uppercase tracking-wider truncate",
+                              omniTask === opt.id ? "text-violet-400" : "text-white/70"
+                            )}>{opt.label}</p>
+                            <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
+                          </div>
+                          {omniTask === opt.id && (
+                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-violet-400 flex items-center justify-center shrink-0">
+                              <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </motion.div>
+                          )}
+                        </motion.button>
+                      ))}
+                    </div>
+                  )}
+                </UpwardDropdown>
+              )}
             </div>
             
             {/* ── Main Floating Input Bar (Vertical premium layout) ── */}
@@ -2700,6 +2802,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   ))}
                 </div>
               )}
+
+
 
               {/* TOP ROW: Switcher, Dividers, Textarea, Upload Slots (on the right side) */}
               <div className="flex items-start gap-2.5 w-full">
@@ -2806,8 +2910,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                         </button>
                       )}
                     </div>
-                  ) : !isSeed ? (
-                    /* ── VIDEO MODE: DUAL SLOTS (hidden for Seedance — use @ references instead) ── */
+                  ) : !isExtendedRefBoard ? (
+                    /* ── VIDEO MODE: DUAL SLOTS (hidden for Seedance & Omni — use @ references instead) ── */
                     <div className="flex flex-col items-center gap-1.5 p-1.5 bg-white/[0.02] border border-white/5 rounded-2xl relative group">
                       <div className="flex items-center gap-1.5">
                         {/* First Frame Slot */}
@@ -3131,11 +3235,12 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                       {(close) => (
                         <div className="space-y-0.5">
                           {(() => {
-                            const isVeo3 = activeEngine.startsWith('veo-3.1') || activeEngine === 'omni' || activeEngine === 'omni-flash';
+                            const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash';
+                            const isVeo3 = activeEngine.startsWith('veo-3.1');
                             const isSeedance = activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini';
-                            const currentDurationOptions = isVeo3 
-                              ? VEO_DURATION_OPTIONS 
-                              : (isSeedance ? SEEDANCE_DURATION_OPTIONS : DURATION_OPTIONS);
+                            const currentDurationOptions = isOmniEngine
+                              ? OMNI_DURATION_OPTIONS
+                              : (isVeo3 ? VEO_DURATION_OPTIONS : (isSeedance ? SEEDANCE_DURATION_OPTIONS : DURATION_OPTIONS));
                             const maxOptValue = Math.max(...currentDurationOptions.map(o => o.value));
 
                             return currentDurationOptions.map((opt, i) => (
@@ -3183,7 +3288,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   )}
 
                   {/* AUDIO TOGGLE (Video only, Seedance & Veo 3.1 engines) */}
-                  {activeTab === 'video' && (activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini' || activeEngine.startsWith('veo-3.1')) && (
+                  {activeTab === 'video' && (activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini' || activeEngine.startsWith('veo-3.1') || activeEngine === 'omni' || activeEngine === 'omni-flash') && (
                     <button
                       type="button"
                       onClick={() => setGenerateAudio(!generateAudio)}
@@ -3193,7 +3298,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                           ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-400"
                           : "bg-black/60 border-white/10 text-gray-500 hover:text-white"
                       )}
-                      title={activeEngine.startsWith('veo-3.1') ? "Generate synchronized audio with Google Veo 3.1" : "Generate synchronized audio with Seedance 2.0"}
+                      title={activeEngine.startsWith('veo-3.1') ? "Generate synchronized audio with Google Veo 3.1" : (activeEngine.startsWith('omni') ? "Generate synchronized audio with Gemini Omni" : "Generate synchronized audio with Seedance 2.0")}
                     >
                       <span className="text-[10px]">{generateAudio ? '🔊' : '🔇'}</span>
                     </button>
@@ -3315,7 +3420,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         setLibPickerTarget={setLibPickerTarget}
         addRefItem={addRefItem}
         setActiveRefUploadCategory={setActiveRefUploadCategory}
-        isSeedance={isSeed}
+        isSeedance={isExtendedRefBoard}
+        isOmni={isOmni}
         seedanceRefs={seedanceRefs}
         onSeedanceRefUpload={handleSeedanceRefUpload}
         onRemoveSeedanceRef={handleRemoveSeedanceRef}

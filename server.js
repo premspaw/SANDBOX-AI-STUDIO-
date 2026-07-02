@@ -556,6 +556,49 @@ async function requireAuth(req) {
     return data.user;
 }
 
+async function resolveGoogleApiKey(req, userId) {
+    const adminTrialKey = req?.headers?.['x-admin-trial-key'] || '';
+    if (adminTrialKey) return adminTrialKey;
+
+    let finalUserId = userId;
+    if (!finalUserId && req) {
+        try {
+            const authHeader = req.headers['authorization'] || '';
+            const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+            if (token) {
+                const adminClient = supabaseAdmin || supabase;
+                if (adminClient) {
+                    const { data } = await adminClient.auth.getUser(token);
+                    if (data?.user) {
+                        finalUserId = data.user.id;
+                    }
+                }
+            }
+        } catch (_) {}
+    }
+
+    if (finalUserId) {
+        const adminClient = supabaseAdmin || supabase;
+        if (adminClient) {
+            try {
+                const { data: profile } = await adminClient
+                    .from('profiles')
+                    .select('role, email')
+                    .eq('id', finalUserId)
+                    .single();
+                if (profile?.role === 'admin' || profile?.email === 'premspaw@gmail.com') {
+                    console.log(`[GOOGLE-API] 👑 Admin detected (${profile?.email || finalUserId}) - using Admin Google API Key.`);
+                    return process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+                }
+            } catch (err) {
+                console.warn('[GOOGLE-API] Role lookup failed:', err.message);
+            }
+        }
+    }
+
+    return process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+}
+
 async function consumeCredits(userId, cost, reason = 'generation') {
     if (!supabase) {
         if (process.env.NODE_ENV === 'production') {
@@ -1031,12 +1074,7 @@ async function handleGoogle(req, res) {
     try {
         const { model, modelEngine, prompt, negativePrompt, negative_prompt, aspect_ratio, aspectRatio, userId, firstFrame, lastFrame, referenceImages = [], quality, resolution, imageSize, size, folder } = req.body;
         const targetModel = model || modelEngine;
-        // Admin trial key takes priority (only injected by admins via Settings > Admin tab)
-        const adminTrialKey = req.headers?.['x-admin-trial-key'] || '';
-        const apiKey = adminTrialKey || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
-        if (adminTrialKey) {
-            console.log(`[handleGoogle] ⚡ ADMIN TRIAL MODE — Using admin-supplied trial API key.`);
-        }
+        const apiKey = await resolveGoogleApiKey(req, userId);
         if (targetModel?.includes('kling')) {
             return await handleKling(req, res);
         }
@@ -1209,7 +1247,7 @@ async function handleVeoJob(reqBody) {
     const validResolution = ['720p', '1080p', '4k'].includes(resolution) ? resolution : '1080p';
     const modelName = model || 'veo-3.1-generate-preview';
 
-    const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+    const apiKey = await resolveGoogleApiKey(null, userId);
     const token = await getVertexToken();
     if (!token && !apiKey) throw new Error('No Veo auth credentials configured (GOOGLE_API_KEY or service account)');
 
@@ -1475,21 +1513,21 @@ app.post('/api/webhook/razorpay',
                 let planName = 'TOP-UP';
 
                 // Exact Match Checks (Plans & Top-Ups)
-                if (amount_in_rs === 9999 || amount_in_rs === 7999) { creditsToAdd = 9999; targetTier = 'ENTERPRISE'; planName = 'Enterprise'; }
-                else if (amount_in_rs === 4999 || amount_in_rs === 3999) { creditsToAdd = 4999; targetTier = 'DIRECTOR'; planName = 'Director'; }
-                else if (amount_in_rs === 1999 || amount_in_rs === 1599) { creditsToAdd = 1999; targetTier = 'INFLUENCER'; planName = 'Influencer'; }
-                else if (amount_in_rs === 399 || amount_in_rs === 319) { creditsToAdd = 399; targetTier = 'STARTER'; planName = 'Starter'; }
+                if (amount_in_rs === 9999 || amount_in_rs === 7999) { creditsToAdd = 11000; targetTier = 'ENTERPRISE'; planName = 'Enterprise'; }
+                else if (amount_in_rs === 4999 || amount_in_rs === 3999) { creditsToAdd = 5500; targetTier = 'DIRECTOR'; planName = 'Director'; }
+                else if (amount_in_rs === 2499 || amount_in_rs === 1999) { creditsToAdd = 2500; targetTier = 'INFLUENCER'; planName = 'Influencer'; }
+                else if (amount_in_rs === 399 || amount_in_rs === 319) { creditsToAdd = 400; targetTier = 'STARTER'; planName = 'Starter'; }
                 
                 // Top-Up Packs (No Tier updates)
-                else if (amount_in_rs === 900) { creditsToAdd = 1000; targetTier = null; planName = '1000-Credits Pack'; }
-                else if (amount_in_rs === 4000) { creditsToAdd = 4500; targetTier = null; planName = '4500-Credits Pack'; }
-                else if (amount_in_rs === 9000) { creditsToAdd = 10000; targetTier = null; planName = '10000-Credits Pack'; }
+                else if (amount_in_rs === 900) { creditsToAdd = 2000; targetTier = null; planName = '1000-Credits Pack'; }
+                else if (amount_in_rs === 4000) { creditsToAdd = 9000; targetTier = null; planName = '4500-Credits Pack'; }
+                else if (amount_in_rs === 9000) { creditsToAdd = 20000; targetTier = null; planName = '10000-Credits Pack'; }
                 
                 // Fallback Legacy range checks
-                else if (amount_in_rs >= 7000) { creditsToAdd = 9999; targetTier = 'ENTERPRISE'; planName = 'Enterprise'; }
-                else if (amount_in_rs >= 3500) { creditsToAdd = 4999; targetTier = 'DIRECTOR'; planName = 'Director'; }
-                else if (amount_in_rs >= 1500) { creditsToAdd = 1999; targetTier = 'INFLUENCER'; planName = 'Influencer'; }
-                else if (amount_in_rs >= 300) { creditsToAdd = 399; targetTier = 'STARTER'; planName = 'Starter'; }
+                else if (amount_in_rs >= 7000) { creditsToAdd = 11000; targetTier = 'ENTERPRISE'; planName = 'Enterprise'; }
+                else if (amount_in_rs >= 3500) { creditsToAdd = 5500; targetTier = 'DIRECTOR'; planName = 'Director'; }
+                else if (amount_in_rs >= 1500) { creditsToAdd = 2500; targetTier = 'INFLUENCER'; planName = 'Influencer'; }
+                else if (amount_in_rs >= 300) { creditsToAdd = 400; targetTier = 'STARTER'; planName = 'Starter'; }
 
                 if (creditsToAdd > 0 && supabaseAdmin) {
                     const { data: existingPayment } = await supabaseAdmin
@@ -1540,6 +1578,27 @@ const apiLimiter = rateLimit({
 });
 app.use('/api/', apiLimiter);
 
+app.get('/api/admin/google-key', async (req, res) => {
+    try {
+        const user = await requireAuth(req);
+        const adminClient = supabaseAdmin || supabase;
+        if (!adminClient) return res.status(503).json({ error: 'Database unavailable' });
+
+        const { data: profile } = await adminClient
+            .from('profiles')
+            .select('role, email')
+            .eq('id', user.id)
+            .single();
+
+        if (profile?.role === 'admin' || profile?.email === 'premspaw@gmail.com') {
+            return res.json({ apiKey: process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY });
+        }
+        return res.status(403).json({ error: 'Forbidden' });
+    } catch (err) {
+        return res.status(err.status || 500).json({ error: err.message });
+    }
+});
+
 // Niche SEO Static Pages Handlers
 app.get('/real-estate', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'real-estate', 'index.html')));
 app.get('/fashion', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'fashion', 'index.html')));
@@ -1572,6 +1631,7 @@ const deps = {
     getJobStatus,
     upload,
     requireAuth,
+    resolveGoogleApiKey,
     consumeCredits,
     claimOrCreateSpend,
     handleGoogle,
@@ -1599,6 +1659,7 @@ const deps = {
 import createCreditsRouter from './server/routes/creditsRoutes.js';
 import createImageRouter from './server/routes/imageRoutes.js';
 import createVideoRouter from './server/routes/videoRoutes.js';
+import createOmniRouter from './server/routes/omniRoutes.js';
 import createSeedanceRouter from './server/routes/seedanceRoutes.js';
 import createUgcRouter from './server/routes/ugcRoutes.js';
 import createForgeRouter from './server/routes/forgeRoutes.js';
@@ -1616,6 +1677,9 @@ app.use('/api', createImageRouter(deps));
 
 // ── Video (Veo / Kie) ────────────────────────────────────────────────────────
 app.use('/api', createVideoRouter(deps));
+
+// ── Gemini Omni / Omni Flash ────────────────────────────────────────────────
+app.use('/api', createOmniRouter(deps));
 
 // ── Seedance ─────────────────────────────────────────────────────────────────
 app.use('/api/seedance', createSeedanceRouter(deps)); // frontend: /api/seedance/*

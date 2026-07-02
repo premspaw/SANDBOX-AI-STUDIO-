@@ -8,7 +8,9 @@ export default function createRouter(deps) {
         geminiService,
         vectorService,
         handleGoogle,
-        supabase
+        supabase,
+        requireAuth,
+        resolveGoogleApiKey
     } = deps;
 
     // Forge Health
@@ -48,8 +50,12 @@ export default function createRouter(deps) {
         try {
             const { text, type = "general" } = req.body;
             if (!text) return res.status(400).json({ error: "Text is required" });
-
-            const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+            let user;
+            try {
+                user = await requireAuth(req);
+            } catch (_) {}
+            const targetUserId = user ? user.id : req.body.userId;
+            const apiKey = await resolveGoogleApiKey(req, targetUserId);
 
             const prompt = `You are an elite cinematic prompt engineer. Your task is to take a raw description and transform it into a high-fidelity, visually rich narrative prompt.
             
@@ -109,7 +115,12 @@ export default function createRouter(deps) {
             const { currentScript, context = "" } = req.body;
             if (!currentScript) return res.status(400).json({ error: "currentScript is required" });
 
-            const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+            let user;
+            try {
+                user = await requireAuth(req);
+            } catch (_) {}
+            const targetUserId = user ? user.id : req.body.userId;
+            const apiKey = await resolveGoogleApiKey(req, targetUserId);
             const projectId = process.env.GOOGLE_PROJECT_ID;
             const location = process.env.GOOGLE_LOCATION || 'us-central1';
 

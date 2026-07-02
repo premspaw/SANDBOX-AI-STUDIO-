@@ -114,9 +114,24 @@ async def _call_gemini_vision(message: str, attachments: list, system_prompt: st
 
     for att in attachments:
         base64_data = att.get("data", "")
+        mime_type = att.get("type", "image/jpeg")
+        if base64_data.startswith("http://") or base64_data.startswith("https://"):
+            try:
+                logger.info("Downloading reference image from URL: %s", base64_data)
+                async with aiohttp.ClientSession() as sess:
+                    async with sess.get(base64_data) as response:
+                        if response.status == 200:
+                            import base64
+                            file_bytes = await response.read()
+                            base64_data = base64.b64encode(file_bytes).decode("utf-8")
+                            mime_type = response.headers.get("Content-Type", mime_type)
+                        else:
+                            logger.warning("Failed to download image from %s: HTTP %s", base64_data, response.status)
+            except Exception as e:
+                logger.warning("Error downloading image from %s: %s", base64_data, e)
+
         if "," in base64_data:
             base64_data = base64_data.split(",", 1)[1]
-        mime_type = att.get("type", "image/jpeg")
         parts.append({"inline_data": {"mime_type": mime_type, "data": base64_data}})
 
     payload = {"contents": [{"parts": parts}]}

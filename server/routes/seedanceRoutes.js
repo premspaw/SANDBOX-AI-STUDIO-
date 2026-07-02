@@ -95,13 +95,13 @@ export default function createRouter(deps) {
             const resLower = (resolution || '720p').toLowerCase();
 
             if (engine === 'seedance-fast') {
-                const costPerSec = resLower === '480p' ? 9 : 20;
+                const costPerSec = resLower === '480p' ? 4 : 10; // halved from 9 : 20
                 requiredCredits = costPerSec * durationNum;
             } else if (engine === 'seedace') {
-                const costPerSec = resLower === '4k' ? 124 : (resLower === '1080p' ? 61 : (resLower === '480p' ? 11 : 24));
+                const costPerSec = resLower === '4k' ? 62 : (resLower === '1080p' ? 30 : (resLower === '480p' ? 5 : 12)); // halved from 124 : 61 : 11 : 24
                 requiredCredits = costPerSec * durationNum;
             } else if (engine === 'seedance-mini') {
-                const costPerSec = resLower === '480p' ? 6 : 12;
+                const costPerSec = resLower === '480p' ? 3 : 6; // halved from 6 : 12
                 requiredCredits = costPerSec * durationNum;
             }
 

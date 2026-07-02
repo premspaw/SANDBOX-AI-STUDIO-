@@ -9,7 +9,8 @@ export default function createRouter(deps) {
         requireAuth,
         storageService,
         supabaseAdmin,
-        supabase
+        supabase,
+        resolveGoogleApiKey
     } = deps;
 
     // Helper to wrap raw PCM (24kHz, 1-channel, 16-bit) in a playable WAV header
@@ -56,8 +57,12 @@ export default function createRouter(deps) {
 
             const fileName = `voices/previews/preview-${voiceName.toLowerCase()}.wav`;
             
-            // Generate standard short preview prompt
-            const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+            let user;
+            try {
+                user = await requireAuth(req);
+            } catch (_) {}
+            const targetUserId = user ? user.id : req.query.userId;
+            const apiKey = await resolveGoogleApiKey(req, targetUserId);
             const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:generateContent?key=${apiKey}`;
             const promptText = `Hi! I am the voice model, ${voiceName}.`;
 
@@ -159,7 +164,7 @@ export default function createRouter(deps) {
                 }
             }
 
-            const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+            const apiKey = await resolveGoogleApiKey(req, targetUserId);
             const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
             // Build final steerable prompt based on selected style, pace, accent, and language

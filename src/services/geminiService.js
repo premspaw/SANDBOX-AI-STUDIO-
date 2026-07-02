@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { getApiUrl } from "../config/apiConfig.js";
+import { useAppStore } from "../store.js";
 
 const arrayBufferToBase64 = (buffer) => {
     if (typeof globalThis.Buffer !== 'undefined') {
@@ -15,10 +16,19 @@ const arrayBufferToBase64 = (buffer) => {
 
 const getAIConfig = () => {
     const storeKey = typeof window !== 'undefined' && window.__VEO_API_KEY__;
-    const apiKey = storeKey ||
+    let apiKey = storeKey ||
         (typeof globalThis.process !== 'undefined' ? globalThis.process.env.GOOGLE_API_KEY : null) ||
         (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_GOOGLE_API_KEY : null) ||
         '';
+
+    try {
+        const userProfile = useAppStore.getState().userProfile;
+        if (userProfile?.role === 'admin' || userProfile?.email === 'premspaw@gmail.com') {
+            apiKey = window.__ADMIN_GOOGLE_API_KEY__ || import.meta.env.VITE_ADMIN_GOOGLE_API_KEY || apiKey;
+        }
+    } catch (e) {
+        console.debug("useAppStore getState not available", e);
+    }
         
     const isToken = apiKey.startsWith('AQ.') || apiKey.startsWith('ya29.');
     const projectId = (typeof globalThis.process !== 'undefined' ? globalThis.process.env.GOOGLE_PROJECT_ID : null) || 'gen-lang-client-0438096272';
@@ -29,12 +39,14 @@ const getAIConfig = () => {
 };
 
 let _aiInstance = null;
+let _lastApiKeyUsed = null;
 const getAI = () => {
-    if (_aiInstance) return _aiInstance;
     const { apiKey } = getAIConfig();
     if (!apiKey) {
         throw new Error('[geminiService] GOOGLE_API_KEY is not set. Add it to your Railway service variables.');
     }
+    if (_aiInstance && _lastApiKeyUsed === apiKey) return _aiInstance;
+    _lastApiKeyUsed = apiKey;
     _aiInstance = new GoogleGenAI({ 
         apiKey
     });
@@ -91,11 +103,7 @@ export const cacheUniverseBible = async (bible) => {
         if (textContext.length < 130000) return null;
 
         // Use standard generative-ai for standard requests, but we need the new SDK for caching
-        const storeKey = typeof window !== 'undefined' && window.__VEO_API_KEY__;
-        const apiKey = storeKey ||
-            (typeof globalThis.process !== 'undefined' ? globalThis.process.env.GOOGLE_API_KEY : null) ||
-            (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_GOOGLE_API_KEY : null) ||
-            '';
+        const { apiKey } = getAIConfig();
 
         // We interact with the REST API directly for cache creation to avoid SDK mismatches
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/cachedContents?key=${apiKey}`, {

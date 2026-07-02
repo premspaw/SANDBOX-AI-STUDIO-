@@ -18,18 +18,18 @@ const PricingPage = () => {
             models: [
                 { name: "Nano Banana Standard", cost: "1 credit" },
                 { name: "Nano Banana 2 / Flash", cost: "2 credits" },
-                { name: "Nano Banana Pro", cost: "5 credits" },
+                { name: "Nano Banana Pro", cost: "3 credits" },
                 { name: "Multi-Shot 9-Grid Matrix", cost: "2 credits" },
-                { name: "4K AI Upscaling Master", cost: "3 credits" }
+                { name: "4K AI Upscaling Master", cost: "2 credits" }
             ]
         },
         {
             category: "Video Production",
             models: [
                 { name: "Veo 3.1 Fast Preview", cost: "10 credits" },
-                { name: "Veo 3.1 High Fidelity", cost: "20 credits" },
-                { name: "Seedance 2.0 Fast", cost: "100 credits" },
-                { name: "Seedance 2.0 Pro", cost: "125 credits" }
+                { name: "Veo 3.1 High Fidelity", cost: "40 credits" },
+                { name: "Seedance 2.0 Fast", cost: "50 credits" },
+                { name: "Seedance 2.0 Pro", cost: "60 credits" }
             ]
         },
         {
@@ -37,18 +37,18 @@ const PricingPage = () => {
             models: [
                 { name: "Storyboard 9-Frame Setup", cost: "5 credits" },
                 { name: "UGC Script Narrative Generation", cost: "1 credit" },
-                { name: "UGC Scene Single Render", cost: "10 credits" },
-                { name: "UGC Full Compilation Production", cost: "20 credits" }
+                { name: "UGC Scene Single Render", cost: "5 credits" },
+                { name: "UGC Full Compilation Production", cost: "10 credits" }
             ]
         },
         {
             category: "Commercial & Forge",
             models: [
                 { name: "Product Shoot Context (Single)", cost: "3 credits" },
-                { name: "Product Pack (5 Scenes Bundle)", cost: "12 credits" },
-                { name: "360 Rotating Turn Showcase", cost: "8 credits" },
-                { name: "AI Character Identity Kit", cost: "15 credits" },
-                { name: "Movie Matrix Grid Embeddings", cost: "10 credits" }
+                { name: "Product Pack (5 Scenes Bundle)", cost: "6 credits" },
+                { name: "360 Rotating Turn Showcase", cost: "4 credits" },
+                { name: "AI Character Identity Kit", cost: "7 credits" },
+                { name: "Movie Matrix Grid Embeddings", cost: "5 credits" }
             ]
         }
     ];
@@ -63,11 +63,20 @@ const PricingPage = () => {
             description: "An affordable kickstart with a 6-Month setup value layout!",
             image: "https://jdepbrbujambxvtdiwla.supabase.co/storage/v1/object/public/templates/2a3c4c1e-fd65-4909-bfee-36190c085d94.png",
             features: [
-                "300 High-Speed Renders (Credits)",
-                "Starter Character Creation",
+                "400 High-Speed Renders (Credits)",
+                "Up to 200 Standard Images",
+                "Up to 8 8s Video Renders",
+                "Standard Text-to-Speech (TTS)",
+                "Seedance Video Mode Access",
+                "Standard Motion Control (Presets)",
+                "Marketing Mode Standard Renders",
+                "UGC Script Builder (No Prompting)",
+                "Preloaded Templates Ready to Use",
+                "Standard Reference Board",
+                "Storyboard in a click",
+                "Angles in a click",
+                "Starter Consistent Character",
                 "2 Concurrent Jobs",
-                "Seedance 2.0 Fast Access",
-                "Basic Storyboard builder",
                 "Standard Support"
             ],
             icon: Shield,
@@ -87,12 +96,22 @@ const PricingPage = () => {
             description: "The choice for professional creators and growing visual brands.",
             image: "/pricing/influencer.png",
             features: [
-                "2,000 High-Speed Renders (Credits)",
-                "3 AI Character Creations",
+                "2,500 High-Speed Renders (Credits)",
+                "Up to 1,250 Standard Images",
+                "Up to 52 8s Video Renders",
+                "Premium TTS Voice Output",
+                "Standard Motion Control & Presets",
+                "Influencer Seedance Video Mode",
+                "Marketing Mode Product Shoots",
+                "Realistic UGC Scene Renders (No Prompting)",
+                "Preloaded Templates Ready to Use",
+                "Commercial Ads Creator",
+                "Reference Board for Cinematic",
+                "Standard Soul Images & Video",
+                "Storyboard in a click",
+                "Angles in a click (Standard)",
+                "3 Consistent Characters",
                 "4 Concurrent Jobs",
-                "31 Seedance 2.0 Videos OR",
-                "21 Veo 1080p Videos",
-                "Batch Mode Support",
                 "Priority Support"
             ],
             icon: Zap,
@@ -112,13 +131,24 @@ const PricingPage = () => {
             description: "Advanced horsepower for Agencies and Power Users.",
             image: "/pricing/director.png",
             features: [
-                "5,499 High-Speed Renders (Credits)",
-                "10 AI Character Creations",
+                "5,500 High-Speed Renders (Credits)",
+                "Up to 2,750 Standard Images",
+                "Up to 114 8s Video Renders",
+                "Voice Cloning & Custom TTS Profiles",
+                "Advanced Motion Control & Emotions",
+                "Director Seedance & Cinematic Modes",
+                "Marketing Mode Brand Voices",
+                "Realistic UGC Multi-Scene Compilations",
+                "Premium Preloaded Templates",
+                "Commercial Ads Bulk Renders",
+                "Director Reference Board for Cinematic",
+                "Director Soul Images & Video",
+                "Collab Storyboard in a click",
+                "Camera Angles in a click (All)",
+                "AI Agent Autopilot Mode (1 Agent)",
+                "10 Consistent Characters",
                 "8 Concurrent Jobs",
-                "79 Seedance 2.0 Videos OR",
-                "53 Veo 1080p Videos",
-                "Unlimited Nano Banana Images (All)",
-                "4K Export Support",
+                "Unlimited Nano Banana Images (All) for 7 Days",
                 "24/7 Dedicated Support"
             ],
             icon: Sparkles,
@@ -138,14 +168,24 @@ const PricingPage = () => {
             description: "Maximum cinematic Enterprise Tier for Commercial workflows and large volumes.",
             image: "/pricing/enterprise.png",
             features: [
-                "10,999 High-Speed Renders (Credits)",
-                "Unlimited AI Characters",
+                "11,000 High-Speed Renders (Credits)",
+                "Up to 5,500 Standard Images",
+                "Up to 229 8s Video Renders",
+                "Unlimited Custom TTS & Voice Cloning",
+                "Full Motion Control & Emotion Syncing",
+                "Seedance & Cinematic 4K Video Production",
+                "Marketing Mode Bulk Turnarounds",
+                "Enterprise UGC Autopilot Renders (No Prompting)",
+                "Enterprise Preloaded Templates",
+                "Unlimited Commercial Ads Production",
+                "Collab Reference Board for Cinematic",
+                "Studio Soul Images & Video Unlimited",
+                "Enterprise Storyboard in a click",
+                "Bulk Angles in a click (Unlimited)",
+                "AI Agent Team Collaboration (All Agents)",
+                "Unlimited Consistent Characters",
                 "16 Concurrent Jobs",
-                "158 Seedance 2.0 Videos OR",
-                "107 Veo 1080p Videos",
-                "Multi-node Sync renders",
-                "Raw Source Assets exports",
-                "Custom visual model training"
+                "Multi-node Sync renders"
             ],
             icon: Coins,
             color: "from-purple-500/10 to-purple-600/5",
@@ -264,7 +304,49 @@ const PricingPage = () => {
                                                         ) : part
                                                     )}
                                                 </>
-                                            ) : feature}
+                                            ) : /High-Speed Renders/i.test(feature) ? (
+                                                <>
+                                                    {(() => {
+                                                        const match = feature.match(/^([\d,]+)\s+(.*)$/);
+                                                        if (match) {
+                                                            const [_, credits, rest] = match;
+                                                            return (
+                                                                <>
+                                                                    <strong className="text-black bg-[#D4FF00] font-black px-1.5 py-0.5 rounded text-[8px] mr-1.5 inline-block shadow-[0_0_10px_rgba(212,255,0,0.25)]">
+                                                                        {credits}
+                                                                    </strong>
+                                                                    <span>
+                                                                        {rest.split(/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles)/gi).map((part, idx) => {
+                                                                            if (/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles)/i.test(part)) {
+                                                                                return (
+                                                                                    <strong key={idx} className="text-[#D4FF00] font-black bg-[#D4FF00]/10 border border-[#D4FF00]/20 px-1.5 py-0.5 rounded text-[8px] mx-0.5 inline-block shadow-[0_0_5px_rgba(212,255,0,0.1)] uppercase tracking-wider">
+                                                                                        {part}
+                                                                                    </strong>
+                                                                                );
+                                                                            }
+                                                                            return part;
+                                                                        })}
+                                                                    </span>
+                                                                </>
+                                                            );
+                                                        }
+                                                        return feature;
+                                                    })()}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {feature.split(/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles)/gi).map((part, idx) => {
+                                                        if (/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles)/i.test(part)) {
+                                                            return (
+                                                                <strong key={idx} className="text-[#D4FF00] font-black bg-[#D4FF00]/10 border border-[#D4FF00]/20 px-1.5 py-0.5 rounded text-[8px] mx-0.5 inline-block shadow-[0_0_5px_rgba(212,255,0,0.1)] uppercase tracking-wider">
+                                                                    {part}
+                                                                </strong>
+                                                            );
+                                                        }
+                                                        return part;
+                                                    })}
+                                                </>
+                                            )}
                                         </span>
                                     </div>
                                 ))}
@@ -301,9 +383,9 @@ const PricingPage = () => {
                 
                 <div className="flex md:grid md:grid-cols-3 gap-3 overflow-x-auto md:overflow-x-visible no-scrollbar snap-x snap-mandatory py-1">
                     {[
-                        { price: 900, credits: "1000 Credits", desc: "Popular Top-Up", link: "https://rzp.io/rzp/4U0cJGRV", popular: true },
-                        { price: 4000, credits: "4500 Credits", desc: "Agency Bundle", link: "https://rzp.io/rzp/bcCR05bt" },
-                        { price: 9000, credits: "10000 Credits", desc: "Enterprise Stack", link: "https://rzp.io/rzp/fLdtNkEx" }
+                        { price: 900, credits: "2000 Credits", desc: "Popular Top-Up", link: "https://rzp.io/rzp/4U0cJGRV", popular: true },
+                        { price: 4000, credits: "9000 Credits", desc: "Agency Bundle", link: "https://rzp.io/rzp/bcCR05bt" },
+                        { price: 9000, credits: "20000 Credits", desc: "Enterprise Stack", link: "https://rzp.io/rzp/fLdtNkEx" }
                     ].map((topup) => (
                         <div key={topup.price} className={cn(
                             "min-w-[280px] md:min-w-0 p-4 rounded-xl border flex items-center justify-between transition-all duration-300 snap-center",

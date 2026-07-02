@@ -26,7 +26,8 @@ export default function createRouter(deps) {
         VERTEX_PROJECT_ID,
         VERTEX_LOCATIONEarly = 'us-central1',
         uploadVideoToSupabase,
-        LOCAL_ASSETS_FILE
+        LOCAL_ASSETS_FILE,
+        resolveGoogleApiKey
     } = deps;
 
     const VERTEX_LOCATION = deps.VERTEX_LOCATION || VERTEX_LOCATIONEarly;
@@ -682,8 +683,13 @@ Return ONLY valid JSON.`
 
     // UGC preview scene (fuses Character + Product, then animates with Veo)
     router.post('/preview-scene', async (req, res) => {
-        const { characterImage, productImage, scene, analysis, aspectRatio = '9:16', duration = 6, nodeId } = req.body;
+        const { characterImage, productImage, scene, analysis, aspectRatio = '9:16', duration = 6, nodeId, userId } = req.body;
         const taskId = nodeId ? `ugc-preview-${nodeId}` : 'ugc-preview';
+        let user;
+        try {
+            user = await requireAuth(req);
+        } catch (_) {}
+        const targetUserId = user ? user.id : userId;
 
         try {
             if (!characterImage || !productImage) {
@@ -775,7 +781,7 @@ Return ONLY valid JSON.`
             ].filter(Boolean).join('. ');
 
             const token = await getVertexToken();
-            const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+            const apiKey = await resolveGoogleApiKey(req, targetUserId);
             if (!token && !apiKey) throw new Error('Failed to acquire service account token or API key');
 
             let keyframeBase64 = '';

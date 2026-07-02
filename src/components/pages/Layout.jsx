@@ -36,7 +36,7 @@ export function Layout({ children, activeTab, setActiveTab }) {
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}
                     isCollapsed={isCollapsed}
-                    toggleCollapse={() => setIsCollapsed(!isCollapsed)}
+                    toggleCollapse={() => setIsCollapsed(prev => !prev)}
                 />
             </div>
 

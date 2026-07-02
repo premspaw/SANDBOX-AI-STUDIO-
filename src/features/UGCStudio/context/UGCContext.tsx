@@ -127,8 +127,8 @@ export interface UGCContextType {
   // ── Video generation ──────────────────────────────────────────────────────
   videoPrompt: string;
   setVideoPrompt: (v: string) => void;
-  videoGenMode: 'veo_fast' | 'veo3' | 'veo_lite' | 'montage';
-  setVideoGenMode: (v: 'veo_fast' | 'veo3' | 'veo_lite' | 'montage') => void;
+  videoGenMode: 'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash';
+  setVideoGenMode: (v: 'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash') => void;
   isGeneratingVideo: boolean;
   setIsGeneratingVideo: (v: boolean) => void;
   videoProgressMsg: string;
@@ -157,8 +157,8 @@ export interface UGCContextType {
   setGeneratedVideo: (v: string) => void;
   renderMode: 'image' | 'video';
   setRenderMode: (v: 'image' | 'video') => void;
-  durationSeconds: '4' | '6' | '8';
-  setDurationSeconds: (v: '4' | '6' | '8') => void;
+  durationSeconds: '4' | '6' | '8' | '10';
+  setDurationSeconds: (v: '4' | '6' | '8' | '10') => void;
   videoResolution: '720p' | '1080p';
   setVideoResolution: (v: '720p' | '1080p') => void;
   selectedVideoStyle: string;
@@ -237,12 +237,12 @@ export interface UGCContextType {
   // ── Talking Head Tab States ───────────────────────────────────────────────
   thScript: string;
   setThScript: (v: string) => void;
-  thEngine: 'veo_lite' | 'veo_fast' | 'veo3';
-  setThEngine: (v: 'veo_lite' | 'veo_fast' | 'veo3') => void;
+  thEngine: 'veo_lite' | 'veo_fast' | 'veo3' | 'omni-flash';
+  setThEngine: (v: 'veo_lite' | 'veo_fast' | 'veo3' | 'omni-flash') => void;
   thAspectRatio: '9:16' | '16:9';
   setThAspectRatio: (v: '9:16' | '16:9') => void;
-  thDuration: '4' | '6' | '8';
-  setThDuration: (v: '4' | '6' | '8') => void;
+  thDuration: '4' | '6' | '8' | '10';
+  setThDuration: (v: '4' | '6' | '8' | '10') => void;
   thGeneratedImg: string;
   setThGeneratedImg: (v: string) => void;
   thGeneratedVideo: string;

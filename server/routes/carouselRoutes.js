@@ -11,7 +11,9 @@ export default function createRouter(deps) {
         supabase,
         supabaseAdmin,
         MARKETING_BUCKET,
-        storageService
+        storageService,
+        requireAuth,
+        resolveGoogleApiKey
     } = deps;
 
     // ── Carousel HTML → Playwright → Supabase PNG pipeline ───────────────────────
@@ -58,7 +60,12 @@ export default function createRouter(deps) {
             if (!Array.isArray(prompts) || prompts.length === 0)
                 return res.status(400).json({ error: 'prompts array required' });
 
-            const safeId  = (userId || 'anon').replace(/[^a-z0-9_-]/gi, '');
+            let user;
+            try {
+                user = await requireAuth(req);
+            } catch (_) {}
+            const targetUserId = user ? user.id : userId;
+            const safeId  = (targetUserId || 'anon').replace(/[^a-z0-9_-]/gi, '');
             const targetModel = modelEngine || 'gpt-image-2';
             const isNanoBanana = targetModel === 'nano-banana-2';
 
@@ -73,7 +80,7 @@ export default function createRouter(deps) {
 
                 try {
                     if (isNanoBanana) {
-                        const apiKey = process.env.GOOGLE_API_KEY_NEW || process.env.GOOGLE_API_KEY;
+                        const apiKey = await resolveGoogleApiKey(req, targetUserId);
                         const geminiModel = 'models/gemini-3.1-flash-image-preview';
                         
                         const controller = new AbortController();
@@ -335,7 +342,12 @@ export default function createRouter(deps) {
                 return res.status(400).json({ error: 'history is required' });
             }
             
-            const apiKey = process.env.GOOGLE_API_KEY_NEW || process.env.GOOGLE_API_KEY;
+            let user;
+            try {
+                user = await requireAuth(req);
+            } catch (_) {}
+            const targetUserId = user ? user.id : req.body.userId;
+            const apiKey = await resolveGoogleApiKey(req, targetUserId);
             const geminiModel = 'models/gemini-2.5-flash';
             
             const contents = history.map(m => ({
