@@ -77,6 +77,11 @@ async def _run_agent(agent, message, history):
 
 
 async def handle_create_session(request):
+    custom_key = request.headers.get("x-admin-trial-key") or ""
+    if custom_key:
+        os.environ["GOOGLE_API_KEY"] = custom_key
+        logger.info("Setting environment GOOGLE_API_KEY from x-admin-trial-key header.")
+
     try:
         body = await request.json() if request.body_exists else {}
     except Exception:
@@ -167,6 +172,11 @@ async def handle_chat(request):
     session_id = request.match_info.get("session_id")
     if session_id not in _sessions:
         return web.json_response({"error": "Session not found"}, status=404)
+
+    custom_key = request.headers.get("x-admin-trial-key") or ""
+    if custom_key:
+        os.environ["GOOGLE_API_KEY"] = custom_key
+        logger.info("Setting environment GOOGLE_API_KEY from x-admin-trial-key header during chat.")
 
     try:
         body = await request.json()

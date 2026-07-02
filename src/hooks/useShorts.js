@@ -7,20 +7,27 @@ export const useShorts = () => {
     const userProfile = useAppStore(s => s.userProfile)
 
     const spend = async (costKey, overrideAmount = null) => {
-        if (userProfile?.role === 'admin') return { success: true }
         const amount = overrideAmount !== null ? overrideAmount : SHORTS_COST[costKey]
         if (!amount) return { success: false, reason: 'unknown_cost' }
         if (!userProfile?.id) return { success: false, reason: 'unauthenticated' }
-        if (userShorts < amount) return { success: false, reason: 'insufficient_funds' }
-        if (isAdmin) {
-            useAppStore.setState({ userShorts: userShorts - amount });
+        
+        if (userShorts >= amount) {
+            if (isAdmin) {
+                useAppStore.setState({ userShorts: userShorts - amount });
+                return { success: true };
+            }
+            return await spendShorts(userProfile.id, amount, costKey)
+        }
+
+        // If insufficient, but admin/mock-admin, let it slide without deduction
+        if (userProfile?.role === 'admin' || isAdmin) {
             return { success: true };
         }
-        return await spendShorts(userProfile.id, amount, costKey)
+
+        return { success: false, reason: 'insufficient_funds' }
     }
 
     const refund = async (costKey, overrideAmount = null) => {
-        if (userProfile?.role === 'admin') return
         const amount = overrideAmount !== null ? overrideAmount : SHORTS_COST[costKey]
         if (!amount) return
         if (!userProfile?.id) return
@@ -32,7 +39,7 @@ export const useShorts = () => {
     }
 
     const canAfford = (costKey, overrideAmount = null) => {
-        if (userProfile?.role === 'admin') return true
+        if (userProfile?.role === 'admin' || isAdmin) return true
         const amount = overrideAmount !== null ? overrideAmount : (SHORTS_COST[costKey] || 0)
         return userShorts >= amount
     }

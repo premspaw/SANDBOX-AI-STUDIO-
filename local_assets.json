@@ -1,5 +1,19 @@
 [
   {
+    "id": "local_1782991949192_8xgvu",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782991947574.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782991947574.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "car in  beach. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 693922]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-02T11:32:29.192Z"
+  },
+  {
     "id": "local_1782733518243_98khq",
     "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782733517619.jpeg",
     "type": "image",

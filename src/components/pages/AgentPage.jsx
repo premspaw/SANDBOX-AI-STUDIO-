@@ -34,6 +34,13 @@ export default function AgentPage() {
     const userProfile = useAppStore(state => state.userProfile);
     const userId = userProfile?.id;
 
+    const getApiKey = () => {
+        if (userProfile?.role === 'admin' || userProfile?.email === 'premspaw@gmail.com') {
+            return window.__ADMIN_GOOGLE_API_KEY__ || import.meta.env.VITE_ADMIN_GOOGLE_API_KEY || localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
+        }
+        return localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
+    };
+
     const [messages, setMessages] = useState([
         { role: 'assistant', content: "Hey! I'm ZeroLens AI — your creative agent. Choose a mode below to get started.", ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
     ]);
@@ -79,9 +86,13 @@ export default function AgentPage() {
             }
 
             try {
+                const headers = { 'Content-Type': 'application/json' };
+                const adminKey = getApiKey();
+                if (adminKey) headers['x-admin-trial-key'] = adminKey;
+
                 const r = await fetch(`${HERMES_API}/api/sessions`, { 
                     method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
+                    headers, 
                     body: JSON.stringify({ system_prompt: SYSTEM_PROMPT }) 
                 });
                 const data = await r.json();
@@ -133,8 +144,13 @@ export default function AgentPage() {
 
         try {
             const toolLabel = activeTool ? TOOLS.find(t => t.id === activeTool)?.label || activeTool : null;
+            
+            const headers = { 'Content-Type': 'application/json' };
+            const adminKey = getApiKey();
+            if (adminKey) headers['x-admin-trial-key'] = adminKey;
+
             const resp = await fetch(`${HERMES_API}/api/sessions/${hermesSessionId}/chat`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers,
                 body: JSON.stringify({ message: toolLabel ? `[${toolLabel.toUpperCase()} MODE]\n${text}` : text }),
             });
             const data = await resp.json();
