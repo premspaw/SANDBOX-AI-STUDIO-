@@ -384,19 +384,19 @@ const PricingPage = () => {
                 <div className="flex md:grid md:grid-cols-3 gap-3 overflow-x-auto md:overflow-x-visible no-scrollbar snap-x snap-mandatory py-1">
                     {[
                         { price: 2000, credits: "2000 Credits", desc: "Standard Top-Up", link: "https://rzp.io/rzp/4U0cJGRV" },
-                        { price: 3800, originalPrice: 4000, credits: "4000 Credits", desc: "5% Discount (Popular)", link: "https://rzp.io/rzp/bcCR05bt", popular: true },
-                        { price: 8100, originalPrice: 9000, credits: "9000 Credits", desc: "10% Discount Bundle", link: "https://rzp.io/rzp/fLdtNkEx" }
+                        { price: 4000, originalCredits: "4000", credits: "4200 Credits", desc: "+5% Bonus Credits", link: "https://rzp.io/rzp/bcCR05bt", popular: true },
+                        { price: 9000, originalCredits: "9000", credits: "9900 Credits", desc: "+10% Bonus Credits", link: "https://rzp.io/rzp/fLdtNkEx" }
                     ].map((topup) => (
                         <div key={topup.credits} className={cn(
                             "min-w-[280px] md:min-w-0 p-4 rounded-xl border flex items-center justify-between transition-all duration-300 snap-center",
                             topup.popular ? "bg-[#D4FF00]/[0.05] border-[#D4FF00]/40 shadow-[0_0_20px_rgba(212,255,0,0.05)]" : "bg-white/[0.02] border-white/5"
                         )}>
                             <div className="flex flex-col gap-0.5">
-                                <div className="flex items-center gap-2">
-                                    <div className="text-white font-black italic text-lg md:text-base tracking-tight leading-none">₹{topup.price}</div>
-                                    {topup.originalPrice && <div className="text-zinc-500 font-medium italic text-xs line-through">₹{topup.originalPrice}</div>}
+                                <div className="text-white font-black italic text-lg md:text-base tracking-tight leading-none">₹{topup.price}</div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="text-[#D4FF00] font-black text-xs tracking-tight uppercase">{topup.credits}</div>
+                                    {topup.originalCredits && <div className="text-zinc-500 font-medium italic text-[10px] line-through uppercase">{topup.originalCredits}</div>}
                                 </div>
-                                <div className="text-[#D4FF00] font-black text-xs tracking-tight uppercase">{topup.credits}</div>
                                 <div className="text-[9px] text-zinc-500 font-medium uppercase tracking-wider">{topup.desc}</div>
                             </div>
                             
