@@ -120,6 +120,7 @@ export default function AgentPage() {
             cancelled = true;
             if (retryInterval) clearInterval(retryInterval);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionReady]);
 
     const handleToolClick = (toolId) => {
