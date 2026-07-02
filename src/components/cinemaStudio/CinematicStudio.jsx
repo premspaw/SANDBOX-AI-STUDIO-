@@ -3100,6 +3100,42 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                           </div>
                         </div>
 
+                        {/* Image Editing / Ref Board Hacks */}
+                        <div className="space-y-1">
+                          <p className="text-[8px] font-black text-rose-400 uppercase tracking-wider px-1">✂️ Edit & Remix (Image-to-Image)</p>
+                          <div className="space-y-1">
+                            {[
+                              { label: 'Change the character', value: 'Change the character: keep style, setting, and composition, but swap the subject to [new subject]' },
+                              { label: 'Adjust the composition', value: 'Adjust the composition: change camera angle or framing to [new framing]', resetCamera: true },
+                              { label: 'Alter the action', value: 'Alter the action: modify what the character is doing to [new action]' },
+                              { label: 'Swap the setting', value: 'Swap the setting: change environment/background to [new background]' },
+                              { label: 'Rethink the style', value: 'Rethink the style: change visual medium/color grade to [new style]', resetCamera: true }
+                            ].map(edit => (
+                              <button
+                                key={edit.label}
+                                type="button"
+                                onClick={() => {
+                                  setPromptText(prev => prev ? `${prev}, ${edit.value}` : edit.value);
+                                  if (edit.resetCamera && firstFramePreview) {
+                                    setCameraMovement('none');
+                                    setAngle('wide');
+                                    setCamera('arri');
+                                  }
+                                  close();
+                                }}
+                                className="w-full text-left px-2 py-1.5 rounded-xl bg-white/[0.02] hover:bg-rose-500/10 text-white/80 hover:text-rose-400 text-[9px] truncate border border-white/5 hover:border-rose-500/20 transition-all flex items-center justify-between"
+                              >
+                                <span>{edit.label}</span>
+                                {edit.resetCamera && firstFramePreview ? (
+                                  <span className="text-[6.5px] text-rose-400/60 font-bold uppercase tracking-wider">Reset Cam</span>
+                                ) : (
+                                  <span className="text-[7px] text-gray-600 font-mono font-medium">Add helper</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
                       </div>
                     )}
                   </UpwardDropdown>
