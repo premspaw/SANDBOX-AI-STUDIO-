@@ -65,6 +65,7 @@ const PricingPage = () => {
             features: [
                 "400 High-Speed Renders (Credits)",
                 "Up to 200 Standard Images",
+                "Up to 400 Nano Banana Images",
                 "Up to 8 8s Video Renders",
                 "Standard Text-to-Speech (TTS)",
                 "Seedance Video Mode Access",
@@ -98,6 +99,7 @@ const PricingPage = () => {
             features: [
                 "2,500 High-Speed Renders (Credits)",
                 "Up to 1,250 Standard Images",
+                "Up to 2,500 Nano Banana Images",
                 "Up to 52 8s Video Renders",
                 "Premium TTS Voice Output",
                 "Standard Motion Control & Presets",
@@ -133,6 +135,7 @@ const PricingPage = () => {
             features: [
                 "5,500 High-Speed Renders (Credits)",
                 "Up to 2,750 Standard Images",
+                "Up to 5,500 Nano Banana Images",
                 "Up to 114 8s Video Renders",
                 "Voice Cloning & Custom TTS Profiles",
                 "Advanced Motion Control & Emotions",
@@ -170,6 +173,7 @@ const PricingPage = () => {
             features: [
                 "11,000 High-Speed Renders (Credits)",
                 "Up to 5,500 Standard Images",
+                "Up to 11,000 Nano Banana Images",
                 "Up to 229 8s Video Renders",
                 "Unlimited Custom TTS & Voice Cloning",
                 "Full Motion Control & Emotion Syncing",
@@ -316,8 +320,8 @@ const PricingPage = () => {
                                                                         {credits}
                                                                     </strong>
                                                                     <span>
-                                                                        {rest.split(/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles)/gi).map((part, idx) => {
-                                                                            if (/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles)/i.test(part)) {
+                                                                        {rest.split(/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles|Nano Banana Images|Nano Banana)/gi).map((part, idx) => {
+                                                                            if (/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles|Nano Banana Images|Nano Banana)/i.test(part)) {
                                                                                 return (
                                                                                     <strong key={idx} className="text-[#D4FF00] font-black bg-gradient-to-r from-[#D4FF00]/10 to-emerald-500/10 border border-[#D4FF00]/30 px-2 py-0.5 rounded text-[9px] mx-0.5 inline-block shadow-[0_0_10px_rgba(212,255,0,0.15)] uppercase tracking-wider">
                                                                                         {part}
@@ -335,8 +339,8 @@ const PricingPage = () => {
                                                 </>
                                             ) : (
                                                 <>
-                                                    {feature.split(/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles)/gi).map((part, idx) => {
-                                                        if (/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles)/i.test(part)) {
+                                                     {feature.split(/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles|Nano Banana Images|Nano Banana)/gi).map((part, idx) => {
+                                                         if (/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles|Nano Banana Images|Nano Banana)/i.test(part)) {
                                                             return (
                                                                 <strong key={idx} className="text-[#D4FF00] font-black bg-gradient-to-r from-[#D4FF00]/10 to-emerald-500/10 border border-[#D4FF00]/30 px-2 py-0.5 rounded text-[9px] mx-0.5 inline-block shadow-[0_0_10px_rgba(212,255,0,0.15)] uppercase tracking-wider">
                                                                     {part}
