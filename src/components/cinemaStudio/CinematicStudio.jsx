@@ -1413,7 +1413,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   const isBusy = status === 'generating' || status === 'polling';
   const requiredCredits = getRequiredCredits(activeEngine) * variationCount;
-  const canGenerate = promptText.trim() && userCredits >= requiredCredits && !isBusy;
+  const canGenerate = (promptText.trim() || firstFramePreview) && userCredits >= requiredCredits && !isBusy;
 
   const triggerRefund = async (reason) => {
     try {
@@ -1585,7 +1585,12 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   };
 
   const getCompiledPrompt = () => {
-    const basePrompt = promptText.trim();
+    let basePrompt = promptText.trim();
+    if (!basePrompt && firstFramePreview) {
+      const selectedAngle = CAMERA_ANGLES.find(a => a.id === angle);
+      const angleLabel = selectedAngle ? selectedAngle.label : 'selected';
+      basePrompt = `Change the reference image to ${angleLabel} camera angle, only angle need to change, rest all the same.`;
+    }
     if (!basePrompt) return '';
 
     // Identify all active reference tags using getTaggedRefItems
@@ -1790,7 +1795,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   /* ─── GENERATE ───────────────────────────────────────────── */
   const handleGenerate = async () => {
-    if (!promptText.trim() || isBusy) return;
+    if ((!promptText.trim() && !firstFramePreview) || isBusy) return;
 
     setStatus('generating');
     setErrorMsg('');
@@ -3461,12 +3466,12 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   <motion.button
                     type="button"
                     onClick={() => setShowPayloadModal(true)}
-                    disabled={!promptText.trim()}
-                    whileHover={promptText.trim() ? { scale: 1.05, backgroundColor: 'rgba(255, 255, 255, 0.08)' } : {}}
-                    whileTap={promptText.trim() ? { scale: 0.95 } : {}}
+                    disabled={!(promptText.trim() || firstFramePreview)}
+                    whileHover={(promptText.trim() || firstFramePreview) ? { scale: 1.05, backgroundColor: 'rgba(255, 255, 255, 0.08)' } : {}}
+                    whileTap={(promptText.trim() || firstFramePreview) ? { scale: 0.95 } : {}}
                     className={cn(
                       "w-9 h-9 rounded-xl flex items-center justify-center border transition-all shrink-0",
-                      promptText.trim()
+                      (promptText.trim() || firstFramePreview)
                         ? "border-white/10 text-white/60 hover:text-white cursor-pointer bg-white/[0.02]"
                         : "border-white/5 text-white/10 cursor-not-allowed bg-transparent"
                     )}
