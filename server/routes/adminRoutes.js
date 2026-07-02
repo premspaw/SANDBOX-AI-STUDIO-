@@ -39,6 +39,28 @@ export default function createRouter(deps) {
         return user;
     }
 
+    // Admin Google API Key retrieval
+    router.get('/admin/google-key', async (req, res) => {
+        try {
+            const user = await requireAuth(req);
+            const adminClient = supabaseAdmin || supabase;
+            if (!adminClient) return res.status(503).json({ error: 'Database unavailable' });
+
+            const { data: profile } = await adminClient
+                .from('profiles')
+                .select('role, email')
+                .eq('id', user.id)
+                .single();
+
+            if (profile?.role === 'admin' || profile?.email === 'premspaw@gmail.com') {
+                return res.json({ apiKey: process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY });
+            }
+            return res.status(403).json({ error: 'Forbidden' });
+        } catch (err) {
+            return res.status(err.status || 500).json({ error: err.message });
+        }
+    });
+
     // Agent Memory get (secured)
     router.get('/agent/memory', async (req, res) => {
         try {

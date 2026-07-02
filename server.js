@@ -1611,26 +1611,7 @@ const apiLimiter = rateLimit({
 });
 app.use('/api/', apiLimiter);
 
-app.get('/api/admin/google-key', async (req, res) => {
-    try {
-        const user = await requireAuth(req);
-        const adminClient = supabaseAdmin || supabase;
-        if (!adminClient) return res.status(503).json({ error: 'Database unavailable' });
 
-        const { data: profile } = await adminClient
-            .from('profiles')
-            .select('role, email')
-            .eq('id', user.id)
-            .single();
-
-        if (profile?.role === 'admin' || profile?.email === 'premspaw@gmail.com') {
-            return res.json({ apiKey: process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY });
-        }
-        return res.status(403).json({ error: 'Forbidden' });
-    } catch (err) {
-        return res.status(err.status || 500).json({ error: err.message });
-    }
-});
 
 // Niche SEO Static Pages Handlers
 app.get('/real-estate', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'real-estate', 'index.html')));
