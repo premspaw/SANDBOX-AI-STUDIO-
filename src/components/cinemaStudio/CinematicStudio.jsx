@@ -3088,19 +3088,21 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                           </div>
                         </div>
 
-                        {/* Lighting Styles */}
+                        {/* Cinematic Lighting */}
                         <div className="space-y-1">
-                          <p className="text-[8px] font-black text-fuchsia-400 uppercase tracking-wider px-1">💡 Lighting Styles</p>
+                          <p className="text-[8px] font-black text-fuchsia-400 uppercase tracking-wider px-1">🎬 Cinematic Lighting</p>
                           <div className="grid grid-cols-2 gap-1">
                             {[
-                              { label: 'Sunset Golden Hour', value: 'warm soft golden hour sunlight, low sun angle' },
-                              { label: 'Dramatic Rim Light', value: 'dramatic teal and magenta rim lighting' },
-                              { label: 'Neon Glow', value: 'illuminated by high-contrast neon cursive signage' },
-                              { label: 'Volumetric Fog', value: 'dramatic volumetric lighting casting long shadows through light fog' },
-                              { label: 'Cyberpunk Neon', value: 'intense futuristic neon cyberpunk lighting, magenta and teal colors' },
-                              { label: 'Chiaroscuro', value: 'high-contrast chiaroscuro lighting, deep shadows and strong highlights' },
-                              { label: 'Soft Studio Light', value: 'professional three-point soft studio lighting, clean gray backdrop' },
-                              { label: 'Rainy Reflections', value: 'rain-slicked streets reflecting wet neon city lights' }
+                              { label: '🩸 Horror Night', value: 'horror movie lighting — single flickering overhead fluorescent, deep shadow pools, sickly green-yellow cast, 35mm film grain, blood-red practical lamp glow' },
+                              { label: '🔫 80s Action', value: '1980s action blockbuster lighting — high-contrast backlighting, hazy smoke machine fill, warm tungsten glow, strong blue-orange split lighting, 80s anamorphic lens flares' },
+                              { label: '🕵️ Neo-Noir', value: 'neo-noir cinematography — venetian blind shadow stripes slicing across the subject, cold blue moonlight fill, warm amber practicals, rain-slicked street reflections' },
+                              { label: '🌌 Sci-Fi Cold', value: 'sci-fi cold sterile environment lighting — ice blue LED panel lights, OLED screen glow, hard rim lighting against pure black, clinical white highlights' },
+                              { label: '☀️ Spaghetti Western', value: 'spaghetti western cinematography — harsh midday desert sunlight, extreme low-angle sun, deep eye-socket shadows, dust haze diffusion, bleached warm palette' },
+                              { label: '🌫️ Psychological Thriller', value: 'psychological thriller lighting — oppressive overcast flat light, motivated practical lamp in darkness, shallow depth-of-field shallow focus, uncomfortable green-white fluorescent cast' },
+                              { label: '🏙️ 90s Crime Drama', value: '90s crime drama cinematography — gritty available light, sodium vapor street lamps, blown-out background highlights, hand-held shaky low-light exposure' },
+                              { label: '⚔️ Epic Fantasy', value: 'epic fantasy cinematography — golden hour Hero lighting, dramatic torch flame practicals, god-rays piercing through overcast storm sky, desaturated shadow tones' },
+                              { label: '🌊 War Film', value: 'war film cinematography — desaturated muted palette, oppressive overcast sky, wet mud reflections, smoke and debris haze, intense backlit silhouettes' },
+                              { label: '🩷 Romantic Drama', value: 'romantic drama cinematography — warm window light key, silky soft bokeh candle practicals, golden hour magic hour glow, dreamy lens diffusion filter' }
                             ].map(light => (
                               <button
                                 key={light.label}
@@ -3109,7 +3111,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                                   setPromptText(prev => prev ? `${prev}, ${light.value}` : light.value);
                                   close();
                                 }}
-                                className="text-left px-2 py-1.5 rounded-xl bg-white/[0.02] hover:bg-fuchsia-500/10 text-white/80 hover:text-fuchsia-400 text-[9px] truncate border border-white/5 hover:border-fuchsia-500/20 transition-all"
+                                className="text-left px-2 py-1.5 rounded-xl bg-white/[0.02] hover:bg-fuchsia-500/10 text-white/80 hover:text-fuchsia-400 text-[9px] border border-white/5 hover:border-fuchsia-500/20 transition-all"
                               >
                                 {light.label}
                               </button>
