@@ -1,5 +1,33 @@
 [
   {
+    "id": "local_1782996289179_yhv9k",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782996288804.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782996288804.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "Change the reference image to Drone View camera angle, only angle need to change, rest all the same.. Perspective: Drone View framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 12mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 323830]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-02T12:44:49.179Z"
+  },
+  {
+    "id": "local_1782996233193_anqix",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782996232737.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782996232737.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "Change the reference image to Extreme Wide camera angle, only angle need to change, rest all the same.. Perspective: Extreme Wide framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 14mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 706550]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-02T12:43:53.193Z"
+  },
+  {
     "id": "local_1782991949192_8xgvu",
     "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782991947574.jpeg",
     "type": "image",

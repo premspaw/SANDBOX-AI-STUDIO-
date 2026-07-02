@@ -42,7 +42,7 @@ export default function createRouter(deps) {
             } else if (modelLower.includes('pro')) {
                 requiredCredits = 3;
             } else if (modelLower === 'nano-banana-2-lite' || modelLower === 'nb2-lite' || modelLower === 'gemini-3.1-flash-lite') {
-                requiredCredits = 0.5;
+                requiredCredits = 1;
             } else if (modelLower === 'nano-banana' || modelLower === 'banana') {
                 requiredCredits = 1;
             }
