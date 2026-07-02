@@ -445,9 +445,13 @@ export default function UGC() {
     addToGallery,
     updateGalleryItem,
   } = useUGCGallery(currentUserId);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = useAppStore(state => state.isAdmin);
+  const setIsAdmin = useAppStore(state => state.setIsAdmin);
+  const showAdminLogin = useAppStore(state => state.showAdminLogin);
+  const setShowAdminLogin = useAppStore(state => state.setShowAdminLogin);
+  const setUserShorts = useAppStore(state => state.setUserShorts);
   const [adminPassword, setAdminPassword] = useState('');
-  const [showAdminLogin, setShowAdminLogin] = useState(false);
+
   const [trainedStrategy, setTrainedStrategy] = useState<string>(() => {
     return localStorage.getItem('ugc_trained_strategy') || '';
   });
@@ -467,32 +471,17 @@ export default function UGC() {
     localStorage.setItem('ugc_trained_strategy', trainedStrategy);
   }, [trainedStrategy]);
 
-
-
   const handleAdminLogin = () => {
-    if (adminPassword === 'admin123') {
+    if (adminPassword === 'admin123' || adminPassword === '10000') {
       setIsAdmin(true);
       setShowAdminLogin(false);
       setAdminPassword('');
-      showToast('Admin mode ON — unlimited video generation', 'success');
+      setUserShorts(10000);
+      showToast('Admin mode ON — 10,000 credits loaded', 'success');
     } else {
       alert('Invalid password');
     }
   };
-
-  // Ctrl+Shift+A opens admin login
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'A') {
-        e.preventDefault();
-        if (isAdmin) { setIsAdmin(false); showToast('Admin mode OFF', 'error'); }
-        else setShowAdminLogin(true);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
 
   const trainAgent = async () => {
     if (knowledgeBase.length === 0) return;
@@ -3872,9 +3861,6 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
           }}
         />
       )}
-
-      {/* Admin Security Portal */}
-      <AdminLoginModal />
 
     </UGCContext.Provider>
   );

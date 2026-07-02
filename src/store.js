@@ -29,10 +29,14 @@ export const useAppStore = create((set, get) => ({
     isShowingAuthModal: false,
     activeTab: 'home',
     isMuted: true,
+    isAdmin: false,
+    showAdminLogin: false,
 
     setActiveTab: (val) => set({ activeTab: val }),
     setIsMuted: (val) => set({ isMuted: val }),
     setShowingAuthModal: (val) => set({ isShowingAuthModal: val }),
+    setIsAdmin: (val) => set({ isAdmin: val }),
+    setShowAdminLogin: (val) => set({ showAdminLogin: val }),
 
     clearSession: () => {
         set({

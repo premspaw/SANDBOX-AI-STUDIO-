@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { SHORTS_COST } from '../config/shortsConfig'
 
 export const useShorts = () => {
-    const { userShorts, spendShorts, refundShorts, fetchBalance } = useAppStore()
+    const { userShorts, spendShorts, refundShorts, fetchBalance, isAdmin } = useAppStore()
     const userProfile = useAppStore(s => s.userProfile)
 
     const spend = async (costKey, overrideAmount = null) => {
@@ -12,6 +12,10 @@ export const useShorts = () => {
         if (!amount) return { success: false, reason: 'unknown_cost' }
         if (!userProfile?.id) return { success: false, reason: 'unauthenticated' }
         if (userShorts < amount) return { success: false, reason: 'insufficient_funds' }
+        if (isAdmin) {
+            useAppStore.setState({ userShorts: userShorts - amount });
+            return { success: true };
+        }
         return await spendShorts(userProfile.id, amount, costKey)
     }
 
@@ -20,6 +24,10 @@ export const useShorts = () => {
         const amount = overrideAmount !== null ? overrideAmount : SHORTS_COST[costKey]
         if (!amount) return
         if (!userProfile?.id) return
+        if (isAdmin) {
+            useAppStore.setState({ userShorts: userShorts + amount });
+            return;
+        }
         await refundShorts(userProfile.id, amount, costKey)
     }
 

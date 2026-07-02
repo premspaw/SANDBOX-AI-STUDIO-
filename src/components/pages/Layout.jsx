@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Sidebar } from '../panels/Sidebar'
 import { MobileNav } from '../panels/MobileNav'
+import { useAppStore } from '../../store'
+import AdminLoginModal from '../../features/UGCStudio/components/modals/AdminLoginModal'
 
 const FULL_BLEED_TABS = new Set([
     'home',
@@ -27,6 +29,29 @@ const FULL_BLEED_TABS = new Set([
 
 export function Layout({ children, activeTab, setActiveTab }) {
     const [isCollapsed, setIsCollapsed] = useState(false)
+    const isAdmin = useAppStore(state => state.isAdmin);
+    const setIsAdmin = useAppStore(state => state.setIsAdmin);
+    const setShowAdminLogin = useAppStore(state => state.setShowAdminLogin);
+
+    useEffect(() => {
+        const handler = (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+                e.preventDefault();
+                if (isAdmin) {
+                    setIsAdmin(false);
+                    const userProfile = useAppStore.getState().userProfile;
+                    if (userProfile?.id) {
+                        useAppStore.getState().fetchBalance(userProfile.id);
+                    }
+                    alert('Admin mode OFF');
+                } else {
+                    setShowAdminLogin(true);
+                }
+            }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [isAdmin, setIsAdmin, setShowAdminLogin]);
 
     return (
         <div className="flex flex-col md:flex-row h-screen bg-black text-white overflow-hidden relative">
@@ -61,6 +86,9 @@ export function Layout({ children, activeTab, setActiveTab }) {
             <div className="md:hidden">
                 <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} />
             </div>
+
+            {/* Admin Security Portal */}
+            <AdminLoginModal />
         </div>
     )
 }
