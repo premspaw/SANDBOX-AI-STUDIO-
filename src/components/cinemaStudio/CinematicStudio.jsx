@@ -2989,11 +2989,120 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                 {/* Scrollable Pills List */}
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar select-none flex-1 py-0.5" style={{ scrollbarWidth: 'none' }}>
                   
+                  {/* PROMPT HELPER DROPDOWN */}
+                  <UpwardDropdown
+                    icon={<Sparkles size={9} />}
+                    label="Prompt Guide"
+                    accentColor="lime"
+                  >
+                    {(close) => (
+                      <div className="space-y-2 w-72 max-h-80 overflow-y-auto p-1.5 custom-scrollbar">
+                        <div className="border-b border-white/5 pb-1.5 mb-1">
+                          <p className="text-[9px] font-black text-white/40 uppercase tracking-widest px-1">Prompt Construction</p>
+                          <p className="text-[7.5px] text-gray-500 font-medium px-1 mt-0.5 leading-normal">
+                            Build detailed prompts with Style, Subject, Setting, Action, and Composition.
+                          </p>
+                        </div>
 
+                        {/* Standard Recipe */}
+                        <div className="space-y-1">
+                          <p className="text-[8px] font-black text-white/40 uppercase tracking-wider px-1">Prompt Recipe</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPromptText(prev => prev ? `${prev}, [Style] of [Subject] in [Setting] doing [Action], [Composition]` : "A [Style] of [Subject] in [Setting] doing [Action], [Composition]");
+                              close();
+                            }}
+                            className="w-full text-left px-2 py-1.5 rounded-xl bg-white/[0.03] hover:bg-[#c8f135]/10 text-white hover:text-[#c8f135] text-[9px] transition-all font-semibold border border-white/5 hover:border-[#c8f135]/20 flex items-center justify-between"
+                          >
+                            <span>✨ Insert Recipe Template</span>
+                            <span className="text-[7.5px] text-gray-600 font-mono font-medium">[Style] of [Subject]...</span>
+                          </button>
+                        </div>
 
+                        {/* Styles */}
+                        <div className="space-y-1">
+                          <p className="text-[8px] font-black text-[#c8f135] uppercase tracking-wider px-1">🎨 Styles & Mediums</p>
+                          <div className="grid grid-cols-2 gap-1">
+                            {[
+                              { label: 'Cinematic Photo', value: 'a realistic eye-level cinematic photograph, dramatic lighting' },
+                              { label: 'Illustration', value: 'a modern graphical illustration, vibrant color palette' },
+                              { label: 'Watercolor', value: 'a delicate watercolor painting, soft textures, dreamy aesthetic' },
+                              { label: 'Retro-Futuristic', value: 'retro-futuristic cyberpunk aesthetic, synthwave colors' },
+                              { label: '3D Render', value: 'unreal engine 5 photorealistic 3d render, raytraced shadows' },
+                              { label: 'Abstract', value: 'an abstract conceptual design, vibrant color gradients' }
+                            ].map(style => (
+                              <button
+                                key={style.label}
+                                type="button"
+                                onClick={() => {
+                                  setPromptText(prev => prev ? `${prev}, ${style.value}` : style.value);
+                                  close();
+                                }}
+                                className="text-left px-2 py-1.5 rounded-xl bg-white/[0.02] hover:bg-[#c8f135]/10 text-white/80 hover:text-[#c8f135] text-[9px] truncate border border-white/5 hover:border-[#c8f135]/20 transition-all"
+                              >
+                                {style.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
 
+                        {/* Compositions */}
+                        <div className="space-y-1">
+                          <p className="text-[8px] font-black text-fuchsia-400 uppercase tracking-wider px-1">📸 Compositions & Lighting</p>
+                          <div className="grid grid-cols-2 gap-1">
+                            {[
+                              { label: 'Eye-level Shot', value: 'eye-level camera shot' },
+                              { label: 'Profile Portrait', value: 'profile portrait shot' },
+                              { label: 'Wide-angle Scene', value: 'wide-angle scenic panoramic shot' },
+                              { label: 'Close-up Shot', value: 'extreme close-up detail shot' },
+                              { label: 'Rim Lighting', value: 'dramatic teal and magenta rim lighting' },
+                              { label: 'Neon Glow', value: 'illuminated by high-contrast neon cursive signage' }
+                            ].map(comp => (
+                              <button
+                                key={comp.label}
+                                type="button"
+                                onClick={() => {
+                                  setPromptText(prev => prev ? `${prev}, ${comp.value}` : comp.value);
+                                  close();
+                                }}
+                                className="text-left px-2 py-1.5 rounded-xl bg-white/[0.02] hover:bg-fuchsia-500/10 text-white/80 hover:text-fuchsia-400 text-[9px] truncate border border-white/5 hover:border-fuchsia-500/20 transition-all"
+                              >
+                                {comp.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
 
+                        {/* Special Directives */}
+                        <div className="space-y-1">
+                          <p className="text-[8px] font-black text-cyan-400 uppercase tracking-wider px-1">💡 Advanced Prompt Hacks</p>
+                          <div className="space-y-1">
+                            {[
+                              { label: 'Render Precise Text', value: 'a wooden sign illustrating local wildlife with text "YOUR_WORD" in a bold cursive font' },
+                              { label: 'Timeline / Diagram', value: 'a craft-style visual diagram displaying evaporation and condensation' },
+                              { label: 'Product Mockups', value: 'three distinct variations of a product mockup, side-by-side' },
+                              { label: 'Subject Consistency', value: 'character profile of a woman named [Name] with a distinct hairstyle to maintain subject look' }
+                            ].map(dir => (
+                              <button
+                                key={dir.label}
+                                type="button"
+                                onClick={() => {
+                                  setPromptText(prev => prev ? `${prev}, ${dir.value}` : dir.value);
+                                  close();
+                                }}
+                                className="w-full text-left px-2 py-1.5 rounded-xl bg-white/[0.02] hover:bg-cyan-500/10 text-white/80 hover:text-cyan-400 text-[9px] truncate border border-white/5 hover:border-cyan-500/20 transition-all flex items-center justify-between"
+                              >
+                                <span>{dir.label}</span>
+                                <span className="text-[7px] text-gray-600 font-mono font-medium">Add helper</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
 
+                      </div>
+                    )}
+                  </UpwardDropdown>
 
                   {/* ENGINE DROPDOWN */}
                   <UpwardDropdown
