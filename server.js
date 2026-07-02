@@ -1198,7 +1198,24 @@ async function handleGoogle(req, res) {
                 { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
             ];
 
-            console.log(`[handleGoogle] Imagen request aspect ratio: ${mappedRatio}, size: ${finalImageSize}`);
+            console.log(`[handleGoogle] Imagen request aspect ratio: ${mappedRatio}, size: ${finalImageSize}, model: ${activeModel}`);
+
+            // Append aspect ratio guidance in the prompt itself since gemini-3.1-flash-image-preview
+            // does NOT support imageConfig.aspectRatio — unsupported params cause slow retries.
+            const ratioPhraseMap = {
+                '16:9': 'wide landscape 16:9 aspect ratio',
+                '9:16': 'tall portrait 9:16 aspect ratio',
+                '3:4': 'portrait 3:4 aspect ratio',
+                '4:3': 'landscape 4:3 aspect ratio',
+                '1:1': 'square 1:1 aspect ratio'
+            };
+            const ratioHint = ratioPhraseMap[mappedRatio] || '';
+            if (ratioHint && parts.length > 0) {
+                const lastPart = parts[parts.length - 1];
+                if (lastPart.text !== undefined) {
+                    parts[parts.length - 1] = { text: `${lastPart.text}. Compose image in ${ratioHint}.` };
+                }
+            }
 
             const resp = await fetch(endpoint, {
                 method: 'POST',
@@ -1207,11 +1224,7 @@ async function handleGoogle(req, res) {
                     contents: [{ role: 'user', parts }],
                     safetySettings,
                     generationConfig: { 
-                        responseModalities: ["IMAGE"],
-                        imageConfig: {
-                            aspectRatio: mappedRatio,
-                            imageSize: finalImageSize
-                        }
+                        responseModalities: ["IMAGE"]
                     }
                 })
             });
