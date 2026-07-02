@@ -147,7 +147,7 @@ const ENGINES = [
 ];
 
 const IMAGE_ENGINES = [
-  { id: 'nano-banana-2-lite', label: 'Nano Banana 2 Lite', icon: '⚡', desc: 'Google ultra-fast lite engine — 1⚡ flat rate', cost: 1 },
+  { id: 'nano-banana-2-lite', label: 'Nano Banana 2 Lite', icon: '⚡', desc: 'Google ultra-fast lite engine — 0.5⚡ flat rate', cost: 0.5 },
   { id: 'nano-banana-2',   label: 'Nano Banana 2',   icon: '🎨', desc: 'Google highest-fidelity photo gen — 1⚡ flat rate', cost: 1 },
   { id: 'nano-banana-pro', label: 'Nano Banana Pro', icon: '💎', desc: 'Google maximum fidelity image engine — 3⚡ flat rate', cost: 3 },
   { id: 'gpt-image-2',     label: 'GPT Image Pro',   icon: '🤖', desc: 'OpenAI layout & text design — 2⚡ flat rate',                 cost: 2 },

@@ -154,10 +154,12 @@ export default function createRouter(deps) {
                 if (client) {
                     const { data: profile } = await client
                         .from('profiles')
-                        .select('shorts_balance')
+                        .select('shorts_balance, brand_voice')
                         .eq('id', targetUserId)
                         .single();
-                    const balance = profile?.shorts_balance ?? 0;
+                    const brandVoice = profile?.brand_voice || {};
+                    const fractionalShorts = brandVoice.fractional_shorts || 0;
+                    const balance = (profile?.shorts_balance ?? 0) + fractionalShorts;
                     if (balance < estimatedCredits) {
                         return res.status(402).json({ error: `Insufficient credits. This synthesis requires ~${estimatedCredits}⚡, but you only have ${balance}⚡.` });
                     }

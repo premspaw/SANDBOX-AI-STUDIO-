@@ -618,14 +618,45 @@ async function consumeCredits(userId, cost, reason = 'generation') {
         throw err;
     }
 
-    const { error } = await supabase.rpc('deduct_credits', { p_user_id: userId, p_cost: cost });
-    
-    if (error) {
-        if (error.message?.includes('Insufficient credits')) {
-            const err = new Error('Insufficient credits');
-            err.status = 402;
-            throw err;
-        }
+    const client = supabaseAdmin || supabase;
+
+    // Fetch current profile with balance and brand_voice
+    const { data: profile, error: fetchErr } = await client
+        .from('profiles')
+        .select('shorts_balance, brand_voice')
+        .eq('id', userId)
+        .single();
+
+    if (fetchErr) {
+        const err = new Error('Unable to deduct credits');
+        err.status = 500;
+        throw err;
+    }
+
+    const brandVoice = profile?.brand_voice || {};
+    const fractionalShorts = brandVoice.fractional_shorts || 0;
+    const currentBalance = (profile?.shorts_balance ?? 0) + fractionalShorts;
+
+    if (currentBalance < cost) {
+        const err = new Error('Insufficient credits');
+        err.status = 402;
+        throw err;
+    }
+
+    const newTotalBalance = currentBalance - cost;
+    const newIntBalance = Math.floor(newTotalBalance);
+    const newFractBalance = Number((newTotalBalance - newIntBalance).toFixed(4));
+
+    // Update profile
+    const { error: updateErr } = await client
+        .from('profiles')
+        .update({ 
+            shorts_balance: newIntBalance,
+            brand_voice: { ...brandVoice, fractional_shorts: newFractBalance }
+        })
+        .eq('id', userId);
+
+    if (updateErr) {
         const err = new Error('Unable to deduct credits');
         err.status = 500;
         throw err;
@@ -633,9 +664,9 @@ async function consumeCredits(userId, cost, reason = 'generation') {
 
     // Write audit log to shorts_transactions so client-side refunds work properly
     try {
-        await supabase.from('shorts_transactions').insert({
+        await client.from('shorts_transactions').insert({
             user_id: userId,
-            amount: -cost,
+            amount: -Math.round(cost),
             action_type: reason,
             created_at: new Date().toISOString()
         });

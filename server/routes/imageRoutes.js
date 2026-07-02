@@ -42,7 +42,7 @@ export default function createRouter(deps) {
             } else if (modelLower.includes('pro')) {
                 requiredCredits = 3;
             } else if (modelLower === 'nano-banana-2-lite' || modelLower === 'nb2-lite' || modelLower === 'gemini-3.1-flash-lite') {
-                requiredCredits = 1;
+                requiredCredits = 0.5;
             } else if (modelLower === 'nano-banana' || modelLower === 'banana') {
                 requiredCredits = 1;
             }
@@ -194,7 +194,7 @@ export default function createRouter(deps) {
             } else if (model === 'gemini-3-pro-image-preview' || model === 'nano-banana-pro' || model === 'pro') {
                 requiredCredits = 5;
             } else if (model === 'nano-banana-2-lite' || model === 'nb2-lite' || model === 'gemini-3.1-flash-lite') {
-                requiredCredits = 1;
+                requiredCredits = 0.5;
             }
 
             if (targetUserId) {
