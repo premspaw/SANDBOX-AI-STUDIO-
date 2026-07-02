@@ -391,13 +391,21 @@ const PricingPage = () => {
                             "min-w-[280px] md:min-w-0 p-4 rounded-xl border flex items-center justify-between transition-all duration-300 snap-center",
                             topup.popular ? "bg-[#D4FF00]/[0.05] border-[#D4FF00]/40 shadow-[0_0_20px_rgba(212,255,0,0.05)]" : "bg-white/[0.02] border-white/5"
                         )}>
-                            <div className="flex flex-col gap-0.5">
+                            <div className="flex flex-col gap-1">
                                 <div className="text-white font-black italic text-lg md:text-base tracking-tight leading-none">₹{topup.price}</div>
                                 <div className="flex items-center gap-1.5">
                                     <div className="text-[#D4FF00] font-black text-xs tracking-tight uppercase">{topup.credits}</div>
                                     {topup.originalCredits && <div className="text-zinc-500 font-medium italic text-[10px] line-through uppercase">{topup.originalCredits}</div>}
                                 </div>
-                                <div className="text-[9px] text-zinc-500 font-medium uppercase tracking-wider">{topup.desc}</div>
+                                <div className="mt-0.5">
+                                    {topup.desc.includes('Bonus') ? (
+                                        <span className="inline-flex items-center gap-1 bg-gradient-to-r from-[#D4FF00] to-yellow-500 text-black font-black text-[9px] uppercase tracking-widest px-2 py-0.5 rounded shadow-[0_0_10px_rgba(212,255,0,0.4)]">
+                                            <Sparkles size={10} /> {topup.desc}
+                                        </span>
+                                    ) : (
+                                        <span className="text-[9px] text-zinc-500 font-medium uppercase tracking-wider">{topup.desc}</span>
+                                    )}
+                                </div>
                             </div>
                             
                             <button 
