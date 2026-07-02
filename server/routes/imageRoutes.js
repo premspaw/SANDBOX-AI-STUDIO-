@@ -226,7 +226,7 @@ export default function createRouter(deps) {
                 const apiKey = await resolveGoogleApiKey(req, targetUserId);
                 let activeModel = 'gemini-3.1-flash-image-preview';
                 if (model === 'nano-banana-2-lite' || model === 'nb2-lite' || model === 'gemini-3.1-flash-lite') {
-                    activeModel = 'gemini-3.1-flash-lite';
+                    activeModel = 'gemini-3.1-flash-image-preview';
                 } else if (model === 'nano-banana-pro' || model === 'gemini-3-pro-image-preview') {
                     activeModel = 'gemini-3-pro-image-preview';
                 }

@@ -1140,7 +1140,7 @@ async function handleGoogle(req, res) {
             if (activeModel === 'nano-banana-2' || activeModel === 'nano-banana') {
                 activeModel = 'gemini-3.1-flash-image-preview';
             } else if (activeModel === 'nano-banana-2-lite' || activeModel === 'nb2-lite' || activeModel === 'gemini-3.1-flash-lite') {
-                activeModel = 'gemini-3.1-flash-lite';
+                activeModel = 'gemini-3.1-flash-image-preview';
             } else if (activeModel === 'nano-banana-pro' || activeModel === 'pro') {
                 activeModel = 'gemini-3-pro-image-preview';
             }
@@ -1177,15 +1177,18 @@ async function handleGoogle(req, res) {
 
             // Map the resolution to standard Google GenAI size (default 1K, upscale 2K)
             let finalImageSize = '1K';
-            const sizeVal = (imageSize || resolution || quality || size || '').toUpperCase();
-            if (sizeVal.includes('2K') || sizeVal.includes('2048')) {
-                finalImageSize = '2K';
-            } else if (sizeVal.includes('4K') || sizeVal.includes('4096')) {
-                finalImageSize = '4K';
-            } else if (sizeVal.includes('512')) {
-                finalImageSize = '512';
-            } else if (sizeVal.includes('1K') || sizeVal.includes('1024')) {
-                finalImageSize = '1K';
+            const isLiteModel = model === 'nano-banana-2-lite' || model === 'nb2-lite' || model === 'gemini-3.1-flash-lite';
+            if (!isLiteModel) {
+                const sizeVal = (imageSize || resolution || quality || size || '').toUpperCase();
+                if (sizeVal.includes('2K') || sizeVal.includes('2048')) {
+                    finalImageSize = '2K';
+                } else if (sizeVal.includes('4K') || sizeVal.includes('4096')) {
+                    finalImageSize = '4K';
+                } else if (sizeVal.includes('512')) {
+                    finalImageSize = '512';
+                } else if (sizeVal.includes('1K') || sizeVal.includes('1024')) {
+                    finalImageSize = '1K';
+                }
             }
 
             const safetySettings = [
