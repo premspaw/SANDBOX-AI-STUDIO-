@@ -312,14 +312,14 @@ const PricingPage = () => {
                                                             const [_, credits, rest] = match;
                                                             return (
                                                                 <>
-                                                                    <strong className="text-black bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 font-black px-2 py-0.5 rounded text-[8px] mr-1.5 inline-block shadow-[0_0_15px_rgba(251,191,36,0.4)]">
+                                                                    <strong className="text-black bg-gradient-to-r from-[#D4FF00] to-emerald-400 font-black px-2 py-0.5 rounded text-[10px] mr-1.5 inline-block shadow-[0_0_15px_rgba(212,255,0,0.4)]">
                                                                         {credits}
                                                                     </strong>
                                                                     <span>
                                                                         {rest.split(/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles)/gi).map((part, idx) => {
                                                                             if (/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles)/i.test(part)) {
                                                                                 return (
-                                                                                    <strong key={idx} className="text-white font-black bg-gradient-to-r from-indigo-500/40 via-purple-500/40 to-pink-500/40 border border-purple-500/30 px-1.5 py-0.5 rounded text-[8px] mx-0.5 inline-block shadow-[0_0_15px_rgba(168,85,247,0.2)] uppercase tracking-wider">
+                                                                                    <strong key={idx} className="text-[#D4FF00] font-black bg-gradient-to-r from-[#D4FF00]/10 to-emerald-500/10 border border-[#D4FF00]/30 px-2 py-0.5 rounded text-[9px] mx-0.5 inline-block shadow-[0_0_10px_rgba(212,255,0,0.15)] uppercase tracking-wider">
                                                                                         {part}
                                                                                     </strong>
                                                                                 );
@@ -338,7 +338,7 @@ const PricingPage = () => {
                                                     {feature.split(/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles)/gi).map((part, idx) => {
                                                         if (/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles)/i.test(part)) {
                                                             return (
-                                                                <strong key={idx} className="text-white font-black bg-gradient-to-r from-indigo-500/40 via-purple-500/40 to-pink-500/40 border border-purple-500/30 px-1.5 py-0.5 rounded text-[8px] mx-0.5 inline-block shadow-[0_0_15px_rgba(168,85,247,0.2)] uppercase tracking-wider">
+                                                                <strong key={idx} className="text-[#D4FF00] font-black bg-gradient-to-r from-[#D4FF00]/10 to-emerald-500/10 border border-[#D4FF00]/30 px-2 py-0.5 rounded text-[9px] mx-0.5 inline-block shadow-[0_0_10px_rgba(212,255,0,0.15)] uppercase tracking-wider">
                                                                     {part}
                                                                 </strong>
                                                             );
@@ -394,8 +394,8 @@ const PricingPage = () => {
                             <div className="flex flex-col gap-1">
                                 <div className="text-white font-black italic text-lg md:text-base tracking-tight leading-none">₹{topup.price}</div>
                                 <div className="flex items-center gap-1.5">
-                                    <div className="text-[#D4FF00] font-black text-xs tracking-tight uppercase">{topup.credits}</div>
-                                    {topup.originalCredits && <div className="text-zinc-500 font-medium italic text-[10px] line-through uppercase">{topup.originalCredits}</div>}
+                                    <div className="text-[#D4FF00] font-black text-sm md:text-base tracking-tight uppercase">{topup.credits}</div>
+                                    {topup.originalCredits && <div className="text-zinc-500 font-medium italic text-xs line-through uppercase">{topup.originalCredits}</div>}
                                 </div>
                                 <div className="mt-0.5">
                                     {topup.desc.includes('Bonus') ? (
