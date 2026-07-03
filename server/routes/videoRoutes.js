@@ -89,6 +89,10 @@ export default function createRouter(deps) {
 
             const targetUserId = user ? user.id : userId;
 
+            const apiKey = await resolveGoogleApiKey(req, targetUserId);
+            const token = await getVertexToken();
+            if (!token && !apiKey) throw new Error('Failed to acquire service account token or API key');
+
             // Deduct credits: veo_fast costs 10 credits, veo_full/standard costs 40 credits (halved)
             let requiredCredits = 10; // Default
             const modelLower = (model || '').toLowerCase();
@@ -143,146 +147,209 @@ export default function createRouter(deps) {
 
             broadcastProgress(taskId, 1, 3, 'Veo 3.1 engine initializing...');
 
-            let modelName = req.body.model || 'veo-3.1-generate-preview';
-            let operation;
+            let videoBuffer = null;
+            let success = false;
 
-            const apiKey = await resolveGoogleApiKey(req, targetUserId);
-            const token = await getVertexToken();
-            if (!token && !apiKey) throw new Error('Failed to acquire service account token or API key for Veo I2V');
-
-            let endpoint;
-            let headers = { 'Content-Type': 'application/json' };
-
-            if (apiKey) {
-                endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predictLongRunning?key=${apiKey}`;
-                console.log(`[VEO-I2V] Calling REST API via API Key (Pay-as-you-go)...`);
-            } else {
-                endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predictLongRunning`;
-                headers['Authorization'] = `Bearer ${token}`;
-                console.log(`[VEO-I2V] Calling REST API via Service Account for project: ${VERTEX_PROJECT_ID}`);
-            }
-
-            const restResponse = await fetch(endpoint, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({
-                    instances: [instance],
-                    parameters: {
-                        sampleCount: 1,
-                        aspectRatio: validAspectRatio,
-                        durationSeconds: validDuration,
-                        resolution: validResolution
-                    }
-                })
-            });
-
-            operation = await restResponse.json();
-
-            if (operation.error) {
-                console.error(`[VEO-I2V] REST Initiation Error:`, JSON.stringify(operation.error, null, 2));
-                throw new Error(operation.error.message || "REST Initiation Failed");
-            }
-
-            console.log(`[VEO-I2V] Operation started: ${operation.name}`);
-            broadcastProgress(taskId, 2, 3, 'Animating scene (Veo 3.1 Render)...');
-
-            // Poll until done (max ~5 minutes)
-            let attempts = 0;
-            const maxAttempts = 60; // 60 × 6s = 6 minutes
-            let isDone = false;
-            let operationResult = operation;
-
-            while (!isDone && attempts < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, 6000)); // 6s interval
-
+            // --- Option A: Vertex AI (First Preference) ---
+            if (token) {
                 try {
-                    let pollUrl;
-                    let pollHeaders = {};
-                    if (apiKey) {
-                        pollUrl = `https://generativelanguage.googleapis.com/v1beta/${operationResult.name}?key=${apiKey}`;
+                    const vertexModel = (modelName.includes('fast')) ? 'veo-3.1-fast-generate-001' : 'veo-3.1-generate-001';
+                    const veoEndpoint = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${vertexModel}:predictLongRunning`;
+                    console.log(`[VEO-I2V] [Vertex AI] Calling model ${vertexModel} on url: ${veoEndpoint}`);
+
+                    const restResponse = await fetch(veoEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            instances: [instance],
+                            parameters: {
+                                sampleCount: 1,
+                                aspectRatio: validAspectRatio,
+                                durationSeconds: validDuration,
+                                resolution: validResolution
+                            }
+                        })
+                    });
+
+                    const operationResultData = await restResponse.json();
+                    if (operationResultData.error) {
+                        throw new Error(operationResultData.error.message || "REST Initiation Failed on Vertex AI");
+                    }
+
+                    console.log(`[VEO-I2V] [Vertex AI] Operation started: ${operationResultData.name}`);
+                    broadcastProgress(taskId, 2, 3, 'Animating scene (Vertex AI Render)...');
+
+                    const pollPath = operationResultData.name.includes('/') ? operationResultData.name : `projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/operations/${operationResultData.name}`;
+                    let attempts = 0;
+                    const maxAttempts = 60;
+                    let isDone = false;
+                    let operationResult = null;
+
+                    while (!isDone && attempts < maxAttempts) {
+                        await new Promise(resolve => setTimeout(resolve, 6000));
+                        attempts++;
+
+                        const pollUrl = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/${pollPath}`;
+                        const pollResp = await fetch(pollUrl, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (pollResp.status === 404) {
+                            console.log(`[VEO-I2V] [Vertex AI] Operation not propagated yet (404). Waiting...`);
+                            continue;
+                        }
+                        operationResult = await pollResp.json();
+
+                        if (operationResult.error) throw new Error(operationResult.error.message);
+                        isDone = operationResult.done;
+
+                        if (attempts % 3 === 0) {
+                            const elapsed = attempts * 6;
+                            console.log(`[VEO-I2V] [Vertex AI] Still generating... (${elapsed}s elapsed)`);
+                            broadcastProgress(taskId, 2, 3, `Rendering video... (${elapsed}s)`);
+                        }
+                    }
+
+                    if (!isDone) throw new Error('Vertex AI video generation timed out');
+
+                    const responseData = operationResult.response;
+                    const b64 = responseData?.predictions?.[0]?.bytesBase64Encoded;
+                    if (b64) {
+                        videoBuffer = Buffer.from(b64, 'base64');
+                        success = true;
+                        console.log(`[VEO-I2V] [Vertex AI] Video generated successfully via base64 predictions (${videoBuffer.length} bytes)`);
                     } else {
-                        pollUrl = `https://generativelanguage.googleapis.com/v1beta/${operationResult.name}`;
-                        pollHeaders['Authorization'] = `Bearer ${token}`;
+                        const videoUri = responseData?.generatedVideos?.[0]?.video?.uri || responseData?.predictions?.[0]?.uri;
+                        if (videoUri) {
+                            const downloadUrl = `${videoUri}&key=${token}`;
+                            const videoResp = await fetch(downloadUrl);
+                            if (videoResp.ok) {
+                                videoBuffer = Buffer.from(await videoResp.arrayBuffer());
+                                success = true;
+                                console.log(`[VEO-I2V] [Vertex AI] Video downloaded successfully via URI (${videoBuffer.length} bytes)`);
+                            }
+                        }
                     }
-
-                    const pollResp = await fetch(pollUrl, { headers: pollHeaders });
-                    if (!pollResp.ok) throw new Error(`HTTP Error: ${pollResp.status}`);
-                    operationResult = await pollResp.json();
-
-                    if (operationResult.error) {
-                        console.error(`[VEO-I2V] Polling Error:`, JSON.stringify(operationResult.error, null, 2));
-                        throw new Error(operationResult.error.message || "Veo Poll Failed");
-                    }
-
-                    isDone = operationResult.done;
-                } catch (pollError) {
-                    console.warn(`[VEO-I2V] Polling retry due to error: ${pollError.message}`);
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    continue;
-                }
-
-                attempts++;
-
-                if (attempts % 3 === 0) {
-                    const elapsed = attempts * 6;
-                    console.log(`[VEO-I2V] [${taskId}] Still generating... (${elapsed}s elapsed)`);
-                    broadcastProgress(taskId, 2, 3, `Rendering video... (${elapsed}s)`);
+                } catch (vertexErr) {
+                    console.warn(`[VEO-I2V] [Vertex AI] Failed. Error: ${vertexErr.message}. Falling back to Google AI Studio...`);
                 }
             }
 
-            if (!isDone) throw new Error('Video generation timed out after 6 minutes.');
+            // --- Option B: Google AI Studio / Gemini API (Fallback) ---
+            if (!success && (apiKey || token)) {
+                try {
+                    const aiStudioModel = (modelName.includes('fast')) ? 'veo-3.1-fast-generate-preview' : 'veo-3.1-generate-preview';
+                    let endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${aiStudioModel}:predictLongRunning`;
+                    let headers = { 'Content-Type': 'application/json' };
+                    if (apiKey) {
+                        endpoint += `?key=${apiKey}`;
+                        console.log(`[VEO-I2V] [AI Studio] Calling model ${aiStudioModel} via API Key`);
+                    } else {
+                        headers['Authorization'] = `Bearer ${token}`;
+                        console.log(`[VEO-I2V] [AI Studio] Calling model ${aiStudioModel} via Service Account token`);
+                    }
 
-            const video = findVideoInResponse(operationResult);
+                    const restResponse = await fetch(endpoint, {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify({
+                            instances: [instance],
+                            parameters: {
+                                sampleCount: 1,
+                                aspectRatio: validAspectRatio,
+                                durationSeconds: validDuration,
+                                resolution: validResolution
+                            }
+                        })
+                    });
 
-            if (!video) {
-                console.error(`[VEO-I2V] No video data found. Full response:`, JSON.stringify(operationResult, null, 2));
-                throw new Error('No video returned from Veo 3.1. Structure mismatch or filtered.');
+                    const operation = await restResponse.json();
+                    if (operation.error) {
+                        throw new Error(operation.error.message || "REST Initiation Failed on Google AI Studio");
+                    }
+
+                    console.log(`[VEO-I2V] [AI Studio] Operation started: ${operation.name}`);
+                    broadcastProgress(taskId, 2, 3, 'Animating scene (Fallback Render)...');
+
+                    let attempts = 0;
+                    const maxAttempts = 60;
+                    let isDone = false;
+                    let operationResult = operation;
+
+                    while (!isDone && attempts < maxAttempts) {
+                        await new Promise(resolve => setTimeout(resolve, 6000));
+                        attempts++;
+
+                        let pollUrl = `https://generativelanguage.googleapis.com/v1beta/${operationResult.name}`;
+                        let pollHeaders = {};
+                        if (apiKey) {
+                            pollUrl += `?key=${apiKey}`;
+                        } else {
+                            pollHeaders['Authorization'] = `Bearer ${token}`;
+                        }
+
+                        const pollResp = await fetch(pollUrl, { headers: pollHeaders });
+                        if (!pollResp.ok) throw new Error(`HTTP Error: ${pollResp.status}`);
+                        operationResult = await pollResp.json();
+
+                        if (operationResult.error) throw new Error(operationResult.error.message);
+                        isDone = operationResult.done;
+
+                        if (attempts % 3 === 0) {
+                            const elapsed = attempts * 6;
+                            console.log(`[VEO-I2V] [AI Studio] Still generating... (${elapsed}s elapsed)`);
+                            broadcastProgress(taskId, 2, 3, `Rendering video... (${elapsed}s)`);
+                        }
+                    }
+
+                    if (!isDone) throw new Error('Google AI Studio video generation timed out');
+
+                    const video = findVideoInResponse(operationResult);
+                    if (!video) throw new Error('No video returned from Veo 3.1 on Google AI Studio');
+
+                    if (video.videoBytes || video.bytesBase64Encoded) {
+                        const b64 = video.videoBytes ? Buffer.from(video.videoBytes).toString('base64') : video.bytesBase64Encoded;
+                        videoBuffer = Buffer.from(b64, 'base64');
+                        success = true;
+                        console.log(`[VEO-I2V] [AI Studio] Video generated successfully via base64 (${videoBuffer.length} bytes)`);
+                    } else if (video.uri) {
+                        console.log(`[VEO-I2V] Downloading URI: ${video.uri}`);
+                        let downloadUrl = video.uri;
+                        let downloadHeaders = {};
+                        if (apiKey) {
+                            downloadUrl = `${video.uri}&key=${apiKey}`;
+                        } else {
+                            downloadHeaders['Authorization'] = `Bearer ${token}`;
+                        }
+                        const videoResp = await fetch(downloadUrl, { headers: downloadHeaders });
+                        if (!videoResp.ok) throw new Error(`Video download failed: ${videoResp.statusText}`);
+                        videoBuffer = Buffer.from(await videoResp.arrayBuffer());
+                        success = true;
+                    }
+                } catch (studioErr) {
+                    console.error(`[VEO-I2V] [AI Studio] Failed. Error: ${studioErr.message}`);
+                    throw new Error(`Video generation failed on both Vertex AI and Google AI Studio: ${studioErr.message}`);
+                }
             }
 
-            let videoUrl = null;
-            if (video.videoBytes || video.bytesBase64Encoded) {
-                const b64 = video.videoBytes ? Buffer.from(video.videoBytes).toString('base64') : video.bytesBase64Encoded;
-                let videoBuffer = Buffer.from(b64, 'base64');
-                
-                if (generateAudio === false) {
-                    console.log('[VEO-I2V] generateAudio is false. Stripping audio from video bytes...');
-                    try {
-                        videoBuffer = await stripAudioFromBuffer(videoBuffer);
-                        console.log('[VEO-I2V] Audio successfully stripped.');
-                    } catch (ffmpegErr) {
-                        console.error('[VEO-I2V] Failed to strip audio using FFmpeg:', ffmpegErr);
-                    }
-                }
-                
-                const publicUrl = await uploadVideoToSupabase(videoBuffer, userId, validAspectRatio, 'generated', motionPrompt || prompt || '', model || 'Veo 3.1');
-                videoUrl = publicUrl;
-            } else if (video.uri) {
-                console.log(`[VEO-I2V] Downloading URI: ${video.uri}`);
-                let downloadUrl = video.uri;
-                let downloadHeaders = {};
-                if (apiKey) {
-                    downloadUrl = `${video.uri}&key=${apiKey}`;
-                } else {
-                    downloadHeaders['Authorization'] = `Bearer ${token}`;
-                }
-                const videoResp = await fetch(downloadUrl, { headers: downloadHeaders });
-                if (!videoResp.ok) throw new Error(`Video download failed: ${videoResp.statusText}`);
-                const videoBufferArray = await videoResp.arrayBuffer();
-                let videoBuffer = Buffer.from(videoBufferArray);
-                
-                if (generateAudio === false) {
-                    console.log('[VEO-I2V] generateAudio is false. Stripping audio from downloaded video bytes...');
-                    try {
-                        videoBuffer = await stripAudioFromBuffer(videoBuffer);
-                        console.log('[VEO-I2V] Audio successfully stripped.');
-                    } catch (ffmpegErr) {
-                        console.error('[VEO-I2V] Failed to strip audio using FFmpeg:', ffmpegErr);
-                    }
-                }
-                
-                const publicUrl = await uploadVideoToSupabase(videoBuffer, userId, validAspectRatio, 'generated', motionPrompt || prompt || '', model || 'Veo 3.1');
-                videoUrl = publicUrl;
+            if (!success || !videoBuffer) {
+                throw new Error('Video generation failed to return valid video buffer.');
             }
+
+            if (generateAudio === false) {
+                console.log('[VEO-I2V] generateAudio is false. Stripping audio from video bytes...');
+                try {
+                    videoBuffer = await stripAudioFromBuffer(videoBuffer);
+                    console.log('[VEO-I2V] Audio successfully stripped.');
+                } catch (ffmpegErr) {
+                    console.error('[VEO-I2V] Failed to strip audio using FFmpeg:', ffmpegErr);
+                }
+            }
+
+            const publicUrl = await uploadVideoToSupabase(videoBuffer, userId, validAspectRatio, 'generated', motionPrompt || prompt || '', model || 'Veo 3.1');
+            let videoUrl = publicUrl;
 
             if (!videoUrl) throw new Error('Failed to assemble video URL.');
 

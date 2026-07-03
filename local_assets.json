@@ -1,5 +1,229 @@
 [
   {
+    "id": "local_1783023310998_lc0qd",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783023310171.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783023310171.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "make it full sand @water  like ocean. Camera Movement: Zoom Out (Camera pull back).. Perspective: Wide Shot framing, showing the full scene.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Animation Flow: Begin the shot starting from the visual layout and details of the first frame image, animating it forward dynamically with realistic movement.\n\n[REFERENCE ALIGNMENT DIRECTIVES]\nReference: @water (LOCATION) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1783023201817.png [seed: 821788]",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-02T20:15:10.998Z"
+  },
+  {
+    "id": "local_1783022983731_cv66m",
+    "name": "seedref_1783022983233.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/seedref_1783022983233.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "",
+    "engine": "",
+    "created_at": "2026-07-02T20:09:43.731Z"
+  },
+  {
+    "id": "local_1783010531388_r0ngw",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783010531104.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783010531104.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "sci-fi cold sterile environment lighting — ice blue LED panel lights, OLED screen glow, hard rim lighting against pure black, clinical white highlights. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 853395]",
+    "engine": "nano-banana-2-lite",
+    "created_at": "2026-07-02T16:42:11.388Z"
+  },
+  {
+    "id": "local_1783010429652_f87wa",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783010428819.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783010428819.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "war film cinematography — desaturated muted palette, oppressive overcast sky, wet mud reflections, smoke and debris haze, intense backlit silhouettes. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 385210]",
+    "engine": "nano-banana-2-lite",
+    "created_at": "2026-07-02T16:40:29.653Z"
+  },
+  {
+    "id": "local_1783010351719_er9v3",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783010350890.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783010350890.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "@, war film cinematography — desaturated muted palette, oppressive overcast sky, wet mud reflections, smoke and debris haze, intense backlit silhouettes. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 475591]",
+    "engine": "nano-banana-2-lite",
+    "created_at": "2026-07-02T16:39:11.719Z"
+  },
+  {
+    "id": "local_1783004386795_pbknm",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783004382540.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783004382540.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "1980s action blockbuster lighting — high-contrast backlighting, hazy smoke machine fill, warm tungsten glow, strong blue-orange split lighting, 80s anamorphic lens flares. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 332616]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-02T14:59:46.795Z"
+  },
+  {
+    "id": "local_1783004254997_h9xps",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783004254190.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783004254190.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "horror movie lighting — single flickering overhead fluorescent, deep shadow pools, sickly green-yellow cast, 35mm film grain, blood-red practical lamp glow. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 949341]",
+    "engine": "nano-banana-2-lite",
+    "created_at": "2026-07-02T14:57:34.997Z"
+  },
+  {
+    "id": "local_1783004077812_gqvim",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783004072631.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783004072631.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "war film cinematography — desaturated muted palette, oppressive overcast sky, wet mud reflections, smoke and debris haze, intense backlit silhouettes. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 502542]",
+    "engine": "nano-banana-2-lite",
+    "created_at": "2026-07-02T14:54:37.812Z"
+  },
+  {
+    "id": "local_1783003940174_hwp30",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783003933418.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783003933418.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "romantic drama cinematography — warm window light key, silky soft bokeh candle practicals, golden hour magic hour glow, dreamy lens diffusion filter. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 172054]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-02T14:52:20.174Z"
+  },
+  {
+    "id": "local_1783003834538_tp29h",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783003829141.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783003829141.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "90s crime drama cinematography — gritty available light, sodium vapor street lamps, blown-out background highlights, hand-held shaky low-light exposure. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 702384]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-02T14:50:34.538Z"
+  },
+  {
+    "id": "local_1783002384044_lw4lw",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783002377445.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783002377445.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "Change the character: keep style, setting, and composition, but swap the subject to [new subject]@prem. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair).\n\n[REFERENCE ALIGNMENT DIRECTIVES]\nReference: @prem (CHARACTER) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1783002301639.png\n\n[FACE SYMMETRY DIRECTIVE]\nMake the face 100% symmetrical, matching the exact facial structure and features of the attached character reference image. [seed: 825614]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-02T14:26:24.044Z"
+  },
+  {
+    "id": "local_1783002166499_dbfz1",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783002161473.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783002161473.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "psychological thriller lighting — oppressive overcast flat light, motivated practical lamp in darkness, shallow depth-of-field shallow focus, uncomfortable green-white fluorescent cast, 90s crime drama cinematography — gritty available light, sodium vapor street lamps, blown-out background highlights, hand-held shaky low-light exposure. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 813051]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-02T14:22:46.499Z"
+  },
+  {
+    "id": "local_1783002029993_l1d4s",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783002022410.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783002022410.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "psychological thriller lighting — oppressive overcast flat light, motivated practical lamp in darkness, shallow depth-of-field shallow focus, uncomfortable green-white fluorescent cast. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 236619]",
+    "engine": "nano-banana-2-lite",
+    "created_at": "2026-07-02T14:20:29.993Z"
+  },
+  {
+    "id": "local_1782998079368_vuq8a",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782998079068.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782998079068.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "a modern graphical illustration, vibrant color palette. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 616797]",
+    "engine": "nano-banana-2-lite",
+    "created_at": "2026-07-02T13:14:39.368Z"
+  },
+  {
+    "id": "local_1782997964833_oqy46",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782997964464.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782997964464.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "illuminated by high-contrast neon cursive signage. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 359423]",
+    "engine": "nano-banana-2-lite",
+    "created_at": "2026-07-02T13:12:44.833Z"
+  },
+  {
+    "id": "local_1782997924166_5n5kz",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782997923665.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782997923665.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "unreal engine  photorealistic 3d render, raytraced shadows. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 583660]",
+    "engine": "nano-banana-2-lite",
+    "created_at": "2026-07-02T13:12:04.166Z"
+  },
+  {
     "id": "local_1782997079949_0p7xe",
     "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782997079405.jpeg",
     "type": "image",

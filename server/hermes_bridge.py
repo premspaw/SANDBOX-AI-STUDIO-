@@ -26,8 +26,8 @@ HERMES_ROOT = Path(os.environ.get("LOCALAPPDATA", "")) / "hermes" / "hermes-agen
 sys.path.insert(0, str(HERMES_ROOT))
 sys.path.insert(0, str(HERMES_ROOT / "venv" / "Lib" / "site-packages"))
 
-import aiohttp
-from aiohttp import web
+import aiohttp  # type: ignore
+from aiohttp import web  # type: ignore
 
 HOST = os.environ.get("HERMES_HOST", "127.0.0.1")
 PORT = int(os.environ.get("HERMES_PORT", "8642"))
@@ -37,9 +37,9 @@ _sessions: dict = {}
 
 # Pre-load heavy imports at startup (first import takes ~35s)
 logger.info("Loading Hermes Agent modules (this may take a minute)...")
-from run_agent import AIAgent
-from gateway.run import _resolve_runtime_agent_kwargs, _resolve_gateway_model, _load_gateway_config
-from hermes_cli.tools_config import _get_platform_tools
+from run_agent import AIAgent  # type: ignore
+from gateway.run import _resolve_runtime_agent_kwargs, _resolve_gateway_model, _load_gateway_config  # type: ignore
+from hermes_cli.tools_config import _get_platform_tools  # type: ignore
 logger.info("Hermes Agent modules loaded.")
 
 
@@ -264,7 +264,7 @@ async def cors_middleware(request, handler):
             headers={
                 "Access-Control-Allow-Origin": origin,
                 "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PATCH, DELETE",
-                "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, x-admin-trial-key, X-Admin-Trial-Key",
                 "Access-Control-Allow-Credentials": "true",
                 "Access-Control-Max-Age": "86400",
             }
@@ -274,7 +274,7 @@ async def cors_middleware(request, handler):
     except web.HTTPException as ex:
         response = ex
     response.headers["Access-Control-Allow-Origin"] = origin
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, x-admin-trial-key, X-Admin-Trial-Key"
     response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 

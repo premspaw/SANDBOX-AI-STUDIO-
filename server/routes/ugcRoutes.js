@@ -27,7 +27,8 @@ export default function createRouter(deps) {
         VERTEX_LOCATIONEarly = 'us-central1',
         uploadVideoToSupabase,
         LOCAL_ASSETS_FILE,
-        resolveGoogleApiKey
+        resolveGoogleApiKey,
+        requireAuth
     } = deps;
 
     const VERTEX_LOCATION = deps.VERTEX_LOCATION || VERTEX_LOCATIONEarly;
@@ -36,27 +37,16 @@ export default function createRouter(deps) {
     router.post('/video', async (req, res) => {
         try {
             const { image, script, bible, userId, duration, resolution, model, aspect_ratio } = req.body;
-            if (!image || !script) throw new Error("Missing image or script");
-
-            // Video synthesis is expensive
-            const modelCredits = model === 'veo-fast' ? 3 : 5;
-            const creditReason = req.body.creditReason || 'veo_fast';
-            await claimOrCreateSpend(userId, modelCredits, creditReason);
-
-            console.log(`[Video API] Starting generation: model=${model}, dur=${duration}, res=${resolution}, ratio=${aspect_ratio}`);
-            console.log(`[Video API] Script preview: "${script.substring(0, 50)}..."`);
-            console.log(`[Video API] Image provided: ${image ? (image.substring(0, 50) + '...') : 'NONE'}`);
-
-            // Get OAuth2 token from service account for Vertex AI
+            // Get credentials
             const vertexToken = await getVertexToken();
-            if (!vertexToken) {
-                throw new Error('Failed to get Vertex AI authentication token. Check GOOGLE_APPLICATION_CREDENTIALS_JSON env var.');
+            const apiKey = await resolveGoogleApiKey(req, userId);
+            if (!vertexToken && !apiKey) {
+                throw new Error('Failed to acquire service account token or API key for Veo');
             }
 
-            // Call Veo via Vertex AI using backend service account
-            const modelName = (model === 'veo-fast') ? 'veo-3.1-fast-generate-preview' : 'veo-3.1-generate-preview';
             const requestedDuration = parseInt(String(duration).replace(/\D/g, '')) || 6;
             const durationSecs = [4, 6, 8].includes(requestedDuration) ? requestedDuration : 6;
+            const validAspectRatio = aspect_ratio || "9:16";
 
             // Convert image to base64 if it's a URL
             let imageBase64, imageMime;
@@ -80,71 +70,187 @@ export default function createRouter(deps) {
                 }],
                 parameters: {
                     sampleCount: 1,
-                    aspectRatio: aspect_ratio || "9:16",
+                    aspectRatio: validAspectRatio,
                     durationSeconds: durationSecs,
                 }
             };
 
-            const url = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelName}:predict`;
+            let videoBuffer = null;
+            let success = false;
 
-            console.log(`[Video API] Calling Vertex AI: ${url}`);
-            const initialResponse = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${vertexToken}`
-                },
-                body: JSON.stringify(payload)
-            });
+            // --- Option A: Vertex AI (First Preference) ---
+            if (vertexToken) {
+                try {
+                    const modelName = (model === 'veo-fast') ? 'veo-3.1-fast-generate-001' : 'veo-3.1-generate-001';
+                    const url = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelName}:predictLongRunning`;
+                    console.log(`[Video API] [Vertex AI] Calling model ${modelName} on url: ${url}`);
+                    
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${vertexToken}`
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    const initialData = await response.json();
+                    if (initialData.error) throw new Error(initialData.error.message);
+                    
+                    const operationName = initialData.name;
+                    if (!operationName) throw new Error('No operation name returned from Vertex AI');
 
-            const initialData = await initialResponse.json();
-            if (initialData.error) throw new Error(initialData.error.message);
+                    const pollPath = operationName.includes('/') ? operationName : `projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/operations/${operationName}`;
+                    console.log(`[Video API] [Vertex AI] Operation created: ${operationName}. Polling...`);
 
-            const operationName = initialData.name;
-            if (!operationName) throw new Error('No operation name returned from Vertex AI');
+                    let done = false;
+                    let resultData = null;
+                    let attempts = 0;
+                    const maxAttempts = 60; // 5-6 minutes
 
-            const pollPath = operationName.includes('/') ? operationName : `projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/operations/${operationName}`;
+                    while (!done && attempts < maxAttempts) {
+                        await new Promise(r => setTimeout(r, 6000));
+                        attempts++;
 
-            // Poll for completion
-            let done = false;
-            let resultData = null;
-            let attempts = 0;
-            const maxAttempts = 60; // 5 minutes max
+                        const pollUrl = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/${pollPath}`;
+                        const pollResponse = await fetch(pollUrl, {
+                            headers: { 'Authorization': `Bearer ${vertexToken}` }
+                        });
+                        if (pollResponse.status === 404) {
+                            console.log(`[Video API] Operation not propagated yet (404). Waiting...`);
+                            continue;
+                        }
+                        const pollData = await pollResponse.json();
+                        if (pollData.error) throw new Error(pollData.error.message);
+                        if (pollData.done) {
+                            resultData = pollData.response;
+                            done = true;
+                        }
+                        if (attempts % 3 === 0) {
+                            console.log(`[Video API] [Vertex AI] Polling... attempt ${attempts}`);
+                        }
+                    }
 
-            while (!done && attempts < maxAttempts) {
-                await new Promise(r => setTimeout(r, 5000));
-                attempts++;
+                    if (!done) throw new Error('Vertex AI video generation timed out');
 
-                const pollUrl = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/${pollPath}`;
-                const pollResponse = await fetch(pollUrl, {
-                    headers: { 'Authorization': `Bearer ${vertexToken}` }
-                });
-                const pollData = await pollResponse.json();
-                
-                if (pollData.error) throw new Error(pollData.error.message);
-                if (pollData.done) {
-                    resultData = pollData.response;
-                    done = true;
+                    // Extract video bytes directly or download if a URI is returned
+                    const b64 = resultData?.predictions?.[0]?.bytesBase64Encoded;
+                    if (b64) {
+                        videoBuffer = Buffer.from(b64, 'base64');
+                        success = true;
+                        console.log(`[Video API] [Vertex AI] Video generated successfully via base64 predictions (${videoBuffer.length} bytes)`);
+                    } else {
+                        const videoUri = resultData?.generatedVideos?.[0]?.video?.uri || resultData?.predictions?.[0]?.uri;
+                        if (videoUri) {
+                            const downloadUrl = `${videoUri}&key=${vertexToken}`;
+                            const videoResp = await fetch(downloadUrl);
+                            if (videoResp.ok) {
+                                videoBuffer = Buffer.from(await videoResp.arrayBuffer());
+                                success = true;
+                                console.log(`[Video API] [Vertex AI] Video downloaded successfully via URI (${videoBuffer.length} bytes)`);
+                            }
+                        }
+                    }
+                } catch (vertexErr) {
+                    console.warn(`[Video API] [Vertex AI] Failed. Error: ${vertexErr.message}. Falling back to Google AI Studio...`);
                 }
-                console.log(`[Video API] Polling... attempt ${attempts}`);
             }
 
-            if (!done) throw new Error('Video generation timed out after 5 minutes');
+            // --- Option B: Google AI Studio / Gemini API (Fallback) ---
+            if (!success && (apiKey || vertexToken)) {
+                try {
+                    const aiStudioModelName = (model === 'veo-fast') ? 'veo-3.1-fast-generate-preview' : 'veo-3.1-generate-preview';
+                    let url = `https://generativelanguage.googleapis.com/v1beta/models/${aiStudioModelName}:predictLongRunning`;
+                    let headers = { 'Content-Type': 'application/json' };
+                    if (apiKey) {
+                        url += `?key=${apiKey}`;
+                        console.log(`[Video API] [AI Studio] Calling model ${aiStudioModelName} via API Key`);
+                    } else {
+                        headers['Authorization'] = `Bearer ${vertexToken}`;
+                        console.log(`[Video API] [AI Studio] Calling model ${aiStudioModelName} via Service Account token`);
+                    }
 
-            const videoUri = resultData?.generatedVideos?.[0]?.video?.uri || resultData?.predictions?.[0]?.uri;
-            if (!videoUri) throw new Error('No video URI in response');
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify(payload)
+                    });
 
-            const downloadUrl = `${videoUri}&key=${vertexToken}`;
-            const videoResp = await fetch(downloadUrl);
-            if (!videoResp.ok) throw new Error(`Failed to download video: ${videoResp.status}`);
-            
-            const videoBuffer = await videoResp.arrayBuffer();
-            let videoUrl = `data:video/mp4;base64,${Buffer.from(videoBuffer).toString('base64')}`;
+                    const initialData = await response.json();
+                    if (initialData.error) throw new Error(initialData.error.message);
+
+                    const operationName = initialData.name;
+                    if (!operationName) throw new Error('No operation name returned from Google AI Studio');
+
+                    console.log(`[Video API] [AI Studio] Operation created: ${operationName}. Polling...`);
+
+                    let done = false;
+                    let resultData = null;
+                    let attempts = 0;
+                    const maxAttempts = 60;
+
+                    while (!done && attempts < maxAttempts) {
+                        await new Promise(r => setTimeout(r, 6000));
+                        attempts++;
+
+                        let pollUrl = `https://generativelanguage.googleapis.com/v1beta/${operationName}`;
+                        let pollHeaders = {};
+                        if (apiKey) {
+                            pollUrl += `?key=${apiKey}`;
+                        } else {
+                            pollHeaders['Authorization'] = `Bearer ${vertexToken}`;
+                        }
+
+                        const pollResponse = await fetch(pollUrl, { headers: pollHeaders });
+                        const pollData = await pollResponse.json();
+                        if (pollData.error) throw new Error(pollData.error.message);
+                        if (pollData.done) {
+                            resultData = pollData;
+                            done = true;
+                        }
+                        if (attempts % 3 === 0) {
+                            console.log(`[Video API] [AI Studio] Polling... attempt ${attempts}`);
+                        }
+                    }
+
+                    if (!done) throw new Error('Google AI Studio video generation timed out');
+
+                    // Use findVideoInResponse helper
+                    const videoObj = findVideoInResponse(resultData);
+                    if (videoObj) {
+                        const videoUri = videoObj.uri;
+                        if (videoUri) {
+                            let downloadUrl = videoUri;
+                            let downloadHeaders = {};
+                            if (apiKey) {
+                                downloadUrl += `&key=${apiKey}`;
+                            } else {
+                                downloadHeaders['Authorization'] = `Bearer ${vertexToken}`;
+                            }
+                            const videoResp = await fetch(downloadUrl, { headers: downloadHeaders });
+                            if (videoResp.ok) {
+                                videoBuffer = Buffer.from(await videoResp.arrayBuffer());
+                                success = true;
+                                console.log(`[Video API] [AI Studio] Video generated and downloaded successfully (${videoBuffer.length} bytes)`);
+                            }
+                        }
+                    }
+                } catch (studioErr) {
+                    console.error(`[Video API] [AI Studio] Failed. Error: ${studioErr.message}`);
+                    throw new Error(`Video generation failed on both Vertex AI and Google AI Studio: ${studioErr.message}`);
+                }
+            }
+
+            if (!success || !videoBuffer) {
+                throw new Error('Video generation failed to return valid video buffer.');
+            }
+
+            let videoUrl = `data:video/mp4;base64,${videoBuffer.toString('base64')}`;
 
             if (uploadVideoToSupabase) {
                 console.log(`[Video API] Uploading generated video to GCS/Supabase for user: ${userId || 'anon'}`);
                 try {
-                    videoUrl = await uploadVideoToSupabase(Buffer.from(videoBuffer), userId, aspect_ratio || '9:16');
+                    videoUrl = await uploadVideoToSupabase(videoBuffer, userId, validAspectRatio);
                 } catch (uploadErr) {
                     console.warn('[Video API] Failed to upload generated video to GCS/Supabase, falling back to data URL:', uploadErr.message);
                 }
@@ -178,7 +284,8 @@ export default function createRouter(deps) {
                 'sulafat', 'umbriel', 'vindemiatrix', 'zephyr', 'zubenelgenubi'
             ];
 
-            const gemini = getGeminiClient();
+            const apiKey = await resolveGoogleApiKey(req, req.body.userId);
+            const gemini = getGeminiClient(apiKey);
 
             if (multiSpeaker) {
                 const s1 = host1Name || 'Speaker 1';
@@ -292,7 +399,8 @@ ${transcript}`;
             }
 
             const audioBase64 = req.file.buffer.toString('base64');
-            const gemini = getGeminiClient();
+            const apiKey = await resolveGoogleApiKey(req, req.body.userId);
+            const gemini = getGeminiClient(apiKey);
 
             const audioPart = { inlineData: { mimeType, data: audioBase64 } };
 
@@ -484,7 +592,8 @@ Return ONLY valid JSON.`
                 niche,
                 tone,
                 directive,
-                trainingContext
+                trainingContext,
+                userId
             } = req.body;
 
             if (!characterImage || !productImage) throw new Error("Missing character or product image");
@@ -492,10 +601,11 @@ Return ONLY valid JSON.`
             const taskId = `ugc-engine-${Date.now()}`;
             broadcastProgress(taskId, 1, 4, 'Analyzing influencer + product synergy...');
 
-            const synergy = await geminiService.analyzeUGCContext(characterImage, productImage, { characterMetadata, productMetadata });
+            const apiKey = await resolveGoogleApiKey(req, userId);
+            const synergy = await geminiService.analyzeUGCContext(characterImage, productImage, { characterMetadata, productMetadata }, apiKey);
             broadcastProgress(taskId, 2, 4, 'Generating viral ad script...');
 
-            const script = await geminiService.generateUGCScript(synergy, niche || synergy.recommendedNiche, tone || synergy.suggestedTone, directive, trainingContext);
+            const script = await geminiService.generateUGCScript(synergy, niche || synergy.recommendedNiche, tone || synergy.suggestedTone, directive, trainingContext, apiKey);
             broadcastProgress(taskId, 3, 4, 'Finalizing ad structure...');
 
             broadcastComplete(taskId);
@@ -804,10 +914,8 @@ Return ONLY valid JSON.`
             const requestedDuration = parseInt(duration) || 6;
             const validDuration = [4, 6, 8].includes(requestedDuration) ? requestedDuration : 6;
             const validAspectRatio = ['16:9', '9:16', '1:1'].includes(aspectRatio) ? aspectRatio : '9:16';
-            const veoModel = 'veo-3.1-generate-preview';
-            const veoEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${veoModel}:predictLongRunning`;
 
-            const veoBody = {
+            const payload = {
                 instances: [{
                     prompt: motionPrompt,
                     image: { bytesBase64Encoded: keyframeBase64, mimeType: keyframeMime }
@@ -819,46 +927,162 @@ Return ONLY valid JSON.`
                 }
             };
 
-            const veoInitResp = await withRetry(() => fetch(veoEndpoint, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(veoBody)
-            }));
-            const operation = await veoInitResp.json();
+            let videoBuffer = null;
+            let success = false;
 
-            if (operation.error) {
-                console.error('[UGC-PREVIEW] Veo error:', operation.error);
-                throw new Error(operation.error.message || 'Veo I2V initiation failed');
+            // --- Option A: Vertex AI (First Preference) ---
+            if (token) {
+                try {
+                    const veoModel = 'veo-3.1-generate-001';
+                    const veoEndpoint = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${veoModel}:predictLongRunning`;
+                    console.log(`[UGC-PREVIEW] [Vertex AI] Calling model ${veoModel} on url: ${veoEndpoint}`);
+
+                    const veoInitResp = await withRetry(() => fetch(veoEndpoint, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(payload)
+                    }));
+                    const operation = await veoInitResp.json();
+
+                    if (operation.error) {
+                        throw new Error(operation.error.message || 'Veo I2V initiation failed on Vertex AI');
+                    }
+
+                    const operationName = operation.name;
+                    if (!operationName) throw new Error('No operation name returned from Vertex AI');
+
+                    broadcastProgress(taskId, 3, 3, 'Rendering video (Service Account)...');
+
+                    const pollPath = operationName.includes('/') ? operationName : `projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/operations/${operationName}`;
+                    let attempts = 0;
+                    const maxAttempts = 60;
+                    let done = false;
+                    let resultData = null;
+
+                    while (!done && attempts < maxAttempts) {
+                        await new Promise(r => setTimeout(r, 6000));
+                        attempts++;
+
+                        const pollUrl = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/${pollPath}`;
+                        const pollResp = await fetch(pollUrl, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (pollResp.status === 404) {
+                            console.log(`[UGC-PREVIEW] Operation not propagated yet (404). Waiting...`);
+                            continue;
+                        }
+                        const opStatus = await pollResp.json();
+
+                        if (opStatus.error) throw new Error(opStatus.error.message);
+                        if (opStatus.done) {
+                            resultData = opStatus.response;
+                            done = true;
+                        }
+                        if (attempts % 3 === 0) {
+                            console.log(`[UGC-PREVIEW] [Vertex AI] Polling... attempt ${attempts}`);
+                        }
+                    }
+
+                    if (!done) throw new Error('Vertex AI video generation timed out');
+
+                    // Extract bytes directly or download via GCS URI
+                    const b64 = resultData?.predictions?.[0]?.bytesBase64Encoded;
+                    if (b64) {
+                        videoBuffer = Buffer.from(b64, 'base64');
+                        success = true;
+                        console.log(`[UGC-PREVIEW] [Vertex AI] Video generated successfully via base64 predictions (${videoBuffer.length} bytes)`);
+                    } else {
+                        const videoUri = resultData?.generatedVideos?.[0]?.video?.uri || resultData?.predictions?.[0]?.uri;
+                        if (videoUri) {
+                            const downloadUrl = `${videoUri}&key=${token}`;
+                            const videoResp = await fetch(downloadUrl);
+                            if (videoResp.ok) {
+                                videoBuffer = Buffer.from(await videoResp.arrayBuffer());
+                                success = true;
+                                console.log(`[UGC-PREVIEW] [Vertex AI] Video downloaded successfully via URI (${videoBuffer.length} bytes)`);
+                            }
+                        }
+                    }
+                } catch (vertexErr) {
+                    console.warn(`[UGC-PREVIEW] [Vertex AI] Failed. Error: ${vertexErr.message}. Falling back to Google AI Studio...`);
+                }
             }
 
-            broadcastProgress(taskId, 3, 3, 'Rendering video (Service Account)...');
+            // --- Option B: Google AI Studio / Gemini API (Fallback) ---
+            if (!success && (apiKey || token)) {
+                try {
+                    const veoModel = 'veo-3.1-generate-preview';
+                    let veoEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${veoModel}:predictLongRunning`;
+                    let headers = { 'Content-Type': 'application/json' };
+                    if (apiKey) {
+                        veoEndpoint += `?key=${apiKey}`;
+                        console.log(`[UGC-PREVIEW] [AI Studio] Calling model ${veoModel} via API Key`);
+                    } else {
+                        headers['Authorization'] = `Bearer ${token}`;
+                        console.log(`[UGC-PREVIEW] [AI Studio] Calling model ${veoModel} via Service Account token`);
+                    }
 
-            const pollUrl = `https://generativelanguage.googleapis.com/v1beta/${operation.name}`;
-            let attempts = 0;
-            const maxAttempts = 60;
-            while (attempts < maxAttempts) {
-                await new Promise(r => setTimeout(r, 6000));
-                attempts++;
-                const pollResp = await fetch(pollUrl, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const opStatus = await pollResp.json();
+                    const veoInitResp = await withRetry(() => fetch(veoEndpoint, {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify(payload)
+                    }));
+                    const operation = await veoInitResp.json();
 
-                if (opStatus.done) {
-                    const videoData = findVideoInResponse(opStatus);
+                    if (operation.error) {
+                        throw new Error(operation.error.message || 'Veo I2V initiation failed on Google AI Studio');
+                    }
+
+                    broadcastProgress(taskId, 3, 3, 'Rendering video (Fallback)...');
+
+                    const operationName = operation.name;
+                    if (!operationName) throw new Error('No operation name returned from Google AI Studio');
+
+                    let attempts = 0;
+                    const maxAttempts = 60;
+                    let done = false;
+                    let resultData = null;
+
+                    while (!done && attempts < maxAttempts) {
+                        await new Promise(r => setTimeout(r, 6000));
+                        attempts++;
+
+                        let pollUrl = `https://generativelanguage.googleapis.com/v1beta/${operationName}`;
+                        let pollHeaders = {};
+                        if (apiKey) {
+                            pollUrl += `?key=${apiKey}`;
+                        } else {
+                            pollHeaders['Authorization'] = `Bearer ${token}`;
+                        }
+
+                        const pollResp = await fetch(pollUrl, { headers: pollHeaders });
+                        const opStatus = await pollResp.json();
+
+                        if (opStatus.error) throw new Error(opStatus.error.message);
+                        if (opStatus.done) {
+                            resultData = opStatus;
+                            done = true;
+                        }
+                        if (attempts % 3 === 0) {
+                            console.log(`[UGC-PREVIEW] [AI Studio] Polling... attempt ${attempts}`);
+                        }
+                    }
+
+                    if (!done) throw new Error('Google AI Studio video generation timed out');
+
+                    const videoData = findVideoInResponse(resultData);
                     if (!videoData) {
                         throw new Error('Veo rendered but returned no video.');
                     }
 
-                    let finalVideoUrl = null;
-                    let videoBuffer = null;
-
                     if (videoData.videoBytes || videoData.bytesBase64Encoded) {
                         const b64 = videoData.videoBytes ? Buffer.from(videoData.videoBytes).toString('base64') : videoData.bytesBase64Encoded;
                         videoBuffer = Buffer.from(b64, 'base64');
+                        success = true;
+                        console.log(`[UGC-PREVIEW] [AI Studio] Video generated successfully via base64 (${videoBuffer.length} bytes)`);
                     } else if (videoData.uri) {
                         let downloadUrl = videoData.uri;
                         let downloadHeaders = {};
@@ -870,44 +1094,44 @@ Return ONLY valid JSON.`
                         try {
                             const videoResp = await fetch(downloadUrl, { headers: downloadHeaders });
                             if (videoResp.ok) {
-                                const arrayBuf = await videoResp.arrayBuffer();
-                                videoBuffer = Buffer.from(arrayBuf);
+                                videoBuffer = Buffer.from(await videoResp.arrayBuffer());
+                                success = true;
+                                console.log(`[UGC-PREVIEW] [AI Studio] Video downloaded successfully via URI (${videoBuffer.length} bytes)`);
                             }
                         } catch (err) {
                             console.warn('[UGC-PREVIEW] Failed to download video from URI:', err.message);
                         }
                     }
-
-                    const userId = req.body.userId || req.body.user_id;
-
-                    if (videoBuffer && uploadVideoToSupabase) {
-                        try {
-                            console.log(`[UGC-PREVIEW] Uploading preview video to Supabase for user: ${userId || 'anon'}`);
-                            finalVideoUrl = await uploadVideoToSupabase(videoBuffer, userId, validAspectRatio);
-                        } catch (uploadErr) {
-                            console.warn('[UGC-PREVIEW] Supabase upload failed, falling back to data URL:', uploadErr.message);
-                        }
-                    }
-
-                    // Fallback to data URL or URI if upload didn't yield a URL
-                    if (!finalVideoUrl) {
-                        if (videoBuffer) {
-                            finalVideoUrl = `data:video/mp4;base64,${videoBuffer.toString('base64')}`;
-                        } else if (videoData.uri) {
-                            finalVideoUrl = `${videoData.uri}?alt=media&key=${apiKey}`;
-                            if (token && token.startsWith('ya29')) {
-                                finalVideoUrl = `${videoData.uri}?alt=media`;
-                            }
-                        }
-                    }
-
-                    if (!finalVideoUrl) throw new Error('Failed to assemble video URL.');
-
-                    broadcastProgress(taskId, 3, 3, 'Video rendered!');
-                    return res.json({ keyframeUrl, videoUrl: finalVideoUrl });
+                } catch (studioErr) {
+                    console.error(`[UGC-PREVIEW] [AI Studio] Failed. Error: ${studioErr.message}`);
+                    throw new Error(`Video generation failed on both Vertex AI and Google AI Studio: ${studioErr.message}`);
                 }
             }
-            throw new Error('Veo render timed out.');
+
+            if (!success || !videoBuffer) {
+                throw new Error('Video generation failed to return valid video buffer.');
+            }
+
+            const userIdVal = req.body.userId || req.body.user_id || targetUserId;
+            let finalVideoUrl = null;
+
+            if (videoBuffer && uploadVideoToSupabase) {
+                try {
+                    console.log(`[UGC-PREVIEW] Uploading preview video to Supabase for user: ${userIdVal || 'anon'}`);
+                    finalVideoUrl = await uploadVideoToSupabase(videoBuffer, userIdVal, validAspectRatio);
+                } catch (uploadErr) {
+                    console.warn('[UGC-PREVIEW] Supabase upload failed, falling back to data URL:', uploadErr.message);
+                }
+            }
+
+            if (!finalVideoUrl && videoBuffer) {
+                finalVideoUrl = `data:video/mp4;base64,${videoBuffer.toString('base64')}`;
+            }
+
+            if (!finalVideoUrl) throw new Error('Failed to assemble video URL.');
+
+            broadcastProgress(taskId, 3, 3, 'Video rendered!');
+            return res.json({ keyframeUrl, videoUrl: finalVideoUrl });
         } catch (error) {
             console.error('[UGC-PREVIEW] Pipeline Error:', error);
             res.status(500).json({ error: error.message || 'UGC preview pipeline failed' });
@@ -917,7 +1141,7 @@ Return ONLY valid JSON.`
     // UGC Context Analysis (synergy between creator + product) / General Gemini Proxy
     router.post('/ai/analyze-ugc', async (req, res) => {
         try {
-            const { parts, model, generationConfig, characterImage, productImage, characterMetadata, productMetadata } = req.body;
+            const { parts, model, generationConfig, characterImage, productImage, characterMetadata, productMetadata, userId } = req.body;
 
             // If parts are provided, act as a general Gemini proxy
             if (parts && Array.isArray(parts)) {
@@ -956,7 +1180,8 @@ Return ONLY valid JSON.`
                     return part;
                 });
 
-                const gemini = getGeminiClient();
+                const apiKey = await resolveGoogleApiKey(req, userId);
+                const gemini = getGeminiClient(apiKey);
                 const payload = {
                     model: mappedModel,
                     contents: [{ role: 'user', parts: formattedParts }]
@@ -988,10 +1213,28 @@ Return ONLY valid JSON.`
             if (!characterImage || !productImage) {
                 return res.status(400).json({ error: "Missing character or product image" });
             }
-            const synergy = await geminiService.analyzeUGCContext(characterImage, productImage, { characterMetadata, productMetadata });
+            const apiKey = await resolveGoogleApiKey(req, userId);
+            const synergy = await geminiService.analyzeUGCContext(characterImage, productImage, { characterMetadata, productMetadata }, apiKey);
             res.json(synergy);
         } catch (error) {
             console.error('Analyze UGC / Proxy Error:', error);
+
+            // Detect Gemini RESOURCE_EXHAUSTED (quota/billing) errors and surface them cleanly
+            const errStr = typeof error.message === 'string' ? error.message : JSON.stringify(error);
+            let innerCode = null;
+            try {
+                // The SDK wraps the API error as a JSON string inside error.message
+                const outer = JSON.parse(errStr);
+                const inner = typeof outer.error === 'string' ? JSON.parse(outer.error) : outer.error;
+                innerCode = inner?.error?.code || inner?.code || null;
+            } catch (_) { /* not JSON, ignore */ }
+
+            if (innerCode === 429 || errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('prepayment credits are depleted')) {
+                return res.status(429).json({
+                    error: 'AI quota exhausted. Your Gemini API prepayment credits are depleted. Please top up your balance at https://ai.studio/projects to continue using AI features.'
+                });
+            }
+
             res.status(500).json({ error: error.message });
         }
     });

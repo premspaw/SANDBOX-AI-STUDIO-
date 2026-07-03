@@ -41,15 +41,18 @@ const getAIConfig = () => {
 
 let _aiInstance = null;
 let _lastApiKeyUsed = null;
-const getAI = () => {
-    const { apiKey } = getAIConfig();
-    if (!apiKey) {
+const getAI = (customApiKey) => {
+    const activeKey = customApiKey || getAIConfig().apiKey;
+    if (!activeKey) {
         throw new Error('[geminiService] GOOGLE_API_KEY is not set. Add it to your Railway service variables.');
     }
-    if (_aiInstance && _lastApiKeyUsed === apiKey) return _aiInstance;
-    _lastApiKeyUsed = apiKey;
+    if (customApiKey) {
+        return new GoogleGenAI({ apiKey: activeKey });
+    }
+    if (_aiInstance && _lastApiKeyUsed === activeKey) return _aiInstance;
+    _lastApiKeyUsed = activeKey;
     _aiInstance = new GoogleGenAI({ 
-        apiKey
+        apiKey: activeKey
     });
     return _aiInstance;
 };
@@ -1259,10 +1262,10 @@ export const enhancePrompt = async (prompt, useGrounding = false) => {
  * PHASE 9: UGC AD ENGINE
  * Analyze dual-image context for Influencer + Product synergy.
  */
-export async function analyzeUGCContext(characterImage, productImage, metadata = {}) {
+export async function analyzeUGCContext(characterImage, productImage, metadata = {}, apiKey = null) {
     try {
         console.log(`[GEMINI] Analyzing UGC Context for synergy with metadata...`);
-        const client = getAI();
+        const client = getAI(apiKey);
         const processImage = async (img) => {
             if (img.startsWith('data:')) return { inlineData: { mimeType: img.split(';')[0].split(':')[1], data: img.split(',')[1] } };
             if (img.startsWith('http')) {
@@ -1358,10 +1361,10 @@ export async function generateCandidateHooks(analysis, niche, tone, directive = 
 /**
  * Generate a full UGC Ad Script based on synergy analysis.
  */
-export async function generateUGCScript(analysis, niche, tone, directive = "", trainingContext = "") {
+export async function generateUGCScript(analysis, niche, tone, directive = "", trainingContext = "", apiKey = null) {
     try {
         console.log(`[GEMINI] Generating UGC Script for ${niche} with directive: ${directive}`);
-        const client = getAI();
+        const client = getAI(apiKey);
         const prompt = `You are a viral UGC Scriptwriter. Generate a 30-second ad script based on this analysis.
         ${trainingContext ? `\n### IMPORTANT STYLE GUIDELINE: ${trainingContext}\n` : ""}
         

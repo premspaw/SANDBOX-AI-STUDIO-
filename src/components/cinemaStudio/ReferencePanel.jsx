@@ -87,6 +87,120 @@ export const ReferencePanel = ({
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-3 custom-scrollbar space-y-2.5">
+
+                    {/* ── SEEDANCE/OMNI REFERENCES SECTION (shown first when active) ── */}
+                    {isSeedance && (
+                        <div className="mb-1">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-fuchsia-500/30 to-transparent" />
+                                <span className="text-[8px] font-black text-fuchsia-400 uppercase tracking-[0.2em] shrink-0 flex items-center gap-1">
+                                    <Film className="w-3 h-3" /> {isOmni ? 'Omni References' : 'Seedance References'}
+                                </span>
+                                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-fuchsia-500/30 to-transparent" />
+                            </div>
+
+                            {SEEDANCE_REF_CATEGORIES.map(cat => {
+                                const items = seedanceRefs[cat.id] || [];
+                                const atLimit = items.length >= cat.maxItems;
+                                const CatIcon = cat.icon;
+
+                                return (
+                                    <div key={cat.id} className="bg-white/[0.01] border border-white/5 rounded-xl p-2.5 mb-2">
+                                        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                                            <div className="text-left flex items-center gap-1.5">
+                                                <CatIcon className={cn("w-3 h-3", cat.color)} />
+                                                <div>
+                                                    <h4 className="text-[9px] font-black text-white uppercase tracking-widest leading-none">{cat.label}</h4>
+                                                    <span className="text-[7px] text-white/30 font-bold uppercase tracking-widest mt-0.5 block">
+                                                        {cat.desc} · {items.length}/{cat.maxItems}
+                                                    </span>
+                                                    {isOmni && cat.id === 'ref_videos' && (
+                                                        <span className="text-[6.5px] text-rose-400/80 font-bold uppercase tracking-wider block mt-1 leading-none">
+                                                            ⚠️ Limited: Max 3s reference length
+                                                        </span>
+                                                    )}
+                                                    {isOmni && cat.id === 'ref_audios' && (
+                                                        <span className="text-[6.5px] text-amber-400/80 font-bold uppercase tracking-wider block mt-1 leading-none">
+                                                            ⚠️ Limited: Audio references unsupported
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                            <button
+                                                onClick={() => seedanceFileRefs[cat.id]?.current?.click()}
+                                                disabled={atLimit}
+                                                className={cn(
+                                                    "flex items-center gap-1 px-2 py-1 h-6 rounded-md border transition-all text-[8px] font-bold uppercase",
+                                                    atLimit
+                                                        ? "border-white/5 text-white/20 cursor-not-allowed"
+                                                        : "border-fuchsia-500/25 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 text-fuchsia-400"
+                                                )}
+                                            >
+                                                <Upload className="w-2.5 h-2.5" /> {atLimit ? 'Full' : 'Upload'}
+                                            </button>
+                                            {cat.id === 'ref_images' && !atLimit && (
+                                                <button
+                                                    onClick={() => { setLibPickerTarget(cat.id); setShowLibPicker(true) }}
+                                                    className="flex items-center gap-1 px-2 py-1 h-6 rounded-md border border-[#c8f135]/25 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 text-[#c8f135] transition-all text-[8px] font-bold uppercase"
+                                                >
+                                                    <ImagePlus className="w-2.5 h-2.5" /> Library
+                                                </button>
+                                            )}
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-1.5">
+                                            {items.length === 0 ? (
+                                                <p className="text-[8px] text-white/20 italic mt-0.5">
+                                                    No {cat.id === 'ref_images' ? 'images' : cat.id === 'ref_videos' ? 'videos' : 'audio'} attached.
+                                                </p>
+                                            ) : (
+                                                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                                    {items.map(item => (
+                                                        <div key={item.id} className="relative w-10 h-10 rounded-lg overflow-hidden border border-white/10 group bg-black/20 shrink-0">
+                                                            {renderSeedancePreview(item, cat.id)}
+                                                            <div className="absolute inset-x-0 bottom-0 bg-black/80 px-1 py-0.5 backdrop-blur-sm border-t border-white/5">
+                                                                <p className={cn("text-[5.5px] font-black uppercase truncate text-center", cat.color)}>
+                                                                    {item.name || (cat.id === 'ref_images' ? 'IMG' : cat.id === 'ref_videos' ? 'VID' : 'AUD')}
+                                                                </p>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => onRemoveSeedanceRef && onRemoveSeedanceRef(item.id, cat.id)}
+                                                                className="absolute top-0.5 right-0.5 p-0.5 bg-red-500/80 rounded border border-red-400 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <X className="w-2.5 h-2.5" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Hidden file input for this category */}
+                                        <input
+                                            type="file"
+                                            ref={seedanceFileRefs[cat.id]}
+                                            className="hidden"
+                                            accept={cat.accept}
+                                            onChange={handleSeedanceFileSelect(cat.id)}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* ── STANDARD REFERENCE CATEGORIES (always visible for all engines) ── */}
+                    {isSeedance && (
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                            <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.2em] shrink-0 flex items-center gap-1">
+                                <Sparkles className="w-3 h-3" /> Standard References
+                            </span>
+                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                        </div>
+                    )}
                     {REF_CATEGORIES.map(category => (
                         <div key={category.id} className="bg-white/[0.01] border border-white/5 rounded-xl p-2.5">
                             <div className="flex items-center justify-between border-b border-white/5 pb-2">
@@ -131,99 +245,6 @@ export const ReferencePanel = ({
                             </div>
                         </div>
                     ))}
-
-                    {/* ── SEEDANCE/OMNI REFERENCES SECTION ── */}
-                    {isSeedance && (
-                        <div className="mt-1">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-fuchsia-500/30 to-transparent" />
-                                <span className="text-[8px] font-black text-fuchsia-400 uppercase tracking-[0.2em] shrink-0 flex items-center gap-1">
-                                    <Film className="w-3 h-3" /> {isOmni ? 'Omni References' : 'Seedance References'}
-                                </span>
-                                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-fuchsia-500/30 to-transparent" />
-                            </div>
-
-                            {SEEDANCE_REF_CATEGORIES.map(cat => {
-                                const items = seedanceRefs[cat.id] || [];
-                                const atLimit = items.length >= cat.maxItems;
-                                const CatIcon = cat.icon;
-
-                                return (
-                                    <div key={cat.id} className="bg-white/[0.01] border border-white/5 rounded-xl p-2.5 mb-2">
-                                        <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                                            <div className="text-left flex items-center gap-1.5">
-                                                <CatIcon className={cn("w-3 h-3", cat.color)} />
-                                                <div>
-                                                    <h4 className="text-[9px] font-black text-white uppercase tracking-widest leading-none">{cat.label}</h4>
-                                                    <span className="text-[7px] text-white/30 font-bold uppercase tracking-widest mt-0.5 block">
-                                                        {cat.desc} · {items.length}/{cat.maxItems}
-                                                    </span>
-                                                    {isOmni && cat.id === 'ref_videos' && (
-                                                        <span className="text-[6.5px] text-rose-400/80 font-bold uppercase tracking-wider block mt-1 leading-none">
-                                                            ⚠️ Limited: Max 3s reference length
-                                                        </span>
-                                                    )}
-                                                    {isOmni && cat.id === 'ref_audios' && (
-                                                        <span className="text-[6.5px] text-amber-400/80 font-bold uppercase tracking-wider block mt-1 leading-none">
-                                                            ⚠️ Limited: Audio references unsupported
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() => seedanceFileRefs[cat.id]?.current?.click()}
-                                                disabled={atLimit}
-                                                className={cn(
-                                                    "flex items-center gap-1 px-2 py-1 h-6 rounded-md border transition-all text-[8px] font-bold uppercase",
-                                                    atLimit
-                                                        ? "border-white/5 text-white/20 cursor-not-allowed"
-                                                        : "border-fuchsia-500/25 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 text-fuchsia-400"
-                                                )}
-                                            >
-                                                <Upload className="w-2.5 h-2.5" /> {atLimit ? 'Full' : 'Upload'}
-                                            </button>
-                                        </div>
-
-                                        <div className="mt-1.5">
-                                            {items.length === 0 ? (
-                                                <p className="text-[8px] text-white/20 italic mt-0.5">
-                                                    No {cat.id === 'ref_images' ? 'images' : cat.id === 'ref_videos' ? 'videos' : 'audio'} attached.
-                                                </p>
-                                            ) : (
-                                                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                                    {items.map(item => (
-                                                        <div key={item.id} className="relative w-10 h-10 rounded-lg overflow-hidden border border-white/10 group bg-black/20 shrink-0">
-                                                            {renderSeedancePreview(item, cat.id)}
-                                                            <div className="absolute inset-x-0 bottom-0 bg-black/80 px-1 py-0.5 backdrop-blur-sm border-t border-white/5">
-                                                                <p className={cn("text-[5.5px] font-black uppercase truncate text-center", cat.color)}>
-                                                                    {item.name || (cat.id === 'ref_images' ? 'IMG' : cat.id === 'ref_videos' ? 'VID' : 'AUD')}
-                                                                </p>
-                                                            </div>
-                                                            <button
-                                                                onClick={() => onRemoveSeedanceRef && onRemoveSeedanceRef(item.id, cat.id)}
-                                                                className="absolute top-0.5 right-0.5 p-0.5 bg-red-500/80 rounded border border-red-400 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                                                            >
-                                                                <X className="w-2.5 h-2.5" />
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Hidden file input for this category */}
-                                        <input
-                                            type="file"
-                                            ref={seedanceFileRefs[cat.id]}
-                                            className="hidden"
-                                            accept={cat.accept}
-                                            onChange={handleSeedanceFileSelect(cat.id)}
-                                        />
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
                 </div>
 
                 {/* Footer Actions */}
@@ -266,6 +287,13 @@ export const ReferencePanel = ({
                                     cleanName = cleanName.split(' — ')[0].trim();
                                 }
                                 const name = cleanName.replace(/[^\w]/g, '');
+
+                                // If target is a Seedance/Omni ref category, route to seedance handler
+                                if (libPickerTarget === 'ref_images' && onSeedanceRefUpload) {
+                                    onSeedanceRefUpload(url, 'ref_images', true); // pass url directly with isUrl flag
+                                    setShowLibPicker(false);
+                                    return;
+                                }
 
                                 const category = libPickerTarget?.replace(/s$/, '') || item.category || (item.isCharacter ? 'character' : 'mood');
                                 addRefItem({

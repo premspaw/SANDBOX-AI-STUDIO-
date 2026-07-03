@@ -985,8 +985,15 @@ Return a detailed JSON with:
       });
 
       if (!response.ok) {
-        const errBody = await response.text().catch(() => response.statusText);
-        throw new Error(`Analysis failed ${response.status}: ${errBody}`);
+        // Try to parse a clean error message from the JSON body
+        let userMsg = `Analysis failed (${response.status})`;
+        try {
+          const errJson = await response.json();
+          if (errJson?.error) userMsg = errJson.error;
+        } catch {
+          userMsg = (await response.text().catch(() => response.statusText)) || userMsg;
+        }
+        throw new Error(userMsg);
       }
 
       const data = await response.json();
@@ -1009,7 +1016,7 @@ Return a detailed JSON with:
     } catch (e: any) {
       const msg = e instanceof Error ? e.message : JSON.stringify(e);
       console.error('[analyzeProduct]', msg);
-      showToast(`Product scan failed: ${msg.slice(0, 120)}`, 'error');
+      showToast(msg.length > 140 ? msg.slice(0, 137) + '…' : msg, 'error');
     }
     setIsAnalyzing(false);
   };

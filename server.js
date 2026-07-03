@@ -246,14 +246,38 @@ const openaiChat = async (messages, model = 'gpt-4o', jsonMode = false) => {
 };
 
 let _geminiClient = null;
-const getGeminiClient = () => {
+const getGeminiClient = (apiKey) => {
+    const activeKey = apiKey || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+    if (!activeKey) {
+        throw new Error('GOOGLE_API_KEY environment variable is not set.');
+    }
+
+    if (apiKey) {
+        // Return a fresh instance with the custom key (don't cache it, as it is key-specific)
+        return new GoogleGenAI({
+            apiKey: activeKey,
+            headers: {
+                'Referer': `${APP_ORIGIN}/`,
+                'Origin': APP_ORIGIN
+            },
+            fetchOptions: {
+                headers: {
+                    'Referer': `${APP_ORIGIN}/`,
+                    'Origin': APP_ORIGIN
+                }
+            },
+            requestOptions: {
+                headers: {
+                    'Referer': `${APP_ORIGIN}/`,
+                    'Origin': APP_ORIGIN
+                }
+            }
+        });
+    }
+
     if (!_geminiClient) {
-        const apiKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
-        if (!apiKey) {
-            throw new Error('GOOGLE_API_KEY environment variable is not set.');
-        }
         _geminiClient = new GoogleGenAI({
-            apiKey,
+            apiKey: activeKey,
             headers: {
                 'Referer': `${APP_ORIGIN}/`,
                 'Origin': APP_ORIGIN
@@ -1135,41 +1159,23 @@ async function handleGoogle(req, res) {
             const op = await resp.json();
             res.json(op);
         } else {
-            // Imagen
             let activeModel = model || 'gemini-3.1-flash-image-preview';
-            if (activeModel === 'nano-banana-2' || activeModel === 'nano-banana') {
+            const modelLower = activeModel.toLowerCase();
+            if (modelLower === 'nano-banana-2' || modelLower === 'nano-banana' || modelLower === 'gemini-3.1-flash-image') {
                 activeModel = 'gemini-3.1-flash-image-preview';
-            } else if (activeModel === 'nano-banana-2-lite' || activeModel === 'nb2-lite' || activeModel === 'gemini-3.1-flash-lite') {
+            } else if (modelLower === 'nano-banana-2-lite' || modelLower === 'nb2-lite' || modelLower === 'gemini-3.1-flash-lite' || modelLower === 'gemini-3.1-flash-lite-image') {
                 activeModel = 'gemini-3.1-flash-image-preview';
-            } else if (activeModel === 'nano-banana-pro' || activeModel === 'pro') {
+            } else if (modelLower === 'nano-banana-pro' || modelLower === 'pro' || modelLower === 'gemini-3-pro-image') {
                 activeModel = 'gemini-3-pro-image-preview';
+            } else if (modelLower === 'gemini-2.5-flash-image' || modelLower === 'nano-banana') {
+                activeModel = 'gemini-3.1-flash-image-preview';
             }
-            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
 
-            const parts = [];
-            if (referenceImages && referenceImages.length > 0) {
-                for (const imgUrl of referenceImages) {
-                    const resolved = await resolveImageForGemini(imgUrl);
-                    if (resolved) {
-                        if (resolved.fileData) {
-                            parts.push(resolved);
-                        } else if (resolved.type === 'inline' && resolved.data) {
-                            parts.push({
-                                inlineData: {
-                                    mimeType: resolved.mimeType,
-                                    data: resolved.data
-                                }
-                            });
-                        }
-                    }
-                }
-            }
             let compiledPrompt = prompt || '';
             const neg = negativePrompt || negative_prompt;
             if (neg) {
                 compiledPrompt += ` [Avoid including: ${neg}]`;
             }
-            parts.push({ text: compiledPrompt });
 
             const activeRatio = aspect_ratio || aspectRatio || '1:1';
             const validRatios = ['1:1', '16:9', '9:16', '3:4', '4:3'];
@@ -1177,7 +1183,8 @@ async function handleGoogle(req, res) {
 
             // Map the resolution to standard Google GenAI size (default 1K, upscale 2K)
             let finalImageSize = '1K';
-            const isLiteModel = model === 'nano-banana-2-lite' || model === 'nb2-lite' || model === 'gemini-3.1-flash-lite';
+            const modelLowerStr = (model || '').toLowerCase();
+            const isLiteModel = modelLowerStr === 'nano-banana-2-lite' || modelLowerStr === 'nb2-lite' || modelLowerStr === 'gemini-3.1-flash-lite' || modelLowerStr === 'gemini-3.1-flash-lite-image';
             if (!isLiteModel) {
                 const sizeVal = (imageSize || resolution || quality || size || '').toUpperCase();
                 if (sizeVal.includes('2K') || sizeVal.includes('2048')) {
@@ -1191,17 +1198,6 @@ async function handleGoogle(req, res) {
                 }
             }
 
-            const safetySettings = [
-                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-            ];
-
-            console.log(`[handleGoogle] Imagen request aspect ratio: ${mappedRatio}, size: ${finalImageSize}, model: ${activeModel}`);
-
-            // Append aspect ratio guidance in the prompt itself since gemini-3.1-flash-image-preview
-            // does NOT support imageConfig.aspectRatio — unsupported params cause slow retries.
             const ratioPhraseMap = {
                 '16:9': 'wide landscape 16:9 aspect ratio',
                 '9:16': 'tall portrait 9:16 aspect ratio',
@@ -1210,52 +1206,146 @@ async function handleGoogle(req, res) {
                 '1:1': 'square 1:1 aspect ratio'
             };
             const ratioHint = ratioPhraseMap[mappedRatio] || '';
-            if (ratioHint && parts.length > 0) {
-                const lastPart = parts[parts.length - 1];
-                if (lastPart.text !== undefined) {
-                    parts[parts.length - 1] = { text: `${lastPart.text}. Compose image in ${ratioHint}.` };
-                }
+            let promptWithHint = compiledPrompt;
+            if (ratioHint) {
+                promptWithHint = `${compiledPrompt}. Compose image in ${ratioHint}.`;
             }
 
-            const resp = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ role: 'user', parts }],
-                    safetySettings,
-                    generationConfig: { 
-                        responseModalities: ["IMAGE"]
+            let b64 = null;
+            let success = false;
+
+            const token = await getVertexToken();
+
+            // --- Option A: Vertex AI Imagen (First Preference) ---
+            if (token) {
+                try {
+                    const vertexModel = 'imagen-3.0-generate-002';
+                    const url = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${vertexModel}:predict`;
+                    console.log(`[handleGoogle] [Vertex AI] Calling model ${vertexModel} on url: ${url}`);
+
+                    const vertexPayload = {
+                        instances: [{
+                            prompt: promptWithHint
+                        }],
+                        parameters: {
+                            sampleCount: 1,
+                            aspectRatio: mappedRatio,
+                            outputMimeType: "image/png"
+                        }
+                    };
+
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(vertexPayload)
+                    });
+
+                    const data = await response.json();
+                    if (data.error) throw new Error(data.error.message);
+                    
+                    const predictions = data.predictions || [];
+                    if (predictions[0] && predictions[0].bytesBase64Encoded) {
+                        b64 = predictions[0].bytesBase64Encoded;
+                        success = true;
+                        console.log(`[handleGoogle] [Vertex AI] Image generated successfully (${b64.length} base64 chars)`);
+                    } else {
+                        throw new Error('No predictions returned from Vertex AI Imagen');
                     }
-                })
-            });
-            
-            const result = await resp.json();
-            if (result.error) {
-                console.error("[Imagen Error Body]:", JSON.stringify(result.error, null, 2));
-                throw new Error(result.error.message || "Google API returned an error");
-            }
-
-            if (result.promptFeedback?.blockReason) {
-                const reason = result.promptFeedback.blockReason;
-                console.error('[handleGoogle] Google API prompt feedback block:', JSON.stringify(result.promptFeedback));
-                if (reason === 'OTHER') {
-                    throw new Error("Google API blocked the request (blockReason: OTHER). This is typically caused by a sensitive reference photo, copyright/trademark restrictions, or a celebrity likeness filter.");
-                } else {
-                    throw new Error(`Google API safety block: ${reason}. Please try a different reference image or prompt.`);
+                } catch (vertexErr) {
+                    console.warn(`[handleGoogle] [Vertex AI] Failed. Error: ${vertexErr.message}. Falling back to Google AI Studio...`);
                 }
             }
 
-            const candidate = result.candidates?.[0];
-            if (candidate && candidate.finishReason === 'SAFETY') {
-                throw new Error("SAFETY_REFUSAL: The creative prompt was blocked by safety filters.");
+            // --- Option B: Google AI Studio Imagen / Gemini API (Fallback) ---
+            if (!success && (apiKey || token)) {
+                try {
+                    let endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent`;
+                    let headers = { 'Content-Type': 'application/json' };
+                    if (apiKey) {
+                        endpoint += `?key=${apiKey}`;
+                        console.log(`[handleGoogle] [AI Studio] Calling model ${activeModel} via API Key`);
+                    } else {
+                        headers['Authorization'] = `Bearer ${token}`;
+                        console.log(`[handleGoogle] [AI Studio] Calling model ${activeModel} via Service Account token`);
+                    }
+
+                    const parts = [];
+                    if (referenceImages && referenceImages.length > 0) {
+                        for (const imgUrl of referenceImages) {
+                            const resolved = await resolveImageForGemini(imgUrl);
+                            if (resolved) {
+                                if (resolved.fileData) {
+                                    parts.push(resolved);
+                                } else if (resolved.type === 'inline' && resolved.data) {
+                                    parts.push({
+                                        inlineData: {
+                                            mimeType: resolved.mimeType,
+                                            data: resolved.data
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    parts.push({ text: promptWithHint });
+
+                    const safetySettings = [
+                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                    ];
+
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify({
+                            contents: [{ role: 'user', parts }],
+                            safetySettings,
+                            generationConfig: { 
+                                responseModalities: ["IMAGE"]
+                            }
+                        })
+                    });
+
+                    const result = await response.json();
+                    if (result.error) throw new Error(result.error.message || "Google API returned an error");
+
+                    if (result.promptFeedback?.blockReason) {
+                        const reason = result.promptFeedback.blockReason;
+                        if (reason === 'OTHER') {
+                            throw new Error("Google API blocked the request (blockReason: OTHER). This is typically caused by a sensitive reference photo, copyright/trademark restrictions, or a celebrity likeness filter.");
+                        } else {
+                            throw new Error(`Google API safety block: ${reason}. Please try a different reference image or prompt.`);
+                        }
+                    }
+
+                    const candidate = result.candidates?.[0];
+                    if (candidate && candidate.finishReason === 'SAFETY') {
+                        throw new Error("SAFETY_REFUSAL: The creative prompt was blocked by safety filters.");
+                    }
+
+                    const fallbackB64 = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+                    if (!fallbackB64) {
+                        const finishReason = candidate?.finishReason || 'N/A';
+                        const promptFeedback = result.promptFeedback;
+                        throw new Error(`Google API returned no image candidates. finishReason: ${finishReason}${promptFeedback?.blockReason ? `, blockReason: ${promptFeedback.blockReason}` : ''}`);
+                    }
+
+                    b64 = fallbackB64;
+                    success = true;
+                    console.log(`[handleGoogle] [AI Studio] Image generated successfully (${b64.length} base64 chars)`);
+                } catch (studioErr) {
+                    console.error(`[handleGoogle] [AI Studio] Failed. Error: ${studioErr.message}`);
+                    throw new Error(`Image generation failed on both Vertex AI and Google AI Studio: ${studioErr.message}`);
+                }
             }
 
-            const b64 = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-            if (!b64) {
-                const finishReason = candidate?.finishReason || 'N/A';
-                const promptFeedback = result.promptFeedback;
-                console.error("[Imagen Empty Body] finishReason:", finishReason, "promptFeedback:", JSON.stringify(promptFeedback), "full:", JSON.stringify(result).slice(0, 2000));
-                throw new Error(`Google API returned no image candidates. finishReason: ${finishReason}${promptFeedback?.blockReason ? `, blockReason: ${promptFeedback.blockReason}` : ''}${result.error?.message ? `, apiError: ${result.error.message}` : ''}`);
+            if (!success || !b64) {
+                throw new Error('Image generation failed to return valid image buffer.');
             }
 
             const isGrid = !!req.body.isGrid;

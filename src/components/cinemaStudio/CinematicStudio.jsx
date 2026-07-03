@@ -559,6 +559,13 @@ export default function CinematicStudio() {
     setLens(defaultLens);
   }, [camera, angle]);
 
+  // Reset omniTask to auto if firstFrameImage is cleared
+  useEffect(() => {
+    if (omniTask === 'image_to_video' && !firstFrameImage) {
+      setOmniTask('auto');
+    }
+  }, [firstFrameImage, omniTask]);
+
   // Adjust resolution & duration options dynamically for Seedance, Veo 3.1 & Omni engines
   useEffect(() => {
     const isSeed = activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini';
@@ -570,6 +577,9 @@ export default function CinematicStudio() {
         if (duration < 5) setDuration(4);
         else if (duration < 8) setDuration(6);
         else setDuration(10);
+      }
+      if (activeEngine === 'omni-flash' && resolution === '4k') {
+        setResolution('1080p');
       }
     } else if (isVeo3) {
       if (![4, 6, 8].includes(duration)) {
@@ -1267,8 +1277,32 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   };
 
   // ── SEEDANCE REFERENCE UPLOAD & REMOVE ────────────────────────────
-  const handleSeedanceRefUpload = async (file, categoryId) => {
-    if (!file) return;
+  const handleSeedanceRefUpload = async (fileOrUrl, categoryId, isUrl = false) => {
+    if (!fileOrUrl) return;
+
+    // If a URL was passed directly (e.g. from Library picker), skip upload
+    if (isUrl) {
+      const name = `IMG_${Date.now().toString().slice(-4)}`;
+      const newItem = { id: crypto.randomUUID(), name, url: fileOrUrl, imageUrl: fileOrUrl };
+
+      const updater = (prev) => {
+        const currentList = prev[categoryId] || [];
+        return { ...prev, [categoryId]: [...currentList, newItem] };
+      };
+
+      setStagedRefBoard(updater);
+      setRefBoard(prev => {
+        const updated = updater(prev);
+        localStorage.setItem('refBoard_video', JSON.stringify(updated));
+        return updated;
+      });
+
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast('Reference image added from library', 'success');
+      return;
+    }
+
+    const file = fileOrUrl;
     setIsUploadingRef(true);
     try {
       const isVideoFile = file.type.startsWith('video/');
@@ -2687,11 +2721,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   icon={<Sparkles size={9} />}
                   label={(() => {
                     const taskLabels = {
-                      auto: 'Auto inference',
-                      text_to_video: 'Text-to-Video',
-                      image_to_video: 'Image-to-Video',
-                      reference_to_video: 'Reference-to-Video',
-                      edit: 'Stateful Edit'
+                      auto: 'Multimodal',
+                      image_to_video: 'First Frame to Video'
                     };
                     return taskLabels[omniTask] || 'Task';
                   })()}
@@ -2700,28 +2731,30 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   {(close) => (
                     <div className="space-y-0.5">
                       {[
-                        { id: 'auto', label: 'Auto Inference', icon: '✨', desc: 'Let the model infer task from inputs' },
-                        { id: 'text_to_video', label: 'Text-to-Video', icon: '📝', desc: 'Generate video from text prompt' },
-                        { id: 'image_to_video', label: 'Image-to-Video', icon: '🖼️', desc: 'Generate video from start image' },
-                        { id: 'reference_to_video', label: 'Reference-to-Video', icon: '🔗', desc: 'Generate using references' },
-                        { id: 'edit', label: 'Stateful Edit', icon: '✏️', desc: 'Stateful video editing interaction' },
+                        { id: 'auto', label: 'Multimodal', icon: '✨', desc: 'Default multimodal generation' },
+                        { id: 'image_to_video', label: 'First Frame to Video', icon: '🖼️', desc: 'Animate a starting frame image', disabled: !firstFrameImage },
                       ].map((opt, i) => (
                         <motion.button
                           key={opt.id}
+                          disabled={opt.disabled}
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
-                          onClick={() => { setOmniTask(opt.id); close(); }}
+                          onClick={() => { if (!opt.disabled) { setOmniTask(opt.id); close(); } }}
                           className={cn(
                             "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
-                            omniTask === opt.id
+                            opt.disabled
+                              ? "opacity-30 cursor-not-allowed"
+                              : omniTask === opt.id
                               ? "bg-violet-500/10 border border-violet-500/25"
                               : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
                           )}
                         >
                           <div className={cn(
                             "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
-                            omniTask === opt.id
+                            opt.disabled
+                              ? "bg-white/5 text-gray-700"
+                              : omniTask === opt.id
                               ? "bg-violet-500/20 text-violet-400"
                               : "bg-white/5 text-gray-500"
                           )}>
@@ -2730,11 +2763,13 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                           <div className="flex-1 min-w-0">
                             <p className={cn(
                               "text-[10px] font-black uppercase tracking-wider truncate",
-                              omniTask === opt.id ? "text-violet-400" : "text-white/70"
+                              opt.disabled
+                                ? "text-white/30"
+                                : omniTask === opt.id ? "text-violet-400" : "text-white/70"
                             )}>{opt.label}</p>
                             <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
                           </div>
-                          {omniTask === opt.id && (
+                          {!opt.disabled && omniTask === opt.id && (
                             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-violet-400 flex items-center justify-center shrink-0">
                               <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                             </motion.div>
@@ -2916,8 +2951,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                         </button>
                       )}
                     </div>
-                  ) : !isExtendedRefBoard ? (
-                    /* ── VIDEO MODE: DUAL SLOTS (hidden for Seedance & Omni — use @ references instead) ── */
+                  ) : (!isOmni || omniTask === 'image_to_video') ? (
+                    /* ── VIDEO MODE: DUAL SLOTS ── */
                     <div className="flex flex-col items-center gap-1.5 p-1.5 bg-white/[0.02] border border-white/5 rounded-2xl relative group">
                       <div className="flex items-center gap-1.5">
                         {/* First Frame Slot */}
@@ -3264,7 +3299,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                       <div className="space-y-0.5 w-48">
                         {RESOLUTION_OPTIONS.filter(opt => {
                           const isSeedance = activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini';
-                          const no4k = activeEngine === 'seedance-fast' || activeEngine === 'seedance-mini';
+                          const no4k = activeEngine === 'seedance-fast' || activeEngine === 'seedance-mini' || activeEngine === 'omni-flash';
                           if (opt.value === '480p' && !isSeedance) return false;
                           if (no4k && opt.value === '4k') return false;
                           return true;
