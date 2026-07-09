@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Camera, User, X, Package, MapPin, Search, Volume2, Upload, FileText, Film, Layers, BrainCircuit, Plus, Loader2, ChevronLeft, ChevronRight, Layout, Clock, Sparkles, AlertCircle, CheckCircle, ShieldCheck, Wand2, Play, Video } from 'lucide-react';
-import { useUGC, KnowledgeBaseEntry } from '../context/UGCContext';
+import { useUGC, KnowledgeBaseEntry, SplitScene } from '../context/UGCContext';
 import { Dropdown } from './Dropdown';
 import { SCENE_STYLES } from '../constants/videoStyles';
 import { VOICES } from '../constants/sceneTemplates';
 import { MontagePanel } from './MontagePanel';
-import { resolveUrl } from '../../../config/apiConfig';
+import { getApiUrl, resolveUrl } from '../../../config/apiConfig';
+import { GoogleGenAI } from '@google/genai';
+import { fileToBase64, safeJsonParse } from '../utils/imageUtils';
 
 export default function LeftSidebar() {
   const {
@@ -99,7 +101,15 @@ export default function LeftSidebar() {
     showToast,
     gallery,
     inpaintImg,
-    setInpaintImg
+    setInpaintImg,
+    // Multi-short visual scan extras
+    fetchImageAsBlob,
+    handleApiError,
+    currentUserId,
+    getApiKey,
+    splitScenes,
+    setSplitScenes,
+    durationSeconds,
   } = useUGC();
 
   if (activeTab === 'home-tour') return null;
@@ -107,6 +117,238 @@ export default function LeftSidebar() {
   // Helper styles matching T design tokens
   const T = {
     lime: '#c8f135',
+  };
+
+  // ── Multi-Short Visual Scan local state ───────────────────────────────────
+  const [isVisualScanning, setIsVisualScanning] = useState(false);
+  const [visualScanProgress, setVisualScanProgress] = useState('');
+  const [visualScanScenes, setVisualScanScenes] = useState<
+    { sceneName: string; dialog: string; visualPrompt: string; imageUrl: string }[]
+  >([]);
+
+  // ── Multi-Short Visual Scan handler ───────────────────────────────────────
+  // Omni Flash visually reads the product image, generates N product-specific
+  // UGC short scenarios (e.g. unboxing / applying / glow result for a serum),
+  // then generates a start-frame image for each scene and assigns it as the
+  // refImage on the matching SplitScene.
+  const runVisualMultiScan = async () => {
+    if (!productImg) return;
+    setIsVisualScanning(true);
+    setVisualScanProgress('Analyzing product with Gemini…');
+
+    try {
+      // Helper: convert any image object to data-URL base64
+      const toBase64DataUrl = async (imgObj: { url?: string; file?: File }): Promise<string> => {
+        let blob: Blob | null = imgObj.file || null;
+        if (!blob && imgObj.url) blob = await fetchImageAsBlob(imgObj.url);
+        if (!blob) throw new Error('No image data');
+        const raw = await fileToBase64(blob as File);
+        // fileToBase64 may already return a data URL — strip prefix so we get raw b64
+        return raw.startsWith('data:') ? raw : `data:${(blob as File).type || 'image/jpeg'};base64,${raw}`;
+      };
+
+      const productDataUrl = await toBase64DataUrl(productImg);
+      const productRawB64 = productDataUrl.replace(/^data:[^;]+;base64,/, '');
+      const productMime = productImg.file?.type || 'image/jpeg';
+
+      const numScenes = Math.max(splitScenes.length, 3);
+      const productContext = productDetails ||
+        (productAnalysis as any)?.productName ||
+        'product';
+
+      // ── Step 1: Generate N product-specific UGC scenarios via Gemini ──────
+      const scenarioPrompt = `You are a UGC short-form video director specializing in TikTok and Instagram Reels.
+Analyze the provided product image and generate exactly ${numScenes} unique, creative UGC short-video scenarios.
+
+Product context: ${productContext}
+${productAnalysis ? `Product analysis: ${JSON.stringify(productAnalysis)}` : ''}
+Character/Person reference: ${characterImg ? 'Available' : 'Not provided'}
+Location/Stage reference: ${locationImg ? 'Available' : 'Not provided'}
+
+Rules:
+- Each scene must be a DIFFERENT moment in the product's story (e.g. unboxing, application POV, result/before-after, close-up texture, lifestyle use, reaction, etc.).
+- Adapt scene types to the SPECIFIC product category you see — a skin serum gets "applying" and "glow result" scenes; sneakers get "unboxing" and "on-feet walk"; food gets "taste reaction" and "plating close-up".
+- Dialog should be natural creator speech (not an ad voiceover).
+- visualPrompt: write a Veo / Omni motion prompt (40-70 words) for what the video clip should look like.
+- imagePrompt: write a short, crisp image generation prompt (20-35 words) for the start-frame of this scene. ALWAYS mention the specific product visually.
+
+Return a JSON array with exactly ${numScenes} objects.`;
+
+      const responseSchema = {
+        type: 'ARRAY',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            sceneName:    { type: 'STRING' },
+            dialog:       { type: 'STRING' },
+            visualPrompt: { type: 'STRING' },
+            imagePrompt:  { type: 'STRING' },
+          },
+          required: ['sceneName', 'dialog', 'visualPrompt', 'imagePrompt'],
+        },
+      };
+
+      let scenariosText: string | undefined;
+
+      // Try server-side (uses service account billing)
+      try {
+        const serverResp = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            parts: [
+              { inlineData: { data: productRawB64, mimeType: productMime } },
+              { text: scenarioPrompt },
+            ],
+            model: 'gemini-2.5-flash',
+            userId: currentUserId,
+            responseSchema,
+          }),
+        });
+        if (serverResp.ok) {
+          const d = await serverResp.json();
+          scenariosText = d.text;
+        }
+      } catch (e) {
+        console.warn('[VisualScan] Server-side failed, falling back to client…');
+      }
+
+      // Client-side fallback
+      if (!scenariosText) {
+        const ai = new GoogleGenAI({ apiKey: getApiKey() });
+        const resp = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: [{
+            role: 'user',
+            parts: [
+              { inlineData: { data: productRawB64, mimeType: productMime } },
+              { text: scenarioPrompt },
+            ],
+          }],
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema,
+          },
+        });
+        scenariosText = resp.text;
+      }
+
+      if (!scenariosText) throw new Error('No scenarios returned from AI');
+      type ScenarioRaw = { sceneName: string; dialog: string; visualPrompt: string; imagePrompt: string };
+      const scenarios: ScenarioRaw[] = safeJsonParse(scenariosText) || [];
+      if (!scenarios || scenarios.length === 0) {
+        throw new Error('Failed to parse scenarios JSON from AI response');
+      }
+
+      // ── Step 2: Generate start-frame image for each scenario ─────────────
+      const generated: { sceneName: string; dialog: string; visualPrompt: string; imageUrl: string }[] = [];
+
+      for (let i = 0; i < scenarios.length; i++) {
+        const sc = scenarios[i];
+        setVisualScanProgress(`Generating visual ${i + 1}/${scenarios.length}: ${sc.sceneName}…`);
+
+        try {
+          // Build reference images array: product first, then optional location/character
+          const refImages: { url: string }[] = [{ url: productDataUrl }];
+          if (locationImg) {
+            try { refImages.push({ url: await toBase64DataUrl(locationImg) }); } catch {}
+          }
+          if (characterImg) {
+            try { refImages.push({ url: await toBase64DataUrl(characterImg) }); } catch {}
+          }
+
+          // Build Omni-style tagged image prompt
+          const fullImgPrompt = [
+            `<IMAGE_REF_0>`,
+            sc.imagePrompt,
+            'Authentic UGC creator shot, phone camera, no studio lighting.',
+            characterImg ? 'Creator/person visible in scene, natural pose.' : '',
+            locationImg  ? 'Use the provided location as background setting.' : '',
+          ].filter(Boolean).join(' ');
+
+          const imgResp = await fetch(getApiUrl('/api/generate-image'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: imgEngine === 'gpt2' ? 'gpt-image-1' : imgEngine === 'nb2-lite' ? 'nano-banana-2-lite' : imgEngine === 'nb2-open' ? 'nano-banana-2-open' : 'nano-banana-2',
+              prompt: fullImgPrompt,
+              aspect_ratio: '9:16',
+              size: '2K',
+              userId: currentUserId,
+              folder: 'ugc/generated',
+              referenceImages: refImages,
+            }),
+          });
+
+          let imageUrl = '';
+          if (imgResp.ok) {
+            const imgData = await imgResp.json();
+            imageUrl = imgData.imageUrl || imgData.url || '';
+
+            // Poll job if async
+            if (imgData.jobId && !imageUrl) {
+              let attempts = 0;
+              const pollUrl = getApiUrl(`/api/job-status/${imgData.jobId}`);
+              while (attempts < 20) {
+                await new Promise(r => setTimeout(r, 3000));
+                attempts++;
+                const pollRes = await fetch(pollUrl);
+                if (pollRes.ok) {
+                  const pollData = await pollRes.json();
+                  if (pollData.status === 'done' && pollData.imageUrl) {
+                    imageUrl = pollData.imageUrl;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+
+          generated.push({ sceneName: sc.sceneName, dialog: sc.dialog, visualPrompt: sc.visualPrompt, imageUrl });
+        } catch (scErr) {
+          console.error(`[VisualScan] Scene ${i + 1} image failed:`, scErr);
+          generated.push({ sceneName: sc.sceneName, dialog: sc.dialog, visualPrompt: sc.visualPrompt, imageUrl: '' });
+        }
+      }
+
+      // ── Step 3: Apply to splitScenes ─────────────────────────────────────
+      setVisualScanProgress('Applying visuals to scenes…');
+
+      if (splitScenes.length > 0) {
+        // Merge into existing split scenes
+        setSplitScenes((prev: SplitScene[]) =>
+          prev.map((existing, i) => {
+            const gen = generated[i];
+            if (!gen) return existing;
+            return {
+              ...existing,
+              label: `Scene ${i + 1}: ${gen.sceneName}`,
+              dialog: gen.dialog || existing.dialog,
+              prompt: gen.visualPrompt || existing.prompt,
+              refImage: gen.imageUrl || existing.refImage || null,
+            };
+          })
+        );
+      } else {
+        // Create brand-new split scenes from scratch
+        const newScenes: SplitScene[] = generated.map((gen, i) => ({
+          label: `Scene ${i + 1}: ${gen.sceneName}`,
+          dialog: gen.dialog,
+          prompt: gen.visualPrompt,
+          refImage: gen.imageUrl || null,
+        }));
+        setSplitScenes(newScenes);
+      }
+
+      setVisualScanScenes(generated);
+      setVisualScanProgress('');
+      showToast(`✓ ${generated.length} visual scenes generated for your ${productContext}!`, 'success');
+    } catch (e) {
+      handleApiError(e, 'Visual Multi-Short Scan');
+      setVisualScanProgress('');
+    } finally {
+      setIsVisualScanning(false);
+    }
   };
 
   return (
@@ -627,9 +869,122 @@ export default function LeftSidebar() {
                 )}
 
                 {!productImg && (
-                  <p className="text-[7px] text-white/20 font-mono uppercase tracking-widest text-center">Upload a product image first</p>
+                   <p className="text-[7px] text-white/20 font-mono uppercase tracking-widest text-center">Upload a product image first</p>
                 )}
               </section>
+
+              {/* ── Multi-Short Visual Scan ── */}
+              {(() => {
+                const totalDuration = splitScenes.length > 0
+                  ? splitScenes.length * parseInt(durationSeconds)
+                  : 0;
+                const isEligible = productImg && totalDuration >= 20;
+
+                return (
+                  <section className="space-y-3 border-t border-[#1e1e24] pt-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-[10px] font-black text-[#3a3a4a] uppercase tracking-[0.2em] flex items-center gap-1.5">
+                        <Layers size={10} className="text-[#c8f135]" /> Multi-Short Visuals
+                      </h2>
+                      <div className="flex items-center gap-1.5">
+                        {totalDuration > 0 && (
+                          <span className={`text-[7px] font-mono px-1.5 py-0.5 rounded border uppercase tracking-widest ${
+                            isEligible
+                              ? 'bg-[#c8f135]/10 border-[#c8f135]/30 text-[#c8f135]'
+                              : 'bg-white/5 border-white/10 text-white/30'
+                          }`}>
+                            {totalDuration}s
+                          </span>
+                        )}
+                        <span className="text-[7px] font-mono text-white/20 uppercase tracking-widest">⚡ Omni</span>
+                      </div>
+                    </div>
+
+                    {/* Eligibility hint */}
+                    {!isEligible && (
+                      <p className="text-[7px] text-white/20 font-mono uppercase tracking-widest text-center leading-relaxed">
+                        {!productImg
+                          ? 'Upload a product image first'
+                          : splitScenes.length === 0
+                          ? 'Split your script into scenes first'
+                          : `Need ≥ 20s total · ${totalDuration}s across ${splitScenes.length} scene${splitScenes.length !== 1 ? 's' : ''}`
+                        }
+                      </p>
+                    )}
+
+                    {/* Progress message */}
+                    {visualScanProgress && (
+                      <div className="px-2.5 py-2 bg-black/60 border border-[#c8f135]/20 rounded-xl">
+                        <div className="flex items-center gap-2">
+                          <Loader2 size={9} className="animate-spin text-[#c8f135] shrink-0" />
+                          <p className="text-[8px] font-mono text-[#c8f135] animate-pulse leading-tight">{visualScanProgress}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Generated scene previews */}
+                    {visualScanScenes.length > 0 && !isVisualScanning && (
+                      <div className="space-y-1.5">
+                        {visualScanScenes.map((sc, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center gap-2 p-1.5 rounded-xl bg-white/3 border border-[#c8f135]/15 hover:border-[#c8f135]/30 transition-all"
+                          >
+                            {sc.imageUrl ? (
+                              <img
+                                src={resolveUrl(sc.imageUrl)}
+                                alt={sc.sceneName}
+                                className="w-9 h-9 rounded-lg object-cover border border-[#c8f135]/30 shrink-0"
+                              />
+                            ) : (
+                              <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                                <Camera size={10} className="text-white/20" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[8px] font-black text-[#c8f135] uppercase tracking-wide truncate">
+                                {i + 1}. {sc.sceneName}
+                              </p>
+                              <p className="text-[7px] text-white/30 font-mono truncate leading-tight">
+                                {sc.dialog.substring(0, 45)}{sc.dialog.length > 45 ? '…' : ''}
+                              </p>
+                            </div>
+                            {sc.imageUrl && (
+                              <CheckCircle size={10} className="text-[#c8f135] shrink-0" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Scan button */}
+                    <button
+                      onClick={runVisualMultiScan}
+                      disabled={!isEligible || isVisualScanning}
+                      className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                        !isEligible || isVisualScanning
+                          ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
+                          : visualScanScenes.length > 0
+                          ? 'bg-white/5 border border-[#c8f135]/30 text-[#c8f135] hover:bg-[#c8f135]/10'
+                          : 'bg-[#c8f135] text-black hover:bg-[#d4ff3a] shadow-[0_4px_16px_rgba(200,241,53,0.3)]'
+                      }`}
+                    >
+                      {isVisualScanning ? (
+                        <><Loader2 size={10} className="animate-spin" /> Scanning…</>
+                      ) : visualScanScenes.length > 0 ? (
+                        <><Sparkles size={10} /> Re-Scan Product Visuals</>
+                      ) : (
+                        <><Sparkles size={10} /> ⚡ Scan &amp; Gen Multi-Short Visuals</>
+                      )}
+                    </button>
+
+                    <p className="text-[7px] text-white/15 font-mono uppercase tracking-widest text-center leading-relaxed">
+                      Omni reads your product → auto-creates scene-specific start frames
+                    </p>
+                  </section>
+                );
+              })()}
 
               {/* Voice Sample Upload — UGC */}
               <section className="space-y-2 border-t border-[#1e1e24] pt-4">
@@ -773,10 +1128,16 @@ export default function LeftSidebar() {
             <div className="flex items-center gap-2">
               <div className="flex-1">
                 <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.15em] mb-1 block">Engine</span>
-                <div className="flex bg-white/5 p-0.5 rounded-lg border border-[#1e1e24]">
-                  <button type="button" onClick={() => setImgEngine('nb2')} className={`flex-1 py-1 rounded-md text-[8px] font-black uppercase tracking-wide transition-all ${ imgEngine === 'nb2' ? 'bg-[#c8f135]/20 text-[#c8f135] border border-[#c8f135]/30' : 'text-white/30 hover:text-white/60' }`}>NB2</button>
-                  <button type="button" onClick={() => setImgEngine('gpt2')} className={`flex-1 py-1 rounded-md text-[8px] font-black uppercase tracking-wide transition-all ${ imgEngine === 'gpt2' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'text-white/30 hover:text-white/60' }`}>GPT-2</button>
-                </div>
+                <select
+                  value={imgEngine}
+                  onChange={e => setImgEngine(e.target.value as any)}
+                  className="w-full bg-[#111113] border border-[#1e1e24] px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase text-white/80 outline-none cursor-pointer hover:border-white/20 transition-colors"
+                >
+                  <option value="nb2" className="bg-[#111113]">NB2 (1 cr)</option>
+                  <option value="nb2-open" className="bg-[#111113]">NB2 GA (1 cr)</option>
+                  <option value="nb2-lite" className="bg-[#111113]">NB2 Lite (0.5 cr)</option>
+                  <option value="gpt2" className="bg-[#111113]">GPT-2 (1-3 cr)</option>
+                </select>
               </div>
               {imgEngine === 'gpt2' && (
                 <div>

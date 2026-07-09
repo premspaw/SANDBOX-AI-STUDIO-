@@ -1500,19 +1500,33 @@ function MobileStackSection({ assets, isMobile }) {
     pointerEvents: 'none', zIndex: 1,
   };
 
-  const ugcCards = [
+  const fallbackUgcCards = [
     { tag: 'TALKING HEAD', name: 'PRODUCT DROP' },
     { tag: 'LIFESTYLE', name: 'BRAND STORY' },
     { tag: 'UNBOXING', name: 'REVEAL FORMAT' },
     { tag: 'TESTIMONIAL', name: 'SOCIAL PROOF' },
   ];
 
-  const productCards = [
+  const activeUgcCards = ugcVideos.length > 0 
+    ? ugcVideos.map((vid, idx) => ({
+        tag: vid.tag || fallbackUgcCards[idx]?.tag || 'UGC',
+        name: vid.name || fallbackUgcCards[idx]?.name || `VIDEO #${idx + 1}`,
+      }))
+    : fallbackUgcCards;
+
+  const fallbackProductCards = [
     { tag: 'MACRO DETAIL', name: 'TEXTURE SHOT' },
     { tag: 'HERO SHOT', name: 'FULL EDITORIAL' },
     { tag: 'LIFESTYLE', name: 'BRAND STORY' },
     { tag: 'CAMPAIGN', name: 'SOCIAL EDIT' },
   ];
+
+  const activeProductCards = productVideos.length > 0 
+    ? productVideos.map((vid, idx) => ({
+        tag: vid.tag || fallbackProductCards[idx]?.tag || 'PRODUCT',
+        name: vid.name || fallbackProductCards[idx]?.name || `PRODUCT VIDEO #${idx + 1}`,
+      }))
+    : fallbackProductCards;
 
   return (
     <>
@@ -1529,7 +1543,7 @@ function MobileStackSection({ assets, isMobile }) {
           Upload character, drop product, choose format — AI renders in 60 seconds.
         </p>
         <div style={videoGridStyle}>
-          {ugcCards.map((card, i) => (
+          {activeUgcCards.map((card, i) => (
             <div key={i} style={videoCardStyle}>
               {ugcVideos[i]?.src ? (
                 <StackVideo 
@@ -1566,8 +1580,8 @@ function MobileStackSection({ assets, isMobile }) {
         }}>
           One product photo → complete advertisement campaign. Every angle, every format.
         </p>
-        <div style={{ ...videoGridStyle, gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)' }}>
-          {productCards.map((card, i) => (
+        <div style={{ ...videoGridStyle, gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : `repeat(${Math.min(activeProductCards.length, 4)}, 1fr)` }}>
+          {activeProductCards.map((card, i) => (
             <div key={i} style={{ ...videoCardStyle, aspectRatio: i === 1 ? '3/4' : '9/16' }}>
               {productVideos[i]?.src ? (
                 <StackVideo 
@@ -1690,6 +1704,37 @@ function StackSection({ assets, isMobile }) {
   const productVideos = assets?.productAssets || [];
   const cinemaVideo = assets?.cinemaAssets?.[0];
 
+  const fallbackDesktopUgc = [
+    { tag: 'TALKING HEAD', name: 'PRODUCT DROP', meta: '9:16 · TIKTOK', offset: 0 },
+    { tag: 'LIFESTYLE', name: 'BRAND STORY', meta: '9:16 · REELS', offset: 0 },
+    { tag: 'UNBOXING', name: 'REVEAL FORMAT', meta: '9:16 · STORIES', offset: 0 },
+    { tag: 'TESTIMONIAL', name: 'SOCIAL PROOF', meta: '9:16 · YOUTUBE', offset: 0 },
+  ];
+
+  const activeDesktopUgc = ugcVideos.length > 0
+    ? ugcVideos.map((vid, idx) => ({
+        tag: vid.tag || fallbackDesktopUgc[idx]?.tag || 'UGC',
+        name: vid.name || fallbackDesktopUgc[idx]?.name || `VIDEO #${idx + 1}`,
+        meta: vid.meta || fallbackDesktopUgc[idx]?.meta || '9:16 · MULTIPLATFORM',
+        offset: fallbackDesktopUgc[idx]?.offset || 0,
+      }))
+    : fallbackDesktopUgc;
+
+  const fallbackDesktopProduct = [
+    { tag: 'MACRO DETAIL', name: 'TEXTURE SHOT', meta: '1:1 · CLOSE-UP' },
+    { tag: 'HERO SHOT', name: 'FULL EDITORIAL', meta: '4:5 · CAMPAIGN' },
+    { tag: 'LIFESTYLE', name: 'IN-USE SCENE', meta: '9:16 · SOCIAL' },
+    { tag: 'CAMPAIGN', name: 'REELS EDIT', meta: '9:16 · STORIES' },
+  ];
+
+  const activeDesktopProduct = productVideos.length > 0
+    ? productVideos.map((vid, idx) => ({
+        tag: vid.tag || fallbackDesktopProduct[idx]?.tag || 'PRODUCT',
+        name: vid.name || fallbackDesktopProduct[idx]?.name || `PRODUCT VIDEO #${idx + 1}`,
+        meta: vid.meta || fallbackDesktopProduct[idx]?.meta || '9:16 · MULTIPLATFORM',
+      }))
+    : fallbackDesktopProduct;
+
   return (
     <div ref={containerRef} style={{ position: 'relative', height: '490vh' }}>
 
@@ -1761,18 +1806,15 @@ function StackSection({ assets, isMobile }) {
           </div>
         </div>
 
-        {/* 4 Vertical Videos */}
+        {/* Dynamic Vertical Videos */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)',
-          gap: 3, flex: 1, minHeight: 0,
+          gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : `repeat(${Math.min(activeDesktopUgc.length, 4)}, 1fr)`,
+          gap: 12, flex: 1, minHeight: 0,
+          overflowY: activeDesktopUgc.length > 4 ? 'auto' : 'hidden',
+          paddingBottom: activeDesktopUgc.length > 4 ? 20 : 0
         }}>
-          {[
-            { tag: 'TALKING HEAD', name: 'PRODUCT DROP', meta: '9:16 · TIKTOK', offset: 0 },
-            { tag: 'LIFESTYLE', name: 'BRAND STORY', meta: '9:16 · REELS', offset: 0 },
-            { tag: 'UNBOXING', name: 'REVEAL FORMAT', meta: '9:16 · STORIES', offset: 0 },
-            { tag: 'TESTIMONIAL', name: 'SOCIAL PROOF', meta: '9:16 · YOUTUBE', offset: 0 },
-          ].map((card, i) => (
+          {activeDesktopUgc.map((card, i) => (
             <div
               key={i}
               style={{
@@ -1780,6 +1822,7 @@ function StackSection({ assets, isMobile }) {
                 background: T.bg2,
                 position: 'relative', overflow: 'hidden',
                 borderRadius: 4, flex: 1,
+                minHeight: 280,
               }}
             >
               {ugcVideos[i]?.src ? (
@@ -1884,18 +1927,15 @@ function StackSection({ assets, isMobile }) {
           </p>
         </div>
 
-        {/* 3 Product Videos - mix of portrait + landscape */}
+        {/* Dynamic Product Videos */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)',
-          gap: 3, flex: 1, minHeight: 0,
+          gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : `repeat(${Math.min(activeDesktopProduct.length, 4)}, 1fr)`,
+          gap: 12, flex: 1, minHeight: 0,
+          overflowY: activeDesktopProduct.length > 4 ? 'auto' : 'hidden',
+          paddingBottom: activeDesktopProduct.length > 4 ? 20 : 0
         }}>
-          {[
-            { tag: 'MACRO DETAIL', name: 'TEXTURE SHOT', meta: '1:1 · CLOSE-UP' },
-            { tag: 'HERO SHOT', name: 'FULL EDITORIAL', meta: '4:5 · CAMPAIGN' },
-            { tag: 'LIFESTYLE', name: 'IN-USE SCENE', meta: '9:16 · SOCIAL' },
-            { tag: 'CAMPAIGN', name: 'REELS EDIT', meta: '9:16 · STORIES' },
-          ].map((card, i) => (
+          {activeDesktopProduct.map((card, i) => (
             <div
               key={i}
               style={{
@@ -1903,6 +1943,7 @@ function StackSection({ assets, isMobile }) {
                 position: 'relative', overflow: 'hidden',
                 borderRadius: 4,
                 flex: 1,
+                minHeight: 280,
               }}
             >
               {productVideos[i]?.src ? (
@@ -1919,7 +1960,7 @@ function StackSection({ assets, isMobile }) {
                   <div style={{
                     position: 'absolute', top: '50%', left: '50%',
                     transform: 'translate(-50%,-50%)',
-                    width: i === 1 ? 60 : 48, height: i === 1 ? 60 : 48,
+                    width: 48, height: 48,
                     border: `1px solid rgba(200,241,53,0.15)`,
                     borderRadius: '50%',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',

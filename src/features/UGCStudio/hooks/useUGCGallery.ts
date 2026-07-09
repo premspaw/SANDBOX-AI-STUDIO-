@@ -86,7 +86,12 @@ const idScore = (id: string): number => {
 //          or if tied, keep the one with a non-blob URL.
 const dedup = (items: GalleryItem[]): GalleryItem[] => {
   const byPath = new Map<string, GalleryItem>();
+  const loadingItems: GalleryItem[] = [];
   for (const item of items) {
+    if (item?.loading) {
+      loadingItems.push(item);
+      continue;
+    }
     if (!item?.url) continue;
     const path = getNormalizedPath(item.url);
     const existing = byPath.get(path);
@@ -105,7 +110,7 @@ const dedup = (items: GalleryItem[]): GalleryItem[] => {
       }
     }
   }
-  return [...byPath.values()].sort((a, b) => getTimestamp(b) - getTimestamp(a));
+  return [...loadingItems, ...byPath.values()].sort((a, b) => getTimestamp(b) - getTimestamp(a));
 };
 
 // ── Filter: remove junk and optionally dead blob URLs ────────────────────────

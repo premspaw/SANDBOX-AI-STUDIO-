@@ -15,8 +15,10 @@ import {
   Copy,
   Clock,
   Globe,
-  SlidersHorizontal
+  SlidersHorizontal,
+  ChevronDown
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../store';
 import { getApiUrl } from '../../config/apiConfig';
 import { useShorts } from '../../hooks/useShorts';
@@ -140,41 +142,285 @@ function CustomDropdown({ label, value, options, onChange, icon: Icon }) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-black border border-white/10 hover:border-white/20 rounded-xl px-3 py-2 text-xs text-white text-left outline-none transition-all flex items-center justify-between cursor-pointer font-bold h-9 select-none"
+        className={`w-full bg-zinc-950/80 border ${
+          isOpen ? 'border-[#c8f135]' : 'border-white/10 hover:border-white/20'
+        } rounded-xl px-3 py-2 text-xs text-white text-left outline-none transition-all flex items-center justify-between cursor-pointer font-bold h-9 select-none`}
       >
         <span className="truncate">{selectedOption.label}</span>
-        <span className="text-[8px] text-white/30 transition-transform duration-250 select-none ml-1.5" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+        <motion.div
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <ChevronDown className="w-3.5 h-3.5 text-white/30" />
+        </motion.div>
       </button>
 
-      {isOpen && (
-        <div className="absolute left-0 mt-1.5 w-72 max-h-80 overflow-y-auto bg-[#121212] border border-white/10 rounded-xl shadow-2xl z-[999] py-1.5 custom-scrollbar">
-          {options.map(opt => {
-            const isSelected = opt.value === value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => {
-                  onChange(opt.value);
-                  setIsOpen(false);
-                }}
-                className={`w-full text-left px-3.5 py-2.5 hover:bg-white/5 transition-colors flex flex-col gap-0.5 select-none ${
-                  isSelected ? 'bg-white/[0.02] border-l-2 border-[#c8f135]' : ''
-                }`}
-              >
-                <span className={`text-xs font-black transition-colors ${isSelected ? 'text-[#c8f135]' : 'text-white/80'}`}>
-                  {opt.label}
-                </span>
-                {opt.desc && (
-                  <span className="text-[9.5px] leading-relaxed text-white/40 font-medium">
-                    {opt.desc}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.95 }}
+            transition={{ duration: 0.12, ease: 'easeOut' }}
+            className="absolute left-0 mt-1.5 w-full min-w-[200px] max-h-80 overflow-y-auto bg-zinc-950/95 border border-white/10 rounded-xl shadow-2xl z-[999] py-1.5 custom-scrollbar backdrop-blur-xl"
+          >
+            {options.map(opt => {
+              const isSelected = opt.value === value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3.5 py-2.5 hover:bg-white/5 transition-colors flex flex-col gap-0.5 select-none ${
+                    isSelected ? 'bg-white/[0.02] border-l-2 border-[#c8f135]' : ''
+                  }`}
+                >
+                  <span className={`text-xs font-black transition-colors ${isSelected ? 'text-[#c8f135]' : 'text-white/80'}`}>
+                    {opt.label}
                   </span>
-                )}
-              </button>
-            );
-          })}
+                  {opt.desc && (
+                    <span className="text-[9.5px] leading-relaxed text-white/40 font-medium">
+                      {opt.desc}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function VoiceDropdown({ 
+  voiceName, 
+  setVoiceName, 
+  playingPreviewId, 
+  playPreview 
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (ref.current && !ref.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredVoices = VOICES.filter(v => 
+    v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    v.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const selectedVoice = VOICES.find(v => v.name === voiceName) || VOICES[0];
+  const isTriggerPreviewPlaying = playingPreviewId === selectedVoice.name;
+
+  return (
+    <div className="space-y-2 relative" ref={ref}>
+      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-1.5">
+        <Volume2 className="w-3.5 h-3.5 text-[#c8f135]" /> Voice Profile
+      </label>
+      
+      {/* Premium Trigger Button */}
+      <div className="relative group">
+        {/* Glow effect on hover */}
+        <div className="absolute -inset-[1px] bg-gradient-to-r from-[#c8f135]/30 to-transparent rounded-2xl blur opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+        
+        <div
+          onClick={() => setIsOpen(!isOpen)}
+          className={`relative w-full bg-zinc-950/80 border ${
+            isOpen ? 'border-[#c8f135] shadow-[0_0_20px_rgba(200,241,53,0.15)]' : 'border-white/10 hover:border-white/20'
+          } rounded-2xl p-4 text-xs text-white text-left outline-none transition-all flex items-center justify-between cursor-pointer select-none`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Visual indicator / Avatar */}
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#c8f135]/20 to-neutral-900 border border-[#c8f135]/30 flex items-center justify-center shrink-0 shadow-inner relative">
+              {isTriggerPreviewPlaying && (
+                <span className="absolute inset-0 rounded-xl border border-[#c8f135] animate-ping opacity-75" />
+              )}
+              <span className="text-sm font-black text-[#c8f135] tracking-tighter">
+                {selectedVoice.name.substring(0, 2).toUpperCase()}
+              </span>
+            </div>
+            
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-xs sm:text-sm font-black uppercase tracking-tight text-white group-hover:text-[#c8f135] transition-colors">
+                  {selectedVoice.name}
+                </span>
+                <span className="text-[7.5px] font-black uppercase tracking-wider bg-[#c8f135]/15 text-[#c8f135] px-1.5 py-0.5 rounded border border-[#c8f135]/25 shrink-0">
+                  Active
+                </span>
+              </div>
+              <div className="hidden sm:flex flex-wrap gap-1">
+                {selectedVoice.tags.map(t => (
+                  <span key={t} className="text-[8px] bg-white/5 text-white/40 px-1.5 py-0.5 rounded-full border border-white/5 font-medium">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Quick Preview Button directly on the Trigger */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                playPreview(selectedVoice.name, e);
+              }}
+              className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
+                isTriggerPreviewPlaying 
+                  ? 'bg-[#c8f135] text-black scale-105 shadow-md shadow-[#c8f135]/20' 
+                  : 'bg-white/5 text-white/50 hover:bg-[#c8f135]/20 hover:text-[#c8f135] hover:scale-105'
+              }`}
+              title={`Preview ${selectedVoice.name} voice`}
+            >
+              {isTriggerPreviewPlaying ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+              )}
+            </button>
+
+            <motion.div
+              animate={{ rotate: isOpen ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDown className="w-4 h-4 text-white/40 group-hover:text-white/70" />
+            </motion.div>
+          </div>
         </div>
-      )}
+      </div>
+
+      {/* Premium Dropdown Menu */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 mt-2 w-full bg-zinc-950/95 border border-white/10 rounded-2xl shadow-2xl z-[100] p-3 space-y-3 backdrop-blur-xl"
+          >
+            {/* Dropdown Header Search */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-white/30 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search 30+ voice profiles..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-black/60 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white outline-none placeholder-white/20 focus:border-[#c8f135]/40 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+                autoFocus
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSearchQuery('');
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 text-[10px] font-bold"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Scrollable list */}
+            <div className="max-h-[250px] overflow-y-auto custom-scrollbar space-y-1 pr-1">
+              {filteredVoices.map(v => {
+                const isSelected = v.name === voiceName;
+                const isPreviewPlaying = playingPreviewId === v.name;
+                return (
+                  <div
+                    key={v.name}
+                    onClick={() => {
+                      setVoiceName(v.name);
+                      setIsOpen(false);
+                    }}
+                    className={`p-2 rounded-xl border transition-all flex items-center justify-between cursor-pointer group/item ${
+                      isSelected 
+                        ? 'border-[#c8f135] bg-[#c8f135]/5 shadow-[0_0_15px_rgba(200,241,53,0.05)]' 
+                        : 'border-transparent bg-transparent hover:border-white/5 hover:bg-white/[0.02]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      {/* Small avatar or checkmark */}
+                      <div className={`w-7.5 h-7.5 rounded-lg flex items-center justify-center shrink-0 transition-all relative ${
+                        isSelected ? 'bg-[#c8f135] text-black font-black' : 'bg-white/5 text-white/30 group-hover/item:text-white/60'
+                      }`}>
+                        {isPreviewPlaying && (
+                          <span className="absolute inset-0 rounded-lg border border-[#c8f135] animate-ping opacity-75" />
+                        )}
+                        {isSelected ? (
+                          <Check className="w-3.5 h-3.5 stroke-[3px]" />
+                        ) : (
+                          <span className="text-[10px] font-black">
+                            {v.name.substring(0, 2).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="space-y-0.5 min-w-0">
+                        <span className={`text-xs font-bold transition-colors ${isSelected ? 'text-[#c8f135]' : 'text-white/80 group-hover/item:text-white'}`}>
+                          {v.name}
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {v.tags.map(t => (
+                            <span key={t} className="text-[7.5px] bg-white/5 text-white/40 px-1 py-0.2 rounded-full font-medium">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Play preview inside the dropdown */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        playPreview(v.name, e);
+                      }}
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                        isPreviewPlaying 
+                          ? 'bg-[#c8f135] text-black scale-105' 
+                          : 'bg-white/5 text-white/40 hover:bg-[#c8f135]/20 hover:text-[#c8f135] hover:scale-105'
+                      }`}
+                      title={`Preview ${v.name} voice`}
+                    >
+                      {isPreviewPlaying ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Play className="w-3 h-3 fill-current ml-0.5" />
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+              {filteredVoices.length === 0 && (
+                <div className="py-8 text-center text-white/20">
+                  <Search className="w-5 h-5 mx-auto stroke-1" />
+                  <p className="text-[9px] font-black uppercase mt-2">No matching voices</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -194,9 +440,6 @@ export default function YourVoice() {
   const [selectedAccent, setSelectedAccent] = useState('Neutral');
   const [selectedLanguage, setSelectedLanguage] = useState('English');
 
-  // Voice Search / Filter
-  const [searchQuery, setSearchQuery] = useState('');
-  
   const [generating, setGenerating] = useState(false);
   const [currentAudioUrl, setCurrentAudioUrl] = useState(null);
   const [history, setHistory] = useState([]);
@@ -498,15 +741,9 @@ export default function YourVoice() {
     if (showToast) showToast('Audio link copied to clipboard!', 'success');
   };
 
-  // Filter voices based on query
-  const filteredVoices = VOICES.filter(v => 
-    v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    v.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
   return (
     <div className="h-full bg-black text-white py-6 font-sans select-none overflow-y-auto custom-scrollbar">
-      <div className="max-w-6xl mx-auto px-4 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         
         {/* Header Block */}
         <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-white/10 pb-5 gap-4">
@@ -537,6 +774,16 @@ export default function YourVoice() {
           {/* Left Column: Config Panel & Voice Selector */}
           <div className="lg:col-span-5 space-y-5">
             
+            {/* Voice Selection Dropdown Card */}
+            <div className="rounded-2xl border border-white/10 bg-zinc-950/40 p-4 backdrop-blur-md relative z-30">
+              <VoiceDropdown 
+                voiceName={voiceName}
+                setVoiceName={setVoiceName}
+                playingPreviewId={playingPreviewId}
+                playPreview={playPreview}
+              />
+            </div>
+
             {/* Director's Note Controls */}
             <div className="rounded-2xl border border-white/10 bg-zinc-950/40 p-4 space-y-4 backdrop-blur-md relative z-20">
               <div className="flex items-center justify-between border-b border-white/5 pb-2">
@@ -579,89 +826,6 @@ export default function YourVoice() {
                     icon={Globe}
                   />
                 </div>
-            </div>
-
-            {/* Premium Voice Selector List */}
-            <div className="rounded-2xl border border-white/10 bg-zinc-950/40 p-4 space-y-4 backdrop-blur-md flex flex-col max-h-[480px]">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-widest text-[#c8f135]">Voice profiles</h3>
-                <span className="text-[9px] text-white/20 font-bold">{filteredVoices.length} of {VOICES.length}</span>
-              </div>
-
-              {/* Voice search */}
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-white/20 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search voices by name or tags..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-black/60 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white outline-none placeholder-white/20 focus:border-[#c8f135]/40 transition-colors"
-                />
-              </div>
-
-              {/* Scrollable voices container */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1.5 pr-1">
-                {filteredVoices.map(v => {
-                  const isCurrent = voiceName === v.name;
-                  const isPreviewPlaying = playingPreviewId === v.name;
-                  return (
-                    <div
-                      key={v.name}
-                      onClick={() => setVoiceName(v.name)}
-                      className={`p-3 rounded-xl border transition-all flex items-center justify-between cursor-pointer group ${
-                        isCurrent 
-                          ? 'border-[#c8f135] bg-[#c8f135]/5 shadow-[0_0_15px_rgba(200,241,53,0.05)]' 
-                          : 'border-white/5 bg-black/30 hover:border-white/10 hover:bg-white/[0.02]'
-                      }`}
-                    >
-                      <div className="space-y-1 flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs font-black transition-colors ${isCurrent ? 'text-[#c8f135]' : 'text-white/80 group-hover:text-white'}`}>
-                            {v.name}
-                          </span>
-                          {isCurrent && (
-                            <span className="text-[7px] font-black uppercase tracking-wider bg-[#c8f135]/20 text-[#c8f135] px-1.5 py-0.5 rounded-md border border-[#c8f135]/25">
-                              Current
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {v.tags.map(t => (
-                            <span key={t} className="text-[8px] bg-white/5 text-white/40 px-1.5 py-0.5 rounded-full">
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Preview Button */}
-                      <button
-                        onClick={(e) => playPreview(v.name, e)}
-                        className={`w-7.5 h-7.5 rounded-full flex items-center justify-center transition-all ${
-                          isPreviewPlaying 
-                            ? 'bg-[#c8f135] text-black scale-105' 
-                            : 'bg-white/5 text-white/50 hover:bg-[#c8f135]/20 hover:text-[#c8f135] hover:scale-105'
-                        }`}
-                        title={`Preview ${v.name} voice`}
-                      >
-                        {isPreviewPlaying ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-                        )}
-                      </button>
-                    </div>
-                  );
-                })}
-                {filteredVoices.length === 0 && (
-                  <div className="py-12 text-center text-white/20">
-                    <Search className="w-6 h-6 mx-auto stroke-1" />
-                    <p className="text-[10px] font-black uppercase mt-2">No matching voices found</p>
-                  </div>
-                )}
-              </div>
-
             </div>
           </div>
 

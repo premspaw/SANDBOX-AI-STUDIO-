@@ -39,7 +39,7 @@ export default function createRouter(deps) {
             const { image, script, bible, userId, duration, resolution, model, aspect_ratio } = req.body;
             // Get credentials
             const vertexToken = await getVertexToken();
-            const apiKey = await resolveGoogleApiKey(req, userId);
+            const apiKey = await resolveGoogleApiKey(req, userId, true);
             if (!vertexToken && !apiKey) {
                 throw new Error('Failed to acquire service account token or API key for Veo');
             }
@@ -153,11 +153,14 @@ export default function createRouter(deps) {
                     }
                 } catch (vertexErr) {
                     console.warn(`[Video API] [Vertex AI] Failed. Error: ${vertexErr.message}. Falling back to Google AI Studio...`);
+                    if (apiKey === 'VERTEX_AI_CLIENT') {
+                        throw vertexErr;
+                    }
                 }
             }
 
             // --- Option B: Google AI Studio / Gemini API (Fallback) ---
-            if (!success && (apiKey || vertexToken)) {
+            if (!success && apiKey && apiKey !== 'VERTEX_AI_CLIENT') {
                 try {
                     const aiStudioModelName = (model === 'veo-fast') ? 'veo-3.1-fast-generate-preview' : 'veo-3.1-generate-preview';
                     let url = `https://generativelanguage.googleapis.com/v1beta/models/${aiStudioModelName}:predictLongRunning`;
@@ -322,12 +325,19 @@ ${directorBlock}
 ### TRANSCRIPT
 ${transcript}`;
 
-                console.log(`[UGC-SPEECH] Multi-speaker TTS — ${s1}(${v1}) & ${s2}(${v2})`);
+                console.log(`[UGC-SPEECH] Multi-speaker TTS — s1: ${s1}, s2: ${s2}, text length: ${text?.length || 0}`);
+                console.log(`[UGC-SPEECH] Structured prompt: ${structuredPrompt.substring(0, 300)}...`);
 
                 const result = await gemini.models.generateContent({
                     model: 'gemini-3.1-flash-tts-preview',
                     contents: [{ role: 'user', parts: [{ text: structuredPrompt }] }],
                     config: {
+                        safetySettings: [
+                            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                        ],
                         responseModalities: ['AUDIO'],
                         speechConfig: {
                             multiSpeakerVoiceConfig: {
@@ -346,19 +356,30 @@ ${transcript}`;
                     },
                 });
 
-                const audioData = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-                if (!audioData) throw new Error("Multi-speaker TTS failed — no audio returned");
+                const candidate = result.candidates?.[0];
+                const audioData = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+                if (!audioData) {
+                    const finishReason = candidate?.finishReason || 'UNKNOWN';
+                    const safetyRatings = candidate?.safetyRatings ? JSON.stringify(candidate.safetyRatings) : 'N/A';
+                    throw new Error(`Multi-speaker TTS failed — no audio returned. FinishReason: ${finishReason}, SafetyRatings: ${safetyRatings}`);
+                }
                 return res.json({ audio: `data:audio/wav;base64,${audioData}` });
             }
 
             const voiceRaw = (voice || 'kore').toLowerCase();
             const voiceName = allowedVoices.includes(voiceRaw) ? voiceRaw : 'kore';
-            console.log(`[UGC-SPEECH] Single-speaker TTS — voice: ${voiceName}`);
+            console.log(`[UGC-SPEECH] Single-speaker TTS — voice: ${voiceName}, text: "${text.substring(0, 200)}${text.length > 200 ? '...' : ''}"`);
 
             const result = await gemini.models.generateContent({
                 model: 'gemini-2.5-flash-preview-tts',
                 contents: [{ role: 'user', parts: [{ text }] }],
                 config: {
+                    safetySettings: [
+                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                    ],
                     responseModalities: ['AUDIO'],
                     speechConfig: {
                         voiceConfig: {
@@ -368,8 +389,13 @@ ${transcript}`;
                 },
             });
 
-            const audioData = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-            if (!audioData) throw new Error("Speech synthesis failed — no audio returned");
+            const candidate = result.candidates?.[0];
+            const audioData = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+            if (!audioData) {
+                const finishReason = candidate?.finishReason || 'UNKNOWN';
+                const safetyRatings = candidate?.safetyRatings ? JSON.stringify(candidate.safetyRatings) : 'N/A';
+                throw new Error(`Speech synthesis failed — no audio returned. FinishReason: ${finishReason}, SafetyRatings: ${safetyRatings}`);
+            }
 
             res.json({ audio: `data:audio/wav;base64,${audioData}` });
         } catch (error) {
@@ -776,6 +802,20 @@ Return ONLY valid JSON.`
     });
 
     // Proxy Image (Bypass CORS for R2 images in client)
+    router.get('/proxy-image', async (req, res) => {
+        try {
+            const url = req.query.url;
+            if (!url) return res.status(400).json({ error: 'URL is required' });
+
+            const { buffer, contentType } = await fetchAllowedProxyResource(url);
+            res.setHeader('Content-Type', contentType);
+            res.send(buffer);
+        } catch (error) {
+            console.error('[UGC API] Get Proxy Image Error:', error);
+            res.status(error.status || 500).json({ error: error.message });
+        }
+    });
+
     router.post('/proxy-image', async (req, res) => {
         try {
             const { url } = req.body;
@@ -891,7 +931,7 @@ Return ONLY valid JSON.`
             ].filter(Boolean).join('. ');
 
             const token = await getVertexToken();
-            const apiKey = await resolveGoogleApiKey(req, targetUserId);
+            const apiKey = await resolveGoogleApiKey(req, targetUserId, true);
             if (!token && !apiKey) throw new Error('Failed to acquire service account token or API key');
 
             let keyframeBase64 = '';
@@ -1008,11 +1048,14 @@ Return ONLY valid JSON.`
                     }
                 } catch (vertexErr) {
                     console.warn(`[UGC-PREVIEW] [Vertex AI] Failed. Error: ${vertexErr.message}. Falling back to Google AI Studio...`);
+                    if (apiKey === 'VERTEX_AI_CLIENT') {
+                        throw vertexErr;
+                    }
                 }
             }
 
             // --- Option B: Google AI Studio / Gemini API (Fallback) ---
-            if (!success && (apiKey || token)) {
+            if (!success && apiKey && apiKey !== 'VERTEX_AI_CLIENT') {
                 try {
                     const veoModel = 'veo-3.1-generate-preview';
                     let veoEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${veoModel}:predictLongRunning`;
@@ -1235,6 +1278,52 @@ Return ONLY valid JSON.`
                 });
             }
 
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // ── Generic Text Generation (server-side, uses SDK/Service Account) ──
+    router.post('/generate-text', async (req, res) => {
+        try {
+            const { prompt, model, responseSchema, userId } = req.body;
+            if (!prompt) return res.status(400).json({ error: 'prompt is required' });
+
+            const selectedModel = model || 'gemini-2.5-flash';
+            console.log(`[UGC-TEXT] Server-side text generation — model: ${selectedModel}`);
+
+            const apiKey = await resolveGoogleApiKey(req, userId);
+            const gemini = getGeminiClient(apiKey);
+            
+            const config = {};
+            if (responseSchema) {
+                config.responseMimeType = 'application/json';
+                config.responseSchema = responseSchema;
+            }
+
+            const result = await gemini.models.generateContent({
+                model: selectedModel,
+                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                config,
+            });
+
+            let text = '';
+            if (result.text) {
+                text = result.text;
+            } else if (typeof result.text === 'function') {
+                text = result.text();
+            } else if (result.response && typeof result.response.text === 'function') {
+                text = result.response.text();
+            } else if (result.response && result.response.text) {
+                text = result.response.text;
+            } else if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                text = result.candidates[0].content.parts[0].text;
+            }
+
+            if (!text) throw new Error('Empty response from AI');
+            console.log(`[UGC-TEXT] ✅ Success`);
+            return res.json({ text });
+        } catch (error) {
+            console.error('UGC-TEXT Error:', error);
             res.status(500).json({ error: error.message });
         }
     });

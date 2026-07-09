@@ -209,6 +209,57 @@ export const MontagePanel: React.FC = () => {
       }
 
       setVideoProgressMsg(`Submitting to Veo-3...`);
+
+      if (isAdmin || isGlobalAdmin) {
+        setVideoProgressMsg('Submitting to Vertex AI (Veo 3.1)...');
+        const headers: any = { 'Content-Type': 'application/json' };
+        const customKey = getApiKey();
+        if (customKey) headers['x-admin-trial-key'] = customKey;
+
+        const imageToSend = imageBase64 ? `data:${imageMime};base64,${imageBase64}` : undefined;
+
+        const resp = await fetch(getApiUrl('/api/ugc/video'), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            image: imageToSend,
+            script: option.prompt,
+            userId: currentUserId,
+            duration: duration,
+            resolution: '720p',
+            model: 'veo_fast',
+            aspect_ratio: aspectRatio === '1:1' ? '9:16' : aspectRatio
+          })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Vertex AI Montage generation failed.');
+        if (!data.url) throw new Error('Vertex AI returned no video URL.');
+
+        const tempId = Date.now().toString();
+        const newItemId = Math.random().toString(36).substr(2, 9);
+        const newItem = {
+          id: newItemId,
+          type: 'video' as const,
+          url: data.url,
+          start: 0,
+          end: duration,
+          duration: duration
+        };
+        addToTimeline(newItem);
+        addToGallery({
+          id: tempId,
+          type: 'video',
+          url: data.url,
+          prompt: option.prompt.substring(0, 1000)
+        });
+        showToast(`${option.title} montage ready via Vertex AI!`, 'success');
+        setShowMontageOptions(false);
+        setMontageGeneratedImg('');
+        setIsGeneratingVideo(false);
+        setVideoProgressMsg('');
+        return;
+      }
       let operation = await ai.models.generateVideos({
         model: 'veo-3.1-fast-generate-preview',
         prompt: option.prompt.substring(0, 1000),

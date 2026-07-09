@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2, Film } from 'lucide-react';
+import { Loader2, Film, Clock, ChevronDown, Layout } from 'lucide-react';
 import { useUGC } from '../context/UGCContext';
 
 export const TalkingHeadTab: React.FC = () => {
@@ -42,47 +42,68 @@ export const TalkingHeadTab: React.FC = () => {
       )}
 
       {/* Settings row */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-1">
-          <span className="text-[7px] font-black text-white/25 uppercase tracking-widest">Engine</span>
-          {([['veo_lite', '🍃 Lite'], ['veo_fast', '⚡ Fast'], ['veo3', '🎬 HQ'], ['omni-flash', '✨ Omni']] as const).map(([val, lbl]) => (
-            <button
-              key={val}
-              type="button"
-              onClick={() => setThEngine(val)}
-              className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${thEngine === val ? 'bg-[#c8f135] text-black border-[#c8f135]' : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'}`}
-            >
-              {lbl}
-            </button>
-          ))}
-        </div>
-        
-        <div className="flex items-center gap-1">
-          <span className="text-[7px] font-black text-white/25 uppercase tracking-widest">Ratio</span>
-          {(['9:16', '16:9'] as const).map(r => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setThAspectRatio(r)}
-              className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${thAspectRatio === r ? 'bg-[#c8f135] text-black border-[#c8f135]' : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'}`}
-            >
-              {r}
-            </button>
-          ))}
+      <div className="flex items-center gap-1.5 flex-wrap px-2 pb-2 pt-1 border-t border-white/[0.05]">
+        {/* Engine Dropdown */}
+        <div className="relative flex-shrink-0">
+          <select
+            value={thEngine}
+            onChange={e => setThEngine(e.target.value as any)}
+            className="appearance-none bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg pl-5 pr-4 py-0.5 text-[8px] font-bold uppercase tracking-widest text-white/50 hover:text-white/80 cursor-pointer transition-all font-sans"
+          >
+            <option value="veo_lite" className="bg-[#0c0c0c] text-white">🍃 VEO LITE</option>
+            <option value="veo_fast" className="bg-[#0c0c0c] text-white">⚡ VEO FAST</option>
+            <option value="veo3" className="bg-[#0c0c0c] text-white">🎬 VEO 3 HQ</option>
+            <option value="omni-flash" className="bg-[#0c0c0c] text-white">✨ OMNI FLASH</option>
+          </select>
+          {thEngine === 'veo_lite' ? (
+            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none leading-none">🍃</span>
+          ) : thEngine === 'veo3' ? (
+            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none leading-none">🎬</span>
+          ) : thEngine === 'omni-flash' ? (
+            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none leading-none">✨</span>
+          ) : (
+            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none leading-none">⚡</span>
+          )}
+          <ChevronDown size={7} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
         </div>
 
-        <div className="flex items-center gap-1">
-          <span className="text-[7px] font-black text-white/25 uppercase tracking-widest">Dur</span>
-          {(thEngine === 'omni-flash' ? ['4', '6', '8', '10'] : ['4', '6', '8'] as const).map(s => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setThDuration(s as any)}
-              className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${thDuration === s ? 'bg-[#c8f135] text-black border-[#c8f135]' : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'}`}
-            >
-              {s}s
-            </button>
-          ))}
+        {/* Aspect Ratio Dropdown */}
+        <div className="relative flex-shrink-0">
+          <select
+            value={thAspectRatio}
+            onChange={e => setThAspectRatio(e.target.value as any)}
+            className="appearance-none bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg pl-5 pr-4 py-0.5 text-[8px] font-bold uppercase tracking-widest text-white/50 hover:text-white/80 cursor-pointer transition-all font-sans"
+          >
+            <option value="9:16" className="bg-[#0c0c0c] text-white">9:16</option>
+            <option value="16:9" className="bg-[#0c0c0c] text-white">16:9</option>
+          </select>
+          <Layout size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
+          <ChevronDown size={7} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+        </div>
+
+        {/* Shot Duration Dropdown */}
+        <div className="relative flex-shrink-0">
+          <select
+            value={thDuration}
+            onChange={e => setThDuration(e.target.value as any)}
+            className="appearance-none bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg pl-5 pr-4 py-0.5 text-[8px] font-bold uppercase tracking-widest text-white/50 hover:text-white/80 cursor-pointer transition-all font-sans"
+          >
+            <option value="4" className="bg-[#0c0c0c] text-white">4 SEC</option>
+            <option value="6" className="bg-[#0c0c0c] text-white">6 SEC</option>
+            <option value="8" className="bg-[#0c0c0c] text-white">8 SEC</option>
+            {thEngine === 'omni-flash' && (
+              <>
+                <option value="10" className="bg-[#0c0c0c] text-white">10 SEC</option>
+                <option value="20" className="bg-[#0c0c0c] text-white">20 SEC</option>
+                <option value="30" className="bg-[#0c0c0c] text-white">30 SEC</option>
+                <option value="40" className="bg-[#0c0c0c] text-white">40 SEC</option>
+                <option value="50" className="bg-[#0c0c0c] text-white">50 SEC</option>
+                <option value="60" className="bg-[#0c0c0c] text-white">60 SEC</option>
+              </>
+            )}
+          </select>
+          <Clock size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
+          <ChevronDown size={7} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
         </div>
       </div>
 

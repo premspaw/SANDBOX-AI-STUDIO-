@@ -13,7 +13,10 @@ export default function createRouter(deps) {
         MARKETING_BUCKET,
         storageService,
         requireAuth,
-        resolveGoogleApiKey
+        resolveGoogleApiKey,
+        getVertexToken,
+        VERTEX_PROJECT_ID,
+        VERTEX_LOCATION
     } = deps;
 
     // ── Carousel HTML → Playwright → Supabase PNG pipeline ───────────────────────
@@ -80,9 +83,27 @@ export default function createRouter(deps) {
 
                 try {
                     if (isNanoBanana) {
-                        const apiKey = await resolveGoogleApiKey(req, targetUserId);
+                        const apiKey = await resolveGoogleApiKey(req, targetUserId, false);
                         const geminiModel = 'models/gemini-3.1-flash-image-preview';
                         
+                        let endpoint = '';
+                        const headers = { 'Content-Type': 'application/json' };
+                        if (apiKey === 'VERTEX_AI_CLIENT') {
+                            const token = await getVertexToken();
+                            const activeModelLower = geminiModel.toLowerCase();
+                            const needsGlobal = activeModelLower.includes('gemini') || activeModelLower.includes('banana') || activeModelLower.includes('omni');
+                            const targetLocation = needsGlobal ? 'global' : (VERTEX_LOCATION || 'us-central1');
+                            const apiVersion = needsGlobal ? 'v1beta1' : 'v1';
+                            // Remove models/ prefix if present to format consistently
+                            const activeModel = geminiModel.startsWith('models/') ? geminiModel.replace('models/', '') : geminiModel;
+                            endpoint = `https://${VERTEX_LOCATION || 'us-central1'}-aiplatform.googleapis.com/${apiVersion}/projects/${VERTEX_PROJECT_ID}/locations/${targetLocation}/publishers/google/models/${activeModel}:generateContent`;
+                            headers['Authorization'] = `Bearer ${token}`;
+                            console.log(`[Carousel-NB2] [Vertex AI] Calling model gemini-3.1-flash-image-preview via Service Account token (location: ${targetLocation})`);
+                        } else {
+                            endpoint = `https://generativelanguage.googleapis.com/v1beta/${geminiModel}:generateContent?key=${apiKey}`;
+                            console.log(`[Carousel-NB2] [AI Studio] Calling model ${geminiModel} via API Key`);
+                        }
+
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), IMAGE_GEN_TIMEOUT);
                         
@@ -94,10 +115,10 @@ export default function createRouter(deps) {
                         ];
 
                         const resp = await fetch(
-                            `https://generativelanguage.googleapis.com/v1beta/${geminiModel}:generateContent?key=${apiKey}`,
+                            endpoint,
                             {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
+                                headers,
                                 body: JSON.stringify({
                                     contents: [{ role: 'user', parts: [{ text: prompt }] }],
                                     safetySettings,

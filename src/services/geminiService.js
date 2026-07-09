@@ -31,7 +31,7 @@ const getAIConfig = () => {
         console.debug("admin api key not available", e);
     }
         
-    const isToken = apiKey.startsWith('AQ.') || apiKey.startsWith('ya29.');
+    const isToken = apiKey.startsWith('ya29.');
     const projectId = (typeof globalThis.process !== 'undefined' ? globalThis.process.env.GOOGLE_PROJECT_ID : null) || 'gen-lang-client-0438096272';
     const location = (typeof globalThis.process !== 'undefined' ? globalThis.process.env.GOOGLE_LOCATION : null) || 'us-central1';
     
@@ -332,6 +332,9 @@ const resolveModelId = (id) => {
         'nano-banana': 'gemini-2.5-flash-image', // Stable 2.5
         'nano-banana-2': 'gemini-3.1-flash-image-preview', 
         'nano-banana-pro': 'gemini-3-pro-image-preview', 
+        'nano-banana-2-lite': 'gemini-3.1-flash-lite-image',
+        'nb2-lite': 'gemini-3.1-flash-lite-image',
+        'gemini-3.1-flash-lite': 'gemini-3.1-flash-lite-image',
         'veo': 'veo-3.1-generate-preview',
         'veo-fast': 'veo-3.1-fast-generate-preview'
     };
@@ -833,7 +836,7 @@ export const analyzeIdentity = async (imageInput) => {
                     ]
                 }]
             });
-            return result.response.text() || "Identity extraction failed.";
+            return result.text || result.response?.text?.() || "Identity extraction failed.";
         } catch (err) {
             console.error("Identity analysis failed:", err);
             return "Analysis unavailable.";
@@ -884,7 +887,7 @@ export const generateDynamicAngles = async (imageInput, name) => {
                 config: { responseMimeType: "application/json" }
             });
 
-            return JSON.parse(result.response.text() || '[]');
+            return JSON.parse(result.text || result.response?.text?.() || '[]');
         } catch (err) {
             console.error("Dynamic angle generation failed:", err);
             return [
@@ -923,7 +926,7 @@ export const generateBackstory = async (analysis, name) => {
             model: 'gemini-3.1-flash',
             contents: [{ parts: [{ text: `Generate a 100-word backstory for ${name} based on this identity analysis: ${analysis}. Be gritty, atmospheric, and professional.` }] }]
         });
-        return result.response.text() || "Backstory generation failed.";
+        return result.text || result.response?.text?.() || "Backstory generation failed.";
     } catch (err) {
         console.error("Backstory generation failed:", err);
         return "Backstory unavailable.";
@@ -1011,7 +1014,7 @@ export const generateStoryboardDescriptions = async (narrative, count = 4) => {
                 }
             }
         });
-        return JSON.parse(result.response.text() || '[]');
+        return JSON.parse(result.text || result.response?.text?.() || '[]');
     } catch (err) {
         console.error("Storyboard description generation failed:", err);
         return [];
@@ -1078,8 +1081,8 @@ export const researchProductionContext = async (query) => {
                 }
             });
             return {
-                research: result.response.text(),
-                grounding: result.response.candidates?.[0]?.groundingMetadata || null
+                research: result.text || result.response?.text?.() || "",
+                grounding: result.response?.candidates?.[0]?.groundingMetadata || null
             };
         } catch (err) {
             console.error("Research Agent failed:", err);
@@ -1110,7 +1113,7 @@ export const generateThinkerSequence = async (narrative, bible = null) => {
                 model: "gemini-3.1-pro",
                 contents: [{ parts: [{ text: prompt }] }]
             });
-            const text = result.response.text();
+            const text = result.text || result.response?.text?.() || "";
             const cleanJson = text.includes('```json') ? text.split('```json')[1].split('```')[0] : text;
             return JSON.parse(cleanJson);
         } catch (err) {
@@ -1142,7 +1145,7 @@ export const generateDirectorSequence = async (narrative, bible = null) => {
             contents: [{ parts: [{ text: prompt }] }],
             config: { responseMimeType: "application/json" }
         });
-        return JSON.parse(result.response.text() || '{"nodes":[]}');
+        return JSON.parse(result.text || result.response?.text?.() || '{"nodes":[]}');
     } catch (err) {
         console.error("Auto-Director sequence generation failed:", err);
         return { nodes: [] };
@@ -1179,7 +1182,7 @@ export const analyzeSceneMultimodal = async (imageInput, bible = null) => {
             }],
             config: { responseMimeType: "application/json" }
         });
-        return JSON.parse(result.response.text() || '{}');
+        return JSON.parse(result.text || result.response?.text?.() || '{}');
     } catch (err) {
         console.error("Multimodal analysis failed:", err);
         return { critique: "Analysis failed.", score: 0, recommendations: [] };
@@ -1211,7 +1214,7 @@ export const expandPrompt = async (payload) => {
                 { parts: [{ text: JSON.stringify(payload) }] }
             ]
         });
-        return result.response.text() || payload.userAction;
+        return result.text || result.response?.text?.() || payload.userAction;
     } catch (err) {
         console.error("Prompt expansion failed:", err);
         return payload.userAction;
@@ -1251,7 +1254,7 @@ export const enhancePrompt = async (prompt, useGrounding = false) => {
             contents: [{ role: "user", parts }],
             config
         });
-        return result.response.text() || prompt;
+        return result.text || result.response?.text?.() || prompt;
     } catch (err) {
         console.error("Prompt enhancement failed:", err);
         return prompt;
@@ -1312,7 +1315,7 @@ export async function analyzeUGCContext(characterImage, productImage, metadata =
             config: { responseMimeType: "application/json" }
         });
 
-        const text = result.response.text();
+        const text = result.text || result.response?.text?.() || "";
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         return JSON.parse(jsonMatch[0]);
     } catch (error) {
@@ -1348,7 +1351,7 @@ export async function generateCandidateHooks(analysis, niche, tone, directive = 
             config: { responseMimeType: "application/json" }
         });
 
-        const text = result.response.text();
+        const text = result.text || result.response?.text?.() || "";
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         const data = JSON.parse(jsonMatch[0]);
         return data.hooks || [];
@@ -1402,7 +1405,7 @@ export async function generateUGCScript(analysis, niche, tone, directive = "", t
             config: { responseMimeType: "application/json" }
         });
 
-        const text = result.response.text();
+        const text = result.text || result.response?.text?.() || "";
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         return JSON.parse(jsonMatch[0]);
     } catch (error) {

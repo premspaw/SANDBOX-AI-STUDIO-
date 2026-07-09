@@ -14,6 +14,18 @@ const MODELS = [
         accent: "#555555",
     },
     {
+        id: "gemini-3.1-flash-lite-image",
+        name: "Nano Banana 2 Lite",
+        tag: "LITE / COST-SAVING",
+        tagColor: "#F59E0B",
+        credits: "0.5 credit",
+        speed: "⚡⚡⚡",
+        quality: "●●●○○",
+        res: "1K max",
+        desc: "Lowest credit cost and fastest generation. Perfect for rapid exploration.",
+        accent: "#F59E0B",
+    },
+    {
         id: "gemini-3.1-flash-image-preview",
         name: "Nano Banana 2",
         tag: "RECOMMENDED",

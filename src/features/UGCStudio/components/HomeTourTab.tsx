@@ -177,6 +177,18 @@ export default function HomeTourTab() {
   const [tourStyle, setTourStyle] = useState<'friendly' | 'luxury' | 'energetic' | 'minimal'>('friendly');
   const [chatTab, setChatTab] = useState<'script' | 'video'>('script');
 
+  // Continuous Walkthrough States
+  const [tourMode, setTourMode] = useState<'individual' | 'continuous'>('individual');
+  const [continuousDuration, setContinuousDuration] = useState<10 | 20 | 30>(20);
+  const [continuousScript, setContinuousScript] = useState('');
+  const [continuousSegments, setContinuousSegments] = useState<{ segmentIndex: number; script: string; prompt: string }[]>([]);
+  const [isGeneratingContinuousScript, setIsGeneratingContinuousScript] = useState(false);
+  const [isGeneratingContinuousVideo, setIsGeneratingContinuousVideo] = useState(false);
+
+  // Script and language states
+  const [language, setLanguage] = useState('English');
+  const [isGeneratingSingleScript, setIsGeneratingSingleScript] = useState(false);
+
   const [rooms, setRooms] = useState<RoomSlot[]>(
     DEFAULT_ROOMS.map(r => ({
       ...r,
@@ -245,42 +257,561 @@ export default function HomeTourTab() {
         return;
       }
 
+      let offset = 0;
+      const filledRoomsWithTimes = filledRooms.map((room) => {
+        const start = offset;
+        const end = offset + room.duration;
+        offset = end;
+
+        const fmt = (s: number) => {
+          const m = Math.floor(s / 60);
+          const sec = s % 60;
+          return `${m}:${String(sec).padStart(2, '0')}`;
+        };
+
+        return {
+          ...room,
+          timeRange: `[${fmt(start)} - ${fmt(end)}]`
+        };
+      });
+
       const propertyContext = [
         propertyName && `Property: ${propertyName}`,
         propertyPrice && `Price: ${propertyPrice}`,
         propertyLocation && `Location: ${propertyLocation}`,
       ].filter(Boolean).join(', ');
 
-      const updatedRooms = rooms.map((room, idx) => {
-        if (!room.image) return room;
+      const tourScriptPrompt = `
+You are a professional real estate video copywriter.
+Generate a cohesive property tour script and visual video prompts for the following rooms:
+${filledRoomsWithTimes.map((r) => `- Room: "${r.label}" (ID: "${r.id}", Duration: ${r.duration} seconds, Timestamp Range: ${r.timeRange})`).join('\n')}
 
-        const script = buildRoomScript({
-          roomLabel: room.label,
-          propertyDetails: propertyContext,
-          tourTone: tourStyle,
-          isFirst: idx === 0 && room.id === filledRooms[0].id,
-          isLast: room.id === filledRooms[filledRooms.length - 1].id,
+Property Details:
+- Context: ${propertyContext || 'Premium Property'}
+- Tour Tone/Style: ${tourStyle}
+- Language: ${language}
+- Has Realtor/Agent: ${realtorImg ? 'Yes' : 'No'}
+
+For each room, generate:
+1. "script": A spoken monologue for this room.
+   - It MUST be written in ${language} (if Dravidian/Hindi, write in that language's script).
+   - The script must fit the duration of the room (about 3 words per second: e.g., 12 words for 4s, 18 words for 6s, 24 words for 8s, 30 words for 10s).
+   - Keep it natural, warm, and highly engaging. Do not include labels like "HOOK:" or timestamps in the spoken script.
+   - CRITICAL TOUR SEQUENCE FLOW: Only the first room in the list should start with a greeting or welcome message. Subsequent rooms MUST transition smoothly without any "welcome" or greetings.
+2. "prompt": A detailed visual motion prompt (Veo video prompt) describing the video shot for this room.
+   - If "Has Realtor" is Yes, describe the realtor standing inside the room and gesturing.
+   - If No, describe a clean, professional cinematic walkthrough of the room.
+   - Always describe smooth camera movements, lighting, and photorealistic real estate aesthetics.
+
+Return a JSON array of objects, each object structured as:
+{
+  "id": "room ID matching the input room ID exactly",
+  "script": "spoken monologue in ${language}",
+  "prompt": "visual prompt for video generation"
+}
+      `.trim();
+
+      const responseSchema = {
+            type: 'ARRAY',
+            items: {
+              type: 'OBJECT',
+              properties: {
+                id: { type: 'STRING' },
+                script: { type: 'STRING' },
+                prompt: { type: 'STRING' }
+              },
+              required: ['id', 'script', 'prompt']
+            }
+          };
+
+      let responseText: string | undefined;
+
+      // Try server-side first (uses service account with separate billing)
+      try {
+        const serverResp = await fetch(getApiUrl('/api/ugc/generate-text'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: tourScriptPrompt, model: 'gemini-2.5-flash', responseSchema }),
         });
+        if (serverResp.ok) {
+          const serverData = await serverResp.json();
+          responseText = serverData.text;
+        } else {
+          console.warn('[TourScripts] Server-side failed, falling back to client-side...');
+        }
+      } catch (serverErr) {
+        console.warn('[TourScripts] Server unreachable, falling back to client-side...', serverErr);
+      }
 
-        const prompt = buildRoomTourPrompt({
-          roomLabel: room.label,
-          roomScript: script,
-          hasRealtor: !!realtorImg,
-          propertyName: propertyName || 'Premium Property',
-          shotIndex: filledRooms.findIndex(r => r.id === room.id),
-          totalRooms: filledRooms.length,
-          tourStyle,
+      // Fallback to client-side
+      if (!responseText) {
+        const ai = new GoogleGenAI({ apiKey: getApiKey() });
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: tourScriptPrompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema,
+          }
         });
+        responseText = response.text;
+      }
 
-        return { ...room, script, prompt };
+      if (!responseText) throw new Error('Empty response from AI');
+      const generatedList = JSON.parse(responseText) as { id: string; script: string; prompt: string }[];
+      
+      const updatedRooms = rooms.map((room) => {
+        const generated = generatedList.find(g => g.id === room.id);
+        if (generated) {
+          const timeData = filledRoomsWithTimes.find(t => t.id === room.id);
+          const prefix = timeData ? `${timeData.timeRange} ${room.label.toUpperCase()}: ` : '';
+          
+          const cleanScript = generated.script
+            .replace(/^\[\d+:\d+\s*[-–]\s*\d+:\d+\]\s*[^:]*:\s*/i, '')
+            .trim();
+
+          return {
+            ...room,
+            script: `${prefix}${cleanScript}`,
+            prompt: generated.prompt
+          };
+        }
+        return room;
       });
 
       setRooms(updatedRooms);
-      showToast(`Scripts generated for ${filledRooms.length} rooms!`, 'success');
+      showToast(`Scripts generated for ${filledRooms.length} rooms in ${language}!`, 'success');
     } catch (e) {
       handleApiError(e, 'Tour script generation');
     }
     setIsGeneratingScripts(false);
+  };
+
+  // ── Generate AI script for a single room ────────────────────────
+  const generateSingleRoomScript = async (roomId: string) => {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+
+    setIsGeneratingSingleScript(true);
+    try {
+      const filledRooms = rooms.filter(r => r.image !== null);
+      let offset = 0;
+      let timeRange = '';
+      
+      for (const fr of filledRooms) {
+        if (fr.id === room.id) {
+          const start = offset;
+          const end = offset + room.duration;
+          const fmt = (s: number) => {
+            const m = Math.floor(s / 60);
+            const sec = s % 60;
+            return `${m}:${String(sec).padStart(2, '0')}`;
+          };
+          timeRange = `[${fmt(start)} - ${fmt(end)}]`;
+          break;
+        }
+        offset += fr.duration;
+      }
+
+      const propertyContext = [
+        propertyName && `Property: ${propertyName}`,
+        propertyPrice && `Price: ${propertyPrice}`,
+        propertyLocation && `Location: ${propertyLocation}`,
+      ].filter(Boolean).join(', ');
+
+      const isFirstRoom = filledRooms[0]?.id === room.id;
+
+      const ai = new GoogleGenAI({ apiKey: getApiKey() });
+      
+      const prompt = `
+You are a professional real estate video copywriter.
+Generate a property tour script and visual video prompt for the following single room:
+- Room: "${room.label}" (Duration: ${room.duration} seconds, Timestamp Range: ${timeRange})
+
+Property Details:
+- Context: ${propertyContext || 'Premium Property'}
+- Tour Tone/Style: ${tourStyle}
+- Language: ${language}
+- Has Realtor/Agent: ${realtorImg ? 'Yes' : 'No'}
+
+Please generate:
+1. "script": A spoken monologue for this room. 
+   - It MUST be written in ${language} (if Dravidian/Hindi, write in that language's script, e.g., Telugu script for Telugu, Devanagari script for Hindi).
+   - The script must fit the duration of the room (about 3 words per second: e.g., 12 words for 4s, 18 words for 6s, 24 words for 8s, 30 words for 10s).
+   - Keep it natural, warm, and highly engaging. Do not include labels like "HOOK:" or timestamps in the spoken script.
+   - CRITICAL TOUR SEQUENCE FLOW: ${isFirstRoom ? "This is the very first room of the tour. Start the monologue with an engaging welcome/greeting (e.g., 'Welcome to...')." : "This is NOT the first room of the tour. Do NOT include any welcome, greeting, or introductory phrase. Instead, start directly or with a smooth transition (e.g. 'Next we step into...', 'Entering the...'). Do not write 'Welcome'."}
+2. "prompt": A detailed visual motion prompt (Veo video prompt) describing the video shot for this room. 
+   - If "Has Realtor" is Yes, describe the realtor standing inside the room and gesturing.
+   - If No, describe a clean, professional cinematic walkthrough of the room.
+   - Always describe smooth camera movements, lighting, and photorealistic real estate aesthetics.
+
+Return a JSON object structured exactly as:
+{
+  "script": "spoken monologue in ${language}",
+  "prompt": "visual prompt for video generation"
+}
+      `.trim();
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'OBJECT',
+            properties: {
+              script: { type: 'STRING' },
+              prompt: { type: 'STRING' }
+            },
+            required: ['script', 'prompt']
+          }
+        }
+      });
+
+      const responseText = response.text;
+      if (!responseText) throw new Error("Empty response from AI");
+      
+      const generated = JSON.parse(responseText) as { script: string; prompt: string };
+      
+      const prefix = timeRange ? `${timeRange} ${room.label.toUpperCase()}: ` : '';
+      const cleanScript = generated.script
+        .replace(/^\[\d+:\d+\s*[-–]\s*\d+:\d+\]\s*[^:]*:\s*/i, '')
+        .trim();
+
+      setRooms(prev => prev.map(r =>
+        r.id === roomId ? { ...r, script: `${prefix}${cleanScript}`, prompt: generated.prompt } : r
+      ));
+      showToast(`Script rewritten for ${room.label} in ${language}!`, 'success');
+    } catch (e) {
+      handleApiError(e, 'Single room script generation');
+    } finally {
+      setIsGeneratingSingleScript(false);
+    }
+  };
+
+  // ── Generate AI script for continuous walkthrough ───────────────
+  const generateContinuousTourScript = async () => {
+    const filledRooms = rooms.filter(r => r.image !== null);
+    if (filledRooms.length < 2) {
+      showToast('Please upload photos for at least 2 rooms first', 'error');
+      return;
+    }
+
+    setIsGeneratingContinuousScript(true);
+    try {
+      const propertyContext = [
+        propertyName && `Property: ${propertyName}`,
+        propertyPrice && `Price: ${propertyPrice}`,
+        propertyLocation && `Location: ${propertyLocation}`,
+      ].filter(Boolean).join(', ');
+
+      const numSegments = Math.min(Math.floor(continuousDuration / 10), filledRooms.length - 1);
+      const activeSequence = filledRooms.slice(0, numSegments + 1);
+
+      const segmentInstructions = [];
+      for (let i = 0; i < numSegments; i++) {
+        const fromRoom = activeSequence[i]?.label || `Room ${i + 1}`;
+        const toRoom = activeSequence[i + 1]?.label || `Room ${i + 2}`;
+        segmentInstructions.push(`   - For Segment Index ${i}: describe camera pan/dolly walking from ${fromRoom} into ${toRoom}.`);
+      }
+
+      const prompt = `
+You are a professional real estate video copywriter.
+Generate a single continuous property tour voiceover monologue script and visual scene prompts for a ${continuousDuration}-second walkthrough.
+The tour transitions through the following rooms in order:
+${activeSequence.map((r, i) => `${i + 1}. Room: "${r?.label || 'Room'}"`).join('\n')}
+
+Property Details:
+- Context: ${propertyContext || 'Premium Property'}
+- Tone: ${tourStyle}
+- Language: ${language}
+- Has Realtor: ${realtorImg ? 'Yes' : 'No'}
+
+Please generate:
+1. "script": A single cohesive spoken monologue for the entire tour (duration: ${continuousDuration} seconds).
+   - It MUST be written in ${language} (using native script).
+   - Keep it natural, warm, and highly engaging. Do not include labels or timestamps in the spoken script.
+2. "segments": An array of exactly ${numSegments} objects. One for each transition segment of 10 seconds.
+${segmentInstructions.join('\n')}
+   - If realtor is present, describe the realtor standing/gesturing to show the transition.
+
+Return a JSON object structured exactly as:
+{
+  "script": "full monologue script across all rooms",
+  "segments": [
+    {
+      "segmentIndex": 0,
+      "script": "monologue portion for this 10-second segment",
+      "prompt": "visual motion prompt for walking from Room A to Room B"
+    }
+  ]
+}
+      `.trim();
+
+      const responseSchema = {
+        type: 'OBJECT',
+        properties: {
+          script: { type: 'STRING' },
+          segments: {
+            type: 'ARRAY',
+            items: {
+              type: 'OBJECT',
+              properties: {
+                segmentIndex: { type: 'INTEGER' },
+                script: { type: 'STRING' },
+                prompt: { type: 'STRING' }
+              },
+              required: ['segmentIndex', 'script', 'prompt']
+            }
+          }
+        },
+        required: ['script', 'segments']
+      };
+
+      let responseText: string | undefined;
+
+      // Try server-side first (uses service account with separate billing)
+      try {
+        const serverResp = await fetch(getApiUrl('/api/ugc/generate-text'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, model: 'gemini-2.5-flash', responseSchema }),
+        });
+        if (serverResp.ok) {
+          const serverData = await serverResp.json();
+          responseText = serverData.text;
+        } else {
+          console.warn('[ContinuousScript] Server-side failed, falling back to client-side...');
+        }
+      } catch (serverErr) {
+        console.warn('[ContinuousScript] Server unreachable, falling back to client-side...', serverErr);
+      }
+
+      // Fallback to client-side if server didn't return a result
+      if (!responseText) {
+        const ai = new GoogleGenAI({ apiKey: getApiKey() });
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema,
+          }
+        });
+        responseText = response.text;
+      }
+
+      if (!responseText) throw new Error("Empty response from AI");
+      const generated = JSON.parse(responseText) as {
+        script: string;
+        segments: { segmentIndex: number; script: string; prompt: string }[];
+      };
+
+      setContinuousScript(generated.script);
+      setContinuousSegments(generated.segments);
+      showToast(`Continuous script generated for ${numSegments} transition segments!`, 'success');
+    } catch (e) {
+      handleApiError(e, 'Continuous script generation');
+    } finally {
+      setIsGeneratingContinuousScript(false);
+    }
+  };
+
+  // ── Generate Video for Continuous Walkthrough ───────────────────
+  const generateContinuousVideo = async () => {
+    const filledRooms = rooms.filter(r => r.image !== null);
+    if (filledRooms.length < 2) {
+      showToast('Please upload photos for at least 2 rooms first', 'error');
+      return;
+    }
+
+    const numSegments = Math.min(Math.floor(continuousDuration / 10), filledRooms.length - 1);
+    if (continuousSegments.length === 0) {
+      showToast('Please auto-write the script/prompt sequence first', 'error');
+      return;
+    }
+
+    const segmentDuration = 10;
+    const singleSegmentCost = getCurrentCost(false, segmentDuration);
+    const totalCost = singleSegmentCost * numSegments;
+
+    if (!isAdmin && !isGlobalAdmin) {
+      const spendRes = await spend('veo_fast', totalCost as any);
+      if (!spendRes?.success) {
+        showToast(`Need ${totalCost} Shorts to generate continuous walkthrough`, 'error');
+        return;
+      }
+    }
+
+    setIsGeneratingContinuousVideo(true);
+    setVideoProgressMsg(`Starting continuous walkthrough (0/${numSegments} segments)...`);
+
+    try {
+      const generatedClips: { index: number; url: string; roomId: string }[] = [];
+
+      for (let i = 0; i < numSegments; i++) {
+        const startRoom = filledRooms[i];
+        const endRoom = filledRooms[i + 1];
+        const segmentData = continuousSegments.find(s => s.segmentIndex === i) || {
+          script: `Touring from ${startRoom.label} to ${endRoom.label}`,
+          prompt: `A continuous camera walkthrough walking from ${startRoom.label} into ${endRoom.label}.`
+        };
+
+        setVideoProgressMsg(`Generating Segment ${i + 1}/${numSegments}: ${startRoom.label} → ${endRoom.label}...`);
+
+        let imagePayload: { imageBytes: string; mimeType: string } | undefined;
+        if (realtorImg) {
+          let compositePrompt = `
+The FIRST image is the REALTOR/AGENT reference photo.
+The SECOND image is the ${startRoom.label} of a property.
+TASK: Generate ONE single coherent photo of this realtor standing inside the ${startRoom.label}, facing the camera with a welcoming gesture.
+CRITICAL: The face/likeness must match the first reference photo exactly.
+          `.trim();
+
+          const refImages = [
+            { url: realtorImg.url || URL.createObjectURL(realtorImg.file) },
+            { url: startRoom.image!.url }
+          ];
+
+          const compResponse = await fetch(getApiUrl('/api/generate-image'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'nano-banana-2',
+              prompt: compositePrompt,
+              aspect_ratio: '9:16',
+              size: '2K',
+              userId: currentUserId,
+              folder: 'ugc/generated',
+              referenceImages: refImages,
+            }),
+          });
+
+          if (compResponse.ok) {
+            const compData = await compResponse.json();
+            let compositeUrl = compData.imageUrl || compData.url;
+            if (compData.jobId) {
+              let attempts = 0;
+              const pollUrl = getApiUrl(`/api/job-status/${compData.jobId}`);
+              while (attempts < 30) {
+                await new Promise(r => setTimeout(r, 3000));
+                attempts++;
+                const pollRes = await fetch(pollUrl);
+                if (pollRes.ok) {
+                  const pollData = await pollRes.json();
+                  if (pollData.status === 'done' && pollData.imageUrl) {
+                    compositeUrl = pollData.imageUrl;
+                    break;
+                  }
+                }
+              }
+            }
+            if (compositeUrl) {
+              const blob = await fetchImageAsBlob(compositeUrl);
+              const base64 = await resizeImage(blob);
+              imagePayload = { imageBytes: base64, mimeType: 'image/jpeg' };
+            }
+          }
+        }
+
+        if (!imagePayload && startRoom.image) {
+          const blob = await fetchImageAsBlob(startRoom.image.url);
+          const base64 = await resizeImage(blob);
+          imagePayload = { imageBytes: base64, mimeType: 'image/jpeg' };
+        }
+
+        let finalPrompt = segmentData.prompt;
+        finalPrompt += `\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. The background structure, walls, cabinets, furniture, and geometric details MUST remain 100% stable. No transitions, no flips. Only smooth, steady forward walkthrough camera motion.`;
+
+        if (realtorImg) {
+          finalPrompt += `\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.`;
+        }
+
+        let imageToSend = '';
+        if (imagePayload) {
+          imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
+        }
+
+        let refImagesList: any[] = [];
+        if (endRoom.image) {
+          try {
+            const blob = await fetchImageAsBlob(endRoom.image.url);
+            const base64 = await resizeImage(blob);
+            refImagesList.push({ url: `data:image/jpeg;base64,${base64}` });
+          } catch (e) {
+            console.warn('[HomeTour-Omni] Failed to resolve end room reference image:', e);
+          }
+        }
+        if (realtorImg) {
+          try {
+            const base64 = await resizeImage(realtorImg.file);
+            refImagesList.push({ url: `data:${realtorImg.file.type || 'image/jpeg'};base64,${base64}` });
+          } catch (e) {
+            console.warn('[HomeTour-Omni] Failed to resolve realtor reference image:', e);
+          }
+        }
+
+        const resp = await fetch(getApiUrl('/api/omni-i2v'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image: imageToSend || undefined,
+            motionPrompt: finalPrompt,
+            duration: segmentDuration,
+            aspectRatio: aspectRatio === '1:1' ? '9:16' : aspectRatio as any,
+            resolution: '720p',
+            model: 'gemini-omni-flash-preview',
+            userId: currentUserId,
+            generateAudio: includeAudio,
+            creditReason: 'veo_fast',
+            ref_images: refImagesList
+          })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok || !data.videoUrl) {
+          throw new Error(data.error || `Segment ${i+1} generation failed`);
+        }
+
+        generatedClips.push({ index: i, url: data.videoUrl, roomId: startRoom.id });
+      }
+
+      setRooms(prev => prev.map(r => {
+        const clip = generatedClips.find(c => c.roomId === r.id);
+        if (clip) {
+          const segData = continuousSegments.find(s => s.segmentIndex === clip.index);
+          const prefix = `[${clip.index * 10}:00 - ${(clip.index + 1) * 10}:00] ${r.label.toUpperCase()}: `;
+          return {
+            ...r,
+            generatedVideo: clip.url,
+            script: segData ? `${prefix}${segData.script}` : r.script,
+            prompt: segData ? segData.prompt : r.prompt,
+            duration: segmentDuration
+          };
+        }
+        return r;
+      }));
+
+      generatedClips.forEach(clip => {
+        const startRoom = filledRooms.find(r => r.id === clip.roomId);
+        addToGallery({
+          id: `room-vid-${startRoom?.id || clip.index}-${Date.now()}`,
+          type: 'video',
+          url: clip.url,
+          loading: false
+        });
+      });
+
+      showToast(`Successfully generated ${numSegments} continuous transition segments!`, 'success');
+    } catch (e: any) {
+      if (!isAdmin && !isGlobalAdmin) {
+        refund('veo_fast', totalCost as any);
+      }
+      handleApiError(e, 'Continuous walkthrough generation');
+    } finally {
+      setIsGeneratingContinuousVideo(false);
+      setVideoProgressMsg('');
+    }
   };
 
   // ── Generate AI image for active room ─────────────────────────
@@ -341,7 +872,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: imgEngine === 'gpt2' ? 'gpt-image-1' : 'nano-banana-2',
+          model: imgEngine === 'gpt2' ? 'gpt-image-1' : imgEngine === 'nb2-lite' ? 'nano-banana-2-lite' : imgEngine === 'nb2-open' ? 'nano-banana-2-open' : 'nano-banana-2',
           prompt,
           aspect_ratio: '9:16',
           size: '2K',
@@ -527,23 +1058,43 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
           imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
         }
 
+        // Add strict geometry and layout preservation to prevent morphing, transitions, flips or perspective warping
+        finalPrompt += `\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No transitions, no flips. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).`;
+
+        // Add a short face-consistency instruction when a realtor image is present
+        if (realtorImg) {
+          finalPrompt += `\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.`;
+        }
+
         const headers: any = { 'Content-Type': 'application/json' };
         const customKey = getApiKey();
         if (customKey) headers['x-admin-trial-key'] = customKey;
+
+        // Resolve realtor image as a reference image for face identity lock in Omni Flash
+        let refImagesList: any[] = [];
+        if (realtorImg) {
+          try {
+            const base64 = await resizeImage(realtorImg.file);
+            refImagesList.push({ url: `data:${realtorImg.file.type || 'image/jpeg'};base64,${base64}` });
+          } catch (e) {
+            console.warn('[HomeTour-Omni] Failed to resolve realtor reference image:', e);
+          }
+        }
 
         const resp = await fetch(getApiUrl('/api/omni-i2v'), {
           method: 'POST',
           headers,
           body: JSON.stringify({
             image: imageToSend || undefined,
-            motionPrompt: finalPrompt.substring(0, 1000),
+            motionPrompt: finalPrompt.substring(0, 2000),
             duration: room.duration,
             aspectRatio: aspectRatio === '1:1' ? '9:16' : aspectRatio as any,
             resolution: '720p',
             model: 'gemini-omni-flash-preview',
-            userId: userId,
+            userId: currentUserId,
             generateAudio: includeAudio,
-            creditReason: 'ugc_video_generation'
+            creditReason: 'veo_fast',
+            ref_images: refImagesList
           })
         });
 
@@ -879,20 +1430,16 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             <p className="text-[9px] font-black text-white/30 uppercase tracking-widest flex items-center gap-1.5">
               <Sparkles size={10} className="text-[#c8f135]" /> Room Generator
             </p>
-            <div className="flex bg-black/40 p-0.5 rounded-md border border-[#1e1e24]">
-              <button 
-                onClick={() => setImgEngine('nb2')} 
-                className={`px-2 py-0.5 rounded text-[7px] font-black uppercase tracking-wider transition-all ${imgEngine === 'nb2' ? 'bg-[#c8f135]/20 text-[#c8f135] border border-[#c8f135]/30' : 'text-white/30 hover:text-white/60'}`}
-              >
-                NB2
-              </button>
-              <button 
-                onClick={() => setImgEngine('gpt2')} 
-                className={`px-2 py-0.5 rounded text-[7px] font-black uppercase tracking-wider transition-all ${imgEngine === 'gpt2' ? 'bg-[#c8f135]/20 text-[#c8f135] border border-[#c8f135]/30' : 'text-white/30 hover:text-white/60'}`}
-              >
-                GT2
-              </button>
-            </div>
+            <select
+              value={imgEngine}
+              onChange={e => setImgEngine(e.target.value as any)}
+              className="bg-black/40 border border-[#1e1e24] px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase text-white/80 outline-none cursor-pointer hover:border-white/20 transition-colors"
+            >
+              <option value="nb2" className="bg-[#0a0a0c]">NB2 (1 cr)</option>
+              <option value="nb2-open" className="bg-[#0a0a0c]">NB2 GA (1 cr)</option>
+              <option value="nb2-lite" className="bg-[#0a0a0c]">NB2 Lite (0.5 cr)</option>
+              <option value="gpt2" className="bg-[#0a0a0c]">GT2 (1-3 cr)</option>
+            </select>
           </div>
           <button 
             onClick={generateActiveRoomImage}
@@ -906,7 +1453,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             {generatingRoomId === activeRoomId ? (
               <><Loader2 size={10} className="animate-spin" /> Generating...</>
             ) : (
-              <><Sparkles size={10} /> Generate {activeRoom.label}</>
+              <><Sparkles size={10} /> Generate {activeRoom?.label || 'Room'}</>
             )}
           </button>
         </div>
@@ -946,7 +1493,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         {/* Gallery Content */}
         <GalleryGrid />
 
-        {/* ── FLOATING CHAT BOX OVERLAY ── */}
+        {/* ── ACTIVE ROOM CONTROLS DOCKED PANEL ── */}
         {activeRoom && (
           <div className="absolute bottom-0 left-1/2 -translate-x-1/2 z-20 px-4 pb-4 w-full max-w-4xl">
             <motion.div
@@ -954,30 +1501,46 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
               animate={{ y: 0, opacity: 1 }}
               className="bg-[#0e0e10]/95 backdrop-blur-2xl border border-[#1e1e24] rounded-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.6)] overflow-visible"
             >
-              {/* Tab switcher: Script | Video */}
-              <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 border-b border-[#1e1e24] p-2 md:p-0 relative">
-                <div className="flex items-center gap-0 w-full md:w-auto">
-                  {(['script', 'video'] as const).map(tab => (
+              {/* Header Bar */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-[#1e1e24] px-4 py-2.5">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#c8f135] animate-pulse" />
+                    <p className="text-[10px] font-black text-white uppercase tracking-[0.15em]">
+                      {tourMode === 'continuous' ? 'Continuous Walkthrough' : `Room Editor: ${activeRoom.label}`}
+                    </p>
+                  </div>
+                  
+                  {/* Mode Selector Switcher */}
+                  <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/5">
                     <button
-                      key={tab}
-                      onClick={() => { setChatTab(tab); setIsChatCollapsed(false); }}
-                      className={`flex-grow md:flex-grow-0 flex items-center justify-center gap-1.5 px-4 md:px-5 py-3 text-[9px] font-black uppercase tracking-widest transition-all border-b-2 ${
-                        chatTab === tab
-                          ? 'border-[#c8f135] text-[#c8f135] bg-[#c8f135]/5'
-                          : 'border-transparent text-white/30 hover:text-white/60'
+                      onClick={() => setTourMode('individual')}
+                      className={`px-2 py-0.5 rounded-md text-[7px] font-black uppercase tracking-wider transition-all ${
+                        tourMode === 'individual'
+                          ? 'bg-[#c8f135]/20 text-[#c8f135] border border-[#c8f135]/30'
+                          : 'text-white/40 hover:text-white/70'
                       }`}
                     >
-                      {tab === 'script' ? <FileText size={10} /> : <Film size={10} />}
-                      {tab === 'script' ? 'Room Script' : 'Video Generator'}
+                      Individual
                     </button>
-                  ))}
+                    <button
+                      onClick={() => setTourMode('continuous')}
+                      className={`px-2 py-0.5 rounded-md text-[7px] font-black uppercase tracking-wider transition-all ${
+                        tourMode === 'continuous'
+                          ? 'bg-[#c8f135]/20 text-[#c8f135] border border-[#c8f135]/30'
+                          : 'text-white/40 hover:text-white/70'
+                      }`}
+                    >
+                      Continuous
+                    </button>
+                  </div>
                 </div>
 
-                {/* Tour Style Dropdown */}
-                {chatTab === 'script' && (
-                  <div className="ml-0 md:ml-auto mr-2 relative group self-start md:self-auto py-1">
-                    <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black uppercase text-white/60 hover:text-[#c8f135] hover:border-[#c8f135]/40 transition-all">
-                      <Sparkles size={10} className="text-[#c8f135]" />
+                <div className="flex items-center gap-2">
+                  {/* Tour Style Dropdown */}
+                  <div className="relative group py-1">
+                    <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[8px] font-black uppercase text-white/60 hover:text-[#c8f135] hover:border-[#c8f135]/40 transition-all font-mono">
+                      <Sparkles size={9} className="text-[#c8f135]" />
                       <span>Style: {tourStyle}</span>
                       <ChevronDown size={8} />
                     </button>
@@ -993,208 +1556,354 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                       ))}
                     </div>
                   </div>
-                )}
 
-                {/* Collapse / Expand Toggle */}
-                <button
-                  onClick={() => setIsChatCollapsed(!isChatCollapsed)}
-                  title={isChatCollapsed ? 'Expand chat' : 'Collapse chat'}
-                  className={`absolute right-2 top-2.5 md:relative md:right-0 md:top-0 shrink-0 w-6 h-6 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-[#c8f135] hover:border-[#c8f135]/40 transition-all ${chatTab !== 'script' ? 'md:ml-auto md:mr-2' : 'md:mr-2'}`}
-                >
-                  <motion.div animate={{ rotate: isChatCollapsed ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                    <ChevronDown size={11} />
-                  </motion.div>
-                </button>
+                  {/* Language Dropdown */}
+                  <div className="relative group py-1">
+                    <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[8px] font-black uppercase text-white/60 hover:text-[#c8f135] hover:border-[#c8f135]/40 transition-all font-mono">
+                      <Sparkles size={9} className="text-[#c8f135]" />
+                      <span>Lang: {language}</span>
+                      <ChevronDown size={8} />
+                    </button>
+                    <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block bg-[#0e0e10] border border-[#1e1e24] rounded-xl py-1 min-w-[100px] shadow-xl z-50">
+                      {['English', 'Hindi', 'Telugu', 'Tamil', 'Malayalam', 'Kannada'].map(lang => (
+                        <button
+                          key={lang}
+                          onClick={() => setLanguage(lang)}
+                          className="w-full text-left px-3 py-1.5 text-[8px] font-black uppercase text-white/50 hover:text-[#c8f135] hover:bg-white/5 transition-all"
+                        >
+                          {lang}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Collapse / Expand Toggle */}
+                  <button
+                    onClick={() => setIsChatCollapsed(!isChatCollapsed)}
+                    title={isChatCollapsed ? 'Expand panel' : 'Collapse panel'}
+                    className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-[#c8f135] hover:border-[#c8f135]/40 transition-all animate-none"
+                  >
+                    <motion.div animate={{ rotate: isChatCollapsed ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                      <ChevronDown size={11} />
+                    </motion.div>
+                  </button>
+                </div>
               </div>
 
-              {/* Collapsible body */}
+              {/* Panel Content (Collapsible) */}
               <motion.div
                 animate={{ height: isChatCollapsed ? 0 : 'auto', opacity: isChatCollapsed ? 0 : 1 }}
                 transition={{ duration: 0.22, ease: 'easeInOut' }}
                 className="max-h-[50vh] md:max-h-none overflow-y-auto custom-scrollbar"
                 style={{ overflowX: 'hidden' }}
               >
-                {chatTab === 'script' ? (
-                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Left: Script */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">
-                          Room Script ({activeRoom.label})
-                        </p>
-                        <button
-                          onClick={() => {
-                            const script = buildRoomScript({
-                              roomLabel: activeRoom.label,
-                              propertyDetails: '',
-                              tourTone: tourStyle,
-                              isFirst: rooms.filter(r => r.image)[0]?.id === activeRoom.id,
-                              isLast: rooms.filter(r => r.image).slice(-1)[0]?.id === activeRoom.id,
-                            });
-                            setRooms(prev => prev.map(r =>
-                              r.id === activeRoom.id ? { ...r, script } : r
-                            ));
-                          }}
-                          className="text-[8px] font-black text-[#c8f135] uppercase tracking-widest hover:underline animate-none transition-none"
-                        >
-                          Auto-Generate
-                        </button>
-                      </div>
-                      <textarea
-                        value={activeRoom.script}
-                        onChange={e => setRooms(prev => prev.map(r =>
-                          r.id === activeRoom.id ? { ...r, script: e.target.value } : r
-                        ))}
-                        placeholder={`e.g. "Welcome to this stunning property. Let me take you on a tour — starting right here..."`}
-                        rows={4}
-                        className="w-full bg-black/40 border border-[#1e1e24] rounded-xl px-3 py-2 text-[11px] text-white/80 focus:outline-none focus:border-[#c8f135]/40 resize-none leading-relaxed"
-                      />
-                    </div>
-
-                    {/* Right: Veo Prompt */}
-                    <div className="space-y-2">
-                      <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">
-                        Veo Prompt (auto-built from script)
-                      </p>
-                      <textarea
-                        value={activeRoom.prompt}
-                        onChange={e => setRooms(prev => prev.map(r =>
-                          r.id === activeRoom.id ? { ...r, prompt: e.target.value } : r
-                        ))}
-                        placeholder="Veo video prompt — auto-generated when you run Generate Tour Scripts"
-                        rows={4}
-                        className="w-full bg-black/40 border border-[#1e1e24] rounded-xl px-3 py-2 text-[10px] text-white/50 font-mono focus:outline-none focus:border-[#c8f135]/40 resize-none leading-relaxed"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
-                    {/* Column 1: Active Room Shot generation */}
-                    <div className="flex flex-col justify-between p-3 bg-white/5 border border-white/10 rounded-xl">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">
-                          Clip ({activeRoom.label})
-                        </p>
-                        {/* Shot Duration selector */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-[7px] text-white/30 uppercase tracking-widest">Dur</span>
-                          {([4, 6, 8] as const).map(d => (
-                            <button
-                              key={d}
-                              onClick={() => setRooms(prev => prev.map(r =>
-                                r.id === activeRoom.id ? { ...r, duration: d } : r
+                <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
+                  
+                  {tourMode === 'individual' ? (
+                    <>
+                      {/* Column 1: Voiceover Script */}
+                      <div className="flex flex-col space-y-2 bg-white/5 border border-white/10 p-3 rounded-xl relative overflow-hidden font-sans">
+                        {(isGeneratingScripts || isGeneratingSingleScript) && (
+                          <div className="absolute inset-0 z-10 bg-black/70 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center gap-2">
+                            <div className="flex gap-1">
+                              {[0, 1, 2].map(i => (
+                                <div
+                                  key={i}
+                                  className="w-1.5 h-1.5 bg-[#c8f135] rounded-full animate-bounce"
+                                  style={{ animationDelay: `${i * 0.15}s` }}
+                                />
                               ))}
-                              className={`px-1.5 py-0.5 rounded text-[8px] font-black border transition-all ${
-                                activeRoom.duration === d
-                                  ? 'bg-[#c8f135] text-black border-[#c8f135]'
-                                  : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'
-                              }`}
-                            >
-                              {d}s
-                            </button>
+                            </div>
+                            <p className="text-[9px] font-mono text-[#c8f135] uppercase tracking-widest animate-pulse">
+                              Writing script...
+                            </p>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">
+                            Voiceover Monologue
+                          </p>
+                          <button
+                            onClick={() => generateSingleRoomScript(activeRoom.id)}
+                            disabled={isGeneratingScripts || isGeneratingSingleScript}
+                            className="text-[8px] font-black text-[#c8f135] uppercase tracking-widest hover:underline flex items-center gap-1 font-mono"
+                          >
+                            <Sparkles size={8} /> Auto Write
+                          </button>
+                        </div>
+                        <textarea
+                          value={activeRoom.script}
+                          onChange={e => setRooms(prev => prev.map(r =>
+                            r.id === activeRoom.id ? { ...r, script: e.target.value } : r
                           ))}
-                        </div>
+                          placeholder={`Monologue script written in ${language}...`}
+                          rows={5}
+                          className="w-full bg-black/40 border border-[#1e1e24] rounded-xl px-3 py-2 text-[10px] text-white/80 focus:outline-none focus:border-[#c8f135]/40 resize-none leading-relaxed flex-1 font-sans"
+                        />
                       </div>
 
-                      {/* Engine Selection */}
-                      <div className="flex items-center gap-1 mb-2 bg-black/40 p-0.5 rounded-lg border border-[#1e1e24]">
-                        {(['veo_lite', 'veo_fast', 'veo3'] as const).map(engine => {
-                           const label = engine === 'veo_lite' ? 'Veo Lite' : engine === 'veo_fast' ? 'Veo Fast' : 'Veo Std';
-                           return (
+                      {/* Column 2: Visual scene/Veo Prompt */}
+                      <div className="flex flex-col space-y-2 bg-white/5 border border-white/10 p-3 rounded-xl relative overflow-hidden font-mono">
+                        {(isGeneratingScripts || isGeneratingSingleScript) && (
+                          <div className="absolute inset-0 z-10 bg-black/70 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center gap-2">
+                            <div className="flex gap-1">
+                              {[0, 1, 2].map(i => (
+                                <div
+                                  key={i}
+                                  className="w-1.5 h-1.5 bg-[#c8f135] rounded-full animate-bounce"
+                                  style={{ animationDelay: `${i * 0.15}s` }}
+                                />
+                              ))}
+                            </div>
+                            <p className="text-[9px] font-mono text-[#c8f135] uppercase tracking-widest animate-pulse">
+                              Writing prompt...
+                            </p>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">
+                            Visual Motion Prompt
+                          </p>
+                        </div>
+                        <textarea
+                          value={activeRoom.prompt}
+                          onChange={e => setRooms(prev => prev.map(r =>
+                            r.id === activeRoom.id ? { ...r, prompt: e.target.value } : r
+                          ))}
+                          placeholder="Veo video prompt — auto-generated from property context and style..."
+                          rows={5}
+                          className="w-full bg-black/40 border border-[#1e1e24] rounded-xl px-3 py-2 text-[10px] text-white/50 font-mono focus:outline-none focus:border-[#c8f135]/40 resize-none leading-relaxed flex-1"
+                        />
+                      </div>
+
+                      {/* Column 3: Generator and Specs */}
+                      <div className="flex flex-col justify-between p-3 bg-white/5 border border-white/10 rounded-xl space-y-3 font-mono">
+                        
+                        {/* Specs info */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-[8px] font-mono text-white/55">
+                            <span className="uppercase text-white/30">Engine</span>
+                            <span className="text-[#c8f135] font-black">OMNI FLASH ⚡</span>
+                          </div>
+                          
+                          {/* Shot Duration selector */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-[8px] font-mono uppercase text-white/30">Duration</span>
+                            <div className="flex items-center gap-1">
+                              {([4, 6, 8, 10] as const).map(d => (
+                                <button
+                                  key={d}
+                                  onClick={() => setRooms(prev => prev.map(r =>
+                                    r.id === activeRoom.id ? { ...r, duration: d } : r
+                                  ))}
+                                  className={`px-1.5 py-0.5 rounded text-[8px] font-black border transition-all ${
+                                    activeRoom.duration === d
+                                      ? 'bg-[#c8f135] text-black border-[#c8f135]'
+                                      : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'
+                                  }`}
+                                >
+                                  {d}s
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[8px] font-mono text-white/55 border-t border-white/5 pt-1.5">
+                            <span className="uppercase text-white/30">Specs</span>
+                            <span>{filledRoomCount} rooms · {totalDuration}s total</span>
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="space-y-1.5">
+                          {activeRoom.image ? (
                             <button
-                              key={engine}
-                              onClick={() => setVideoGenMode(engine)}
-                              className={`flex-1 py-1 rounded text-[7px] font-black uppercase tracking-wider transition-all ${
-                                videoGenMode === engine
-                                  ? 'bg-[#c8f135]/20 text-[#c8f135] border border-[#c8f135]/30'
-                                  : 'text-white/30 hover:text-white/60'
+                              onClick={() => generateRoomVideo(activeRoom)}
+                              disabled={!!generatingRoomId || isGeneratingVideo}
+                              className={`w-full py-2 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                                generatingRoomId === activeRoom.id
+                                  ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
+                                  : 'bg-[#c8f135]/10 border border-[#c8f135]/30 text-[#c8f135] hover:bg-[#c8f135]/20'
                               }`}
                             >
-                              {label}
+                              {generatingRoomId === activeRoom.id ? (
+                                <><Loader2 size={10} className="animate-spin" />{videoProgressMsg}</>
+                              ) : (
+                                <><Film size={10} /> Generate {activeRoom.label} Video (⚡ {getCurrentCost(false, activeRoom.duration)})</>
+                              )}
                             </button>
-                           )
-                        })}
-                      </div>
-
-                      {activeRoom.image ? (
-                        <button
-                          onClick={() => generateRoomVideo(activeRoom)}
-                          disabled={!!generatingRoomId || isGeneratingVideo}
-                          className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
-                            generatingRoomId === activeRoom.id
-                              ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
-                              : 'bg-[#c8f135]/10 border border-[#c8f135]/30 text-[#c8f135] hover:bg-[#c8f135]/20'
-                          }`}
-                        >
-                          {generatingRoomId === activeRoom.id ? (
-                            <><Loader2 size={10} className="animate-spin" />{videoProgressMsg}</>
                           ) : (
-                            <><Film size={10} /> Generate {activeRoom.label} Shot (⚡ {getCurrentCost(false, activeRoom.duration)})</>
+                            <div className="text-[9px] text-white/30 text-center py-2 border border-dashed border-white/10 rounded-xl">
+                              Upload photo to generate video
+                            </div>
                           )}
-                        </button>
-                      ) : (
-                        <div className="text-[9px] text-white/30 text-center py-4">
-                          Upload room photo to generate shot
+
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <button
+                              onClick={generateTourScripts}
+                              disabled={isGeneratingScripts || filledRoomCount === 0}
+                              className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
+                                isGeneratingScripts || filledRoomCount === 0
+                                  ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
+                                  : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10'
+                              }`}
+                            >
+                              {isGeneratingScripts ? (
+                                <><Loader2 size={8} className="animate-spin" /> Writing...</>
+                              ) : (
+                                <><Sparkles size={8} /> Auto All Scripts</>
+                              )}
+                            </button>
+
+                            <button
+                              onClick={generateFullTour}
+                              disabled={isGeneratingVideo || filledRoomCount === 0}
+                              className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
+                                isGeneratingVideo || filledRoomCount === 0
+                                  ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
+                                  : 'bg-[#c8f135] text-black hover:bg-[#d4ff3a] border border-[#c8f135]'
+                              }`}
+                            >
+                              {isGeneratingVideo ? (
+                                <><Loader2 size={8} className="animate-spin" /> Running...</>
+                              ) : (
+                                <><MapPin size={8} /> Gen All Video</>
+                              )}
+                            </button>
+                          </div>
                         </div>
-                      )}
-                    </div>
 
-                    {/* Column 2: Stats Display */}
-                    <div className="p-3 bg-black/40 border border-[#1e1e24] rounded-xl flex flex-col justify-between">
-                      <p className="text-[9px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-1.5 mb-1">
-                        Tour Status & Specs
-                      </p>
-                      <div className="grid grid-cols-2 gap-y-1 text-[9px] font-mono text-white/60">
-                        <span className="flex items-center gap-1">
-                          <div className={`w-1.5 h-1.5 rounded-full ${filledRoomCount > 0 ? 'bg-[#c8f135]' : 'bg-white/20'}`} />
-                          {filledRoomCount} rooms ready
-                        </span>
-                        <span className="text-right">{totalDuration}s total tour</span>
-                        <span>{Math.ceil(totalDuration / 8)} Veo calls</span>
-                        {realtorImg ? <span className="text-right text-[#c8f135]">Agent: ✓</span> : <span className="text-right text-white/20">No Agent</span>}
                       </div>
-                    </div>
-
-                    {/* Column 3: Global Actions */}
-                    <div className="flex flex-col gap-2 justify-center">
-                      <button
-                        onClick={generateTourScripts}
-                        disabled={isGeneratingScripts || filledRoomCount === 0}
-                        className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
-                          isGeneratingScripts || filledRoomCount === 0
-                            ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
-                            : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10'
-                        }`}
-                      >
-                        {isGeneratingScripts ? (
-                          <><Loader2 size={10} className="animate-spin" /> Generating Scripts…</>
-                        ) : (
-                          <><Film size={10} /> Generate Tour Scripts</>
+                    </>
+                  ) : (
+                    <>
+                      {/* Continuous Mode Column 1: Voiceover Monologue */}
+                      <div className="flex flex-col space-y-2 bg-white/5 border border-white/10 p-3 rounded-xl relative overflow-hidden font-sans">
+                        {isGeneratingContinuousScript && (
+                          <div className="absolute inset-0 z-10 bg-black/70 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center gap-2">
+                            <div className="flex gap-1">
+                              {[0, 1, 2].map(i => (
+                                <div
+                                  key={i}
+                                  className="w-1.5 h-1.5 bg-[#c8f135] rounded-full animate-bounce"
+                                  style={{ animationDelay: `${i * 0.15}s` }}
+                                />
+                              ))}
+                            </div>
+                            <p className="text-[9px] font-mono text-[#c8f135] uppercase tracking-widest animate-pulse">
+                              Writing script...
+                            </p>
+                          </div>
                         )}
-                      </button>
+                        <div className="flex items-center justify-between">
+                          <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">
+                            Full Tour Monologue
+                          </p>
+                          <button
+                            onClick={generateContinuousTourScript}
+                            disabled={isGeneratingContinuousScript || filledRoomCount < 2}
+                            className="text-[8px] font-black text-[#c8f135] uppercase tracking-widest hover:underline flex items-center gap-1 font-mono"
+                          >
+                            <Sparkles size={8} /> Auto Write
+                          </button>
+                        </div>
+                        <textarea
+                          value={continuousScript}
+                          onChange={e => setContinuousScript(e.target.value)}
+                          placeholder={`Full walkthrough tour voiceover script for ${continuousDuration} seconds...`}
+                          rows={5}
+                          className="w-full bg-black/40 border border-[#1e1e24] rounded-xl px-3 py-2 text-[10px] text-white/80 focus:outline-none focus:border-[#c8f135]/40 resize-none leading-relaxed flex-1 font-sans"
+                        />
+                      </div>
 
-                      <button
-                        onClick={generateFullTour}
-                        disabled={isGeneratingVideo || filledRoomCount === 0}
-                        className={`w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
-                          isGeneratingVideo || filledRoomCount === 0
-                            ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
-                            : 'bg-[#c8f135] text-black hover:bg-[#d4ff3a] shadow-[0_4px_20px_rgba(200,241,53,0.25)] border border-[#c8f135]'
-                        }`}
-                      >
-                        {isGeneratingVideo ? (
-                          <><Loader2 size={12} className="animate-spin" />{videoProgressMsg}</>
+                      {/* Continuous Mode Column 2: Transition Prompts Preview */}
+                      <div className="flex flex-col space-y-2 bg-white/5 border border-white/10 p-3 rounded-xl relative overflow-hidden font-mono">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">
+                            Walkthrough Prompts
+                          </p>
+                        </div>
+                        {continuousSegments.length > 0 ? (
+                          <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1 custom-scrollbar flex-1">
+                            {continuousSegments.map(seg => (
+                              <div key={seg.segmentIndex} className="p-1.5 rounded bg-black/30 border border-white/5 space-y-1">
+                                <p className="text-[7px] font-black uppercase text-[#c8f135]/80">Segment {seg.segmentIndex + 1} (10s)</p>
+                                <p className="text-[8px] font-mono text-white/55 leading-relaxed">{seg.prompt}</p>
+                              </div>
+                            ))}
+                          </div>
                         ) : (
-                          <>
-                            <MapPin size={12} />
-                            Generate Full Tour
-                            <span className="opacity-50 ml-1">· {filledRoomCount} shots · {totalDuration}s · ⚡ {rooms.filter(r => r.image).reduce((acc, r) => acc + getCurrentCost(false, r.duration), 0)}</span>
-                          </>
+                          <div className="flex items-center justify-center flex-1 text-center p-4 border border-dashed border-white/10 rounded-xl">
+                            <p className="text-[9px] text-white/20 uppercase tracking-wider font-mono">
+                              Press "Auto Write" to generate transitions
+                            </p>
+                          </div>
                         )}
-                      </button>
-                    </div>
-                  </div>
-                )}
+                      </div>
+
+                      {/* Continuous Mode Column 3: Walkthrough Actions */}
+                      <div className="flex flex-col justify-between p-3 bg-white/5 border border-white/10 rounded-xl space-y-3 font-mono">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-[8px] font-mono text-white/55">
+                            <span className="uppercase text-white/30">Engine</span>
+                            <span className="text-[#c8f135] font-black">OMNI FLASH ⚡</span>
+                          </div>
+                          
+                          {/* Duration Selector */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-[8px] font-mono uppercase text-white/30">Total Duration</span>
+                            <div className="flex items-center gap-1">
+                              {([10, 20, 30] as const).map(d => (
+                                <button
+                                  key={d}
+                                  onClick={() => setContinuousDuration(d)}
+                                  className={`px-1.5 py-0.5 rounded text-[8px] font-black border transition-all ${
+                                    continuousDuration === d
+                                      ? 'bg-[#c8f135] text-black border-[#c8f135]'
+                                      : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'
+                                  }`}
+                                >
+                                  {d}s
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[8px] font-mono text-white/55 border-t border-white/5 pt-1.5">
+                            <span className="uppercase text-white/30">Specs</span>
+                            <span>{filledRoomCount} rooms · {continuousDuration}s walkthrough</span>
+                          </div>
+                        </div>
+
+                        {/* Action trigger */}
+                        <div className="space-y-1.5">
+                          {filledRoomCount >= 2 ? (
+                            <button
+                              onClick={generateContinuousVideo}
+                              disabled={isGeneratingContinuousVideo || continuousSegments.length === 0}
+                              className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                                isGeneratingContinuousVideo || continuousSegments.length === 0
+                                  ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
+                                  : 'bg-[#c8f135] text-black hover:bg-[#d4ff3a] border border-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.2)]'
+                              }`}
+                            >
+                              {isGeneratingContinuousVideo ? (
+                                <><Loader2 size={10} className="animate-spin" />{videoProgressMsg}</>
+                              ) : (
+                                <><Film size={10} /> Gen Walkthrough (⚡ {getCurrentCost(false, 10) * Math.min(Math.floor(continuousDuration / 10), filledRoomCount - 1)})</>
+                              )}
+                            </button>
+                          ) : (
+                            <div className="text-[9px] text-white/30 text-center py-2.5 border border-dashed border-white/10 rounded-xl">
+                              Upload at least 2 photos
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                </div>
               </motion.div>
             </motion.div>
           </div>

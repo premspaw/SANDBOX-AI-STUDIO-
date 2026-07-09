@@ -49,6 +49,7 @@ export default function createRouter(deps) {
         broadcastProgress,
         broadcastComplete,
         VERTEX_PROJECT_ID,
+        VERTEX_LOCATION,
         requireAuth,
         resolveGoogleApiKey,
         consumeCredits,
@@ -85,11 +86,12 @@ export default function createRouter(deps) {
             }
 
             const { image, motionPrompt, prompt, duration = 8, aspectRatio = '16:9', nodeId, userId, generateAudio, resolution = '1080p', model } = req.body;
+            const modelName = model || '';
             if (!motionPrompt && !prompt) throw new Error('No motion prompt provided');
 
             const targetUserId = user ? user.id : userId;
 
-            const apiKey = await resolveGoogleApiKey(req, targetUserId);
+            const apiKey = await resolveGoogleApiKey(req, targetUserId, true);
             const token = await getVertexToken();
             if (!token && !apiKey) throw new Error('Failed to acquire service account token or API key');
 
@@ -234,11 +236,14 @@ export default function createRouter(deps) {
                     }
                 } catch (vertexErr) {
                     console.warn(`[VEO-I2V] [Vertex AI] Failed. Error: ${vertexErr.message}. Falling back to Google AI Studio...`);
+                    if (apiKey === 'VERTEX_AI_CLIENT') {
+                        throw vertexErr;
+                    }
                 }
             }
 
             // --- Option B: Google AI Studio / Gemini API (Fallback) ---
-            if (!success && (apiKey || token)) {
+            if (!success && apiKey && apiKey !== 'VERTEX_AI_CLIENT') {
                 try {
                     const aiStudioModel = (modelName.includes('fast')) ? 'veo-3.1-fast-generate-preview' : 'veo-3.1-generate-preview';
                     let endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${aiStudioModel}:predictLongRunning`;

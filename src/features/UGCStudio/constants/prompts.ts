@@ -1,3 +1,85 @@
+// ─── SHARED VOICE RULES ─────────────────────────────────────────────────────
+// Injected into EVERY prompt that generates or regenerates dialogue.
+// This ensures tone NEVER drifts back to "ad voice" on any code path.
+const VOICE_RULES_BLOCK = `
+─── HUMAN VOICE RULES (APPLY TO EVERY LINE) ────────────────────────────────
+▸ SOUND LIKE A REAL PERSON, NOT AN AD:
+  - Write EXACTLY how someone talks when they're hyped and telling a friend about something.
+  - Imagine you're sending a voice note to your best friend. That energy. That looseness.
+  - Thoughts don't have to be perfectly ordered. Real people jump around a little.
+  - It's OKAY to start mid-thought: "Okay wait—", "So I've been using this for like—", "Not gonna lie,"
+  - Sentences can trail off: "and it's just like... I can't even explain it."
+  - Use intentionally imperfect grammar: "it's so good I can't" / "this thing goes hard" / "I'm literally obsessed"
+
+▸ BANNED WORDS — never use even once (instantly sounds fake/robotic):
+  "premium", "luxury", "exclusivity", "experience", "elevate", "indulge", "journey", "discover",
+  "innovative", "solution", "transformative", "revolutionary", "features", "designed to", "unmatched",
+  "perfect choice", "game-changer", "state-of-the-art", "cutting-edge", "world-class", "exceptional",
+  "superior", "high-quality", "best-in-class", "seamless", "effortlessly", "unleash", "harness",
+  "leverage", "empower", "curated", "bespoke", "artisan", "craft", "crafted", "showcase",
+  "It's literally in my bio", "link in bio", "link's in my bio".
+
+▸ BANNED OPENERS — never start a line with:
+  "Are you looking for...", "Introducing...", "Say goodbye to...", "Say hello to...",
+  "This product is...", "I'm excited to share...", "Today I'm reviewing...", "Check out this..."
+
+▸ CONTRACTIONS — use in every single sentence:
+  "I've", "you'll", "it's", "don't", "can't", "this'll", "what's", "I'm", "they're",
+  "we've", "wouldn't", "couldn't", "didn't", "I'd", "isn't", "hasn't", "you'd".
+
+▸ NATURAL FILLERS & EMOTION — sprinkle throughout:
+  "okay so", "honestly", "literally", "like", "real talk", "no cap", "seriously",
+  "I'm not even joking", "wait—", "okay but", "hear me out", "lowkey", "not gonna lie",
+  "bro", "okay okay", "alright so", "so basically", "and I was like", "the thing is".
+
+▸ SENTENCE RHYTHM — mix every scene:
+  - Short punchy fragment: "It works."
+  - One-breath sentence: "I've been using it every single day and I'm not stopping."
+  - Trailing thought: "It's just... different, you know?"
+  - Reaction line: "And I was like, wait, actually?"
+  - Never write 2 long sentences back to back. Break it up.
+
+▸ CTA STYLE — end casually, never corporate:
+  Use: "comment 'me' and I'll send it to you", "go check it out", "it's in my profile", "seriously just try it"
+  Never: "purchase now", "buy today", "click below to order", "visit our website", "link in bio", "It's literally in my bio".
+────────────────────────────────────────────────────────────────────────────
+`;
+
+// ─── LANGUAGE-AWARE WORD COUNT ───────────────────────────────────────────────
+function getWordRange(language: string, isOmni: boolean, sceneCount: number): string {
+  const lang = language.toLowerCase();
+  const isDravidian = ['kannada', 'tamil', 'telugu', 'malayalam'].some(l => lang.includes(l));
+  const isHindi = lang.includes('hindi') || lang.includes('urdu');
+  if (isOmni) {
+    // 10-second scenes
+    if (isDravidian) return `Strictly 16-22 spoken words per 10-second scene (natural UGC Dravidian pace ~2.0 words/sec — 16 min, 22 max). Total ≈ ${sceneCount * 19} words.`;
+    if (isHindi)    return `Strictly 23-29 spoken words per 10-second scene (energetic UGC Hindi pace ~2.6 words/sec — 23 min, 29 max). Total ≈ ${sceneCount * 26} words.`;
+    return               `Strictly 27-33 spoken words per 10-second scene (natural UGC English pace ~3.0 words/sec — 27 min, 33 max). Total ≈ ${sceneCount * 30} words.`;
+  } else {
+    // 8-second scenes
+    if (isDravidian) return `Strictly 12-18 spoken words per 8-second scene (natural UGC Dravidian pace ~2.0 words/sec — 12 min, 18 max). Total ≈ ${sceneCount * 15} words.`;
+    if (isHindi)    return `Strictly 19-25 spoken words per 8-second scene (energetic UGC Hindi pace ~2.6 words/sec — 19 min, 25 max). Total ≈ ${sceneCount * 22} words.`;
+    return               `Strictly 20-26 spoken words per 8-second scene (natural UGC English pace ~3.0 words/sec — 20 min, 26 max). Total ≈ ${sceneCount * 23} words.`;
+  }
+}
+
+// ─── TIMESTAMP HELPER ────────────────────────────────────────────────────────
+// Generates full timestamp examples for ANY scene count so the model never
+// has to infer the pattern beyond scene 2.
+function buildTimestampExamples(sceneCount: number, sceneSeconds: number): string {
+  const labels = ['HOOK', 'PAYOFF', 'PROOF', 'SOCIAL PROOF', 'CTA', 'BONUS'];
+  const lines: string[] = [];
+  for (let i = 0; i < sceneCount; i++) {
+    const start = i * sceneSeconds;
+    const end = (i + 1) * sceneSeconds;
+    const startStr = `${Math.floor(start / 60)}:${String(start % 60).padStart(2, '0')}`;
+    const endStr = `${Math.floor(end / 60)}:${String(end % 60).padStart(2, '0')}`;
+    const label = labels[i] ?? `SCENE ${i + 1}`;
+    lines.push(`[${startStr} - ${endStr}] ${label}: dialogue for scene ${i + 1}`);
+  }
+  return lines.join('\n');
+}
+
 export const buildPodcastPrompt = (params: {
   language: string;
   podcastHost1Img: boolean;
@@ -32,7 +114,7 @@ STYLE RULES:
 - Natural host banter, not an ad read.
 - Alternate HOST 1 and HOST 2.
 - Include small reactions, agreement, and handoff lines.
-- Keep each segment concise and speakable. Each segment's dialogue must contain strictly between 21 and 25 words.
+- Keep each segment concise and speakable. Each segment's dialogue must contain strictly between 16 and 20 words.
 - Each scene's visualCue must specify a DIFFERENT camera angle cut: Scene 1 = wide two-shot, Scene 2 = medium shot on HOST 1, Scene 3 = medium shot on HOST 2, Scene 4+ = over-shoulder or close-up reaction. Always mention: microphones, studio lighting, product on desk if provided. No title cards.
 
 Return ONLY valid JSON:
@@ -67,12 +149,18 @@ export const buildScriptPrompt = (params: {
   strategyContext: string;
   trainingContent: string;
   nicheHookContext?: string;
+  scriptModel?: 'veo3' | 'omni';
 }) => {
   const toneInfo = params.SCRIPT_TONES[params.selectedScriptTone] || params.SCRIPT_TONES.viral_marketing;
   const styleInfo = params.VIDEO_STYLES[params.selectedVideoStyle] || params.VIDEO_STYLES.calm;
   const sceneStyleInfo = params.SCENE_STYLES && params.selectedSceneStyle
     ? params.SCENE_STYLES[params.selectedSceneStyle]
     : null;
+
+  const isOmni = params.scriptModel === 'omni';
+  const sceneSeconds = isOmni ? 10 : 8;
+  const wordCountConstraint = getWordRange(params.language, isOmni, params.sceneCount);
+  const timestampExamples = buildTimestampExamples(params.sceneCount, sceneSeconds);
 
   return `You are a professional UGC script writer. You write exactly how real people talk on camera.
   
@@ -104,32 +192,47 @@ ${params.productDetails ? params.productDetails : `No product scanned yet. Base 
 SCRIPT PARAMETERS:
 - TONE: ${toneInfo.name} — ${toneInfo.prompt || toneInfo}
 - PERFORMANCE STYLE: ${styleInfo.name} — ${styleInfo.modifier || styleInfo}${params.voiceStyle ? `\n- VOICE STYLE: ${params.voiceStyle}` : ''}
-- DURATION: ${params.scriptDuration} → EXACTLY ${params.sceneCount} scene(s) of 8 seconds each (${params.durationLogic})
+- DURATION: ${params.scriptDuration} → EXACTLY ${params.sceneCount} scene(s) of ${sceneSeconds} seconds each (${params.durationLogic})
 - LANGUAGE: ${params.language} — Write ALL dialogue in ${params.language} only.
 ${params.strategyContext}
 
-─── WRITING RULES ───────────────────────────────
+${VOICE_RULES_BLOCK}
+
+─── ADDITIONAL SCRIPT RULES ──────────────────────────────────────────────
 1. Write the HOOK first. It must follow the niche hook patterns and rules above.
    The hook is the most important line — spend 70% of your thinking on it.
-2. The hook must work WITHOUT seeing the product. 
+2. The hook must work WITHOUT seeing the product.
    Viewer clicks because of the hook, not the product.
 3. After the hook, write the rest of the script naturally — don't announce scene names mid-script.
-4. Write like a real person talking to a friend on FaceTime, NOT like a TV commercial.
-5. NEVER use robotic marketing words like: "premium", "luxury", "exclusivity", "experience", "elevate", "indulge", "journey", "discover", "innovative", "solution", "transformative", "revolutionary", "features", "designed to", "unmatched", "perfect choice".
-6. Even if the selected tone is "Soft Luxury", do NOT use the literal words "luxury" or "premium" in the dialogue! Instead, show high quality naturally (e.g. "this feels so heavy and sturdy", "the stitching is literally insane", "it looks so clean and minimal").
-7. Use contractions in every single sentence: "I've", "you'll", "it's", "don't", "can't", "this'll", "what's".
-8. Use natural filler words: "okay so", "honestly", "literally", "like", "real talk", "no cap", "seriously", "I'm not even joking".
-9. Use short punchy sentences or fragments. Never write long, complex, formal, or polished sentences.
-10. SCRIPT IS SPOKEN WORDS ONLY. No stage directions. No [smiles]. No (pause) in the dialogue text.
-11. WORD COUNT: Strictly 21-25 spoken words per 8-second scene (speak at a natural, relaxed UGC pace — 21 words minimum, 25 words maximum. Never exceed 25 words per scene, or else it is too fast/slow for the talking head tab). Total ≈ ${params.sceneCount * 23} words.
-12. SCENE COUNT: Output EXACTLY ${params.sceneCount} scene(s). No more, no less.
-13. COMPLETE THOUGHTS: Each scene is self-contained — no sentence starts in one scene and ends in another.
-14. End with one clear action — not multiple CTAs. No fake urgency.
-15. PRODUCT INTEGRATION: Use specific details from the product knowledge above (benefits, use cases, audience) — not generic claims.
-16. FORMATTING: In the "script" JSON field, format and label each scene exactly as: [0:00 - 0:08] HOOK, [0:08 - 0:16] PAYOFF, etc., using newlines to separate them.
-17. VISUAL CUES: Describe a realistic UGC creator shot — natural lighting, phone camera, authentic setting. Include the Prompt Modifier details in your visual descriptions.
-18. CLOTHING RULE: If the product is clothing/apparel, the creator MUST be wearing it — never just holding it.
-─────────────────────────────────────────────────
+
+4. HOOK TYPES — pick one that fits the product naturally:
+   - Question hook: "Why does nobody talk about this?"
+   - Confession hook: "I was NOT expecting this to work."
+   - Contrast hook: "I wasted so much money before I found this."
+   - Reaction hook: "Okay I literally tried this as a joke and now I can't stop."
+   - Statement hook: "This changed my entire morning routine."
+
+5. SCRIPT IS SPOKEN WORDS ONLY. No stage directions. No [smiles]. No (pause) in the dialogue text.
+
+6. WORD COUNT: ${wordCountConstraint}
+
+7. SCENE COUNT: Output EXACTLY ${params.sceneCount} scene(s). No more, no less.
+
+8. COMPLETE THOUGHTS: Each scene is self-contained — no sentence starts in one scene and ends in another.
+
+9. PRODUCT INTEGRATION: Use specific details from the product knowledge (benefits, use cases, audience) — not generic claims.
+   Show the benefit through a real story or reaction, don't just list it.
+
+10. FORMATTING: In the "script" JSON field, write the entire script as one single continuous, complete spoken text flow (a clean combined paragraph) WITHOUT any timestamps (e.g. no [0:00 - 0:08]), and WITHOUT scene names or labels (e.g. no HOOK:, PAYOFF:, CTA:). It must read like a single natural spoken flow.
+
+11. VISUAL CUES: Describe a realistic UGC creator shot — natural lighting, phone camera, authentic setting. Include the Prompt Modifier details in your visual descriptions.
+
+12. CLOTHING RULE: If the product is clothing/apparel, the creator MUST be wearing it — never just holding it.
+
+13. ENERGY RULE: Each scene must have a distinct energy shift.
+    HOOK = curiosity/surprise → PAYOFF = proof/excitement → CTA = casual confidence.
+    Don't write every scene at the same flat energy level.
+─────────────────────────────────────────────────────────────────────────
 
 STRUCTURE FOR ${params.scriptDuration}:
 ${params.durationLogic}
@@ -139,21 +242,21 @@ ${params.trainingContent ? `TRAINING EXAMPLES FROM YOUR KNOWLEDGE BASE:\n${param
 Write the script now. Return ONLY a valid JSON object.
 The "scenes" array MUST contain EXACTLY ${params.sceneCount} scene(s) matching the duration.
 
-Example structure for a script:
+Example structure (script shown as a single continuous paragraph):
 {
   "hook": "the opening line only — max 10 words, matching the hook dialogue exactly",
-  "script": "Clean dialogue-only with timestamps and scene labels (e.g. [0:00 - 0:08] HOOK: dialogue for scene 1\\n[0:08 - 0:16] PAYOFF: dialogue for scene 2)",
+  "script": "One complete spoken script flow (the combined dialogues from all scenes) as a single continuous paragraph without any timestamps, brackets, or scene labels (e.g. 'No joke, I\\'ve been using... It\\'s like, I don\\'t... Honestly, if you\\'re...')",
   "scenes": [
     {
       "id": "1",
-      "timestamp": "0:00 - 0:08",
+      "timestamp": "0:00 - 0:${isOmni ? '10' : '08'}",
       "label": "HOOK",
       "dialogue": "The exact spoken words for scene 1 in ${params.language}",
       "visualCue": "Realistic UGC shot description: creator action, expression, environment, camera angle. Performance: ${styleInfo.modifier || ''}. The creator is saying: [insert dialogue here]. Visual style preset details: ${sceneStyleInfo ? sceneStyleInfo.promptModifier : 'direct-to-camera'}."
     },
     {
       "id": "2",
-      "timestamp": "0:08 - 0:16",
+      "timestamp": "0:${isOmni ? '10' : '08'} - 0:${isOmni ? '20' : '16'}",
       "label": "PAYOFF",
       "dialogue": "The exact spoken words for scene 2 in ${params.language}",
       "visualCue": "Realistic UGC shot description for scene 2... Visual style preset details: ${sceneStyleInfo ? sceneStyleInfo.promptModifier : 'direct-to-camera'}."
@@ -169,12 +272,18 @@ export const buildRegenerateScriptPartPrompt = (params: {
   productDetails?: string;
   selectedSceneStyle?: string;
   SCENE_STYLES?: any;
+  scriptModel?: 'veo3' | 'omni';
+  language?: string;
 }) => {
   const sceneStyleInfo = params.SCENE_STYLES && params.selectedSceneStyle
     ? params.SCENE_STYLES[params.selectedSceneStyle]
     : null;
 
-  return `You are an expert UGC video editor refining a viral script. 
+  const isOmni = params.scriptModel === 'omni';
+  const sceneSeconds = isOmni ? 10 : 8;
+  const wordRange = getWordRange(params.language || 'English', isOmni, 1);
+
+  return `You are an expert UGC video editor refining a viral script.
 CURRENT FULL SCRIPT:
 ${params.script}
 
@@ -182,18 +291,21 @@ ${params.script}
 - SELECTED VIDEO STYLE PRESET: ${sceneStyleInfo ? `"${sceneStyleInfo.name}" (${sceneStyleInfo.description})` : 'Normal talking directly to camera'}
 - SCANNED PRODUCT DETAILS: ${params.productDetails || 'lifestyle product'}
 
+${VOICE_RULES_BLOCK}
+
 TASK: Provide a COMPLETELY DIFFERENT and MORE COMPELLING version of the ${params.label} for Scene ${params.idx + 1}.
 The new version MUST flow seamlessly with the rest of the script and:
-1. Align perfectly with the selected style preset (e.g. if it is "Unboxing", the regenerated segment should describe/talk about unboxing the product).
+1. Align perfectly with the selected style preset.
 2. Integrate details from the scanned product details above.
 3. Offer a fresh hook, different phrasing, or a new value proposition.
+4. Match the human voice and energy of the surrounding scenes — do NOT drift into ad-speak.
 
-WORD COUNT: Strictly 21-25 words for this 8-second segment.
+WORD COUNT: ${wordRange}
 
 Return ONLY a valid JSON object:
 {
   "newDialogue": "The new spoken text for this ${params.label}",
-  "newVisualCue": "A new visual action description for Veo 3.1. Incorporate visual style preset details: ${sceneStyleInfo ? sceneStyleInfo.promptModifier : 'direct-to-camera'}."
+  "newVisualCue": "A new visual action description for the video model. Incorporate visual style preset details: ${sceneStyleInfo ? sceneStyleInfo.promptModifier : 'direct-to-camera'}."
 }`;
 };
 

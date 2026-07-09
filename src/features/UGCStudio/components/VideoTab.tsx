@@ -107,7 +107,14 @@ export default function VideoTab() {
                 <option value="6" className="bg-[#0c0c0c] text-white">6 SEC</option>
                 <option value="8" className="bg-[#0c0c0c] text-white">8 SEC</option>
                 {videoGenMode === 'omni-flash' && (
-                  <option value="10" className="bg-[#0c0c0c] text-white">10 SEC</option>
+                  <>
+                    <option value="10" className="bg-[#0c0c0c] text-white">10 SEC</option>
+                    <option value="20" className="bg-[#0c0c0c] text-white">20 SEC</option>
+                    <option value="30" className="bg-[#0c0c0c] text-white">30 SEC</option>
+                    <option value="40" className="bg-[#0c0c0c] text-white">40 SEC</option>
+                    <option value="50" className="bg-[#0c0c0c] text-white">50 SEC</option>
+                    <option value="60" className="bg-[#0c0c0c] text-white">60 SEC</option>
+                  </>
                 )}
               </select>
               <Clock size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />

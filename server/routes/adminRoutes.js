@@ -52,7 +52,7 @@ export default function createRouter(deps) {
                 .eq('id', user.id)
                 .single();
 
-            if (profile?.role === 'admin' || profile?.email === 'premspaw@gmail.com') {
+            if (profile?.role === 'admin' || profile?.email?.startsWith('premspaw@gmail')) {
                 return res.json({ apiKey: process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY });
             }
             return res.status(403).json({ error: 'Forbidden' });

@@ -103,6 +103,9 @@ export interface UGCContextType {
   setScenes: (v: Scene[]) => void;
   activeSceneIndex: number;
   setActiveSceneIndex: (v: number) => void;
+  scriptModel: 'veo3' | 'omni';
+  setScriptModel: (v: 'veo3' | 'omni') => void;
+  handleScriptModelChange: (model: 'veo3' | 'omni') => void;
 
   // ── Split scenes ─────────────────────────────────────────────────────────
   splitScenes: SplitScene[];
@@ -149,16 +152,16 @@ export interface UGCContextType {
   setImageStyle: (v: any) => void;
   aspectRatio: '9:16' | '16:9' | '1:1';
   setAspectRatio: (v: any) => void;
-  imgEngine: 'nb2' | 'gpt2';
-  setImgEngine: (v: 'nb2' | 'gpt2') => void;
+  imgEngine: 'nb2' | 'gpt2' | 'nb2-lite' | 'nb2-open';
+  setImgEngine: (v: 'nb2' | 'gpt2' | 'nb2-lite' | 'nb2-open') => void;
 
   // ── Video output ──────────────────────────────────────────────────────────
   generatedVideo: string;
   setGeneratedVideo: (v: string) => void;
   renderMode: 'image' | 'video';
   setRenderMode: (v: 'image' | 'video') => void;
-  durationSeconds: '4' | '6' | '8' | '10';
-  setDurationSeconds: (v: '4' | '6' | '8' | '10') => void;
+  durationSeconds: '4' | '6' | '8' | '10' | '20' | '30' | '40' | '50' | '60';
+  setDurationSeconds: (v: '4' | '6' | '8' | '10' | '20' | '30' | '40' | '50' | '60') => void;
   videoResolution: '720p' | '1080p';
   setVideoResolution: (v: '720p' | '1080p') => void;
   selectedVideoStyle: string;
@@ -241,8 +244,8 @@ export interface UGCContextType {
   setThEngine: (v: 'veo_lite' | 'veo_fast' | 'veo3' | 'omni-flash') => void;
   thAspectRatio: '9:16' | '16:9';
   setThAspectRatio: (v: '9:16' | '16:9') => void;
-  thDuration: '4' | '6' | '8' | '10';
-  setThDuration: (v: '4' | '6' | '8' | '10') => void;
+  thDuration: '4' | '6' | '8' | '10' | '20' | '30' | '40' | '50' | '60';
+  setThDuration: (v: '4' | '6' | '8' | '10' | '20' | '30' | '40' | '50' | '60') => void;
   thGeneratedImg: string;
   setThGeneratedImg: (v: string) => void;
   thGeneratedVideo: string;

@@ -5,8 +5,9 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env from the current directory
 dotenv.config();
+console.log(`[STARTUP-ENV-CHECK] GOOGLE_API_KEY length: ${process.env.GOOGLE_API_KEY?.length || 0}, startsWith: ${process.env.GOOGLE_API_KEY?.substring(0, 10)}`);
+console.log(`[STARTUP-ENV-CHECK] ADMIN_GOOGLE_API_KEY length: ${process.env.ADMIN_GOOGLE_API_KEY?.length || 0}, startsWith: ${process.env.ADMIN_GOOGLE_API_KEY?.substring(0, 10)}`);
 import dns from 'dns';
 import net from 'net';
 dns.setDefaultResultOrder('ipv4first');
@@ -58,15 +59,19 @@ globalThis.fetch = (url, options = {}) => {
         
         // Detect if request already has an Authorization header (Vertex AI / OAuth2)
         let hasAuth = false;
+        let hasApiKey = urlStr.includes('key=') || urlStr.includes('?key=') || urlStr.includes('&key=');
+
         if (typeof options.headers.has === 'function') {
             hasAuth = options.headers.has('Authorization') || options.headers.has('authorization');
+            hasApiKey = hasApiKey || options.headers.has('x-goog-api-key') || options.headers.has('X-Goog-Api-Key');
         } else {
             hasAuth = !!(options.headers['Authorization'] || options.headers['authorization']);
+            hasApiKey = hasApiKey || !!(options.headers['x-goog-api-key'] || options.headers['X-Goog-Api-Key']);
         }
 
         if (typeof options.headers.set === 'function') {
             options.headers.set('Referer', referer);
-            if (!hasAuth && process.env.GOOGLE_API_KEY) {
+            if (!hasAuth && !hasApiKey && process.env.GOOGLE_API_KEY) {
                 options.headers.set('X-Goog-Api-Key', process.env.GOOGLE_API_KEY.trim());
             }
         } else {
@@ -74,7 +79,7 @@ globalThis.fetch = (url, options = {}) => {
                 ...options.headers,
                 'Referer': referer
             };
-            if (!hasAuth && process.env.GOOGLE_API_KEY) {
+            if (!hasAuth && !hasApiKey && process.env.GOOGLE_API_KEY) {
                 options.headers['X-Goog-Api-Key'] = process.env.GOOGLE_API_KEY.trim();
             }
         }
@@ -151,7 +156,7 @@ function getCredentials(fileName, envKey) {
     return null;
 }
 
-const GCS_KEY = getCredentials('new-zerolens-api-073f27e79f0c.json', 'GCS_CREDENTIALS_JSON');
+const GCS_KEY = getCredentials('new-zerolens-api-073f27e79f0c.json', 'GCS_CREDENTIALS_JSON') || getCredentials('freeeapi-499012-fd14302639c7.json', 'GCS_CREDENTIALS_JSON');
 const storage = new Storage({ 
     ...(typeof GCS_KEY === 'string' ? { keyFilename: GCS_KEY } : { credentials: GCS_KEY })
 });
@@ -159,8 +164,20 @@ const storage = new Storage({
 const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'zerolensbucket_1';
 
 // ✅ Switched to new-zerolens-api (99582442891) — Veo 3.1 confirmed working 2026-05-31
-const VERTEX_KEY = getCredentials('new-zerolens-api-073f27e79f0c.json', 'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON');
-const VERTEX_PROJECT_ID = process.env.GOOGLE_PROJECT_ID || 'new-zerolens-api';
+const VERTEX_KEY = getCredentials('new-zerolens-api-073f27e79f0c.json', 'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('freeeapi-499012-fd14302639c7.json', 'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON');
+
+let resolvedProjectId = '';
+if (VERTEX_KEY) {
+    if (typeof VERTEX_KEY === 'string') {
+        try {
+            const parsed = JSON.parse(fs.readFileSync(VERTEX_KEY, 'utf8'));
+            if (parsed.project_id) resolvedProjectId = parsed.project_id;
+        } catch (_) {}
+    } else if (VERTEX_KEY.project_id) {
+        resolvedProjectId = VERTEX_KEY.project_id;
+    }
+}
+const VERTEX_PROJECT_ID = resolvedProjectId || process.env.GOOGLE_PROJECT_ID || 'new-zerolens-api';
 const VERTEX_LOCATION = process.env.GOOGLE_LOCATION || 'us-central1';
 
 let _vertexAuth = null;
@@ -252,10 +269,23 @@ const getGeminiClient = (apiKey) => {
         throw new Error('GOOGLE_API_KEY environment variable is not set.');
     }
 
-    if (apiKey) {
-        // Return a fresh instance with the custom key (don't cache it, as it is key-specific)
+    const isVertex = activeKey === 'VERTEX_AI_CLIENT' || (typeof activeKey === 'string' && activeKey.startsWith('ya29.'));
+
+    if (isVertex) {
+        console.log(`[GEMINI-CLIENT] Initializing Vertex AI Gemini Client: project=${VERTEX_PROJECT_ID}, location=${VERTEX_LOCATION}`);
+        const authOptions = {};
+        if (VERTEX_KEY) {
+            if (typeof VERTEX_KEY === 'string') {
+                authOptions.keyFilename = VERTEX_KEY;
+            } else {
+                authOptions.credentials = VERTEX_KEY;
+            }
+        }
         return new GoogleGenAI({
-            apiKey: activeKey,
+            vertexai: true,
+            project: VERTEX_PROJECT_ID,
+            location: VERTEX_LOCATION,
+            googleAuthOptions: authOptions,
             headers: {
                 'Referer': `${APP_ORIGIN}/`,
                 'Origin': APP_ORIGIN
@@ -275,25 +305,16 @@ const getGeminiClient = (apiKey) => {
         });
     }
 
+    if (apiKey) {
+        // Return a fresh instance with the custom key (don't cache it, as it is key-specific)
+        return new GoogleGenAI({
+            apiKey: activeKey
+        });
+    }
+
     if (!_geminiClient) {
         _geminiClient = new GoogleGenAI({
-            apiKey: activeKey,
-            headers: {
-                'Referer': `${APP_ORIGIN}/`,
-                'Origin': APP_ORIGIN
-            },
-            fetchOptions: {
-                headers: {
-                    'Referer': `${APP_ORIGIN}/`,
-                    'Origin': APP_ORIGIN
-                }
-            },
-            requestOptions: {
-                headers: {
-                    'Referer': `${APP_ORIGIN}/`,
-                    'Origin': APP_ORIGIN
-                }
-            }
+            apiKey: activeKey
         });
     }
     return _geminiClient;
@@ -580,47 +601,9 @@ async function requireAuth(req) {
     return data.user;
 }
 
-async function resolveGoogleApiKey(req, userId) {
-    const adminTrialKey = req?.headers?.['x-admin-trial-key'] || '';
-    if (adminTrialKey) return adminTrialKey;
-
-    let finalUserId = userId;
-    if (!finalUserId && req) {
-        try {
-            const authHeader = req.headers['authorization'] || '';
-            const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-            if (token) {
-                const adminClient = supabaseAdmin || supabase;
-                if (adminClient) {
-                    const { data } = await adminClient.auth.getUser(token);
-                    if (data?.user) {
-                        finalUserId = data.user.id;
-                    }
-                }
-            }
-        } catch (_) {}
-    }
-
-    if (finalUserId) {
-        const adminClient = supabaseAdmin || supabase;
-        if (adminClient) {
-            try {
-                const { data: profile } = await adminClient
-                    .from('profiles')
-                    .select('role, email')
-                    .eq('id', finalUserId)
-                    .single();
-                if (profile?.role === 'admin' || profile?.email === 'premspaw@gmail.com') {
-                    console.log(`[GOOGLE-API] 👑 Admin detected (${profile?.email || finalUserId}) - using Admin Google API Key.`);
-                    return process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
-                }
-            } catch (err) {
-                console.warn('[GOOGLE-API] Role lookup failed:', err.message);
-            }
-        }
-    }
-
-    return process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+async function resolveGoogleApiKey(req, userId, forceVertex = false) {
+    console.log(`[resolveGoogleApiKey] Enforcing Vertex AI only for all requests.`);
+    return 'VERTEX_AI_CLIENT';
 }
 
 async function consumeCredits(userId, cost, reason = 'generation') {
@@ -1129,7 +1112,9 @@ async function handleGoogle(req, res) {
     try {
         const { model, modelEngine, prompt, negativePrompt, negative_prompt, aspect_ratio, aspectRatio, userId, firstFrame, lastFrame, referenceImages = [], quality, resolution, imageSize, size, folder } = req.body;
         const targetModel = model || modelEngine;
-        const apiKey = await resolveGoogleApiKey(req, userId);
+        const modelLower = (targetModel || '').toLowerCase();
+        const isGeminiImage = modelLower.includes('gemini') || modelLower.includes('banana') || modelLower.includes('nb2');
+        const apiKey = await resolveGoogleApiKey(req, userId, !isGeminiImage);
         if (targetModel?.includes('kling')) {
             return await handleKling(req, res);
         }
@@ -1161,13 +1146,16 @@ async function handleGoogle(req, res) {
         } else {
             let activeModel = model || 'gemini-3.1-flash-image-preview';
             const modelLower = activeModel.toLowerCase();
-            if (modelLower === 'nano-banana-2' || modelLower === 'nano-banana' || modelLower === 'gemini-3.1-flash-image') {
+            // nb2-open = gemini-3.1-flash-image (GA open model, distinct from preview)
+            if (modelLower === 'nano-banana-2-open' || modelLower === 'nb2-open') {
+                activeModel = 'gemini-3.1-flash-image';
+            } else if (modelLower === 'nano-banana-2' || modelLower === 'nano-banana') {
                 activeModel = 'gemini-3.1-flash-image-preview';
             } else if (modelLower === 'nano-banana-2-lite' || modelLower === 'nb2-lite' || modelLower === 'gemini-3.1-flash-lite' || modelLower === 'gemini-3.1-flash-lite-image') {
-                activeModel = 'gemini-3.1-flash-image-preview';
+                activeModel = 'gemini-3.1-flash-lite-image';
             } else if (modelLower === 'nano-banana-pro' || modelLower === 'pro' || modelLower === 'gemini-3-pro-image') {
                 activeModel = 'gemini-3-pro-image-preview';
-            } else if (modelLower === 'gemini-2.5-flash-image' || modelLower === 'nano-banana') {
+            } else if (modelLower === 'gemini-2.5-flash-image') {
                 activeModel = 'gemini-3.1-flash-image-preview';
             }
 
@@ -1184,8 +1172,9 @@ async function handleGoogle(req, res) {
             // Map the resolution to standard Google GenAI size (default 1K, upscale 2K)
             let finalImageSize = '1K';
             const modelLowerStr = (model || '').toLowerCase();
-            const isLiteModel = modelLowerStr === 'nano-banana-2-lite' || modelLowerStr === 'nb2-lite' || modelLowerStr === 'gemini-3.1-flash-lite' || modelLowerStr === 'gemini-3.1-flash-lite-image';
-            if (!isLiteModel) {
+            // Lite model and NB2 Open are capped at 1K
+            const isLiteOrOpenModel = modelLowerStr === 'nano-banana-2-lite' || modelLowerStr === 'nb2-lite' || modelLowerStr === 'gemini-3.1-flash-lite' || modelLowerStr === 'gemini-3.1-flash-lite-image' || modelLowerStr === 'nano-banana-2-open' || modelLowerStr === 'nb2-open' || modelLowerStr === 'gemini-3.1-flash-image';
+            if (!isLiteOrOpenModel) {
                 const sizeVal = (imageSize || resolution || quality || size || '').toUpperCase();
                 if (sizeVal.includes('2K') || sizeVal.includes('2048')) {
                     finalImageSize = '2K';
@@ -1217,12 +1206,15 @@ async function handleGoogle(req, res) {
             const token = await getVertexToken();
 
             // --- Option A: Vertex AI Imagen (First Preference) ---
-            if (token) {
+            const hasReferences = referenceImages && referenceImages.length > 0;
+            const isGeminiImageModel = activeModel.includes('gemini') || activeModel.includes('nano-banana');
+            
+            if ((apiKey === 'VERTEX_AI_CLIENT' || token) && !hasReferences && !isGeminiImageModel) {
                 try {
                     const vertexModel = 'imagen-3.0-generate-002';
                     const url = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${vertexModel}:predict`;
                     console.log(`[handleGoogle] [Vertex AI] Calling model ${vertexModel} on url: ${url}`);
-
+ 
                     const vertexPayload = {
                         instances: [{
                             prompt: promptWithHint
@@ -1233,7 +1225,7 @@ async function handleGoogle(req, res) {
                             outputMimeType: "image/png"
                         }
                     };
-
+ 
                     const response = await fetch(url, {
                         method: 'POST',
                         headers: {
@@ -1242,10 +1234,10 @@ async function handleGoogle(req, res) {
                         },
                         body: JSON.stringify(vertexPayload)
                     });
-
+ 
                     const data = await response.json();
                     if (data.error) throw new Error(data.error.message);
-                    
+                     
                     const predictions = data.predictions || [];
                     if (predictions[0] && predictions[0].bytesBase64Encoded) {
                         b64 = predictions[0].bytesBase64Encoded;
@@ -1255,21 +1247,38 @@ async function handleGoogle(req, res) {
                         throw new Error('No predictions returned from Vertex AI Imagen');
                     }
                 } catch (vertexErr) {
-                    console.warn(`[handleGoogle] [Vertex AI] Failed. Error: ${vertexErr.message}. Falling back to Google AI Studio...`);
+                    console.warn(`[handleGoogle] [Vertex AI] Failed. Error: ${vertexErr.message}.`);
+                    if (apiKey === 'VERTEX_AI_CLIENT' && !isGeminiImageModel) {
+                        throw vertexErr;
+                    }
                 }
             }
 
             // --- Option B: Google AI Studio Imagen / Gemini API (Fallback) ---
             if (!success && (apiKey || token)) {
                 try {
-                    let endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent`;
-                    let headers = { 'Content-Type': 'application/json' };
-                    if (apiKey) {
-                        endpoint += `?key=${apiKey}`;
-                        console.log(`[handleGoogle] [AI Studio] Calling model ${activeModel} via API Key`);
+                    let ai;
+                    if (apiKey === 'VERTEX_AI_CLIENT') {
+                        const activeModelLower = activeModel.toLowerCase();
+                        const needsGlobal = activeModelLower.includes('gemini') || activeModelLower.includes('banana') || activeModelLower.includes('omni');
+                        const authOptions = {};
+                        if (VERTEX_KEY) {
+                            if (typeof VERTEX_KEY === 'string') {
+                                authOptions.keyFilename = VERTEX_KEY;
+                            } else {
+                                authOptions.credentials = VERTEX_KEY;
+                            }
+                        }
+                        ai = new GoogleGenAI({
+                            vertexai: true,
+                            project: VERTEX_PROJECT_ID,
+                            location: needsGlobal ? 'global' : VERTEX_LOCATION,
+                            googleAuthOptions: authOptions
+                        });
+                        console.log(`[handleGoogle] [Vertex AI SDK] Calling model ${activeModel} (location: ${needsGlobal ? 'global' : VERTEX_LOCATION})`);
                     } else {
-                        headers['Authorization'] = `Bearer ${token}`;
-                        console.log(`[handleGoogle] [AI Studio] Calling model ${activeModel} via Service Account token`);
+                        ai = new GoogleGenAI({ apiKey });
+                        console.log(`[handleGoogle] [AI Studio SDK] Calling model ${activeModel} via API Key`);
                     }
 
                     const parts = [];
@@ -1292,55 +1301,83 @@ async function handleGoogle(req, res) {
                     }
                     parts.push({ text: promptWithHint });
 
-                    const safetySettings = [
-                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-                    ];
-
-                    const response = await fetch(endpoint, {
-                        method: 'POST',
-                        headers,
-                        body: JSON.stringify({
-                            contents: [{ role: 'user', parts }],
-                            safetySettings,
-                            generationConfig: { 
-                                responseModalities: ["IMAGE"]
+                    const response = await ai.models.generateContent({
+                        model: activeModel,
+                        contents: [{ role: 'user', parts }],
+                        config: {
+                            safetySettings: [
+                                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                            ],
+                            responseModalities: ["IMAGE"],
+                            imageConfig: {
+                                aspectRatio: mappedRatio,
+                                imageSize: finalImageSize
                             }
-                        })
+                        }
                     });
 
-                    const result = await response.json();
-                    if (result.error) throw new Error(result.error.message || "Google API returned an error");
-
-                    if (result.promptFeedback?.blockReason) {
-                        const reason = result.promptFeedback.blockReason;
-                        if (reason === 'OTHER') {
-                            throw new Error("Google API blocked the request (blockReason: OTHER). This is typically caused by a sensitive reference photo, copyright/trademark restrictions, or a celebrity likeness filter.");
-                        } else {
-                            throw new Error(`Google API safety block: ${reason}. Please try a different reference image or prompt.`);
-                        }
-                    }
-
-                    const candidate = result.candidates?.[0];
+                    const candidate = response.candidates?.[0];
                     if (candidate && candidate.finishReason === 'SAFETY') {
                         throw new Error("SAFETY_REFUSAL: The creative prompt was blocked by safety filters.");
                     }
 
                     const fallbackB64 = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
                     if (!fallbackB64) {
-                        const finishReason = candidate?.finishReason || 'N/A';
-                        const promptFeedback = result.promptFeedback;
-                        throw new Error(`Google API returned no image candidates. finishReason: ${finishReason}${promptFeedback?.blockReason ? `, blockReason: ${promptFeedback.blockReason}` : ''}`);
+                        throw new Error(`Google GenAI SDK returned no image candidates. finishReason: ${candidate?.finishReason}`);
                     }
 
                     b64 = fallbackB64;
                     success = true;
-                    console.log(`[handleGoogle] [AI Studio] Image generated successfully (${b64.length} base64 chars)`);
+                    console.log(`[handleGoogle] [SDK] Image generated successfully (${b64.length} base64 chars)`);
                 } catch (studioErr) {
                     console.error(`[handleGoogle] [AI Studio] Failed. Error: ${studioErr.message}`);
-                    throw new Error(`Image generation failed on both Vertex AI and Google AI Studio: ${studioErr.message}`);
+                    if (token && !hasReferences) {
+                        try {
+                            console.log(`[handleGoogle] [Vertex AI Fallback] Attempting Vertex AI Imagen fallback...`);
+                            const vertexModel = 'imagen-3.0-generate-002';
+                            const url = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${vertexModel}:predict`;
+                            
+                            const vertexPayload = {
+                                instances: [{
+                                    prompt: promptWithHint
+                                }],
+                                parameters: {
+                                    sampleCount: 1,
+                                    aspectRatio: mappedRatio,
+                                    outputMimeType: "image/png"
+                                }
+                            };
+
+                            const response = await fetch(url, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${token}`
+                                },
+                                body: JSON.stringify(vertexPayload)
+                            });
+
+                            const data = await response.json();
+                            if (data.error) throw new Error(data.error.message);
+                            
+                            const predictions = data.predictions || [];
+                            if (predictions[0] && predictions[0].bytesBase64Encoded) {
+                                b64 = predictions[0].bytesBase64Encoded;
+                                success = true;
+                                console.log(`[handleGoogle] [Vertex AI Fallback] Image generated successfully (${b64.length} base64 chars)`);
+                            } else {
+                                throw new Error('No predictions returned from Vertex AI Imagen fallback');
+                            }
+                        } catch (vertexErr) {
+                            console.error(`[handleGoogle] [Vertex AI Fallback] Failed. Error: ${vertexErr.message}`);
+                            throw new Error(`Image generation failed on both Vertex AI and Google AI Studio: ${studioErr.message}`);
+                        }
+                    } else {
+                        throw new Error(`Image generation failed on both Vertex AI and Google AI Studio: ${studioErr.message}`);
+                    }
                 }
             }
 
@@ -1386,7 +1423,7 @@ async function handleVeoJob(reqBody) {
     const validResolution = ['720p', '1080p', '4k'].includes(resolution) ? resolution : '1080p';
     const modelName = model || 'veo-3.1-generate-preview';
 
-    const apiKey = await resolveGoogleApiKey(null, userId);
+    const apiKey = await resolveGoogleApiKey(null, userId, true);
     const token = await getVertexToken();
     if (!token && !apiKey) throw new Error('No Veo auth credentials configured (GOOGLE_API_KEY or service account)');
 
@@ -1396,11 +1433,17 @@ async function handleVeoJob(reqBody) {
         if (resolved?.inlineData) instance.image = resolved.inlineData;
     }
 
-    const endpoint = apiKey
-        ? `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predictLongRunning?key=${apiKey}`
-        : `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predictLongRunning`;
+    const isVertex = apiKey === 'VERTEX_AI_CLIENT';
+    const activeApiKey = isVertex ? null : apiKey;
+    const vertexModel = (modelName.includes('fast')) ? 'veo-3.1-fast-generate-001' : 'veo-3.1-generate-001';
+
+    const endpoint = isVertex && token
+        ? `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${vertexModel}:predictLongRunning`
+        : activeApiKey
+            ? `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predictLongRunning?key=${activeApiKey}`
+            : `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predictLongRunning`;
     const headers = { 'Content-Type': 'application/json' };
-    if (!apiKey && token) headers['Authorization'] = `Bearer ${token}`;
+    if ((!activeApiKey && token) || isVertex) headers['Authorization'] = `Bearer ${token}`;
 
     const initResp = await fetch(endpoint, {
         method: 'POST', headers,
@@ -1419,10 +1462,12 @@ async function handleVeoJob(reqBody) {
         await new Promise(r => setTimeout(r, 6000));
         attempts++;
         try {
-            const pollUrl = apiKey
-                ? `https://generativelanguage.googleapis.com/v1beta/${operation.name}?key=${apiKey}`
-                : `https://generativelanguage.googleapis.com/v1beta/${operation.name}`;
-            const pollHeaders = (!apiKey && token) ? { 'Authorization': `Bearer ${token}` } : {};
+            const pollUrl = isVertex && token
+                ? `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/${operation.name.includes('/') ? operation.name : `projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/operations/${operation.name}`}`
+                : activeApiKey
+                    ? `https://generativelanguage.googleapis.com/v1beta/${operation.name}?key=${activeApiKey}`
+                    : `https://generativelanguage.googleapis.com/v1beta/${operation.name}`;
+            const pollHeaders = ((!activeApiKey && token) || isVertex) ? { 'Authorization': `Bearer ${token}` } : {};
             const pollResp = await fetch(pollUrl, { headers: pollHeaders });
             if (pollResp.ok) {
                 const polled = await pollResp.json();
@@ -1700,8 +1745,8 @@ app.post('/api/webhook/razorpay',
 });
 
 // JSON parsers
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ limit: '200mb', extended: true }));
 
 // Rate Limiting
 const apiLimiter = rateLimit({
@@ -1740,6 +1785,7 @@ const deps = {
     MARKETING_FOLDER,
     VERTEX_PROJECT_ID,
     VERTEX_LOCATION,
+    VERTEX_KEY,
     getVertexToken,
     openaiChat,
     getOpenAIClient,

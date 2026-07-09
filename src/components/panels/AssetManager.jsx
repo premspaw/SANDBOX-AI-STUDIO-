@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { LANDING_ASSETS as INITIAL_ASSETS } from '../../config/landingAssets';
 import { getApiUrl } from '../../config/apiConfig';
 import { AssetsLibrary } from './AssetsLibrary';
-import { Search, Database, Image as ImageIcon, Video, Music, X, Upload, Trash2, CheckCircle2, Brain } from 'lucide-react';
+import { Search, Database, Image as ImageIcon, Video, Music, X, Upload, Trash2, CheckCircle2, Brain, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export const AssetManager = () => {
@@ -113,6 +113,131 @@ export const AssetManager = () => {
         }));
     };
 
+    const addUgcAsset = () => {
+        const newItem = {
+            tag: "NEW TAG",
+            name: "New UGC Video",
+            src: ""
+        };
+        setAssets(prev => ({
+            ...prev,
+            ugcAssets: [...(prev.ugcAssets || []), newItem]
+        }));
+    };
+
+    const removeUgcAsset = (index) => {
+        const newUgc = (assets.ugcAssets || []).filter((_, i) => i !== index);
+        setAssets(prev => ({
+            ...prev,
+            ugcAssets: newUgc
+        }));
+    };
+
+    const addProductAsset = () => {
+        const newItem = {
+            tag: "PRODUCT",
+            name: "New Product Video",
+            src: ""
+        };
+        setAssets(prev => ({
+            ...prev,
+            productAssets: [...(prev.productAssets || []), newItem]
+        }));
+    };
+
+    const removeProductAsset = (index) => {
+        const newProduct = (assets.productAssets || []).filter((_, i) => i !== index);
+        setAssets(prev => ({
+            ...prev,
+            productAssets: newProduct
+        }));
+    };
+
+    const handleSectionBulkUpload = async (e, sectionName) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        setIsUploading(true);
+        setStatus({ type: 'info', message: `Uploading ${files.length} file(s)...` });
+
+        try {
+            const uploadedUrls = [];
+            for (let file of files) {
+                setStatus({ type: 'info', message: `Uploading ${file.name}...` });
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = (err) => reject(err);
+                });
+
+                const { data: { session } } = await supabase.auth.getSession();
+                const headers = { 'Content-Type': 'application/json' };
+                if (session?.access_token) {
+                    headers['Authorization'] = `Bearer ${session.access_token}`;
+                }
+                const response = await fetch(getApiUrl('/api/landing-assets-upload'), {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        fileName: file.name,
+                        category: sectionName,
+                        type: file.type.startsWith('video') ? 'video' : 'image',
+                        base64
+                    })
+                });
+
+                if (!response.ok) {
+                    if (response.status === 413) {
+                        throw new Error(`File "${file.name}" is too large. Please upload a smaller video (under 100MB).`);
+                    }
+                    const text = await response.text();
+                    let errMsg = `Upload failed for ${file.name}`;
+                    try {
+                        const parsed = JSON.parse(text);
+                        errMsg = parsed.error || errMsg;
+                    } catch (_) {
+                        errMsg = `Error ${response.status} uploading ${file.name}: ${response.statusText}`;
+                    }
+                    throw new Error(errMsg);
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    uploadedUrls.push({
+                        url: data.url,
+                        name: file.name.substring(0, file.name.lastIndexOf('.')) || file.name,
+                        tag: sectionName === 'ugcAssets' ? 'UGC' : 'PRODUCT'
+                    });
+                } else {
+                    throw new Error(data.error || `Upload failed for ${file.name}`);
+                }
+            }
+
+            // Append new slots
+            setAssets(prev => {
+                const existing = prev[sectionName] || [];
+                const newItems = uploadedUrls.map(item => ({
+                    tag: item.tag,
+                    name: item.name,
+                    src: item.url
+                }));
+                return {
+                    ...prev,
+                    [sectionName]: [...existing, ...newItems]
+                };
+            });
+
+            setStatus({ type: 'success', message: `Successfully uploaded and added ${files.length} video(s)!` });
+            await fetchLibrary(); // Refresh library
+        } catch (error) {
+            console.error('Bulk upload error:', error);
+            setStatus({ type: 'error', message: error.message });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     const saveChanges = async () => {
         setIsSaving(true);
         setStatus({ type: 'info', message: 'Saving changes...' });
@@ -149,46 +274,64 @@ export const AssetManager = () => {
         setStatus({ type: 'info', message: `Uploading ${file.name}...` });
 
         try {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = async () => {
-                const base64 = reader.result;
-                const { data: { session } } = await supabase.auth.getSession();
-                const headers = { 'Content-Type': 'application/json' };
-                if (session?.access_token) {
-                    headers['Authorization'] = `Bearer ${session.access_token}`;
+            const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = (err) => reject(err);
+            });
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const headers = { 'Content-Type': 'application/json' };
+            if (session?.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
+            const response = await fetch(getApiUrl('/api/landing-assets-upload'), {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    fileName: file.name,
+                    category,
+                    type: file.type.startsWith('video') ? 'video' : 'image',
+                    base64
+                })
+            });
+
+            if (!response.ok) {
+                if (response.status === 413) {
+                    throw new Error("File is too large. Please upload a smaller video (under 100MB).");
                 }
-                const response = await fetch(getApiUrl('/api/landing-assets-upload'), {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({
-                        fileName: file.name,
-                        category,
-                        type: file.type.startsWith('video') ? 'video' : 'image',
-                        base64
-                    })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    setStatus({ type: 'success', message: `${file.name} uploaded to library!` });
-                    await fetchLibrary(); // Refresh library
-                    
-                    // If target provided, auto-fill it
-                    if (targetField) {
-                        if (targetIndex !== null) {
-                            handleArrayChange(category === 'gallery' ? 'gallery' : category, targetIndex, targetField, data.url);
-                        } else {
-                            handleInputChange(targetField, data.url);
-                        }
+                const text = await response.text();
+                let errMsg = "Upload failed";
+                try {
+                    const parsed = JSON.parse(text);
+                    errMsg = parsed.error || errMsg;
+                } catch (_) {
+                    errMsg = `Error ${response.status}: ${response.statusText}`;
+                }
+                throw new Error(errMsg);
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                setStatus({ type: 'success', message: `${file.name} uploaded to library!` });
+                await fetchLibrary(); // Refresh library
+                
+                // If target provided, auto-fill it
+                if (targetField) {
+                    if (targetIndex !== null) {
+                        handleArrayChange(category === 'gallery' ? 'gallery' : category, targetIndex, targetField, data.url);
+                    } else {
+                        handleInputChange(targetField, data.url);
                     }
-                } else {
-                    throw new Error(data.error || 'Upload failed');
                 }
-                setIsUploading(false);
-            };
+            } else {
+                throw new Error(data.error || 'Upload failed');
+            }
         } catch (error) {
             console.error('Upload error:', error);
             setStatus({ type: 'error', message: error.message });
+        } finally {
             setIsUploading(false);
         }
     };
@@ -382,14 +525,41 @@ export const AssetManager = () => {
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-lg font-semibold text-emerald-400 flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                                    UGC Factory (4 Slots)
+                                    UGC Factory ({(assets.ugcAssets || []).length} Slots)
                                 </h3>
+                                <div className="flex gap-2">
+                                    <label className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 border border-white/10 rounded-lg text-white text-xs font-black cursor-pointer transition-all flex items-center gap-1.5">
+                                        <Upload size={12} /> UPLOAD VIDEOS
+                                        <input 
+                                            type="file" 
+                                            className="hidden" 
+                                            onChange={(e) => handleSectionBulkUpload(e, 'ugcAssets')} 
+                                            accept="video/*" 
+                                            multiple 
+                                        />
+                                    </label>
+                                    <button
+                                        onClick={addUgcAsset}
+                                        className="px-3 py-1 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-600/30 rounded-lg text-emerald-400 text-xs font-black transition-all flex items-center gap-1.5"
+                                    >
+                                        <Plus size={12} /> ADD SLOT
+                                    </button>
+                                </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {(assets.ugcAssets || []).map((item, index) => (
                                     <div key={index} className="p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10 space-y-4">
                                         <div className="flex justify-between items-center">
-                                            <span className="text-[10px] font-black text-emerald-500/50 uppercase tracking-widest">SLOT #{index + 1}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] font-black text-emerald-500/50 uppercase tracking-widest">SLOT #{index + 1}</span>
+                                                <button
+                                                    onClick={() => removeUgcAsset(index)}
+                                                    className="text-red-400 hover:text-red-500 transition-colors p-1 hover:bg-red-500/10 rounded"
+                                                    title="Remove Slot"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
                                             <input
                                                 type="text"
                                                 value={item.tag}
@@ -398,25 +568,38 @@ export const AssetManager = () => {
                                                 placeholder="TAG"
                                             />
                                         </div>
-                                        <div className="space-y-1">
-                                            <div className="flex gap-1">
+                                        <div className="space-y-2">
+                                            <div className="flex gap-2 items-center">
+                                                <label className="text-[9px] uppercase tracking-wider text-zinc-400 w-12">Name</label>
                                                 <input
                                                     type="text"
-                                                    value={item.src}
-                                                    onChange={(e) => handleArrayChange('ugcAssets', index, 'src', e.target.value)}
-                                                    className="flex-1 bg-black/40 border border-white/5 rounded-lg p-2 text-xs outline-none focus:border-emerald-500 font-mono"
-                                                    placeholder="Video URL"
+                                                    value={item.name || ''}
+                                                    onChange={(e) => handleArrayChange('ugcAssets', index, 'name', e.target.value)}
+                                                    className="flex-1 bg-black/40 border border-white/5 rounded-lg p-2 text-xs outline-none focus:border-emerald-500"
+                                                    placeholder="Video Title (e.g. Product Drop)"
                                                 />
-                                                <button
-                                                    onClick={() => openPicker('src', 'videos', index, 'ugcAssets')}
-                                                    className="p-2 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-600/30 rounded-lg text-emerald-400 transition-all"
-                                                >
-                                                    <Database size={14} />
-                                                </button>
-                                                <label className="p-2 bg-zinc-800 hover:bg-zinc-700 border border-white/10 rounded-lg text-white cursor-pointer transition-all">
-                                                    <Upload size={14} />
-                                                    <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'ugcAssets', 'src', index)} accept="video/*" />
-                                                </label>
+                                            </div>
+                                            <div className="flex gap-2 items-center">
+                                                <label className="text-[9px] uppercase tracking-wider text-zinc-400 w-12">URL</label>
+                                                <div className="flex-1 flex gap-1">
+                                                    <input
+                                                        type="text"
+                                                        value={item.src}
+                                                        onChange={(e) => handleArrayChange('ugcAssets', index, 'src', e.target.value)}
+                                                        className="flex-1 bg-black/40 border border-white/5 rounded-lg p-2 text-xs outline-none focus:border-emerald-500 font-mono"
+                                                        placeholder="Video URL"
+                                                    />
+                                                    <button
+                                                        onClick={() => openPicker('src', 'videos', index, 'ugcAssets')}
+                                                        className="p-2 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-600/30 rounded-lg text-emerald-400 transition-all"
+                                                    >
+                                                        <Database size={14} />
+                                                    </button>
+                                                    <label className="p-2 bg-zinc-800 hover:bg-zinc-700 border border-white/10 rounded-lg text-white cursor-pointer transition-all">
+                                                        <Upload size={14} />
+                                                        <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'ugcAssets', 'src', index)} accept="video/*" />
+                                                    </label>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -429,14 +612,41 @@ export const AssetManager = () => {
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-lg font-semibold text-blue-400 flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-                                    Product Studio (3 Slots)
+                                    Product Studio ({(assets.productAssets || []).length} Slots)
                                 </h3>
+                                <div className="flex gap-2">
+                                    <label className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 border border-white/10 rounded-lg text-white text-xs font-black cursor-pointer transition-all flex items-center gap-1.5">
+                                        <Upload size={12} /> UPLOAD VIDEOS
+                                        <input 
+                                            type="file" 
+                                            className="hidden" 
+                                            onChange={(e) => handleSectionBulkUpload(e, 'productAssets')} 
+                                            accept="video/*" 
+                                            multiple 
+                                        />
+                                    </label>
+                                    <button
+                                        onClick={addProductAsset}
+                                        className="px-3 py-1 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-600/30 rounded-lg text-blue-400 text-xs font-black transition-all flex items-center gap-1.5"
+                                    >
+                                        <Plus size={12} /> ADD SLOT
+                                    </button>
+                                </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 {(assets.productAssets || []).map((item, index) => (
                                     <div key={index} className="p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10 space-y-4">
                                         <div className="flex justify-between items-center">
-                                            <span className="text-[10px] font-black text-blue-500/50 uppercase tracking-widest">SLOT #{index + 1}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] font-black text-blue-500/50 uppercase tracking-widest">SLOT #{index + 1}</span>
+                                                <button
+                                                    onClick={() => removeProductAsset(index)}
+                                                    className="text-red-400 hover:text-red-500 transition-colors p-1 hover:bg-red-500/10 rounded"
+                                                    title="Remove Slot"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
                                             <input
                                                 type="text"
                                                 value={item.tag}
@@ -445,25 +655,38 @@ export const AssetManager = () => {
                                                 placeholder="TAG"
                                             />
                                         </div>
-                                        <div className="space-y-1">
-                                            <div className="flex gap-1">
+                                        <div className="space-y-2">
+                                            <div className="flex gap-2 items-center">
+                                                <label className="text-[9px] uppercase tracking-wider text-zinc-400 w-12">Name</label>
                                                 <input
                                                     type="text"
-                                                    value={item.src}
-                                                    onChange={(e) => handleArrayChange('productAssets', index, 'src', e.target.value)}
-                                                    className="flex-1 bg-black/40 border border-white/5 rounded-lg p-2 text-xs outline-none focus:border-blue-500 font-mono"
-                                                    placeholder="URL"
+                                                    value={item.name || ''}
+                                                    onChange={(e) => handleArrayChange('productAssets', index, 'name', e.target.value)}
+                                                    className="flex-1 bg-black/40 border border-white/5 rounded-lg p-2 text-xs outline-none focus:border-blue-500"
+                                                    placeholder="Video Title"
                                                 />
-                                                <button
-                                                    onClick={() => openPicker('src', 'videos', index, 'productAssets')}
-                                                    className="p-1.5 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-600/30 rounded-lg text-blue-400"
-                                                >
-                                                    <Database size={12} />
-                                                </button>
-                                                <label className="p-1.5 bg-zinc-800 hover:bg-zinc-700 border border-white/10 rounded-lg text-white cursor-pointer transition-all">
-                                                    <Upload size={12} />
-                                                    <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'productAssets', 'src', index)} accept="video/*" />
-                                                </label>
+                                            </div>
+                                            <div className="flex gap-2 items-center">
+                                                <label className="text-[9px] uppercase tracking-wider text-zinc-400 w-12">URL</label>
+                                                <div className="flex-1 flex gap-1">
+                                                    <input
+                                                        type="text"
+                                                        value={item.src}
+                                                        onChange={(e) => handleArrayChange('productAssets', index, 'src', e.target.value)}
+                                                        className="flex-1 bg-black/40 border border-white/5 rounded-lg p-2 text-xs outline-none focus:border-blue-500 font-mono"
+                                                        placeholder="URL"
+                                                    />
+                                                    <button
+                                                        onClick={() => openPicker('src', 'videos', index, 'productAssets')}
+                                                        className="p-1.5 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-600/30 rounded-lg text-blue-400"
+                                                    >
+                                                        <Database size={12} />
+                                                    </button>
+                                                    <label className="p-1.5 bg-zinc-800 hover:bg-zinc-700 border border-white/10 rounded-lg text-white cursor-pointer transition-all">
+                                                        <Upload size={12} />
+                                                        <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'productAssets', 'src', index)} accept="video/*" />
+                                                    </label>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

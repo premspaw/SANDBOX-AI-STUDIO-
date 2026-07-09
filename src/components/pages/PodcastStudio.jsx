@@ -455,7 +455,7 @@ export default function PodcastStudio() {
   const [podcastLocation, setPodcastLocation] = useState('');
 
   // image engine
-  const [imgEngine,   setImgEngine]   = useState('nb2'); // 'nb2' | 'gpt2'
+  const [imgEngine,   setImgEngine]   = useState('nb2'); // 'nb2' | 'gpt2' | 'nb2-lite'
   const [gpt2Quality, setGpt2Quality] = useState('low'); // 'low' | 'medium' | 'high'
 
   // gallery
@@ -579,7 +579,7 @@ Return ONLY valid JSON: { "lines": [{ "hostId": 0, "text": "...", "type": "Intro
               { inlineData: { mimeType: host.imgFile.type, data: b64 } },
               { text: basePrompt }
             ],
-            model: 'nano-banana-pro',
+            model: imgEngine === 'nb2-lite' ? 'nano-banana-2-lite' : imgEngine === 'nb2-open' ? 'nano-banana-2-open' : 'nano-banana-pro',
             generationConfig: { imageConfig: { aspectRatio: aspect === '9:16' ? '9:16' : aspect === '16:9' ? '16:9' : '1:1' } }
           })
         });
@@ -779,18 +779,16 @@ Return ONLY valid JSON: { "lines": [{ "hostId": 0, "text": "...", "type": "Intro
                 {/* Image Engine selector */}
                 <div>
                   <p className="text-[8px] text-gray-600 uppercase tracking-widest mb-1">Image Engine</p>
-                  <div className="flex gap-1 p-1 bg-black/40 rounded-xl border border-white/5">
-                    <button
-                      onClick={() => setImgEngine('nb2')}
-                      className="flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
-                      style={imgEngine === 'nb2' ? { background: '#c8f135', color: '#000' } : { color: '#555' }}
-                    >NB2 (Google)</button>
-                    <button
-                      onClick={() => setImgEngine('gpt2')}
-                      className="flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
-                      style={imgEngine === 'gpt2' ? { background: '#00ffe0', color: '#000' } : { color: '#555' }}
-                    >GT2 (OpenAI)</button>
-                  </div>
+                  <select
+                    value={imgEngine}
+                    onChange={e => setImgEngine(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-2 text-[10px] text-white/80 outline-none cursor-pointer focus:border-[#c8f135] transition-colors uppercase font-bold"
+                  >
+                    <option value="nb2" className="bg-[#111113]">NB2 (1 cr)</option>
+                    <option value="nb2-open" className="bg-[#111113]">NB2 GA (1 cr)</option>
+                    <option value="nb2-lite" className="bg-[#111113]">NB2 Lite (0.5 cr)</option>
+                    <option value="gpt2" className="bg-[#111113]">GT2 (1-3 cr)</option>
+                  </select>
                 </div>
                 {imgEngine === 'gpt2' && (
                   <div>

@@ -107,7 +107,7 @@ export default function UGC() {
   const [activeTab, setActiveTab] = useState<'ugc' | 'podcast' | 'talking-head' | 'home-tour' | 'edit'>('ugc');
 
   const getApiKey = () => {
-    if (userProfile?.role === 'admin' || (userProfile as any)?.email === 'premspaw@gmail.com') {
+    if (userProfile?.role === 'admin' || (userProfile as any)?.email?.startsWith('premspaw@gmail')) {
       return (window as any).__ADMIN_GOOGLE_API_KEY__ || import.meta.env.VITE_ADMIN_GOOGLE_API_KEY || localStorage.getItem('GOOGLE_API_KEY') || (window as any).aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
     }
     return localStorage.getItem('GOOGLE_API_KEY') || (window as any).aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
@@ -233,6 +233,7 @@ export default function UGC() {
   const [userPrompt, setUserPrompt] = useState('');
   const [script, setScript] = useState('');
   const [scriptDuration, setScriptDuration] = useState('16 seconds');
+  const [scriptModel, setScriptModel] = useState<'veo3' | 'omni'>('veo3');
   const [selectedScriptTone, setSelectedScriptTone] = useState('viral_marketing');
   const [selectedNiche, setSelectedNiche] = useState('none');
   const [videoPrompt, setVideoPrompt] = useState('');
@@ -276,8 +277,17 @@ export default function UGC() {
     const errorMsg = e instanceof Error ? e.message
       : typeof e === 'string' ? e
       : e?.message || e?.error?.message || JSON.stringify(e) || 'Unknown error';
-    if (errorMsg.includes('Quota exceeded') || errorMsg.includes('429')) {
-      showToast("API Quota Exceeded. Please try again later or provide your own API key in Settings.", 'error');
+
+    const hasCustomKey = !!localStorage.getItem('GOOGLE_API_KEY');
+
+    if (errorMsg.toLowerCase().includes('prepayment credits') || errorMsg.toLowerCase().includes('depleted')) {
+      showToast("Gemini API Prepayment Credits Depleted. Please top up your billing in Google AI Studio.", 'error');
+    } else if (errorMsg.includes('Quota exceeded') || errorMsg.includes('429')) {
+      if (hasCustomKey) {
+        showToast("Custom API Key Quota Exceeded. Please check your usage/limits in Google AI Studio.", 'error');
+      } else {
+        showToast("API Quota Exceeded. Please try again later or configure your own API key in Settings.", 'error');
+      }
     } else if (errorMsg.includes('No API Key')) {
       showToast(`${context} requires API key. Add it in Settings or it will route through server.`, 'error');
     } else {
@@ -325,7 +335,7 @@ export default function UGC() {
   const [thIsGeneratingImg, setThIsGeneratingImg] = useState(false);
   const [thIsGeneratingVideo, setThIsGeneratingVideo] = useState(false);
   const [thVideoProgress, setThVideoProgress] = useState('');
-  const [thDuration, setThDuration] = useState<'4' | '6' | '8' | '10'>('8');
+  const [thDuration, setThDuration] = useState<'4' | '6' | '8' | '10' | '20' | '30' | '40' | '50' | '60'>('8');
   const [thAspectRatio, setThAspectRatio] = useState<'9:16' | '16:9'>('9:16');
 
   const [voiceSampleFile, setVoiceSampleFile] = useState<File | null>(null);
@@ -335,7 +345,7 @@ export default function UGC() {
   const [isAnalyzingVoice, setIsAnalyzingVoice] = useState(false);
   const [imageStyle, setImageStyle] = useState<'studio' | 'ultra-realistic' | 'iphone' | 'short' | 'normal' | 'cinematic'>('ultra-realistic');
   const [aspectRatio, setAspectRatio] = useState<'9:16' | '16:9' | '1:1'>('9:16');
-  const [durationSeconds, setDurationSeconds] = useState<'4' | '6' | '8' | '10'>('8');
+  const [durationSeconds, setDurationSeconds] = useState<'4' | '6' | '8' | '10' | '20' | '30' | '40' | '50' | '60'>('8');
   const [includeAudio, setIncludeAudio] = useState(true);
   const [videoResolution, setVideoResolution] = useState<'720p' | '1080p'>('720p');
   const [selectedVideoStyle, setSelectedVideoStyle] = useState<'calm' | 'energetic' | 'action' | 'professional' | 'casual' | 'storytelling'>('calm');
@@ -539,7 +549,7 @@ export default function UGC() {
   const [isUploadingKB, setIsUploadingKB] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [leftPanelMode, setLeftPanelMode] = useState<'image' | 'video'>('video');
-  const [imgEngine, setImgEngine] = useState<'nb2' | 'gpt2'>('nb2');
+  const [imgEngine, setImgEngine] = useState<'nb2' | 'gpt2' | 'nb2-lite' | 'nb2-open'>('nb2');
   const [gpt2Quality, setGpt2Quality] = useState<'low' | 'medium' | 'high'>('low');
   const [isGalleryOpen, setIsGalleryOpen] = useState(true);
   const [inpaintImg, setInpaintImg] = useState<string | null>(null);
@@ -556,6 +566,31 @@ export default function UGC() {
   const [showVideoMontageOptions, setShowVideoMontageOptions] = useState(true);
   const [showLiveGuide, setShowLiveGuide] = useState(false);
   const [showPromptDropdown, setShowPromptDropdown] = useState(false);
+
+  const handleScriptModelChange = (model: 'veo3' | 'omni') => {
+    setScriptModel(model);
+    if (model === 'omni') {
+      setVideoGenMode('omni-flash');
+      setDurationSeconds('10');
+      
+      if (scriptDuration === '8 seconds') setScriptDuration('10 seconds');
+      else if (scriptDuration === '16 seconds') setScriptDuration('20 seconds');
+      else if (scriptDuration === '24 seconds') setScriptDuration('30 seconds');
+      else if (scriptDuration === '36 seconds' || scriptDuration === '42 seconds') setScriptDuration('40 seconds');
+      else setScriptDuration('20 seconds');
+    } else {
+      if (videoGenMode === 'omni-flash') {
+        setVideoGenMode('veo_fast');
+      }
+      setDurationSeconds('8');
+
+      if (scriptDuration === '10 seconds') setScriptDuration('8 seconds');
+      else if (scriptDuration === '20 seconds') setScriptDuration('16 seconds');
+      else if (scriptDuration === '30 seconds') setScriptDuration('24 seconds');
+      else if (scriptDuration === '40 seconds') setScriptDuration('36 seconds');
+      else setScriptDuration('16 seconds');
+    }
+  };
 
 
   const timerRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -577,6 +612,66 @@ export default function UGC() {
     }
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [showTemplates]);
+
+  useEffect(() => {
+    if (videoGenMode === 'omni-flash') {
+      setDurationSeconds('10');
+    } else {
+      if (durationSeconds === '10') {
+        setDurationSeconds('8');
+      }
+    }
+  }, [videoGenMode]);
+
+  useEffect(() => {
+    if (thEngine === 'omni-flash') {
+      setThDuration('10');
+    } else {
+      if (thDuration === '10') {
+        setThDuration('8');
+      }
+    }
+  }, [thEngine]);
+
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    window.fetch = async function (input, init) {
+      const url = typeof input === 'string' ? input : (input as Request).url || '';
+      
+      // Only intercept calls going to our backend APIs
+      if (url.includes('/api/')) {
+        const newInit = { ...init };
+        const headers = new Headers(newInit.headers || {});
+        
+        // 1. Inject x-admin-trial-key if custom key is set
+        const key = getApiKey();
+        if (key && !headers.has('x-admin-trial-key')) {
+          headers.set('x-admin-trial-key', key);
+        }
+
+        // 2. Inject admin password header if admin mode is active
+        if (isAdmin) {
+          headers.set('x-admin-password', 'admin123');
+        }
+
+        // 3. Inject Authorization header if user is logged in
+        try {
+          const session = (await supabase.auth.getSession())?.data?.session;
+          const token = session?.access_token;
+          if (token && !headers.has('Authorization')) {
+            headers.set('Authorization', `Bearer ${token}`);
+          }
+        } catch (_) {}
+
+        newInit.headers = headers;
+        return originalFetch(input, newInit);
+      }
+      return originalFetch(input, init);
+    };
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [userProfile, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleKBUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -1024,8 +1119,10 @@ Return a detailed JSON with:
   const splitScriptIntoScenes = (text: string) => {
     if (!text) return [];
 
-    const targetWordsPerScene = 23;
-    const maxWordsPerScene = 25;
+    const isOmni = scriptModel === 'omni';
+    const sceneDuration = isOmni ? 10 : 8;
+    const targetWordsPerScene = isOmni ? 30 : 20;
+    const maxWordsPerScene = isOmni ? 33 : 23;
     const newScenes: Scene[] = [];
 
     // Split by timestamps
@@ -1076,12 +1173,17 @@ Return a detailed JSON with:
         }
       }
     } else {
-      // Plain text script with no timestamps
+      // Plain text script with no timestamps - split evenly across scenes!
       const words = text.split(/\s+/).filter(w => w.length > 0);
-      for (let i = 0; i < words.length; i += targetWordsPerScene) {
-        const chunk = words.slice(i, i + targetWordsPerScene).join(' ');
-        const startTime = newScenes.length * 8;
-        const timeStr = `${Math.floor(startTime / 60)}:${(startTime % 60).toString().padStart(2, '0')} - ${Math.floor((startTime + 8) / 60)}:${((startTime + 8) % 60).toString().padStart(2, '0')}`;
+      const totalSeconds = parseInt(scriptDuration) || (isOmni ? 20 : 16);
+      const targetSceneCount = Math.max(1, Math.ceil(totalSeconds / sceneDuration));
+      
+      const wordsPerScene = Math.max(5, Math.ceil(words.length / targetSceneCount));
+      
+      for (let i = 0; i < words.length; i += wordsPerScene) {
+        const chunk = words.slice(i, i + wordsPerScene).join(' ');
+        const startTime = newScenes.length * sceneDuration;
+        const timeStr = `${Math.floor(startTime / 60)}:${(startTime % 60).toString().padStart(2, '0')} - ${Math.floor((startTime + sceneDuration) / 60)}:${((startTime + sceneDuration) % 60).toString().padStart(2, '0')}`;
         newScenes.push({
           id: (newScenes.length + 1).toString(),
           text: chunk,
@@ -1089,7 +1191,7 @@ Return a detailed JSON with:
           isApproved: false,
           visualCue: '',
           timestamp: `[${timeStr}]`,
-          label: newScenes.length === 0 ? 'HOOK' : 'PAYOFF'
+          label: newScenes.length === 0 ? 'HOOK' : newScenes.length === 1 ? 'PAYOFF' : `SCENE ${newScenes.length + 1}`
         });
       }
     }
@@ -1198,9 +1300,13 @@ Return a detailed JSON with:
     // Map duration to training file names
     const trainingMap: { [key: string]: string } = {
       '8 seconds': '8-Second',
+      '10 seconds': '8-Second',
       '16 seconds': '16Second',
+      '20 seconds': '16Second',
       '24 seconds': '24Second',
-      '36 seconds': '34Second'
+      '30 seconds': '24Second',
+      '36 seconds': '34Second',
+      '40 seconds': '34Second'
     };
 
     const durationKey = trainingMap[duration] || '24Second';
@@ -1360,15 +1466,28 @@ Return a detailed JSON with:
         ? `\n\nTRAINED VIRAL STRATEGY (APPLY THESE PATTERNS):\n${trainedStrategy}\n\nINSTRUCTION: Use the patterns, hooks, and pacing identified in the strategy above to craft this new script.`
         : '';
 
+      const isOmni = scriptModel === 'omni';
+      const sceneLength = isOmni ? 10 : 8;
       const durationInt = parseInt(scriptDuration);
-      const sceneCount = Math.ceil(durationInt / 8);
+      const sceneCount = Math.ceil(durationInt / sceneLength);
 
-      const durationLogic = {
-        8: "1 HOOK scene",
-        16: "1 HOOK scene (8s) and 1 PAYOFF/CTA scene (8s)",
-        24: "1 HOOK (8s), 1 PAYOFF (8s), and 1 CTA (8s)",
-        36: "1 HOOK (8s), 2 PERSUASIVE/PAYOFF scenes (8s each), and 1 CTA (8s)"
-      }[durationInt as 8 | 16 | 24 | 36] || "multiple 8-second scenes";
+      let durationLogic = '';
+      if (isOmni) {
+        durationLogic = {
+          10: "1 HOOK scene (10s)",
+          20: "1 HOOK scene (10s) and 1 PAYOFF/CTA scene (10s)",
+          30: "1 HOOK (10s), 1 PAYOFF (10s), and 1 CTA (10s)",
+          40: "1 HOOK (10s), 2 PERSUASIVE/PAYOFF scenes (10s each), and 1 CTA (10s)"
+        }[durationInt as 10 | 20 | 30 | 40] || "multiple 10-second scenes";
+      } else {
+        durationLogic = {
+          8: "1 HOOK scene (8s)",
+          16: "1 HOOK scene (8s) and 1 PAYOFF/CTA scene (8s)",
+          24: "1 HOOK (8s), 1 PAYOFF (8s), and 1 CTA (8s)",
+          36: "1 HOOK (8s), 2 PERSUASIVE/PAYOFF scenes (8s each), and 1 CTA (8s)",
+          42: "1 HOOK (8s), 3 PERSUASIVE/PAYOFF scenes (8s each), and 1 CTA (10s)"
+        }[durationInt as 8 | 16 | 24 | 36 | 42] || "multiple 8-second scenes";
+      }
 
       const nicheHookContext = buildNicheHookContext(selectedNiche);
 
@@ -1389,6 +1508,7 @@ Return a detailed JSON with:
         strategyContext,
         trainingContent,
         nicheHookContext,
+        scriptModel,
       });
 
       const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
@@ -1437,26 +1557,33 @@ Return a detailed JSON with:
         setScript(result.script);
       }
 
-      if (result?.scenes && Array.isArray(result.scenes) && result.scenes.length === sceneCount) {
-        const structuredScenes: Scene[] = result.scenes.map((s: any) => ({
-          id: s.id || Math.random().toString(36).substring(7),
-          text: s.dialogue || '',
-          prompt: s.visualCue || '',
-          isApproved: false,
-          visualCue: s.visualCue || '',
-          timestamp: s.timestamp || '',
-          label: s.label || ''
-        }));
+      const fullScript = result?.script || result?.text || script || '';
+      const automaticallySplitScenes = splitScriptIntoScenes(fullScript);
+
+      if (result?.scenes && Array.isArray(result.scenes) && result.scenes.length > 0) {
+        const structuredScenes: Scene[] = result.scenes.map((aiScene: any, idx: number) => {
+          const autoScene = automaticallySplitScenes[idx] || {};
+          return {
+            id: String(aiScene.id || idx + 1),
+            text: aiScene.dialogue || aiScene.text || autoScene.text || '',
+            prompt: aiScene.visualCue || '',
+            isApproved: false,
+            visualCue: aiScene.visualCue || '',
+            timestamp: aiScene.timestamp || autoScene.timestamp || '',
+            label: aiScene.label || autoScene.label || 'SCENE'
+          };
+        });
         setScenes(structuredScenes);
         if (structuredScenes.length > 0) {
           setActiveSceneIndex(0);
           setVideoPrompt(structuredScenes[0].prompt);
         }
       } else {
-        // Fallback if scenes array is missing or incorrect length
-        const automaticallySplitScenes = splitScriptIntoScenes(result?.script || result?.text || script || '');
         setScenes(automaticallySplitScenes);
-        if (automaticallySplitScenes.length > 0) setActiveSceneIndex(0);
+        if (automaticallySplitScenes.length > 0) {
+          setActiveSceneIndex(0);
+          setVideoPrompt(automaticallySplitScenes[0].prompt);
+        }
       }
     } catch (e) {
       handleApiError(e, "Script generation");
@@ -1477,6 +1604,7 @@ Return a detailed JSON with:
         productDetails,
         selectedSceneStyle,
         SCENE_STYLES,
+        scriptModel,
       });
 
       const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
@@ -1871,16 +1999,17 @@ Return a detailed JSON with:
       let contents: { text?: string; inlineData?: { mimeType: string; data: string } }[] = [];
 
       let stylePrompt = '';
+      const frontFacing = 'SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side.';
       if (imageStyle === 'ultra-realistic') {
-        stylePrompt = 'Ultra-realistic raw photo, natural looking normal photo quality, super natural, no background blur, no bokeh, sharp focus across the entire frame, shot on a normal phone, mobile photography aesthetic, natural lighting, super real human appearance, authentic and imperfect, 8K resolution, wide angle or medium shot, natural environment, no 85mm, no portrait lens effect, zero depth of field blur';
+        stylePrompt = `${frontFacing} Ultra-realistic raw photo, natural looking normal photo quality, super natural, no background blur, no bokeh, sharp focus across the entire frame, shot on a normal phone, mobile photography aesthetic, natural lighting, super real human appearance, authentic and imperfect, 8K resolution, wide angle or medium shot, natural environment, no 85mm, no portrait lens effect, zero depth of field blur`;
       } else if (imageStyle === 'iphone') {
-        stylePrompt = 'POV selfie shot on iPhone 15 front-facing camera. The person is visibly holding the phone with one extended hand, showing their arm reaching towards the camera lens. Casual, spontaneous social media aesthetic, slightly imperfect natural lighting, authentic unedited vlog style, slight lens distortion typical of a front-facing smartphone camera, relatable and genuine.';
+        stylePrompt = `${frontFacing} POV selfie shot on iPhone 15 front-facing camera. The person is visibly holding the phone with one extended hand, showing their arm reaching towards the camera lens. Casual, spontaneous social media aesthetic, slightly imperfect natural lighting, authentic unedited vlog style, slight lens distortion typical of a front-facing smartphone camera, relatable and genuine.`;
       } else if (imageStyle === 'short') {
-        stylePrompt = 'Quick snapshot style, candid, slightly blurry background, fast shutter speed, everyday lighting, highly relatable and casual, like a quick photo taken for a friend.';
+        stylePrompt = `${frontFacing} Quick snapshot style, candid, slightly blurry background, fast shutter speed, everyday lighting, highly relatable and casual, like a quick photo taken for a friend.`;
       } else if (imageStyle === 'normal') {
-        stylePrompt = 'Standard digital photography, clear and well-lit, balanced colors, realistic but flattering, typical high-quality social media post, no extreme filters.';
+        stylePrompt = `${frontFacing} Standard digital photography, clear and well-lit, balanced colors, realistic but flattering, typical high-quality social media post, no extreme filters.`;
       } else {
-        stylePrompt = 'Ultra-realistic studio lighting, high contrast, moody, cinematic, shot on 35mm lens, polished commercial look, authentic skin textures, professional UGC aesthetic, 8K resolution, highly detailed.';
+        stylePrompt = `${frontFacing} Ultra-realistic studio lighting, high contrast, moody, cinematic, shot on 35mm lens, polished commercial look, authentic skin textures, professional UGC aesthetic, 8K resolution, highly detailed.`;
       }
 
       // If overridePrompt is a string, wrap it. Otherwise use the default.
@@ -1988,7 +2117,8 @@ Return a detailed JSON with:
       contents.push({ text: promptInstructions });
 
     // gemini-3.1-flash-image-preview = Nano Banana 2 (correct per official docs)
-    const modelName = 'gemini-3.1-flash-image-preview';
+    // gemini-3.1-flash-image = Nano Banana 2 GA/Open model
+    const modelName = imgEngine === 'nb2-lite' ? 'gemini-3.1-flash-lite-image' : imgEngine === 'nb2-open' ? 'gemini-3.1-flash-image' : 'gemini-3.1-flash-image-preview';
 
     console.log(`[NB2 generateImage] Starting — model: ${modelName}, aspectRatio: ${aspectRatio}, parts: ${contents.length}`);
     console.time('[NB2 generateImage] API call duration');
@@ -2105,7 +2235,7 @@ Return a detailed JSON with:
       contents.push({ text: promptInstructions });
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-image-preview',
+        model: imgEngine === 'nb2-lite' ? 'gemini-3.1-flash-lite-image' : imgEngine === 'nb2-open' ? 'gemini-3.1-flash-image' : 'gemini-3.1-flash-image-preview',
         contents: [{ parts: contents }],
         config: {
           responseModalities: ['TEXT', 'IMAGE'],
@@ -2174,6 +2304,44 @@ Return a detailed JSON with:
 
       setThVideoProgress('Submitting to Veo…');
 
+      if (isAdmin || isGlobalAdmin) {
+        setThVideoProgress('Submitting to Vertex AI (Veo 3.1)...');
+        const headers: any = { 'Content-Type': 'application/json' };
+        const customKey = getApiKey();
+        if (customKey) headers['x-admin-trial-key'] = customKey;
+
+        const resp = await fetch(getApiUrl('/api/ugc/video'), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            image: thGeneratedImg || undefined,
+            script: talkingPrompt,
+            userId: currentUserId,
+            duration: thDuration,
+            resolution: '720p',
+            model: thEngine === 'veo3' ? 'veo3' : 'veo_fast',
+            aspect_ratio: thAspectRatio
+          })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Vertex AI Talking Head generation failed.');
+        if (!data.url) throw new Error('Vertex AI returned no video URL.');
+
+        setThGeneratedVideo(data.url);
+        const tempId = Date.now().toString();
+        addToGallery({
+          id: tempId,
+          type: 'video',
+          url: data.url,
+          prompt: talkingPrompt.substring(0, 1000)
+        });
+        setThIsGeneratingVideo(false);
+        setThVideoProgress('');
+        showToast('Talking Head video ready via Vertex AI!', 'success');
+        return;
+      }
+
       const videoRequest: any = {
         model: veoModel,
         prompt: talkingPrompt,
@@ -2210,7 +2378,7 @@ Return a detailed JSON with:
             model: 'gemini-omni-flash-preview',
             userId: currentUserId,
             generateAudio: true,
-            creditReason: 'ugc_video_generation'
+            creditReason: 'veo_fast'
           })
         });
 
@@ -2389,7 +2557,7 @@ Return a detailed JSON with:
     setIsRegeneratingImage(false);
   };
 
-  const getImageCost = () => imgEngine === 'gpt2' ? 5 : 2;
+  const getImageCost = () => imgEngine === 'gpt2' ? 5 : imgEngine === 'nb2-lite' ? 0.5 : 2;
 
   const getCurrentCost = (isMontage = false, customDuration?: number) => {
     const audioOn = isMontage ? montageAudioEnabled : includeAudio;
@@ -2435,13 +2603,7 @@ Return a detailed JSON with:
         costPerSec = audioOn ? 6 : 4;
       }
     } else if (engine === 'omni-flash') {
-      if (is4K) {
-        costPerSec = audioOn ? 38 : 31;
-      } else if (is1080p) {
-        costPerSec = audioOn ? 15 : 12;
-      } else {
-        costPerSec = audioOn ? 12 : 10;
-      }
+      const costPerSec = audioOn ? 6 : 5;
       return Math.ceil(costPerSec * 1.1 * duration);
     }
 
@@ -2542,7 +2704,7 @@ Return a detailed JSON with:
               model: 'gemini-omni-flash-preview',
               userId: currentUserId,
               generateAudio: resolvedIncludeAudio,
-              creditReason: 'ugc_video_generation'
+              creditReason: 'veo_fast'
             })
           });
 
@@ -2723,7 +2885,8 @@ Return a detailed JSON with:
     const primaryPersonImg = isPodcastMode ? podcastHost1Img : characterImg;
     const secondaryPersonImg = isPodcastMode ? podcastHost2Img : null;
     const activeProductImg = isPodcastMode ? podcastProductImg : productImg;
-    if (!primaryPersonImg && !secondaryPersonImg && !activeProductImg) return '';
+    const activeLocationImg = isPodcastMode ? null : locationImg;
+    if (!primaryPersonImg && !secondaryPersonImg && !activeProductImg && !activeLocationImg) return '';
     const imgCost = getImageCost();
     if (!isAdmin && !isGlobalAdmin) {
       const spendRes = await spend('veo_fast', imgCost as any);
@@ -2741,7 +2904,7 @@ Return a detailed JSON with:
     let generatedUrl = '';
     try {
       let contents: any[] = [];
-      const stylePrompt = 'Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality';
+      const stylePrompt = 'Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side.';
 
       if (primaryPersonImg) {
         setMontageImgProgressMsg(isPodcastMode ? 'Loading Host 1 Reference...' : 'Loading Character Reference...');
@@ -2758,10 +2921,19 @@ Return a detailed JSON with:
         contents.push(await fileToGenerativePart(activeProductImg.file));
       }
 
+      if (activeLocationImg) {
+        setMontageImgProgressMsg('Loading Stage/Location Reference...');
+        contents.push(await fileToGenerativePart(activeLocationImg.file));
+      }
+
       setMontageImgProgressMsg('Synthesising Reference Frame...');
 
       let promptInstructions = '';
       const sceneDesc = `${option.title} — ${option.prompt.substring(0, 120)}`;
+
+      const hasPerson = !!primaryPersonImg;
+      const hasProduct = !!activeProductImg;
+      const hasLocation = !!activeLocationImg;
 
       if (isPodcastMode) {
         const providedRefs = [
@@ -2777,19 +2949,42 @@ Return a detailed JSON with:
         ${activeProductImg ? 'Place the product naturally on the desk or in the set, matching the product reference exactly.' : ''}
         SKIN REALISM (critical): Ultra-realistic human skin — visible pores, natural skin texture, subtle imperfections like fine lines or uneven tone, slight oiliness or dryness where natural, micro-hair detail on face. NO airbrushing, NO plastic skin, NO over-smoothed complexion, NO beauty filter. Skin must look like a real unedited photo of a living person.
         Style: candid editorial podcast frame, natural window or studio light, no collage, no split-screen, no extra text or logos, raw photo quality, shot on Sony A7 IV, 85mm f/2.0.`;
-      } else if (primaryPersonImg && activeProductImg) {
+      } else if (hasPerson && hasProduct && hasLocation) {
+        promptInstructions = `The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference. The THIRD image is the LOCATION/STAGE reference.
+        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in this EXACT environment/location.
+        Scene: ${sceneDesc}.
+        Style: ${stylePrompt}.
+        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, the product, and environment precisely.`;
+      } else if (hasPerson && hasProduct) {
         promptInstructions = `The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.
         TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: ${sceneDesc}.
         Style: ${stylePrompt}.
         CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.`;
-      } else if (primaryPersonImg) {
+      } else if (hasPerson && hasLocation) {
+        promptInstructions = `The FIRST image is the PERSON (creator) reference. The SECOND image is the LOCATION/STAGE reference.
+        TASK: Generate ONE single, coherent UGC-style photo of this EXACT person in this EXACT environment/location.
+        Scene: ${sceneDesc}.
+        Style: ${stylePrompt}.
+        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and environment precisely.`;
+      } else if (hasProduct && hasLocation) {
+        promptInstructions = `The FIRST image is the PRODUCT reference. The SECOND image is the LOCATION/STAGE reference.
+        TASK: Generate ONE single, coherent UGC-style photo of a creator using/showcasing this EXACT product in this EXACT environment/location.
+        Scene: ${sceneDesc}.
+        Style: ${stylePrompt}.
+        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the product and environment precisely.`;
+      } else if (hasPerson) {
         promptInstructions = `The image is the PERSON (creator) reference.
         TASK: Generate ONE UGC-style photo of this person in the following scene: ${sceneDesc}.
         Style: ${stylePrompt}.`;
-      } else if (activeProductImg) {
+      } else if (hasProduct) {
         promptInstructions = `The image is the PRODUCT reference.
         TASK: Generate ONE UGC-style photo of a creator using/showcasing this product in the following scene: ${sceneDesc}.
         The product in the final image must look exactly like the reference. Style: ${stylePrompt}.`;
+      } else if (hasLocation) {
+        promptInstructions = `The image is the LOCATION/STAGE reference.
+        TASK: Generate ONE UGC-style photo of a creator in this environment/location.
+        Scene: ${sceneDesc}.
+        Style: ${stylePrompt}.`;
       } else {
         promptInstructions = `TASK: Generate ONE UGC-style photo for this scene: ${sceneDesc}. Style: ${stylePrompt}.`;
       }
@@ -2887,12 +3082,13 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         if (primaryPersonImg?.file) refImages.push(await readFileAsBase64(primaryPersonImg.file));
         if (secondaryPersonImg?.file) refImages.push(await readFileAsBase64(secondaryPersonImg.file));
         if (activeProductImg?.file) refImages.push(await readFileAsBase64(activeProductImg.file));
+        if (activeLocationImg?.file) refImages.push(await readFileAsBase64(activeLocationImg.file));
 
         const nb2Res = await fetch(getApiUrl('/api/generate-image'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'nano-banana-2',
+            model: imgEngine === 'nb2-lite' ? 'nano-banana-2-lite' : imgEngine === 'nb2-open' ? 'nano-banana-2-open' : 'nano-banana-2',
             prompt: contents.find(c => c.text)?.text || promptInstructions,
             aspect_ratio: aspectRatio,
             userId: currentUserId,
@@ -3077,6 +3273,50 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
           imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
         }
 
+        // Helper to resolve Asset objects or raw strings to Base64 data URLs on the client
+        const resolveAssetToBase64 = async (asset: any) => {
+          if (!asset) return null;
+          try {
+            if (typeof asset === 'string') {
+              if (asset.startsWith('data:')) return asset;
+              const blob = await fetchImageAsBlob(asset);
+              const base64 = await resizeImage(blob);
+              return `data:image/jpeg;base64,${base64}`;
+            }
+            if (asset.file) {
+              const base64 = await resizeImage(asset.file);
+              return `data:image/jpeg;base64,${base64}`;
+            }
+            if (asset.url) {
+              if (asset.url.startsWith('data:')) return asset.url;
+              const blob = await fetchImageAsBlob(asset.url);
+              const base64 = await resizeImage(blob);
+              return `data:image/jpeg;base64,${base64}`;
+            }
+          } catch (e) {
+            console.warn('[UGC-OMNI] Reference resolution failed:', e);
+          }
+          return null;
+        };
+
+        const activeCharacterImg = activeTab === 'talking-head' ? thPersonImg : characterImg;
+        const activeProductImg = activeTab === 'talking-head' ? thProductImg : productImg;
+        const activeLocationImg = activeTab === 'talking-head' ? thLocationImg : locationImg;
+
+        // Resolve reference images in parallel
+        const [charBase64, prodBase64, locBase64] = await Promise.all([
+          resolveAssetToBase64(activeCharacterImg),
+          resolveAssetToBase64(activeProductImg),
+          resolveAssetToBase64(activeLocationImg)
+        ]);
+
+        // Build ref_images list filtering out the primary imageToSend if already present
+        const refImagesList = [
+          charBase64 && charBase64 !== imageToSend && { url: charBase64 },
+          prodBase64 && prodBase64 !== imageToSend && { url: prodBase64 },
+          locBase64 && locBase64 !== imageToSend && { url: locBase64 }
+        ].filter(Boolean);
+
         const headers: any = { 'Content-Type': 'application/json' };
         const customKey = getApiKey();
         if (customKey) headers['x-admin-trial-key'] = customKey;
@@ -3093,7 +3333,8 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             model: 'gemini-omni-flash-preview',
             userId: currentUserId,
             generateAudio: resolvedIncludeAudio,
-            creditReason: 'ugc_video_generation'
+            creditReason: 'veo_fast',
+            ref_images: refImagesList
           })
         });
 
@@ -3102,6 +3343,12 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         if (!data.videoUrl) throw new Error('Omni returned no video URL.');
 
         setGeneratedVideo(data.videoUrl);
+        addToGallery({
+          id: Date.now().toString(),
+          type: 'video',
+          url: data.videoUrl,
+          prompt: promptText.substring(0, 1000)
+        });
         setIsGeneratingVideo(false);
         setVideoProgressMsg('');
         showToast('Video scene generated successfully!', 'success');
@@ -3109,6 +3356,46 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
       }
 
       setVideoProgressMsg('Igniting the Motion Engine...');
+
+      if (isAdmin || isGlobalAdmin) {
+        setVideoProgressMsg('Submitting to Vertex AI (Veo 3.1)...');
+        const headers: any = { 'Content-Type': 'application/json' };
+        const customKey = getApiKey();
+        if (customKey) headers['x-admin-trial-key'] = customKey;
+
+        const imageToSend = activeRefImg || undefined;
+
+        const resp = await fetch(getApiUrl('/api/ugc/video'), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            image: imageToSend,
+            script: promptText,
+            userId: currentUserId,
+            duration: activeTab === 'talking-head' ? thDuration : durationSeconds,
+            resolution: videoResolution,
+            model: engine === 'veo3' ? 'veo3' : 'veo_fast',
+            aspect_ratio: activeTab === 'talking-head' ? thAspectRatio : aspectRatio
+          })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Vertex AI Veo generation failed.');
+        if (!data.url) throw new Error('Vertex AI returned no video URL.');
+
+        setGeneratedVideo(data.url);
+        const tempId = Date.now().toString();
+        addToGallery({
+          id: tempId,
+          type: 'video',
+          url: data.url,
+          prompt: promptText.substring(0, 1000)
+        });
+        setIsGeneratingVideo(false);
+        setVideoProgressMsg('');
+        showToast('Video scene generated successfully via Vertex AI!', 'success');
+        return;
+      }
 
       const veoModel = engine === 'veo3'
         ? 'veo-3.1-generate-preview'
@@ -3261,6 +3548,9 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     setScript,
     scriptDuration,
     setScriptDuration,
+    scriptModel,
+    setScriptModel,
+    handleScriptModelChange,
     selectedScriptTone,
     setSelectedScriptTone,
     selectedNiche,
@@ -3657,7 +3947,20 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                     <div className="ml-0 md:ml-auto flex items-center gap-1.5 px-2 md:px-3 overflow-x-auto no-scrollbar py-1" style={{ scrollbarWidth: 'none' }}>
                       <Dropdown label="" value={language} options={LANGUAGES} onChange={setLanguage} direction="up" className="w-[72px] md:w-[85px] shrink-0" />
                       <Dropdown label="" value={voice} options={VOICES} onChange={setVoice} direction="up" className="w-[62px] md:w-[80px] shrink-0" />
-                      <Dropdown label="" value={scriptDuration} options={['8 seconds', '16 seconds', '24 seconds', '36 seconds', '42 seconds']} onChange={setScriptDuration} direction="up" className="w-[82px] md:w-[100px] shrink-0" />
+                      
+                      {/* Script Model Switcher Dropdown */}
+                      <Dropdown
+                        label=""
+                        value={scriptModel === 'veo3' ? 'VEO 3' : 'OMNI'}
+                        options={['VEO 3', 'OMNI']}
+                        onChange={(val: string) => {
+                          handleScriptModelChange(val === 'VEO 3' ? 'veo3' : 'omni');
+                        }}
+                        direction="up"
+                        className="w-[65px] md:w-[75px] shrink-0"
+                      />
+
+                      <Dropdown label="" value={scriptDuration} options={scriptModel === 'omni' ? ['10 seconds', '20 seconds', '30 seconds', '40 seconds', '50 seconds', '60 seconds'] : ['8 seconds', '16 seconds', '24 seconds', '36 seconds', '42 seconds']} onChange={setScriptDuration} direction="up" className="w-[82px] md:w-[100px] shrink-0" />
                       <Dropdown
                         label=""
                         value={SCRIPT_TONES[selectedScriptTone] ? SCRIPT_TONES[selectedScriptTone].name : selectedScriptTone}
@@ -3790,15 +4093,17 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                           .replace(/\n{3,}/g, '\n\n')           // collapse triple+ newlines
                           .trim();
 
-                        const WORDS_PER_CHUNK = 23;
+                        const isOmni = scriptModel === 'omni';
+                        const wordsPerChunk = isOmni ? 34 : 23;
+                        const sceneDuration = isOmni ? 10 : 8;
                         const words = cleanText.split(/\s+/).filter(Boolean);
                         if (words.length > 0) {
                           let chunkStart = 0;
                           let sceneNum = 1;
-                          for (let wi = 0; wi < words.length; wi += WORDS_PER_CHUNK) {
-                            const chunkWords = words.slice(wi, wi + WORDS_PER_CHUNK);
+                          for (let wi = 0; wi < words.length; wi += wordsPerChunk) {
+                            const chunkWords = words.slice(wi, wi + wordsPerChunk);
                             const dialog = chunkWords.join(' ');
-                            const chunkEnd = chunkStart + 8;
+                            const chunkEnd = chunkStart + sceneDuration;
                             const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
                             const label = `Scene ${sceneNum} [${fmt(chunkStart)} - ${fmt(chunkEnd)}]`;
                             const matchingScene = scenes[sceneNum - 1];

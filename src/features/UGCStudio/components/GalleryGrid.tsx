@@ -40,10 +40,13 @@ const resolveVideoUrl = (url: string): string => {
 // ── VideoThumbnail ─────────────────────────────────────────────────────────────
 // Displays a preview frame of the video at 0.5s natively without preloading the full video.
 function VideoThumbnail({ url, className }: { url: string; className?: string }) {
+  const resolved = resolveVideoUrl(url);
+  const videoSrc = resolved.startsWith('blob:') || resolved.startsWith('data:') ? resolved : `${resolved}#t=0.5`;
   return (
     <div className={`relative w-full h-full ${className || ''}`}>
       <video
-        src={`${resolveVideoUrl(url)}#t=0.5`}
+        key={videoSrc}
+        src={videoSrc}
         className="w-full h-full object-cover"
         preload="metadata"
         playsInline

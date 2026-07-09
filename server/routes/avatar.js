@@ -13,7 +13,10 @@ export default function createRouter(deps) {
         openaiChat,
         consumeCredits,
         requireAuth,
-        resolveGoogleApiKey
+        resolveGoogleApiKey,
+        getVertexToken,
+        VERTEX_PROJECT_ID,
+        VERTEX_LOCATION
     } = deps;
 
     // Helper to secure base64 decoding
@@ -160,9 +163,24 @@ export default function createRouter(deps) {
             let r2Url = '';
 
             if (model === 'banana') {
-                const apiKey = await resolveGoogleApiKey(req, userId);
+                const apiKey = await resolveGoogleApiKey(req, userId, false);
                 const activeModel = 'gemini-3-pro-image-preview';
-                const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
+                
+                let endpoint = '';
+                const headers = { 'Content-Type': 'application/json' };
+                if (apiKey === 'VERTEX_AI_CLIENT') {
+                    const token = await getVertexToken();
+                    const activeModelLower = activeModel.toLowerCase();
+                    const needsGlobal = activeModelLower.includes('gemini') || activeModelLower.includes('banana') || activeModelLower.includes('omni');
+                    const targetLocation = needsGlobal ? 'global' : (VERTEX_LOCATION || 'us-central1');
+                    const apiVersion = needsGlobal ? 'v1beta1' : 'v1';
+                    endpoint = `https://${VERTEX_LOCATION || 'us-central1'}-aiplatform.googleapis.com/${apiVersion}/projects/${VERTEX_PROJECT_ID}/locations/${targetLocation}/publishers/google/models/${activeModel}:generateContent`;
+                    headers['Authorization'] = `Bearer ${token}`;
+                    console.log(`[Avatar Board] [Vertex AI] Calling model ${activeModel} via Service Account token (location: ${targetLocation})`);
+                } else {
+                    endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
+                    console.log(`[Avatar Board] [AI Studio] Calling model ${activeModel} via API Key`);
+                }
 
                 const imageParts = [];
                 const urlsToFetch = [];
@@ -215,7 +233,7 @@ export default function createRouter(deps) {
                 console.log('[Avatar Board] Querying Google Gemini Imagen...');
                 const geminiResp = await fetch(endpoint, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers,
                     body: JSON.stringify({
                         contents: [{ role: 'user', parts }],
                         safetySettings,

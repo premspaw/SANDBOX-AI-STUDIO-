@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 
 interface DropdownProps {
@@ -20,6 +21,7 @@ export const Dropdown = ({ label, value, options, onChange, icon: Icon, classNam
     width: string;
   }>({ left: '0px', width: '0px' });
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const toggleDropdown = () => {
     if (!isOpen && triggerRef.current) {
@@ -53,7 +55,10 @@ export const Dropdown = ({ label, value, options, onChange, icon: Icon, classNam
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: MouseEvent) => {
-      if (triggerRef.current && !triggerRef.current.contains(e.target as Node)) {
+      if (
+        triggerRef.current && !triggerRef.current.contains(e.target as Node) &&
+        (!menuRef.current || !menuRef.current.contains(e.target as Node))
+      ) {
         setIsOpen(false);
       }
     };
@@ -92,10 +97,11 @@ export const Dropdown = ({ label, value, options, onChange, icon: Icon, classNam
           <ChevronDown size={11} className={`text-gray-500 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
         </button>
 
-        {isOpen && (
+        {isOpen && createPortal(
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+            <div className="fixed inset-0 z-[9999]" onClick={() => setIsOpen(false)} />
             <div
+              ref={menuRef}
               style={{
                 position: 'fixed',
                 top: pos.top,
@@ -103,7 +109,7 @@ export const Dropdown = ({ label, value, options, onChange, icon: Icon, classNam
                 left: pos.left,
                 width: pos.width
               }}
-              className="bg-black/95 border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden backdrop-blur-2xl ring-1 ring-white/5"
+              className="bg-black/95 border border-white/10 rounded-lg shadow-2xl z-[10000] overflow-hidden backdrop-blur-2xl ring-1 ring-white/5"
             >
               <div className="max-h-48 overflow-y-auto custom-scrollbar p-1">
                 {options.map((opt: string, optIdx: number) => (
@@ -120,7 +126,8 @@ export const Dropdown = ({ label, value, options, onChange, icon: Icon, classNam
                 ))}
               </div>
             </div>
-          </>
+          </>,
+          document.body
         )}
       </div>
     </div>

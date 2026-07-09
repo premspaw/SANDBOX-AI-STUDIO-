@@ -53,9 +53,13 @@ export const SHOT_BLUEPRINTS: Record<string, ShotBlueprint> = {
  */
 export const SCENE_SEQUENCES: Record<number, string[]> = {
   8:  ['HOOK'],
+  10: ['HOOK'],
   16: ['HOOK', 'CTA'],
+  20: ['HOOK', 'CTA'],
   24: ['HOOK', 'PAYOFF', 'CTA'],
+  30: ['HOOK', 'PAYOFF', 'CTA'],
   32: ['HOOK', 'PROBLEM', 'PAYOFF', 'CTA'],
   36: ['HOOK', 'PROBLEM', 'PAYOFF', 'PROOF', 'CTA'],
+  40: ['HOOK', 'PROBLEM', 'PAYOFF', 'CTA'],
   42: ['HOOK', 'PROBLEM', 'PAYOFF', 'PROOF', 'PAYOFF', 'CTA'],
 };

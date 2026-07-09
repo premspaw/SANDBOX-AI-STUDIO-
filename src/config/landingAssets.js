@@ -20,7 +20,7 @@
             "name": "Brand Story"
         },
         {
-            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing-assets/kling_20260118_Image_to_Video_A_close_up_352_0%20(1).mp4",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783615271525.mp4",
             "tag": "UNBOXING",
             "name": "Reveal Format"
         },
@@ -32,9 +32,9 @@
     ],
     "productAssets": [
         {
-            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing-assets/studio_video_1773344505750.mp4",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783622383095.mp4",
             "tag": "MACRO DETAIL",
-            "name": "Texture Shot"
+            "name": "Skin Care"
         },
         {
             "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing-assets/27c5ff3b-0228-47dc-a10d-46d5eb6ff0ce%20(1).mp4",
@@ -56,19 +56,26 @@
     ],
     "gallery": [
         {
-            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing-assets/ugc-local_1780511464304_sdqax.mp4",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783622460440.mp4",
             "tag": "FASHION",
             "name": "Spring Collection"
         },
         {
-            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing-assets/1772371728509_mp9cwn.mp4",
-            "tag": "VLOG",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783622487836.mp4",
+            "tag": "Cinematic",
             "name": "VLOG"
         },
         {
-            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing-assets/ugc-1780513122305.mp4",
-            "tag": "CARS",
-            "name": "Speed Demon"
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783622589711.mp4",
+            "tag": "Cinema",
+            "name": "Cinema"
+        },
+        {
+            "tag": "VLOG ",
+            "name": "Vlog Style",
+            "meta": "AI GENERATED",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783622825724.mp4",
+            "big": false
         }
     ]
 };
