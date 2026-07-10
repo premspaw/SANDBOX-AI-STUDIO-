@@ -1778,86 +1778,148 @@ Return a detailed JSON with:
     setIsRegeneratingPart(false);
   };
 
+  const getMultimodalParts = async (sceneRefImgUrl?: string | null) => {
+    const imagesToConvert: { tag: string; url: string }[] = [];
+
+    // 1. Add Scene Reference / First Frame
+    if (sceneRefImgUrl) {
+      imagesToConvert.push({ tag: '<FIRST_FRAME>', url: sceneRefImgUrl });
+    } else if (generatedImg) {
+      imagesToConvert.push({ tag: '<FIRST_FRAME>', url: generatedImg });
+    }
+
+    // 2. Add Character Image
+    if (characterImg?.url) {
+      imagesToConvert.push({ tag: '<CREATOR_REF>', url: characterImg.url });
+    }
+
+    // 3. Add Product Image
+    if (productImg?.url) {
+      imagesToConvert.push({ tag: '<PRODUCT_REF>', url: productImg.url });
+    }
+
+    // 4. Add Location Image
+    if (locationImg?.url) {
+      imagesToConvert.push({ tag: '<LOCATION_REF>', url: locationImg.url });
+    }
+
+    const parts: any[] = [];
+    const instructions: string[] = [];
+
+    for (const img of imagesToConvert) {
+      try {
+        let base64Data = '';
+        let mimeType = 'image/png';
+
+        if (img.url.startsWith('data:')) {
+          base64Data = img.url.split(',')[1];
+          mimeType = img.url.split(';')[0].split(':')[1];
+        } else {
+          const blob = await fetchImageAsBlob(img.url);
+          mimeType = blob.type || 'image/jpeg';
+          base64Data = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+            reader.readAsDataURL(blob);
+          });
+        }
+
+        if (base64Data) {
+          parts.push({
+            inlineData: {
+              mimeType,
+              data: base64Data
+            }
+          });
+          instructions.push(`- Image ${parts.length} corresponds to tag ${img.tag}.`);
+        }
+      } catch (err) {
+        console.warn(`[getMultimodalParts] Failed to convert image ${img.tag} (${img.url}):`, err);
+      }
+    }
+
+    return { parts, instructions };
+  };
+
+  const buildMultiReferencePrompt = (params: {
+    dialog: string;
+    productDetails: string;
+    selectedVideoStyle: string;
+    VIDEO_STYLES: any;
+    selectedSceneStyle?: string;
+    SCENE_STYLES?: any;
+    instructions: string[];
+    isOmni: boolean;
+    sceneIdx: number;
+    totalScenes: number;
+  }) => {
+    const styleInfo = params.VIDEO_STYLES[params.selectedVideoStyle] || params.VIDEO_STYLES.calm;
+    const sceneStyle = params.SCENE_STYLES && params.selectedSceneStyle ? params.SCENE_STYLES[params.selectedSceneStyle] : null;
+
+    return `You are an expert Google Omni Flash & Veo 3.1 video prompt engineer. 
+You are writing the video prompt for Scene ${params.sceneIdx + 1} of ${params.totalScenes} in a UGC ad.
+
+DIALOGUE:
+"${params.dialog}"
+
+PRODUCT DETAILS:
+"${params.productDetails || 'consumer product'}"
+
+PERFORMANCE STYLE:
+"${styleInfo.name} — ${styleInfo.modifier || 'natural, authentic'}"
+
+VISUAL STYLE PRESET:
+"${sceneStyle ? sceneStyle.name : 'Normal Talking'} — ${sceneStyle ? sceneStyle.promptModifier : 'direct-to-camera'}"
+
+The attached images correspond to these tags:
+${params.instructions.join('\n')}
+
+CRITICAL MULTI-REFERENCE INSTRUCTIONS:
+- You must keep the character's face, hair, and clothing consistent with <CREATOR_REF>. Refer to <CREATOR_REF> to describe the creator's features.
+- If <PRODUCT_REF> is provided, describe the product based on its visual features in <PRODUCT_REF>.
+- If <LOCATION_REF> is provided, describe the setting based on the location details in <LOCATION_REF>.
+- If <FIRST_FRAME> is provided:
+  * For Scene 1: The starting frame of this scene's video must begin with the visual layout/static state of <FIRST_FRAME>.
+  * For subsequent scenes: Pick up visually from the previous scene's state, but keep the styling consistent with <FIRST_FRAME> if applicable.
+
+PROMPT FORMAT:
+Generate a single, highly detailed, continuous paragraph (max 100 words) describing the video scene.
+- Avoid using bullet points or headers like 'Shot:', 'Camera:', or 'Dialogue:'.
+- Describe the environment, the camera movement, the creator's actions and facial expression.
+- Explicitly state: "The creator looks at the camera and lip-syncs the dialogue: \"[dialogue portion]\"."
+- Ensure natural real-world physics, gravity, and material weight.
+
+Return ONLY the final prompt text. No preamble, no explanation, no markdown quotes around the paragraph.`;
+  };
+
   // Generates an AI visual prompt specifically for a split-scene tab
   const generateSplitScenePrompt = async (tabIdx: number) => {
     const sc = splitScenes[tabIdx];
     if (!sc) return;
     setIsGeneratingSplitPrompt(true);
     try {
-      // Use the split scene's own ref image, or the global generated image, or character img
-      const splitRefImg = sc.refImage || generatedImg || characterImg?.url;
+      const { parts, instructions } = await getMultimodalParts(sc.refImage);
 
-      if (splitRefImg) {
-        // ── MULTIMODAL PATH: analyze reference image for face-consistent prompt ──
-        let base64Data = '';
-        let mimeType = 'image/png';
-
-        try {
-          if (splitRefImg.startsWith('data:')) {
-            base64Data = splitRefImg.split(',')[1];
-            mimeType = splitRefImg.split(';')[0].split(':')[1];
-          } else {
-            const blob = await fetchImageAsBlob(splitRefImg);
-            mimeType = blob.type || 'image/jpeg';
-            base64Data = await new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-              reader.readAsDataURL(blob);
-            });
-          }
-        } catch (imgErr) {
-          console.warn('[generateSplitScenePrompt] Could not load ref image, falling back to text-only:', imgErr);
-        }
-
-        if (base64Data) {
-          const imgAnalysisPrompt = buildImageAnalysisPrompt({
-            text: sc.dialog,
-            productDetails,
-            selectedVideoStyle,
-            VIDEO_STYLES,
-            selectedSceneStyle,
-            SCENE_STYLES,
-          });
-
-          const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              parts: [
-                { inlineData: { mimeType, data: base64Data } },
-                { text: imgAnalysisPrompt }
-              ],
-              model: 'gemini-2.5-flash',
-              userId: currentUserId
-            })
-          });
-          if (!response.ok) throw new Error(`Prompt gen failed: ${response.status}`);
-          const data = await response.json();
-          const newPrompt = (data.text || '').trim();
-          if (newPrompt) {
-            setSplitScenes(prev => prev.map((s, i) => i === tabIdx ? { ...s, prompt: newPrompt } : s));
-            showToast('🎯 Face-locked prompt generated from reference image!', 'success');
-          }
-          setIsGeneratingSplitPrompt(false);
-          return;
-        }
-      }
-
-      // ── TEXT-ONLY FALLBACK ──
-      const aiPrompt = buildSplitScenePrompt({
+      const aiPrompt = buildMultiReferencePrompt({
         dialog: sc.dialog,
         productDetails,
         selectedVideoStyle,
         VIDEO_STYLES,
         selectedSceneStyle,
         SCENE_STYLES,
+        instructions,
+        isOmni: scriptModel === 'omni',
+        sceneIdx: tabIdx,
+        totalScenes: splitScenes.length
       });
+
+      parts.push({ text: aiPrompt });
 
       const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          parts: [{ text: aiPrompt }],
+          parts,
           model: 'gemini-2.5-flash',
           userId: currentUserId
         })
@@ -1867,9 +1929,11 @@ Return a detailed JSON with:
       const newPrompt = (data.text || '').trim();
       if (newPrompt) {
         setSplitScenes(prev => prev.map((s, i) => i === tabIdx ? { ...s, prompt: newPrompt } : s));
+        showToast('🎯 Multi-reference prompt generated successfully!', 'success');
       }
     } catch (e) {
       console.error('[generateSplitScenePrompt]', e);
+      showToast('Failed to generate video prompt.', 'error');
     }
     setIsGeneratingSplitPrompt(false);
   };
@@ -1878,27 +1942,28 @@ Return a detailed JSON with:
     if (!script && !userPrompt) return;
     setIsGeneratingGeneralPrompt(true);
     try {
-      const splitRefImg = generatedImg || characterImg?.url;
-      const sceneStyle = SCENE_STYLES[selectedSceneStyle];
-      
-      const aiPrompt = `You are an expert AI video prompt engineer writing a detailed video prompt for a UGC video.
-      
-SCRIPT / DIALOGUE:
-"${script || userPrompt}"
+      const { parts, instructions } = await getMultimodalParts(null);
 
-PRODUCT / BRAND DETAILS:
-"${productDetails || 'a product'}"
+      const aiPrompt = buildMultiReferencePrompt({
+        dialog: script || userPrompt,
+        productDetails,
+        selectedVideoStyle,
+        VIDEO_STYLES,
+        selectedSceneStyle,
+        SCENE_STYLES,
+        instructions,
+        isOmni: scriptModel === 'omni',
+        sceneIdx: 0,
+        totalScenes: 1
+      });
 
-VISUAL STYLE PRESET:
-"${sceneStyle ? sceneStyle.name : 'Normal Talking'} — ${sceneStyle ? sceneStyle.promptModifier : 'direct-to-camera'}"
-
-Create a highly detailed, 60-80 word video prompt for a smartphone UGC-style shot that matches the dialogue/script and style. Return ONLY the final prompt text. No preamble, no explanation.`;
+      parts.push({ text: aiPrompt });
 
       const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          parts: [{ text: aiPrompt }],
+          parts,
           model: 'gemini-2.5-flash',
           userId: currentUserId
         })
