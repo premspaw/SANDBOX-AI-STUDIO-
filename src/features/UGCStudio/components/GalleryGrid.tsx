@@ -327,6 +327,7 @@ export default function GalleryGrid() {
                         <Download size={14} />
                       </button>
                     </div>
+                    {item.type === 'image' && (() => {
                       // Check if this image is already in the active scene's refImages array
                       const activeSceneRefs: string[] = splitScenes.length > 0
                         ? (splitScenes[activeSplitTab]?.refImages || (splitScenes[activeSplitTab]?.refImage ? [splitScenes[activeSplitTab].refImage as string] : []))
