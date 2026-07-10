@@ -31,6 +31,7 @@ export default function SplitScenesPanel() {
     setSelectedPromptVariant,
     isGeneratingSplitPrompt,
     generateSplitScenePrompt,
+    generateAllSplitPrompts,
     generateVideo,
     isGeneratingVideo,
     videoProgressMsg,
@@ -145,18 +146,21 @@ export default function SplitScenesPanel() {
             }
           </button>
 
-          {/* Multi-Shot toggle pill */}
+          {/* Multi-Shot pill — generates AI prompts for ALL scenes instantly */}
           <button
             type="button"
-            onClick={() => setMultiShotPrompt(!multiShotPrompt)}
-            title={multiShotPrompt ? 'Multi-Shot: ON' : 'Multi-Shot: OFF'}
+            onClick={() => generateAllSplitPrompts()}
+            disabled={isGeneratingSplitPrompt}
+            title="Generate AI prompts for all scenes"
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[8px] font-black uppercase tracking-widest transition-all shrink-0 cursor-pointer ${
-              multiShotPrompt
-                ? 'bg-[#c8f135]/10 border-[#c8f135]/40 text-[#c8f135]'
-                : 'bg-white/[0.04] border-white/[0.08] text-white/40 hover:bg-white/[0.08] hover:text-white/70'
+              isGeneratingSplitPrompt
+                ? 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
+                : multiShotPrompt
+                  ? 'bg-[#c8f135]/15 border-[#c8f135]/60 text-[#c8f135]'
+                  : 'bg-white/[0.04] border-white/[0.08] text-white/40 hover:bg-[#c8f135]/10 hover:border-[#c8f135]/40 hover:text-[#c8f135]'
             }`}
           >
-            <Film size={8} />
+            {isGeneratingSplitPrompt ? <Loader2 size={8} className="animate-spin" /> : <Film size={8} />}
             <span>Multi-Shot</span>
           </button>
         </div>

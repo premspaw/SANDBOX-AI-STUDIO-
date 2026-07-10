@@ -2045,6 +2045,51 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
     setIsGeneratingSplitPrompt(false);
   };
 
+  // Generates AI prompts for ALL split scenes sequentially (triggered by Multi-Shot button)
+  const generateAllSplitPrompts = async () => {
+    if (splitScenes.length === 0) return;
+    setIsGeneratingSplitPrompt(true);
+    setMultiShotPrompt(true);
+    try {
+      for (let idx = 0; idx < splitScenes.length; idx++) {
+        const sc = splitScenes[idx];
+        if (!sc) continue;
+        setActiveSplitTab(idx);
+        const { parts, instructions, refMappings } = await getMultimodalParts(sc.refImage);
+        const aiPrompt = buildMultiReferencePrompt({
+          dialog: sc.dialog,
+          productDetails,
+          selectedVideoStyle,
+          VIDEO_STYLES,
+          selectedSceneStyle,
+          SCENE_STYLES,
+          instructions,
+          isOmni: scriptModel === 'omni',
+          sceneIdx: idx,
+          totalScenes: splitScenes.length,
+          refMappings
+        });
+        parts.push({ text: aiPrompt });
+        const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parts, model: 'gemini-2.5-flash', userId: currentUserId })
+        });
+        if (!response.ok) throw new Error(`Prompt gen failed for scene ${idx + 1}: ${response.status}`);
+        const data = await response.json();
+        const newPrompt = (data.text || '').trim();
+        if (newPrompt) {
+          setSplitScenes(prev => prev.map((s, i) => i === idx ? { ...s, prompt: newPrompt } : s));
+        }
+      }
+      showToast(`🎬 Multi-Shot prompts generated for all ${splitScenes.length} scenes!`, 'success');
+    } catch (e) {
+      console.error('[generateAllSplitPrompts]', e);
+      showToast('Failed to generate prompts for all scenes.', 'error');
+    }
+    setIsGeneratingSplitPrompt(false);
+  };
+
   const generateGeneralVideoPrompt = async () => {
     if (!script && !userPrompt) return;
     setIsGeneratingGeneralPrompt(true);
@@ -4044,6 +4089,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     showLiveGuide,
     setShowLiveGuide,
     generateSplitScenePrompt,
+    generateAllSplitPrompts,
     generateGeneralVideoPrompt,
     isGeneratingGeneralPrompt,
     isExpandModalOpen,

@@ -350,6 +350,7 @@ export interface UGCContextType {
   showLiveGuide: boolean;
   setShowLiveGuide: (v: boolean) => void;
   generateSplitScenePrompt: (tabIdx: number) => Promise<void>;
+  generateAllSplitPrompts: () => Promise<void>;
   generateGeneralVideoPrompt: () => Promise<void>;
   isGeneratingGeneralPrompt: boolean;
   isExpandModalOpen: boolean;
