@@ -1910,6 +1910,16 @@ Return a detailed JSON with:
     return { parts, instructions, refMappings };
   };
 
+  const getProductCategory = (details: string): 'food_beverage' | 'lifestyle' | 'general_product' => {
+    const text = (details || '').toLowerCase();
+    const foodKeywords = ['food', 'beverage', 'drink', 'coffee', 'tea', 'juice', 'snack', 'delicious', 'taste', 'recipe', 'cook', 'eat', 'bottle', 'can', 'organic'];
+    const lifestyleKeywords = ['skin', 'face', 'cosmetics', 'beauty', 'makeup', 'fashion', 'cloth', 'apparel', 'hair', 'wear', 'living', 'home', 'decor', 'furniture', 'sleep', 'routine', 'wellness'];
+    
+    if (foodKeywords.some(kw => text.includes(kw))) return 'food_beverage';
+    if (lifestyleKeywords.some(kw => text.includes(kw))) return 'lifestyle';
+    return 'general_product';
+  };
+
   const buildMultiReferencePrompt = (params: {
     dialog: string;
     productDetails: string;
@@ -1931,7 +1941,26 @@ Return a detailed JSON with:
     const productTag = mappings.product || '<PRODUCT_REF>';
     const locationTag = mappings.location || '<LOCATION_REF>';
 
-    return `You are an expert Google Omni Flash & Veo 3.1 video prompt engineer. 
+    const category = getProductCategory(params.productDetails);
+    let categoryGuidelines = '';
+    if (category === 'food_beverage') {
+      categoryGuidelines = `UGC DIRECTOR CATEGORY GUIDELINES (Food & Beverage):
+- Highlight sensory freshness, pouring liquid flow, crisp packaging details, or mouth-watering product close-ups.
+- The camera shot must focus closely on the food/drink items to make them look delicious and styled.
+- Creator performance: Relatable, happy, taking a sip/bite or holding the product naturally.`;
+    } else if (category === 'lifestyle') {
+      categoryGuidelines = `UGC DIRECTOR CATEGORY GUIDELINES (Lifestyle / Beauty / Fashion):
+- Focus on seamless product integration in a daily routine (e.g., applying to skin, wearing in movement, placing on a clean dresser).
+- The environment should feel authentic, clean, and premium (bathroom, cozy bedroom, natural light cafe).
+- Creator performance: Friendly, intimate, talking to camera like a friend sharing a routine.`;
+    } else {
+      categoryGuidelines = `UGC DIRECTOR CATEGORY GUIDELINES (General Product & Tech):
+- Focus on practical demonstration, unboxing details, or ergonomics (e.g. demonstrating a specific feature, holding to show texture/materials, active usage on desk).
+- Visuals must emphasize design quality, clean desk/hand setup, and clear functionality.
+- Creator performance: Informative, natural, highlighting benefits clearly.`;
+    }
+
+    return `You are the world's best UGC (User-Generated Content) video director. Think like a top-tier UGC director who understands visual pacing, shot angles, consistency, and how to sell a product naturally.
 You are writing the video prompt for Scene ${params.sceneIdx + 1} of ${params.totalScenes} in a UGC ad.
 
 DIALOGUE:
@@ -1948,6 +1977,8 @@ VISUAL STYLE PRESET:
 
 The attached images correspond to these tags:
 ${params.instructions.join('\n')}
+
+${categoryGuidelines}
 
 CRITICAL MULTI-REFERENCE INSTRUCTIONS:
 - You must keep the character's face, hair, and clothing consistent with ${creatorTag}. Refer to ${creatorTag} to describe the creator's features.
