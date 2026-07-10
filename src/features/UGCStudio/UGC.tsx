@@ -31,6 +31,7 @@ import { buildNicheHookContext } from './constants/hookLibrary';
 // ─── Feature module imports ──────────────────────────────────────────────────
 import { SCRIPT_TONES } from './constants/scriptTones';
 import { VIDEO_STYLES, SCENE_STYLES, MULTI_SHOT_PRESETS } from './constants/videoStyles';
+import { detectUgcCategory, buildScenePrompt, validateScenePrompt } from './constants/ugcPromptTemplates';
 import { LANGUAGES, VOICES, SCENE_TEMPLATES } from './constants/sceneTemplates';
 import {
   uint8ArrayToBase64,
@@ -2054,11 +2055,8 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
     setIsGeneratingSplitPrompt(true);
     setMultiShotPrompt(true);
 
-    // Find the selected preset (fall back to first if not found)
-    const preset = MULTI_SHOT_PRESETS.find(p => p.id === selectedMultiShotPreset) || MULTI_SHOT_PRESETS[0];
-
-    // Per-scene duration = total duration / number of scenes
-    const sceneDurationSec = Math.round((durationSeconds || 30) / scenes.length);
+    const totalDurationSec = durationSeconds || 30;
+    const sceneDurationSec = Math.round(totalDurationSec / scenes.length);
 
     // Collect generated prompts so we can update all at once
     const generatedPrompts: string[] = new Array(scenes.length).fill('');
@@ -2073,17 +2071,34 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
 
         const { parts, instructions, refMappings } = await getMultimodalParts(sc.refImage);
 
-        // Build the meta-prompt using the preset
-        const metaPrompt = preset.buildPrompt({
+        // Detect category dynamically
+        const category = detectUgcCategory(
+          productAnalysis?.productName,
+          productAnalysis?.description,
+          productDetails || ''
+        );
+
+        // Determine literal reference tags mapped by getMultimodalParts
+        const characterRefTag = refMappings.character || '<IMAGE_REF_0>';
+        const productRefTag = refMappings.product || '<IMAGE_REF_1>';
+        const locationRefTag = refMappings.location || '';
+
+        // Build the optimized Omni Flash scene prompt
+        const metaPrompt = buildScenePrompt({
           dialog: sc.dialog,
           sceneIdx: idx,
           totalScenes: scenes.length,
           sceneDurationSec,
+          totalDurationSec,
           productDetails: productDetails || '',
-          instructions,
-          refMappings,
-          selectedSceneStyle,
-          SCENE_STYLES,
+          category,
+          hasCharacterRef: !!characterImg,
+          hasProductRef: !!productImg,
+          hasLocationRef: !!locationImg,
+          hasFirstFrame: !!sc.refImage,
+          characterRefTag,
+          productRefTag,
+          locationRefTag,
         });
 
         parts.push({ text: metaPrompt });
@@ -2098,6 +2113,18 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
         const newPrompt = (data.text || '').trim();
 
         if (newPrompt) {
+          // Validate if reference tags were preserved
+          const validation = validateScenePrompt(
+            newPrompt,
+            !!characterImg,
+            characterRefTag,
+            !!productImg,
+            productRefTag
+          );
+          if (!validation.valid) {
+            showToast(`⚠️ Scene ${idx + 1} prompt missing: ${validation.missing.join(', ')} — please review.`, 'error');
+          }
+
           generatedPrompts[idx] = newPrompt;
           // Update the scene's stored prompt immediately
           setSplitScenes(prev => prev.map((s, i) => i === idx ? { ...s, prompt: newPrompt } : s));
@@ -2110,7 +2137,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       setActiveSplitTab(0);
       if (generatedPrompts[0]) setVideoPrompt(generatedPrompts[0]);
 
-      showToast(`🎬 ${preset.emoji} ${preset.label} — all ${scenes.length} scenes ready!`, 'success');
+      showToast(`🎬 Multi-Shot prompts ready for all ${scenes.length} scenes!`, 'success');
     } catch (e) {
       console.error('[generateAllSplitPrompts]', e);
       showToast('Failed to generate prompts for all scenes.', 'error');

@@ -1,5 +1,19 @@
 [
   {
+    "id": "local_1783710688058_pvkuk",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783710687204.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783710687204.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "[0-3s] The creator <IMAGE_REF_0> is framed from the chest up, shot handheld on a smartphone's rear camera, showing visible skin pores and natural texture with no makeup. Her expression is a relatable mix of frustration and slight exasperation as she looks directly into the lens, chin resting casually on her hand. Her dark hair frames her face, and she wears the yellow sweater consistently. The lighting is soft, natural ambient light, evoking the warm, cozy atmosphere of the cafe setting seen in <IMAGE_REF_2>, with subtly blurred elements of the cafe's interior in the background. She lip-syncs directly to the camera, speaking at a conversational yet brisk pace: \"Honestly, I'd get so frustrated 'cause my morning coffee just wasn't hitting. It's like, I'd drink it and still feel so blah, you know?\" Her voice is clear and present, while a subtle, low ambient hum of a bustling cafe, with distant clinking sounds, is audible in the background, matching the atmosphere of <IMAGE_REF_2>.\n\n[3-5s]",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-10T19:11:28.058Z"
+  },
+  {
     "id": "local_1783697543116_bbsb3",
     "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783697541902.jpeg",
     "type": "image",
