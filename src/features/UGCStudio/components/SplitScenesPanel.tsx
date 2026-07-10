@@ -96,29 +96,24 @@ export default function SplitScenesPanel() {
       {/* Active scene body */}
       <div className="p-3 space-y-2.5 relative">
 
-        {/* Preset Selector Row — Multi-Shot template picker */}
+        {/* Single control row: Preset ▼  |  Style ▼  |  AI Prompt  |  Multi-Shot */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[7px] font-black uppercase tracking-widest text-white/25 shrink-0">Preset:</span>
-          {MULTI_SHOT_PRESETS.map(p => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => setSelectedMultiShotPreset(p.id)}
-              title={p.description}
-              className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[7.5px] font-black uppercase tracking-wider transition-all shrink-0 cursor-pointer ${
-                selectedMultiShotPreset === p.id
-                  ? 'bg-[#c8f135]/15 border-[#c8f135]/50 text-[#c8f135]'
-                  : 'bg-white/[0.03] border-white/[0.07] text-white/35 hover:bg-white/[0.07] hover:text-white/60'
-              }`}
-            >
-              <span>{p.emoji}</span>
-              <span>{p.label}</span>
-            </button>
-          ))}
-        </div>
 
-        {/* Row 1: Narrow style dropdown + AI Prompt pill + Multi-Shot button */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Preset Dropdown */}
+          <div className="relative shrink-0">
+            <select
+              value={selectedMultiShotPreset}
+              onChange={e => setSelectedMultiShotPreset(e.target.value)}
+              className="appearance-none bg-black/30 border border-white/5 hover:border-white/10 rounded-xl pl-6 pr-6 py-1.5 text-[8px] font-mono text-white/80 uppercase tracking-wider cursor-pointer transition-all focus:outline-none focus:border-[#c8f135]/30"
+            >
+              {MULTI_SHOT_PRESETS.map(p => (
+                <option key={p.id} value={p.id}>{p.emoji} {p.label}</option>
+              ))}
+            </select>
+            <Sparkles size={8} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#c8f135]/60 pointer-events-none" />
+            <ChevronDown size={8} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+          </div>
+
           {/* Style Dropdown — narrow */}
           <div className="relative w-40 shrink-0">
             <select
