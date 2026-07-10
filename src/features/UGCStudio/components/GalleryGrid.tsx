@@ -79,6 +79,8 @@ export default function GalleryGrid() {
     activeSplitTab,
     attachedRefImage,
     setAttachedRefImage,
+    attachedRefImages,
+    setAttachedRefImages,
     showToast,
   } = useUGC();
 
@@ -325,19 +327,18 @@ export default function GalleryGrid() {
                         <Download size={14} />
                       </button>
                     </div>
-                    {item.type === 'image' && (() => {
                       // Check if this image is already in the active scene's refImages array
                       const activeSceneRefs: string[] = splitScenes.length > 0
                         ? (splitScenes[activeSplitTab]?.refImages || (splitScenes[activeSplitTab]?.refImage ? [splitScenes[activeSplitTab].refImage as string] : []))
                         : [];
                       const isAttachedToActiveScene = splitScenes.length > 0 && activeSceneRefs.includes(item.url);
-                      const isAttachedToGlobal = splitScenes.length === 0 && attachedRefImage === item.url;
+                      const isAttachedToGlobal = splitScenes.length === 0 && (attachedRefImages || []).includes(item.url);
                       const isAdded = isAttachedToActiveScene || isAttachedToGlobal;
-                      const isFull = activeSceneRefs.length >= 3;
+                      const isFull = splitScenes.length > 0 ? activeSceneRefs.length >= 3 : (attachedRefImages || []).length >= 3;
 
                       return (
                         <button
-                          title={isAdded ? 'Remove reference' : isFull ? 'Max 3 refs per scene' : 'Attach for video'}
+                          title={isAdded ? 'Remove reference' : isFull ? 'Max 3 refs' : 'Attach for video'}
                           onClick={e => {
                             e.stopPropagation();
                             if (splitScenes.length > 0) {
@@ -362,8 +363,19 @@ export default function GalleryGrid() {
                               );
                               showToast(isAdded ? 'Reference removed' : 'Image attached to active scene!', isAdded ? 'info' : 'success');
                             } else {
-                              setAttachedRefImage(isAdded ? null : item.url);
-                              showToast(isAdded ? 'Reference removed' : 'Image attached — ready to make a video!', isAdded ? 'info' : 'success');
+                              const currentGlobalRefs = attachedRefImages || [];
+                              let newGlobalRefs: string[];
+                              if (currentGlobalRefs.includes(item.url)) {
+                                newGlobalRefs = currentGlobalRefs.filter((r: string) => r !== item.url);
+                              } else if (currentGlobalRefs.length < 3) {
+                                newGlobalRefs = [...currentGlobalRefs, item.url];
+                              } else {
+                                showToast('Max 3 reference images', 'error');
+                                return;
+                              }
+                              setAttachedRefImages(newGlobalRefs);
+                              setAttachedRefImage(newGlobalRefs[0] || null);
+                              showToast(isAttachedToGlobal ? 'Reference removed' : 'Image attached — ready to make a video!', isAttachedToGlobal ? 'info' : 'success');
                             }
                           }}
                           className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border transition-all shadow-lg text-[8px] font-black uppercase tracking-wider ${

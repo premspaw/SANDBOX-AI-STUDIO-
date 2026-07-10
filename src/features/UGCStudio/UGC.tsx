@@ -565,6 +565,7 @@ export default function UGC() {
   const [inpaintImg, setInpaintImg] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth > 768 : true);
   const [attachedRefImage, setAttachedRefImage] = useState<string | null>(null);
+  const [attachedRefImages, setAttachedRefImages] = useState<string[]>([]);
   const [spokenDialog, setSpokenDialog] = useState<string>('');
   const [splitScenes, setSplitScenes] = useState<SplitScene[]>([]);
   const [isGeneratingSplitPrompt, setIsGeneratingSplitPrompt] = useState(false);
@@ -1778,8 +1779,49 @@ Return a detailed JSON with:
     setIsRegeneratingPart(false);
   };
 
+  const resolveRefTags = (sceneRefImgUrl?: string | null) => {
+    const imageToSend = sceneRefImgUrl || generatedImg || null;
+
+    const refsToResolve: { type: string; url: string | null }[] = [
+      { type: 'character', url: characterImg?.url || null },
+      { type: 'product', url: productImg?.url || null },
+      { type: 'location', url: locationImg?.url || null },
+    ];
+
+    if (splitScenes.length > 0) {
+      const sc = splitScenes[activeSplitTab];
+      const customSceneRefs = sc?.refImages || (sc?.refImage ? [sc.refImage] : []);
+      customSceneRefs.forEach((ref, idx) => {
+        refsToResolve.push({ type: `custom_${idx}`, url: ref });
+      });
+    } else {
+      attachedRefImages.forEach((ref, idx) => {
+        refsToResolve.push({ type: `custom_${idx}`, url: ref });
+      });
+    }
+
+    const filteredRefs = refsToResolve.filter(r => r.url && r.url !== imageToSend);
+    
+    const seenUrls = new Set<string>();
+    const uniqueRefs: { type: string; url: string }[] = [];
+    for (const ref of filteredRefs) {
+      if (ref.url && !seenUrls.has(ref.url)) {
+        seenUrls.add(ref.url);
+        uniqueRefs.push({ type: ref.type, url: ref.url });
+      }
+    }
+
+    const mappings: Record<string, string> = {};
+    uniqueRefs.forEach((ref, idx) => {
+      mappings[ref.type] = `<IMAGE_REF_${idx}>`;
+    });
+
+    return mappings;
+  };
+
   const getMultimodalParts = async (sceneRefImgUrl?: string | null) => {
     const imagesToConvert: { tag: string; url: string }[] = [];
+    const refMappings = resolveRefTags(sceneRefImgUrl);
 
     // 1. Add Scene Reference / First Frame
     if (sceneRefImgUrl) {
@@ -1789,24 +1831,51 @@ Return a detailed JSON with:
     }
 
     // 2. Add Character Image
-    if (characterImg?.url) {
-      imagesToConvert.push({ tag: '<CREATOR_REF>', url: characterImg.url });
+    if (characterImg?.url && refMappings.character) {
+      imagesToConvert.push({ tag: refMappings.character, url: characterImg.url });
     }
 
     // 3. Add Product Image
-    if (productImg?.url) {
-      imagesToConvert.push({ tag: '<PRODUCT_REF>', url: productImg.url });
+    if (productImg?.url && refMappings.product) {
+      imagesToConvert.push({ tag: refMappings.product, url: productImg.url });
     }
 
     // 4. Add Location Image
-    if (locationImg?.url) {
-      imagesToConvert.push({ tag: '<LOCATION_REF>', url: locationImg.url });
+    if (locationImg?.url && refMappings.location) {
+      imagesToConvert.push({ tag: refMappings.location, url: locationImg.url });
+    }
+
+    // 5. Add Custom Scene / Global References
+    if (splitScenes.length > 0) {
+      const sc = splitScenes[activeSplitTab];
+      const customSceneRefs = sc?.refImages || (sc?.refImage ? [sc.refImage] : []);
+      customSceneRefs.forEach((ref, idx) => {
+        const tag = refMappings[`custom_${idx}`];
+        if (tag) {
+          imagesToConvert.push({ tag, url: ref });
+        }
+      });
+    } else {
+      attachedRefImages.forEach((ref, idx) => {
+        const tag = refMappings[`custom_${idx}`];
+        if (tag) {
+          imagesToConvert.push({ tag, url: ref });
+        }
+      });
     }
 
     const parts: any[] = [];
     const instructions: string[] = [];
 
-    for (const img of imagesToConvert) {
+    // Deduplicate images to convert by URL
+    const seenUrls = new Set<string>();
+    const uniqueImages = imagesToConvert.filter(img => {
+      if (seenUrls.has(img.url)) return false;
+      seenUrls.add(img.url);
+      return true;
+    });
+
+    for (const img of uniqueImages) {
       try {
         let base64Data = '';
         let mimeType = 'image/png';
@@ -1838,7 +1907,7 @@ Return a detailed JSON with:
       }
     }
 
-    return { parts, instructions };
+    return { parts, instructions, refMappings };
   };
 
   const buildMultiReferencePrompt = (params: {
@@ -1852,9 +1921,15 @@ Return a detailed JSON with:
     isOmni: boolean;
     sceneIdx: number;
     totalScenes: number;
+    refMappings: Record<string, string>;
   }) => {
     const styleInfo = params.VIDEO_STYLES[params.selectedVideoStyle] || params.VIDEO_STYLES.calm;
     const sceneStyle = params.SCENE_STYLES && params.selectedSceneStyle ? params.SCENE_STYLES[params.selectedSceneStyle] : null;
+
+    const mappings = params.refMappings;
+    const creatorTag = mappings.character || '<CREATOR_REF>';
+    const productTag = mappings.product || '<PRODUCT_REF>';
+    const locationTag = mappings.location || '<LOCATION_REF>';
 
     return `You are an expert Google Omni Flash & Veo 3.1 video prompt engineer. 
 You are writing the video prompt for Scene ${params.sceneIdx + 1} of ${params.totalScenes} in a UGC ad.
@@ -1875,9 +1950,9 @@ The attached images correspond to these tags:
 ${params.instructions.join('\n')}
 
 CRITICAL MULTI-REFERENCE INSTRUCTIONS:
-- You must keep the character's face, hair, and clothing consistent with <CREATOR_REF>. Refer to <CREATOR_REF> to describe the creator's features.
-- If <PRODUCT_REF> is provided, describe the product based on its visual features in <PRODUCT_REF>.
-- If <LOCATION_REF> is provided, describe the setting based on the location details in <LOCATION_REF>.
+- You must keep the character's face, hair, and clothing consistent with ${creatorTag}. Refer to ${creatorTag} to describe the creator's features.
+- If ${mappings.product} is provided, describe the product based on its visual features in ${productTag}.
+- If ${mappings.location} is provided, describe the setting based on the location details in ${locationTag}.
 - If <FIRST_FRAME> is provided:
   * For Scene 1: The starting frame of this scene's video must begin with the visual layout/static state of <FIRST_FRAME>.
   * For subsequent scenes: Pick up visually from the previous scene's state, but keep the styling consistent with <FIRST_FRAME> if applicable.
@@ -1898,7 +1973,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
     if (!sc) return;
     setIsGeneratingSplitPrompt(true);
     try {
-      const { parts, instructions } = await getMultimodalParts(sc.refImage);
+      const { parts, instructions, refMappings } = await getMultimodalParts(sc.refImage);
 
       const aiPrompt = buildMultiReferencePrompt({
         dialog: sc.dialog,
@@ -1910,7 +1985,8 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
         instructions,
         isOmni: scriptModel === 'omni',
         sceneIdx: tabIdx,
-        totalScenes: splitScenes.length
+        totalScenes: splitScenes.length,
+        refMappings
       });
 
       parts.push({ text: aiPrompt });
@@ -1942,7 +2018,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
     if (!script && !userPrompt) return;
     setIsGeneratingGeneralPrompt(true);
     try {
-      const { parts, instructions } = await getMultimodalParts(null);
+      const { parts, instructions, refMappings } = await getMultimodalParts(null);
 
       const aiPrompt = buildMultiReferencePrompt({
         dialog: script || userPrompt,
@@ -1954,7 +2030,8 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
         instructions,
         isOmni: scriptModel === 'omni',
         sceneIdx: 0,
-        totalScenes: 1
+        totalScenes: 1,
+        refMappings
       });
 
       parts.push({ text: aiPrompt });
@@ -3449,7 +3526,9 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         const activeLocationImg = activeTab === 'talking-head' ? thLocationImg : locationImg;
 
         const currentScene = splitScenes[activeSplitTab];
-        const customSceneRefs = currentScene?.refImages || (currentScene?.refImage ? [currentScene.refImage] : []);
+        const customSceneRefs = splitScenes.length > 0
+          ? (currentScene?.refImages || (currentScene?.refImage ? [currentScene.refImage] : []))
+          : attachedRefImages;
 
         // Resolve reference images in parallel
         const resolvedList = await Promise.all([
@@ -3776,6 +3855,8 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     setSelectedSceneStyle,
     attachedRefImage,
     setAttachedRefImage,
+    attachedRefImages,
+    setAttachedRefImages,
     includeAudio,
     setIncludeAudio,
     timeline,

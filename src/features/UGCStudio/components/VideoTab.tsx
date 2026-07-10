@@ -1,6 +1,7 @@
 import React from 'react';
-import { ChevronDown, Zap, Layout, Clock, FileText, Sparkles, Loader2, Film } from 'lucide-react';
+import { ChevronDown, Zap, Layout, Clock, FileText, Sparkles, Loader2, Film, X } from 'lucide-react';
 import { useUGC } from '../context/UGCContext';
+import { resolveUrl } from '../../../config/apiConfig';
 
 export default function VideoTab() {
   const {
@@ -31,6 +32,10 @@ export default function VideoTab() {
     generateSplitScenePrompt,
     generateGeneralVideoPrompt,
     isGeneratingGeneralPrompt,
+    attachedRefImage,
+    setAttachedRefImage,
+    attachedRefImages,
+    setAttachedRefImages,
   } = useUGC();
 
   return (
@@ -62,6 +67,56 @@ export default function VideoTab() {
               ? 'Describe your video scene — Gemini Omni Flash generates up to a 10-sec clip…'
               : 'Describe your video scene — Veo 3 HQ generates a premium clip…'}
           />
+
+          {/* Attached Reference Images Row */}
+          {(() => {
+            const refs = splitScenes.length > 0
+              ? (splitScenes[activeSplitTab]?.refImages || (splitScenes[activeSplitTab]?.refImage ? [splitScenes[activeSplitTab].refImage] : []))
+              : attachedRefImages;
+
+            if (!refs || refs.length === 0) return null;
+
+            return (
+              <div className="flex flex-wrap gap-2 items-center px-3 py-1.5 bg-white/[0.01] border-t border-white/[0.04]">
+                <span className="text-[7.5px] font-black uppercase tracking-wider text-white/30 mr-1">Refs ({refs.length}/3):</span>
+                {refs.map((refUrl, idx) => (
+                  <div key={refUrl} className="relative group/att">
+                    <img
+                      src={resolveUrl(refUrl)}
+                      alt={`ref-${idx}`}
+                      className="w-10 h-10 rounded-lg object-cover border border-[#c8f135]/30 shadow-md"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (splitScenes.length > 0) {
+                          setSplitScenes((prev: any[]) =>
+                            prev.map((s, i) => {
+                              if (i !== activeSplitTab) return s;
+                              const updatedRefs = (s.refImages || []).filter((r: string) => r !== refUrl);
+                              return { ...s, refImage: updatedRefs[0] || null, refImages: updatedRefs };
+                            })
+                          );
+                        } else {
+                          const updatedRefs = (attachedRefImages || []).filter((r: string) => r !== refUrl);
+                          setAttachedRefImages(updatedRefs);
+                          setAttachedRefImage(updatedRefs[0] || null);
+                        }
+                      }}
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover/att:opacity-100 transition-opacity cursor-pointer shadow-lg border border-black/20"
+                      title="Remove reference"
+                    >
+                      <X size={8} className="text-white" />
+                    </button>
+                  </div>
+                ))}
+                <span className="text-[7px] text-[#c8f135]/80 font-bold uppercase tracking-wider ml-auto animate-pulse">
+                  Video Reference Active
+                </span>
+              </div>
+            );
+          })()}
+
           {/* Pills toolbar — flush to bottom, no extra bg */}
           <div className="flex items-center gap-1.5 flex-wrap px-2 pb-2 pt-1 border-t border-white/[0.05]">
             {/* Mode Pill */}
@@ -228,16 +283,6 @@ export default function VideoTab() {
               </button>
             )}
 
-            {/* Template Pill */}
-            <button
-              type="button"
-              onClick={() => setShowTemplates(true)}
-              className="px-2 py-0.5 rounded-lg border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70 transition-all flex items-center gap-1 flex-shrink-0 text-[8px] font-bold uppercase tracking-widest"
-            >
-              <Layout size={7} />
-              <span>Template</span>
-            </button>
-
             {/* Multi-Shot Toggle */}
             <button
               type="button"
@@ -251,6 +296,16 @@ export default function VideoTab() {
             >
               <Film size={7} />
               <span>Multi-Shot</span>
+            </button>
+
+            {/* Template Pill */}
+            <button
+              type="button"
+              onClick={() => setShowTemplates(true)}
+              className="px-2 py-0.5 rounded-lg border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70 transition-all flex items-center gap-1 flex-shrink-0 text-[8px] font-bold uppercase tracking-widest"
+            >
+              <Layout size={7} />
+              <span>Template</span>
             </button>
           </div>
         </div>

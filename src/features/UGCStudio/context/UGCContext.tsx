@@ -176,6 +176,8 @@ export interface UGCContextType {
   setSelectedSceneStyle: (v: string) => void;
   attachedRefImage: string | null;
   setAttachedRefImage: (v: string | null) => void;
+  attachedRefImages: string[];
+  setAttachedRefImages: React.Dispatch<React.SetStateAction<string[]>>;
   includeAudio: boolean;
   setIncludeAudio: (v: boolean) => void;
 
