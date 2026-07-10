@@ -30,7 +30,7 @@ import { SHOT_BLUEPRINTS, SCENE_SEQUENCES, buildMultiCutPrompt } from './utils/u
 import { buildNicheHookContext } from './constants/hookLibrary';
 // ─── Feature module imports ──────────────────────────────────────────────────
 import { SCRIPT_TONES } from './constants/scriptTones';
-import { VIDEO_STYLES, SCENE_STYLES } from './constants/videoStyles';
+import { VIDEO_STYLES, SCENE_STYLES, MULTI_SHOT_PRESETS } from './constants/videoStyles';
 import { LANGUAGES, VOICES, SCENE_TEMPLATES } from './constants/sceneTemplates';
 import {
   uint8ArrayToBase64,
@@ -573,6 +573,7 @@ export default function UGC() {
   const [activeSplitTab, setActiveSplitTab] = useState(0);
   const [selectedPromptVariant, setSelectedPromptVariant] = useState(0);
   const [multiShotPrompt, setMultiShotPrompt] = useState(false);
+  const [selectedMultiShotPreset, setSelectedMultiShotPreset] = useState('food_beverage_review');
   const [chatTab, setChatTab] = useState<'script' | 'video'>('script');
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [videoGenMode, setVideoGenMode] = useState<'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash'>('omni-flash');
@@ -2036,7 +2037,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       const newPrompt = (data.text || '').trim();
       if (newPrompt) {
         setSplitScenes(prev => prev.map((s, i) => i === tabIdx ? { ...s, prompt: newPrompt } : s));
-        showToast('🎯 Multi-reference prompt generated successfully!', 'success');
+        showToast('🎯 Scene prompt generated!', 'success');
       }
     } catch (e) {
       console.error('[generateSplitScenePrompt]', e);
@@ -2045,31 +2046,41 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
     setIsGeneratingSplitPrompt(false);
   };
 
-  // Generates AI prompts for ALL split scenes sequentially (triggered by Multi-Shot button)
+  // Generates AI prompts for ALL split scenes using the selected Multi-Shot preset
   const generateAllSplitPrompts = async () => {
     if (splitScenes.length === 0) return;
     setIsGeneratingSplitPrompt(true);
     setMultiShotPrompt(true);
+
+    // Find the selected preset (fall back to first if not found)
+    const preset = MULTI_SHOT_PRESETS.find(p => p.id === selectedMultiShotPreset) || MULTI_SHOT_PRESETS[0];
+
+    // Per-scene duration = total duration / number of scenes
+    const sceneDurationSec = Math.round((durationSeconds || 30) / splitScenes.length);
+
     try {
       for (let idx = 0; idx < splitScenes.length; idx++) {
         const sc = splitScenes[idx];
         if (!sc) continue;
         setActiveSplitTab(idx);
+
         const { parts, instructions, refMappings } = await getMultimodalParts(sc.refImage);
-        const aiPrompt = buildMultiReferencePrompt({
+
+        // Build the meta-prompt using the preset
+        const metaPrompt = preset.buildPrompt({
           dialog: sc.dialog,
-          productDetails,
-          selectedVideoStyle,
-          VIDEO_STYLES,
-          selectedSceneStyle,
-          SCENE_STYLES,
-          instructions,
-          isOmni: scriptModel === 'omni',
           sceneIdx: idx,
           totalScenes: splitScenes.length,
-          refMappings
+          sceneDurationSec,
+          productDetails: productDetails || '',
+          instructions,
+          refMappings,
+          selectedSceneStyle,
+          SCENE_STYLES,
         });
-        parts.push({ text: aiPrompt });
+
+        parts.push({ text: metaPrompt });
+
         const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2082,13 +2093,14 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
           setSplitScenes(prev => prev.map((s, i) => i === idx ? { ...s, prompt: newPrompt } : s));
         }
       }
-      showToast(`🎬 Multi-Shot prompts generated for all ${splitScenes.length} scenes!`, 'success');
+      showToast(`🎬 ${preset.emoji} ${preset.label} prompts ready for all ${splitScenes.length} scenes!`, 'success');
     } catch (e) {
       console.error('[generateAllSplitPrompts]', e);
       showToast('Failed to generate prompts for all scenes.', 'error');
     }
     setIsGeneratingSplitPrompt(false);
   };
+
 
   const generateGeneralVideoPrompt = async () => {
     if (!script && !userPrompt) return;
@@ -3881,7 +3893,8 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     setSelectedPromptVariant,
     multiShotPrompt,
     setMultiShotPrompt,
-
+    selectedMultiShotPreset,
+    setSelectedMultiShotPreset,
 
     audioData,
     setAudioData,

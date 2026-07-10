@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { X, ChevronDown, Sparkles, Camera, Check, Loader2, Film } from 'lucide-react';
 import { useUGC, SplitScene } from '../context/UGCContext';
-import { SCENE_STYLES } from '../constants/videoStyles';
+import { SCENE_STYLES, MULTI_SHOT_PRESETS } from '../constants/videoStyles';
 import { resolveUrl } from '../../../config/apiConfig';
 import { fileToBase64 } from '../utils/imageUtils';
 
@@ -42,6 +42,8 @@ export default function SplitScenesPanel() {
     characterImg,
     multiShotPrompt,
     setMultiShotPrompt,
+    selectedMultiShotPreset,
+    setSelectedMultiShotPreset,
   } = useUGC();
 
   if (splitScenes.length === 0) return null;
@@ -94,7 +96,28 @@ export default function SplitScenesPanel() {
       {/* Active scene body */}
       <div className="p-3 space-y-2.5 relative">
 
-        {/* Row 1: Narrow style dropdown + AI Prompt pill + Multi-Shot toggle */}
+        {/* Preset Selector Row — Multi-Shot template picker */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[7px] font-black uppercase tracking-widest text-white/25 shrink-0">Preset:</span>
+          {MULTI_SHOT_PRESETS.map(p => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setSelectedMultiShotPreset(p.id)}
+              title={p.description}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[7.5px] font-black uppercase tracking-wider transition-all shrink-0 cursor-pointer ${
+                selectedMultiShotPreset === p.id
+                  ? 'bg-[#c8f135]/15 border-[#c8f135]/50 text-[#c8f135]'
+                  : 'bg-white/[0.03] border-white/[0.07] text-white/35 hover:bg-white/[0.07] hover:text-white/60'
+              }`}
+            >
+              <span>{p.emoji}</span>
+              <span>{p.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Row 1: Narrow style dropdown + AI Prompt pill + Multi-Shot button */}
         <div className="flex items-center gap-1.5 flex-wrap">
           {/* Style Dropdown — narrow */}
           <div className="relative w-40 shrink-0">

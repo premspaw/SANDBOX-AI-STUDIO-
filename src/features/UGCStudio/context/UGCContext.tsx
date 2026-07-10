@@ -119,7 +119,8 @@ export interface UGCContextType {
   setSelectedPromptVariant: (v: number) => void;
   multiShotPrompt: boolean;
   setMultiShotPrompt: (v: boolean) => void;
-
+  selectedMultiShotPreset: string;
+  setSelectedMultiShotPreset: (v: string) => void;
 
   // ── Audio ────────────────────────────────────────────────────────────────
   audioData: string;
