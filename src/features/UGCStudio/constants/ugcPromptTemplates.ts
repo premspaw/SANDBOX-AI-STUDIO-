@@ -200,11 +200,11 @@ Authentic iPhone front-camera aesthetic. Natural handheld movement with subtle m
 Dialogue for this scene — say every word exactly without skipping:
 "${p.dialog}"
 
-Break this scene into sequential shots using this timecode structure: ${timecodes.join(', ')}
+Plan and break this scene into sequential shots covering the full ${p.sceneDurationSec} seconds. You have complete freedom to define the timecode timestamps (e.g., [0-4s], [4-8s], [8-10s]) based on how long each physical action and spoken dialogue block takes.
 
-For each shot:
-- Focus on exactly ONE simple physical action per timecode block (e.g. only holding the product, or only opening the cap, or only applying/using). Do NOT pack multiple complex motions together.
-- Keep the visual pacing slow and steady. Never compress a multi-step routine (like unboxing, opening, applying, and reacting) into a short 10-second scene.
+For each shot segment:
+- Focus on exactly ONE simple physical action per segment (e.g. only holding the product, or only opening the cap, or only applying/using). Do NOT pack multiple complex motions together.
+- Keep the visual pacing slow, steady, and realistic.
 - If the creator is on camera (face visible), they speak their dialogue exactly, word-for-word, in sync with natural mouth movement.
 - If a shot is a close-up or B-roll with no face visible, the dialogue MUST continue in the background as a continuous natural voice-over. NEVER skip, shorten, or drop any spoken dialogue.
 - Use natural transitions like "the camera naturally reframes to" or "the camera shifts to show" rather than abrupt "cut to" transitions to maintain a smooth, continuous vlogging style.
@@ -214,7 +214,7 @@ Natural room ambience only. Realistic sound matching each action (pouring, movem
 
 ${GLOBAL_UGC_STYLE_BLOCK}
 
-Return only the final prompt text, structured with timecode labels. No introductory or explanatory text, no headers, no rule explanations.`;
+Return only the final prompt text, structured with your custom timecode labels. No introductory or explanatory text, no headers, no rule explanations.`;
 }
 
 // ── 5. Validate that required reference tags survived generation ──────────────
