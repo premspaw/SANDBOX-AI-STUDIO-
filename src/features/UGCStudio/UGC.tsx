@@ -2055,7 +2055,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
     setIsGeneratingSplitPrompt(true);
     setMultiShotPrompt(true);
 
-    const totalDurationSec = durationSeconds || 30;
+    const totalDurationSec = Number(durationSeconds) || 30;
     const sceneDurationSec = Math.round(totalDurationSec / scenes.length);
 
     // Collect generated prompts so we can update all at once
