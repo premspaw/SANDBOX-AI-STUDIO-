@@ -3,7 +3,7 @@ import { X, ChevronDown, Sparkles, Camera, Check, Loader2, Film } from 'lucide-r
 import { useUGC, SplitScene } from '../context/UGCContext';
 import { SCENE_STYLES, MULTI_SHOT_PRESETS } from '../constants/videoStyles';
 import { buildScenePrompt, validateScenePrompt, detectUgcCategory } from '../constants/ugcPromptTemplates';
-import { resolveUrl } from '../../../config/apiConfig';
+import { getApiUrl, resolveUrl } from '../../../config/apiConfig';
 import { fileToBase64 } from '../utils/imageUtils';
 
 const SPEECH_TAGS = [
@@ -53,6 +53,8 @@ export default function SplitScenesPanel() {
     fetchImageAsBlob,
     handleApiError,
     generateAllSceneVideos,
+    setIsGeneratingSplitPrompt,
+    currentUserId,
   } = useUGC();
 
   if (splitScenes.length === 0) return null;
