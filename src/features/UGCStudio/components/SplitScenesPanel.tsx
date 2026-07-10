@@ -147,24 +147,30 @@ export default function SplitScenesPanel() {
             <ChevronDown size={8} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
           </div>
 
-          {/* AI Prompt pill — delegates to shared generateSplitScenePrompt */}
+          {/* AI Prompt pill — single scene. Dim when Multi-Shot mode is active */}
           <button
             type="button"
-            onClick={() => generateSplitScenePrompt(activeSplitTab)}
+            onClick={() => {
+              setMultiShotPrompt(false); // deactivate multi-shot
+              generateSplitScenePrompt(activeSplitTab);
+            }}
             disabled={isGeneratingSplitPrompt}
+            title="Generate prompt for this scene only"
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[8px] font-black uppercase tracking-widest transition-all shrink-0 cursor-pointer ${
               isGeneratingSplitPrompt
                 ? 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
-                : 'bg-[#c8f135]/10 border-[#c8f135]/40 text-[#c8f135] hover:bg-[#c8f135]/20 hover:border-[#c8f135]/70'
+                : multiShotPrompt
+                  ? 'bg-white/[0.03] border-white/[0.06] text-white/25 hover:bg-white/[0.07] hover:text-white/50'
+                  : 'bg-[#c8f135]/10 border-[#c8f135]/40 text-[#c8f135] hover:bg-[#c8f135]/20 hover:border-[#c8f135]/70'
             }`}
           >
-            {isGeneratingSplitPrompt
+            {isGeneratingSplitPrompt && !multiShotPrompt
               ? <><Loader2 size={8} className="animate-spin" /><span>Generating…</span></>
               : <><Sparkles size={8} /><span>AI Prompt</span></>
             }
           </button>
 
-          {/* Multi-Shot pill — generates AI prompts for ALL scenes instantly */}
+          {/* Multi-Shot pill — all scenes. Dim when inactive, bright yellow when ON */}
           <button
             type="button"
             onClick={() => generateAllSplitPrompts()}
@@ -174,12 +180,14 @@ export default function SplitScenesPanel() {
               isGeneratingSplitPrompt
                 ? 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
                 : multiShotPrompt
-                  ? 'bg-[#c8f135]/15 border-[#c8f135]/60 text-[#c8f135]'
+                  ? 'bg-[#c8f135]/15 border-[#c8f135]/60 text-[#c8f135] shadow-[0_0_8px_rgba(200,241,53,0.15)]'
                   : 'bg-white/[0.04] border-white/[0.08] text-white/40 hover:bg-[#c8f135]/10 hover:border-[#c8f135]/40 hover:text-[#c8f135]'
             }`}
           >
-            {isGeneratingSplitPrompt ? <Loader2 size={8} className="animate-spin" /> : <Film size={8} />}
-            <span>Multi-Shot</span>
+            {isGeneratingSplitPrompt && multiShotPrompt
+              ? <><Loader2 size={8} className="animate-spin" /><span>All Scenes…</span></>
+              : <><Film size={8} /><span>Multi-Shot</span></>
+            }
           </button>
         </div>
 
