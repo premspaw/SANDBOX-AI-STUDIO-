@@ -155,7 +155,12 @@ export default function createRouter(deps) {
             // --- Option A: Vertex AI (First Preference) ---
             if (token) {
                 try {
-                    const vertexModel = (modelName.includes('fast')) ? 'veo-3.1-fast-generate-001' : 'veo-3.1-generate-001';
+                    let vertexModel = 'veo-3.1-generate-001';
+                    if (modelName.includes('fast')) {
+                        vertexModel = 'veo-3.1-fast-generate-001';
+                    } else if (modelName.includes('lite')) {
+                        vertexModel = 'veo-3.1-lite-generate-001';
+                    }
                     const veoEndpoint = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${vertexModel}:predictLongRunning`;
                     console.log(`[VEO-I2V] [Vertex AI] Calling model ${vertexModel} on url: ${veoEndpoint}`);
 
@@ -245,7 +250,12 @@ export default function createRouter(deps) {
             // --- Option B: Google AI Studio / Gemini API (Fallback) ---
             if (!success && apiKey && apiKey !== 'VERTEX_AI_CLIENT') {
                 try {
-                    const aiStudioModel = (modelName.includes('fast')) ? 'veo-3.1-fast-generate-preview' : 'veo-3.1-generate-preview';
+                    let aiStudioModel = 'veo-3.1-generate-preview';
+                    if (modelName.includes('fast')) {
+                        aiStudioModel = 'veo-3.1-fast-generate-preview';
+                    } else if (modelName.includes('lite')) {
+                        aiStudioModel = 'veo-3.1-lite-generate-preview';
+                    }
                     let endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${aiStudioModel}:predictLongRunning`;
                     let headers = { 'Content-Type': 'application/json' };
                     if (apiKey) {

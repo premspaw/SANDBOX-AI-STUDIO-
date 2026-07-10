@@ -232,8 +232,8 @@ export default function UGC() {
   const [productDetails, setProductDetails] = useState('');
   const [userPrompt, setUserPrompt] = useState('');
   const [script, setScript] = useState('');
-  const [scriptDuration, setScriptDuration] = useState('16 seconds');
-  const [scriptModel, setScriptModel] = useState<'veo3' | 'omni'>('veo3');
+  const [scriptDuration, setScriptDuration] = useState('20 seconds');
+  const [scriptModel, setScriptModel] = useState<'veo3' | 'omni'>('omni');
   const [selectedScriptTone, setSelectedScriptTone] = useState('viral_marketing');
   const [selectedNiche, setSelectedNiche] = useState('none');
   const [videoPrompt, setVideoPrompt] = useState('');
@@ -345,7 +345,7 @@ export default function UGC() {
   const [isAnalyzingVoice, setIsAnalyzingVoice] = useState(false);
   const [imageStyle, setImageStyle] = useState<'studio' | 'ultra-realistic' | 'iphone' | 'short' | 'normal' | 'cinematic'>('ultra-realistic');
   const [aspectRatio, setAspectRatio] = useState<'9:16' | '16:9' | '1:1'>('9:16');
-  const [durationSeconds, setDurationSeconds] = useState<'4' | '6' | '8' | '10' | '20' | '30' | '40' | '50' | '60'>('8');
+  const [durationSeconds, setDurationSeconds] = useState<'4' | '6' | '8' | '10' | '20' | '30' | '40' | '50' | '60'>('10');
   const [includeAudio, setIncludeAudio] = useState(true);
   const [videoResolution, setVideoResolution] = useState<'720p' | '1080p'>('720p');
   const [selectedVideoStyle, setSelectedVideoStyle] = useState<'calm' | 'energetic' | 'action' | 'professional' | 'casual' | 'storytelling'>('calm');
@@ -481,15 +481,25 @@ export default function UGC() {
     localStorage.setItem('ugc_trained_strategy', trainedStrategy);
   }, [trainedStrategy]);
 
-  const handleAdminLogin = () => {
-    if (adminPassword === 'admin123' || adminPassword === '10000') {
-      setIsAdmin(true);
-      setShowAdminLogin(false);
-      setAdminPassword('');
-      setUserShorts(10000);
-      showToast('Admin mode ON — 10,000 credits loaded', 'success');
-    } else {
-      alert('Invalid password');
+  const handleAdminLogin = async () => {
+    if (!adminPassword) return;
+    try {
+      const resp = await fetch(getApiUrl('/api/admin/verify-login'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: adminPassword })
+      });
+      if (resp.ok) {
+        setIsAdmin(true);
+        setShowAdminLogin(false);
+        setAdminPassword('');
+        setUserShorts(10000);
+        showToast('Admin mode ON — 10,000 credits loaded', 'success');
+      } else {
+        alert('Invalid password');
+      }
+    } catch (e) {
+      showToast('Network or server error during admin verification', 'error');
     }
   };
 
@@ -556,13 +566,15 @@ export default function UGC() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth > 768 : true);
   const [attachedRefImage, setAttachedRefImage] = useState<string | null>(null);
   const [spokenDialog, setSpokenDialog] = useState<string>('');
-  const [splitScenes, setSplitScenes] = useState<{label: string; dialog: string; prompt: string; refImage?: string | null}[]>([]);
+  const [splitScenes, setSplitScenes] = useState<SplitScene[]>([]);
   const [isGeneratingSplitPrompt, setIsGeneratingSplitPrompt] = useState(false);
+  const [isGeneratingGeneralPrompt, setIsGeneratingGeneralPrompt] = useState(false);
   const [activeSplitTab, setActiveSplitTab] = useState(0);
   const [selectedPromptVariant, setSelectedPromptVariant] = useState(0);
+  const [multiShotPrompt, setMultiShotPrompt] = useState(false);
   const [chatTab, setChatTab] = useState<'script' | 'video'>('script');
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
-  const [videoGenMode, setVideoGenMode] = useState<'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash'>('veo_fast');
+  const [videoGenMode, setVideoGenMode] = useState<'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash'>('omni-flash');
   const [showVideoMontageOptions, setShowVideoMontageOptions] = useState(true);
   const [showLiveGuide, setShowLiveGuide] = useState(false);
   const [showPromptDropdown, setShowPromptDropdown] = useState(false);
@@ -1477,8 +1489,10 @@ Return a detailed JSON with:
           10: "1 HOOK scene (10s)",
           20: "1 HOOK scene (10s) and 1 PAYOFF/CTA scene (10s)",
           30: "1 HOOK (10s), 1 PAYOFF (10s), and 1 CTA (10s)",
-          40: "1 HOOK (10s), 2 PERSUASIVE/PAYOFF scenes (10s each), and 1 CTA (10s)"
-        }[durationInt as 10 | 20 | 30 | 40] || "multiple 10-second scenes";
+          40: "1 HOOK (10s), 2 PERSUASIVE/PAYOFF scenes (10s each), and 1 CTA (10s)",
+          50: "1 HOOK (10s), 3 PERSUASIVE/PAYOFF scenes (10s each), and 1 CTA (10s)",
+          60: "1 HOOK (10s), 4 PERSUASIVE/PAYOFF scenes (10s each), and 1 CTA (10s)"
+        }[durationInt as 10 | 20 | 30 | 40 | 50 | 60] || "multiple 10-second scenes";
       } else {
         durationLogic = {
           8: "1 HOOK scene (8s)",
@@ -1509,6 +1523,7 @@ Return a detailed JSON with:
         trainingContent,
         nicheHookContext,
         scriptModel,
+        isMultiShot: multiShotPrompt
       });
 
       const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
@@ -1857,6 +1872,49 @@ Return a detailed JSON with:
       console.error('[generateSplitScenePrompt]', e);
     }
     setIsGeneratingSplitPrompt(false);
+  };
+
+  const generateGeneralVideoPrompt = async () => {
+    if (!script && !userPrompt) return;
+    setIsGeneratingGeneralPrompt(true);
+    try {
+      const splitRefImg = generatedImg || characterImg?.url;
+      const sceneStyle = SCENE_STYLES[selectedSceneStyle];
+      
+      const aiPrompt = `You are an expert AI video prompt engineer writing a detailed video prompt for a UGC video.
+      
+SCRIPT / DIALOGUE:
+"${script || userPrompt}"
+
+PRODUCT / BRAND DETAILS:
+"${productDetails || 'a product'}"
+
+VISUAL STYLE PRESET:
+"${sceneStyle ? sceneStyle.name : 'Normal Talking'} — ${sceneStyle ? sceneStyle.promptModifier : 'direct-to-camera'}"
+
+Create a highly detailed, 60-80 word video prompt for a smartphone UGC-style shot that matches the dialogue/script and style. Return ONLY the final prompt text. No preamble, no explanation.`;
+
+      const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parts: [{ text: aiPrompt }],
+          model: 'gemini-2.5-flash',
+          userId: currentUserId
+        })
+      });
+      if (!response.ok) throw new Error(`Prompt gen failed: ${response.status}`);
+      const data = await response.json();
+      const newPrompt = (data.text || '').trim();
+      if (newPrompt) {
+        setVideoPrompt(newPrompt);
+        showToast('🎯 AI video prompt generated successfully!', 'success');
+      }
+    } catch (e) {
+      console.error('[generateGeneralVideoPrompt]', e);
+      showToast('Failed to generate video prompt.', 'error');
+    }
+    setIsGeneratingGeneralPrompt(false);
   };
 
 
@@ -2283,6 +2341,8 @@ Return a detailed JSON with:
     setThIsGeneratingVideo(true);
     setThVideoProgress('Initializing Talking Head Engine…');
     setThGeneratedVideo('');
+    const placeholderThVideoId = `vid-pending-${Date.now()}`;
+    addToGallery({ id: placeholderThVideoId, type: 'video', url: '', loading: true });
 
     try {
       const ai = getAI();
@@ -2301,6 +2361,8 @@ Return a detailed JSON with:
         : 'veo-3.1-fast-generate-preview';
 
       const talkingPrompt = `A confident creator looks directly into the camera and delivers this message with natural, expressive lip sync: "${thScript.trim().substring(0, 400)}". They speak clearly, with hook energy — engaging the viewer from the first frame. Realistic facial movements, natural blinks, slight head movement. Shot in ${thAspectRatio} portrait. Cinematic UGC style.${imagePayload ? ' Animate from the reference image — keep face, background and outfit consistent.' : ''}`;
+
+      updateGalleryItem(placeholderThVideoId, { prompt: talkingPrompt.substring(0, 1000) });
 
       setThVideoProgress('Submitting to Veo…');
 
@@ -2329,11 +2391,9 @@ Return a detailed JSON with:
         if (!data.url) throw new Error('Vertex AI returned no video URL.');
 
         setThGeneratedVideo(data.url);
-        const tempId = Date.now().toString();
-        addToGallery({
-          id: tempId,
-          type: 'video',
+        updateGalleryItem(placeholderThVideoId, {
           url: data.url,
+          loading: false,
           prompt: talkingPrompt.substring(0, 1000)
         });
         setThIsGeneratingVideo(false);
@@ -2390,16 +2450,19 @@ Return a detailed JSON with:
         const res = await fetch(videoUrl);
         const blob = await res.blob();
         const localUrl = URL.createObjectURL(blob);
-        const tempId = Date.now().toString();
 
         setThGeneratedVideo(localUrl);
-        addToGallery({ id: tempId, type: 'video', url: localUrl });
+        updateGalleryItem(placeholderThVideoId, {
+          url: localUrl,
+          loading: false,
+          prompt: talkingPrompt.substring(0, 1000)
+        });
         showToast('Talking Head video ready!', 'success');
 
         uploadToSupabase(blob, 'video', talkingPrompt, currentUserId)
           .then(publicUrl => {
             if (publicUrl) {
-              updateGalleryItem(tempId, { url: publicUrl });
+              updateGalleryItem(placeholderThVideoId, { url: publicUrl });
               setThGeneratedVideo(publicUrl);
             }
           })
@@ -2421,24 +2484,25 @@ Return a detailed JSON with:
         await new Promise(r => setTimeout(r, 5000));
         op = await (ai.operations as any).getVideosOperation({ operation: op });
         attempts++;
-        setThVideoProgress(`Rendering… (${attempts * 5}s)`);
+        setThVideoProgress(`Rendering… (${attempts * 5}s / 300s)`);
       }
 
       if (!op.done) throw new Error('Talking head video generation timed out. Try a shorter duration.');
 
       const raiFiltered = op.response?.raiMediaFilteredCount ?? 0;
       if (raiFiltered > 0) {
-        showToast('Video blocked by safety filter — rephrase the script.', 'error');
+        const errStr = 'Video blocked by Veo safety filter. Rephrase the script.';
+        showToast(errStr, 'error');
         if (!isAdmin && !isGlobalAdmin) refund('veo_fast', unitCost as any);
         setThIsGeneratingVideo(false);
         setThVideoProgress('');
+        updateGalleryItem(placeholderThVideoId, { loading: false, error: errStr });
         return;
       }
 
       const downloadLink = op.response?.generatedVideos?.[0]?.video?.uri;
       if (downloadLink) {
         const currentApiKey = getApiKey();
-        const tempId = Date.now().toString();
 
         // ── Step 1: Download blob immediately for instant preview ──────────────
         setThVideoProgress('Downloading video...');
@@ -2451,7 +2515,11 @@ Return a detailed JSON with:
 
         // ── Step 2: Show instantly in gallery + player ─────────────────────────
         setThGeneratedVideo(localUrl);
-        addToGallery({ id: tempId, type: 'video', url: localUrl });
+        updateGalleryItem(placeholderThVideoId, {
+          url: localUrl,
+          loading: false,
+          prompt: talkingPrompt.substring(0, 1000)
+        });
         showToast('Talking Head video ready!', 'success');
 
         // ── Step 3: Upload to Supabase in background ───────────────────────────
@@ -2459,15 +2527,17 @@ Return a detailed JSON with:
           .then(publicUrl => {
             if (publicUrl) {
               setThGeneratedVideo(publicUrl);
-              updateGalleryItem(tempId, { url: publicUrl });
+              updateGalleryItem(placeholderThVideoId, { url: publicUrl });
             }
           })
           .catch(err => console.error('[Background Save] Failed:', err));
       } else {
         throw new Error('No video returned from Veo.');
       }
-    } catch (e) {
-      if (!isAdmin && !isGlobalAdmin) refund('veo_fast', getCurrentCost(false) as any);
+    } catch (e: any) {
+      const errMsg = e.message || JSON.stringify(e);
+      updateGalleryItem(placeholderThVideoId, { loading: false, error: `Error: ${errMsg}` });
+      if (!isAdmin && !isGlobalAdmin) refund('veo_fast', unitCost as any);
       handleApiError(e, 'Talking Head video');
     }
     setThIsGeneratingVideo(false);
@@ -2638,19 +2708,24 @@ Return a detailed JSON with:
       const isTalkingHead = activeTab === 'talking-head';
 
       // For talking-head mode use a natural talking-head prompt; otherwise use the UGC multi-cut prompt
-      const prompt = isTalkingHead
-        ? `A confident creator looks directly into the camera and delivers this message with natural, expressive lip sync: "${sc.dialog.substring(0, 400)}". They speak clearly with hook energy — engaging the viewer from the first frame. Realistic facial movements, natural blinks, slight head movement. Cinematic UGC style.${sc.refImage || thGeneratedImg ? ' Animate from the reference image — keep face, background and outfit consistent.' : ''}`
-        : buildMultiCutPrompt({
-            dialog: sc.dialog,
-            shotType,
-            shotIndex: i,
-            totalShots: splitScenes.length,
-            imageStyle,
-            productName: productAnalysis?.productName,
-            productDetails: productDetails?.substring(0, 60),
-            hasCharacterRef: !!characterImg,
-            hasProductRef: !!productImg,
-          });
+      let prompt = '';
+      if (isTalkingHead) {
+        prompt = `A confident creator looks directly into the camera and delivers this message with natural, expressive lip sync: "${sc.dialog.substring(0, 400)}". They speak clearly with hook energy — engaging the viewer from the first frame. Realistic facial movements, natural blinks, slight head movement. Cinematic UGC style.${sc.refImage || thGeneratedImg ? ' Animate from the reference image — keep face, background and outfit consistent.' : ''}`;
+      } else if (multiShotPrompt && sc.prompt) {
+        prompt = sc.prompt;
+      } else {
+        prompt = buildMultiCutPrompt({
+          dialog: sc.dialog,
+          shotType,
+          shotIndex: i,
+          totalShots: splitScenes.length,
+          imageStyle,
+          productName: productAnalysis?.productName,
+          productDetails: productDetails?.substring(0, 60),
+          hasCharacterRef: !!characterImg,
+          hasProductRef: !!productImg,
+        });
+      }
 
       try {
         const ai = getAI();
@@ -2676,9 +2751,7 @@ Return a detailed JSON with:
         const resolvedAspectRatio = isTalkingHead ? thAspectRatio : (aspectRatio === '1:1' ? '9:16' : aspectRatio as any);
         const resolvedDuration = isTalkingHead 
           ? parseInt(thDuration) 
-          : resolvedEngine === 'omni-flash'
-          ? parseInt(durationSeconds)
-          : Math.min(parseInt(durationSeconds), 8);
+          : (resolvedEngine === 'omni-flash' ? 10 : 8);
         const resolvedIncludeAudio = isTalkingHead ? true : includeAudio;
 
         if (resolvedEngine === 'omni-flash') {
@@ -2697,7 +2770,7 @@ Return a detailed JSON with:
             headers,
             body: JSON.stringify({
               image: imageToSend || undefined,
-              motionPrompt: prompt.substring(0, 1000),
+              motionPrompt: (prompt.includes('Dialogue to speak:') ? prompt : `${prompt} Dialogue to speak: "${sc.dialog}".`).substring(0, 1000),
               duration: resolvedDuration,
               aspectRatio: resolvedAspectRatio,
               resolution: '720p',
@@ -2827,7 +2900,10 @@ Return a detailed JSON with:
     showToast(`All ${splitScenes.length} shots in timeline — hit Render!`, 'success');
   };
 
+
+
   const analyzeProductForMontage = async (file: File) => {
+
     setIsGeneratingMontageOptions(true);
     const analysisPromptText = `Identify this product and suggest 3 specific, high-performance montage video clip ideas for a UGC ad. 
             The product could be cosmetics (lipstick, mascara), hair care (gel, spray), skin care, or any consumer good.
@@ -3169,6 +3245,8 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         ? 'Initializing Veo 3 Lite…'
         : 'Initializing Veo 3 Fast…'
     );
+    const placeholderVideoId = `vid-pending-${Date.now()}`;
+    addToGallery({ id: placeholderVideoId, type: 'video', url: '', loading: true });
     try {
       const ai = getAI();
 
@@ -3191,14 +3269,9 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         virtualCreatorPrompt = ` Virtual Creator: ${getVirtualCreatorPrompt(productDetails, productTags)}.`;
       }
 
-      // Only read dialogueText when no overridePrompt is supplied.
-      // When called from SplitScenesPanel "Approve & Make Video", the overridePrompt
-      // already contains sc.dialog — appending it again would duplicate the dialogue.
-      const dialogueText = !overridePrompt
-        ? (splitScenes.length > 0
-            ? splitScenes[activeSplitTab]?.dialog
-            : scenes[activeSceneIndex]?.text)
-        : '';
+      const dialogueText = splitScenes.length > 0
+        ? splitScenes[activeSplitTab]?.dialog
+        : scenes[activeSceneIndex]?.text;
 
       const dialogue = dialogueText ? ` Dialogue to speak: "${dialogueText}".` : '';
 
@@ -3237,9 +3310,15 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
           ? ` FACE IDENTITY LOCK — CRITICAL: The creator's face MUST remain 100% identical to the reference image throughout the entire video. Do NOT change any facial features, skin tone, eye shape, nose, lips, or face structure. Maintain natural facial symmetry. This is a real person — do not idealize, stylize, or alter their appearance in any way. The person speaks like a natural UGC creator — authentic, direct, and relatable.`
           : '';
 
-        promptText = (overridePrompt || (scenes[activeSceneIndex]?.isApproved
+        let basePrompt = (overridePrompt || (scenes[activeSceneIndex]?.isApproved
           ? scenes[activeSceneIndex].prompt
           : (videoPrompt || `A creator wearing or interacting with this product: ${productDetails}. If it's clothing, they MUST be wearing it.`))) + dialogue + (compiledStyle ? ` Style: ${compiledStyle}.` : '') + lipSyncBooster + virtualCreatorPrompt + faceLockInstructions;
+
+        if (videoGenMode === 'omni-flash') {
+          basePrompt += " Animate starting from the first reference image. Use the additional reference images provided to maintain strict visual consistency for the product appearance, character details, and location background.";
+        }
+
+        promptText = basePrompt;
 
         if (activeRefImg) {
           let base64 = '';
@@ -3259,13 +3338,14 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
           imagePayload = { imageBytes: base64, mimeType };
         }
       }
+      updateGalleryItem(placeholderVideoId, { prompt: promptText.substring(0, 1000) });
 
       const engine = activeTab === 'talking-head' ? thEngine : videoGenMode;
 
       if (engine === 'omni-flash') {
         setVideoProgressMsg('Submitting to Gemini Omni Flash...');
         const resolvedAspectRatio = activeTab === 'talking-head' ? thAspectRatio : (aspectRatio === '1:1' ? '9:16' : aspectRatio as any);
-        const resolvedDuration = activeTab === 'talking-head' ? parseInt(thDuration) : parseInt(durationSeconds);
+        const resolvedDuration = activeTab === 'talking-head' ? parseInt(thDuration) : (splitScenes.length > 0 ? 10 : parseInt(durationSeconds));
         const resolvedIncludeAudio = activeTab === 'talking-head' ? true : includeAudio;
 
         let imageToSend = '';
@@ -3303,19 +3383,32 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         const activeProductImg = activeTab === 'talking-head' ? thProductImg : productImg;
         const activeLocationImg = activeTab === 'talking-head' ? thLocationImg : locationImg;
 
+        const currentScene = splitScenes[activeSplitTab];
+        const customSceneRefs = currentScene?.refImages || (currentScene?.refImage ? [currentScene.refImage] : []);
+
         // Resolve reference images in parallel
-        const [charBase64, prodBase64, locBase64] = await Promise.all([
+        const resolvedList = await Promise.all([
           resolveAssetToBase64(activeCharacterImg),
           resolveAssetToBase64(activeProductImg),
-          resolveAssetToBase64(activeLocationImg)
+          resolveAssetToBase64(activeLocationImg),
+          ...customSceneRefs.map(ref => resolveAssetToBase64({ url: ref }))
         ]);
 
-        // Build ref_images list filtering out the primary imageToSend if already present
-        const refImagesList = [
-          charBase64 && charBase64 !== imageToSend && { url: charBase64 },
-          prodBase64 && prodBase64 !== imageToSend && { url: prodBase64 },
-          locBase64 && locBase64 !== imageToSend && { url: locBase64 }
-        ].filter(Boolean);
+        const charBase64 = resolvedList[0];
+        const prodBase64 = resolvedList[1];
+        const locBase64 = resolvedList[2];
+        const customB64s = resolvedList.slice(3);
+
+        const allRefs = [
+          charBase64,
+          prodBase64,
+          locBase64,
+          ...customB64s
+        ].filter((val): val is string => !!val && val !== imageToSend);
+
+        // Deduplicate references to prevent sending the same image twice
+        const uniqueRefs = Array.from(new Set(allRefs));
+        const refImagesList = uniqueRefs.map(url => ({ url }));
 
         const headers: any = { 'Content-Type': 'application/json' };
         const customKey = getApiKey();
@@ -3343,10 +3436,9 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         if (!data.videoUrl) throw new Error('Omni returned no video URL.');
 
         setGeneratedVideo(data.videoUrl);
-        addToGallery({
-          id: Date.now().toString(),
-          type: 'video',
+        updateGalleryItem(placeholderVideoId, {
           url: data.videoUrl,
+          loading: false,
           prompt: promptText.substring(0, 1000)
         });
         setIsGeneratingVideo(false);
@@ -3372,7 +3464,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             image: imageToSend,
             script: promptText,
             userId: currentUserId,
-            duration: activeTab === 'talking-head' ? thDuration : durationSeconds,
+            duration: activeTab === 'talking-head' ? thDuration : (splitScenes.length > 0 ? '8' : durationSeconds),
             resolution: videoResolution,
             model: engine === 'veo3' ? 'veo3' : 'veo_fast',
             aspect_ratio: activeTab === 'talking-head' ? thAspectRatio : aspectRatio
@@ -3384,11 +3476,9 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         if (!data.url) throw new Error('Vertex AI returned no video URL.');
 
         setGeneratedVideo(data.url);
-        const tempId = Date.now().toString();
-        addToGallery({
-          id: tempId,
-          type: 'video',
+        updateGalleryItem(placeholderVideoId, {
           url: data.url,
+          loading: false,
           prompt: promptText.substring(0, 1000)
         });
         setIsGeneratingVideo(false);
@@ -3410,7 +3500,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
           numberOfVideos: 1,
           resolution: videoResolution as any,
           aspectRatio: activeTab === 'talking-head' ? thAspectRatio : (aspectRatio === '1:1' ? '9:16' : aspectRatio as any),
-          durationSeconds: activeTab === 'talking-head' ? parseInt(thDuration) : parseInt(durationSeconds),
+          durationSeconds: activeTab === 'talking-head' ? parseInt(thDuration) : (splitScenes.length > 0 ? 8 : parseInt(durationSeconds)),
           includeAudio: activeTab === 'talking-head' ? true : includeAudio
         }
       };
@@ -3440,12 +3530,13 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
           setIsGeneratingVideo(false);
           setVideoProgressMsg('');
           showToast(`Video generation timed out after ${elapsed}s — tap Retry to try again.`, 'error');
-          refund('veo_fast', unitCost as any);
+          if (!isAdmin && !isGlobalAdmin) refund('veo_fast', unitCost as any);
+          updateGalleryItem(placeholderVideoId, { loading: false, error: `Video generation timed out after ${elapsed}s. Please check billing or try again.` });
           return;
         }
         await new Promise(resolve => setTimeout(resolve, 5000));
         const msg = messages[Math.min(pollCount, messages.length - 1)];
-        setVideoProgressMsg(`${msg} (${elapsed}s)`);
+        setVideoProgressMsg(`${msg} (${elapsed}s / ${Math.floor(VIDEO_TIMEOUT_MS / 1000)}s)`);
         pollCount++;
         operation = await ai.operations.getVideosOperation({ operation });
       }
@@ -3456,22 +3547,20 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
       if (raiFiltered > 0) {
         const reason = generateVideoResponse?.raiMediaFilteredReasons?.[0] || 'Prompt conflicted with safety policies.';
-        setVideoError(`Video blocked by Veo safety filter. Try rephrasing your prompt.\n\nReason: ${reason}\n\nYou have not been charged.`);
-        showToast('Video blocked by safety filter — try rephrasing the prompt. (Not charged)', 'error');
+        const errStr = `Video blocked by Veo safety filter. Reason: ${reason}`;
+        setVideoError(errStr);
+        showToast('Video blocked by safety filter — try rephrasing the prompt.', 'error');
         setIsGeneratingVideo(false);
         setVideoProgressMsg('');
+        updateGalleryItem(placeholderVideoId, { loading: false, error: errStr });
         return;
       }
 
       const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
       if (downloadLink) {
         const currentApiKey = getApiKey();
-        const tempId = Date.now().toString();
 
         // ── Step 1: Download blob immediately ──────────────────────────────────
-        // Raw Google API URL requires auth headers — browsers can't use it as
-        // a <video> src directly, so thumbnails stay blank until Supabase is done.
-        // Fix: download → blob: URL first, then upload to Supabase in background.
         setVideoProgressMsg('Downloading video...');
         const resp = await fetch(downloadLink, {
           headers: { 'x-goog-api-key': currentApiKey },
@@ -3482,7 +3571,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
         // ── Step 2: Show instantly in gallery + player ─────────────────────────
         setGeneratedVideo(localUrl);
-        addToGallery({ id: tempId, type: 'video', url: localUrl });
+        updateGalleryItem(placeholderVideoId, { url: localUrl, loading: false, prompt: promptText.substring(0, 1000) });
         showToast('Video ready! Saving to cloud...', 'success');
 
         // ── Step 3: Upload to Supabase in background ───────────────────────────
@@ -3490,31 +3579,33 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
           .then(publicUrl => {
             if (publicUrl) {
               setGeneratedVideo(publicUrl);
-              updateGalleryItem(tempId, { url: publicUrl });
+              updateGalleryItem(placeholderVideoId, { url: publicUrl });
             }
           })
           .catch(err => {
             console.error('[Background GCS Save] Failed:', err);
-            // localUrl still works — user can download from gallery
           });
       } else {
-        setVideoError('Veo returned no video. The prompt may have been filtered — try a different prompt.');
+        const errStr = 'Veo returned no video. The prompt may have been filtered — try a different prompt.';
+        setVideoError(errStr);
         showToast('No video generated. Try rephrasing your prompt.', 'error');
+        updateGalleryItem(placeholderVideoId, { loading: false, error: errStr });
       }
     } catch (e: any) {
-      refund('veo_fast', unitCost as any);
+      if (!isAdmin && !isGlobalAdmin) refund('veo_fast', unitCost as any);
       handleApiError(e, "Video generation");
       const errMsg = e.message || JSON.stringify(e);
+      let displayError = `Error: ${errMsg}`;
       if (errMsg.includes("Requested entity was not found")) {
-        setVideoError("Session expired or invalid key. Please try re-selecting your API key.");
+        displayError = "Session expired or invalid key. Please try re-selecting your API key.";
       } else if (errMsg.includes("403") || errMsg.includes("PERMISSION_DENIED")) {
-        setVideoError(`Permission Denied: Your API key doesn't have access to Veo-3.1. Please ensure:
+        displayError = `Permission Denied: Your API key doesn't have access to Veo-3.1. Please ensure:
     1. Billing is ACTIVE for your Google Cloud project.
     2. The Generative AI Video API is enabled.
-    3. You have selected a valid API key from a paid project.`);
-      } else {
-        setVideoError(`Error: ${errMsg} `);
+    3. You have selected a valid API key from a paid project.`;
       }
+      setVideoError(displayError);
+      updateGalleryItem(placeholderVideoId, { loading: false, error: displayError });
     }
     setIsGeneratingVideo(false);
     setVideoProgressMsg('');
@@ -3568,6 +3659,10 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     setActiveSplitTab,
     selectedPromptVariant,
     setSelectedPromptVariant,
+    multiShotPrompt,
+    setMultiShotPrompt,
+
+
     audioData,
     setAudioData,
     audioUrl,
@@ -3591,6 +3686,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     generateAllSceneVideos,
     generateTalkingHeadImage,
     generateTalkingHeadVideo,
+    generateImage,
     isGeneratingImage,
     imageProgressMsg,
     generatedImg,
@@ -3627,6 +3723,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     addToTimeline,
     processTimeline,
     gallery,
+    setGallery,
     galleryTab,
     setGalleryTab,
     galleryExpandItem,
@@ -3770,6 +3867,8 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     showLiveGuide,
     setShowLiveGuide,
     generateSplitScenePrompt,
+    generateGeneralVideoPrompt,
+    isGeneratingGeneralPrompt,
     isExpandModalOpen,
     setIsExpandModalOpen,
     showAdminLogin,
@@ -3960,6 +4059,21 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                         className="w-[65px] md:w-[75px] shrink-0"
                       />
 
+                      {/* Multi-Shot Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setMultiShotPrompt(!multiShotPrompt)}
+                        title={multiShotPrompt ? 'Multi-Shot Prompt: ON' : 'Multi-Shot Prompt: OFF'}
+                        className={`px-2.5 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 flex-shrink-0 text-[8.5px] font-black uppercase tracking-widest ${
+                          multiShotPrompt
+                            ? 'border-[#c8f135]/40 bg-[#c8f135]/10 text-[#c8f135]'
+                            : 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70'
+                        }`}
+                      >
+                        <Film size={9} />
+                        <span>Multi-Shot</span>
+                      </button>
+
                       <Dropdown label="" value={scriptDuration} options={scriptModel === 'omni' ? ['10 seconds', '20 seconds', '30 seconds', '40 seconds', '50 seconds', '60 seconds'] : ['8 seconds', '16 seconds', '24 seconds', '36 seconds', '42 seconds']} onChange={setScriptDuration} direction="up" className="w-[82px] md:w-[100px] shrink-0" />
                       <Dropdown
                         label=""
@@ -4094,16 +4208,22 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                           .trim();
 
                         const isOmni = scriptModel === 'omni';
-                        const wordsPerChunk = isOmni ? 34 : 23;
-                        const sceneDuration = isOmni ? 10 : 8;
+                        // Derive scene count from the actual selected total duration
+                        const totalDurSec = parseInt(scriptDuration) || (isOmni ? 20 : 16);
+                        // Each scene is 10s for Omni, 8s otherwise — but clamp to at least 1 scene
+                        const perSceneDur = isOmni ? 10 : 8;
+                        const targetSceneCount = Math.max(1, Math.round(totalDurSec / perSceneDur));
                         const words = cleanText.split(/\s+/).filter(Boolean);
+                        // Distribute words evenly across targetSceneCount scenes
+                        const wordsPerChunk = Math.max(5, Math.ceil(words.length / targetSceneCount));
                         if (words.length > 0) {
                           let chunkStart = 0;
                           let sceneNum = 1;
                           for (let wi = 0; wi < words.length; wi += wordsPerChunk) {
                             const chunkWords = words.slice(wi, wi + wordsPerChunk);
                             const dialog = chunkWords.join(' ');
-                            const chunkEnd = chunkStart + sceneDuration;
+                            // Each scene takes exactly perSceneDur seconds of the total
+                            const chunkEnd = chunkStart + perSceneDur;
                             const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
                             const label = `Scene ${sceneNum} [${fmt(chunkStart)} - ${fmt(chunkEnd)}]`;
                             const matchingScene = scenes[sceneNum - 1];
@@ -4119,7 +4239,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                         setSplitScenes(parsed); 
                         setActiveSplitTab(0); 
                         setVideoPrompt(parsed[0].prompt || '');
-                        setChatTab('video'); // Shift to VIDEO tab automatically
+                        setChatTab('video');
                       }
                     }}
 

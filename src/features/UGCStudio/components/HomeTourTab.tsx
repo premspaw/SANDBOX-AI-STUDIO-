@@ -1156,13 +1156,12 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
       while (!op.done) {
         if (Date.now() - start > 90_000) {
-          showToast(`${room.label} timed out`, 'error');
-          break;
+          throw new Error('Video generation timed out after 90 seconds.');
         }
         await new Promise(r => setTimeout(r, 5000));
         op = await ai.operations.getVideosOperation({ operation: op });
         setVideoProgressMsg(
-          `${room.label} · ${Math.round((Date.now() - start) / 1000)}s`
+          `${room.label} · ${Math.round((Date.now() - start) / 1000)}s / 90s`
         );
       }
 
@@ -1216,8 +1215,9 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
       }
 
     } catch (e: any) {
-      updateGalleryItem(galleryId, { loading: false });
-      if (!isAdmin && !isGlobalAdmin) refund('veo_fast', getCurrentCost(false) as any);
+      const errMsg = e.message || JSON.stringify(e);
+      updateGalleryItem(galleryId, { loading: false, error: `Error: ${errMsg}` });
+      if (!isAdmin && !isGlobalAdmin) refund('veo_fast', unitCost as any);
       handleApiError(e, 'Room video generation');
     }
 
@@ -1471,7 +1471,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
       {/* Drawer toggle button */}
       <button
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className={`absolute z-30 w-6 h-12 flex items-center justify-center rounded-r-xl transition-all shadow-lg
+        className={`absolute z-30 w-10 h-16 md:w-6 md:h-12 flex items-center justify-center rounded-r-xl transition-all shadow-lg
           ${isSidebarOpen
             ? 'bg-[#111113] border border-[#c8f135]/20 text-[#c8f135]/60 hover:text-[#c8f135] hover:border-[#c8f135]/60 hover:bg-[#c8f135]/5 shadow-[0_0_8px_rgba(200,241,53,0.1)] hover:shadow-[0_0_12px_rgba(200,241,53,0.35)]'
             : 'bg-[#c8f135] border border-[#c8f135] text-black hover:bg-[#d4f545] animate-pulse shadow-[0_0_12px_rgba(200,241,53,0.7)]'
@@ -1484,7 +1484,11 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         }}
         title={isSidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
       >
-        {isSidebarOpen ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
+        {isSidebarOpen ? (
+          <ChevronLeft className="w-5 h-5 md:w-3 md:h-3" />
+        ) : (
+          <ChevronRight className="w-5 h-5 md:w-3 md:h-3" />
+        )}
       </button>
 
       {/* ── CENTER COLUMN ────────────────────────── */}

@@ -1,5 +1,439 @@
 [
   {
+    "id": "local_1783697543116_bbsb3",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783697541902.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783697541902.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference. The THIRD image is the LOCATION/STAGE reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in this EXACT environment/location.\n        Scene: 😲 Reaction Shot — A creator's face in close-up showing a genuine wide-eyed surprise-delight reaction while holding PRODUCT: Mysore Canteen.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, the product, and environment precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-10T15:32:23.116Z"
+  },
+  {
+    "id": "local_1783694614354_i21lr",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783694613127.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783694613127.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "[0-3s] Handheld close-up starting from <FIRST_FRAME> of the creator <IMAGE_REF_0> sitting at a table in a bright, everyday indoor setting, perhaps near a window. The creator looks directly at the camera, a slight smirk playing on their lips before their expression becomes more thoughtful. The creator lip-syncs the dialogue: \"I’m not even joking, I thought I knew coffee.\" A slight, natural camera wobble is present, mimicking a smartphone recording. Sound: soft ambient room tone with distant, indistinct background chatter.\n[3-6s] A slightly unsteady handheld shot transitions to a close-up of two traditional brass davara and tumbler cups <IMAGE_REF_1> on the table. A hand (implied to be the creator's) slowly and deliberately pours the dark, rich Mysore Canteen filter coffee from the davara into the tumbler, creating a beautiful, thick, frothy layer on top. The deep brown hue and the steam rising are visible. The creator's voice-over speaks the dialogue: \"But this Mysore Canteen filter cof",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-10T14:43:34.354Z"
+  },
+  {
+    "id": "local_1783693208900_40wf2",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783693207224.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783693207224.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "[0-3s] Shot: Begins with <FIRST_FRAME>, then a quick cut to a medium close-up of <IMAGE_REF_0> (creator) looking directly at the camera, a brass davara and tumbler <IMAGE_REF_1> held casually in one hand.\nCamera: Shot on a smartphone, handheld with slight natural movement, slightly imperfect framing. Natural bright indoor light from a window. Photo-realistic face with visible skin pores.\nDialogue: \"I’m not even joking, I thought I knew coffee.\"\nAudio: Lip-sync by <IMAGE_REF_0>. SFX: Subtle ambient room tone, a soft clink as the creator shifts the cup slightly.\n\n[3-6s] Shot: Close-up, slightly low angle, showing <IMAGE_REF_1> (coffee in davara and tumbler) being poured expertly between the two brass vessels by unseen hands (implied to be <IMAGE_REF_0>'s, just out of frame), creating a rich, frothy texture. The deep brown liquid flows realistically, aerating as it's poured. The background is softly blurred but hints at a cozy setting consistent with <IMAGE_REF_2>.\nCamera: Handheld smartp",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-10T14:20:08.900Z"
+  },
+  {
+    "id": "local_1783692373590_108rk",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783692372035.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783692372035.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "[0-3s] SHOT: Medium close-up of creator <IMAGE_REF_0> sitting at a casual table, looking directly at the camera. A traditional brass davara and tumbler containing Mysore Canteen Filter Coffee <IMAGE_REF_1> rests on the table in front of them, possibly with an implied cafe or home setting suggested by <IMAGE_REF_2> in the background (slightly out of focus). The shot begins with <FIRST_FRAME>. CAMERA: Handheld, slightly imperfect, as if shot on a smartphone. AUDIO: Creator <IMAGE_REF_0> delivers dialogue with natural lip-sync: \"I’m not even joking, I thought I knew coffee.\" Subtle ambient room tone present.\n[3-7s] SHOT: Macro close-up of the Mysore Canteen Filter Coffee <IMAGE_REF_1> being expertly poured from the davara into the tumbler, creating a rich, thick froth as it's aerated. The deep brown hue of the coffee and the texture of the froth are emphasized. Creator's hands (implied <IMAGE_REF_0>) are visible holding the brass cups. CAMERA: Handheld, slightly imperfect, focusing on the",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-10T14:06:13.590Z"
+  },
+  {
+    "id": "local_1783692136860_u5hz4",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783692135613.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783692135613.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference. The THIRD image is the LOCATION/STAGE reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in this EXACT environment/location.\n        Scene: 🎙️ Normal Talking — A real person naturally using/holding PRODUCT: Mysore Canteen Filter Coffee\nDESCRIPTION: Experience the rich, aromatic t.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, the product, and environment precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-10T14:02:16.860Z"
+  },
+  {
+    "id": "local_1783692099077_0nb3i",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783692097908.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783692097908.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference. The THIRD image is the LOCATION/STAGE reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in this EXACT environment/location.\n        Scene: 🎙️ Normal Talking — A real person naturally using/holding PRODUCT: Mysore Canteen Filter Coffee\nDESCRIPTION: Experience the rich, aromatic t.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, the product, and environment precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-10T14:01:39.077Z"
+  },
+  {
+    "id": "local_1783686199593_tiazn",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783686198919.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783686198919.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "[0-3s] Overhead shot of <IMAGE_REF_1>, the Traditional Indian Thali Platter, centered on a wooden table at <IMAGE_REF_2>. The shot begins static, then a very slow, subtle push-in towards the center of the thali. Handheld, slightly imperfect framing, natural bright indoor lighting, no cinematic effects.\nAUDIO: VOICE-OVER: \"ఓకే వెయిట్— నేనసలు ఇది ఇంత బావుంటుందని ఊహించలేదు.\" Ambient room tone with subtle distant clinking of cutlery or gentle murmurs from a dining environment.\n\n[3-6s] Handheld close-up shot of the Paneer curry dish within <IMAGE_REF_1>, showcasing its rich texture and fresh garnishes of cilantro and red onions. A spoon gently dips into the curry, revealing its depth without removing it. Phone-camera aesthetic, no shallow depth of field.\nAUDIO: VOICE-OVER: \"నిజంగా, ఒక్క థాలీలో ఇన్ని ఫ్లేవర్స్ ఉంటాయని అనుకోలేదు. కదా?\" Subtle sound of the spoon gently stirring or dipping into the curry.\n\n[6-9s] Medium close-up of creator <IMAGE_REF_0>, seated at the table with <IMAGE_REF_1> p",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-10T12:23:19.594Z"
+  },
+  {
+    "id": "local_1783686077125_ndsbj",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783686076349.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783686076349.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "ఓకే వెయిట్— నేనసలు ఇది ఇంత బావుంటుందని ఊహించలేదు. నిజంగా, ఒక్క థాలీలో ఇన్ని ఫ్లేవర్స్ ఉంటాయని అనుకోలేదు. కదా? ఇది కంప్లీట్ ఇండియన్ మీల్, అన్ని ఫ్లేవర్స్ ఒకేచోట. ఇండియన్ ఫుడ్ నచ్చేవాళ్లు దీన్ని పక్కా ట్రై చేయాల్సిందే! Style: Ultra-realistic raw footage, natural looking normal video quality, super natural, no background blur, no bokeh, sharp focus across the entire frame, shot on a normal phone, mobile video aesthetic, natural lighting, super real human appearance, authentic and imperfect, 4K resolution, natural camera movement, no 85mm lens, no bokeh portrait effect, zero depth of field blur. UGC Creator Style: The creator is in a natural, relatable environment, talking directly to the camera. Performance Style: calm and natural delivery, subtle hand gestures, gentle pacing, conversational tone, minimal dramatic movements, soft eye contact. The creator is speaking the script dialogue clearly with natural mouth movements. High quality facial animation. Avoid high-end commercial sets. FAC",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-10T12:21:17.125Z"
+  },
+  {
+    "id": "local_1783685572091_d6d8i",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783685571642.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783685571642.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "The camera starts static on the reference image, then smoothly pans to reveal a person looking directly at the camera. Their mouth precisely lip-syncs the dialogue. They begin with a thoughtful expression and a slight shrug, evolving to a confident smile as they speak about the biryani. Hand gestures emphasize key phrases like \"சரியான டின்னர்\" and \"கண்டிப்பா ட்ரை பண்ணி பாருங்க!\", culminating in a persuasive, relaxed demeanor. எனக்கு ஒருநாள், literally என்ன சமைக்கிறதுன்னே தெரியல, அப்புறம் எங்க வீட்ல யாருக்கும் பிடிக்கல. இந்த சிக்கன் பிரியாணி தான். அதுல இருக்குற ஸ்பைசி சிக்கன், பாஸ்மதி ரைஸ், ஃபேமிலிக்கு சரியான டின்னர். கண்டிப்பா ட்ரை பண்ணி பாருங்க! Style: Ultra-realistic raw footage, natural looking normal video quality, super natural, no background blur, no bokeh, sharp focus across the entire frame, shot on a normal phone, mobile video aesthetic, natural lighting, super real human appearance, authentic and imperfect, 4K resolution, natural camera movement, no 85mm lens, no bokeh portra",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-10T12:12:52.091Z"
+  },
+  {
+    "id": "local_1783685513710_113i3",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783685513316.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783685513316.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference. The THIRD image is the LOCATION/STAGE reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in this EXACT environment/location.\n        Scene: 🎙️ Normal Talking — A real person naturally using/holding PRODUCT: Chicken Biryani\nDESCRIPTION: This exquisite Chicken Biryani features succ.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, the product, and environment precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-10T12:11:53.711Z"
+  },
+  {
+    "id": "local_1783685483439_fdrct",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783685482916.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783685482916.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: Chicken Biryani — A real person naturally using/holding PRODUCT: Chicken Biryani\nDESCRIPTION: This exquisite Chicken Biryani features succ.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-10T12:11:23.439Z"
+  },
+  {
+    "id": "local_1783683944317_39fag",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783683942861.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783683942861.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "[0-3s] Starting from <FIRST_FRAME>, a medium shot of <IMAGE_REF_0> seated comfortably at a beautifully set wooden dining table within a cozy home environment (<IMAGE_REF_2>), bathed in the soft, warm glow of golden hour sunlight filtering through a window. <IMAGE_REF_0> looks directly at the camera with an initial expression of pleasant surprise, then a growing smile of delight. In front of her, the <IMAGE_REF_1> Gourmet Indian Thali Platter is elegantly presented. The camera slowly zooms in on her face, capturing her genuine awe and anticipation. She begins to speak, her lips perfectly syncing: \"ओके, मैं न, सीरियसली, एक्सपेक्ट नहीं कर रही थी ये इतना अमेजिंग होगा।\"\n\n[3-6s] A dynamic cut to a close-up shot focusing on <IMAGE_REF_0>'s hands as she expertly tears a piece of warm flatbread from the <IMAGE_REF_1> platter and dips it into one of the richly colored curries. Her eyes, partially visible, widen with pure satisfaction as she brings the food to her mouth and takes a bite. The came",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-10T11:45:44.317Z"
+  },
+  {
+    "id": "local_1783683841894_d0svd",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783683841509.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783683841509.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference. The THIRD image is the LOCATION/STAGE reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in this EXACT environment/location.\n        Scene: 🎙️ Normal Talking — A real person naturally using/holding PRODUCT: Gourmet Indian Thali Platter\nDESCRIPTION: This exquisite Gourmet Indian T.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, the product, and environment precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-10T11:44:01.894Z"
+  },
+  {
+    "id": "local_1783683464925_9txis",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783683464592.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783683464592.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference. The THIRD image is the LOCATION/STAGE reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in this EXACT environment/location.\n        Scene: 😲 Reaction Shot — A creator's face in close-up showing a genuine wide-eyed surprise-delight reaction while holding PRODUCT: Gourmet Indian.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, the product, and environment precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-10T11:37:44.925Z"
+  },
+  {
+    "id": "local_1783683405169_i7148",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783683404632.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783683404632.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: 😲 Reaction Shot — A creator's face in close-up showing a genuine wide-eyed surprise-delight reaction while holding PRODUCT: Gourmet Indian.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-10T11:36:45.169Z"
+  },
+  {
+    "id": "local_1783679717824_81lkf",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783679716818.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783679716818.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "[0-3s] Starting from <FIRST_FRAME>, the camera is static in a medium shot showing <IMAGE_REF_0> in a natural, relaxed environment, looking directly into the camera. <IMAGE_REF_0> begins to lip-sync: \"Honestly, I didn't think I needed another pair of sneakers.\" Their expression is initially slightly skeptical, with a subtle head shake. As they lip-sync \"But then I saw these,\" their eyes widen slightly, shifting to intrigue, and their hand briefly moves out of frame to retrieve <IMAGE_REF_1>.\n\n[3-6s] <IMAGE_REF_0> now holds <IMAGE_REF_1> (Nike SB Dunk Low Pro 'Levi's' Denim) in their hands, turning it slightly to showcase the unique light-wash denim upper. They continue to lip-sync: \"and like, the way that worn-in denim feels? It’s just something else. I can't even explain it.\" Their fingers gently brush over the denim surface of <IMAGE_REF_1>, emphasizing the texture and conveying a sense of appreciation. The camera slowly pushes in, transitioning to a closer shot of the denim texture o",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-10T10:35:17.824Z"
+  },
+  {
+    "id": "local_1783679280360_obj09",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783679278858.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783679278858.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: 🎙️ Normal Talking — A real person naturally using/holding the product in an authentic home environment. Ultra-realistic UGC photo, natural l.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-10T10:28:00.360Z"
+  },
+  {
+    "id": "local_1783678278313_vb0kw",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783678277368.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783678277368.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "A single high-quality UGC photo for the opening frame of this video scene.\nProduct / Brand: PRODUCT: Pastel Blue Cable Knit Sweater Vest & Wide-Leg Cargo Pants Outfit\nDESCRIPTION: This is a stylish and comfortable casual outfit featuring a light blue cable knit V-neck sweater vest, layered over a crisp white long-sleeve collared shirt. The look is completed with matching light blue wide-leg cargo pants, which boast multiple functional pockets and adjustable drawstring details at the ankles for a customizable fit. Paired with classic white sneakers, this ensemble offers a fresh, relaxed, and trendy aesthetic. The blend of soft knitwear with sturdy cotton fabric ensures both comfort and durability, perfect for everyday wear.\nKEY BENEFITS: Provides a complete, pre-styled and coordinated outfit | Offers exceptional comfort with its relaxed fit and soft fabrics | Versatile pieces that can be mixed and matched with other wardrobe items | Features a trendy and modern streetwear aesthetic | Cargo pants include practical pockets and adjustable leg openings for functional style | Suitable for various seasons with its layering potential\nTARGET AUDIENCE: Fashion-conscious young adults, students, and individuals who appreciate comfortable, casual, yet stylish streetwear, looking for an effortless and trendy everyday outfit.\nUSE CASES: Casual everyday wear and errands, Streetwear and urban exploration, Relaxed outings and social gatherings, College or school campus attire.\nScene dialogue context: \"cargo pants have pockets! Perfect for campus or just chilling. Honestly, you'll wanna try this outfit.\".\nStyle: ultra-realistic, natural lighting, creator-facing camera, authentic UGC feel.\nThis is scene 2 of 2.",
+    "engine": "nb2",
+    "created_at": "2026-07-10T10:11:18.313Z"
+  },
+  {
+    "id": "local_1783678268716_ajcqr",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783678267986.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783678267986.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "A single high-quality UGC photo for the opening frame of this video scene.\nProduct / Brand: PRODUCT: Pastel Blue Cable Knit Sweater Vest & Wide-Leg Cargo Pants Outfit\nDESCRIPTION: This is a stylish and comfortable casual outfit featuring a light blue cable knit V-neck sweater vest, layered over a crisp white long-sleeve collared shirt. The look is completed with matching light blue wide-leg cargo pants, which boast multiple functional pockets and adjustable drawstring details at the ankles for a customizable fit. Paired with classic white sneakers, this ensemble offers a fresh, relaxed, and trendy aesthetic. The blend of soft knitwear with sturdy cotton fabric ensures both comfort and durability, perfect for everyday wear.\nKEY BENEFITS: Provides a complete, pre-styled and coordinated outfit | Offers exceptional comfort with its relaxed fit and soft fabrics | Versatile pieces that can be mixed and matched with other wardrobe items | Features a trendy and modern streetwear aesthetic | Cargo pants include practical pockets and adjustable leg openings for functional style | Suitable for various seasons with its layering potential\nTARGET AUDIENCE: Fashion-conscious young adults, students, and individuals who appreciate comfortable, casual, yet stylish streetwear, looking for an effortless and trendy everyday outfit.\nUSE CASES: Casual everyday wear and errands, Streetwear and urban exploration, Relaxed outings and social gatherings, College or school campus attire.\nScene dialogue context: \"Okay wait—I'm not even joking, I wasn't expecting this outfit to be so perfect. Like, the whole vibe? It just *works* for everything. No seriously, it's so comfy and already a complete look. The\".\nStyle: ultra-realistic, natural lighting, creator-facing camera, authentic UGC feel.\nThis is scene 1 of 2.",
+    "engine": "nb2",
+    "created_at": "2026-07-10T10:11:08.716Z"
+  },
+  {
+    "id": "local_1783673911354_3a570",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783673910912.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783673910912.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: 👆 POV Shot — First-person POV shot: looking down at PRODUCT: Light Blue Cable Knit Vest & Cargo Pants Outfit\nDESCRIPTION: This ensemb.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-10T08:58:31.354Z"
+  },
+  {
+    "id": "local_1783673873050_8lu9t",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783673872525.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783673872525.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: 👆 POV Shot — First-person POV shot: looking down at PRODUCT: Light Blue Cable Knit Vest & Cargo Pants Outfit\nDESCRIPTION: This ensemb.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-10T08:57:53.050Z"
+  },
+  {
+    "id": "local_1783673708491_r8g8o",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783673707831.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783673707831.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: 👆 POV Shot — First-person POV shot: looking down at PRODUCT: Light Blue Cable Knit Vest & Cargo Pants Outfit\nDESCRIPTION: This ensemb.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-10T08:55:08.491Z"
+  },
+  {
+    "id": "local_1783672403446_axqt6",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783672402835.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783672402835.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "Slow-motion glide shot, starting with a detailed close-up of the cargo pants' visible pocket details and adjustable drawstrings, then smoothly moving up to the V-neck sweater vest layered over the crisp white shirt. Creator subtly gestures towards the outfit with a calm, appreciative expression. Cinematic b-roll with high-quality bokeh, professional lighting emphasizing the soft knit and fabric. Performance: calm and natural delivery, subtle hand gestures, gentle pacing, conversational tone, minimal dramatic movements, soft eye contact. The creator is saying: [ಈ ಔಟ್‌ಫಿಟ್ ಇದೆಯಲ್ಲಾ? ಎಷ್ಟು ಆರಾಮದಾಯಕ ಅಂದ್ರೆ, ಕಾಲೇಜ್‌ಗೆ, ಹೊರಗೆ ಎಲ್ಲಿ ಬೇಕಾದರೂ ಹಾಕ್ಬೋದು. ಟ್ರೆಂಡಿ ಮತ್ತು ಸ್ಟೈಲಿಶ್, ಕಂಫರ್ಟಬಲ್ ಸಹ.] ನಿಮಗೆ ಬೇಕಿದ್ರೆ, ಇದನ್ನ ಟ್ರೈ ಮಾಡ್ಲೇಬೇಕು. ಕಮೆಂಟ್ ಮಾಡಿ 'ಸ್ವಲ್ಪ ಡೀಟೇಲ್ಸ್' ಅಂತ, ನಾನು ಕಳಿಸ್ತೀನಿ. Style: Ultra-realistic raw footage, natural looking normal video quality, super natural, no background blur, no bokeh, sharp focus across the entire frame, shot on a normal phone, mobile video aesthetic, natural lightin",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-10T08:33:23.446Z"
+  },
+  {
+    "id": "local_1783672310085_ekb2j",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783672309297.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783672309297.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: 🎥 Cinematic B-Roll — Cinematic close-up product reveal shot of PRODUCT: Light Blue Cable Knit Vest & Cargo Pants Outfit\nDESCRIPTION: This ens.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-10T08:31:50.085Z"
+  },
+  {
+    "id": "local_1783672219021_kahqm",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783672218014.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783672218014.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "Creator, wearing the light blue cable knit vest and cargo pants outfit, sits casually in a well-lit living room, facing the camera. They look a little surprised but intrigued, leaning slightly forward. They make a subtle head shake or a slight shrug, gesturing casually at their outfit with relaxed hands. The performance is calm and natural, with subtle hand gestures, gentle pacing, a conversational tone, and soft eye contact. Visual style preset details: direct-to-camera, relaxed lip-sync, creator talking directly to the camera in a natural environment. ನೋಡಿ, ನಾನು ಈ ಔಟ್‌ಫಿಟ್‌ನ್ನ literally ಟ್ರೈ ಮಾಡ್ದೆ, ಆದ್ರೆ ನಾನು ಇಷ್ಟು ಚೆನ್ನಾಗಿರುತ್ತೆ ಅಂತ ಅನ್ಕೊಂಡಿರಲಿಲ್ಲ. ಇದು ಸಿಕ್ಕಾಪಟ್ಟೆ ಕಂಫರ್ಟಬಲ್ ಇದೆ, ಮತ್ತೆ ಆ ಸಾಫ್ಟ್ ಬ್ಲೂ ಕಲರ್ ತುಂಬಾ ಟ್ರೆಂಡಿ ಆಗಿದೆ. ನೀವೂ ಇದನ್ನ ಟ್ರೈ ಮಾಡ್ಲೇಬೇಕು, honestly! Style: Ultra-realistic raw footage, natural looking normal video quality, super natural, no background blur, no bokeh, sharp focus across the entire frame, shot on a normal phone, mobile video aesthetic, natural lighting, su",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-10T08:30:19.021Z"
+  },
+  {
+    "id": "local_1783672105053_4oip8",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783672104603.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783672104603.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: 🎙️ Normal Talking — A real person naturally using/holding the product in an authentic home environment. Ultra-realistic UGC photo, natural l.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-10T08:28:25.054Z"
+  },
+  {
+    "id": "local_1783672013328_h0n27",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783672012483.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783672012483.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: 🎙️ Normal Talking — A real person naturally using/holding the product in an authentic home environment. Ultra-realistic UGC photo, natural l.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-10T08:26:53.328Z"
+  },
+  {
+    "id": "local_1783625857586_7kgtw",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783625856661.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783625856661.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "The camera slowly pushes in towards the person. The person looks directly at the camera, speaking the dialogue with relaxed, natural lip-sync. A subtle, conspiratorial facial expression is maintained for the whispered beginning. Gentle, expressive hand gestures accompany the speech, emphasizing key phrases like \"show you\" and \"Comment Ai\". The camera remains steady, holding a medium close-up. [whisper]This was completely AI generated, let me show you how it was done in zerolens ai Comment Ai or detailed guide and app Style: Ultra-realistic raw footage, natural looking normal video quality, super natural, no background blur, no bokeh, sharp focus across the entire frame, shot on a normal phone, mobile video aesthetic, natural lighting, super real human appearance, authentic and imperfect, 4K resolution, natural camera movement, no 85mm lens, no bokeh portrait effect, zero depth of field blur, direct-to-camera, relaxed lip-sync, creator talking directly to the camera in a natural environ",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-09T19:37:37.593Z"
+  },
+  {
+    "id": "local_1783625562223_idoqz",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783625561797.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783625561797.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "he subject is sitting inside a moving train, head leaning gently against the vibrating window, eyes closed in heavy, genuine sleep — slow breathing, lips slightly parted, head swaying faintly with the train's rhythm. Captured in a close, handheld, imperfect iPhone-style camera angle with natural grain and slight motion blur.\nA louder jolt from the tracks stirs her. Her brows twitch first, eyelids fluttering half-open, then closing again for a beat — a small, involuntary flinch, not a clean wake-up. A soft exhale/sigh escapes as she stirs a second time, blinking slowly, eyes unfocused for a moment as they adjust to the light. She lifts her head off the window slowly, a groggy squint, maybe a small scrunch of the nose or a lazy blink-and-hold. Only then does her gaze drift over and lock onto the camera lens — a beat of sleepy recognition crossing her face, the corner of her mouth curling into a slow, teasing half-smile before she speaks.\nShe delivers these exact lines in a slightly teasi",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-09T19:32:42.223Z"
+  },
+  {
+    "id": "local_1783625200192_b9pp7",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783625199816.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783625199816.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "The subject is sitting inside a moving train, leaning their head gently against the vibrating window. Captured in a close, handheld, imperfect iPhone-style camera angle. The video begins with the subject in a heavy sleep with eyes closed, then they wake up, shift slightly, and look directly into the camera lens. They deliver these exact lines in a slightly teasing, whispering tone with realistic lip-sync: \"This was completely AI generated, let me show you how it was done in zerolens ai Comment Ai for App link.\" Their lips linger half-parted, and their hair subtly moves with each gentle jolt of the train tracks. Smooth facial micro-expressions and natural camera jitters.\n This was completely AI generated, let me show you how it was done in zerolens ai Comment Ai or detailed guide and app Style: Ultra-realistic raw footage, natural looking normal video quality, super natural, no background blur, no bokeh, sharp focus across the entire frame, shot on a normal phone, mobile video aesthetic",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-09T19:26:40.192Z"
+  },
+  {
+    "id": "local_1783623526433_gu13a",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783623524681.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783623524681.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "@riya  near window sit she is sleepin leaning to winodw @metro. Perspective: Close Up framing.. Captured on iPhone 15 Pro. Aesthetic: raw shot on iPhone, 100% natural mobile camera photography, everyday natural lighting, ultra-realistic details with natural skin texture, visible open pores and fine skin details, raw ultra realistic, normal camera photography style, no cinematic lighting, no cinematic effects.. Style: Photorealistic (Hyper-detailed normal camera mobile shot, 100% natural, everyday lighting, no cinematic effects, ultra-realistic skin texture with open pores, 8k).\n\n[REFERENCE ALIGNMENT DIRECTIVES]\nReference: @riya (CHARACTER) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1783623386184.png\nReference: @metro (LOCATION) - https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/ref_1783623440614.png\n\n[FACE SYMMETRY DIRECTIVE]\nMake the face 100% symmetrical, matching the exact facial structure and features of the attached character reference image, ensuring 100% natural look with realistic skin pores and textures, no artificial cinematic smoothing or airbrushing. [seed: 161650]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-09T18:58:46.434Z"
+  },
+  {
     "id": "local_1783613668398_vcy74",
     "name": "veo_local_user_1783613667983.mp4",
     "type": "video",

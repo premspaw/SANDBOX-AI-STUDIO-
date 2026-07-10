@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, Zap, Layout, Clock, FileText, Sparkles, Loader2 } from 'lucide-react';
+import { ChevronDown, Zap, Layout, Clock, FileText, Sparkles, Loader2, Film } from 'lucide-react';
 import { useUGC } from '../context/UGCContext';
 
 export default function VideoTab() {
@@ -23,7 +23,14 @@ export default function VideoTab() {
     splitScenes,
     setSplitScenes,
     activeSplitTab,
-    generateAllSceneVideos
+    generateAllSceneVideos,
+    multiShotPrompt,
+    setMultiShotPrompt,
+    setShowTemplates,
+    isGeneratingSplitPrompt,
+    generateSplitScenePrompt,
+    generateGeneralVideoPrompt,
+    isGeneratingGeneralPrompt,
   } = useUGC();
 
   return (
@@ -41,7 +48,7 @@ export default function VideoTab() {
               setVideoPrompt(val);
               if (splitScenes.length > 0) {
                 setSplitScenes((prev: any[]) =>
-                  prev.map((s, idx) => (idx === activeSplitTab ? { ...s, prompt: val } : s))
+                  prev.map((s, idx) => (multiShotPrompt ? { ...s, prompt: val } : (idx === activeSplitTab ? { ...s, prompt: val } : s)))
                 );
               }
             }}
@@ -193,6 +200,58 @@ export default function VideoTab() {
                 </div>
               );
             })()}
+
+            {/* AI Prompt Pill */}
+            {(splitScenes.length > 0 || script || videoPrompt) && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (splitScenes.length > 0) {
+                    generateSplitScenePrompt(activeSplitTab);
+                  } else {
+                    generateGeneralVideoPrompt();
+                  }
+                }}
+                disabled={isGeneratingSplitPrompt || isGeneratingGeneralPrompt}
+                className={`px-2 py-0.5 rounded-lg border transition-all flex items-center gap-1 flex-shrink-0 text-[8px] font-bold uppercase tracking-widest ${
+                  (isGeneratingSplitPrompt || isGeneratingGeneralPrompt)
+                    ? 'border-white/[0.08] bg-white/[0.04] text-white/20 cursor-not-allowed'
+                    : 'border-[#c8f135]/40 bg-[#c8f135]/10 text-[#c8f135] hover:bg-[#c8f135]/20'
+                }`}
+              >
+                {(isGeneratingSplitPrompt || isGeneratingGeneralPrompt) ? (
+                  <Loader2 size={7} className="animate-spin" />
+                ) : (
+                  <Sparkles size={7} />
+                )}
+                <span>AI Prompt</span>
+              </button>
+            )}
+
+            {/* Template Pill */}
+            <button
+              type="button"
+              onClick={() => setShowTemplates(true)}
+              className="px-2 py-0.5 rounded-lg border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70 transition-all flex items-center gap-1 flex-shrink-0 text-[8px] font-bold uppercase tracking-widest"
+            >
+              <Layout size={7} />
+              <span>Template</span>
+            </button>
+
+            {/* Multi-Shot Toggle */}
+            <button
+              type="button"
+              onClick={() => setMultiShotPrompt(!multiShotPrompt)}
+              title={multiShotPrompt ? 'Multi-Shot Prompt: ON' : 'Multi-Shot Prompt: OFF'}
+              className={`px-2 py-0.5 rounded-lg border transition-all flex items-center gap-1 flex-shrink-0 text-[8px] font-bold uppercase tracking-widest ${
+                multiShotPrompt
+                  ? 'border-[#c8f135]/40 bg-[#c8f135]/10 text-[#c8f135]'
+                  : 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70'
+              }`}
+            >
+              <Film size={7} />
+              <span>Multi-Shot</span>
+            </button>
           </div>
         </div>
 

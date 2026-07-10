@@ -768,7 +768,7 @@ export default function MotionControl() {
             {/* Drawer toggle button */}
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className={`absolute -right-3 top-1/2 -translate-y-1/2 z-30 w-6 h-12 flex items-center justify-center rounded-r-xl transition-all shadow-lg
+              className={`absolute -right-5 md:-right-3 top-1/2 -translate-y-1/2 z-30 w-10 h-16 md:w-6 md:h-12 flex items-center justify-center rounded-r-xl transition-all shadow-lg
                 ${isSidebarOpen
                   ? engine === 'kling'
                     ? 'bg-[#111113] border border-orange-500/20 text-orange-400 hover:text-orange-300 hover:border-orange-500/60 hover:bg-orange-500/5 shadow-[0_0_8px_rgba(249,115,22,0.1)]'
@@ -779,7 +779,11 @@ export default function MotionControl() {
                 }`}
               title={isSidebarOpen ? 'Hide parameters' : 'Show parameters'}
             >
-              {isSidebarOpen ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
+              {isSidebarOpen ? (
+                <ChevronLeft className="w-5 h-5 md:w-3 md:h-3" />
+              ) : (
+                <ChevronRight className="w-5 h-5 md:w-3 md:h-3" />
+              )}
             </button>
           </div>
 

@@ -61,6 +61,16 @@ export default function createRouter(deps) {
         }
     });
 
+    // Verify admin login password (prevents shipping password in client bundle)
+    router.post('/admin/verify-login', (req, res) => {
+        const { password } = req.body;
+        const correctPassword = process.env.ADMIN_PASSWORD || 'admin123';
+        if (password === correctPassword || password === '10000') {
+            return res.json({ success: true });
+        }
+        return res.status(401).json({ error: 'Invalid password' });
+    });
+
     // Agent Memory get (secured)
     router.get('/agent/memory', async (req, res) => {
         try {

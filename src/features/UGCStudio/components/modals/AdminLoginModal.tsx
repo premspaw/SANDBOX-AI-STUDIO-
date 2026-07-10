@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { useAppStore } from '../../../../store';
+import { getApiUrl } from '../../../../config/apiConfig';
 
 export default function AdminLoginModal() {
   const showAdminLogin = useAppStore(state => state.showAdminLogin);
@@ -10,15 +11,25 @@ export default function AdminLoginModal() {
 
   const [adminPassword, setAdminPassword] = useState('');
 
-  const handleAdminLogin = () => {
-    if (adminPassword === 'admin123' || adminPassword === '10000') {
-      setIsAdmin(true);
-      setShowAdminLogin(false);
-      setAdminPassword('');
-      setUserShorts(10000);
-      alert('Admin mode ON — 10,000 credits loaded');
-    } else {
-      alert('Invalid password');
+  const handleAdminLogin = async () => {
+    if (!adminPassword) return;
+    try {
+      const resp = await fetch(getApiUrl('/api/admin/verify-login'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: adminPassword })
+      });
+      if (resp.ok) {
+        setIsAdmin(true);
+        setShowAdminLogin(false);
+        setAdminPassword('');
+        setUserShorts(10000);
+        alert('Admin mode ON — 10,000 credits loaded');
+      } else {
+        alert('Invalid password');
+      }
+    } catch (e) {
+      alert('Network or server error during admin verification');
     }
   };
 

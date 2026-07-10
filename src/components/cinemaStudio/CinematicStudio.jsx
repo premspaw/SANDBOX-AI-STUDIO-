@@ -1657,7 +1657,11 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       if (isConsumerCam) {
         let consumerPrompt = '';
         if (camera === 'iphone') {
-          consumerPrompt = 'raw shot on iPhone, raw candid mobile photography, captured on iPhone 15 Pro, ultra-realistic details, everyday natural lighting, mobile camera look, raw ultra realistic';
+          if (activeTab === 'image' && imageStyle === 'photorealistic') {
+            consumerPrompt = 'raw shot on iPhone, 100% natural mobile camera photography, everyday natural lighting, ultra-realistic details with natural skin texture, visible open pores and fine skin details, raw ultra realistic, normal camera photography style, no cinematic lighting, no cinematic effects';
+          } else {
+            consumerPrompt = 'raw shot on iPhone, raw candid mobile photography, captured on iPhone 15 Pro, ultra-realistic details, everyday natural lighting, mobile camera look, raw ultra realistic';
+          }
         } else if (camera === 'gopro') {
           consumerPrompt = 'GoPro footage, raw wide-angle GoPro action camera footage, high distortion fisheye view, action-cam POV aesthetic, raw ultra realistic';
         } else if (camera === 'vhs') {
@@ -1692,7 +1696,11 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     if (activeTab === 'image') {
       const stylePreset = STYLE_OPTIONS.find(s => s.value === imageStyle);
       if (stylePreset) {
-        compiledPrompt = `${compiledPrompt}. Style: ${stylePreset.label} (${stylePreset.desc}).`;
+        if (imageStyle === 'photorealistic' && camera === 'iphone') {
+          compiledPrompt = `${compiledPrompt}. Style: Photorealistic (Hyper-detailed normal camera mobile shot, 100% natural, everyday lighting, no cinematic effects, ultra-realistic skin texture with open pores, 8k).`;
+        } else {
+          compiledPrompt = `${compiledPrompt}. Style: ${stylePreset.label} (${stylePreset.desc}).`;
+        }
       }
     }
 
@@ -1703,7 +1711,11 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       
       const hasCharacter = taggedItems.some(item => item.category === 'character');
       if (hasCharacter) {
-        compiledPrompt = `${compiledPrompt}\n\n[FACE SYMMETRY DIRECTIVE]\nMake the face 100% symmetrical, matching the exact facial structure and features of the attached character reference image.`;
+        if (activeTab === 'image' && imageStyle === 'photorealistic' && camera === 'iphone') {
+          compiledPrompt = `${compiledPrompt}\n\n[FACE SYMMETRY DIRECTIVE]\nMake the face 100% symmetrical, matching the exact facial structure and features of the attached character reference image, ensuring 100% natural look with realistic skin pores and textures, no artificial cinematic smoothing or airbrushing.`;
+        } else {
+          compiledPrompt = `${compiledPrompt}\n\n[FACE SYMMETRY DIRECTIVE]\nMake the face 100% symmetrical, matching the exact facial structure and features of the attached character reference image.`;
+        }
       }
     }
 
@@ -1712,7 +1724,11 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     if (moodRef?.imageUrl) {
       const isAlreadyTagged = taggedItems.some(item => item.id === moodRef.id);
       if (!isAlreadyTagged) {
-        compiledPrompt = `${compiledPrompt}\n\n[STYLE REFERENCE DIRECTIVE]\nMatch the overall aesthetic, color grading, lighting, composition style, and mood of the attached style reference image.`;
+        if (activeTab === 'image' && imageStyle === 'photorealistic' && camera === 'iphone') {
+          compiledPrompt = `${compiledPrompt}\n\n[STYLE REFERENCE DIRECTIVE]\nMatch the overall aesthetic, color grading, lighting, composition style, and mood of the attached style reference image, ensuring it looks like a normal camera snapshot without cinematic enhancements.`;
+        } else {
+          compiledPrompt = `${compiledPrompt}\n\n[STYLE REFERENCE DIRECTIVE]\nMatch the overall aesthetic, color grading, lighting, composition style, and mood of the attached style reference image.`;
+        }
       }
     }
 

@@ -25,6 +25,7 @@ export interface GalleryItem {
   prompt?: string;
   loading?: boolean;
   createdAt?: number;
+  error?: string;
 }
 
 export interface TimelineItem {
@@ -53,6 +54,7 @@ export interface SplitScene {
   dialog: string;
   prompt: string;
   refImage?: string | null;
+  refImages?: string[] | null;
 }
 
 // ── Context shape ──────────────────────────────────────────────────────────────
@@ -115,6 +117,9 @@ export interface UGCContextType {
   setActiveSplitTab: (v: number) => void;
   selectedPromptVariant: number;
   setSelectedPromptVariant: (v: number) => void;
+  multiShotPrompt: boolean;
+  setMultiShotPrompt: (v: boolean) => void;
+
 
   // ── Audio ────────────────────────────────────────────────────────────────
   audioData: string;
@@ -144,6 +149,7 @@ export interface UGCContextType {
   generateTalkingHeadVideo: () => Promise<void>;
 
   // ── Image generation ──────────────────────────────────────────────────────
+  generateImage: (overridePrompt?: string) => Promise<string>;
   isGeneratingImage: boolean;
   imageProgressMsg: string;
   generatedImg: string;
@@ -186,6 +192,7 @@ export interface UGCContextType {
 
   // ── Gallery ───────────────────────────────────────────────────────────────
   gallery: GalleryItem[];
+  setGallery: React.Dispatch<React.SetStateAction<GalleryItem[]>>;
   galleryTab: 'all' | 'image' | 'video';
   setGalleryTab: (v: 'all' | 'image' | 'video') => void;
   galleryExpandItem: GalleryItem | null;
@@ -341,6 +348,8 @@ export interface UGCContextType {
   showLiveGuide: boolean;
   setShowLiveGuide: (v: boolean) => void;
   generateSplitScenePrompt: (tabIdx: number) => Promise<void>;
+  generateGeneralVideoPrompt: () => Promise<void>;
+  isGeneratingGeneralPrompt: boolean;
   isExpandModalOpen: boolean;
   setIsExpandModalOpen: (v: boolean) => void;
   showAdminLogin: boolean;

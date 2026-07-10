@@ -289,10 +289,7 @@ export const MontagePanel: React.FC = () => {
       while (!operation.done) {
         const elapsed = Math.floor((Date.now() - montagePollStart) / 1000);
         if (Date.now() - montagePollStart > MONTAGE_TIMEOUT_MS) {
-          setIsGeneratingVideo(false);
-          setVideoProgressMsg('');
-          showToast(`Montage timed out after ${elapsed}s — tap Retry to try again.`, 'error');
-          return;
+          throw new Error(`Montage generation timed out after ${elapsed}s.`);
         }
         await new Promise(resolve => setTimeout(resolve, 5000));
         const msg = pollMsgs[Math.min(pollCount, pollMsgs.length - 1)];
@@ -305,10 +302,7 @@ export const MontagePanel: React.FC = () => {
       const raiFiltered = generateVideoResponse?.raiMediaFilteredCount || 0;
 
       if (raiFiltered > 0) {
-        showToast(`Montage blocked by safety filter — try rephrasing the prompt.`, 'error');
-        setIsGeneratingVideo(false);
-        setVideoProgressMsg('');
-        return;
+        throw new Error('Montage blocked by safety filter — try rephrasing the prompt.');
       }
 
       const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
@@ -356,10 +350,10 @@ export const MontagePanel: React.FC = () => {
             console.error('[Background Upload] Montage upload failed:', err);
           });
       } else {
-        showToast('Veo returned no video. The prompt may have been filtered. Try rephrasing.', 'error');
+        throw new Error('Veo returned no video. The prompt may have been filtered. Try rephrasing.');
       }
     } catch (e) {
-      refund('veo_fast', unitCost as any);
+      if (!isAdmin && !isGlobalAdmin) refund('veo_fast', unitCost as any);
       handleApiError(e, 'Montage video generation');
     }
     setIsGeneratingVideo(false);

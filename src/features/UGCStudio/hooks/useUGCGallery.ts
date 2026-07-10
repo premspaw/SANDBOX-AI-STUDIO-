@@ -50,6 +50,7 @@ export interface GalleryItem {
   prompt?: string;
   loading?: boolean;
   createdAt?: number;
+  error?: string;
 }
 
 // ── Resolve numeric timestamp for sorting ─────────────────────────────────────

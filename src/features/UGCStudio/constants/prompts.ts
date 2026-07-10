@@ -46,20 +46,32 @@ const VOICE_RULES_BLOCK = `
 `;
 
 // ─── LANGUAGE-AWARE WORD COUNT ───────────────────────────────────────────────
-function getWordRange(language: string, isOmni: boolean, sceneCount: number): string {
+function getWordRange(language: string, isOmni: boolean, sceneCount: number, isMultiShot: boolean): string {
   const lang = language.toLowerCase();
   const isDravidian = ['kannada', 'tamil', 'telugu', 'malayalam'].some(l => lang.includes(l));
   const isHindi = lang.includes('hindi') || lang.includes('urdu');
   if (isOmni) {
     // 10-second scenes
-    if (isDravidian) return `Strictly 16-22 spoken words per 10-second scene (natural UGC Dravidian pace ~2.0 words/sec — 16 min, 22 max). Total ≈ ${sceneCount * 19} words.`;
-    if (isHindi)    return `Strictly 23-29 spoken words per 10-second scene (energetic UGC Hindi pace ~2.6 words/sec — 23 min, 29 max). Total ≈ ${sceneCount * 26} words.`;
-    return               `Strictly 27-33 spoken words per 10-second scene (natural UGC English pace ~3.0 words/sec — 27 min, 33 max). Total ≈ ${sceneCount * 30} words.`;
+    if (isMultiShot) {
+      if (isDravidian) return `Strictly 10-12 spoken words per 10-second scene (natural Dravidian pace ~1.1 words/sec — 10 min, 12 max). Total ≈ ${sceneCount * 11} words.`;
+      if (isHindi)    return `Strictly 12-14 spoken words per 10-second scene (energetic Hindi pace ~1.3 words/sec — 12 min, 14 max). Total ≈ ${sceneCount * 13} words.`;
+      return               `Strictly 13-16 spoken words per 10-second scene (natural English pace ~1.4 words/sec to leave room for pauses/actions — 13 min, 16 max). Total ≈ ${sceneCount * 14} words.`;
+    } else {
+      if (isDravidian) return `Strictly 20-22 spoken words or less per 10-second scene (natural Dravidian pace ~2.0 words/sec — 20 min, 22 max). Total ≈ ${sceneCount * 21} words.`;
+      if (isHindi)    return `Strictly 24-26 spoken words or less per 10-second scene (energetic Hindi pace ~2.5 words/sec — 24 min, 26 max). Total ≈ ${sceneCount * 25} words.`;
+      return               `Strictly 28-30 spoken words or less per 10-second scene (natural English pace ~2.8 words/sec — 28 min, 30 max). Total ≈ ${sceneCount * 29} words.`;
+    }
   } else {
     // 8-second scenes
-    if (isDravidian) return `Strictly 12-18 spoken words per 8-second scene (natural UGC Dravidian pace ~2.0 words/sec — 12 min, 18 max). Total ≈ ${sceneCount * 15} words.`;
-    if (isHindi)    return `Strictly 19-25 spoken words per 8-second scene (energetic UGC Hindi pace ~2.6 words/sec — 19 min, 25 max). Total ≈ ${sceneCount * 22} words.`;
-    return               `Strictly 20-26 spoken words per 8-second scene (natural UGC English pace ~3.0 words/sec — 20 min, 26 max). Total ≈ ${sceneCount * 23} words.`;
+    if (isMultiShot) {
+      if (isDravidian) return `Strictly 8-10 spoken words per 8-second scene (natural Dravidian pace ~1.1 words/sec — 8 min, 10 max). Total ≈ ${sceneCount * 9} words.`;
+      if (isHindi)    return `Strictly 9-11 spoken words per 8-second scene (energetic Hindi pace ~1.3 words/sec — 9 min, 11 max). Total ≈ ${sceneCount * 10} words.`;
+      return               `Strictly 10-13 spoken words per 8-second scene (natural English pace ~1.4 words/sec — 10 min, 13 max). Total ≈ ${sceneCount * 11} words.`;
+    } else {
+      if (isDravidian) return `Strictly 16-18 spoken words or less per 8-second scene (natural Dravidian pace ~2.0 words/sec — 16 min, 18 max). Total ≈ ${sceneCount * 17} words.`;
+      if (isHindi)    return `Strictly 19-21 spoken words or less per 8-second scene (energetic Hindi pace ~2.5 words/sec — 19 min, 21 max). Total ≈ ${sceneCount * 20} words.`;
+      return               `Strictly 22-24 spoken words or less per 8-second scene (natural English pace ~2.8 words/sec — 22 min, 24 max). Total ≈ ${sceneCount * 23} words.`;
+    }
   }
 }
 
@@ -150,6 +162,7 @@ export const buildScriptPrompt = (params: {
   trainingContent: string;
   nicheHookContext?: string;
   scriptModel?: 'veo3' | 'omni';
+  isMultiShot?: boolean;
 }) => {
   const toneInfo = params.SCRIPT_TONES[params.selectedScriptTone] || params.SCRIPT_TONES.viral_marketing;
   const styleInfo = params.VIDEO_STYLES[params.selectedVideoStyle] || params.VIDEO_STYLES.calm;
@@ -159,7 +172,7 @@ export const buildScriptPrompt = (params: {
 
   const isOmni = params.scriptModel === 'omni';
   const sceneSeconds = isOmni ? 10 : 8;
-  const wordCountConstraint = getWordRange(params.language, isOmni, params.sceneCount);
+  const wordCountConstraint = getWordRange(params.language, isOmni, params.sceneCount, !!params.isMultiShot);
   const timestampExamples = buildTimestampExamples(params.sceneCount, sceneSeconds);
 
   return `You are a professional UGC script writer. You write exactly how real people talk on camera.
@@ -201,6 +214,8 @@ ${VOICE_RULES_BLOCK}
 ─── ADDITIONAL SCRIPT RULES ──────────────────────────────────────────────
 1. Write the HOOK first. It must follow the niche hook patterns and rules above.
    The hook is the most important line — spend 70% of your thinking on it.
+   CRITICAL: DO NOT start the hook with generic, overused clichéd prefixes like "Okay wait", "Wait", "Wait, okay", "So...", or "Literally". These are boring and reduce engagement.
+   Create a fresh, unique, product-specific hook statement that connects to the main benefit or problem of the product.
 2. The hook must work WITHOUT seeing the product.
    Viewer clicks because of the hook, not the product.
 3. After the hook, write the rest of the script naturally — don't announce scene names mid-script.
@@ -209,7 +224,7 @@ ${VOICE_RULES_BLOCK}
    - Question hook: "Why does nobody talk about this?"
    - Confession hook: "I was NOT expecting this to work."
    - Contrast hook: "I wasted so much money before I found this."
-   - Reaction hook: "Okay I literally tried this as a joke and now I can't stop."
+   - Reaction hook: "I tried this as a joke and now I'm completely obsessed."
    - Statement hook: "This changed my entire morning routine."
 
 5. SCRIPT IS SPOKEN WORDS ONLY. No stage directions. No [smiles]. No (pause) in the dialogue text.
@@ -281,7 +296,7 @@ export const buildRegenerateScriptPartPrompt = (params: {
 
   const isOmni = params.scriptModel === 'omni';
   const sceneSeconds = isOmni ? 10 : 8;
-  const wordRange = getWordRange(params.language || 'English', isOmni, 1);
+  const wordRange = getWordRange(params.language || 'English', isOmni, 1, true);
 
   return `You are an expert UGC video editor refining a viral script.
 CURRENT FULL SCRIPT:

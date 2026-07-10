@@ -59,13 +59,16 @@ function VideoThumbnail({ url, className }: { url: string; className?: string })
 export default function GalleryGrid() {
   const {
     gallery,
+    setGallery,
     galleryTab,
     setGalleryTab,
     setGalleryExpandItem,
     isGeneratingVideo,
     videoProgressMsg,
+    generateVideo,
     isGeneratingImage,
     imageProgressMsg,
+    generateImage,
     thIsGeneratingImg,
     isGeneratingMontageImg,
     montageImgProgressMsg,
@@ -94,10 +97,11 @@ export default function GalleryGrid() {
     setBrokenIds(prev => { const next = new Set(prev); next.add(id); return next; });
   }, []);
 
-  // Separate loading placeholders from real items, then sort newest-first by generation time
-  const loadingItems = gallery.filter(item => item.loading);
+  // Separate loading placeholders, failed items, and real items
+  const loadingItems = gallery.filter(item => item.loading && (galleryTab === 'all' || item.type === galleryTab));
+  const failedItems = gallery.filter(item => !item.loading && item.error && (galleryTab === 'all' || item.type === galleryTab));
   const realItems = gallery
-    .filter(item => !item.loading && item.url && !brokenIds.has(item.id))
+    .filter(item => !item.loading && !item.error && item.url && !brokenIds.has(item.id))
     .sort((a, b) => getItemTimestamp(b) - getItemTimestamp(a));
 
   return (
@@ -124,7 +128,7 @@ export default function GalleryGrid() {
 
       {/* Grid */}
       <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#0a0a0a]" style={{ paddingBottom: '120px', minHeight: 0 }}>
-        {(isGeneratingVideo || isGeneratingImg) && realItems.length === 0 && loadingItems.length === 0 ? (
+        {(isGeneratingVideo || isGeneratingImg) && realItems.length === 0 && loadingItems.length === 0 && failedItems.length === 0 ? (
           <div className="w-full h-full flex flex-col items-center justify-center gap-4 min-h-[300px]">
             <div className="relative w-16 h-16">
               <div className="absolute inset-0 rounded-full border-4 border-white/5" />
@@ -139,7 +143,7 @@ export default function GalleryGrid() {
               {isGeneratingVideo ? (videoProgressMsg || 'Generating…') : (imageMsg || 'Generating…')}
             </p>
           </div>
-        ) : realItems.length === 0 && loadingItems.length === 0 ? (
+        ) : realItems.length === 0 && loadingItems.length === 0 && failedItems.length === 0 ? (
           <div className="w-full flex flex-col items-center justify-center gap-3 min-h-[300px] select-none">
             <div className="w-14 h-14 rounded-2xl bg-white/3 border border-white/8 flex items-center justify-center">
               <Film size={22} className="text-white/15" />
@@ -149,37 +153,82 @@ export default function GalleryGrid() {
           </div>
         ) : (
           <div className="p-2 grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-            {/* Spinner tile while generating next video */}
-            {isGeneratingVideo && (
-              <div className="w-full rounded-lg border border-white/10 bg-white/3 flex flex-col items-center justify-center gap-2 aspect-[9/16]">
-                <div className="relative w-7 h-7">
-                  <div className="absolute inset-0 rounded-full border-2 border-t-[#c8f135] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
-                  <Film className="absolute inset-0 m-auto w-3 h-3 text-[#c8f135]" />
-                </div>
-                <span className="text-[7px] text-white/30 font-bold uppercase tracking-widest">Generating…</span>
-              </div>
-            )}
-            {/* Loading placeholder tiles — injected into gallery at generation start */}
-            {loadingItems.map(item => (
-              <div
-                key={item.id}
-                className="w-full rounded-lg border border-[#c8f135]/20 bg-[#0d0d0d] flex flex-col items-center justify-center gap-2 aspect-[9/16] relative overflow-hidden"
-              >
-                {/* Shimmer sweep animation */}
+            {/* Failed generation tiles */}
+            {failedItems.map(item => {
+              const isVideo = item.type === 'video';
+              return (
                 <div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent"
-                  style={{ animation: 'shimmer 1.8s infinite', transform: 'translateX(-100%)' }}
-                />
-                <div className="relative w-8 h-8">
-                  <div className="absolute inset-0 rounded-full border-2 border-[#c8f135]/20" />
-                  <div className="absolute inset-0 rounded-full border-2 border-t-[#c8f135] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
-                  <Wand2 className="absolute inset-0 m-auto w-3.5 h-3.5 text-[#c8f135]" />
+                  key={item.id}
+                  className="w-full rounded-xl border border-red-500/20 bg-[#160b0c] flex flex-col items-center justify-between p-3 aspect-[9/16] relative overflow-hidden"
+                >
+                  <div className="w-full flex flex-col items-center justify-center flex-1 gap-2">
+                    <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-400">
+                      <Film size={14} className="text-red-400" />
+                    </div>
+                    <span className="text-[8px] font-black uppercase tracking-wider text-red-400 text-center px-1">
+                      {isVideo ? 'Video Failed' : 'Image Failed'}
+                    </span>
+                    <p className="text-[8px] text-white/50 leading-relaxed font-sans text-center max-h-24 overflow-y-auto px-1 custom-scrollbar">
+                      {item.error}
+                    </p>
+                  </div>
+                  
+                  <div className="w-full flex gap-1.5 pt-2 border-t border-white/5">
+                    <button
+                      onClick={() => {
+                        setGallery(prev => prev.filter(i => i.id !== item.id));
+                      }}
+                      className="flex-1 py-1 rounded bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-[8px] font-black uppercase tracking-widest transition-all"
+                    >
+                      Dismiss
+                    </button>
+                    <button
+                      onClick={() => {
+                        setGallery(prev => prev.filter(i => i.id !== item.id));
+                        if (isVideo) {
+                          generateVideo(item.prompt);
+                        } else {
+                          generateImage(item.prompt);
+                        }
+                      }}
+                      className="flex-1 py-1 rounded bg-[#c8f135]/10 hover:bg-[#c8f135]/20 text-[#c8f135] text-[8px] font-black uppercase tracking-widest transition-all"
+                    >
+                      Retry
+                    </button>
+                  </div>
                 </div>
-                <span className="text-[7px] text-[#c8f135] font-bold uppercase tracking-widest animate-pulse">
-                  {imageMsg || 'Generating…'}
-                </span>
-              </div>
-            ))}
+              );
+            })}
+
+            {/* Loading placeholder tiles — injected into gallery at generation start */}
+            {loadingItems.map(item => {
+              const isVideo = item.type === 'video';
+              const progressMsg = isVideo ? (videoProgressMsg || 'Generating Video...') : (imageMsg || 'Generating Image...');
+              return (
+                <div
+                  key={item.id}
+                  className="w-full rounded-lg border border-[#c8f135]/20 bg-[#0d0d0d] flex flex-col items-center justify-center gap-2 aspect-[9/16] relative overflow-hidden"
+                >
+                  {/* Shimmer sweep animation */}
+                  <div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent"
+                    style={{ animation: 'shimmer 1.8s infinite', transform: 'translateX(-100%)' }}
+                  />
+                  <div className="relative w-8 h-8">
+                    <div className="absolute inset-0 rounded-full border-2 border-[#c8f135]/20" />
+                    <div className="absolute inset-0 rounded-full border-2 border-t-[#c8f135] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+                    {isVideo ? (
+                      <Film className="absolute inset-0 m-auto w-3.5 h-3.5 text-[#c8f135]" />
+                    ) : (
+                      <Wand2 className="absolute inset-0 m-auto w-3.5 h-3.5 text-[#c8f135]" />
+                    )}
+                  </div>
+                  <span className="text-[8px] text-[#c8f135] font-black uppercase tracking-widest text-center px-2 animate-pulse">
+                    {progressMsg}
+                  </span>
+                </div>
+              );
+            })}
             {realItems
               .filter(item => galleryTab === 'all' || item.type === galleryTab)
               .map((item, idx) => {
@@ -277,33 +326,55 @@ export default function GalleryGrid() {
                       </button>
                     </div>
                     {item.type === 'image' && (() => {
-                      const isAttachedToActiveScene =
-                        splitScenes.length > 0 && splitScenes[activeSplitTab]?.refImage === item.url;
+                      // Check if this image is already in the active scene's refImages array
+                      const activeSceneRefs: string[] = splitScenes.length > 0
+                        ? (splitScenes[activeSplitTab]?.refImages || (splitScenes[activeSplitTab]?.refImage ? [splitScenes[activeSplitTab].refImage as string] : []))
+                        : [];
+                      const isAttachedToActiveScene = splitScenes.length > 0 && activeSceneRefs.includes(item.url);
                       const isAttachedToGlobal = splitScenes.length === 0 && attachedRefImage === item.url;
                       const isAdded = isAttachedToActiveScene || isAttachedToGlobal;
+                      const isFull = activeSceneRefs.length >= 3;
 
                       return (
                         <button
-                          title="Attach for video"
+                          title={isAdded ? 'Remove reference' : isFull ? 'Max 3 refs per scene' : 'Attach for video'}
                           onClick={e => {
                             e.stopPropagation();
                             if (splitScenes.length > 0) {
                               setSplitScenes((prev: any[]) =>
-                                prev.map((s, idx) => (idx === activeSplitTab ? { ...s, refImage: item.url } : s))
+                                prev.map((s, idx) => {
+                                  if (idx !== activeSplitTab) return s;
+                                  const currentRefs: string[] = s.refImages || (s.refImage ? [s.refImage] : []);
+                                  let newRefs: string[];
+                                  if (currentRefs.includes(item.url)) {
+                                    // Toggle off — remove from array
+                                    newRefs = currentRefs.filter((r: string) => r !== item.url);
+                                  } else if (currentRefs.length < 3) {
+                                    // Append
+                                    newRefs = [...currentRefs, item.url];
+                                  } else {
+                                    // Full — do nothing
+                                    showToast('Max 3 reference images per scene', 'error');
+                                    return s;
+                                  }
+                                  return { ...s, refImage: newRefs[0] || null, refImages: newRefs };
+                                })
                               );
-                              showToast('Image attached to active scene!', 'success');
+                              showToast(isAdded ? 'Reference removed' : 'Image attached to active scene!', isAdded ? 'info' : 'success');
                             } else {
-                              setAttachedRefImage(item.url);
-                              showToast('Image attached — ready to make a video!', 'success');
+                              setAttachedRefImage(isAdded ? null : item.url);
+                              showToast(isAdded ? 'Reference removed' : 'Image attached — ready to make a video!', isAdded ? 'info' : 'success');
                             }
                           }}
                           className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border transition-all shadow-lg text-[8px] font-black uppercase tracking-wider ${
                             isAdded
                               ? 'bg-[#c8f135] text-black border-[#c8f135]'
+                              : isFull
+                              ? 'bg-black/40 text-white/20 border-white/10 cursor-not-allowed'
                               : 'bg-black/80 hover:bg-[#c8f135]/20 hover:border-[#c8f135]/50 text-white hover:text-[#c8f135] border-white/20'
                           }`}
                         >
-                          <Plus size={10} /> {isAdded ? 'Added' : 'Use for Video'}
+                          <Plus size={10} /> {isAdded ? 'Added' : isFull ? 'Full' : 'Use for Video'}
                         </button>
                       );
                     })()}

@@ -10,6 +10,7 @@ export interface GalleryItem {
   url: string;
   prompt?: string;
   createdAt?: number;
+  error?: string;
 }
 
 export interface TimelineItem {
