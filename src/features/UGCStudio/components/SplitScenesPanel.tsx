@@ -414,7 +414,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no scene label h
                           })
                         );
                       }}
-                      className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-500 transition-colors shadow-lg cursor-pointer shrink-0 ml-0.5 opacity-0 group-hover/att:opacity-100 transition-opacity border border-black/20"
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-all shadow-lg cursor-pointer shrink-0 ml-0.5 opacity-0 group-hover/att:opacity-100 border border-black/20"
                       title="Remove Reference"
                     >
                       <X size={7} className="text-white" />
