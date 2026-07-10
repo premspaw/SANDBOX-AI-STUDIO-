@@ -442,10 +442,6 @@ export default function SplitScenesPanel() {
             <button
               onClick={() => {
                 if (!sc) return;
-                if (multiShotPrompt && typeof generateAllSceneVideos === 'function') {
-                  generateAllSceneVideos();
-                  return;
-                }
                 let finalPrompt = '';
                 if (activeTab === 'podcast') {
                   const sceneIdx = activeSplitTab;
@@ -476,7 +472,7 @@ export default function SplitScenesPanel() {
               ) : (
                 <>
                   <Check size={11} className="text-[#c8f135]" />
-                  <span>{multiShotPrompt ? `Approve & Make Full Video (⚡ ${getCurrentCost(true)})` : `Approve & Make Video (⚡ ${getCurrentCost(false)})`}</span>
+                  <span>Approve &amp; Make Video (⚡ {getCurrentCost(false)})</span>
                 </>
               )}
             </button>
