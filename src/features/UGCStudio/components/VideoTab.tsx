@@ -71,7 +71,7 @@ export default function VideoTab() {
           {/* Attached Reference Images Row */}
           {(() => {
             const refs = splitScenes.length > 0
-              ? (splitScenes[activeSplitTab]?.refImages || (splitScenes[activeSplitTab]?.refImage ? [splitScenes[activeSplitTab].refImage] : []))
+              ? []
               : attachedRefImages;
 
             if (!refs || refs.length === 0) return null;

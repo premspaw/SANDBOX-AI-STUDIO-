@@ -384,59 +384,82 @@ Return ONLY the final prompt text. No preamble, no explanation, no scene label h
 
           {/* Right: Controls (Reference slot + Approve button) */}
           <div className="flex flex-row items-center gap-3 w-full md:w-auto justify-between md:justify-end shrink-0 pt-2 md:pt-0 border-t border-white/5 md:border-t-0">
-            {/* Reference Image Slot */}
-            {isCustomRef ? (
-              <div className="flex items-center gap-2 px-2.5 py-1.5 bg-[#c8f135]/5 border border-[#c8f135]/20 rounded-xl relative animate-in fade-in duration-200 shrink-0">
-                <img
-                  src={resolveUrl(customRef)}
-                  alt="Scene Ref"
-                  className="w-9 h-9 rounded-lg object-cover border border-[#c8f135]/40 shadow-md shrink-0"
-                />
-                <div className="flex flex-col text-left">
-                  <span className="text-[7.5px] font-black uppercase tracking-wider text-[#c8f135]">
-                    Reference
-                  </span>
-                  <span className="text-[6px] font-mono uppercase tracking-tighter text-[#c8f135]/50">
-                    Attached ✓
-                  </span>
-                </div>
-                <button
-                  onClick={() => {
-                    setSplitScenes((prev: SplitScene[]) => prev.map((s: SplitScene, idx: number) => idx === activeSplitTab ? { ...s, refImage: null } : s));
-                  }}
-                  className="w-4 h-4 bg-red-500/80 rounded-full flex items-center justify-center hover:bg-red-500 transition-colors shadow-lg cursor-pointer shrink-0 ml-0.5"
-                  title="Remove Custom Reference"
-                >
-                  <X size={7} className="text-white" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex gap-1.5 items-stretch shrink-0">
-                <label className="flex items-center gap-2 px-2.5 py-1.5 bg-white/3 border border-dashed border-white/10 hover:border-[#c8f135]/40 hover:bg-[#c8f135]/5 rounded-xl cursor-pointer transition-all text-left">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      try {
-                        const base64 = await fileToBase64(file);
-                        const dataUrl = `data:${file.type};base64,${base64}`;
-                        setSplitScenes((prev: SplitScene[]) => prev.map((s: SplitScene, idx: number) => idx === activeSplitTab ? { ...s, refImage: dataUrl } : s));
-                      } catch (err) {
-                        console.error(err);
-                      }
-                    }}
-                  />
-                  <Camera size={11} className="text-white/30 shrink-0" />
-                  <div className="flex flex-col">
-                    <span className="text-[7.5px] font-black uppercase tracking-wider text-white/40">Add Ref</span>
-                    <span className="text-[6px] font-mono text-white/20 uppercase tracking-tighter">Upload</span>
+            {/* Reference Images List */}
+            <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+              {(() => {
+                const currentRefs = sc?.refImages || (sc?.refImage ? [sc.refImage] : []);
+                return currentRefs.map((refUrl, idx) => (
+                  <div key={refUrl} className="flex items-center gap-2 px-2 py-1 bg-[#c8f135]/5 border border-[#c8f135]/20 rounded-xl relative animate-in fade-in duration-200 shrink-0 group/att shadow-inner">
+                    <img
+                      src={resolveUrl(refUrl)}
+                      alt={`Scene Ref ${idx + 1}`}
+                      className="w-9 h-9 rounded-lg object-cover border border-[#c8f135]/40 shadow-md shrink-0"
+                    />
+                    <div className="flex flex-col text-left">
+                      <span className="text-[7px] font-black uppercase tracking-wider text-[#c8f135]">
+                        Reference
+                      </span>
+                      <span className="text-[5px] font-mono uppercase tracking-tighter text-[#c8f135]/50">
+                        Attached ✓
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSplitScenes((prev: SplitScene[]) =>
+                          prev.map((s, sIdx) => {
+                            if (sIdx !== activeSplitTab) return s;
+                            const updatedRefs = (s.refImages || []).filter((r) => r !== refUrl);
+                            return { ...s, refImage: updatedRefs[0] || null, refImages: updatedRefs };
+                          })
+                        );
+                      }}
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-500 transition-colors shadow-lg cursor-pointer shrink-0 ml-0.5 opacity-0 group-hover/att:opacity-100 transition-opacity border border-black/20"
+                      title="Remove Reference"
+                    >
+                      <X size={7} className="text-white" />
+                    </button>
                   </div>
-                </label>
-              </div>
-            )}
+                ));
+              })()}
+
+              {(() => {
+                const currentRefs = sc?.refImages || (sc?.refImage ? [sc.refImage] : []);
+                if (currentRefs.length >= 3) return null;
+
+                return (
+                  <label className="flex items-center gap-2 px-2.5 py-1.5 bg-white/3 border border-dashed border-white/10 hover:border-[#c8f135]/40 hover:bg-[#c8f135]/5 rounded-xl cursor-pointer transition-all text-left">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          const base64 = await fileToBase64(file);
+                          const dataUrl = `data:${file.type};base64,${base64}`;
+                          setSplitScenes((prev: SplitScene[]) =>
+                            prev.map((s, idx) => {
+                              if (idx !== activeSplitTab) return s;
+                              const updatedRefs = [...(s.refImages || []), dataUrl];
+                              return { ...s, refImage: updatedRefs[0] || null, refImages: updatedRefs };
+                            })
+                          );
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }}
+                    />
+                    <Camera size={11} className="text-white/30 shrink-0" />
+                    <div className="flex flex-col">
+                      <span className="text-[7.5px] font-black uppercase tracking-wider text-white/40">Add Ref</span>
+                      <span className="text-[6px] font-mono text-white/20 uppercase tracking-tighter">Upload</span>
+                    </div>
+                  </label>
+                );
+              })()}
+            </div>
 
             {/* Approve & Make Video Button */}
             <button
