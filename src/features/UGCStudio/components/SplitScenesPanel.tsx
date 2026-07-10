@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { X, ChevronDown, Sparkles, Camera, Check, Loader2, Film } from 'lucide-react';
 import { useUGC, SplitScene } from '../context/UGCContext';
 import { SCENE_STYLES, MULTI_SHOT_PRESETS } from '../constants/videoStyles';
+import { buildScenePrompt, validateScenePrompt, detectUgcCategory } from '../constants/ugcPromptTemplates';
 import { resolveUrl } from '../../../config/apiConfig';
 import { fileToBase64 } from '../utils/imageUtils';
 
@@ -44,6 +45,14 @@ export default function SplitScenesPanel() {
     setMultiShotPrompt,
     selectedMultiShotPreset,
     setSelectedMultiShotPreset,
+    productAnalysis,
+    productDetails,
+    productImg,
+    locationImg,
+    durationSeconds,
+    fetchImageAsBlob,
+    handleApiError,
+    generateAllSceneVideos,
   } = useUGC();
 
   if (splitScenes.length === 0) return null;
@@ -72,6 +81,126 @@ export default function SplitScenesPanel() {
   const customRef = sc?.refImage;
   const fallbackRef = activeTab === 'talking-head' ? thGeneratedImg : (characterImg?.url || '');
   const effectiveRefImage = customRef || fallbackRef;
+
+  const handleGenerateAllScenePrompts = async () => {
+    setIsGeneratingSplitPrompt(true);
+    try {
+      const category = detectUgcCategory(
+        productAnalysis?.productName,
+        productAnalysis?.description,
+        productDetails || ''
+      );
+
+      const hasCharacterRef = !!characterImg;
+      const hasProductRef = !!productImg;
+      const hasLocationRef = !!locationImg;
+
+      let refIdx = 0;
+      const characterRefTag = hasCharacterRef ? `<IMAGE_REF_${refIdx++}>` : '';
+      const productRefTag = hasProductRef ? `<IMAGE_REF_${refIdx++}>` : '';
+      const locationRefTag = hasLocationRef ? `<IMAGE_REF_${refIdx++}>` : '';
+
+      const urlToGenerativePart = async (url: string) => {
+        try {
+          const blob = await fetchImageAsBlob(url);
+          const base64 = await fileToBase64(blob);
+          const match = base64.match(/^data:([^;]+);base64,(.+)$/);
+          if (match) return { inlineData: { data: match[2], mimeType: match[1] } };
+        } catch (err) {
+          console.error('Failed to convert reference image:', err);
+        }
+        return null;
+      };
+
+      // Reference image parts — same for every scene call
+      const refParts = [];
+      if (characterImg?.url) {
+        const part = await urlToGenerativePart(characterImg.url);
+        if (part) refParts.push(part);
+      }
+      if (productImg?.url) {
+        const part = await urlToGenerativePart(productImg.url);
+        if (part) refParts.push(part);
+      }
+      if (locationImg?.url) {
+        const part = await urlToGenerativePart(locationImg.url);
+        if (part) refParts.push(part);
+      }
+
+      const perSceneDuration = parseInt(durationSeconds || '10') || 10;
+      const totalScenes = splitScenes.length;
+      const totalDuration = perSceneDuration * totalScenes;
+
+      const updatedScenes = [...splitScenes];
+      const warnings: string[] = [];
+
+      for (let idx = 0; idx < totalScenes; idx++) {
+        const scene = splitScenes[idx];
+        // Switch active tab so user sees progress
+        setActiveSplitTab(idx);
+
+        const metaPrompt = buildScenePrompt({
+          dialog: scene.dialog,
+          sceneIdx: idx,
+          totalScenes,
+          sceneDurationSec: perSceneDuration,
+          totalDurationSec: totalDuration,
+          productDetails: productDetails || '',
+          category,
+          hasCharacterRef,
+          hasProductRef,
+          hasLocationRef,
+          hasFirstFrame: idx === 0 && !!(scene.refImage || effectiveRefImage),
+          characterRefTag,
+          productRefTag,
+          locationRefTag,
+        });
+
+        const parts = [...refParts, { text: metaPrompt }];
+
+        const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parts, model: 'gemini-2.5-flash', userId: currentUserId })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text().catch(() => response.statusText);
+          throw new Error(`Scene ${idx + 1} prompt generation failed (${response.status}): ${errText}`);
+        }
+
+        const data = await response.json();
+        const newPrompt = (data.text || '').trim();
+
+        if (newPrompt) {
+          const check = validateScenePrompt(newPrompt, hasCharacterRef, characterRefTag, hasProductRef, productRefTag);
+          if (!check.valid) warnings.push(`Scene ${idx + 1}: missing ${check.missing.join(', ')}`);
+          updatedScenes[idx] = { ...updatedScenes[idx], prompt: newPrompt };
+        }
+      }
+
+      setSplitScenes(updatedScenes);
+      setActiveSplitTab(0);
+      setVideoPrompt(updatedScenes[0]?.prompt || '');
+
+      if (warnings.length > 0) {
+        showToast(`⚠️ ${warnings.join(' | ')}`, 'error');
+      } else {
+        showToast(`✓ Generated ${totalScenes} continuous scene prompts (${totalDuration}s total)`, 'success');
+      }
+    } catch (e) {
+      handleApiError(e, 'Multi-Shot Prompt Generation');
+    }
+    setIsGeneratingSplitPrompt(false);
+  };
+
+  const handleGeneratePrompt = async (useMultiShot: boolean) => {
+    if (useMultiShot) {
+      await handleGenerateAllScenePrompts();
+    } else {
+      await generateSplitScenePrompt(activeSplitTab);
+    }
+  };
 
   return (
     <div className="mx-4 mt-2 bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-xl">
@@ -150,10 +279,7 @@ export default function SplitScenesPanel() {
           {/* AI Prompt pill — single scene. Dim when Multi-Shot mode is active */}
           <button
             type="button"
-            onClick={() => {
-              setMultiShotPrompt(false); // deactivate multi-shot
-              generateSplitScenePrompt(activeSplitTab);
-            }}
+            onClick={() => handleGeneratePrompt(false)}
             disabled={isGeneratingSplitPrompt}
             title="Generate prompt for this scene only"
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[8px] font-black uppercase tracking-widest transition-all shrink-0 cursor-pointer ${
@@ -173,21 +299,27 @@ export default function SplitScenesPanel() {
           {/* Multi-Shot pill — all scenes. Dim when inactive, bright yellow when ON */}
           <button
             type="button"
-            onClick={() => generateAllSplitPrompts()}
-            disabled={isGeneratingSplitPrompt}
-            title="Generate AI prompts for all scenes"
+            title={multiShotPrompt ? 'Multi-Shot Prompt: ON (generates a continuous prompt per scene, covering the full script)' : 'Multi-Shot Prompt: OFF'}
+            onClick={() => {
+              const nextVal = !multiShotPrompt;
+              setMultiShotPrompt(nextVal);
+              if (nextVal) {
+                handleGenerateAllScenePrompts();
+              } else {
+                handleGeneratePrompt(false);
+              }
+            }}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[8px] font-black uppercase tracking-widest transition-all shrink-0 cursor-pointer ${
-              isGeneratingSplitPrompt
-                ? 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
-                : multiShotPrompt
-                  ? 'bg-[#c8f135]/15 border-[#c8f135]/60 text-[#c8f135] shadow-[0_0_8px_rgba(200,241,53,0.15)]'
-                  : 'bg-white/[0.04] border-white/[0.08] text-white/40 hover:bg-[#c8f135]/10 hover:border-[#c8f135]/40 hover:text-[#c8f135]'
+              multiShotPrompt
+                ? 'bg-[#c8f135]/20 border-[#c8f135]/60 text-[#c8f135] shadow-[0_0_10px_rgba(200,241,53,0.15)]'
+                : 'bg-white/3 border-white/8 text-white/30 hover:text-white/60 hover:border-white/20'
             }`}
           >
-            {isGeneratingSplitPrompt && multiShotPrompt
-              ? <><Loader2 size={8} className="animate-spin" /><span>All Scenes…</span></>
-              : <><Film size={8} /><span>Multi-Shot</span></>
-            }
+            {isGeneratingSplitPrompt && multiShotPrompt ? (
+              <><Loader2 size={8} className="animate-spin" /><span>All Scenes…</span></>
+            ) : (
+              <><Film size={8} className={multiShotPrompt ? 'text-[#c8f135]' : ''} /><span>Multi-Shot</span></>
+            )}
           </button>
         </div>
 
@@ -308,6 +440,10 @@ export default function SplitScenesPanel() {
             <button
               onClick={() => {
                 if (!sc) return;
+                if (multiShotPrompt && typeof generateAllSceneVideos === 'function') {
+                  generateAllSceneVideos();
+                  return;
+                }
                 let finalPrompt = '';
                 if (activeTab === 'podcast') {
                   const sceneIdx = activeSplitTab;
@@ -319,7 +455,7 @@ export default function SplitScenesPanel() {
                   ];
                   finalPrompt = variants[selectedPromptVariant] || variants[0];
                 } else {
-                  finalPrompt = videoPrompt;
+                  finalPrompt = [videoPrompt, sc.dialog].filter(Boolean).join(' ');
                 }
                 generateVideo(finalPrompt, effectiveRefImage || undefined);
               }}
@@ -338,7 +474,7 @@ export default function SplitScenesPanel() {
               ) : (
                 <>
                   <Check size={11} className="text-[#c8f135]" />
-                  <span>Approve &amp; Make Video (⚡ {getCurrentCost(false)})</span>
+                  <span>{multiShotPrompt ? `Approve & Make Full Video (⚡ ${getCurrentCost(true)})` : `Approve & Make Video (⚡ ${getCurrentCost(false)})`}</span>
                 </>
               )}
             </button>
