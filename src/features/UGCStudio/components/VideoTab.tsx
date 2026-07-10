@@ -256,8 +256,8 @@ export default function VideoTab() {
               );
             })()}
 
-            {/* AI Prompt Pill */}
-            {(splitScenes.length > 0 || script || videoPrompt) && (
+            {/* AI Prompt Pill — only shown in single-shot mode */}
+            {splitScenes.length === 0 && (script || videoPrompt) && (
               <button
                 type="button"
                 onClick={() => {
@@ -283,7 +283,8 @@ export default function VideoTab() {
               </button>
             )}
 
-            {/* Multi-Shot Toggle */}
+            {/* Multi-Shot Toggle — only in single-shot mode; in split mode it lives in SplitScenesPanel */}
+            {splitScenes.length === 0 && (
             <button
               type="button"
               onClick={() => setMultiShotPrompt(!multiShotPrompt)}
@@ -297,8 +298,10 @@ export default function VideoTab() {
               <Film size={7} />
               <span>Multi-Shot</span>
             </button>
+            )}
 
-            {/* Template Pill */}
+            {/* Template Pill — only in single-shot mode */}
+            {splitScenes.length === 0 && (
             <button
               type="button"
               onClick={() => setShowTemplates(true)}
@@ -307,6 +310,7 @@ export default function VideoTab() {
               <Layout size={7} />
               <span>Template</span>
             </button>
+            )}
           </div>
         </div>
 
