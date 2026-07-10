@@ -197,16 +197,17 @@ Category focus: ${template.name}. ${template.instruction}
 Style:
 Authentic iPhone front-camera aesthetic. Natural handheld movement with subtle micro-shake. Real indoor or natural lighting only. No beauty filter, no cinematic grading, no artificial sharpening, no film grain. Keep facial details realistic with natural skin texture.
 
-Dialogue for this scene — say every word exactly:
+Dialogue for this scene — say every word exactly without skipping:
 "${p.dialog}"
 
 Break this scene into sequential shots using this timecode structure: ${timecodes.join(', ')}
 
 For each shot:
-- If the creator is on camera, they speak their dialogue exactly, word-for-word, with natural mouth movement.
-- If it is a close-up or product shot with no face visible, the dialogue continues as a natural voice-over — never pause or skip dialogue, carry it over the visual.
-- Use natural transitions such as "the camera naturally reframes" or "camera shifts to" rather than abrupt cut language, for a continuous handheld feel.
-- Keep each individual shot to one or two physical actions — do not stack more than can realistically happen in that time window.
+- Focus on exactly ONE simple physical action per timecode block (e.g. only holding the product, or only opening the cap, or only applying/using). Do NOT pack multiple complex motions together.
+- Keep the visual pacing slow and steady. Never compress a multi-step routine (like unboxing, opening, applying, and reacting) into a short 10-second scene.
+- If the creator is on camera (face visible), they speak their dialogue exactly, word-for-word, in sync with natural mouth movement.
+- If a shot is a close-up or B-roll with no face visible, the dialogue MUST continue in the background as a continuous natural voice-over. NEVER skip, shorten, or drop any spoken dialogue.
+- Use natural transitions like "the camera naturally reframes to" or "the camera shifts to show" rather than abrupt "cut to" transitions to maintain a smooth, continuous vlogging style.
 
 Audio:
 Natural room ambience only. Realistic sound matching each action (pouring, movement, breathing, handling as appropriate). No background music.
