@@ -2048,7 +2048,9 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
 
   // Generates AI prompts for ALL split scenes using the selected Multi-Shot preset
   const generateAllSplitPrompts = async () => {
-    if (splitScenes.length === 0) return;
+    // Snapshot the scenes at call-time to avoid stale closure
+    const scenes = splitScenes;
+    if (scenes.length === 0) return;
     setIsGeneratingSplitPrompt(true);
     setMultiShotPrompt(true);
 
@@ -2056,12 +2058,17 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
     const preset = MULTI_SHOT_PRESETS.find(p => p.id === selectedMultiShotPreset) || MULTI_SHOT_PRESETS[0];
 
     // Per-scene duration = total duration / number of scenes
-    const sceneDurationSec = Math.round((durationSeconds || 30) / splitScenes.length);
+    const sceneDurationSec = Math.round((durationSeconds || 30) / scenes.length);
+
+    // Collect generated prompts so we can update all at once
+    const generatedPrompts: string[] = new Array(scenes.length).fill('');
 
     try {
-      for (let idx = 0; idx < splitScenes.length; idx++) {
-        const sc = splitScenes[idx];
+      for (let idx = 0; idx < scenes.length; idx++) {
+        const sc = scenes[idx];
         if (!sc) continue;
+
+        // Switch active tab so user sees progress
         setActiveSplitTab(idx);
 
         const { parts, instructions, refMappings } = await getMultimodalParts(sc.refImage);
@@ -2070,7 +2077,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
         const metaPrompt = preset.buildPrompt({
           dialog: sc.dialog,
           sceneIdx: idx,
-          totalScenes: splitScenes.length,
+          totalScenes: scenes.length,
           sceneDurationSec,
           productDetails: productDetails || '',
           instructions,
@@ -2089,11 +2096,21 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
         if (!response.ok) throw new Error(`Prompt gen failed for scene ${idx + 1}: ${response.status}`);
         const data = await response.json();
         const newPrompt = (data.text || '').trim();
+
         if (newPrompt) {
+          generatedPrompts[idx] = newPrompt;
+          // Update the scene's stored prompt immediately
           setSplitScenes(prev => prev.map((s, i) => i === idx ? { ...s, prompt: newPrompt } : s));
+          // Update the video prompt text area live so user sees it appearing
+          setVideoPrompt(newPrompt);
         }
       }
-      showToast(`🎬 ${preset.emoji} ${preset.label} prompts ready for all ${splitScenes.length} scenes!`, 'success');
+
+      // After all scenes done: switch back to tab 0 and show its prompt
+      setActiveSplitTab(0);
+      if (generatedPrompts[0]) setVideoPrompt(generatedPrompts[0]);
+
+      showToast(`🎬 ${preset.emoji} ${preset.label} — all ${scenes.length} scenes ready!`, 'success');
     } catch (e) {
       console.error('[generateAllSplitPrompts]', e);
       showToast('Failed to generate prompts for all scenes.', 'error');
