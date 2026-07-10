@@ -205,7 +205,7 @@ Plan and break this scene into sequential shots covering the full ${p.sceneDurat
 For each shot segment:
 - Focus on exactly ONE simple physical action per segment (e.g. only holding the product, or only opening the cap, or only applying/using). Do NOT pack multiple complex motions together.
 - Keep the visual pacing slow, steady, and realistic.
-- **Handling Short Dialogue**: If the dialogue has very few words relative to the clip duration (e.g. a short sentence for a 10s clip), fill the remaining time with descriptive B-roll, close-ups of product textures, or natural pauses where the creator smiles, handles the product, or interacts with the environment. Do not rush the actions or mouth movements.
+- **Handling Short Dialogue**: Pace the dialogue and voice-overs to be around 20 words to naturally fill the 10-second B-roll segments. If the dialogue is shorter than 20 words, fill the remaining time with descriptive B-roll, close-ups of product textures, or natural pauses where the creator smiles, handles the product, or interacts with the environment. Do not rush the actions or mouth movements.
 - If the creator is on camera (face visible), they speak their dialogue exactly, word-for-word, in sync with natural mouth movement.
 - If a shot is a close-up or B-roll with no face visible, the dialogue MUST continue in the background as a continuous natural voice-over. NEVER skip, shorten, or drop any spoken dialogue.
 - Use natural transitions like "the camera naturally reframes to" or "the camera shifts to show" rather than abrupt "cut to" transitions to maintain a smooth, continuous vlogging style.
