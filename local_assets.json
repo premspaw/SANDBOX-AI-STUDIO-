@@ -1,5 +1,263 @@
 [
   {
+    "id": "local_1783776708610_1elci",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783776700828.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783776700828.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "[0-3s] The video opens with a stable, wide vertical shot, as if animating from a still photograph, establishing the scene in the naturally lit kitchen/dining area from <IMAGE_REF_2>. The creator from <IMAGE_REF_0>, dressed casually, is seen from a slightly elevated, authentic iPhone perspective. Their hands, with visible pores and natural skin texture, are gently smoothing out a fresh banana leaf on a serving plate. On the counter nearby, the canned product from <IMAGE_REF_1> is prominently displayed, its exact branding, label, and texture clearly visible, hinting at its role as the foundation of the meal. A soft, distinct rustling sound of the banana leaf unfolding fills the audio, accompanied by subtle ambient kitchen sounds and the creator's natural, quiet breathing, while the camera maintains a natural, almost imperceptible micro-shake.\n\n[3-7s] The camera smoothly pushes in and slightly lowers, transitioning to an extreme close-up of the creator's hands as they meticulously place a",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-11T13:31:48.610Z"
+  },
+  {
+    "id": "local_1783768085082_8nft6",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783768084101.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783768084101.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "Creator is seated at a table, looking directly into the camera with an expression of genuine surprise and excitement. Their hands are casually resting, occasionally making subtle, gentle gestures to emphasize their words. Performance: calm and natural delivery, subtle hand gestures, gentle pacing, conversational tone, minimal dramatic movements, soft eye contact. Visual style preset details: direct-to-camera, relaxed lip-sync, creator talking directly to the camera in a natural environment. Why did nobody tell me about this dosa? Seriously, I'm not even joking, I was NOT expecting it to be this good. I'm literally obsessed, it's got that authentic South Indian Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): \"Why did nobody tell me about this dosa? Seriously, I'm not even joking, I was NOT expecting it to ",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-11T11:08:05.082Z"
+  },
+  {
+    "id": "local_1783766620507_lucvd",
+    "name": "gen_1783766619680.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/gen_1783766619680.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated"
+    },
+    "created_at": "2026-07-11T10:43:40.507Z"
+  },
+  {
+    "id": "local_1783766618154_vwczu",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783766617227.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783766617227.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "[0-4s] The vertical frame opens with an ultra-realistic, slightly shaky handheld close-up of the creator's bare cheek, positioned slightly off-center, showcasing visible pores and natural texture, perfectly lit by natural indoor window light. A small, pea-sized dab of the product (<IMAGE_REF_1>) has just been gently transferred from the creator's fingertip, which is now partially visible as it retracts, leaving a glistening dot on the skin. The creator's eyes are looking off-camera, slightly down, observing the product. As the creator's finger fully retracts from the frame, the camera very subtly reframes to bring more of the creator's mid-face into view as they begin to softly spread the product with the pads of their fingers across their cheekbone, their mouth naturally starting to articulate the words \"comes on a banana leaf, giving you that authentic South Indian vibe.\" The sound of very light, almost imperceptible skin contact and a soft, natural breath can be heard.\n\n[4-8s] The c",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-11T10:43:38.154Z"
+  },
+  {
+    "id": "local_1783766558100_xelay",
+    "name": "gen_1783766557590.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/gen_1783766557590.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated"
+    },
+    "created_at": "2026-07-11T10:42:38.101Z"
+  },
+  {
+    "id": "local_1783766555987_ystrf",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783766553387.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783766553387.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "[0-3.5s] The video opens with a vertical, raw, handheld smartphone view, slightly wide-angle, directly on the creator's face. The composition, lighting, and creator's identity (facial features, hairstyle, skin tone, and casual clothing) match the style of <IMAGE_REF_0>. The creator sits in a naturally lit indoor room from <IMAGE_REF_2>, possibly a bedroom or vanity area, with soft window light illuminating their face from the side. There are subtle micro-shakes in the camera movement, typical of a handheld shot. The creator, completely free of makeup or skin smoothing, shows visible pores and natural skin texture. They look towards the camera with a gentle, thoughtful expression, blinking naturally. They slowly bring their left hand into frame, holding the product (exactly as seen in <IMAGE_REF_1>, preserving all branding and detail) upright, the label facing the camera. Their mouth moves in perfect sync as they speak, \"I'm literally still dreaming about this crispy ghee roast dosa.\" T",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-11T10:42:35.987Z"
+  },
+  {
+    "id": "local_1783766476649_8tu2n",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783766476019.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783766476019.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference. The THIRD image is the LOCATION/STAGE reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in this EXACT environment/location.\n        Scene: 🎙️ Normal Talking — A real person naturally using/holding PRODUCT: Crispy Ghee Roast Dosa with Sambar and Assorted Chutneys\nDESCRIPTION: Thi.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, the product, and environment precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-11T10:41:16.649Z"
+  },
+  {
+    "id": "local_1783766227688_ku8ye",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783766226909.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783766226909.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference. The THIRD image is the LOCATION/STAGE reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in this EXACT environment/location.\n        Scene: 🎙️ Normal Talking — A real person naturally using/holding the product in an authentic home environment. Ultra-realistic UGC photo, natural l.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, the product, and environment precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-11T10:37:07.688Z"
+  },
+  {
+    "id": "local_1783764802300_vygu6",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783764801575.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783764801575.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "[0-0s] Character holds a small, furry microphone near their mouth, looking up at the camera. Text 'THIS' appears on screen. [0-1s] Character smiles, still holding the microphone near their mouth. Text 'is a HOOK' appears on screen. [1-2s] Character smiles and holds the microphone closer to their mouth. [2-2s] Character smiles, holding the microphone. [2-3s] Character stands in a hallway, holding the microphone to their mouth and gestures with their left hand, then lowers the microphone slightly. [3-4s] Character holds the microphone, smiles, and points with their right index finger, widening their eyes in a playful manner. [4-5s] Character smiles at the camera, holding the microphone in one hand and fanning out a stack of money with the other hand. [5-6s] Character smiles at the camera, holding the microphone and shuffling a deck of cards. [6-7s] Character is seen from a very low angle, smiling and holding the microphone as if looking over something. [7-8s] Character smiles at the came",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-11T10:13:22.301Z"
+  },
+  {
+    "id": "local_1783763708564_1qgxk",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783763706361.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783763706361.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "[0-1s] Character holds a small, fuzzy microphone close to their mouth, looking slightly upward with a subtle smile. The camera is positioned low, looking up at the character. Text 'THIS' appears on screen. [1-2s] Character briefly moves the microphone away from their mouth and then back, creating a soft click. They maintain a subtle smile. Text 'is a HOOK' appears. [2-3s] Camera cuts to a closer shot of the character's face. They hold the microphone up, looking directly at the camera with a friendly expression, moving the microphone slightly as they speak. [3-3.5s] Camera cuts to a wider shot. Character stands in a hallway, holding the microphone, and makes a sweeping gesture with their left hand towards the surroundings while looking at the camera. [3.5-4s] Camera cuts back to a close-up. Character holds the microphone near their mouth, looking directly at the camera with wide, surprised eyes, and then points their right index finger upwards. [4-5s] Camera cuts to the character holdin",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-11T09:55:08.564Z"
+  },
+  {
+    "id": "local_1783762491011_917nh",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783762490207.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783762490207.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The image is the PERSON (creator) reference.\n        TASK: Generate ONE UGC-style photo of this person in the following scene: 🎙️ Normal Talking — A real person naturally using/holding the product in an authentic home environment. Ultra-realistic UGC photo, natural l.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-11T09:34:51.012Z"
+  },
+  {
+    "id": "local_1783758090375_6btz6",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783758077746.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783758077746.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "Creator's expression shifts to one of genuine surprise and relief, maybe holding up the La Roche-Posay Vitamin C serum bottle briefly or gesturing towards their face with a soft smile. Still direct-to-camera in the same natural environment. Performance: calm and natural delivery, subtle hand gestures, gentle pacing, conversational tone, minimal dramatic movements, soft eye contact. The creator is saying: But then I found this La Roche-Posay Vitamin C serum. With its 10% pure C, my skin's literally smoother, brighter, and those lines? Way less noticeable. Seriously, try it. Visual style preset details: direct-to-camera, relaxed lip-sync, creator talking directly to the camera in a natural environment. me. But then I found this La Roche-Posay Vitamin C serum. With its 10% pure C, my skin's literally smoother, brighter, and those lines? Way less noticeable. Seriously, try it. Dialogue to speak: \"me. But then I found this La Roche-Posay Vitamin C serum. With its 10% pure C, my skin's liter",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-11T08:21:30.375Z"
+  },
+  {
+    "id": "local_1783757926072_4oh1v",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783757911773.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783757911773.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "[0-2.5s] The video animates directly from the <FIRST_FRAME>, with the creator's face in a close-up. Her initial soft smile gently fades into a more contemplative and slightly skeptical expression as she begins to speak, her eyes maintaining direct contact with the camera, conveying a genuine, raw feeling of past disappointment. The authentic handheld camera subtly micro-shakes, capturing the natural indoor lighting and her raw skin texture with visible pores. She says, \"I was not expecting this to work. I'd honestly just given up on finding anything for my fine lines...\"\n[2.5-5s] The camera subtly and smoothly reframes from the close-up to a medium close-up, revealing the creator holding the La Roche-Posay Vitamin C Serum (<IMAGE_REF_1>) steadily in her right hand, positioned clearly in front of her. Her gaze shifts from the product to the camera as she finishes speaking, maintaining a thoughtful expression that reflects on past failed attempts. The raw sensor look with visible skin te",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-11T08:18:46.072Z"
+  },
+  {
+    "id": "local_1783757125717_qa5xh",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783757124974.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783757124974.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "1:1",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "A sleek, beautiful modern UI button design, glassmorphism, glowing effect, highly professional, 8k resolution",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-11T08:05:25.717Z"
+  },
+  {
+    "id": "local_1783714686081_kkjom",
+    "name": "gen_1783714685277.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/gen_1783714685277.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated"
+    },
+    "created_at": "2026-07-10T20:18:06.081Z"
+  },
+  {
+    "id": "local_1783714682299_nbutw",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783714681406.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783714681406.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "[0-3s] The camera holds steady on <IMAGE_REF_0>, who looks directly at the lens with a confident, knowing smile. Their head is slightly tilted, conveying relief. They hold the <IMAGE_REF_1> (La Roche-Posay Vitamin C serum bottle) clearly visible in one hand, positioned naturally near their face. The creator says: \"But La Roche-Posay's Vitamin C serum fixed it.\" There's natural eye contact and subtle breathing.\n\n[3-6s] The camera naturally reframes, moving closer to the creator's hand as they squeeze a single, luminous drop of the serum onto their fingertip from <IMAGE_REF_1>. The focus is tight on the product's texture and sheen on the skin of the fingertip, capturing its dewy, viscous quality. The creator's voice-over continues: \"My skin's brighter, smoother.\" Subtle sounds of the dropper releasing the serum are heard.\n\n[6-9s] The camera shifts slightly, following the creator's finger as it gently dabs and spreads the serum onto their cheekbone. The shot is a close-up, highlighting th",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-10T20:18:02.299Z"
+  },
+  {
+    "id": "local_1783714630741_2smt5",
+    "name": "gen_1783714630063.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/gen_1783714630063.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated"
+    },
+    "created_at": "2026-07-10T20:17:10.741Z"
+  },
+  {
+    "id": "local_1783714628331_8n31u",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783714626667.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783714626667.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "[0-3s]\nThe video opens with Creator `<IMAGE_REF_0>` positioned as if in a selfie-style shot, holding product `<IMAGE_REF_1>` (La Roche-Posay Vitamin C serum) casually in their right hand, clearly visible. They are looking directly into the front-facing iPhone camera with a relatable, slightly frustrated expression, making consistent eye contact. The setting is natural indoor lighting, such as by a window or a well-lit vanity. Natural, subtle micro-shakes are present in the handheld camera movement.\nCreator `<IMAGE_REF_0>` speaks: \"I've honestly wasted so much money trying to fix my dull skin and those fine lines.\"\nAudio: Natural room ambience, creator's voice, subtle breathing.\n\n[3-6s]\nThe camera naturally reframes, shifting focus to a closer shot of Creator `<IMAGE_REF_0>`'s hand holding product `<IMAGE_REF_1>`. The hand deftly unscrews the dropper cap of the serum. With realistic finger motion, a precise amount of 1-2 drops is dispensed onto the fingertips of the other hand. The came",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-10T20:17:08.331Z"
+  },
+  {
+    "id": "local_1783714360446_2uj1f",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783714359709.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783714359709.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: 🎙️ Normal Talking — A real person naturally using/holding PRODUCT: LA ROCHE-POSAY Vitamin C Serum\nDESCRIPTION: This product is a dermatologi.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-10T20:12:40.446Z"
+  },
+  {
     "id": "local_1783710688058_pvkuk",
     "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783710687204.mp4",
     "type": "video",

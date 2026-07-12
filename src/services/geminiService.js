@@ -20,16 +20,7 @@ const getAIConfig = () => {
         (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_GOOGLE_API_KEY : null) ||
         '';
 
-    try {
-        if (typeof window !== 'undefined' && window.__ADMIN_GOOGLE_API_KEY__) {
-            apiKey = window.__ADMIN_GOOGLE_API_KEY__;
-        } else if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_ADMIN_GOOGLE_API_KEY) {
-            // Optional fallback if needed in frontend build
-            apiKey = import.meta.env.VITE_ADMIN_GOOGLE_API_KEY;
-        }
-    } catch (e) {
-        console.debug("admin api key not available", e);
-    }
+    // Admin/server keys must stay on the backend. Browser code may only use public/user-provided keys.
         
     const isToken = apiKey.startsWith('ya29.');
     const projectId = (typeof globalThis.process !== 'undefined' ? globalThis.process.env.GOOGLE_PROJECT_ID : null) || 'gen-lang-client-0438096272';

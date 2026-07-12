@@ -240,16 +240,17 @@ function HeroTitle({ isMobile }) {
 // ═══════════════════════════════════════════════════════════════
 //  VIDEO PLACEHOLDER CELL
 // ═══════════════════════════════════════════════════════════════
-function VCell({ cell, style = {} }) {
+function VCell({ cell, style = {}, onClick, aspectRatio = '3/4' }) {
   const [hovered, setHovered] = useState(false);
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '200px' });
+  const inView = useInView(ref, { margin: '200px' });
 
   return (
     <div
       ref={ref}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={() => onClick && onClick(cell)}
       style={{
         position: 'relative', overflow: 'hidden',
         background: T.bg2, cursor: 'pointer',
@@ -258,17 +259,25 @@ function VCell({ cell, style = {} }) {
     >
       {/* Placeholder bg or Real Video */}
       <div style={{
-        width: '100%', aspectRatio: '1/1',
+        width: '100%', aspectRatio: aspectRatio,
         background: 'linear-gradient(135deg,#0c0c0c,#111)',
         position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'
       }}>
         {cell.src && inView ? (
-          <video
-            key={cell.src}
-            autoPlay muted loop playsInline preload="metadata"
-            src={resolveAsset(cell.src)}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 1 }}
-          />
+          <>
+            <video
+              key={cell.src}
+              muted playsInline preload="metadata"
+              src={resolveAsset(cell.src)}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 1 }}
+            />
+            {/* Hover Darken Overlay */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: hovered ? 'rgba(0,0,0,0.3)' : 'transparent',
+              transition: 'background 0.3s'
+            }} />
+          </>
         ) : !cell.src ? (
           <>
             {/* grid lines */}
@@ -307,33 +316,33 @@ function VCell({ cell, style = {} }) {
             </div>
           </>
         ) : null}
-      </div>
 
-      {/* Overlay: Removed gradient as per user request */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 28
-      }}>
-        <span style={{
-          fontFamily: "'DM Mono',monospace", fontSize: 10,
-          letterSpacing: '0.3em', color: T.lime, textTransform: 'uppercase',
-          border: `1px solid rgba(200,241,53,0.25)`, display: 'inline-block',
-          padding: '4px 10px', marginBottom: 10, width: 'fit-content'
-        }}>
-          {cell.tag}
-        </span>
+        {/* Overlay: Anchored inside the 3/4 video box */}
         <div style={{
-          fontFamily: "'Bebas Neue',sans-serif", fontSize: 30,
-          letterSpacing: '0.05em', color: T.white, lineHeight: 1
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 16
         }}>
-          {cell.name}
-        </div>
-        <div style={{
-          fontFamily: "'DM Mono',monospace", fontSize: 10,
-          letterSpacing: '0.2em', color: 'rgba(240,237,232,0.3)',
-          textTransform: 'uppercase', marginTop: 6
-        }}>
-          {cell.meta}
+          <span style={{
+            fontFamily: "'DM Mono',monospace", fontSize: 'clamp(8px, 2vw, 10px)',
+            letterSpacing: '0.3em', color: T.lime, textTransform: 'uppercase',
+            border: `1px solid rgba(200,241,53,0.25)`, display: 'inline-block',
+            padding: '4px 10px', marginBottom: 10, width: 'fit-content'
+          }}>
+            {cell.tag}
+          </span>
+          <div style={{
+            fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(18px, 4vw, 30px)',
+            letterSpacing: '0.05em', color: T.white, lineHeight: 1
+          }}>
+            {cell.name}
+          </div>
+          <div style={{
+            fontFamily: "'DM Mono',monospace", fontSize: 'clamp(8px, 2vw, 10px)',
+            letterSpacing: '0.2em', color: 'rgba(240,237,232,0.3)',
+            textTransform: 'uppercase', marginTop: 6
+          }}>
+            {cell.meta}
+          </div>
         </div>
       </div>
 
@@ -793,6 +802,7 @@ function AnimatedStats({ isMobile }) {
 //  MAIN LANDING PAGE COMPONENT
 // ═══════════════════════════════════════════════════════════════
 export default function LandingPage({ onEnter, onPricing }) {
+  const [playingVideo, setPlayingVideo] = useState(null);
   const [assets, setAssets] = useState(INITIAL_ASSETS);
   const { isMuted, setIsMuted } = useAppStore();
   const [isMobile, setIsMobile] = useState(false);
@@ -949,7 +959,7 @@ export default function LandingPage({ onEnter, onPricing }) {
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden', background: '#050505' }}>
           {assets.heroBackground && (
             <>
-              <video
+              {/* <video
                 key={heroSrc}
                 ref={videoRef}
                 muted loop playsInline preload="metadata"
@@ -963,7 +973,7 @@ export default function LandingPage({ onEnter, onPricing }) {
                   objectPosition: 'right center',
                   opacity: 1,
                 }}
-              />
+              /> */}
               <div style={{
                 position: 'absolute', inset: 0, zIndex: 1,
                 background: isMobile
@@ -984,75 +994,101 @@ export default function LandingPage({ onEnter, onPricing }) {
             background: 'radial-gradient(circle,rgba(200,241,53,0.06) 0%,transparent 65%)',
             top: -200, left: -150, pointerEvents: 'none', zIndex: 1
           }} />
-
-
-
-        {/* ── LAYER 3: FOREGROUND SUBJECT ── */}
-        {!isMobile && assets.foregroundSubject && (
-          <div style={{
-            position: 'absolute',
-            right: '2%', bottom: '4%',
-            zIndex: 4, height: '92%',
-            pointerEvents: 'none',
-            display: 'flex', alignItems: 'flex-end',
-          }}>
-            <video
-              key={assets.foregroundSubject}
-              autoPlay muted loop playsInline preload="auto"
-              src={resolveAsset(assets.foregroundSubject)}
-              style={{
-                height: '100%', width: 'auto',
-                objectFit: 'contain', objectPosition: 'bottom',
-                mixBlendMode: 'screen',
-              }}
-            />
-          </div>
-        )}
-
-        {/* Right-side lime edge glow behind subject */}
         <div style={{
-          position: 'absolute', right: 0, top: 0, bottom: 0, width: '40%', zIndex: 3,
-          background: 'radial-gradient(ellipse at right center, rgba(200,241,53,0.04) 0%, transparent 70%)',
-          pointerEvents: 'none'
-        }} />
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          flex: 1,
+          padding: isMobile ? '80px 20px 24px' : '100px 48px 48px',
+          gap: 40,
+          zIndex: 2,
+          position: 'relative'
+        }}>
+          {/* LEFT HALF */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.85, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <HeroTitle isMobile={isMobile} />
+            </motion.div>
 
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.85, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
+            >
+              <div style={{ position: 'relative', minHeight: isMobile ? '6em' : '5em', maxWidth: isMobile ? '100%' : 600 }}>
+                <SubCopy isMobile={isMobile} />
+              </div>
 
-
-        {/* CYCLING TITLE */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.85, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          style={{
-            position: 'relative', zIndex: 2,
-            maxWidth: isMobile ? '100%' : '58%',
-            marginTop: isMobile ? 'auto' : 20,
-            paddingTop: isMobile ? 60 : 0,
-          }}
-        >
-          <HeroTitle isMobile={isMobile} />
-        </motion.div>
-
-        {/* Bottom row */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.85, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-          style={{
-            display: 'flex', flexDirection: 'column',
-            gap: 20, position: 'relative', zIndex: 2, marginBottom: 24
-          }}
-        >
-          {/* Sub copy — cycles with title */}
-          <div style={{ position: 'relative', minHeight: isMobile ? '6em' : '5em', maxWidth: isMobile ? '100%' : 800 }}>
-            <SubCopy isMobile={isMobile} />
+              <div style={{ display: 'flex', gap: 14 }}>
+                <BtnPrimary onClick={onEnter}>START CREATING →</BtnPrimary>
+                <BtnGhost onClick={onPricing}>VIEW PRICING</BtnGhost>
+              </div>
+            </motion.div>
           </div>
 
-          <div style={{ display: 'flex', gap: 14 }}>
-            <BtnPrimary onClick={onEnter}>START CREATING →</BtnPrimary>
-            <BtnGhost onClick={onPricing}>VIEW PRICING</BtnGhost>
+          {/* RIGHT HALF (Absolute Full Height Grid on Desktop, Relative on Mobile) */}
+          <div style={{
+            flex: 1.2,
+            position: 'relative',
+            margin: isMobile ? '40px -40px 0 -40px' : 0
+          }}>
+            <div style={{
+              position: isMobile ? 'relative' : 'absolute',
+              top: isMobile ? 0 : -100,
+              bottom: isMobile ? 'auto' : -48,
+              left: 0, right: 0,
+              overflow: 'hidden',
+              maskImage: isMobile ? 'none' : 'linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%)',
+              WebkitMaskImage: isMobile ? 'none' : 'linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%)'
+            }}>
+              <style>{`
+                @keyframes hero-roll-gallery {
+                  0% { transform: translateY(0); }
+                  100% { transform: translateY(-50%); }
+                }
+                @keyframes hero-roll-gallery-mobile {
+                  0% { transform: translateX(-50%); }
+                  100% { transform: translateX(0); }
+                }
+                .hero-rolling-grid {
+                  animation: hero-roll-gallery 60s linear infinite;
+                }
+                .hero-rolling-grid-mobile {
+                  animation: hero-roll-gallery-mobile 40s linear infinite;
+                }
+                .hero-rolling-grid:hover, .hero-rolling-grid-mobile:hover {
+                  animation-play-state: paused;
+                }
+              `}</style>
+              
+              <div
+                className={isMobile ? 'hero-rolling-grid-mobile' : 'hero-rolling-grid'}
+                style={{
+                  display: isMobile ? 'flex' : 'grid',
+                  flexDirection: isMobile ? 'row' : 'unset',
+                  gridTemplateColumns: isMobile ? 'none' : 'repeat(3,1fr)',
+                  gap: isMobile ? 6 : 12,
+                  width: isMobile ? 'max-content' : '100%',
+                }}
+              >
+                {([...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS])
+                  .slice(0, isMobile ? 12 : 24)
+                  .map((cell, i) => (
+                    <VCell 
+                      key={`hero-cell-${i}`} 
+                      cell={cell} 
+                      onClick={setPlayingVideo} 
+                      style={isMobile ? { width: 'calc(50vw - 12px)', flexShrink: 0 } : {}}
+                    />
+                  ))}
+              </div>
+            </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Ticker */}
         <motion.div
@@ -1095,8 +1131,8 @@ export default function LandingPage({ onEnter, onPricing }) {
 
       {/* ══════ SCROLL STACK ══════ */}
       {isMobile
-        ? <MobileStackSection assets={assets} isMobile={isMobile} />
-        : <StackSection assets={assets} isMobile={false} />
+        ? <MobileStackSection assets={assets} isMobile={isMobile} onPlayVideo={setPlayingVideo} />
+        : <StackSection assets={assets} isMobile={false} onPlayVideo={setPlayingVideo} />
       }
 
 
@@ -1152,28 +1188,41 @@ export default function LandingPage({ onEnter, onPricing }) {
               0% { transform: translateY(0); }
               100% { transform: translateY(-50%); }
             }
+            @keyframes roll-gallery-mobile {
+              0% { transform: translateX(-50%); }
+              100% { transform: translateX(0); }
+            }
             .rolling-grid {
               animation: roll-gallery 60s linear infinite;
             }
-            .rolling-grid:hover {
+            .rolling-grid-mobile {
+              animation: roll-gallery-mobile 40s linear infinite;
+            }
+            .rolling-grid:hover, .rolling-grid-mobile:hover {
               animation-play-state: paused;
             }
           `}</style>
 
-          <Reveal delay={0.2} style={{ height: '100%', width: '100%' }}>
+          <Reveal delay={0.2} style={{ height: '100%', width: '100%', overflow: 'hidden' }}>
             <div
-              className={isMobile ? '' : 'rolling-grid'}   // no animation on mobile
+              className={isMobile ? 'rolling-grid-mobile' : 'rolling-grid'}
               style={{
-                display: 'grid',
-                gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(3,1fr)',
-                gap: 8,
-                width: '100%',
+                display: isMobile ? 'flex' : 'grid',
+                flexDirection: isMobile ? 'row' : 'unset',
+                gridTemplateColumns: isMobile ? 'none' : 'repeat(3,1fr)',
+                gap: isMobile ? 6 : 8,
+                width: isMobile ? 'max-content' : '100%',
               }}
             >
-              {([...VCELLS, ...(isMobile ? [] : [...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS])])
-                .slice(0, isMobile ? 6 : 24)
+              {([...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS, ...VCELLS])
+                .slice(0, isMobile ? 12 : 24)
                 .map((cell, i) => (
-                  <VCell key={i} cell={cell} />
+                  <VCell 
+                    key={i} 
+                    cell={cell} 
+                    onClick={setPlayingVideo}
+                    style={isMobile ? { width: 'calc(50vw - 12px)', flexShrink: 0 } : {}}
+                  />
                 ))}
             </div>
           </Reveal>
@@ -1247,6 +1296,59 @@ export default function LandingPage({ onEnter, onPricing }) {
 
         <span style={{ fontSize: 8, color: 'rgba(240,237,232,0.15)' }}>© 2026 ZEROLENS. ALL RIGHTS RESERVED.</span>
       </footer>
+
+      {/* ── VIDEO MODAL ── */}
+      <AnimatePresence>
+        {playingVideo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setPlayingVideo(null)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 99999,
+              background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: isMobile ? 20 : 40
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: 'relative',
+                width: '100%', maxWidth: 1000,
+                aspectRatio: '16/9',
+                background: '#000',
+                borderRadius: 12,
+                overflow: 'hidden',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1)'
+              }}
+            >
+              <video
+                src={playingVideo?.src ? (typeof playingVideo.src === 'string' && playingVideo.src.startsWith('/')) ? playingVideo.src : ((typeof playingVideo.src === 'object' && playingVideo.src.default) ? playingVideo.src.default : playingVideo.src) : ''}
+                autoPlay controls playsInline
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
+              <button
+                onClick={() => setPlayingVideo(null)}
+                style={{
+                  position: 'absolute', top: isMobile ? 12 : 20, right: isMobile ? 12 : 20,
+                  width: isMobile ? 36 : 40, height: isMobile ? 36 : 40, borderRadius: '50%',
+                  background: 'rgba(0,0,0,0.5)', color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', zIndex: 2
+                }}
+              >
+                ✕
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
@@ -1443,7 +1545,7 @@ function StackVideo({ src, objectFit = 'cover', objectPosition = 'center' }) {
 // PATCH 4: STACK SECTION — replace with mobile version
 // ─────────────────────────────────────────────────────────────
 
-function MobileStackSection({ assets, isMobile }) {
+function MobileStackSection({ assets, isMobile, onPlayVideo }) {
   const ugcVideos = assets?.ugcAssets || [];
   const productVideos = assets?.productAssets || [];
   const cinemaVideo = assets?.cinemaAssets?.[0];
@@ -1658,47 +1760,7 @@ function MobileStackSection({ assets, isMobile }) {
 // ═══════════════════════════════════════════════════════════════
 //  STACK SECTION (SCROLL STACK EFFECT)
 // ═══════════════════════════════════════════════════════════════
-function StackSection({ assets, isMobile }) {
-  const containerRef = useRef(null);
-  const card1Ref = useRef(null);
-  const card2Ref = useRef(null);
-
-  useEffect(() => {
-    const page = document.querySelector('.landing-page-container');
-    if (!page) return;
-
-    const onScroll = () => {
-      const container = containerRef.current;
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      const scrolled = -rect.top;
-      const vh = window.innerHeight;
-
-      // Card 1 shrinks as card 2 comes up
-      if (card1Ref.current) {
-        const progress = Math.min(Math.max((scrolled - vh * 1.4) / (vh * 0.4), 0), 1);
-        const scale = 1 - progress * 0.06;
-        const brightness = 1 - progress * 0.3;
-        card1Ref.current.style.transform = `scale(${scale})`;
-        card1Ref.current.style.filter = `brightness(${brightness})`;
-        card1Ref.current.style.transformOrigin = 'top center';
-      }
-
-      // Card 2 shrinks as card 3 comes up
-      if (card2Ref.current) {
-        const progress = Math.min(Math.max((scrolled - vh * 3.2) / (vh * 0.4), 0), 1);
-        const scale = 1 - progress * 0.06;
-        const brightness = 1 - progress * 0.3;
-        card2Ref.current.style.transform = `scale(${scale})`;
-        card2Ref.current.style.filter = `brightness(${brightness})`;
-        card2Ref.current.style.transformOrigin = 'top center';
-      }
-    };
-
-    page.addEventListener('scroll', onScroll);
-    return () => page.removeEventListener('scroll', onScroll);
-  }, []);
-
+function StackSection({ assets, isMobile, onPlayVideo }) {
   // Use section-specific assets from the config
   const ugcVideos = assets?.ugcAssets || [];
   const productVideos = assets?.productAssets || [];
@@ -1736,17 +1798,15 @@ function StackSection({ assets, isMobile }) {
     : fallbackDesktopProduct;
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', height: '490vh' }}>
+    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
 
       {/* ── CARD 1: UGC ── */}
       <div
-        ref={card1Ref}
         style={{
-          position: 'sticky', top: -10, zIndex: 10,
-          height: '130vh', overflow: 'hidden',
+          position: 'relative', zIndex: 10,
+          minHeight: '100vh', overflow: 'hidden',
           background: T.bg,
           borderTop: `1px solid ${T.gray}`,
-          transition: 'transform 0.1s linear, filter 0.1s linear',
           display: 'flex', flexDirection: 'column',
           padding: isMobile ? '30px 24px' : '40px 48px',
         }}
@@ -1809,99 +1869,33 @@ function StackSection({ assets, isMobile }) {
         {/* Dynamic Vertical Videos */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : `repeat(${Math.min(activeDesktopUgc.length, 4)}, 1fr)`,
+          gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : `repeat(${Math.min(activeDesktopUgc.length, 6)}, 1fr)`,
           gap: 12, flex: 1, minHeight: 0,
-          overflowY: activeDesktopUgc.length > 4 ? 'auto' : 'hidden',
-          paddingBottom: activeDesktopUgc.length > 4 ? 20 : 0
+          overflowY: activeDesktopUgc.length > 6 ? 'auto' : 'hidden',
+          paddingBottom: activeDesktopUgc.length > 6 ? 20 : 0,
         }}>
           {activeDesktopUgc.map((card, i) => (
-            <div
+            <VCell
               key={i}
               style={{
                 marginTop: isMobile ? 0 : card.offset,
-                background: T.bg2,
-                position: 'relative', overflow: 'hidden',
-                borderRadius: 4, flex: 1,
-                minHeight: 280,
+                flex: 1, minHeight: 280
               }}
-            >
-              {ugcVideos[i]?.src ? (
-                <StackVideo 
-                  src={ugcVideos[i].src} 
-                  objectFit="cover" 
-                  objectPosition="center top" 
-                />
-              ) : (
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  backgroundImage: `linear-gradient(rgba(200,241,53,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(200,241,53,0.04) 1px,transparent 1px)`,
-                  backgroundSize: '32px 32px',
-                }}>
-                  {/* Placeholder vertical phone shape */}
-                  <div style={{
-                    position: 'absolute', top: '50%', left: '50%',
-                    transform: 'translate(-50%,-60%)',
-                    width: 40, height: 68,
-                    border: `1px solid rgba(200,241,53,0.2)`,
-                    borderRadius: 6,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <div style={{
-                      width: 0, height: 0,
-                      borderTop: '5px solid transparent',
-                      borderBottom: '5px solid transparent',
-                      borderLeft: `8px solid rgba(200,241,53,0.3)`,
-                      marginLeft: 2,
-                    }} />
-                  </div>
-                </div>
-              )}
-              {/* Gradient overlay */}
-              <div style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(to top, rgba(5,5,5,0.9) 0%, transparent 50%)',
-                pointerEvents: 'none'
-              }} />
-              {/* Labels */}
-              <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16, zIndex: 1, pointerEvents: 'none' }}>
-                <span style={{
-                  fontFamily: "'DM Mono',monospace", fontSize: 7,
-                  letterSpacing: '0.3em', color: T.lime,
-                  border: `1px solid rgba(200,241,53,0.25)`,
-                  padding: '2px 6px', display: 'inline-block', marginBottom: 6
-                }}>
-                  {card.tag}
-                </span>
-                <div style={{
-                  fontFamily: "'Bebas Neue',sans-serif", fontSize: 18,
-                  color: T.white, lineHeight: 1
-                }}>
-                  {card.name}
-                </div>
-                <div style={{
-                  fontFamily: "'DM Mono',monospace", fontSize: 7,
-                  color: 'rgba(240,237,232,0.3)', textTransform: 'uppercase',
-                  letterSpacing: '0.2em', marginTop: 4
-                }}>
-                  {card.meta}
-                </div>
-              </div>
-            </div>
+              cell={{ ...card, src: ugcVideos[i]?.src }}
+              onClick={onPlayVideo}
+              aspectRatio="9/16"
+            />
           ))}
         </div>
       </div>
 
-      <div style={{ height: '50vh' }} />
-
       {/* ── CARD 2: PRODUCT SHOOT ── */}
       <div
-        ref={card2Ref}
         style={{
-          position: 'sticky', top: -30, zIndex: 20,
-          height: '130vh', overflow: 'hidden',
+          position: 'relative', zIndex: 20,
+          minHeight: '100vh', overflow: 'hidden',
           background: T.bg2,
           borderTop: `1px solid ${T.gray}`,
-          transition: 'transform 0.1s linear, filter 0.1s linear',
           display: 'flex', flexDirection: 'column',
           padding: isMobile ? '40px 24px' : '60px 48px',
         }}
@@ -1930,91 +1924,27 @@ function StackSection({ assets, isMobile }) {
         {/* Dynamic Product Videos */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : `repeat(${Math.min(activeDesktopProduct.length, 4)}, 1fr)`,
+          gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : `repeat(${Math.min(activeDesktopProduct.length, 6)}, 1fr)`,
           gap: 12, flex: 1, minHeight: 0,
-          overflowY: activeDesktopProduct.length > 4 ? 'auto' : 'hidden',
-          paddingBottom: activeDesktopProduct.length > 4 ? 20 : 0
+          overflowY: activeDesktopProduct.length > 6 ? 'auto' : 'hidden',
+          paddingBottom: activeDesktopProduct.length > 6 ? 20 : 0,
         }}>
           {activeDesktopProduct.map((card, i) => (
-            <div
+            <VCell
               key={i}
-              style={{
-                background: T.bg,
-                position: 'relative', overflow: 'hidden',
-                borderRadius: 4,
-                flex: 1,
-                minHeight: 280,
-              }}
-            >
-              {productVideos[i]?.src ? (
-                <StackVideo 
-                  src={productVideos[i].src} 
-                  objectFit="cover" 
-                />
-              ) : (
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  backgroundImage: `linear-gradient(rgba(200,241,53,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(200,241,53,0.03) 1px,transparent 1px)`,
-                  backgroundSize: '40px 40px',
-                }}>
-                  <div style={{
-                    position: 'absolute', top: '50%', left: '50%',
-                    transform: 'translate(-50%,-50%)',
-                    width: 48, height: 48,
-                    border: `1px solid rgba(200,241,53,0.15)`,
-                    borderRadius: '50%',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <div style={{
-                      width: 0, height: 0,
-                      borderTop: '6px solid transparent',
-                      borderBottom: '6px solid transparent',
-                      borderLeft: `10px solid rgba(200,241,53,0.25)`,
-                      marginLeft: 2,
-                    }} />
-                  </div>
-                </div>
-              )}
-              <div style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(to top, rgba(5,5,5,0.85) 0%, transparent 55%)',
-                pointerEvents: 'none'
-              }} />
-              <div style={{ position: 'absolute', bottom: 20, left: 20, right: 20, zIndex: 1, pointerEvents: 'none' }}>
-                <span style={{
-                  fontFamily: "'DM Mono',monospace", fontSize: 7,
-                  letterSpacing: '0.3em', color: T.lime,
-                  border: `1px solid rgba(200,241,53,0.25)`,
-                  padding: '2px 6px', display: 'inline-block', marginBottom: 8
-                }}>
-                  {card.tag}
-                </span>
-                <div style={{
-                  fontFamily: "'Bebas Neue',sans-serif", fontSize: 22,
-                  color: T.white, lineHeight: 1
-                }}>
-                  {card.name}
-                </div>
-                <div style={{
-                  fontFamily: "'DM Mono',monospace", fontSize: 7,
-                  color: 'rgba(240,237,232,0.3)', textTransform: 'uppercase',
-                  letterSpacing: '0.2em', marginTop: 4
-                }}>
-                  {card.meta}
-                </div>
-              </div>
-            </div>
+              style={{ flex: 1, minHeight: 280 }}
+              cell={{ ...card, src: productVideos[i]?.src }}
+              onClick={onPlayVideo}
+            />
           ))}
         </div>
       </div>
 
-      <div style={{ height: '50vh' }} />
-
       {/* ── CARD 3: CINEMA ── */}
       <div
         style={{
-          position: 'sticky', top: 0, zIndex: 30,
-          height: '130vh', overflow: 'hidden',
+          position: 'relative', zIndex: 30,
+          minHeight: '100vh', overflow: 'hidden',
           background: '#0a0807',
           borderTop: `1px solid ${T.gray}`,
           display: 'flex', flexDirection: 'column',
@@ -2088,6 +2018,7 @@ function StackSection({ assets, isMobile }) {
           {/* Overlays removed per user request */}
         </div>
       </div>
+
     </div>
   );
 }

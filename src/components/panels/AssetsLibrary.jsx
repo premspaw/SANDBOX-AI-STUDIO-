@@ -1067,16 +1067,16 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                 ) : (
                     <div className={['images', 'videos'].includes(activeTab)
                         ? (compact 
-                            ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4"
-                            : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6")
+                            ? "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 md:gap-3"
+                            : "grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3 md:gap-4")
                         : (compact
                             ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4"
                             : "grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-8")
                     }>
                         {assets[activeTab].map(item => (
-                            <div key={item.id} className="group relative surface-glass border border-white/5 overflow-hidden transition-all duration-700 shadow-2xl rounded-xl hover:border-[#bef264]/60">
+                            <div key={item.id} className="group relative surface-glass border border-white/5 overflow-hidden transition-all duration-700 shadow-2xl rounded-xl hover:border-[#bef264]/60 aspect-[9/16]">
                                 {item.type === 'video' ? (
-                                    <div className="aspect-square bg-black relative flex items-center justify-center group/video">
+                                    <div className="w-full h-full bg-black relative flex items-center justify-center group/video">
                                         <video
                                             src={resolveUrl(item.url)}
                                             className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
@@ -1090,7 +1090,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="aspect-square bg-[#050505] relative overflow-hidden">
+                                    <div className="w-full h-full bg-[#050505] relative overflow-hidden">
                                         <img
                                             src={resolveUrl(item.url)}
                                             alt={item.name}

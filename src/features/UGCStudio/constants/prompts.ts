@@ -53,9 +53,9 @@ function getWordRange(language: string, isOmni: boolean, sceneCount: number, isM
   if (isOmni) {
     // 10-second scenes
     if (isMultiShot) {
-      if (isDravidian) return `Strictly 10-12 spoken words per 10-second scene (natural Dravidian pace ~1.1 words/sec — 10 min, 12 max). Total ≈ ${sceneCount * 11} words.`;
-      if (isHindi)    return `Strictly 12-14 spoken words per 10-second scene (energetic Hindi pace ~1.3 words/sec — 12 min, 14 max). Total ≈ ${sceneCount * 13} words.`;
-      return               `Strictly 13-16 spoken words per 10-second scene (natural English pace ~1.4 words/sec to leave room for pauses/actions — 13 min, 16 max). Total ≈ ${sceneCount * 14} words.`;
+      if (isDravidian) return `Strictly 20-22 spoken words per 10-second scene (natural Dravidian pace ~2.0 words/sec — 20 min, 22 max). Total ≈ ${sceneCount * 21} words.`;
+      if (isHindi)    return `Strictly 22-24 spoken words per 10-second scene (energetic Hindi pace ~2.2 words/sec — 22 min, 24 max). Total ≈ ${sceneCount * 23} words.`;
+      return               `Strictly 24-28 spoken words per 10-second scene (natural English pace ~2.6 words/sec — 24 min, 28 max). Total ≈ ${sceneCount * 26} words.`;
     } else {
       if (isDravidian) return `Strictly 20-22 spoken words or less per 10-second scene (natural Dravidian pace ~2.0 words/sec — 20 min, 22 max). Total ≈ ${sceneCount * 21} words.`;
       if (isHindi)    return `Strictly 24-26 spoken words or less per 10-second scene (energetic Hindi pace ~2.5 words/sec — 24 min, 26 max). Total ≈ ${sceneCount * 25} words.`;
@@ -64,9 +64,9 @@ function getWordRange(language: string, isOmni: boolean, sceneCount: number, isM
   } else {
     // 8-second scenes
     if (isMultiShot) {
-      if (isDravidian) return `Strictly 8-10 spoken words per 8-second scene (natural Dravidian pace ~1.1 words/sec — 8 min, 10 max). Total ≈ ${sceneCount * 9} words.`;
-      if (isHindi)    return `Strictly 9-11 spoken words per 8-second scene (energetic Hindi pace ~1.3 words/sec — 9 min, 11 max). Total ≈ ${sceneCount * 10} words.`;
-      return               `Strictly 10-13 spoken words per 8-second scene (natural English pace ~1.4 words/sec — 10 min, 13 max). Total ≈ ${sceneCount * 11} words.`;
+      if (isDravidian) return `Strictly 15-18 spoken words per 8-second scene (natural Dravidian pace ~2.0 words/sec — 15 min, 18 max). Total ≈ ${sceneCount * 16} words.`;
+      if (isHindi)    return `Strictly 17-20 spoken words per 8-second scene (energetic Hindi pace ~2.2 words/sec — 17 min, 20 max). Total ≈ ${sceneCount * 18} words.`;
+      return               `Strictly 20-24 spoken words per 8-second scene (natural English pace ~2.5 words/sec — 20 min, 24 max). Total ≈ ${sceneCount * 22} words.`;
     } else {
       if (isDravidian) return `Strictly 16-18 spoken words or less per 8-second scene (natural Dravidian pace ~2.0 words/sec — 16 min, 18 max). Total ≈ ${sceneCount * 17} words.`;
       if (isHindi)    return `Strictly 19-21 spoken words or less per 8-second scene (energetic Hindi pace ~2.5 words/sec — 19 min, 21 max). Total ≈ ${sceneCount * 20} words.`;

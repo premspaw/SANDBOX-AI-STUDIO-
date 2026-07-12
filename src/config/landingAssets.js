@@ -28,6 +28,31 @@
             "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing-assets/ugc-local_1780511464304_sdqax.mp4",
             "tag": "TESTIMONIAL",
             "name": "Social Proof"
+        },
+        {
+            "tag": "NEW TAG",
+            "name": "fashion Creator ",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783857951560.mp4"
+        },
+        {
+            "tag": "UGC",
+            "name": "Skin Care",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783860587721.mp4"
+        },
+        {
+            "tag": "NEW TAG",
+            "name": "Product shoe case",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783874575574.mp4"
+        },
+        {
+            "tag": "NEW TAG",
+            "name": "Food Vlog",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783874669798.mp4"
+        },
+        {
+            "tag": "NEW TAG",
+            "name": "FOOD VLog",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783875397189.mp4"
         }
     ],
     "productAssets": [
@@ -45,6 +70,16 @@
             "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing-assets/IMG_5265.MP4",
             "tag": "LIFESTYLE",
             "name": "In-Use Scene"
+        },
+        {
+            "tag": "PRODUCT",
+            "name": "Product Showcase",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783874618132.mp4"
+        },
+        {
+            "tag": "PRODUCT",
+            "name": "New Product Video",
+            "src": ""
         }
     ],
     "cinemaAssets": [
@@ -63,7 +98,7 @@
         {
             "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783622487836.mp4",
             "tag": "Cinematic",
-            "name": "VLOG"
+            "name": "Create movie "
         },
         {
             "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783622589711.mp4",
@@ -74,7 +109,21 @@
             "tag": "VLOG ",
             "name": "Vlog Style",
             "meta": "AI GENERATED",
-            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783622825724.mp4",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783860814681.mp4",
+            "big": false
+        },
+        {
+            "tag": "Product ",
+            "name": "Skin Care",
+            "meta": "AI GENERATED",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783860851501.mp4",
+            "big": false
+        },
+        {
+            "tag": "Food Influncer",
+            "name": "Food vlog",
+            "meta": "AI GENERATED",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783860835485.mp4",
             "big": false
         }
     ]

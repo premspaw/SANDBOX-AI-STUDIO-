@@ -82,5 +82,5 @@ Camera: ${camB ?? camA}
 
 STYLE: ${styleNote}
 ${refNote}
-RULES: Simulate hard cut at 0:03. Lip sync exact. No 85mm bokeh. Same room throughout.`.trim();
+RULES: Simulate hard cut at 0:03. Lip sync ONLY during CHARACTER BEAT (0:00-0:03); dialogue during PRODUCT BEAT (0:03-0:08) must be off-camera voice-over narration with no mouth/lip movement. No 85mm bokeh. Same room throughout.`.trim();
 };

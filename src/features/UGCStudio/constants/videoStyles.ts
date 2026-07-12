@@ -469,4 +469,60 @@ ${REALISM_BLOCK}
 Return ONLY the final prompt text with timecodes. No preamble.`;
     }
   },
+
+  // ── 7. B-Roll / Product Montage (No Voice) ──────────────────────────────
+  {
+    id: 'broll_montage',
+    label: 'B-Roll / Montage (No Voice)',
+    emoji: '🎞️',
+    description: 'Dynamic B-roll sequence. Pure visual action and product detail. NO dialogue.',
+    buildPrompt(ctx) {
+      const { sceneIdx, totalScenes, sceneDurationSec, productDetails, instructions, refMappings, dialog } = ctx;
+      const creator = refMappings.character || '<IMAGE_REF_0>';
+      const product = refMappings.product || '<IMAGE_REF_1>';
+      const location = refMappings.location || '';
+      const locationLine = location ? `LOCATION REF: ${location}` : 'Setting: Beautifully lit natural environment suited to the product.';
+      
+      return `You are the world's best UGC video director specialising in cinematic B-roll and product montages.
+Write the Gemini Omni Flash video prompt for Scene ${sceneIdx + 1} of ${totalScenes}.
+
+DIALOGUE THIS SCENE:
+NO DIALOGUE OR VOICE-OVER. This is a purely visual B-roll / Montage scene. The character must NOT speak. Use any provided script text ("${dialog}") purely as thematic inspiration for the visual actions.
+
+PRODUCT: ${productDetails || 'product'}
+CREATOR REF: ${creator}
+PRODUCT REF: ${product}
+${locationLine}
+
+${firstFrameRule(refMappings, sceneIdx)}
+
+REFERENCE TAGS IN USE:
+${instructions.join('\n')}
+
+UGC DIRECTOR BRIEF:
+- Act as a top-tier director for a UGC ad. Thoroughly analyze the provided Product scan data, Character, and Location.
+- Purposefully design the multi-shot layers and B-roll based on the product details and context. Do NOT give random shots. Every shot must be purposefully selected to showcase the product.
+- This is a highly dynamic B-roll montage. NO talking head. NO spoken dialogue.
+- Mix of: extreme close-ups on product details/textures + creator's hands interacting with the product + cinematic establishing shots of the location.
+- Creator's face can be shown reacting or using the product (e.g., applying skincare, tasting, smiling, looking in mirror), but they MUST NOT be speaking to the camera.
+- Pacing should be dynamic, with natural cuts.
+- Camera movement should feel handheld but smooth and deliberate. Show the product in its best light.
+- Sound: rich diegetic sound effects (foley) matching the actions (e.g., lid popping, liquid pouring, fabric swishing, ambient room tone). NO music.
+
+${timecodeInstruction(sceneDurationSec)}
+${REALISM_BLOCK}
+
+Return ONLY the final prompt text with timecodes. No preamble.`;
+    }
+  }
+];
+
+export const BROLL_PRESETS = [
+  { id: 'broll_auto', emoji: '✨', label: 'Auto-Detect Action' },
+  { id: 'broll_unboxing', emoji: '📦', label: 'Detailed Unboxing' },
+  { id: 'broll_usage', emoji: '🖐️', label: 'Product Usage / Demo' },
+  { id: 'broll_skincare', emoji: '🧴', label: 'Skincare Routine' },
+  { id: 'broll_food', emoji: '🍔', label: 'Food & Cooking' },
+  { id: 'broll_fashion', emoji: '👗', label: 'Fashion & Styling' },
+  { id: 'broll_tech', emoji: '💻', label: 'Tech & Gadgets' }
 ];

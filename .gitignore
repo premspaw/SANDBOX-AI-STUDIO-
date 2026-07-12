@@ -48,6 +48,9 @@ src/output.css
 # GCP service account credentials
 *-api-*.json
 new-zerolens-*.json
+freeeapi-*.json
+*service-account*.json
+*credentials*.json
 
 # Ignore scratch directory (tracked files will remain tracked)
 scratch/

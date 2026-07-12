@@ -6,8 +6,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config();
-console.log(`[STARTUP-ENV-CHECK] GOOGLE_API_KEY length: ${process.env.GOOGLE_API_KEY?.length || 0}, startsWith: ${process.env.GOOGLE_API_KEY?.substring(0, 10)}`);
-console.log(`[STARTUP-ENV-CHECK] ADMIN_GOOGLE_API_KEY length: ${process.env.ADMIN_GOOGLE_API_KEY?.length || 0}, startsWith: ${process.env.ADMIN_GOOGLE_API_KEY?.substring(0, 10)}`);
+console.log(`[STARTUP-ENV-CHECK] GOOGLE_API_KEY configured: ${Boolean(process.env.GOOGLE_API_KEY)}`);
+console.log(`[STARTUP-ENV-CHECK] ADMIN_GOOGLE_API_KEY configured: ${Boolean(process.env.ADMIN_GOOGLE_API_KEY)}`);
 import dns from 'dns';
 import net from 'net';
 dns.setDefaultResultOrder('ipv4first');

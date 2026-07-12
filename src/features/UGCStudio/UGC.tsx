@@ -31,7 +31,7 @@ import { buildNicheHookContext } from './constants/hookLibrary';
 // ─── Feature module imports ──────────────────────────────────────────────────
 import { SCRIPT_TONES } from './constants/scriptTones';
 import { VIDEO_STYLES, SCENE_STYLES, MULTI_SHOT_PRESETS } from './constants/videoStyles';
-import { detectUgcCategory, buildScenePrompt, validateScenePrompt } from './constants/ugcPromptTemplates';
+import { detectUgcCategory, buildScenePrompt, validateScenePrompt, buildVideoRefPrompt } from './constants/ugcPromptTemplates';
 import { LANGUAGES, VOICES, SCENE_TEMPLATES } from './constants/sceneTemplates';
 import {
   uint8ArrayToBase64,
@@ -221,6 +221,14 @@ export default function UGC() {
     podcastProductImg, setPodcastProductImg,
     sourceVideo, setSourceVideo,
   } = useUGCAssets();
+
+  // u{2500}u{2500} Reference video (motion placeholder) for Omni Flash motion-match u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}u{2500}
+  const [refVideoFile, setRefVideoFile] = useState<File | null>(null);
+  const [refVideoUrl, setRefVideoUrl] = useState<string | null>(null);
+  const [refVideoDuration, setRefVideoDuration] = useState<number>(0);
+  const [isGeneratingMotionRef, setIsGeneratingMotionRef] = useState(false);
+  const [isAnalyzingMotionRefVideo, setIsAnalyzingMotionRefVideo] = useState(false);
+  const [analysisMotionRefProgress, setAnalysisMotionRefProgress] = useState('');
   const [host1Voice, setHost1Voice] = useState('Aoede');
   const [host2Voice, setHost2Voice] = useState('Puck');
   const [host1Name, setHost1Name] = useState('Host 1');
@@ -1046,6 +1054,153 @@ export default function UGC() {
     }
     setIsAnalyzingVideo(false);
     setAnalysisProgress('');
+  };
+
+  const analyzeMotionReferenceVideo = async () => {
+    if (!refVideoFile) return;
+    setIsAnalyzingMotionRefVideo(true);
+    setAnalysisMotionRefProgress('Reading Video File...');
+    try {
+      const base64Video = await fileToBase64(refVideoFile);
+      
+      setAnalysisMotionRefProgress('Extracting Dialogue & Actions...');
+      const apiKey = getApiKey();
+      const body: any = {
+        parts: [
+          { 
+            inlineData: { 
+              mimeType: refVideoFile.type || 'video/mp4', 
+              data: base64Video 
+            } 
+          },
+          { text: 'Analyze this UGC motion reference video. Perform three tasks:\n1. Transcribe the EXACT spoken dialogue/script word-for-word.\n2. Describe the sequence of physical actions, body movements, hand gestures, facial expressions, and camera movements/angles, structured with sequential timecode markers matching the timing of the video (e.g., "[0-4s] Creator smiles, looking at camera... [4-9s] Creator raises hand holding product..."). CRITICAL: Do NOT describe the visual appearance or identity of the person (do NOT mention their hair color/type, gender, clothing/apparel descriptions, age, or ethnicity). Focus ONLY on describing the actions, motions, and expressions so they can be applied to any creator.\n3. Summarize the overall tone.\n\nProvide the result in JSON format matching the schema.' }
+        ],
+        model: 'gemini-2.5-flash',
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              characterActions: { type: "STRING" },
+              script: { type: "STRING" },
+              toneSummary: { type: "STRING" }
+            },
+            required: ["characterActions", "script", "toneSummary"]
+          }
+        }
+      };
+      if (apiKey) body.apiKey = apiKey;
+
+      const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Video analysis failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const result = safeJsonParse(data.text);
+      
+      if (result.script) {
+        const scriptText = result.script;
+        setScript(scriptText);
+        setSpokenDialog(scriptText);
+
+        // Auto-split the extracted script into scenes
+        const parsed: {label: string; dialog: string; prompt: string; refImage?: string | null}[] = [];
+        const isOmni = scriptModel === 'omni';
+        const totalDurSec = refVideoDuration && refVideoDuration > 0 ? refVideoDuration : (parseInt(scriptDuration) || (isOmni ? 20 : 16));
+
+        if (totalDurSec <= 12) {
+          // Force exactly 1 scene for short videos (e.g. 9 seconds)
+          const cleanText = scriptText
+            .replace(/\[[^\]]+\]/g, '')
+            .replace(/^(HOOK|PAYOFF|Scene\s+\d+|Host\s*\d*)\s*:/gim, '')
+            .replace(/\*\*[^*]+\*\*/g, '')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+          parsed.push({
+            label: `Scene 1 [0:00 - 0:${String(totalDurSec).padStart(2, '0')}]`,
+            dialog: cleanText,
+            prompt: result.characterActions || ''
+          });
+        } else {
+          // Try splitting by timestamps if Gemini returned them, e.g. [0:00-0:04]
+          const parts = scriptText.split(/(\[\d+:\d+\s*[-–]\s*\d+:\d+\])/g);
+          if (parts.length > 1) {
+            for (let i = 1; i < parts.length; i += 2) {
+              const timeRange = parts[i].replace(/[\[\]]/g, '').trim();
+              
+              // Prevent timestamps that exceed the actual video duration
+              const startTimeMatch = timeRange.match(/^(\d+):(\d+)/);
+              if (startTimeMatch) {
+                const startSec = parseInt(startTimeMatch[1]) * 60 + parseInt(startTimeMatch[2]);
+                if (startSec >= totalDurSec) {
+                  break;
+                }
+              }
+
+              let segmentText = parts[i + 1]?.trim() || '';
+              if (segmentText) {
+                segmentText = segmentText.replace(/^(HOOK|PAYOFF|CTA|SCENE\s*\d*|INTRO|OUTRO|BODY|SCENE)\b\s*[:\-\–\s\,]*\s*/i, '').trim();
+                const defaultPrompt = result.characterActions || '';
+                parsed.push({ label: `Scene ${parsed.length + 1} [${timeRange}]`, dialog: segmentText, prompt: defaultPrompt });
+              }
+            }
+          } else {
+            // Fallback to chunking by words/sentences
+            const cleanText = scriptText
+              .replace(/\[[^\]]+\]/g, '')
+              .replace(/^(HOOK|PAYOFF|Scene\s+\d+|Host\s*\d*)\s*:/gim, '')
+              .replace(/\*\*[^*]+\*\*/g, '')
+              .replace(/\n{3,}/g, '\n\n')
+              .trim();
+
+            const perSceneDur = isOmni ? 10 : 8;
+            const targetSceneCount = Math.max(1, Math.round(totalDurSec / perSceneDur));
+            const words = cleanText.split(/\s+/).filter(Boolean);
+            const wordsPerChunk = Math.max(5, Math.ceil(words.length / targetSceneCount));
+            
+            if (words.length > 0) {
+              let chunkStart = 0;
+              let sceneNum = 1;
+              for (let wi = 0; wi < words.length; wi += wordsPerChunk) {
+                const chunkWords = words.slice(wi, wi + wordsPerChunk);
+                const dialog = chunkWords.join(' ');
+                const chunkEnd = chunkStart + perSceneDur;
+                const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+                const label = `Scene ${sceneNum} [${fmt(chunkStart)} - ${fmt(chunkEnd)}]`;
+                parsed.push({ label, dialog, prompt: result.characterActions || '' });
+                chunkStart = chunkEnd;
+                sceneNum++;
+              }
+            }
+          }
+        }
+
+        if (parsed.length > 0) {
+          setSplitScenes(parsed);
+          setActiveSplitTab(0);
+          setVideoPrompt(parsed[0].prompt || '');
+          setChatTab('video');
+          showToast('Dialogue & visual cues extracted and split successfully!', 'success');
+        } else {
+          showToast('Dialogue extracted but could not split automatically.', 'info');
+        }
+      }
+
+      if (result.toneSummary) setUserPrompt(result.toneSummary);
+      if (result.characterActions) setVideoPrompt(result.characterActions);
+
+    } catch (e) {
+      handleApiError(e, "Motion reference analysis");
+    } finally {
+      setIsAnalyzingMotionRefVideo(false);
+      setAnalysisMotionRefProgress('');
+    }
   };
 
   const analyzeProduct = async () => {
@@ -2145,6 +2300,139 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
     setIsGeneratingSplitPrompt(false);
   };
 
+  // ── generateVideoWithMotionRef: Omni Flash motion-match edit flow ──────────
+  const generateVideoWithMotionRef = async (sceneIdx: number) => {
+    if (!refVideoFile) {
+      showToast('Upload a reference video in the sidebar first.', 'error');
+      return;
+    }
+    const scene = splitScenes[sceneIdx];
+    if (!scene) {
+      showToast('Scene not found.', 'error');
+      return;
+    }
+    setIsGeneratingMotionRef(true);
+    const galleryId = `motion-match-${Date.now()}-${sceneIdx}`;
+    addToGallery({ id: galleryId, type: 'video', url: '', loading: true, prompt: scene.dialog || scene.prompt });
+    try {
+      const sceneDurationSec = refVideoDuration && refVideoDuration > 0 ? refVideoDuration : (parseInt(durationSeconds as string, 10) || 8);
+      // Helper to resolve Asset objects or raw strings to Base64 data URLs on the client
+      const resolveAssetToBase64 = async (asset: any) => {
+        if (!asset) return null;
+        try {
+          if (typeof asset === 'string') {
+            if (asset.startsWith('data:')) return asset;
+            const blob = await fetchImageAsBlob(asset);
+            const base64 = await resizeImage(blob);
+            return `data:image/jpeg;base64,${base64}`;
+          }
+          if (asset.file) {
+            const base64 = await resizeImage(asset.file);
+            return `data:image/jpeg;base64,${base64}`;
+          }
+          if (asset.url) {
+            if (asset.url.startsWith('data:')) return asset.url;
+            const blob = await fetchImageAsBlob(asset.url);
+            const base64 = await resizeImage(blob);
+            return `data:image/jpeg;base64,${base64}`;
+          }
+        } catch (e) {
+          console.warn('[UGC-OMNI] Reference resolution failed:', e);
+        }
+        return null;
+      };
+
+      // Build ref images array
+      const refImages: { url: string }[] = [];
+      const resolvedChar = await resolveAssetToBase64(characterImg);
+      if (resolvedChar) refImages.push({ url: resolvedChar });
+
+      const resolvedProd = await resolveAssetToBase64(productImg);
+      if (resolvedProd) refImages.push({ url: resolvedProd });
+
+      const resolvedLoc = await resolveAssetToBase64(locationImg);
+      if (resolvedLoc) refImages.push({ url: resolvedLoc });
+
+      // Append scene-specific custom reference images
+      const sceneRefs = scene.refImages || (scene.refImage ? [scene.refImage] : []);
+      const sceneRefTags: string[] = [];
+      let currentRefIdx = refImages.length;
+      for (const r of sceneRefs) {
+        if (r) {
+          const resolvedSceneRef = await resolveAssetToBase64(r);
+          if (resolvedSceneRef && !refImages.some(img => img.url === resolvedSceneRef)) {
+            refImages.push({ url: resolvedSceneRef });
+            sceneRefTags.push(`<IMAGE_REF_${currentRefIdx++}>`);
+          }
+        }
+      }
+
+      let charIdx = 0;
+      let productIdx = characterImg ? 1 : 0;
+      let locationIdx = (characterImg ? 1 : 0) + (productImg ? 1 : 0);
+      let motionPrompt = buildVideoRefPrompt({
+        dialog: scene.dialog || '',
+        sceneDurationSec,
+        characterRefTag: characterImg ? `<IMAGE_REF_${charIdx}>` : '',
+        productRefTag: productImg ? `<IMAGE_REF_${productIdx}>` : '',
+        locationRefTag: locationImg ? `<IMAGE_REF_${locationIdx}>` : '',
+        hasCharacterRef: !!characterImg,
+        hasProductRef: !!productImg,
+        hasLocationRef: !!locationImg,
+        productDetails: productDetails || productAnalysis?.description || '',
+        scenePrompt: scene.prompt || '',
+      });
+
+      if (sceneRefTags.length > 0) {
+        motionPrompt += `\n\nADDITIONAL REFERENCE IMAGES:\nUse ${sceneRefTags.join(', ')} as style, object, or starting frame reference guidelines for the visual layout, B-roll assets, or specific scene content details.`;
+      }
+
+      // Convert refVideoFile to base64
+      const videoBase64 = await fileToBase64(refVideoFile);
+      const videoMimeType = refVideoFile.type || 'video/mp4';
+
+      const apiKey = getApiKey();
+      const body: any = {
+        motionPrompt,
+        task: 'edit',
+        model: 'gemini-omni-flash-preview',
+        aspectRatio: '9:16',
+        duration: sceneDurationSec,
+        userId: currentUserId,
+        image: `data:${videoMimeType};base64,${videoBase64}`,
+        ref_images: refImages,
+      };
+      if (apiKey) body.apiKey = apiKey;
+
+      const resp = await fetch(getApiUrl('/api/omni-i2v'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: resp.statusText }));
+        throw new Error(err.error || `Server error ${resp.status}`);
+      }
+      const data = await resp.json();
+      const videoUrl = data.videoUrl || data.url;
+      if (!videoUrl) throw new Error('No video returned from server');
+      updateGalleryItem(galleryId, { url: videoUrl, loading: false });
+      // Also update the scene's refImage so the split panel shows the generated video
+      setSplitScenes(prev => {
+        const updated = [...prev];
+        updated[sceneIdx] = { ...updated[sceneIdx], refImage: videoUrl };
+        return updated;
+      });
+      showToast(`Scene ${sceneIdx + 1} motion-match complete!`, 'success');
+    } catch (e: any) {
+      updateGalleryItem(galleryId, { loading: false, error: e.message });
+      handleApiError(e, 'Motion Match');
+    } finally {
+      setIsGeneratingMotionRef(false);
+    }
+  };
+
+
 
   const generateGeneralVideoPrompt = async () => {
     if (!script && !userPrompt) return;
@@ -3039,12 +3327,27 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
           const customKey = getApiKey();
           if (customKey) headers['x-admin-trial-key'] = customKey;
 
+          const hasVoiceover = (
+            prompt.toLowerCase().includes('voice-over') ||
+            prompt.toLowerCase().includes('voiceover') ||
+            prompt.toLowerCase().includes('off-screen') ||
+            prompt.toLowerCase().includes('narration') ||
+            prompt.toLowerCase().includes('narrat') ||
+            prompt.toLowerCase().includes('b-roll') ||
+            prompt.toLowerCase().includes('broll')
+          );
+          let dialogueInstruction = `Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): "${sc.dialog}".`;
+          if (hasVoiceover) {
+            dialogueInstruction = `Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): "${sc.dialog}" (strictly lip-sync only the portions where the face is on screen/speaking in the timecodes; all other portions must be generated as off-camera voice-over narration with no mouth/lip movement).`;
+          }
+          const finalMotionPrompt = (prompt.includes('Dialogue to speak:') ? prompt : `${prompt} ${dialogueInstruction}`).substring(0, 1000);
+
           const resp = await fetch(getApiUrl('/api/omni-i2v'), {
             method: 'POST',
             headers,
             body: JSON.stringify({
               image: imageToSend || undefined,
-              motionPrompt: (prompt.includes('Dialogue to speak:') ? prompt : `${prompt} Dialogue to speak: "${sc.dialog}".`).substring(0, 1000),
+              motionPrompt: finalMotionPrompt,
               duration: resolvedDuration,
               aspectRatio: resolvedAspectRatio,
               resolution: '720p',
@@ -3547,7 +3850,34 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         ? splitScenes[activeSplitTab]?.dialog
         : scenes[activeSceneIndex]?.text;
 
-      const dialogue = dialogueText ? ` Dialogue to speak: "${dialogueText}".` : '';
+      const hasVoiceover = (
+        (overridePrompt || '').toLowerCase().includes('voice-over') ||
+        (overridePrompt || '').toLowerCase().includes('voiceover') ||
+        (overridePrompt || '').toLowerCase().includes('off-screen') ||
+        (overridePrompt || '').toLowerCase().includes('narration') ||
+        (overridePrompt || '').toLowerCase().includes('narrat') ||
+        (overridePrompt || '').toLowerCase().includes('b-roll') ||
+        (overridePrompt || '').toLowerCase().includes('broll') ||
+        (videoPrompt || '').toLowerCase().includes('voice-over') ||
+        (videoPrompt || '').toLowerCase().includes('voiceover') ||
+        (videoPrompt || '').toLowerCase().includes('off-screen') ||
+        (videoPrompt || '').toLowerCase().includes('narration') ||
+        (videoPrompt || '').toLowerCase().includes('narrat') ||
+        (videoPrompt || '').toLowerCase().includes('b-roll') ||
+        (videoPrompt || '').toLowerCase().includes('broll') ||
+        (scenes[activeSceneIndex]?.prompt || '').toLowerCase().includes('voice-over') ||
+        (scenes[activeSceneIndex]?.prompt || '').toLowerCase().includes('voiceover') ||
+        (scenes[activeSceneIndex]?.prompt || '').toLowerCase().includes('off-screen') ||
+        (scenes[activeSceneIndex]?.prompt || '').toLowerCase().includes('narration') ||
+        (scenes[activeSceneIndex]?.prompt || '').toLowerCase().includes('narrat') ||
+        (scenes[activeSceneIndex]?.prompt || '').toLowerCase().includes('b-roll') ||
+        (scenes[activeSceneIndex]?.prompt || '').toLowerCase().includes('broll')
+      );
+
+      let dialogue = dialogueText ? ` Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): "${dialogueText}".` : '';
+      if (dialogueText && hasVoiceover) {
+        dialogue = ` Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): "${dialogueText}" (strictly lip-sync only the portions where the face is on screen/speaking in the timecodes; all other portions must be generated as off-camera voice-over narration with no mouth/lip movement).`;
+      }
 
       let promptText: string;
       let imagePayload: { imageBytes: string; mimeType: string } | undefined = undefined;
@@ -4105,6 +4435,15 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     isUploadingKB,
     setIsUploadingKB,
     handleKBUpload,
+    refVideoFile,
+    setRefVideoFile,
+    refVideoUrl,
+    setRefVideoUrl,
+    refVideoDuration,
+    setRefVideoDuration,
+    isAnalyzingMotionRefVideo,
+    analysisMotionRefProgress,
+    analyzeMotionReferenceVideo,
     gpt2Quality,
     setGpt2Quality,
     host1Voice,
@@ -4147,6 +4486,8 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     setShowLiveGuide,
     generateSplitScenePrompt,
     generateAllSplitPrompts,
+    generateVideoWithMotionRef,
+    isGeneratingMotionRef,
     generateGeneralVideoPrompt,
     isGeneratingGeneralPrompt,
     isExpandModalOpen,

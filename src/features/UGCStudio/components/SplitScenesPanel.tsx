@@ -1,7 +1,7 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { X, ChevronDown, Sparkles, Camera, Check, Loader2, Film } from 'lucide-react';
 import { useUGC, SplitScene } from '../context/UGCContext';
-import { SCENE_STYLES, MULTI_SHOT_PRESETS } from '../constants/videoStyles';
+import { SCENE_STYLES, MULTI_SHOT_PRESETS, BROLL_PRESETS } from '../constants/videoStyles';
 import { buildScenePrompt, validateScenePrompt, detectUgcCategory } from '../constants/ugcPromptTemplates';
 import { getApiUrl, resolveUrl } from '../../../config/apiConfig';
 import { fileToBase64 } from '../utils/imageUtils';
@@ -16,6 +16,7 @@ const SPEECH_TAGS = [
 
 export default function SplitScenesPanel() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [selectedBRollPreset, setSelectedBRollPreset] = useState('broll_auto');
   const {
     splitScenes,
     setSplitScenes,
@@ -55,6 +56,9 @@ export default function SplitScenesPanel() {
     generateAllSceneVideos,
     setIsGeneratingSplitPrompt,
     currentUserId,
+    generateVideoWithMotionRef,
+    isGeneratingMotionRef,
+    refVideoFile,
   } = useUGC();
 
   if (splitScenes.length === 0) return null;
@@ -84,7 +88,7 @@ export default function SplitScenesPanel() {
   const fallbackRef = activeTab === 'talking-head' ? thGeneratedImg : (characterImg?.url || '');
   const effectiveRefImage = customRef || fallbackRef;
 
-  const handleGenerateAllScenePrompts = async () => {
+  const handleGenerateAllScenePrompts = async (isBRollMontage: boolean = false) => {
     setIsGeneratingSplitPrompt(true);
     try {
       const category = detectUgcCategory(
@@ -141,6 +145,24 @@ export default function SplitScenesPanel() {
         // Switch active tab so user sees progress
         setActiveSplitTab(idx);
 
+        const currentSceneRefParts = [...refParts];
+        let currentRefIdx = refIdx;
+        let firstFrameRefTag = '';
+
+        if (scene.refImage) {
+          const scenePart = await urlToGenerativePart(scene.refImage);
+          if (scenePart) {
+            currentSceneRefParts.push(scenePart);
+            firstFrameRefTag = `<IMAGE_REF_${currentRefIdx++}>`;
+          }
+        } else if (idx === 0 && effectiveRefImage) {
+          const scenePart = await urlToGenerativePart(effectiveRefImage);
+          if (scenePart) {
+            currentSceneRefParts.push(scenePart);
+            firstFrameRefTag = `<IMAGE_REF_${currentRefIdx++}>`;
+          }
+        }
+
         const metaPrompt = buildScenePrompt({
           dialog: scene.dialog,
           sceneIdx: idx,
@@ -152,13 +174,16 @@ export default function SplitScenesPanel() {
           hasCharacterRef,
           hasProductRef,
           hasLocationRef,
-          hasFirstFrame: idx === 0 && !!(scene.refImage || effectiveRefImage),
+          hasFirstFrame: !!(scene.refImage || (idx === 0 && effectiveRefImage)),
           characterRefTag,
           productRefTag,
           locationRefTag,
+          firstFrameRefTag,
+          isBRollMontage,
+          bRollType: selectedBRollPreset === 'broll_auto' ? '' : BROLL_PRESETS.find(p => p.id === selectedBRollPreset)?.label || ''
         });
 
-        const parts = [...refParts, { text: metaPrompt }];
+        const parts = [...currentSceneRefParts, { text: metaPrompt }];
 
         const response = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
           method: 'POST',
@@ -323,7 +348,86 @@ export default function SplitScenesPanel() {
               <><Film size={8} className={multiShotPrompt ? 'text-[#c8f135]' : ''} /><span>Multi-Shot</span></>
             )}
           </button>
+
+          {/* B-Roll Template Dropdown */}
+          <div className="relative shrink-0">
+            <select
+              value={selectedBRollPreset}
+              onChange={e => setSelectedBRollPreset(e.target.value)}
+              className="appearance-none bg-blue-500/5 border border-blue-500/20 hover:border-blue-500/40 rounded-xl pl-6 pr-6 py-1.5 text-[8px] font-mono text-blue-300 uppercase tracking-wider cursor-pointer transition-all focus:outline-none"
+            >
+              {BROLL_PRESETS.map(p => (
+                <option key={p.id} value={p.id} className="bg-[#0c0c0c] text-white/90">{p.emoji} {p.label}</option>
+              ))}
+            </select>
+            <Film size={8} className="absolute left-2 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" />
+            <ChevronDown size={8} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+          </div>
+
+          {/* B-Roll / Montage button */}
+          <button
+            type="button"
+            title="Generate a dynamic B-roll montage for all scenes (no voiceover)"
+            onClick={() => handleGenerateAllScenePrompts(true)}
+            disabled={isGeneratingSplitPrompt}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[8px] font-black uppercase tracking-widest transition-all shrink-0 cursor-pointer ${
+              isGeneratingSplitPrompt
+                ? 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
+                : 'bg-blue-500/10 border-blue-500/40 text-blue-300 hover:bg-blue-500/20 hover:border-blue-500/70 hover:shadow-[0_0_12px_rgba(59,130,246,0.15)]'
+            }`}
+          >
+            {isGeneratingSplitPrompt ? (
+              <><Loader2 size={8} className="animate-spin" /><span>Generating…</span></>
+            ) : (
+              <><Film size={8} /><span>B-Roll / Montage</span></>
+            )}
+          </button>
+
+          {/* 🎬 Motion Match button — only shown when a ref video is uploaded */}
+          {refVideoFile && (
+            <button
+              type="button"
+              onClick={() => generateVideoWithMotionRef(activeSplitTab)}
+              disabled={isGeneratingMotionRef}
+              title="Generate video by matching motion from the reference video, swapping your character & product"
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[8px] font-black uppercase tracking-widest transition-all shrink-0 cursor-pointer ${
+                isGeneratingMotionRef
+                  ? 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
+                  : 'bg-purple-500/10 border-purple-500/40 text-purple-300 hover:bg-purple-500/20 hover:border-purple-500/60 hover:shadow-[0_0_12px_rgba(168,85,247,0.2)]'
+              }`}
+            >
+              {isGeneratingMotionRef
+                ? <><Loader2 size={8} className="animate-spin" /><span>Matching…</span></>
+                : <><Film size={8} /><span>🎬 Motion Match</span></>
+              }
+            </button>
+          )}
         </div>
+
+        {/* 🎬 Match All Scenes — Omni Flash motion-match for every split scene */}
+        {refVideoFile && (
+          <div className="pt-2 border-t border-white/5">
+            <button
+              type="button"
+              onClick={async () => {
+                for (let i = 0; i < splitScenes.length; i++) {
+                  await generateVideoWithMotionRef(i);
+                }
+              }}
+              disabled={isGeneratingMotionRef}
+              className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                isGeneratingMotionRef
+                  ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
+                  : 'bg-purple-500/10 border border-purple-500/40 text-purple-300 hover:bg-purple-500/20 hover:border-purple-500/60 hover:shadow-[0_0_20px_rgba(168,85,247,0.2)]'
+              }`}
+            >
+              {isGeneratingMotionRef
+                ? <><Loader2 size={10} className="animate-spin" /><span>Matching All Scenes…</span></>
+                : <><Film size={10} /><span>🎬 Match All Scenes · Omni Flash</span></>
+              }
+            </button>
+          </div>
+        )}
 
         {/* Row 2: Dialogue + Reference + Approve */}
         <div className="flex flex-col md:flex-row gap-3 md:gap-4 items-stretch md:items-center justify-between bg-black/40 border border-white/5 rounded-xl p-3">
@@ -363,7 +467,7 @@ export default function SplitScenesPanel() {
           </div>
 
           {/* Right: References + Approve */}
-          <div className="flex flex-row items-center gap-3 w-full md:w-auto justify-between md:justify-end shrink-0 pt-2 md:pt-0 border-t border-white/5 md:border-t-0">
+          <div className="flex flex-col items-end gap-3 w-full md:w-auto shrink-0 pt-2 md:pt-0 border-t border-white/5 md:border-t-0">
 
             {/* Reference images list (up to 3) */}
             <div className="flex items-center gap-1.5 flex-wrap shrink-0">

@@ -71,6 +71,16 @@ export interface UGCContextType {
   setProductImg: (v: { url: string; file: File } | null) => void;
   locationImg: { url: string; file: File } | null;
   setLocationImg: (v: { url: string; file: File } | null) => void;
+  // ── Reference video (motion placeholder) ─────────────────────────────────
+  refVideoFile: File | null;
+  setRefVideoFile: (v: File | null) => void;
+  refVideoUrl: string | null;
+  setRefVideoUrl: (v: string | null) => void;
+  refVideoDuration: number;
+  setRefVideoDuration: (v: number) => void;
+  isAnalyzingMotionRefVideo: boolean;
+  analysisMotionRefProgress: string;
+  analyzeMotionReferenceVideo: () => Promise<void>;
 
   // ── Podcast assets ───────────────────────────────────────────────────────
   podcastHost1Img: { url: string; file: File } | null;
@@ -352,6 +362,8 @@ export interface UGCContextType {
   setShowLiveGuide: (v: boolean) => void;
   generateSplitScenePrompt: (tabIdx: number) => Promise<void>;
   generateAllSplitPrompts: () => Promise<void>;
+  generateVideoWithMotionRef: (sceneIdx: number) => Promise<void>;
+  isGeneratingMotionRef: boolean;
   generateGeneralVideoPrompt: () => Promise<void>;
   isGeneratingGeneralPrompt: boolean;
   isExpandModalOpen: boolean;

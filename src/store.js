@@ -658,8 +658,8 @@ export const useAppStore = create((set, get) => ({
                                 });
                                 if (resp.ok) {
                                     const resData = await resp.json();
-                                    if (resData.apiKey) {
-                                        window.__ADMIN_GOOGLE_API_KEY__ = resData.apiKey;
+                                    if (resData.configured) {
+                                        window.__ADMIN_GOOGLE_API_KEY_CONFIGURED__ = true;
                                     }
                                 }
                             }

@@ -39,7 +39,7 @@ export default function createRouter(deps) {
         return user;
     }
 
-    // Admin Google API Key retrieval
+    // Admin Google API key status. Never return the secret to the browser.
     router.get('/admin/google-key', async (req, res) => {
         try {
             const user = await requireAuth(req);
@@ -53,7 +53,10 @@ export default function createRouter(deps) {
                 .single();
 
             if (profile?.role === 'admin' || profile?.email?.startsWith('premspaw@gmail')) {
-                return res.json({ apiKey: process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY });
+                return res.json({
+                    configured: Boolean(process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY),
+                    mode: 'server'
+                });
             }
             return res.status(403).json({ error: 'Forbidden' });
         } catch (err) {
@@ -64,8 +67,12 @@ export default function createRouter(deps) {
     // Verify admin login password (prevents shipping password in client bundle)
     router.post('/admin/verify-login', (req, res) => {
         const { password } = req.body;
-        const correctPassword = process.env.ADMIN_PASSWORD || 'admin123';
-        if (password === correctPassword || password === '10000') {
+        const configuredPassword = process.env.ADMIN_PASSWORD;
+        if (process.env.NODE_ENV === 'production' && !configuredPassword) {
+            return res.status(503).json({ error: 'Admin password is not configured' });
+        }
+        const correctPassword = configuredPassword || 'admin123';
+        if (password === correctPassword) {
             return res.json({ success: true });
         }
         return res.status(401).json({ error: 'Invalid password' });

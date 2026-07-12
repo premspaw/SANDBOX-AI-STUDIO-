@@ -68,6 +68,16 @@ export default function LeftSidebar() {
     setCharacterImg,
     locationImg,
     setLocationImg,
+    refVideoFile,
+    setRefVideoFile,
+    refVideoUrl,
+    setRefVideoUrl,
+    setRefVideoDuration,
+    generateVideoWithMotionRef,
+    isGeneratingMotionRef,
+    isAnalyzingMotionRefVideo,
+    analysisMotionRefProgress,
+    analyzeMotionReferenceVideo,
     sourceVideo,
     handleVideoUpload,
     analyzeVideo,
@@ -587,6 +597,91 @@ export default function LeftSidebar() {
                   <p className="text-[7px] text-center font-black text-white/20 uppercase tracking-widest">Stage</p>
                 </div>
               </div>
+
+              {/* ── Reference Video (Motion Placeholder) ───────────────────────── */}
+              <section className="space-y-2 border-t border-[#1e1e24] pt-4">
+                <h2 className="text-[10px] font-black text-[#3a3a4a] uppercase tracking-[0.2em] flex items-center gap-1.5">
+                  <Film size={10} className="text-[#c8f135]" /> Motion Reference
+                </h2>
+                <p className="text-[7px] font-mono text-white/20 uppercase tracking-widest leading-relaxed">
+                  Upload a placeholder video · Omni Flash matches its motion &amp; swaps in your character, product &amp; location.
+                </p>
+                <label className={`relative flex flex-col items-center justify-center gap-2 px-3 py-4 rounded-xl border cursor-pointer transition-all ${
+                  refVideoFile ? 'border-[#c8f135]/40 bg-[#c8f135]/5' : 'border-dashed border-white/10 bg-[#111113] hover:border-[#c8f135]/30'
+                }`}>
+                  <input
+                    type="file"
+                    accept="video/mp4,video/mov,video/webm,video/quicktime"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      setRefVideoFile(f);
+                      setRefVideoUrl(URL.createObjectURL(f));
+                      
+                      const video = document.createElement('video');
+                      video.preload = 'metadata';
+                      video.onloadedmetadata = () => {
+                        const dur = Math.round(video.duration);
+                        console.log("Ref video duration measured:", dur);
+                        setRefVideoDuration(dur);
+                      };
+                      video.src = URL.createObjectURL(f);
+                    }}
+                  />
+                  {refVideoUrl ? (
+                    <>
+                      <video
+                        src={refVideoUrl}
+                        className="w-full rounded-lg max-h-[120px] object-cover pointer-events-none"
+                        muted
+                        playsInline
+                      />
+                      <span className="text-[7px] font-black text-[#c8f135] uppercase tracking-widest truncate max-w-full px-2">{refVideoFile?.name}</span>
+                      <button
+                        onClick={ev => { ev.stopPropagation(); ev.preventDefault(); setRefVideoFile(null); setRefVideoUrl(null); }}
+                        className="absolute top-1.5 right-1.5 z-10 p-0.5 rounded-full bg-black/70 text-red-400 hover:text-red-300 transition-all"
+                      >
+                        <X size={10} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Film size={16} className="text-white/20" />
+                      <span className="text-[8px] font-mono text-white/30 uppercase tracking-widest">Drop .mp4 / .mov</span>
+                      <span className="text-[6px] font-mono text-white/15 uppercase tracking-widest">min 4 seconds</span>
+                    </>
+                  )}
+                </label>
+                {refVideoFile && (
+                  <div className="space-y-1.5">
+                    <p className="text-[7px] text-[#c8f135]/60 font-mono uppercase tracking-widest text-center">
+                      ✓ Omni Flash will use this as motion blueprint
+                    </p>
+                    <button
+                      onClick={analyzeMotionReferenceVideo}
+                      disabled={isAnalyzingMotionRefVideo}
+                      className={`w-full py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${
+                        isAnalyzingMotionRefVideo
+                          ? 'bg-white/5 text-white/20 cursor-not-allowed'
+                          : 'bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 hover:text-white'
+                      }`}
+                    >
+                      {isAnalyzingMotionRefVideo ? (
+                        <>
+                          <Loader2 size={10} className="animate-spin" />
+                          <span>{analysisMotionRefProgress || 'Extracting...'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={10} />
+                          <span>Extract Script &amp; Visuals</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </section>
 
               {/* Product Scan section */}
               <section className="space-y-3 border-t border-[#1e1e24] pt-4">
