@@ -139,6 +139,7 @@ export const MontagePanel: React.FC = () => {
       const spendRes = await spend('veo_fast', unitCost as any);
       if (!spendRes || !spendRes.success) {
         showToast(`Insufficient Credits: You need ${unitCost} Shorts to generate video.`, 'error');
+        useAppStore.getState().setActiveTab('pricing');
         return;
       }
     }

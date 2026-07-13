@@ -182,6 +182,7 @@ export default function MotionControl() {
     const cost = getCreditCost();
     if (shorts < cost) {
       showToast(`Insufficient Credits: You need ${cost} Shorts, but only have ${shorts}.`, 'error');
+      useAppStore.getState().setActiveTab('pricing');
       return;
     }
 

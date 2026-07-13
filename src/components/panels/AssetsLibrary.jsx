@@ -541,7 +541,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     upscaled: dbUpscaled,
                     marketing: dbMarketing
                 };
-                setCachedAssets(updated, targetUser?.id);
+                setTimeout(() => setCachedAssets(updated, targetUser?.id), 0);
                 return updated;
             });
 
@@ -718,7 +718,7 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     ...prev,
                     characters: finalCharacters
                 };
-                setCachedAssets(updated, targetUser?.id);
+                setTimeout(() => setCachedAssets(updated, targetUser?.id), 0);
                 return updated;
             });
 

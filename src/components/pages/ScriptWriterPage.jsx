@@ -42,6 +42,18 @@ const SUGGESTED = {
     ugc: ['UGC script for a skincare product', 'Authentic review script for a gadget', 'Day-in-the-life UGC storyboard'],
 };
 
+const ANTI_SLOP_RULES = `
+CRITICAL WRITING RULES (STOP SLOP):
+1. Cut filler phrases (throat-clearing openers, emphasis crutches, adverbs).
+2. Break formulaic structures (no binary contrasts, negative listings, dramatic fragmentation).
+3. Use active voice (no passive constructions).
+4. Be specific (no vague declaratives or lazy extremes like "every", "always").
+5. Put the reader in the room ("You" beats "People").
+6. Vary rhythm (mix sentence lengths, no em dashes).
+7. Trust readers (state facts directly, skip softening).
+8. Cut quotables (no pull-quote style sentences).
+9. NO FAKE CASUAL OPENERS: Never start a script with "Okay, wait," "Hear me out," "I'm not even joking," or "Listen up." Just start the script immediately.`;
+
 export default function ScriptWriterPage({ activeTool, setActiveTool }) {
     const userProfile = useAppStore(state => state.userProfile);
     const [activeType, setActiveType] = useState('reels');
@@ -60,7 +72,7 @@ export default function ScriptWriterPage({ activeTool, setActiveTool }) {
 
     useEffect(() => {
         if (!hermesSessionId && !sessionReady) {
-            const system_prompt = SYSTEM_PROMPTS[activeType] || '';
+            const system_prompt = (SYSTEM_PROMPTS[activeType] || '') + ANTI_SLOP_RULES;
             fetch(`${HERMES_API}/api/sessions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ system_prompt }) })
                 .then(r => r.json())
                 .then(data => { if (data.session_id) { setHermesSessionId(data.session_id); setSessionReady(true); } })

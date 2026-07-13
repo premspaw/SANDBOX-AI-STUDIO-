@@ -36,7 +36,7 @@ export default function AgentPage() {
 
     const getApiKey = () => {
         if (userProfile?.role === 'admin' || userProfile?.email === 'premspaw@gmail.com') {
-            return localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
+            return window.__ADMIN_GOOGLE_API_KEY__ || import.meta.env.VITE_ADMIN_GOOGLE_API_KEY || localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
         }
         return localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
     };
@@ -170,6 +170,120 @@ export default function AgentPage() {
         setActiveTool(null);
     };
 
+    const renderBoldText = (processed) => {
+        const boldRegex = /\*\*([^*]+)\*\*/g;
+        const elements = [];
+        let lastIdx = 0;
+        let bMatch;
+        while ((bMatch = boldRegex.exec(processed)) !== null) {
+            if (bMatch.index > lastIdx) {
+                elements.push(processed.slice(lastIdx, bMatch.index));
+            }
+            elements.push(<strong key={bMatch.index} className="text-violet-300 font-extrabold">{bMatch[1]}</strong>);
+            lastIdx = bMatch.index + bMatch[0].length;
+        }
+        if (lastIdx < processed.length) {
+            elements.push(processed.slice(lastIdx));
+        }
+        return elements.length > 0 ? elements : processed;
+    };
+
+    const formatInlineText = (text, keyOffset) => {
+        const lines = text.split('\n');
+        return lines.map((line, idx) => {
+            const trimmed = line.trim();
+            if (trimmed === '') {
+                return <div key={`${keyOffset}-${idx}`} className="h-2.5" />;
+            }
+            
+            // 1. Headers
+            const h1Match = line.match(/^#\s+(.*)/);
+            if (h1Match) {
+                return (
+                    <h1 key={`${keyOffset}-${idx}`} className="text-base font-black tracking-tight text-gradient-primary uppercase mt-4 mb-2 border-b border-white/5 pb-1">
+                        {renderBoldText(h1Match[1])}
+                    </h1>
+                );
+            }
+
+            const h2Match = line.match(/^##\s+(.*)/);
+            if (h2Match) {
+                return (
+                    <h2 key={`${keyOffset}-${idx}`} className="text-xs font-black tracking-wider text-violet-400 uppercase mt-3 mb-1.5 font-mono">
+                        {renderBoldText(h2Match[1])}
+                    </h2>
+                );
+            }
+
+            const h3Match = line.match(/^###\s+(.*)/);
+            if (h3Match) {
+                return (
+                    <h3 key={`${keyOffset}-${idx}`} className="text-[10px] font-black tracking-widest text-violet-300 mt-2.5 mb-1 uppercase font-mono">
+                        {renderBoldText(h3Match[1])}
+                    </h3>
+                );
+            }
+
+            // 2. Numbered Lists (e.g. "1. Shot 1...")
+            const numListMatch = line.match(/^(\d+)\.\s*(.*)/);
+            if (numListMatch) {
+                return (
+                    <div key={`${keyOffset}-${idx}`} className="flex items-start gap-2 pl-2 my-1.5 leading-relaxed">
+                        <span className="text-[9px] font-black font-mono px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20 mt-0.5 select-none shrink-0">
+                            {numListMatch[1]}
+                        </span>
+                        <span className="flex-1 text-white/80 text-xs md:text-sm">{renderBoldText(numListMatch[2])}</span>
+                    </div>
+                );
+            }
+
+            // 3. Bullet Lists
+            const bulletMatch = line.match(/^([•\-*○])\s*(.*)/);
+            if (bulletMatch) {
+                const bulletChar = bulletMatch[1];
+                return (
+                    <div key={`${keyOffset}-${idx}`} className="flex items-start gap-2.5 pl-3 my-1 leading-relaxed">
+                        <span className="text-violet-400 select-none mt-1.5 text-[8px] shrink-0">
+                            {bulletChar === '○' ? '○' : '•'}
+                        </span>
+                        <span className="flex-1 text-white/80 text-xs md:text-sm">{renderBoldText(bulletMatch[2])}</span>
+                    </div>
+                );
+            }
+
+            // 4. Standard Paragraph
+            return (
+                <p key={`${keyOffset}-${idx}`} className="mb-2 text-white/85 text-xs md:text-sm leading-relaxed">
+                    {renderBoldText(line)}
+                </p>
+            );
+        });
+    };
+
+    const formatText = (text) => {
+        const parts = [];
+        let lastIndex = 0;
+        let match;
+        const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
+        
+        while ((match = codeBlockRegex.exec(text)) !== null) {
+            if (match.index > lastIndex) {
+                parts.push(...formatInlineText(text.slice(lastIndex, match.index), lastIndex));
+            }
+            parts.push(
+                <div key={`code-${match.index}`} className="my-3 rounded-xl overflow-hidden border border-white/5 bg-black/40">
+                    {match[1] && <div className="px-3 py-1 bg-white/5 text-[9px] font-black uppercase tracking-widest text-white/30">{match[1]}</div>}
+                    <pre className="p-3 text-[11px] text-emerald-300 overflow-x-auto leading-relaxed font-mono select-text">{match[2].trim()}</pre>
+                </div>
+            );
+            lastIndex = match.index + match[0].length;
+        }
+        if (lastIndex < text.length) {
+            parts.push(...formatInlineText(text.slice(lastIndex), lastIndex));
+        }
+        return parts;
+    };
+
     if (!userProfile) {
         const setActiveTab = useAppStore.getState().setActiveTab;
         return (
@@ -261,7 +375,7 @@ export default function AgentPage() {
                                     <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0"><Bot className="w-4 h-4 text-white" /></div>
                                 )}
                                 <div className={cn('relative max-w-[80%] rounded-2xl px-5 py-3.5 leading-relaxed', msg.role === 'user' ? 'bg-gradient-to-br from-violet-600/25 to-indigo-600/15 border border-violet-500/15 text-white/90' : 'bg-white/[0.03] border border-white/[0.06] text-white/80')}>
-                                    <div className="text-[15px] leading-relaxed tracking-wide">{msg.content}</div>
+                                    <div className="text-[14px] leading-relaxed tracking-wide select-text">{formatText(msg.content)}</div>
                                     <div className="mt-1.5 text-[10px] text-white/20">{msg.ts}</div>
                                 </div>
                                 {msg.role === 'user' && (

@@ -4,7 +4,7 @@ import {
   Film, Loader2, ChevronDown, Play,
   Building, Trees, Sofa, UtensilsCrossed,
   Bath, BedDouble, Car, Maximize,
-  ChevronLeft, ChevronRight, FileText, Sparkles
+  ChevronLeft, ChevronRight, FileText, Sparkles, RefreshCw
 } from 'lucide-react';
 import { useUGC } from '../context/UGCContext';
 import GalleryGrid from './GalleryGrid';
@@ -20,7 +20,7 @@ interface RoomSlot {
   id: string;
   label: string;
   icon: any;
-  image: { url: string; file: File } | null;
+  images: { url: string; file: File }[];
   script: string;       // AI generated per room
   prompt: string;       // Veo prompt per room
   generatedVideo: string | null;
@@ -28,15 +28,15 @@ interface RoomSlot {
 }
 
 // ── Default room slots ────────────────────────────────────────
-const DEFAULT_ROOMS: Omit<RoomSlot, 'image' | 'script' | 'prompt' | 'generatedVideo'>[] = [
-  { id: 'front',    label: 'Front Elevation', icon: Building, duration: 8 },
-  { id: 'living',   label: 'Living Room',     icon: Sofa,     duration: 8 },
-  { id: 'kitchen',  label: 'Kitchen',         icon: UtensilsCrossed, duration: 8 },
-  { id: 'bedroom1', label: 'Bedroom 1',       icon: BedDouble, duration: 8 },
-  { id: 'bedroom2', label: 'Bedroom 2',       icon: BedDouble, duration: 8 },
-  { id: 'bathroom', label: 'Bathroom',        icon: Bath,      duration: 6 },
-  { id: 'lawn',     label: 'Lawn / Garden',   icon: Trees,     duration: 8 },
-  { id: 'parking',  label: 'Parking / Garage',icon: Car,       duration: 6 },
+const DEFAULT_ROOMS: Omit<RoomSlot, 'images' | 'script' | 'prompt' | 'generatedVideo'>[] = [
+  { id: 'front',    label: 'Front Elevation', icon: Building, duration: 5 },
+  { id: 'living',   label: 'Living Room',     icon: Sofa,     duration: 5 },
+  { id: 'kitchen',  label: 'Kitchen',         icon: UtensilsCrossed, duration: 5 },
+  { id: 'bedroom1', label: 'Bedroom 1',       icon: BedDouble, duration: 5 },
+  { id: 'bedroom2', label: 'Bedroom 2',       icon: BedDouble, duration: 5 },
+  { id: 'bathroom', label: 'Bathroom',        icon: Bath,      duration: 5 },
+  { id: 'lawn',     label: 'Lawn / Garden',   icon: Trees,     duration: 5 },
+  { id: 'parking',  label: 'Parking / Garage',icon: Car,       duration: 5 },
 ];
 
 // ── Prompt builder per room ───────────────────────────────────
@@ -182,6 +182,7 @@ export default function HomeTourTab() {
   const [continuousDuration, setContinuousDuration] = useState<10 | 20 | 30>(20);
   const [continuousScript, setContinuousScript] = useState('');
   const [continuousSegments, setContinuousSegments] = useState<{ segmentIndex: number; script: string; prompt: string }[]>([]);
+  const [selectedContinuousSegments, setSelectedContinuousSegments] = useState<Set<number>>(new Set());
   const [isGeneratingContinuousScript, setIsGeneratingContinuousScript] = useState(false);
   const [isGeneratingContinuousVideo, setIsGeneratingContinuousVideo] = useState(false);
 
@@ -192,7 +193,7 @@ export default function HomeTourTab() {
   const [rooms, setRooms] = useState<RoomSlot[]>(
     DEFAULT_ROOMS.map(r => ({
       ...r,
-      image: null,
+      images: [],
       script: '',
       prompt: '',
       generatedVideo: null,
@@ -215,15 +216,29 @@ export default function HomeTourTab() {
     const file = e.target.files?.[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
-    setRooms(prev => prev.map(r =>
-      r.id === roomId ? { ...r, image: { url, file } } : r
-    ));
+    setRooms(prev => prev.map(r => {
+      if (r.id === roomId && r.images.length < 3) {
+        return { ...r, images: [...r.images, { url, file }] };
+      }
+      return r;
+    }));
   };
 
   // ── Remove room image ─────────────────────────────────────────
-  const removeRoomImage = (roomId: string) => {
+  const removeRoomImage = (roomId: string, imageIndex: number) => {
+    setRooms(prev => prev.map(r => {
+      if (r.id === roomId) {
+        const newImages = [...r.images];
+        newImages.splice(imageIndex, 1);
+        return { ...r, images: newImages };
+      }
+      return r;
+    }));
+  };
+
+  const updateRoomDuration = (roomId: string, newDuration: number) => {
     setRooms(prev => prev.map(r =>
-      r.id === roomId ? { ...r, image: null } : r
+      r.id === roomId ? { ...r, duration: newDuration } : r
     ));
   };
 
@@ -233,11 +248,11 @@ export default function HomeTourTab() {
       id: `custom-${Date.now()}`,
       label: 'Custom Room',
       icon: Home,
-      image: null,
+      images: [],
       script: '',
       prompt: '',
       generatedVideo: null,
-      duration: 8,
+      duration: 5,
     };
     setRooms(prev => [...prev, newRoom]);
   };
@@ -251,7 +266,7 @@ export default function HomeTourTab() {
   const generateTourScripts = async () => {
     setIsGeneratingScripts(true);
     try {
-      const filledRooms = rooms.filter(r => r.image !== null);
+      const filledRooms = rooms.filter(r => r.images && r.images.length > 0);
       if (filledRooms.length === 0) {
         showToast('Upload at least one room photo first', 'error');
         return;
@@ -295,13 +310,18 @@ Property Details:
 For each room, generate:
 1. "script": A spoken monologue for this room.
    - It MUST be written in ${language} (if Dravidian/Hindi, write in that language's script).
-   - The script must fit the duration of the room (about 3 words per second: e.g., 12 words for 4s, 18 words for 6s, 24 words for 8s, 30 words for 10s).
-   - Keep it natural, warm, and highly engaging. Do not include labels like "HOOK:" or timestamps in the spoken script.
-   - CRITICAL TOUR SEQUENCE FLOW: Only the first room in the list should start with a greeting or welcome message. Subsequent rooms MUST transition smoothly without any "welcome" or greetings.
-2. "prompt": A detailed visual motion prompt (Veo video prompt) describing the video shot for this room.
-   - If "Has Realtor" is Yes, describe the realtor standing inside the room and gesturing.
-   - If No, describe a clean, professional cinematic walkthrough of the room.
-   - Always describe smooth camera movements, lighting, and photorealistic real estate aesthetics.
+   - The script must fit the duration of the room (target ~3 words per second: e.g., 12-15 words for 4-5s, 18-20 words for 6s, 24-25 words for 8s, 25-30 words for 10s).
+   - CRITICAL: Provide ONLY the raw spoken words. Do NOT include ANY timestamps (like [0:00 - 0:05]), room names (like "KITCHEN:"), speaker labels, or stage directions in the script text. Output strictly the monologue.
+   - CRITICAL RESTRICTION: You are STRICTLY FORBIDDEN from using the word "Welcome" or any greeting. Do not say "Welcome to this...". Start immediately with a transition or an engaging observation about the space (e.g. "Step into this beautiful...", "Notice the...", "Here we have...").
+2. "prompt": A detailed visual motion prompt describing the cinematic video shot for this room. Use this EXACT Universal Prompt Structure:
+   - REFERENCE LOCK: "Maintain the exact room layout, furniture placement, colors, materials, proportions, and architectural details from the reference image. Do not redesign, replace, remove, or reposition any furniture or decorative elements." If "Has Realtor" is Yes: "Preserve the realtor's facial identity, hairstyle, clothing, body proportions, and speaking style consistently throughout the entire shot."
+   - CHARACTER ACTION (If "Has Realtor" is Yes): Give the realtor specific, purposeful behavior (e.g., "confidently introduces each feature with natural pointing gestures, briefly looking toward the feature before returning her gaze to the camera").
+   - CAMERA BEHAVIOR: Make the realtor drive the camera. (e.g., "The camera smoothly follows her movement, revealing each feature only when she gestures toward it.") Use terms like "Smooth handheld gimbal movement with realistic operator motion, subtle acceleration and deceleration, maintaining stable framing."
+   - ENVIRONMENT REVEAL: Do NOT force a list of objects. Let the camera discover the room (e.g., "the camera gradually reveals the room's key architectural features and premium furnishings").
+   - LIGHTING: Do NOT over-specify lighting. Simply write: "Preserve the lighting exactly as shown in the reference image, enhancing only the natural warmth and depth without altering the room's original mood."
+   - CONTINUITY: "One continuous cinematic shot. No cuts. Consistent identity."
+   - ENDING: End stronger. (e.g., "The camera settles into a balanced hero composition while the realtor finishes her sentence with a warm smile, holding a relaxed presentation pose before the shot ends.")
+   - DIALOGUE INCLUSION: You MUST include the exact spoken dialogue from the "script" inside this "prompt" field so the director knows what is being said. Format it like: "The character says: '[exact dialogue]'. When it cuts to B-roll, voiceover continues: '[exact dialogue]'."
 
 Return a JSON array of objects, each object structured as:
 {
@@ -346,15 +366,43 @@ Return a JSON array of objects, each object structured as:
       // Fallback to client-side
       if (!responseText) {
         const ai = new GoogleGenAI({ apiKey: getApiKey() });
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: tourScriptPrompt,
-          config: {
-            responseMimeType: 'application/json',
-            responseSchema,
+      let parts: any[] = [{ text: tourScriptPrompt }];
+      const imagesFound = [];
+
+      for (const r of filledRoomsWithTimes) {
+        if (r.images && r.images.length > 0) {
+          try {
+            for (const img of r.images) {
+              const blob = await fetchImageAsBlob(img.url);
+              const base64 = await fileToBase64(blob);
+              parts.push({ text: `\n--- Photo of ${r.label} ---` });
+              parts.push({
+                inlineData: {
+                  data: base64,
+                  mimeType: blob.type || 'image/jpeg'
+                }
+              });
+            }
+            imagesFound.push(r.label);
+          } catch (e) {
+            console.warn(`Failed to attach image for ${r.label}`, e);
           }
-        });
-        responseText = response.text;
+        }
+      }
+
+      if (imagesFound.length > 0) {
+        parts[0].text = `IMPORTANT VISUAL CONTEXT: I have attached photos for the following rooms: ${imagesFound.join(', ')}. \n\nCRITICAL INSTRUCTION: You MUST visually analyze these photos. Do NOT hallucinate generic room descriptions. Your "script" and "prompt" MUST accurately describe the specific furniture, colors, layout, windows, and architectural details visible in these exact images.\n\n` + parts[0].text;
+      }
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: parts,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema,
+        }
+      });
+      responseText = response.text;
       }
 
       if (!responseText) throw new Error('Empty response from AI');
@@ -394,7 +442,7 @@ Return a JSON array of objects, each object structured as:
 
     setIsGeneratingSingleScript(true);
     try {
-      const filledRooms = rooms.filter(r => r.image !== null);
+      const filledRooms = rooms.filter(r => r.images && r.images.length > 0);
       let offset = 0;
       let timeRange = '';
       
@@ -437,13 +485,18 @@ Property Details:
 Please generate:
 1. "script": A spoken monologue for this room. 
    - It MUST be written in ${language} (if Dravidian/Hindi, write in that language's script, e.g., Telugu script for Telugu, Devanagari script for Hindi).
-   - The script must fit the duration of the room (about 3 words per second: e.g., 12 words for 4s, 18 words for 6s, 24 words for 8s, 30 words for 10s).
-   - Keep it natural, warm, and highly engaging. Do not include labels like "HOOK:" or timestamps in the spoken script.
-   - CRITICAL TOUR SEQUENCE FLOW: ${isFirstRoom ? "This is the very first room of the tour. Start the monologue with an engaging welcome/greeting (e.g., 'Welcome to...')." : "This is NOT the first room of the tour. Do NOT include any welcome, greeting, or introductory phrase. Instead, start directly or with a smooth transition (e.g. 'Next we step into...', 'Entering the...'). Do not write 'Welcome'."}
-2. "prompt": A detailed visual motion prompt (Veo video prompt) describing the video shot for this room. 
-   - If "Has Realtor" is Yes, describe the realtor standing inside the room and gesturing.
-   - If No, describe a clean, professional cinematic walkthrough of the room.
-   - Always describe smooth camera movements, lighting, and photorealistic real estate aesthetics.
+   - The script must fit the duration of the room (target ~3 words per second: e.g., 12-15 words for 4-5s, 18-20 words for 6s, 24-25 words for 8s, 25-30 words for 10s).
+   - CRITICAL: Provide ONLY the raw spoken words. Do NOT include ANY timestamps (like [0:00 - 0:05]), room names (like "KITCHEN:"), speaker labels, or stage directions in the script text. Output strictly the monologue.
+   - CRITICAL RESTRICTION: You are STRICTLY FORBIDDEN from using the word "Welcome" or any greeting. Do not say "Welcome to this...". Start immediately with an engaging observation about the space (e.g. "Step into this beautiful...", "Notice the...", "Here we have...").
+2. "prompt": A detailed visual motion prompt describing the cinematic video shot for this room. Use this EXACT Universal Prompt Structure:
+   - REFERENCE LOCK: "Maintain the exact room layout, furniture placement, colors, materials, proportions, and architectural details from the reference image. Do not redesign, replace, remove, or reposition any furniture or decorative elements." If "Has Realtor" is Yes: "Preserve the realtor's facial identity, hairstyle, clothing, body proportions, and speaking style consistently throughout the entire shot."
+   - CHARACTER ACTION (If "Has Realtor" is Yes): Give the realtor specific, purposeful behavior (e.g., "confidently introduces each feature with natural pointing gestures, briefly looking toward the feature before returning her gaze to the camera").
+   - CAMERA BEHAVIOR: Make the realtor drive the camera. (e.g., "The camera smoothly follows her movement, revealing each feature only when she gestures toward it.") Use terms like "Smooth handheld gimbal movement with realistic operator motion, subtle acceleration and deceleration, maintaining stable framing."
+   - ENVIRONMENT REVEAL: Do NOT force a list of objects. Let the camera discover the room (e.g., "the camera gradually reveals the room's key architectural features and premium furnishings").
+   - LIGHTING: Do NOT over-specify lighting. Simply write: "Preserve the lighting exactly as shown in the reference image, enhancing only the natural warmth and depth without altering the room's original mood."
+   - CONTINUITY: "One continuous cinematic shot. No cuts. Consistent identity."
+   - ENDING: End stronger. (e.g., "The camera settles into a balanced hero composition while the realtor finishes her sentence with a warm smile, holding a relaxed presentation pose before the shot ends.")
+   - DIALOGUE INCLUSION: You MUST include the exact spoken dialogue from the "script" inside this "prompt" field so the director knows what is being said. Format it like: "The character says: '[exact dialogue]'. When it cuts to B-roll, voiceover continues: '[exact dialogue]'."
 
 Return a JSON object structured exactly as:
 {
@@ -452,9 +505,29 @@ Return a JSON object structured exactly as:
 }
       `.trim();
 
+      let parts: any[] = [{ text: prompt }];
+
+      if (room.images && room.images.length > 0) {
+        try {
+          for (const img of room.images) {
+            const blob = await fetchImageAsBlob(img.url);
+            const base64 = await fileToBase64(blob);
+            parts.push({
+              inlineData: {
+                data: base64,
+                mimeType: blob.type || 'image/jpeg'
+              }
+            });
+          }
+          parts[0].text = `IMPORTANT VISUAL CONTEXT: I have attached photos of this room.\n\nCRITICAL INSTRUCTION: You MUST visually analyze these photos. Do NOT hallucinate generic room descriptions. Your "script" and "prompt" MUST accurately describe the specific furniture, colors, layout, windows, and architectural details visible in these exact images.\n\n` + parts[0].text;
+        } catch (e) {
+          console.warn('Failed to attach image for script gen', e);
+        }
+      }
+
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: prompt,
+        contents: parts,
         config: {
           responseMimeType: 'application/json',
           responseSchema: {
@@ -491,7 +564,7 @@ Return a JSON object structured exactly as:
 
   // ── Generate AI script for continuous walkthrough ───────────────
   const generateContinuousTourScript = async () => {
-    const filledRooms = rooms.filter(r => r.image !== null);
+    const filledRooms = rooms.filter(r => r.images && r.images.length > 0);
     if (filledRooms.length < 2) {
       showToast('Please upload photos for at least 2 rooms first', 'error');
       return;
@@ -609,6 +682,7 @@ Return a JSON object structured exactly as:
 
       setContinuousScript(generated.script);
       setContinuousSegments(generated.segments);
+      setSelectedContinuousSegments(new Set(generated.segments.map((s: any) => s.segmentIndex)));
       showToast(`Continuous script generated for ${numSegments} transition segments!`, 'success');
     } catch (e) {
       handleApiError(e, 'Continuous script generation');
@@ -618,8 +692,8 @@ Return a JSON object structured exactly as:
   };
 
   // ── Generate Video for Continuous Walkthrough ───────────────────
-  const generateContinuousVideo = async () => {
-    const filledRooms = rooms.filter(r => r.image !== null);
+  const generateContinuousVideo = async (specificSegmentIndex?: number) => {
+    const filledRooms = rooms.filter(r => r.images && r.images.length > 0);
     if (filledRooms.length < 2) {
       showToast('Please upload photos for at least 2 rooms first', 'error');
       return;
@@ -631,25 +705,62 @@ Return a JSON object structured exactly as:
       return;
     }
 
+    const isSingle = typeof specificSegmentIndex === 'number';
+    let segmentsToGenerateList: number[] = [];
+    if (isSingle) {
+      segmentsToGenerateList = [specificSegmentIndex!];
+    } else {
+      segmentsToGenerateList = Array.from(selectedContinuousSegments).sort((a,b) => a-b);
+    }
+
+    if (segmentsToGenerateList.length === 0) {
+      showToast('Please select at least one segment to generate', 'error');
+      return;
+    }
+
+    const segmentsToGenerate = segmentsToGenerateList.length;
+
     const segmentDuration = 10;
     const singleSegmentCost = getCurrentCost(false, segmentDuration);
-    const totalCost = singleSegmentCost * numSegments;
+    const totalCost = singleSegmentCost * segmentsToGenerate;
 
     if (!isAdmin && !isGlobalAdmin) {
       const spendRes = await spend('veo_fast', totalCost as any);
       if (!spendRes?.success) {
-        showToast(`Need ${totalCost} Shorts to generate continuous walkthrough`, 'error');
+        showToast(`Need ${totalCost} Shorts to generate walkthrough`, 'error');
         return;
       }
     }
 
     setIsGeneratingContinuousVideo(true);
-    setVideoProgressMsg(`Starting continuous walkthrough (0/${numSegments} segments)...`);
+    setVideoProgressMsg(`Starting continuous walkthrough...`);
 
+    const pendingGalleryIds: string[] = [];
     try {
-      const generatedClips: { index: number; url: string; roomId: string }[] = [];
+      const generatedClips: { index: number; url: string; roomId: string; galleryId: string }[] = [];
 
-      for (let i = 0; i < numSegments; i++) {
+      for (const i of segmentsToGenerateList) {
+        if (i >= filledRooms.length - 1) continue;
+        const startRoom = filledRooms[i];
+        const endRoom = filledRooms[i + 1];
+        const galleryId = `room-vid-${startRoom?.id || i}-${Date.now()}`;
+        pendingGalleryIds.push(galleryId);
+
+        const segmentData = continuousSegments.find(s => s.segmentIndex === i) || {
+          prompt: `Camera moves from ${startRoom.label} to ${endRoom.label}...`
+        };
+
+        addToGallery({
+          id: galleryId,
+          type: 'video',
+          url: '',
+          loading: true,
+          prompt: segmentData.prompt
+        });
+      }
+
+      for (const i of segmentsToGenerateList) {
+        if (i >= filledRooms.length - 1) continue;
         const startRoom = filledRooms[i];
         const endRoom = filledRooms[i + 1];
         const segmentData = continuousSegments.find(s => s.segmentIndex === i) || {
@@ -670,7 +781,7 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
 
           const refImages = [
             { url: realtorImg.url || URL.createObjectURL(realtorImg.file) },
-            { url: startRoom.image!.url }
+            { url: startRoom.images[0].url }
           ];
 
           const compResponse = await fetch(getApiUrl('/api/generate-image'), {
@@ -714,8 +825,8 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
           }
         }
 
-        if (!imagePayload && startRoom.image) {
-          const blob = await fetchImageAsBlob(startRoom.image.url);
+        if (!imagePayload && startRoom.images && startRoom.images.length > 0) {
+          const blob = await fetchImageAsBlob(startRoom.images[0].url);
           const base64 = await resizeImage(blob);
           imagePayload = { imageBytes: base64, mimeType: 'image/jpeg' };
         }
@@ -727,27 +838,52 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
           finalPrompt += `\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.`;
         }
 
+        if (includeAudio && segmentData.script) {
+          // Clean accidental UI labels like "[0:00 - 0:10] BEDROOM 2:" that AI sometimes hallucinates
+          const cleanScript = segmentData.script.replace(/^\[.*?\]\s*(.*?:\s*)?/, '').trim();
+          finalPrompt += `\n\nThe person in the video is speaking to the camera. They say exactly: "${cleanScript}"`;
+        }
+
         let imageToSend = '';
         if (imagePayload) {
           imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
         }
 
         let refImagesList: any[] = [];
-        if (endRoom.image) {
-          try {
-            const blob = await fetchImageAsBlob(endRoom.image.url);
-            const base64 = await resizeImage(blob);
-            refImagesList.push({ url: `data:image/jpeg;base64,${base64}` });
-          } catch (e) {
-            console.warn('[HomeTour-Omni] Failed to resolve end room reference image:', e);
+        // Add startRoom secondary images
+        if (startRoom.images && startRoom.images.length > 1) {
+          for (let imgIdx = 1; imgIdx < startRoom.images.length; imgIdx++) {
+            try {
+              const blob = await fetchImageAsBlob(startRoom.images[imgIdx].url);
+              const base64 = await resizeImage(blob);
+              refImagesList.push({ url: `data:image/jpeg;base64,${base64}` });
+            } catch(e) { }
           }
         }
-        if (realtorImg) {
-          try {
-            const base64 = await resizeImage(realtorImg.file);
-            refImagesList.push({ url: `data:${realtorImg.file.type || 'image/jpeg'};base64,${base64}` });
-          } catch (e) {
-            console.warn('[HomeTour-Omni] Failed to resolve realtor reference image:', e);
+
+        if (endRoom.images && endRoom.images.length > 0) {
+          for (const img of endRoom.images) {
+            try {
+              const blob = await fetchImageAsBlob(img.url);
+              const base64 = await resizeImage(blob);
+              refImagesList.push({ url: `data:image/jpeg;base64,${base64}` });
+            } catch (e) {
+              console.warn('[HomeTour-Omni] Failed to resolve end room reference image:', e);
+            }
+          }
+        }
+
+        // Attach up to 2 other rooms from the sidebar to give the model more context
+        const otherRooms = filledRooms.filter(r => r.id !== startRoom.id && r.id !== endRoom.id).slice(0, 2);
+        for (const r of otherRooms) {
+          if (r.images && r.images.length > 0) {
+            try {
+              const blob = await fetchImageAsBlob(r.images[0].url);
+              const base64 = await resizeImage(blob);
+              refImagesList.push({ url: `data:image/jpeg;base64,${base64}` });
+            } catch (e) {
+              console.warn('[HomeTour-Omni] Failed to resolve other room reference image:', e);
+            }
           }
         }
 
@@ -768,12 +904,13 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
           })
         });
 
+        const galleryId = pendingGalleryIds[segmentsToGenerateList.indexOf(i)];
         const data = await resp.json();
         if (!resp.ok || !data.videoUrl) {
           throw new Error(data.error || `Segment ${i+1} generation failed`);
         }
 
-        generatedClips.push({ index: i, url: data.videoUrl, roomId: startRoom.id });
+        generatedClips.push({ index: i, url: data.videoUrl, roomId: startRoom.id, galleryId });
       }
 
       setRooms(prev => prev.map(r => {
@@ -793,17 +930,28 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
       }));
 
       generatedClips.forEach(clip => {
-        const startRoom = filledRooms.find(r => r.id === clip.roomId);
-        addToGallery({
-          id: `room-vid-${startRoom?.id || clip.index}-${Date.now()}`,
-          type: 'video',
-          url: clip.url,
-          loading: false
+        updateGalleryItem(clip.galleryId, {
+          loading: false,
+          url: clip.url
         });
+        setTimeline(prev => [
+          ...prev,
+          {
+            id: clip.galleryId,
+            url: clip.url,
+            start: 0,
+            end: segmentDuration,
+            duration: segmentDuration,
+            type: 'video'
+          }
+        ]);
       });
 
       showToast(`Successfully generated ${numSegments} continuous transition segments!`, 'success');
     } catch (e: any) {
+      pendingGalleryIds.forEach(id => {
+         updateGalleryItem(id, { loading: false, error: e.message });
+      });
       if (!isAdmin && !isGlobalAdmin) {
         refund('veo_fast', totalCost as any);
       }
@@ -836,7 +984,7 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
 
     try {
       let prompt = '';
-      let refImages: string[] | undefined = undefined;
+      let refImages: any[] | undefined = undefined;
 
       const getBase64WithPrefix = async (imgObj: { url?: string; file?: File }) => {
         let blob = imgObj.file;
@@ -846,18 +994,18 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
         return `data:${blob.type || 'image/jpeg'};base64,${b64}`;
       };
 
-      if (realtorImg && room.image) {
+      if (realtorImg && room.images && room.images.length > 0) {
         prompt = `The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the ${room.label} of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the ${room.label}, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.`;
         refImages = [
-          await getBase64WithPrefix({ file: realtorImg.file }),
-          await getBase64WithPrefix(room.image)
+          { url: await getBase64WithPrefix({ file: realtorImg.file }) },
+          { url: await getBase64WithPrefix(room.images[0]) }
         ];
-      } else if (realtorImg && !room.image) {
+      } else if (realtorImg && (!room.images || room.images.length === 0)) {
         prompt = `Ultra realistic photo of a real estate agent standing inside a ${room.label}. CRITICAL: The agent's face and likeness MUST exactly match the provided reference photo. Natural lighting, warm and welcoming, lifelike textures, ultra-realistic.`;
-        refImages = [await getBase64WithPrefix({ file: realtorImg.file })];
-      } else if (!realtorImg && room.image) {
+        refImages = [{ url: await getBase64WithPrefix({ file: realtorImg.file }) }];
+      } else if (!realtorImg && room.images && room.images.length > 0) {
         prompt = `Ultra realistic architectural photography of a ${room.label}. Enhance the provided room photo. Lifelike textures, bright natural lighting, ultra-realistic, 8k resolution.`;
-        refImages = [await getBase64WithPrefix(room.image)];
+        refImages = [{ url: await getBase64WithPrefix(room.images[0]) }];
       } else {
         prompt = `Ultra realistic architectural photography of a ${room.label}. Lifelike textures, bright natural lighting, ultra-realistic, 8k resolution.`;
         refImages = undefined;
@@ -909,7 +1057,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
           const url = URL.createObjectURL(blob);
           
           setRooms(prev => prev.map(r => 
-            r.id === room.id ? { ...r, image: { url, file } } : r
+            r.id === room.id ? { ...r, images: [{ url, file }] } : r
           ));
           updateGalleryItem(galleryId, { loading: false, url, prompt });
           showToast(`${room.label} image generated!`, 'success');
@@ -931,7 +1079,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
   // ── Generate video for single room ───────────────────────────
   const generateRoomVideo = async (room: RoomSlot) => {
-    if (!room.image) {
+    if (!room.images || room.images.length === 0) {
       showToast('Upload a photo for this room first', 'error');
       return;
     }
@@ -957,7 +1105,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
       // Build image payload — combine realtor + room image
       let imagePayload: { imageBytes: string; mimeType: string } | undefined;
 
-      if (realtorImg && room.image) {
+      if (realtorImg && room.images && room.images.length > 0) {
         let compositePrompt = `
 The FIRST image is the REALTOR/AGENT reference photo.
 The SECOND image is the ${room.label} of a property.
@@ -983,9 +1131,9 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
           return `data:${blob.type || 'image/jpeg'};base64,${b64}`;
         };
 
-        const refImages: string[] = [
-          await getBase64WithPrefix({ file: realtorImg.file }),
-          await getBase64WithPrefix(room.image)
+        const refImages: any[] = [
+          { url: await getBase64WithPrefix({ file: realtorImg.file }) },
+          { url: await getBase64WithPrefix(room.images[0]) }
         ];
 
         const response = await fetch(getApiUrl('/api/generate-image'), {
@@ -1030,9 +1178,9 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             imagePayload = { imageBytes: base64, mimeType: 'image/jpeg' };
           }
         }
-      } else if (room.image) {
+      } else if (room.images && room.images.length > 0) {
         // Just use room image directly
-        const blob = await fetchImageAsBlob(room.image.url);
+        const blob = await fetchImageAsBlob(room.images[0].url);
         const base64 = await resizeImage(blob);
         imagePayload = { imageBytes: base64, mimeType: 'image/jpeg' };
       }
@@ -1042,8 +1190,8 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         roomScript: room.script || `Welcome to the ${room.label}`,
         hasRealtor: !!realtorImg,
         propertyName: propertyName || 'Realistic Property',
-        shotIndex: rooms.filter(r => r.image).findIndex(r => r.id === room.id),
-        totalRooms: rooms.filter(r => r.image).length,
+        shotIndex: rooms.filter(r => r.images && r.images.length > 0).findIndex(r => r.id === room.id),
+        totalRooms: rooms.filter(r => r.images && r.images.length > 0).length,
         tourStyle,
       });
 
@@ -1066,6 +1214,12 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
           finalPrompt += `\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.`;
         }
 
+        if (includeAudio && room.script) {
+          // Clean accidental UI labels like "[0:00 - 0:10] BEDROOM 2:" that AI sometimes hallucinates
+          const cleanScript = room.script.replace(/^\[.*?\]\s*(.*?:\s*)?/, '').trim();
+          finalPrompt += `\n\nThe person in the video is speaking to the camera. They say exactly: "${cleanScript}"`;
+        }
+
         const headers: any = { 'Content-Type': 'application/json' };
         const customKey = getApiKey();
         if (customKey) headers['x-admin-trial-key'] = customKey;
@@ -1078,6 +1232,20 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             refImagesList.push({ url: `data:${realtorImg.file.type || 'image/jpeg'};base64,${base64}` });
           } catch (e) {
             console.warn('[HomeTour-Omni] Failed to resolve realtor reference image:', e);
+          }
+        }
+
+        // Attach up to 3 other rooms from the sidebar to give the model more context
+        const otherRooms = rooms.filter(r => r.images && r.images.length > 0 && r.id !== room.id).slice(0, 3);
+        for (const r of otherRooms) {
+          if (r.images && r.images.length > 0) {
+            try {
+              const blob = await fetchImageAsBlob(r.images[0].url);
+              const base64 = await resizeImage(blob);
+              refImagesList.push({ url: `data:image/jpeg;base64,${base64}` });
+            } catch (e) {
+              console.warn('[HomeTour-Omni] Failed to resolve other room reference image:', e);
+            }
           }
         }
 
@@ -1227,7 +1395,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
   // ── Generate ALL rooms sequentially ──────────────────────────
   const generateFullTour = async () => {
-    const filledRooms = rooms.filter(r => r.image !== null);
+    const filledRooms = rooms.filter(r => r.images && r.images.length > 0);
     if (filledRooms.length === 0) {
       showToast('Upload room photos first', 'error');
       return;
@@ -1258,9 +1426,9 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
   };
 
   // ── Helpers ───────────────────────────────────────────────────
-  const filledRoomCount = rooms.filter(r => r.image).length;
+  const filledRoomCount = rooms.filter(r => r.images && r.images.length > 0).length;
   const totalDuration = rooms
-    .filter(r => r.image)
+    .filter(r => r.images && r.images.length > 0)
     .reduce((acc, r) => acc + r.duration, 0);
   const activeRoom = rooms.find(r => r.id === activeRoomId) || rooms[0];
 
@@ -1327,18 +1495,36 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">
               Rooms <span className="text-[#c8f135]">{filledRoomCount}</span>/{rooms.length}
             </p>
-            <button
-              onClick={addCustomRoom}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-[7px] font-black uppercase text-white/40 hover:text-[#c8f135] hover:border-[#c8f135]/30 transition-all"
-            >
-              <Plus size={9} /> Add Room
-            </button>
+            <div className="flex gap-1">
+              <button
+                onClick={() => {
+                  setRooms(DEFAULT_ROOMS.map(r => ({
+                    ...r,
+                    images: [],
+                    script: '',
+                    prompt: '',
+                    generatedVideo: null,
+                  })));
+                  setActiveRoomId(DEFAULT_ROOMS[0].id);
+                }}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-[7px] font-black uppercase text-red-400 hover:text-red-300 hover:border-red-400/30 transition-all"
+                title="Reset to default rooms"
+              >
+                <RefreshCw size={9} /> Reset
+              </button>
+              <button
+                onClick={addCustomRoom}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-[7px] font-black uppercase text-white/40 hover:text-[#c8f135] hover:border-[#c8f135]/30 transition-all"
+              >
+                <Plus size={9} /> Add Room
+              </button>
+            </div>
           </div>
 
           {rooms.map(room => {
             const RoomIcon = room.icon;
             const isActive = room.id === activeRoomId;
-            const hasImage = !!room.image;
+            const hasImage = room.images && room.images.length > 0;
             const hasVideo = !!room.generatedVideo;
             const isGenerating = generatingRoomId === room.id;
 
@@ -1356,7 +1542,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                 <div className="relative shrink-0 w-10 h-10 rounded-lg overflow-hidden border border-white/10">
                   {hasImage ? (
                     <img
-                      src={resolveUrl(room.image!.url)}
+                      src={resolveUrl(room.images[0].url)}
                       className="w-full h-full object-cover"
                       alt={room.label}
                     />
@@ -1391,34 +1577,41 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                 </div>
 
                 {/* Upload trigger */}
-                <label
-                  className="shrink-0 cursor-pointer"
-                  onClick={e => e.stopPropagation()}
-                >
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={e => handleRoomUpload(room.id, e)}
-                  />
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
-                    hasImage
-                      ? 'bg-[#c8f135]/10 border border-[#c8f135]/30 text-[#c8f135]'
-                      : 'bg-white/5 border border-white/10 text-white/30 hover:border-[#c8f135]/40 hover:text-[#c8f135]'
-                  }`}>
-                    {hasImage ? <Camera size={10} /> : <Upload size={10} />}
-                  </div>
-                </label>
+                <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                  {room.images && room.images.map((img, idx) => (
+                    <div key={idx} className="relative w-7 h-7 rounded-lg overflow-hidden border border-[#c8f135]/30">
+                      <img src={resolveUrl(img.url)} className="w-full h-full object-cover" alt="" />
+                      <button
+                        onClick={() => removeRoomImage(room.id, idx)}
+                        className="absolute top-0 right-0 w-3 h-3 bg-red-500/80 rounded-bl flex items-center justify-center hover:bg-red-500 transition-colors"
+                      >
+                        <X size={6} className="text-white" />
+                      </button>
+                    </div>
+                  ))}
+                  
+                  {(!room.images || room.images.length < 3) && (
+                    <label className="shrink-0 cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => handleRoomUpload(room.id, e)}
+                      />
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 border border-white/10 text-white/30 hover:border-[#c8f135]/40 hover:text-[#c8f135] transition-all">
+                        <Upload size={10} />
+                      </div>
+                    </label>
+                  )}
+                </div>
 
-                {/* Remove custom room */}
-                {room.id.startsWith('custom-') && (
-                  <button
-                    onClick={e => { e.stopPropagation(); removeRoom(room.id); }}
-                    className="shrink-0 w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center hover:bg-red-500 transition-colors"
-                  >
-                    <X size={8} className="text-red-400 hover:text-white" />
-                  </button>
-                )}
+                {/* Remove room */}
+                <button
+                  onClick={e => { e.stopPropagation(); removeRoom(room.id); }}
+                  className="shrink-0 w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center hover:bg-red-500 transition-colors"
+                >
+                  <X size={8} className="text-red-400 hover:text-white" />
+                </button>
               </div>
             );
           })}
@@ -1720,7 +1913,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
                         {/* Action buttons */}
                         <div className="space-y-1.5">
-                          {activeRoom.image ? (
+                          {(activeRoom.images && activeRoom.images.length > 0) ? (
                             <button
                               onClick={() => generateRoomVideo(activeRoom)}
                               disabled={!!generatingRoomId || isGeneratingVideo}
@@ -1831,7 +2024,29 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                           <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1 custom-scrollbar flex-1">
                             {continuousSegments.map(seg => (
                               <div key={seg.segmentIndex} className="p-1.5 rounded bg-black/30 border border-white/5 space-y-1">
-                                <p className="text-[7px] font-black uppercase text-[#c8f135]/80">Segment {seg.segmentIndex + 1} (10s)</p>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5">
+                                    <input 
+                                      type="checkbox"
+                                      checked={selectedContinuousSegments.has(seg.segmentIndex)}
+                                      onChange={() => {
+                                        const newSet = new Set(selectedContinuousSegments);
+                                        if (newSet.has(seg.segmentIndex)) newSet.delete(seg.segmentIndex);
+                                        else newSet.add(seg.segmentIndex);
+                                        setSelectedContinuousSegments(newSet);
+                                      }}
+                                      className="w-3 h-3 rounded bg-black/40 border border-white/20 accent-[#c8f135]"
+                                    />
+                                    <p className="text-[7px] font-black uppercase text-[#c8f135]/80">Segment {seg.segmentIndex + 1} (10s)</p>
+                                  </div>
+                                  <button
+                                    onClick={() => generateContinuousVideo(seg.segmentIndex)}
+                                    disabled={isGeneratingContinuousVideo}
+                                    className="px-1.5 py-0.5 rounded bg-[#c8f135]/10 hover:bg-[#c8f135]/20 text-[#c8f135] text-[7px] font-black uppercase tracking-wider transition-all"
+                                  >
+                                    Gen
+                                  </button>
+                                </div>
                                 <p className="text-[8px] font-mono text-white/55 leading-relaxed">{seg.prompt}</p>
                               </div>
                             ))}
@@ -1883,7 +2098,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                         <div className="space-y-1.5">
                           {filledRoomCount >= 2 ? (
                             <button
-                              onClick={generateContinuousVideo}
+                              onClick={() => generateContinuousVideo()}
                               disabled={isGeneratingContinuousVideo || continuousSegments.length === 0}
                               className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
                                 isGeneratingContinuousVideo || continuousSegments.length === 0

@@ -289,7 +289,10 @@ export default function UGC() {
 
     const hasCustomKey = !!localStorage.getItem('GOOGLE_API_KEY');
 
-    if (errorMsg.toLowerCase().includes('prepayment credits') || errorMsg.toLowerCase().includes('depleted')) {
+    if (errorMsg.toLowerCase().includes('insufficient credits') || errorMsg.toLowerCase().includes('insufficient balance') || errorMsg.toLowerCase().includes('insufficient shorts')) {
+      showToast(errorMsg, 'error');
+      useAppStore.getState().setActiveTab('pricing');
+    } else if (errorMsg.toLowerCase().includes('prepayment credits') || errorMsg.toLowerCase().includes('depleted')) {
       showToast("Gemini API Prepayment Credits Depleted. Please top up your billing in Google AI Studio.", 'error');
     } else if (errorMsg.includes('Quota exceeded') || errorMsg.includes('429')) {
       if (hasCustomKey) {
@@ -2603,6 +2606,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       const spendRes = await spend('veo_fast', imgCost as any);
       if (!spendRes || !spendRes.success) {
         showToast(`Insufficient Credits: You need ${imgCost} Shorts to generate an image.`, 'error');
+        useAppStore.getState().setActiveTab('pricing');
         return '';
       }
     }
@@ -2896,6 +2900,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       const spendRes = await spend('veo_fast', unitCost as any);
       if (!spendRes || !spendRes.success) {
         showToast(`Insufficient Credits: You need ${unitCost} Shorts to generate video.`, 'error');
+        useAppStore.getState().setActiveTab('pricing');
         return;
       }
     }
@@ -3545,6 +3550,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       const spendRes = await spend('veo_fast', imgCost as any);
       if (!spendRes || !spendRes.success) {
         showToast(`Insufficient Credits: You need ${imgCost} Shorts to generate this image.`, 'error');
+        useAppStore.getState().setActiveTab('pricing');
         return '';
       }
     }
@@ -3808,6 +3814,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
       const spendRes = await spend('veo_fast', unitCost as any);
       if (!spendRes || !spendRes.success) {
         showToast(`Insufficient Credits: You need ${unitCost} Shorts to generate video.`, 'error');
+        useAppStore.getState().setActiveTab('pricing');
         return;
       }
     }

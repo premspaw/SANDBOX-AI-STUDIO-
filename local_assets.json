@@ -1,5 +1,621 @@
 [
   {
+    "id": "local_1783971458675_w9cr8",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783971458267.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783971458267.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the LOCATION/STAGE reference.\n        TASK: Generate ONE single, coherent UGC-style photo of this EXACT person in this EXACT environment/location.\n        Scene: 🎙️ Normal Talking — A real person naturally using/holding the product in an authentic home environment. Ultra-realistic UGC photo, natural l.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and environment precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T19:37:38.675Z"
+  },
+  {
+    "id": "local_1783971434268_9kauf",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783971433847.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783971433847.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the LOCATION/STAGE reference.\n        TASK: Generate ONE single, coherent UGC-style photo of this EXACT person in this EXACT environment/location.\n        Scene: 🎙️ Normal Talking — A real person naturally using/holding the product in an authentic home environment. Ultra-realistic UGC photo, natural l.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and environment precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T19:37:14.268Z"
+  },
+  {
+    "id": "local_1783970952032_vpuuz",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783970950647.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783970950647.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "a bustling modern pedestrian street in a city with glass buildings, trees, retail shops, and a steady stream of pedestrians. Bright sunny daytime. A young professional woman in a black blazer, gold necklace with pendant, and wire-rimmed glasses walks backward down the pedestrian street facing the camera. She holds up a promotional flyer or poster, smiling broadly and speaking enthusiastically. Creative transition: the camera zooms directly into the flyer, and the presenter's face replaces a placeholder on the flyer. Camera zooms back out to a close-up portrait. Then a POV switch: hands appear from the camera perspective holding the flyer while the presenter stands in front, smiling warmly. Finally, she spins around, walks away from camera waving the flyer in the air, looks back over her shoulder with a big happy smile. The product packaging or promotional material stays fully visible and undistorted. Preserve the person's recognizable face identity. Clean visual storytelling without on",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T19:29:12.032Z"
+  },
+  {
+    "id": "local_1783969282481_1sziv",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783969281749.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783969281749.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "Maintain the exact room layout, furniture placement, colors, materials, proportions, and architectural details from the reference image. Do not redesign, replace, remove, or reposition any furniture or decorative elements. Preserve the realtor's facial identity, hairstyle, clothing, body proportions, and speaking style consistently throughout the entire shot. The realtor confidently introduces the features of this modern kitchen, gesturing with an open hand towards the innovative pull-out spice rack and then sweeping her gaze across the sleek cabinetry and integrated appliances. The camera smoothly follows her movement, revealing the hexagonal tiled backsplash, the black gas hob, and the warm under-cabinet lighting as she gestures towards them. The shot employs smooth handheld gimbal movement with realistic operator motion, subtle acceleration and deceleration, maintaining stable framing. The camera gradually reveals the room's key architectural features, including the cream-gloss cabinets, dark countertops, a black chimney hood, and the elegant wooden trim with recessed lighting above the upper cabinets, along with the bright, reflective floor tiles and toe-kick lighting. Preserve the lighting exactly as shown in the reference image, enhancing only the natural warmth and depth without altering the room's original mood. One continuous cinematic shot. No cuts. Consistent identity. The camera settles into a balanced hero composition, framing the realtor with the modern kitchen as her backdrop, while she finishes her sentence with a warm smile, holding a relaxed presentation pose before the shot ends. The character says: 'Discover this incredible space featuring sleek cream cabinetry and dark countertops. Notice the stylish hexagonal backsplash, integrated gas hob, and premium under-cabinet lighting, perfect for your culinary creations.'\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. The background structure, walls, kitchen counter",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T19:01:22.481Z"
+  },
+  {
+    "id": "local_1783969237731_7kz1l",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783969236805.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783969236805.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Living Room of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Living Room, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T19:00:37.731Z"
+  },
+  {
+    "id": "local_1783969150672_38dxw",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783969149737.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783969149737.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Living Room of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Living Room, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T18:59:10.672Z"
+  },
+  {
+    "id": "local_1783969113366_oi23q",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783969111597.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783969111597.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Kitchen, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T18:58:33.366Z"
+  },
+  {
+    "id": "local_1783969082044_hagii",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783969081112.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783969081112.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Kitchen, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T18:58:02.044Z"
+  },
+  {
+    "id": "local_1783967878544_rw4y0",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783967877926.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783967877926.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "Camera smoothly dollies from a wide shot of the living room, then pivots and leads the viewer into the kitchen, showing the seamless transition and revealing the kitchen's main features.\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. The background structure, walls, cabinets, furniture, and geometric details MUST remain 100% stable. No transitions, no flips. Only smooth, steady forward walkthrough camera motion.\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.\n\nThe person in the video is speaking to the camera. They say exactly: \"Welcome! Step into this bright, inviting living room, perfect for relaxation and entertaining. Notice the beautiful open flow into this incredible kitchen, truly the heart of the home.\"",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T18:37:58.544Z"
+  },
+  {
+    "id": "local_1783967813686_jsdna",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783967812557.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783967812557.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Living Room of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Living Room, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T18:36:53.686Z"
+  },
+  {
+    "id": "local_1783966729706_0bt08",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783966729324.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783966729324.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "Maintain the exact room layout, furniture placement, colors, materials, proportions, and architectural details from the reference image. Do not redesign, replace, remove, or reposition any furniture or decorative elements. Preserve the realtor's facial identity, hairstyle, clothing, body proportions, and speaking style consistently throughout the entire shot. The realtor confidently introduces the kitchen, gesturing with her open right hand towards the elegant wooden upper cabinets, then sweeping down to highlight the sleek beige lower cabinets and the textured backsplash, briefly looking toward each feature before returning her gaze to the camera. The camera smoothly follows her movement, revealing each feature only when she gestures toward it. Smooth handheld gimbal movement with realistic operator motion, subtle acceleration and deceleration, maintaining stable framing. As the realtor gestures, the camera gradually reveals the L-shaped kitchen's key features, including the integrated hob and range hood, the light-toned countertops, and the large window with its dark blinds and natural greenery outside. Preserve the lighting exactly as shown in the reference image, enhancing only the natural warmth and depth without altering the room's original mood. One continuous cinematic shot. No cuts. Consistent identity. The camera settles into a balanced hero composition showing the kitchen as a whole while the realtor finishes her sentence with a warm smile, holding a relaxed presentation pose before the shot ends. The character says: 'Experience this bright kitchen. Elegant wooden upper cabinetry, sleek beige lowers, and a beautiful textured backsplash, with ample natural light.'\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No transitions, no flips. Only very subtle, slow, s",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T18:18:49.706Z"
+  },
+  {
+    "id": "local_1783966692260_9osag",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783966691156.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783966691156.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Kitchen, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T18:18:12.260Z"
+  },
+  {
+    "id": "local_1783966090313_fsjfh",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783966089913.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783966089913.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "REFERENCE LOCK: Maintain the exact room layout, furniture placement, colors, materials, proportions, and architectural details from the reference image. Do not redesign, replace, remove, or reposition any furniture or decorative elements. Preserve the realtor's facial identity, hairstyle, clothing, body proportions, and speaking style consistently throughout the entire shot. CHARACTER ACTION: The realtor confidently steps into the kitchen, gesturing with an open hand towards the L-shaped cabinetry and then towards the large window, briefly looking toward the features before returning her gaze to the camera. CAMERA BEHAVIOR: The camera smoothly follows her movement with a handheld gimbal, subtly accelerating and decelerating, maintaining stable framing. It reveals each feature only when she gestures toward it. ENVIRONMENT REVEAL: The camera gradually reveals the kitchen's warm wood upper cabinets, the sleek glossy beige lower cabinets, the textured backsplash, and the large window bathing the space in natural light. LIGHTING: Preserve the lighting exactly as shown in the reference image, enhancing only the natural warmth and depth without altering the room's original mood. CONTINUITY: One continuous cinematic shot. No cuts. Consistent identity. ENDING: The camera settles into a balanced hero composition, framing the realtor with the L-shaped kitchen behind her, while she finishes her sentence with a warm smile, holding a relaxed presentation pose before the shot ends.\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No transitions, no flips. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matc",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T18:08:10.313Z"
+  },
+  {
+    "id": "local_1783966050153_feirt",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783966048807.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783966048807.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Kitchen, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T18:07:30.153Z"
+  },
+  {
+    "id": "local_1783965688049_8e74b",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783965687071.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783965687071.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Kitchen, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T18:01:28.049Z"
+  },
+  {
+    "id": "local_1783965258756_ho6jt",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783965258085.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783965258085.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "REFERENCE LOCK: \"Maintain the exact room layout, furniture placement, colors, materials, proportions, and architectural details from the reference image. Do not redesign, replace, remove, or reposition any furniture or decorative elements.\" \"Preserve the realtor's facial identity, hairstyle, clothing, body proportions, and speaking style consistently throughout the entire shot.\" CHARACTER ACTION: The realtor confidently introduces the space, gesturing towards the striking false ceiling and crystal chandelier, then sweeping her hand across the sleek, black glossy media wall and its uplighting, emphasizing its modern design, briefly looking toward the features before returning her gaze to the camera. CAMERA BEHAVIOR: Smooth handheld gimbal movement with realistic operator motion, subtle acceleration and deceleration, maintaining stable framing. The camera smoothly follows her movement, revealing each feature only when she gestures toward it, starting with a medium wide shot of the room from the entrance. ENVIRONMENT REVEAL: The camera gradually reveals the room's key architectural features, like the elaborate false ceiling with integrated lights and the central chandelier, the glossy black media cabinetry, the textured wallpaper accent wall, and the distinctive marble-look floor with its black and white Greek key border. LIGHTING: \"Preserve the lighting exactly as shown in the reference image, enhancing only the natural warmth and depth without altering the room's original mood.\" CONTINUITY: \"One continuous cinematic shot. No cuts. Consistent identity.\" ENDING: The camera settles into a balanced hero composition, framing the realtor slightly off-center with the main media wall and ceiling details visible, as she finishes her sentence with a warm smile, holding a relaxed presentation pose before the shot ends.\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. The background structure, walls, kitchen counters, cabinets, furniture, and ",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T17:54:18.756Z"
+  },
+  {
+    "id": "local_1783965212452_z91ao",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783965211524.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783965211524.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Living Room of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Living Room, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T17:53:32.452Z"
+  },
+  {
+    "id": "local_1783965173167_gelu2",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783965172135.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783965172135.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Living Room of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Living Room, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T17:52:53.167Z"
+  },
+  {
+    "id": "local_1783964949574_jsacu",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783964949072.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783964949072.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "REFERENCE LOCK: \"Maintain the exact room layout, furniture placement, colors, materials, proportions, and architectural details from the reference image. Do not redesign, replace, remove, or reposition any furniture or decorative elements. Preserve the realtor's facial identity, hairstyle, clothing, body proportions, and speaking style consistently throughout the entire shot.\" CHARACTER ACTION: The realtor, facing the camera with a warm, friendly smile, begins by gesturing broadly to her left towards the custom wardrobes, then gracefully sweeps her hand towards the right, highlighting the bed. She confidently introduces each feature with natural pointing gestures, briefly looking toward the feature before returning her gaze to the camera. CAMERA BEHAVIOR: \"The camera smoothly follows her movement, revealing each feature only when she gestures toward it.\" \"Smooth handheld gimbal movement with realistic operator motion, subtle acceleration and deceleration, maintaining stable framing.\" ENVIRONMENT REVEAL: The camera gradually reveals the room's key architectural features including the tall wooden custom wardrobes with integrated, lit display shelves, the dark grey textured wall paneling, the inviting bed with its unique wooden slatted headboard and integrated strip lighting, and the modern ceiling fan. LIGHTING: \"Preserve the lighting exactly as shown in the reference image, enhancing only the natural warmth and depth without altering the room's original mood.\" CONTINUITY: \"One continuous cinematic shot. No cuts. Consistent identity.\" ENDING: \"The camera settles into a balanced hero composition while the realtor finishes her sentence with a warm smile, holding a relaxed presentation pose before the shot ends.\"\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No transitions, ",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T17:49:09.574Z"
+  },
+  {
+    "id": "local_1783964908326_xrc5n",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783964907514.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783964907514.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Bedroom 2 of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Bedroom 2, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T17:48:28.326Z"
+  },
+  {
+    "id": "local_1783964806676_8bkvc",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783964805455.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783964805455.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Bedroom 2 of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Bedroom 2, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T17:46:46.676Z"
+  },
+  {
+    "id": "local_1783964427035_hz75i",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783964426112.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783964426112.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Bedroom 1 of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Bedroom 1, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T17:40:27.036Z"
+  },
+  {
+    "id": "local_1783963923541_9bfaw",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783963923004.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783963923004.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "A smooth, cinematic shot slowly glides into Bedroom 1, revealing the modern wooden platform bed with olive green accents and the chic integrated LED headboard. The camera then tracks the realtor, a friendly woman in professional attire, as she stands near the natural jute rug, gesturing towards the built-in wooden wardrobe and the stylish backlit shelving. The shot continues with a slow pan across the room, highlighting the clean white walls, the sleek wooden desk with its integrated lighting, and the controlled ambiance from the black roller blind. Emphasize the room's warm, inviting atmosphere and thoughtful, contemporary design details, with soft ambient lighting creating a photorealistic, premium real estate aesthetic.\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No transitions, no flips. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T17:32:03.541Z"
+  },
+  {
+    "id": "local_1783963878635_lb8c2",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783963877560.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783963877560.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Bedroom 1 of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Bedroom 1, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T17:31:18.635Z"
+  },
+  {
+    "id": "local_1783963834447_6ek6g",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783963833250.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783963833250.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Bedroom 1 of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Bedroom 1, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T17:30:34.447Z"
+  },
+  {
+    "id": "local_1783963802260_cgnxo",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783963801033.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783963801033.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Bedroom 1 of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Bedroom 1, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T17:30:02.260Z"
+  },
+  {
+    "id": "local_1783963683391_mv32r",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783963682251.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783963682251.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "Ultra realistic photo of a real estate agent standing inside a Living Room. CRITICAL: The agent's face and likeness MUST exactly match the provided reference photo. Natural lighting, warm and welcoming, lifelike textures, ultra-realistic.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T17:28:03.392Z"
+  },
+  {
+    "id": "local_1783963503728_de6ed",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783963503256.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783963503256.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "A professional female realtor, dressed in smart casual attire, stands centrally in the L-shaped kitchen, gesturing warmly towards the features. The camera executes a smooth, cinematic wide-to-medium tracking shot, beginning with a view encompassing the entire L-shape. It slowly glides to the right, focusing on the sleek, off-white glossy upper and lower cabinetry with black handles, the dark contrasting countertops, and the unique, elongated hexagonal backsplash. The under-cabinet LED strip lighting and toe-kick lighting are visibly glowing, casting a warm ambiance. The realtor gestures towards the modern black faucet and stainless steel sink, then pans slightly to highlight the black built-in gas cooktop and matching range hood. The scene is brightly and warmly lit, emphasizing clean lines and premium materials, creating a photorealistic, inviting real estate tour aesthetic.\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No transitions, no flips. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T17:25:03.728Z"
+  },
+  {
+    "id": "local_1783963456138_aixp8",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783963455217.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783963455217.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Kitchen, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T17:24:16.138Z"
+  },
+  {
+    "id": "local_1783961429560_ajz6f",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783961429067.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783961429067.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "A friendly realtor stands in the bright, spacious gourmet kitchen of a premium property, gesturing towards the custom white cabinetry and high-end stainless steel appliances. The camera executes a smooth, cinematic glide, starting from a wide shot showcasing the large kitchen island and then subtly moving to highlight the polished quartz countertops and a modern backsplash. Soft, natural light bathes the space, emphasizing its clean, luxurious, and inviting atmosphere. The overall aesthetic is highly photorealistic and professional real estate quality.\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No transitions, no flips. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T16:50:29.560Z"
+  },
+  {
+    "id": "local_1783961380332_k0z26",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783961379323.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783961379323.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Kitchen, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T16:49:40.333Z"
+  },
+  {
+    "id": "local_1783961247528_j76oj",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783961246822.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783961246822.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "Camera begins in the inviting living room, showcasing its bright, open space. The realtor, smiling warmly, gestures towards the kitchen. The camera smoothly dollies and pans, following the realtor as they lead us through an elegant archway, transitioning seamlessly into the spacious, state-of-the-art kitchen, highlighting its premium finishes and ample counter space.\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. The background structure, walls, cabinets, furniture, and geometric details MUST remain 100% stable. No transitions, no flips. Only smooth, steady forward walkthrough camera motion.\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T16:47:27.528Z"
+  },
+  {
+    "id": "local_1783960774222_29slc",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783960773490.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783960773490.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "Camera starts with a wide shot of the Front Elevation, then dollies slowly towards the front door. The realtor stands smiling by the open door, gesturing invitingly inside. Camera moves smoothly through the entrance, following the realtor's lead, and pans to begin revealing the spacious Living Room.\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. The background structure, walls, cabinets, furniture, and geometric details MUST remain 100% stable. No transitions, no flips. Only smooth, steady forward walkthrough camera motion.\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T16:39:34.222Z"
+  },
+  {
+    "id": "local_1783953426638_7vc76",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783953425506.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783953425506.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Front Elevation of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Front Elevation, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T14:37:06.638Z"
+  },
+  {
+    "id": "local_1783953282577_y4mkb",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783953282088.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783953282088.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The image is the PERSON (creator) reference.\n        TASK: Generate ONE UGC-style photo of this person in the following scene: 🚶 Walk & Talk — A creator walking outdoors while holding the product up to the camera, handheld vlog style, slight motion blur on backgr.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T14:34:42.577Z"
+  },
+  {
+    "id": "local_1783953105210_znqy3",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783953104567.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783953104567.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "Creator walking on a winding road in Munnar with lush green tea plantations in the background. Their expression is one of slight disbelief turning into wonder. They make subtle head shakes as if pondering a question. Performance: calm and natural delivery, subtle hand gestures, gentle pacing, conversational tone, minimal dramatic movements, soft eye contact. The creator is saying: Why does nobody talk about this? Seriously, walking through Munnar's roads is just, like, unbelievably peaceful, I'm telling you. Visual style preset details: handheld vlog style, creator walking while speaking to camera, natural background movement, slight camera bobbing. Seriously, walking through Munnar's roads is just, like, unbelievably peaceful, I'm telling you. I've been Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): \"Se",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T14:31:45.210Z"
+  },
+  {
+    "id": "local_1783952036968_mi77i",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783952036477.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783952036477.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the LOCATION/STAGE reference.\n        TASK: Generate ONE single, coherent UGC-style photo of this EXACT person in this EXACT environment/location.\n        Scene: 🚶 Walk & Talk — A creator walking outdoors while holding the product up to the camera, handheld vlog style, slight motion blur on backgr.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and environment precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T14:13:56.968Z"
+  },
+  {
+    "id": "local_1783952011778_fvi46",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783952011287.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783952011287.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the LOCATION/STAGE reference.\n        TASK: Generate ONE single, coherent UGC-style photo of this EXACT person in this EXACT environment/location.\n        Scene: 🎙️ Normal Talking — A real person naturally using/holding the product in an authentic home environment. Ultra-realistic UGC photo, natural l.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and environment precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-13T14:13:31.778Z"
+  },
+  {
+    "id": "local_1783947044639_2uh09",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783947043841.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783947043841.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "scene\nA majestic static wide shot of the gold necklace and earrings elegantly displayed together on a minimalist, dark velvet bust or stand. The setting features a soft, atmospheric background with a subtle, ethereal bokeh glow that seems to emanate from the jewelry itself, emphasizing its \"timeless radiance\" and \"golden bloom.\" The light is perfectly diffused, meticulously crafted to make the gold radiate with an intrinsic, timeless luster without harsh reflections. A subtle, elegant brand logo (text only, if applicable: \"ZeroLens\") fades in gracefully at the very end of the shot, solidifying brand presence.\nCamera: Static Wide Shot, with very slight, ethereal lens flare/glow effect on the gold.\nSound Cues: Uplifting yet serene orchestral swell, subtle atmospheric hum, gentle fade-in of brand music.\nVisual Style: Majestic, aspirational, luxurious, iconic, precise composition, luminous, Roger Deakins-inspired ethereal lighting.\nImage Quality: Ultra-high definition, pristine product rendering, perfect lighting, subtle and elegant visual effects, 9:16 aspect ratio.\nConstraints: Reference product @Image 1. Minimalist elegant display, \"ZeroLens\" brand logo (text only).",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T12:50:44.639Z"
+  },
+  {
+    "id": "local_1783946938542_ntpcd",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783946937878.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783946937878.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "scene\nAn extreme macro shot, static or with a very slow, almost imperceptible lateral dolly movement, focusing on the intricate filigree and delicate texture of the central floral pendant of the gold necklace. Soft, diffused, warm light meticulously catches every delicate detail, creating exquisite highlights and shadows that emphasize its three-dimensional craftsmanship – like tiny \"whispers of light\" dancing on a \"golden bloom.\" The scene then transitions to a medium shot of one of the matching earrings, suspended or resting elegantly on a plush, muted cream surface. A gentle, natural breeze or an unseen, subtle movement causes the earring to sway almost imperceptibly, catching and refracting ambient light, creating tiny, soft sparkles. Focus is sharp on the earring, highlighting its delicate design.\nCamera: Static Macro / Very Slow Lateral Dolly; then Static or gentle Micro-Orbit, Medium lens.\nSound Cues: Delicate chimes, subtle airy whoosh, soft sparkle sound design.\nVisual Style: Cinematic, precise, highly detailed, luxurious, Roger Deakins-inspired soft natural light, shallow depth of field, artful composition.\nImage Quality: Extreme ultra-high definition, micro-texture visible, pristine gold luster, perfect focus, 9:16 aspect ratio.\nConstraints: Reference product @Image 1. Muted cream/rich dark background.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T12:48:58.543Z"
+  },
+  {
+    "id": "local_1783946127709_43b1r",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783946127024.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783946127024.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "scene\nA very slow push-in dolly shot using a macro lens, revealing a gold necklace and matching earrings. The jewelry is partially obscured by luxurious, deep burgundy silk fabric, casting soft, undulating shadows. Faint glints of gold are visible through the fabric's folds, creating a sense of mystery and anticipation. Focus is slightly soft, gradually sharpening as the camera pushes in. The scene transitions to a medium shot where the silk fabric gently parts, or a soft, warm light source gradually illuminates the jewelry, revealing more of the necklace's intricate floral pendant – a \"golden bloom\" emerging from shadow – and a glimpse of the matching earrings. The gold begins to glow softly, its luster enhanced by diffused, natural light.\nCamera: Slow Push-in Dolly, Macro to Medium Lens transition.\nSound Cues: Gentle, ethereal synth pads, subtle fabric rustle.\nVisual Style: Cinematic, atmospheric, precise composition, luxurious, Roger Deakins-inspired soft natural light, shallow depth of field.\nImage Quality: Ultra-high definition, crisp details, smooth motion, natural golden glow, 9:16 aspect ratio.\nConstraints: Reference product @Image 1. Deep burgundy/charcoal color palette.\n\n---\n\nscene\nAn extreme macro shot, static or with a very slow, almost imperceptible lateral dolly movement, focusing on the intricate filigree and delicate texture of the central floral pendant of the gold necklace. Soft, diffused, warm light meticulously catches every delicate detail, creating exquisite highlights and shadows that emphasize its three-dimensional craftsmanship – like tiny \"whispers of light\" dancing on a \"golden bloom.\" The scene then transitions to a medium shot of one of the matching earrings, suspended or resting elegantly on a plush, muted cream surface. A gentle, natural breeze or an unseen, subtle movement causes the earring to sway almost imperceptibly, catching and refracting ambient light, creating tiny, soft sparkles. Focus is sharp on the earring, highlighting its delicate design.\nCamera: Static Macro / Very Slow Lateral Dolly; then Static or gentle Micro-Orbit, Medium lens.\nSound Cues: Delicate chimes, subtle airy whoosh, soft sparkle sound design.\nVisual Style: Cinematic, precise, highly detailed, luxurious, Roger Deakins-inspired soft natural light, shallow depth of field, artful composition.\nImage Quality: Extreme ultra-high definition, micro-texture visible, pristine gold luster, perfect focus, 9:16 aspect ratio.\nConstraints: Reference product @Image 1. Muted cream/rich dark background.\n\n---\n\nscene\nA medium shot with a very slight push-in, showing elegant, slender hands (manicured, soft focus on face/background) delicately clasping the gold necklace around a graceful neck. The focus is sharp on the golden clasp and the way the delicate chain settles, like a \"whisper of light\" adorning the skin. Lighting emphasizes a warm glow on both the skin and the gold. This transitions to a wide shot, with a slow orbit or dolly movement, featuring the model's upper torso (shoulders up or waist up, serene expression, subtle turn), elegantly wearing the necklace and earrings. The background is a soft, deep complementary color, such as a rich forest green or muted indigo. The model executes a slow, graceful turn, allowing the necklace to catch and reflect the light from various angles, showcasing its radiant presence. Finally, a macro shot, static or with a very gentle push-in, focuses on one of the earrings dangling exquisitely against the model's ear/neck, illustrating how it perfectly complements the skin, with soft light accentuating the interplay of gold and natural skin tones.\nCamera: Medium Shot with slight Push-in; then Slow Orbit or Dolly, Wide lens; then Static Macro or gentle Push-in.\nSound Cues: Soft, elegant ambient music, subtle rustle of fabric, delicate skin contact sounds.\nVisual Style: Graceful, intimate, sophisticated, aspirational, cinematic composition (Denis Villeneuve), natural soft lighting.\nImage Quality: High definition, realistic model (focus on hands/neck), natural movement, sharp jewelry focus, consistent lighting, 9:16 aspect ratio.\nConstraints: Reference product @Image 1. Consistent model hands/neck.\n\n---\n\nscene\nA majestic static wide shot of the gold necklace and earrings elegantly displayed together on a minimalist, dark velvet bust or stand. The setting features a soft, atmospheric background with a subtle, ethereal bokeh glow that seems to emanate from the jewelry itself, emphasizing its \"timeless radiance\" and \"golden bloom.\" The light is perfectly diffused, meticulously crafted to make the gold radiate with an intrinsic, timeless luster without harsh reflections. A subtle, elegant brand logo (text only, if applicable: \"ZeroLens\") fades in gracefully at the very end of the shot, solidifying brand presence.\nCamera: Static Wide Shot, with very slight, ethereal lens flare/glow effect on the gold.\nSound Cues: Uplifting yet serene orchestral swell, subtle atmospheric hum, gentle fade-in of brand music.\nVisual Style: Majestic, aspirational, luxurious, iconic, precise composition, luminous, Roger Deakins-inspired ethereal lighting.\nImage Quality: Ultra-high definition, pristine product rendering, perfect lighting, subtle and elegant visual effects, 9:16 aspect ratio.\nConstraints: Reference product @Image 1. Minimalist elegant display, \"ZeroLens\" brand logo (text only).",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T12:35:27.709Z"
+  },
+  {
+    "id": "local_1783934085670_llfli",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783934084981.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783934084981.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "[SHOT 4: Final Crisp to Brand]\nSubject & Action: Begins on a micro-close-up of the perfectly golden, visibly crisp edge of a Lay's Classic potato chip. The camera then performs a very slight, elegant pull-out, and the chip gently rotates to subtly reveal the iconic, vibrant red Lay's logo behind it, almost as a soft, reflected glow on the chip. This transitions smoothly into a clean, elegant white title card with the prominent Lay's Classic logo centered, followed by the simple tagline: \"Pure Potato. Pure Joy.\"\nSetting & Environment: Starts on the chip against a softly diffused, warm background. Transitions to a minimalist, clean white background for the title card.\nLight & Shadow Tone: Warm, naturalistic light on the chip, highlighting its texture. The title card lighting is even and bright, ensuring legibility of the logo and text.\nCamera Movement & Angle: Starts as a micro close-up, then a very slight, elegant pull-out (dolly movement) and subtle chip rotation. The final shot is a static, head-on view of the title card. 9:16 vertical aspect ratio.\nVisual Style: Precise, cinematic, atmospheric, elevated realism for the chip, transitioning to clean, iconic branding. Crisp typography for the tagline.\nImage Quality Parameters: Ultra-high definition, photorealistic detail for the chip. High-resolution, clear, and sharp typography for the title card. High dynamic range for both.\nConstraints: Smooth transition from chip to title card. Lay's logo and tagline must be clearly legible and visually impactful.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T09:14:45.670Z"
+  },
+  {
+    "id": "local_1783931023781_mt9go",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783931023119.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783931023119.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "STYLE: cinematic, precise, atmospheric, high-fidelity, ultra-realistic, photorealistic, premium advertisement\nSCENE CONTEXT: A moment of mundane stillness is unexpectedly broken by the magical, almost surreal appearance of a Lay's chip, leading to the grand reveal of the iconic packet, presented as an object of aspirational desire, for a 10-second Instagram advertisement.\nFORMAT MODE: square, 1:1 aspect ratio, 25fps, 10 seconds total duration\nLIGHTING: soft, diffused natural light from unseen window (camera right), subtle contrasting shadows, golden hour warmth\nCOLOR: muted earth tones (dark wood, charcoal grey, silver, ceramic white) for environment, vibrant reds and yellows for Lay's packet, with aspirational highlights.\nCAMERA: precise composition, wide establishing shots, slow dolly movements, smooth micro-pans, static close-ups, elevated perspectives.\nCHARACTER DESIGN: androgynous figure, mid-20s, charcoal grey knit sweater, hair loosely tied, contemplative, subtle expression. (Only seen in Shot 1, back to camera, frozen)\nSUBJECTS: Lay's Classic potato chips packet (@Image 1), single Lay's chip, minimalist home office, dark wood desk, white ceramic coffee mug, silver laptop.\nPHYSICS: levitation, time-freeze effect, slow-motion descent, smooth sliding.\nCOMPOSITION: balanced negative space, leading lines, rule of thirds, clean aesthetic, product as focal point, architectural precision.\nFIRST FRAME: A wide, meticulously composed shot of a minimalist home office. A sleek, polished dark wood desk, centered by a half-empty, elegant ceramic coffee mug. A silver laptop sits open, its screen a static, muted desktop wallpaper. In the background, slightly out of focus, a figure (androgynous, mid-20s, charcoal grey knit sweater, hair loosely tied) is seated, facing away, perfectly motionless. Soft, diffused natural light from a large, unseen window off-camera right. Dust motes hang perfectly still in the air.\n\nCUT 0s to 2s:\n  SCENE CONTEXT: Minimalist home office, everything frozen in time.\n  CAMERA: Static wide shot. Lens 35mm.\n  SHOT DESCRIPTION: A wide, meticulously composed shot of a minimalist home office. A sleek, polished dark wood desk is prominent, centered by a half-empty, elegant ceramic coffee mug. A silver laptop sits open, its screen a static, muted desktop wallpaper. In the background, slightly out of focus, a figure (androgynous, mid-20s, charcoal grey knit sweater, hair loosely tied) is seated, facing away, perfectly motionless. Soft, diffused natural light from a large, unseen window off-camera right. Dust motes hang perfectly still in the air.\n\nCUT 2s to 3s:\n  SCENE CONTEXT: A single Lay's chip levitating in a frozen office environment.\n  CAMERA: Close-up, subtle micro-pan tracking chip. Lens 50mm.\n  SHOT DESCRIPTION: A tighter shot, now focused on the empty space just above the desk. A single, perfectly golden Lay's chip (matching @Image 1 in color and texture) slowly, ethereally levitates into frame from below, performing a graceful, almost impossibly slow rotation. The camera executes a smooth, almost imperceptible micro-pan, tracking the chip's ascent and gentle drift towards the center of the desk. The office background remains frozen, slightly softer in focus.\n\nCUT 3s to 4.5s:\n  SCENE CONTEXT: The levitating chip lands on a coaster, triggering a subtle 'unfreeze'.\n  CAMERA: Mid-shot, static. Lens 50mm.\n  SHOT DESCRIPTION: The levitating chip gently, almost silently, descends onto a pristine, white ceramic coaster positioned centrally on the dark wood desk. As the chip makes contact, a subtle \"unfreeze\" begins: a single, barely perceptible flicker on the laptop screen, or a dust mote in the background begins to drift with glacial slowness. The lighting subtly shifts, deepening the contrast around the newly arrived chip.\n\nCUT 4.5s to 6s:\n  SCENE CONTEXT: The Lay's packet emerges, as if conjured into existence.\n  CAMERA: Close-up, static. Lens 85mm macro.\n  SHOT DESCRIPTION: The camera holds tightly on the fallen chip and the coaster. From just beyond the edge of the coaster, the corner of a vibrant Lay's packet (@Image 1) slowly, smoothly, and deliberately slides into frame, as if conjured into existence. The rich red and bold yellow of the packet stand in stark, inviting contrast to the muted office tones. The lighting catches the subtle gleam of the packaging.\n\nCUT 6s to 7s:\n  SCENE CONTEXT: The full Lay's packet is revealed, anchoring the frozen reality.\n  CAMERA: Medium shot, slow, controlled dolly backwards. Lens 35mm.\n  SHOT DESCRIPTION: A controlled, slow dolly movement backwards, revealing the full Lay's packet (@Image 1) now resting prominently on the desk, perfectly centered in the frame. The surrounding office remains mostly frozen, but the Lay's packet itself feels incredibly vivid, an anchor of warmth and color in the suspended reality. The natural light sculpts the packet, giving it an almost artistic presence.\n\nCUT 7s to 8.5s:\n  SCENE CONTEXT: An intimate glimpse into the Lay's packet.\n  CAMERA: Extreme close-up, static. Lens 100mm macro.\n  SHOT DESCRIPTION: An extreme, shallow-depth-of-field close-up on the subtly crinkled, slightly opened edge of the Lay's packet. The focus is razor-sharp on the opening, revealing the inviting, golden-brown edge of a single, perfectly ridged chip inside. The intricate texture of the potato and the delicate dusting of salt are rendered with hyper-real clarity, accentuated by soft, directional key light. The background is an exquisite, creamy bokeh.\n\nCUT 8.5s to 10s:\n  SCENE CONTEXT: The Lay's packet as an aspirational hero.\n  CAMERA: Elevated close-up, static. Lens 85mm.\n  SHOT DESCRIPTION: A grand, beautifully composed, slightly elevated close-up of the Lay's packet (@Image 1). The packet is centrally framed, bathed in exquisite, soft natural light from the window, creating deep, rich colors and subtle, aspirational highlights. The focus is sharp across the entire packet, emphasizing its iconic design and the enticing promise of its contents. The background is a gently blurred, elegant wash of the minimalist office environment, ensuring the packet is the undeniable hero. The framing is precise, almost architectural, celebrating the product as a desirable object.\n\nCLOSING: End with a final hold on the aspirational Lay's packet, then fade to black.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T08:23:43.782Z"
+  },
+  {
+    "id": "local_1783930488999_y3cew",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783930488411.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783930488411.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "STYLE: cinematic, atmospheric, precise, naturalistic, high-end commercial, emotional resonance, muted elegance, hyper-real textures, warm and inviting, a sense of quiet luxury, unhurried\nSCENE CONTEXT: A serene, naturally lit bedroom during golden hour morning light. Soft textures, minimalist decor, a sense of personal space and tranquility.\nFORMAT MODE: Video\nLIGHTING: Natural golden hour light, soft diffused sunlight, backlighting for ethereal glow, Rembrandt lighting for facial close-ups, gentle light flares, subtle shadows for depth, high key, soft fill.\nCOLOR: Warm muted pastels (ivory, pale blue, soft greens), natural skin tones, amber hues from product bottle, soft golden highlights, balanced whites, organic palette.\nCAMERA: Deliberate, controlled movements (slow dolly, subtle tracking, precise macro), eye-level angles, shallow depth of field for emotional focus, deep depth of field for product detail, stable, smooth, intentional composition.\nCHARACTER DESIGN: @Image 1 (Riya), 25, female. Natural, slightly tousled hair. Wearing a simple, soft, light-colored sleep shirt (ivory/pale blue). No visible makeup until after serum application, emphasizing natural skin.\nSUBJECTS: Riya (@Image 1), Skincare serum (@Image 2).\nPHYSICS: Realistic liquid dynamics (serum drops), natural hair movement, gentle fabric rustle.\nCOMPOSITION: Rule of thirds, leading lines, balanced framing, negative space for atmospheric effect, precise object placement, deep focus for macro shots, shallow focus for emotional shots, dramatic silhouettes.\nFIRST FRAME: A wide shot of a serene bedroom, bathed in soft, diffuse golden hour light, with sheer curtains gently swaying by a sun-drenched window. The corner of a neatly made bed is visible in the foreground, with Riya (@Image 1) subtly stirring in the background, out of sharp focus, enveloped in a warm, ethereal glow.\n\nCUT SECTIONS:\nCUT (0-3s):\n  SHOT_TYPE: Wide Dolly In\n  CAMERA: Slow dolly in (1 cm/sec), eye-level, 35mm lens (f/1.8).\n  SUBJECT: Riya (@Image 1) stirring gently in bed, partially obscured by sheer curtains.\n  CONTEXT: Bedroom (@Image 3), golden hour light, soft textiles, minimalist decor.\n  SOUND: Gentle rustle of bed sheets, faint distant birdsong, soft ethereal synth pad music begins.\n  TRANSITION_IN: Fade In\n  TRANSITION_OUT: L-cut to next visual\n\nCUT (3-5s):\n  SHOT_TYPE: Medium Close-Up\n  CAMERA: Subtle handheld drift, eye-level, 50mm lens (f/1.4).\n  SUBJECT: Riya's (@Image 1) eyes slowly opening, gazing towards light, hand subtly touching cheek, thoughtful expression.\n  CONTEXT: Bedroom (@Image 3), continued golden hour light.\n  SOUND: Soft ambient room tone, subtle fabric shift.\n  TRANSITION_IN: L-cut from previous visual\n  TRANSITION_OUT: Soft Dissolve\n\nCUT (5-8s):\n  SHOT_TYPE: Close-Up\n  CAMERA: Static with subtle push-in (macro slider), eye-level, 100mm Macro lens (f/8).\n  SUBJECT: Riya's (@Image 1) skin (under-eye/cheek), showing minor texture/dullness, natural light revealing detail.\n  CONTEXT: Intimate skin detail, soft light.\n  SOUND: Very subtle, almost subliminal breath sound.\n  TRANSITION_IN: Soft Dissolve\n  TRANSITION_OUT: Hard Cut\n\nCUT (8-11s):\n  SHOT_TYPE: Medium Shot\n  CAMERA: Static, eye-level, 35mm lens (f/2.0).\n  SUBJECT: Riya (@Image 1) sitting up in bed, gaze shifting, hand reaching out, subtle hesitation.\n  CONTEXT: Bedroom (@Image 3), soft morning light.\n  SOUND: Light creak of bed, subtle room tone shift.\n  TRANSITION_IN: Hard Cut\n  TRANSITION_OUT: Cut on Action\n\nCUT (11-13s):\n  SHOT_TYPE: B-roll\n  CAMERA: Static, slightly elevated angle, 85mm lens (f/1.8).\n  SUBJECT: Riya's (@Image 1) hand slowly picks up skincare serum bottle (@Image 2) from bedside table. Amber glass catching light.\n  CONTEXT: Bedside table, minimalist decor.\n  SOUND: Gentle clink of glass.\n  TRANSITION_IN: Cut on Action\n  TRANSITION_OUT: Hard Cut\n\nCUT (13-15s):\n  SHOT_TYPE: Extreme Close-Up\n  CAMERA: Static, extreme macro, 100mm Macro + extension tubes (f/11).\n  SUBJECT: Serum dropper with single glistening droplet at tip, Riya's fingers unscrewing cap.\n  CONTEXT: Focus on product detail.\n  SOUND: Soft, precise 'click' of cap, subtle wet 'pop' as dropper exits.\n  TRANSITION_IN: Hard Cut\n  TRANSITION_OUT: Seamless Cut\n\nCUT (15-17s):\n  SHOT_TYPE: Close-Up\n  CAMERA: Static, eye-level to hand, 85mm lens (f/1.8).\n  SUBJECT: Riya's (@Image 1) hand gracefully receiving 2-3 drops of serum (@Image 2) into palm, viscous texture highlighted.\n  CONTEXT: Focus on serum texture and application.\n  SOUND: Very faint 'plop' of drops, slight wet friction.\n  TRANSITION_IN: Seamless Cut\n  TRANSITION_OUT: Soft Dissolve\n\nCUT (17-20s):\n  SHOT_TYPE: Medium Close-Up\n  CAMERA: Subtle, slow track (e.g., left-to-right), eye-level, 50mm lens (f/1.4).\n  SUBJECT: Riya (@Image 1) gently massaging serum onto her face (cheek/forehead), eyes closed in calm focus.\n  CONTEXT: Peaceful self-care moment.\n  SOUND: Soft, delicate 'swish' of fingers on skin, calm breathing.\n  TRANSITION_IN: Soft Dissolve\n  TRANSITION_OUT: Slow Cross-Dissolve\n\nCUT (20-23s):\n  SHOT_TYPE: Extreme Close-Up\n  CAMERA: Static, macro, 100mm Macro lens (f/8).\n  SUBJECT: Riya's (@Image 1) skin as serum absorbs, gradual shift to hydrated, luminous appearance. Natural light emphasizes glow.\n  CONTEXT: Skin transformation, healthy glow.\n  SOUND: Imperceptible 'sheen' sound, light, airy synth swells.\n  TRANSITION_IN: Slow Cross-Dissolve\n  TRANSITION_OUT: Match Cut on glow\n\nCUT (23-26s):\n  SHOT_TYPE: Medium Close-Up\n  CAMERA: Slow dolly back (1 cm/sec), eye-level with reflection, 50mm lens (f/1.8).\n  SUBJECT: Riya's (@Image 1) luminous reflection in mirror, visibly radiant skin, serene confidence, subtle smile.\n  CONTEXT: Fulfillment, quiet confidence.\n  SOUND: Gentle sigh of contentment, subtle shimmer.\n  TRANSITION_IN: Match Cut on glow\n  TRANSITION_OUT: Continuous Dolly Back\n\nCUT (26-28s):\n  SHOT_TYPE: Wide Dolly Back\n  CAMERA: Continues dolly back (1 cm/sec), eye-level, 35mm lens (f/2.0).\n  SUBJECT: Product bottle (@Image 2) in foreground, perfectly framed, sharp focus. Riya (@Image 1) reflected, out-of-focus in background. Subtle light flare.\n  CONTEXT: Elegant framing of product, ethereal quality.\n  SOUND: Faint distant traffic (subtle), elegant synth outro.\n  TRANSITION_IN: Continuous Dolly Back\n  TRANSITION_OUT: Hard Cut\n\nCUT (28-30s):\n  SHOT_TYPE: Final Product Hero Shot + CTA\n  CAMERA: Static, 85mm lens (f/4.0).\n  SUBJECT: Skincare serum bottle (@Image 2) against soft, blurred bedroom background. Text overlay: \"Unlock Your Natural Radiance\" and \"Shop Now: [Brand Website/Link in Bio]\".\n  CONTEXT: Clear call to action, product as hero.\n  SOUND: Sustained warm ambient drone, subtle musical resolution, crisp 'ding' for text.\n  TRANSITION_IN: Hard Cut\n  TRANSITION_OUT: Fade to Black\n\nCLOSING: The final composition should be clean, impactful, and leave the viewer with a sense of serene confidence and the effortless beauty that the product promises. Every element, from light to texture, contributes to an aspirational, yet attainable, vision of self-care.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-13T08:14:48.999Z"
+  },
+  {
     "id": "local_1783884980753_yyesm",
     "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1783884980336.mp4",
     "type": "video",

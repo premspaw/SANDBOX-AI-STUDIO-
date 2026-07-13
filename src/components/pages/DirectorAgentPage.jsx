@@ -13,6 +13,7 @@ import { getApiUrl } from '../../config/apiConfig';
 import { useAppStore } from '../../store';
 import { supabase } from '../../lib/supabase';
 import { AssetsLibrary } from '../panels/AssetsLibrary';
+import { useShorts } from '../../hooks/useShorts';
 
 const HERMES_API = 'http://localhost:8642';
 
@@ -47,35 +48,57 @@ const PIPELINE_STEPS = [
     { id: 'prompt', label: 'Final Prompt', icon: Zap, color: 'from-lime-500/20 to-lime-600/10' },
 ];
 
-const SYSTEM_PROMPT = `You are ZeroLens Director Agent — an AI film director embedded in ZeroLens Studio.
+const SYSTEM_PROMPT = `You are the ZeroLens AI Cinema Director. Do NOT write your creative thoughts or prompts immediately. You think and act like a hierarchical directing team (Executive Creative Director, Film Director, Cinematographer, Production Designer, Editor, AI Capability Supervisor, and Commercial Reviewer) supported by a 15-step Visual Intelligence Engine.
 
-Your role is to think like a top filmmaker. You learn from directors like Christopher Nolan (story structure), Denis Villeneuve (composition and scale), David Fincher (precision and camera movement), Roger Deakins (lighting), and Emmanuel Lubezki (natural camera movement).
+### YOUR CONVERSATIONAL PROTOCOL (MUST FOLLOW STATE TRANSITIONS):
 
-YOUR PROCESS:
-1. Receive the user's creative idea
-2. Analyze the script/story for beginning, conflict, emotional beat, climax, resolution
-3. Analyze characters (age, gender, ethnicity, hair, skin tone, eyes, body type, expression, accessories)
-4. Analyze locations (indoor/outdoor, time of day, architecture, weather, textures, lighting)
-5. Analyze props (brand, material, scale, texture, reflection, importance)
-6. Determine emotional arc
-7. Plan cinematography (lens, camera height, composition, movement, focus, depth of field, frame rate)
-8. Plan lighting (key, fill, rim, practicals, sun direction, color temperature, atmosphere)
-9. Plan blocking and character positioning
-10. Generate a full shot list with precise timestamps
-11. Produce a final production-ready prompt optimized for Seedance / Veo 3
+On every single turn, before outputting your response, you must execute your self-assessment "Director's Inner Monologue" wrapped exactly in "[INNER MONOLOGUE]" and "[/INNER MONOLOGUE]" tags. 
 
-You have VISION CAPABILITIES — when the user uploads reference images, you can SEE them directly. Do NOT ask the user to describe what's in the images. Instead, visually analyze each image yourself and describe what you see.
+Inside the monologue, you must strictly run through these 15 Engines in this exact order:
 
-For character reference images, visually extract: age, gender, ethnicity, hair, skin tone, eye color, body type, height, facial features, expression, accessories, lighting, pose, lens estimate, camera angle. Describe the character directly from what you see in the photo.
+1. Creative Intent: What story, emotion, and visual language should the audience experience?
+2. Visual Intelligence Engine: Analyze Object, Material, Shape, Surface, Motion, Reflection, Hero Details, Manufacturing Style, Category, and Brand Positioning.
+3. Audience Emotion Engine: Map Current Emotion -> Desired Emotion -> Buying Trigger -> Memory Trigger -> Final Action.
+4. Creative Concept Engine: Explore Literal -> Emotional -> Symbolic -> Material -> Environmental -> Fantasy -> Luxury -> Scientific -> Minimal -> Artistic concepts.
+5. Story Graph Engine: Map the narrative arc: Hook -> Discovery -> Conflict -> Transformation -> Desire -> Resolution -> Brand Memory.
+6. Scene Planner: Block out the high-level scenes based on the Story Graph.
+7. Shot Purpose Engine: Define every shot's singular purpose: Hook, Information, Emotion, Proof, Hero, or Memory.
+8. Camera Motivation Engine: Why move? Why stop? Why macro? Why orbit? Why handheld? Why static? Every camera move must have strict intent.
+9. Light Psychology Engine: Attach emotion to lighting (e.g., Luxury -> Warm Soft, Technology -> Clean White, Horror -> Directional, Fashion -> High Contrast, Food -> Golden Warm, Medical -> Bright Clinical).
+10. Material Engine: Analyze how the product material behaves under light (Glass, Gold, Leather, Fabric, Wood, Food, Metal, Plastic, Liquid, Smoke, Fire, Water, Crystal, Ice, Paper, Stone).
+11. Transition Engine: Choose intent-driven transitions (Match Cut, Light Transition, Object Transition, Reflection, Motion Match, Camera Pass, Fabric Wipe, Focus Pull, Whip Pan, Hidden Cut).
+12. Visual Balance Engine: Automatically check for compositional fatigue. Too many macros? Too many wides? Too much left composition? Too much center framing? Too much movement? Too much darkness? Fix automatically.
+13. Continuity Engine: Maintain strict World State across scenes. Track Character, Wardrobe, Product, Lighting, Lens, Color Grade, Weather, Props, Camera Height, Composition, Time of Day. No contradictions.
+14. AI Reliability Engine: Evaluate AI generation safety. Check Identity, Physics, Lighting, Materials, Motion, Continuity, Particles, Liquids, Crowds, Animals, Text, Hands. Optimize out impossible shots.
+15. Director Review: Ask yourself: "Would I shoot this? Would Nike shoot this? Would Apple shoot this? Would Dior shoot this? Would A24 shoot this? Would this win an ad festival?" If not, REWRITE.
 
-For location reference images, visually extract: indoor/outdoor, time of day, architecture, weather, textures, available lighting, walking space, camera paths, reflection surfaces, natural light direction, color palette, mood. Describe the location directly from the photo.
+---
 
-For prop and wardrobe reference images, visually describe them: brand, material, scale, texture, style, color, details.
+### YOUR STEP-BY-STEP WORKFLOW:
 
-Maintain CHARACTER CONSISTENCY across all shots — track face, hair, clothes, shoes, accessories, body proportions, expressions. Preserve these details into every subsequent shot unless the story changes. NEVER ask the user to describe images — you can see them.
+#### Turn 1 (Initial Setup Analysis):
+- Run Engines 1 through 5 in your [INNER MONOLOGUE].
+- Define the "[GLOBAL DIRECTOR BIBLE]" for this project (defining style, mood, lighting, color, camera, visual language, aspect ratio, character consistency, and continuity constraints) once. All future scene prompts will inherit from this bible rather than repeating these parameters.
+- Provide a credit-optimized duration breakdown (e.g. for a 30s video: 4 scenes, 8 shots budget) and ask: "Would you like me to proceed?"
 
-FORMAT YOUR OUTPUT:
-Use the Seedance multishot cinematic spec structure with: STYLE, SCENE CONTEXT, FORMAT MODE, LIGHTING, COLOR, CAMERA, CHARACTER DESIGN, SUBJECTS, PHYSICS, COMPOSITION, FIRST FRAME, then individual CUT sections with timestamps, and CLOSING sections for CONTINUITY, TECHNICAL, AUDIO, CONSTRAINTS, POSITIVE LOCKS.`;
+#### Turn 2 (Hook Selection):
+- Run Engines 6 and 7 in your [INNER MONOLOGUE].
+- Propose 5 specific hook options based on the brand/product using the Opening Strategy Engine. Ask: "Which hook would you like to choose?"
+
+#### Turn 3 (Ending Selection):
+- Run Engines 8 and 9 in your [INNER MONOLOGUE].
+- Propose 4 specific ending options. Ask: "Which ending would you like to choose?"
+
+#### Turn 4 (Storyboard & Critique):
+- Run Engines 10 through 15 in your [INNER MONOLOGUE].
+- Construct the detailed storyboard cut specifying Scene Number, Duration, Purpose, Emotion, and Shot breakdown (inheriting from the Global Director Bible).
+- Ask: "Do you approve this storyboard?"
+
+#### Turn 5 (Final Prompt Pack Generation):
+- Run a final Director Review in your [INNER MONOLOGUE].
+- Output the final production-ready prompt pack (storyboard sequence, shot list, camera suggestions, character actions, sound cues) including the Scene-by-Scene Generation Prompts mapped to the Seedance multishot cinematic spec, inheriting all rules from the Global Director Bible. CRITICAL: You MUST wrap each scene's final generation prompt inside its own separate markdown code block (using \`\`\` scene ... \`\`\` formatting) so the frontend video rendering panels appear correctly.
+
+Keep your language professional, direct, and creative. You are an expert commercial filmmaker.`;
 
 const SUGGESTED_PROMPTS = [
     "A lone warrior walking through a neon-lit cyberpunk city at midnight, rain-slicked streets reflecting holographic signs",
@@ -85,11 +108,13 @@ const SUGGESTED_PROMPTS = [
 ];
 
 const REF_CATEGORIES = [
-    { id: 'character', label: 'Character', icon: User, color: 'from-violet-500 to-purple-600', desc: 'Face, body, expression, wardrobe' },
-    { id: 'location', label: 'Location', icon: MapPin, color: 'from-emerald-500 to-teal-600', desc: 'Indoor/outdoor, architecture, mood' },
-    { id: 'prop', label: 'Prop', icon: Box, color: 'from-amber-500 to-orange-600', desc: 'Objects, materials, scale' },
-    { id: 'wardrobe', label: 'Wardrobe', icon: Shirt, color: 'from-rose-500 to-pink-600', desc: 'Clothing, accessories, textures' },
-    { id: 'video', label: 'Video', icon: Video, color: 'from-red-500 to-orange-600', desc: 'Video clips, B-roll, motion refs' },
+    { id: 'character', label: 'Character', icon: User, color: 'from-violet-500 to-purple-600', desc: 'Face, body, identity references' },
+    { id: 'product', label: 'Product', icon: Box, color: 'from-amber-500 to-orange-600', desc: 'Product packaging, textures' },
+    { id: 'location', label: 'Location', icon: MapPin, color: 'from-emerald-500 to-teal-600', desc: 'Shooting settings, environments' },
+    { id: 'first_frame', label: 'First Frame', icon: Image, color: 'from-blue-500 to-cyan-600', desc: 'Starting reference frame' },
+    { id: 'brand_guidelines', label: 'Brand Guidelines', icon: FileText, color: 'from-pink-500 to-rose-600', desc: 'Style guide, color rules' },
+    { id: 'logo', label: 'Logo', icon: Target, color: 'from-yellow-500 to-amber-600', desc: 'Brand logo graphic files' },
+    { id: 'voice', label: 'Voice', icon: Volume2, color: 'from-cyan-500 to-teal-600', desc: 'Audio clips, voice styling' },
 ];
 
 const CATEGORY_FIELDS = {
@@ -103,6 +128,12 @@ const CATEGORY_FIELDS = {
         { name: 'expression', label: 'Facial Expression', type: 'text', placeholder: 'e.g. Neutral, intense gaze, smiling' },
         { name: 'body', label: 'Body Type/Details', type: 'text', placeholder: 'e.g. Athletic build, tall, rugged' },
     ],
+    product: [
+        { name: 'productName', label: 'Product Name', type: 'text', placeholder: 'e.g. Skincare Serum, Energy Drink' },
+        { name: 'material', label: 'Material/Texture', type: 'text', placeholder: 'e.g. Amber glass bottle, matte cardboard' },
+        { name: 'color', label: 'Product Color', type: 'text', placeholder: 'e.g. Translucent gold, crimson red' },
+        { name: 'details', label: 'Product Specifications', type: 'textarea', placeholder: 'e.g. Premium skincare serum bottle with white dropper' }
+    ],
     location: [
         { name: 'locationName', label: 'Location Name', type: 'text', placeholder: 'e.g. Melancholic Cafe, Neon Alleyway, Kitchen Set' },
         { name: 'environment', label: 'Environment', type: 'select', options: ['Select Environment', 'Indoor', 'Outdoor', 'Studio Set', 'Mixed'] },
@@ -111,25 +142,25 @@ const CATEGORY_FIELDS = {
         { name: 'style', label: 'Architecture Style', type: 'text', placeholder: 'e.g. Cyberpunk, Victorian gothic, minimalist scandinavian' },
         { name: 'timeOfDay', label: 'Time of Day', type: 'text', placeholder: 'e.g. Golden hour, midnight, early morning' }
     ],
-    prop: [
-        { name: 'propName', label: 'Prop Name', type: 'text', placeholder: 'e.g. Vintage Camera, Police Badge, Ancient Dagger' },
-        { name: 'material', label: 'Material/Texture', type: 'text', placeholder: 'e.g. Brushed steel, polished mahogany, cracked ceramic' },
-        { name: 'scale', label: 'Scale/Size', type: 'select', options: ['Select Scale', 'Micro (jewelry)', 'Small (handheld)', 'Medium (backpack)', 'Large (furniture)', 'Giant (building/vehicle)'] },
-        { name: 'reflectivity', label: 'Reflective Surface', type: 'text', placeholder: 'e.g. High glossy, chrome mirror, matte finish' },
-        { name: 'details', label: 'Object Specifications', type: 'textarea', placeholder: 'e.g. Vintage Leica camera with a worn brown leather strap' }
+    first_frame: [
+        { name: 'frameName', label: 'Frame Description', type: 'text', placeholder: 'e.g. Starting static shot of product on table' },
+        { name: 'details', label: 'Visual Composition', type: 'textarea', placeholder: 'e.g. Close up of the bottle, camera angled slightly up, blurry background' }
     ],
-    wardrobe: [
-        { name: 'wardrobeName', label: 'Wardrobe Name', type: 'text', placeholder: 'e.g. Main Cyberpunk Suit, Formal Gown' },
-        { name: 'style', label: 'Clothing Style', type: 'text', placeholder: 'e.g. Techwear, formal tuxedo, vintage 70s casual' },
-        { name: 'color', label: 'Primary Colors', type: 'text', placeholder: 'e.g. Crimson red, obsidian black, holographic teal' },
-        { name: 'fabric', label: 'Fabric/Texture', type: 'text', placeholder: 'e.g. Distressed denim, heavy canvas, silk blend' },
-        { name: 'details', label: 'Accessories/Details', type: 'text', placeholder: 'e.g. Golden buttons, high collars, combat boots' }
+    brand_guidelines: [
+        { name: 'brandName', label: 'Brand Name', type: 'text', placeholder: 'e.g. GlowSkin Co.' },
+        { name: 'colors', label: 'Brand Colors', type: 'text', placeholder: 'e.g. Pastel pink, gold, clean white' },
+        { name: 'tone', label: 'Tone of Voice', type: 'text', placeholder: 'e.g. Luxury, medical, scientific, emotional' },
+        { name: 'rules', label: 'Key Constraints', type: 'textarea', placeholder: 'e.g. Never show harsh shadows, keep branding visible, no fast transitions' }
     ],
-    video: [
-        { name: 'videoName', label: 'Video Name', type: 'text', placeholder: 'e.g. Drone Flyover B-roll, Tracking Shot' },
-        { name: 'motion', label: 'Camera Movement', type: 'text', placeholder: 'e.g. Slow tracking shot, fast dolly zoom, crane tilt down' },
-        { name: 'subject', label: 'Subject Action', type: 'text', placeholder: 'e.g. Walking slowly, running from danger, talking on phone' },
-        { name: 'framerate', label: 'Framerate/Speed', type: 'select', options: ['Select Speed', 'Normal speed (24fps)', 'Slow motion (60fps)', 'Ultra slow-mo (120fps)', 'Timelapse'] }
+    logo: [
+        { name: 'logoName', label: 'Logo Label', type: 'text', placeholder: 'e.g. Glowing text logo' },
+        { name: 'placement', label: 'Preferred Placement', type: 'select', options: ['Select Placement', 'Top Left', 'Top Right', 'Bottom Left', 'Bottom Right', 'Center Overlay'] },
+        { name: 'opacity', label: 'Opacity/Style', type: 'text', placeholder: 'e.g. Semi-translucent, high contrast white' }
+    ],
+    voice: [
+        { name: 'voiceName', label: 'Voice Profile Name', type: 'text', placeholder: 'e.g. Calm Female Voice, Energetic Male' },
+        { name: 'tone', label: 'Emotional Tone', type: 'text', placeholder: 'e.g. Soothing, professional, friendly, dramatic' },
+        { name: 'accent', label: 'Accent/Language', type: 'text', placeholder: 'e.g. US English, British accent' }
     ]
 };
 
@@ -291,20 +322,27 @@ function ToolBadge({ tool }) {
 function RefThumbnail({ file, category, onRemove }) {
     const [analysis, setAnalysis] = useState(null);
     const isVideo = file.type?.startsWith('video/');
+    const isAudio = category === 'voice' || file.type?.startsWith('audio/');
+
     useEffect(() => {
-        if (!file || isVideo) return;
+        if (!file || isVideo || isAudio) return;
         const img = new window.Image();
         img.onload = () => {
             const isPortrait = img.height > img.width;
             setAnalysis({ dimensions: `${img.width}×${img.height}`, orientation: isPortrait ? 'Portrait' : 'Landscape', size: (file.size / 1024).toFixed(0) + ' KB' });
         };
         img.src = file.data;
-    }, [file, isVideo]);
+    }, [file, isVideo, isAudio]);
 
     return (
         <div className="group relative glass-card rounded-xl overflow-hidden hover:border-white/15 transition-all duration-300 hover:scale-[1.02]">
             <div className="aspect-[4/3] overflow-hidden bg-black/40 flex items-center justify-center">
-                {isVideo ? (
+                {isAudio ? (
+                    <div className="flex flex-col items-center gap-1.5 p-3 text-center w-full">
+                        <Volume2 className="w-8 h-8 text-cyan-400 animate-pulse" />
+                        <audio src={file.data} className="w-full max-w-[150px] h-6 scale-75 opacity-70 hover:opacity-100 transition-opacity" controls />
+                    </div>
+                ) : isVideo ? (
                     <video src={file.data} className="w-full h-full object-cover" muted controls={false} />
                 ) : (
                     <img src={file.data} alt={file.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
@@ -331,7 +369,7 @@ function RefThumbnail({ file, category, onRemove }) {
                     {analysis && (
                         <span className="text-[7px] text-white/40 font-mono bg-white/5 px-1.5 py-0.5 rounded">{analysis.dimensions}</span>
                     )}
-                    {isVideo && <span className="text-[7px] text-white/40 font-mono bg-white/5 px-1.5 py-0.5 rounded">{(file.size / 1024 / 1024).toFixed(1)} MB</span>}
+                    {(isVideo || isAudio) && <span className="text-[7px] text-white/40 font-mono bg-white/5 px-1.5 py-0.5 rounded">{(file.size / 1024 / 1024).toFixed(1)} MB</span>}
                     <button onClick={() => onRemove(category, file.id)} className="ml-auto px-2 py-0.5 rounded bg-red-500/20 hover:bg-red-500/40 text-red-400 border border-red-500/25 transition-all text-[8px] font-black uppercase tracking-wider">
                         Delete
                     </button>
@@ -469,12 +507,12 @@ function ReferenceSection({ category, references, onUpload, onRemove, onSelectFr
                         <Plus className="w-3.5 h-3.5" />
                     </button>
                 </div>
-                <input ref={fileRef} type="file" accept={category.id === 'video' ? 'video/*' : 'image/*'} onChange={(e) => onUpload(e, category.id)} className="hidden" />
+                <input ref={fileRef} type="file" accept={category.id === 'voice' ? 'audio/*' : category.id === 'video' ? 'video/*' : 'image/*'} onChange={(e) => onUpload(e, category.id)} className="hidden" />
             </div>
             {items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-6 border border-dashed border-white/5 rounded-xl">
                     <Upload className="w-5 h-5 text-white/15 mb-2" />
-                    <p className="text-[9px] text-white/20">Drop {category.label.toLowerCase()}{category.id === 'video' ? ' videos' : ' images'} or click +</p>
+                    <p className="text-[9px] text-white/20">Drop {category.label.toLowerCase()}{category.id === 'voice' ? ' audio' : category.id === 'video' ? ' videos' : ' images'} or click +</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-3 gap-2">
@@ -564,27 +602,815 @@ function PipelineFlow({ activeStep }) {
     );
 }
 
-function MessageBubble({ msg }) {
+function ProjectSetupWizard({
+    videoDuration, setVideoDuration,
+    platform, setPlatform,
+    videoGoal, setVideoGoal,
+    scriptText, setScriptText,
+    directorMode, setDirectorMode,
+    references, handleRefUpload, handleRefRemove, setGalleryPickerCategory,
+    onInitialize, isSessionReady
+}) {
+    return (
+        <div className="glass-card rounded-3xl p-6 md:p-8 border border-white/[0.08] bg-gradient-to-br from-violet-950/10 via-[#0a0a14]/60 to-[#05050a]/40 shadow-2xl relative overflow-hidden animate-fade-in mb-6">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-violet-500/5 rounded-full blur-[120px] pointer-events-none -z-10" />
+            
+            {/* Title */}
+            <div className="flex items-center gap-4 mb-6 border-b border-white/[0.04] pb-5">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/20 border border-violet-400/20">
+                    <Film className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                    <h2 className="text-xl font-black italic uppercase tracking-tighter bg-gradient-to-r from-violet-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+                        AI Cinema Director
+                    </h2>
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-white/30 mt-0.5 font-mono">
+                        Step 1 - Project setup & assets configuration
+                    </p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left: Specs & Script */}
+                <div className="space-y-5">
+                    {/* Specs Card */}
+                    <div className="space-y-4 p-4 rounded-2xl border border-white/[0.04] bg-black/20">
+                        <div>
+                            <label className="text-[9px] font-black uppercase text-violet-400 tracking-wider font-mono">Video Duration</label>
+                            <div className="grid grid-cols-3 gap-2 mt-1.5">
+                                {['10 sec', '15 sec', '20 sec', '30 sec', '45 sec', '60 sec'].map(d => (
+                                    <button
+                                        key={d}
+                                        onClick={() => setVideoDuration(d)}
+                                        className={cn(
+                                            "py-2 rounded-xl text-[10px] font-bold border transition-all duration-300",
+                                            videoDuration === d
+                                                ? "bg-violet-500/20 border-violet-500/40 text-violet-300 shadow-[0_0_15px_rgba(139,92,246,0.15)]"
+                                                : "bg-white/[0.02] border-white/5 text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
+                                        )}
+                                    >
+                                        {d}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-[9px] font-black uppercase text-violet-400 tracking-wider font-mono">Platform Format</label>
+                            <div className="grid grid-cols-3 gap-2 mt-1.5">
+                                {[
+                                    { id: 'Instagram', label: 'Instagram', icon: '📸' },
+                                    { id: 'TikTok', label: 'TikTok', icon: '🎵' },
+                                    { id: 'YouTube', label: 'YouTube', icon: '📺' }
+                                ].map(p => (
+                                    <button
+                                        key={p.id}
+                                        onClick={() => setPlatform(p.id)}
+                                        className={cn(
+                                            "py-2 px-3 rounded-xl text-[10px] font-bold border flex flex-col items-center gap-1 transition-all duration-300",
+                                            platform === p.id
+                                                ? "bg-blue-500/20 border-blue-500/40 text-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.15)]"
+                                                : "bg-white/[0.02] border-white/5 text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
+                                        )}
+                                    >
+                                        <span className="text-xs">{p.icon}</span>
+                                        <span>{p.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-[9px] font-black uppercase text-violet-400 tracking-wider font-mono">Director Mode</label>
+                            <div className="grid grid-cols-2 gap-2 mt-1.5 mb-4">
+                                <button
+                                    onClick={() => setDirectorMode('auto')}
+                                    className={cn(
+                                        "px-3 py-2.5 rounded-xl border flex flex-col items-start gap-1 transition-all duration-300 relative overflow-hidden text-left",
+                                        directorMode === 'auto'
+                                            ? "bg-violet-500/20 border-violet-500/40 shadow-[0_0_15px_rgba(139,92,246,0.15)]"
+                                            : "bg-black/20 border-white/5 hover:border-white/10 hover:bg-black/40 opacity-60 hover:opacity-100"
+                                    )}
+                                >
+                                    {directorMode === 'auto' && <div className="absolute inset-0 bg-gradient-to-br from-violet-400/10 to-transparent pointer-events-none" />}
+                                    <div className="flex items-center justify-between w-full">
+                                        <span className="text-[10px] font-bold text-white flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-violet-400" /> Auto Director</span>
+                                        {directorMode === 'auto' && <Check className="w-3 h-3 text-violet-400" />}
+                                    </div>
+                                    <span className="text-[8px] text-white/50 leading-relaxed font-medium">Fully autonomous. AI selects best hook, metaphor, and pacing instantly without interrupting.</span>
+                                </button>
+                                <button
+                                    onClick={() => setDirectorMode('workshop')}
+                                    className={cn(
+                                        "px-3 py-2.5 rounded-xl border flex flex-col items-start gap-1 transition-all duration-300 relative overflow-hidden text-left",
+                                        directorMode === 'workshop'
+                                            ? "bg-indigo-500/20 border-indigo-500/40 shadow-[0_0_15px_rgba(99,102,241,0.15)]"
+                                            : "bg-black/20 border-white/5 hover:border-white/10 hover:bg-black/40 opacity-60 hover:opacity-100"
+                                    )}
+                                >
+                                    {directorMode === 'workshop' && <div className="absolute inset-0 bg-gradient-to-br from-indigo-400/10 to-transparent pointer-events-none" />}
+                                    <div className="flex items-center justify-between w-full">
+                                        <span className="text-[10px] font-bold text-white flex items-center gap-1.5"><Palette className="w-3 h-3 text-indigo-400" /> Director Workshop</span>
+                                        {directorMode === 'workshop' && <Check className="w-3 h-3 text-indigo-400" />}
+                                    </div>
+                                    <span className="text-[8px] text-white/50 leading-relaxed font-medium">Interactive mode. Compare hooks, brainstorm metaphors, and build the story step-by-step.</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-[9px] font-black uppercase text-violet-400 tracking-wider font-mono">Production Goal</label>
+                            <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                {['UGC', 'Advertisement', 'Storytelling', 'Product Demo', 'Cinematic', 'Hook', 'Educational', 'Visual Metaphor'].map(g => (
+                                    <button
+                                        key={g}
+                                        onClick={() => setVideoGoal(g)}
+                                        className={cn(
+                                            "px-2.5 py-1.5 rounded-lg text-[9px] font-bold border transition-all duration-300",
+                                            videoGoal === g
+                                                ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
+                                                : "bg-white/[0.02] border-white/5 text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
+                                        )}
+                                    >
+                                        {g}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Script Area */}
+                    <div className="p-4 rounded-2xl border border-white/[0.04] bg-black/20 space-y-2">
+                        <div className="flex items-center justify-between">
+                            <label className="text-[9px] font-black uppercase text-violet-400 tracking-wider font-mono">Creative Script</label>
+                            <span className="text-[8px] text-white/30 font-mono">
+                                {scriptText ? `${scriptText.split(/\s+/).filter(Boolean).length} words` : 'Empty'}
+                            </span>
+                        </div>
+                        <textarea
+                            value={scriptText}
+                            onChange={(e) => setScriptText(e.target.value)}
+                            placeholder="Write your story/script or paste an existing script here..."
+                            rows={6}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white placeholder-white/20 outline-none focus:border-violet-500/50 transition-colors resize-none font-sans leading-relaxed"
+                        />
+                    </div>
+                </div>
+
+                {/* Right: Asset Board */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <label className="text-[9px] font-black uppercase text-violet-400 tracking-wider font-mono">Step 2 - Attach Assets</label>
+                        <span className="text-[8px] text-white/30 font-mono">{references.length} assets uploaded</span>
+                    </div>
+                    
+                    {/* Simplified list of assets for the Setup Wizard */}
+                    <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
+                        {REF_CATEGORIES.map(cat => {
+                            const uploadedItems = references.filter(r => r.category === cat.id);
+                            const isUploaded = uploadedItems.length > 0;
+                            const CatIcon = cat.icon;
+                            return (
+                                <div key={cat.id} className="flex items-center justify-between p-3 rounded-xl border border-white/[0.04] bg-black/10 hover:bg-black/30 transition-all">
+                                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                                        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow border", isUploaded ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-white/[0.02] border-white/5 text-white/30")}>
+                                            {isUploaded ? <Check className="w-4 h-4 text-emerald-400" /> : <CatIcon className="w-4 h-4" />}
+                                        </div>
+                                        <div className="min-w-0 pr-2 flex-1">
+                                            <p className="text-[10px] font-bold text-white/80">{cat.label}</p>
+                                            <p className="text-[8px] text-white/35 truncate">{isUploaded ? uploadedItems.map(i => i.name).join(', ') : cat.desc}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 ml-2">
+                                        <button 
+                                            onClick={() => setGalleryPickerCategory(cat.id)}
+                                            className="px-2 py-1 rounded bg-white/[0.04] border border-white/10 hover:border-violet-500/30 hover:bg-violet-500/5 text-white/50 hover:text-violet-300 text-[8px] font-bold uppercase transition-all"
+                                        >
+                                            Gallery
+                                        </button>
+                                        <label className="px-2 py-1 rounded bg-violet-600 hover:bg-violet-500 text-white text-[8px] font-bold uppercase cursor-pointer transition-all">
+                                            Upload
+                                            <input 
+                                                type="file" 
+                                                accept={cat.id === 'voice' ? 'audio/*' : cat.id === 'video' ? 'video/*' : 'image/*'} 
+                                                onChange={(e) => handleRefUpload(e, cat.id)} 
+                                                className="hidden" 
+                                            />
+                                        </label>
+                                        {isUploaded && (
+                                            <button 
+                                                onClick={() => handleRefRemove(cat.id, uploadedItems[0].id)}
+                                                className="p-1 rounded bg-red-500/10 border border-red-500/25 hover:bg-red-500/20 text-red-400 transition-all"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+
+            {/* Initializer Button */}
+            <div className="mt-8 flex justify-center border-t border-white/[0.04] pt-5">
+                <button
+                    onClick={onInitialize}
+                    disabled={!isSessionReady}
+                    className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-widest transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(139,92,246,0.3)] hover:shadow-[0_0_40px_rgba(139,92,246,0.5)] hover:scale-[1.02]"
+                >
+                    Initialize Director Session
+                </button>
+            </div>
+        </div>
+    );
+}
+
+function VideoPromptGenerator({ promptText, references, userId, getApiKey, defaultAspectRatio = '16:9' }) {
+    const [status, setStatus] = useState('idle');
+    const [engine, setEngine] = useState('seedance-fast');
+    const [aspectRatio, setAspectRatio] = useState(defaultAspectRatio);
+    const [duration, setDuration] = useState(5);
+    const [generateAudio, setGenerateAudio] = useState(true);
+    const [videoUrl, setVideoUrl] = useState('');
+    const [progressMsg, setProgressMsg] = useState('');
+    const [errorMsg, setErrorMsg] = useState('');
+    const { refresh: refreshShorts } = useShorts() || { refresh: () => {} };
+
+    const handleGenerate = async () => {
+        setStatus('loading');
+        setErrorMsg('');
+        
+        const isOmni = engine === 'omni-flash';
+        setProgressMsg(isOmni ? 'Submitting to Gemini Omni Flash...' : 'Initializing Seedance engine...');
+        
+        try {
+            let firstFrame = null;
+            let lastFrame = null;
+            const refImages = [];
+            const refVideos = [];
+            const refAudios = [];
+            const contentBlocks = [];
+            contentBlocks.push({ type: 'text', text: promptText });
+            
+            references.forEach((ref) => {
+                const isVideo = ref.type?.startsWith('video/');
+                const isAudio = ref.type?.startsWith('audio/');
+                
+                if (isVideo) {
+                    refVideos.push(ref.data);
+                    contentBlocks.push({
+                        type: 'video_url',
+                        video_url: { url: ref.data },
+                        role: 'reference_video'
+                    });
+                } else if (isAudio) {
+                    refAudios.push(ref.data);
+                    contentBlocks.push({
+                        type: 'audio_url',
+                        audio_url: { url: ref.data },
+                        role: 'reference_audio'
+                    });
+                } else {
+                    refImages.push(ref.data);
+                    contentBlocks.push({
+                        type: 'image_url',
+                        image_url: { url: ref.data },
+                        role: 'reference_image'
+                    });
+                    if (ref.category === 'first_frame') {
+                        firstFrame = ref.data;
+                    }
+                }
+            });
+
+            if (!firstFrame && refImages.length > 0) {
+                firstFrame = refImages[0];
+            }
+
+            const headers = { 'Content-Type': 'application/json' };
+            const adminKey = getApiKey();
+            if (adminKey) headers['x-admin-trial-key'] = adminKey;
+
+            if (isOmni) {
+                const resp = await fetch(getApiUrl('/api/omni-i2v'), {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        image: firstFrame || undefined,
+                        firstFrameImage: firstFrame || undefined,
+                        lastFrameImage: lastFrame || undefined,
+                        motionPrompt: promptText,
+                        duration,
+                        aspectRatio,
+                        resolution: '720p',
+                        model: 'gemini-omni-flash-preview',
+                        ref_images: refImages,
+                        ref_videos: refVideos,
+                        ref_audios: refAudios,
+                        userId,
+                        generateAudio,
+                        creditReason: 'cinematic_video_generation'
+                    })
+                });
+
+                const json = await resp.json();
+                if (!resp.ok) throw new Error(json.error || 'Gemini Omni Flash task failed.');
+                if (!json.videoUrl) throw new Error('Omni returned no video URL.');
+
+                setVideoUrl(json.videoUrl);
+                setStatus('completed');
+                setProgressMsg('');
+                refreshShorts();
+                return;
+            }
+
+            // Seedance Logic
+            const modelParam = engine === 'seedance-fast'
+                ? 'dreamina-seedance-2-0-fast-260128'
+                : engine === 'seedance-mini'
+                ? 'bytedance/seedance-2-mini'
+                : 'dreamina-seedance-2-0-260128';
+
+            const resp = await fetch(getApiUrl('/api/seedance/generate'), {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    engine,
+                    model: modelParam,
+                    seedanceContentArray: contentBlocks,
+                    duration,
+                    aspectRatio,
+                    resolution: engine === 'seedance-fast' ? '720p' : '1080p',
+                    userId,
+                    generateAudio,
+                    creditReason: 'cinematic_video_generation'
+                })
+            });
+
+            const json = await resp.json();
+            if (!resp.ok) throw new Error(json.error || 'Seedance task initialization failed.');
+
+            const taskId = json.requestId;
+            if (!taskId) throw new Error('No task ID returned from server.');
+
+            pollTask(taskId, json.engine || engine);
+        } catch (err) {
+            setStatus('error');
+            setErrorMsg(err.message || 'Generation failed.');
+        }
+    };
+
+    const pollTask = async (taskId, activeEngine) => {
+        setStatus('polling');
+        const engineLabel = activeEngine.includes('fast') ? 'Seedance Fast' : activeEngine.includes('mini') ? 'Seedance Mini' : 'Seedance 2.0';
+        
+        for (let i = 0; i < 150; i++) {
+            await new Promise(r => setTimeout(r, 6000));
+            const elapsed = (i + 1) * 6;
+            setProgressMsg(`Rendering video... (${elapsed}s)`);
+            
+            try {
+                const res = await fetch(getApiUrl(`/api/seedance/status/${taskId}?userId=${userId}&aspectRatio=${aspectRatio}&engine=${activeEngine}`));
+                const json = await res.json();
+                const st = json.status;
+                
+                if (st === 'completed') {
+                    const url = json.url;
+                    if (url) {
+                        setVideoUrl(url);
+                        setStatus('completed');
+                        setProgressMsg('');
+                        refreshShorts();
+                        return;
+                    }
+                }
+                
+                if (st === 'failed' || st === 'error') {
+                    setStatus('error');
+                    setErrorMsg(json.error || json.message || `${engineLabel} generation failed.`);
+                    setProgressMsg('');
+                    refreshShorts();
+                    return;
+                }
+            } catch (pollErr) {
+                console.warn('[Seedance Poll Error]:', pollErr.message);
+                continue;
+            }
+        }
+        
+        setStatus('error');
+        setErrorMsg('Generation timed out.');
+        refreshShorts();
+    };
+
+    return (
+        <div className="mt-4 p-4 rounded-2xl border border-white/[0.06] bg-[#0c0c16]/80 backdrop-blur-md shadow-2xl relative overflow-hidden text-left">
+            <div className="absolute top-0 right-0 w-[150px] h-[150px] bg-violet-500/5 rounded-full blur-2xl pointer-events-none" />
+            
+            {status === 'completed' && videoUrl ? (
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2 border-b border-white/[0.04] pb-2">
+                        <Play className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">Generated Video Output</span>
+                    </div>
+                    <div className="rounded-xl overflow-hidden border border-white/10 bg-black shadow-inner aspect-video max-w-full">
+                        <video src={videoUrl} controls autoPlay loop className="w-full h-full object-contain" />
+                    </div>
+                    <div className="flex gap-2">
+                        <a href={videoUrl} download="director-cut.mp4" target="_blank" rel="noreferrer" className="flex-1 py-2 text-center rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-[10px] uppercase tracking-wider transition-all">
+                            Open/Download HD Video
+                        </a>
+                        <button onClick={() => setStatus('idle')} className="px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-white/70 text-[10px] font-bold uppercase transition-all">
+                            Re-generate
+                        </button>
+                    </div>
+                </div>
+            ) : status === 'loading' || status === 'polling' ? (
+                <div className="py-6 flex flex-col items-center justify-center space-y-3">
+                    <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+                    <p className="text-[11px] font-bold text-white/80">{progressMsg}</p>
+                    <p className="text-[9px] text-white/30 uppercase tracking-widest font-mono">Deducting credits & calling {engine === 'omni-flash' ? 'Vertex AI' : 'BytePlus'} nodes...</p>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-white/[0.04] pb-2.5">
+                        <div className="flex items-center gap-2">
+                            <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+                            <span className="text-[10px] font-black uppercase tracking-wider text-white/80">Cinematic Video Studio</span>
+                        </div>
+                        <span className="text-[8px] font-mono text-white/30 uppercase">{engine === 'omni-flash' ? 'Gemini Omni Flash' : 'Dreamina Seedance 2.0'}</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="text-[8px] font-black uppercase tracking-wider text-white/30 font-mono">Engine Quality</label>
+                            <select value={engine} onChange={(e) => setEngine(e.target.value)} className="w-full bg-[#12121f] border border-white/10 rounded-xl px-2.5 py-1.5 text-[9px] font-bold text-white outline-none focus:border-violet-500/50 mt-1">
+                                <option value="seedance-fast">Seedance 2.0 Fast (720p)</option>
+                                <option value="seedace">Seedance 2.0 HD (1080p)</option>
+                                <option value="seedance-mini">Seedance Mini (480p)</option>
+                                <option value="omni-flash">Gemini Omni Flash (720p)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-[8px] font-black uppercase tracking-wider text-white/30 font-mono">Duration</label>
+                            <select value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="w-full bg-[#12121f] border border-white/10 rounded-xl px-2.5 py-1.5 text-[9px] font-bold text-white outline-none focus:border-violet-500/50 mt-1">
+                                <option value={5}>5 Seconds</option>
+                                <option value={10}>10 Seconds</option>
+                                <option value={15}>15 Seconds (Max)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-[8px] font-black uppercase tracking-wider text-white/30 font-mono">Aspect Ratio</label>
+                            <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)} className="w-full bg-[#12121f] border border-white/10 rounded-xl px-2.5 py-1.5 text-[9px] font-bold text-white outline-none focus:border-violet-500/50 mt-1">
+                                <option value="16:9">16:9 Landscape</option>
+                                <option value="9:16">9:16 Portrait</option>
+                                <option value="1:1">1:1 Square</option>
+                            </select>
+                        </div>
+                        <div className="flex items-center gap-2 mt-4 pl-1">
+                            <input type="checkbox" checked={generateAudio} onChange={(e) => setGenerateAudio(e.target.checked)} className="rounded border-white/10 bg-[#12121f] text-violet-600 focus:ring-0 w-3 h-3 cursor-pointer" />
+                            <label className="text-[9px] font-bold text-white/60 cursor-pointer">Generate Synced Audio</label>
+                        </div>
+                    </div>
+
+                    {status === 'error' && (
+                        <div className="p-2.5 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 text-[10px] leading-relaxed">
+                            {errorMsg}
+                        </div>
+                    )}
+
+                    <button onClick={handleGenerate} className="w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black text-[10px] uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(139,92,246,0.2)]">
+                        Generate Cinematic Video
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function DirectorAnalysisCard({ content, directorMode = 'auto' }) {
+    const [showRaw, setShowRaw] = useState(false);
+    
+    const checklist = [
+        { label: "Product DNA analyzed", desc: "Category, texture, macro priorities & hero selling moment defined" },
+        { label: "Audience Psychology mapped", desc: "Buy triggers, consumption context & emotional comfort triggers identified" },
+        { label: "Visual Hook selected", desc: "Scroll-stopping options (A/B/C) generated and score-critiqued" },
+        { label: "Metaphor Engine activated", desc: "Symbolic metaphors, universal symbols & visual poetry mapped to benefits" },
+        { label: "Shot Rhythm structured", desc: "Shot pacing sizes (Macro/Wide/Medium alternation) enforced" },
+        { label: "AI Difficulty verified", desc: "Gemini Flash success probability checked & complex motion simplified" },
+        { label: "Commercial Score calculated", desc: "Numerical metrics calculated out of 100" },
+        { label: "Credit usage optimized", desc: "Duration timeline budgeted and scene/shot count minimized" }
+    ];
+
+    return (
+        <div className="my-4 p-4 rounded-2xl border border-violet-500/20 bg-gradient-to-b from-[#0a0a18]/90 to-[#05050b]/90 shadow-2xl relative overflow-hidden text-left font-sans">
+            <div className="absolute top-0 right-0 w-[120px] h-[120px] bg-violet-500/5 rounded-full blur-2xl pointer-events-none" />
+            
+            <div className="flex items-center gap-2 border-b border-white/[0.04] pb-2.5 mb-3">
+                <Brain className="w-3.5 h-3.5 text-violet-400 animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-violet-300">🎬 Director's Inner Analysis</span>
+                <span className="text-[7.5px] font-mono text-emerald-400 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 uppercase tracking-widest ml-auto font-bold animate-pulse">Verified</span>
+            </div>
+
+            <div className="space-y-2.5">
+                {checklist.map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-2.5">
+                        <div className="w-4 h-4 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                            <Check className="w-2.5 h-2.5 text-emerald-400" />
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-black text-white/80 leading-none">{item.label}</p>
+                            <p className="text-[9px] text-white/40 mt-1 font-mono">{item.desc}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {directorMode !== 'auto' && (
+                <div className="border-t border-white/[0.04] mt-3.5 pt-2.5 flex justify-end">
+                    <button 
+                        onClick={() => setShowRaw(!showRaw)} 
+                        className="text-[8px] font-bold text-white/30 hover:text-white/60 transition-colors uppercase tracking-wider font-mono"
+                    >
+                        {showRaw ? "Hide raw thinking" : "View raw monologue"}
+                    </button>
+                </div>
+            )}
+
+            {showRaw && (
+                <div className="mt-3 p-3 rounded-xl bg-black/40 border border-white/5 font-mono text-[9.5px] text-violet-300/80 leading-relaxed max-h-[220px] overflow-y-auto custom-scrollbar select-text text-left">
+                    {content}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function MessageBubble({ msg, references = [], userId, getApiKey, defaultAspectRatio = '16:9', directorMode = 'auto', isLast = false, onSend }) {
     const [showRaw, setShowRaw] = useState(false);
     const [copied, setCopied] = useState(false);
     const isUser = msg.role === 'user';
 
-    const parseLines = (text) => text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-
     const handleCopy = () => { navigator.clipboard.writeText(msg.content); setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
-    const renderContent = (text) => {
+    const formatText = (text) => {
         const parts = [];
         let lastIndex = 0;
         let match;
+        
+        // Find monologue and code blocks
+        const monologues = [];
+        const monologueRegex = /\[INNER MONOLOGUE\]([\s\S]*?)\[\/INNER MONOLOGUE\]/g;
+        while ((match = monologueRegex.exec(text)) !== null) {
+            monologues.push({
+                type: 'monologue',
+                index: match.index,
+                length: match[0].length,
+                content: match[1].trim()
+            });
+        }
+
+        const blocks = [];
         const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
         while ((match = codeBlockRegex.exec(text)) !== null) {
-            if (match.index > lastIndex) parts.push(<span key={lastIndex}>{text.slice(lastIndex, match.index)}</span>);
-            parts.push(<div key={`code-${match.index}`} className="my-2 rounded-xl overflow-hidden glass-card">{match[1] && <div className="px-3 py-1 bg-white/5 text-[9px] font-black uppercase tracking-widest text-white/30">{match[1]}</div>}<pre className="p-3 text-[11px] text-emerald-300 overflow-x-auto bg-black/40 leading-relaxed">{match[2].trim()}</pre></div>);
-            lastIndex = match.index + match[0].length;
+            blocks.push({
+                type: 'code',
+                index: match.index,
+                length: match[0].length,
+                language: match[1],
+                content: match[2]
+            });
         }
-        if (lastIndex < text.length) parts.push(<span key={lastIndex}>{text.slice(lastIndex)}</span>);
-        return parts.length > 0 ? parts : <span>{text}</span>;
+
+        monologues.forEach(m => blocks.push(m));
+        blocks.sort((a, b) => a.index - b.index);
+
+        let combinedPromptTexts = [];
+
+        blocks.forEach(block => {
+            if (block.index > lastIndex) {
+                parts.push(...formatInlineText(text.slice(lastIndex, block.index), lastIndex));
+            }
+
+            if (block.type === 'monologue') {
+                parts.push(
+                    <DirectorAnalysisCard
+                        key={`monologue-${block.index}`}
+                        content={formatInlineText(block.content, block.index)}
+                        directorMode={directorMode}
+                    />
+                );
+            } else if (block.type === 'code') {
+                const promptText = block.content.trim();
+                const language = block.language?.trim().toLowerCase();
+                const isCodeLanguage = ['javascript', 'js', 'json', 'html', 'css', 'python', 'py', 'sql', 'bash', 'sh', 'yaml', 'yml'].includes(language);
+                const isVideoPrompt = !isCodeLanguage && (
+                    language === 'scene' || 
+                    language === 'prompt' || 
+                    language === 'generate' || 
+                    language === 'text' ||
+                    !language ||
+                    promptText.toLowerCase().includes('style') ||
+                    promptText.toLowerCase().includes('scene') ||
+                    promptText.toLowerCase().includes('shot') ||
+                    promptText.toLowerCase().includes('camera') ||
+                    promptText.toLowerCase().includes('prompt') ||
+                    promptText.toLowerCase().includes('lighting')
+                );
+
+                if (isVideoPrompt) {
+                    combinedPromptTexts.push(promptText);
+                }
+
+                parts.push(
+                    <div key={`code-${block.index}`} className="my-3 rounded-xl overflow-hidden border border-white/5 bg-black/40 text-left">
+                        {block.language && <div className="px-3 py-1 bg-white/5 text-[9px] font-black uppercase tracking-widest text-white/30">{block.language}</div>}
+                        <pre className="p-3 text-[11px] text-emerald-300 overflow-x-auto leading-relaxed font-mono select-text">{promptText}</pre>
+                        {isVideoPrompt && (
+                            <div className="p-3 border-t border-white/5 bg-black/25">
+                                <VideoPromptGenerator
+                                    promptText={promptText}
+                                    references={references}
+                                    userId={userId}
+                                    getApiKey={getApiKey}
+                                    defaultAspectRatio={defaultAspectRatio}
+                                />
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+            
+            lastIndex = block.index + block.length;
+        });
+
+        if (lastIndex < text.length) {
+            parts.push(...formatInlineText(text.slice(lastIndex), lastIndex));
+        }
+
+        if (combinedPromptTexts.length > 0) {
+            const masterPrompt = combinedPromptTexts.join('\n\n---\n\n');
+            parts.push(
+                <div key="master-generate" className="mt-5 border border-white/10 bg-[#0a0a14]/60 backdrop-blur-md rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
+                    <div className="px-4 py-2.5 bg-gradient-to-r from-violet-500/10 to-indigo-500/10 border-b border-white/5 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Film className="w-3.5 h-3.5 text-violet-400" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-violet-300">Master Sequence Generator</span>
+                        </div>
+                        <span className="text-[9px] text-white/40 font-mono font-bold bg-white/5 px-2 py-0.5 rounded">{combinedPromptTexts.length} Scenes Combined</span>
+                    </div>
+                    <div className="p-3 bg-black/20">
+                        <VideoPromptGenerator
+                            promptText={masterPrompt}
+                            references={references}
+                            userId={userId}
+                            getApiKey={getApiKey}
+                            defaultAspectRatio={defaultAspectRatio}
+                        />
+                    </div>
+                </div>
+            );
+        }
+        return parts;
+    };
+
+    const renderBoldText = (processed) => {
+        const boldRegex = /\*\*([^*]+)\*\*/g;
+        const elements = [];
+        let lastIdx = 0;
+        let bMatch;
+        while ((bMatch = boldRegex.exec(processed)) !== null) {
+            if (bMatch.index > lastIdx) {
+                elements.push(processed.slice(lastIdx, bMatch.index));
+            }
+            elements.push(<strong key={bMatch.index} className="text-violet-300 font-extrabold">{bMatch[1]}</strong>);
+            lastIdx = bMatch.index + bMatch[0].length;
+        }
+        if (lastIdx < processed.length) {
+            elements.push(processed.slice(lastIdx));
+        }
+        return elements.length > 0 ? elements : processed;
+    };
+
+    const formatInlineText = (text, keyOffset) => {
+        const lines = text.split('\n');
+        return lines.map((line, idx) => {
+            const trimmed = line.trim();
+            if (trimmed === '') {
+                return <div key={`${keyOffset}-${idx}`} className="h-2.5" />;
+            }
+            
+            // 1. Headers
+            const h1Match = line.match(/^#\s+(.*)/);
+            if (h1Match) {
+                return (
+                    <h1 key={`${keyOffset}-${idx}`} className="text-base font-black tracking-tight text-gradient-primary uppercase mt-4 mb-2 border-b border-white/5 pb-1">
+                        {renderBoldText(h1Match[1])}
+                    </h1>
+                );
+            }
+
+            const h2Match = line.match(/^##\s+(.*)/);
+            if (h2Match) {
+                return (
+                    <h2 key={`${keyOffset}-${idx}`} className="text-xs font-black tracking-wider text-violet-400 uppercase mt-3 mb-1.5 font-mono">
+                        {renderBoldText(h2Match[1])}
+                    </h2>
+                );
+            }
+
+            const h3Match = line.match(/^###\s+(.*)/);
+            if (h3Match) {
+                return (
+                    <h3 key={`${keyOffset}-${idx}`} className="text-[10px] font-black tracking-widest text-violet-300 mt-2.5 mb-1 uppercase font-mono">
+                        {renderBoldText(h3Match[1])}
+                    </h3>
+                );
+            }
+
+            // 2. Numbered Lists (e.g. "1. Shot 1...")
+            const numListMatch = line.match(/^(\d+)\.\s*(.*)/);
+            if (numListMatch) {
+                return (
+                    <div key={`${keyOffset}-${idx}`} className="flex items-start gap-2 pl-2 my-1.5 leading-relaxed">
+                        <span className="text-[9px] font-black font-mono px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20 mt-0.5 select-none shrink-0">
+                            {numListMatch[1]}
+                        </span>
+                        <span className="flex-1 text-white/80 text-xs md:text-sm">{renderBoldText(numListMatch[2])}</span>
+                    </div>
+                );
+            }
+
+            // 3. Bullet Lists
+            const bulletMatch = line.match(/^([•\-*○])\s*(.*)/);
+            if (bulletMatch) {
+                const bulletChar = bulletMatch[1];
+                return (
+                    <div key={`${keyOffset}-${idx}`} className="flex items-start gap-2.5 pl-3 my-1 leading-relaxed">
+                        <span className="text-violet-400 select-none mt-1.5 text-[8px] shrink-0">
+                            {bulletChar === '○' ? '○' : '•'}
+                        </span>
+                        <span className="flex-1 text-white/80 text-xs md:text-sm">{renderBoldText(bulletMatch[2])}</span>
+                    </div>
+                );
+            }
+
+            // 4. Standard Paragraph
+            return (
+                <p key={`${keyOffset}-${idx}`} className="mb-2 text-white/85 text-xs md:text-sm leading-relaxed">
+                    {renderBoldText(line)}
+                </p>
+            );
+        });
+    };
+
+    const renderQuickReplies = () => {
+        if (!isLast || isUser || !onSend || directorMode === 'auto') return null;
+
+        const textLower = msg.content.toLowerCase();
+        let options = [];
+
+        if (textLower.includes("would you like me to proceed")) {
+            options = ["Yes, please proceed", "No, let's change the setup"];
+        } else if (textLower.includes("which hook would you like to choose") || textLower.includes("which hook")) {
+            const hookMatches = [...msg.content.matchAll(/(?:Option|Hook)\s+([A-E1-5])/gi)];
+            if (hookMatches.length > 0) {
+                options = [...new Set(hookMatches.map(m => `Option ${m[1].toUpperCase()}`))];
+            } else {
+                options = ["Option 1", "Option 2", "Option 3", "Option 4", "Option 5"];
+            }
+            options.push("Generate new hooks");
+        } else if (textLower.includes("which ending would you like to choose") || textLower.includes("which ending")) {
+            const endMatches = [...msg.content.matchAll(/(?:Option|Ending)\s+([A-E1-5])/gi)];
+            if (endMatches.length > 0) {
+                options = [...new Set(endMatches.map(m => `Option ${m[1].toUpperCase()}`))];
+            } else {
+                options = ["Option 1", "Option 2", "Option 3", "Option 4"];
+            }
+            options.push("Generate new endings");
+        } else if (textLower.includes("do you approve this storyboard")) {
+            options = ["Yes, approve and generate prompts", "No, rewrite storyboard"];
+        } else if (textLower.includes("?")) {
+            options = ["Yes", "No", "Retry"];
+        }
+
+        if (options.length === 0) return null;
+
+        return (
+            <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-white/[0.04]">
+                {options.map((opt, idx) => (
+                    <button
+                        key={idx}
+                        onClick={() => onSend(opt)}
+                        className="px-3 py-1.5 rounded-full bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 text-violet-300 hover:text-violet-200 text-[10px] font-bold tracking-wide transition-all duration-200 shadow-sm"
+                    >
+                        {opt}
+                    </button>
+                ))}
+            </div>
+        );
     };
 
     return (
@@ -612,7 +1438,7 @@ function MessageBubble({ msg }) {
                     </div>
                 )}
                 <div className="text-[14px] leading-relaxed tracking-wide apple-text">
-                    {isUser ? renderContent(msg.content.replace(/^\[Attached:[^\]]*\]\n?/, '')) : parseLines(msg.content).map((line, i) => (<p key={i} className="mb-1.5">{line}</p>))}
+                    {formatText(isUser ? msg.content.replace(/^\[Attached:[^\]]*\]\n?/, '') : msg.content)}
                 </div>
                 {msg.thinking && (
                     <button onClick={() => setShowRaw(!showRaw)} className="mt-2 flex items-center gap-1 text-[9px] text-white/20 hover:text-white/40 transition-colors">
@@ -621,6 +1447,7 @@ function MessageBubble({ msg }) {
                 )}
                 {showRaw && msg.thinking && <pre className="mt-2 text-[10px] text-white/20 whitespace-pre-wrap border-t border-white/5 pt-2">{msg.thinking}</pre>}
                 <div className="mt-1.5 text-[9px] text-white/20 font-mono">{msg.ts}</div>
+                {renderQuickReplies()}
             </div>
             {isUser && <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-white/10 to-white/5 border border-white/[0.08] flex items-center justify-center shrink-0 mt-1 shadow-sm"><User className="w-3.5 h-3.5 text-white/40" /></div>}
         </div>
@@ -654,6 +1481,28 @@ export default function DirectorAgentPage({ activeTool, setActiveTool }) {
     const [pendingRef, setPendingRef] = useState(null);
     const [modalDetails, setModalDetails] = useState({});
     const [galleryPickerCategory, setGalleryPickerCategory] = useState(null);
+
+    // AI Cinema Director states
+    const [videoDuration, setVideoDuration] = useState('30 sec');
+    const [platform, setPlatform] = useState('Instagram');
+    const [videoGoal, setVideoGoal] = useState('Cinematic');
+    const [directorMode, setDirectorMode] = useState('auto');
+    const [scriptText, setScriptText] = useState('');
+    const [isInitialized, setIsInitialized] = useState(false);
+
+    // Sync isInitialized state on chat history load
+    useEffect(() => {
+        if (chatLoaded && messages.length > 1) {
+            setIsInitialized(true);
+        }
+    }, [chatLoaded, messages.length]);
+
+    const getApiKey = () => {
+        if (userProfile?.role === 'admin' || userProfile?.email === 'premspaw@gmail.com') {
+            return window.__ADMIN_GOOGLE_API_KEY__ || import.meta.env.VITE_ADMIN_GOOGLE_API_KEY || localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
+        }
+        return localStorage.getItem('GOOGLE_API_KEY') || window.aistudio?.apiKey || import.meta.env.VITE_GOOGLE_API_KEY || '';
+    };
 
     const processRefImage = (file, category) => new Promise((resolve) => {
         const reader = new FileReader();
@@ -801,7 +1650,7 @@ export default function DirectorAgentPage({ activeTool, setActiveTool }) {
         loadChatHistory();
     }, [userId, chatLoaded]);
 
-    const PROMPT_VERSION = '6';
+    const PROMPT_VERSION = '13';
     useEffect(() => {
         let cancelled = false;
         let retryInterval = null;
@@ -872,8 +1721,33 @@ export default function DirectorAgentPage({ activeTool, setActiveTool }) {
 
     useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isThinking]);
 
-    const handleSend = async (text = input.trim()) => {
-        const hasRefs = references.length > 0;
+    const handleInitialize = () => {
+        setIsInitialized(true);
+        
+        const refCount = references.length;
+        const refList = references.map((r, idx) => `Asset #${idx + 1} (${r.categoryLabel}): ${r.name}`).join(', ');
+        
+        const baseInitText = `[PROJECT SETUP]
+- Video Duration: ${videoDuration}
+- Platform: ${platform}
+- Goal: ${videoGoal}
+- Director Mode: ${directorMode === 'auto' ? 'Auto Director (Autonomous)' : 'Director Workshop (Interactive)'}
+${scriptText.trim() ? `- Script: "${scriptText.trim()}"` : '- Script: None provided yet.'}
+- Attached Assets: ${refCount > 0 ? refList : 'None'}
+
+Please start the Creative Director session. Analyze my specifications and perform Credit Optimization for the ${videoDuration} duration.`;
+
+        const modeInstructions = directorMode === 'auto' 
+            ? `\nCRITICAL AUTO MODE INSTRUCTION: You are running in AUTO DIRECTOR mode. Do NOT pause and ask the user for choices. You must execute all turns (Turn 1 Setup, Turn 2 Hook Selection, Turn 3 Ending Selection, Turn 4 Storyboard, Turn 5 Final Prompt Generation) autonomously right now in this single response. Select the absolute best options automatically and only interrupt/ask the user if your confidence in the best hook is below 70%.`
+            : `\nWORKSHOP MODE INSTRUCTION: You are running in DIRECTOR WORKSHOP mode. Follow your step-by-step conversational protocol. Provide the breakdown and ask: "Would you like me to proceed?" at the end of Turn 1.`;
+
+        const initText = baseInitText + modeInstructions;
+
+        handleSend(initText, true);
+    };
+
+    const handleSend = async (text = input.trim(), includeAllReferences = false) => {
+        const hasRefs = includeAllReferences && references.length > 0;
         if ((!text && !hasRefs) || isThinking) return;
         const refContext = hasRefs 
             ? `[REFERENCE BOARD: ${references.length} references attached]\n${references.map((r, idx) => {
@@ -922,9 +1796,14 @@ export default function DirectorAgentPage({ activeTool, setActiveTool }) {
             
             const toolLabel = 'DIRECTOR MODE';
             const toolPrefixed = `[${toolLabel}]\n${fullText}${personaBlock}${skillsBlock}`;
-            const attachments = references.length > 0 ? references.map(r => ({ name: r.name, type: r.type, data: r.data, category: r.categoryLabel })) : undefined;
+            const attachments = includeAllReferences && references.length > 0 ? references.map(r => ({ name: r.name, type: r.type, data: r.data, category: r.categoryLabel })) : undefined;
+            
+            const headers = { 'Content-Type': 'application/json' };
+            const adminKey = getApiKey();
+            if (adminKey) headers['x-admin-trial-key'] = adminKey;
+
             const resp = await fetch(`${HERMES_API}/api/sessions/${hermesSessionId}/chat`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers,
                 body: JSON.stringify({ message: toolPrefixed, attachments }),
             });
             const data = await resp.json();
@@ -949,7 +1828,14 @@ export default function DirectorAgentPage({ activeTool, setActiveTool }) {
         setMemory([]); saveMemory([]);
         setReferences([]);
         setShowReferenceBoard(true);
-        if (hermesSessionId) fetch(`${HERMES_API}/api/sessions/${hermesSessionId}/clear`, { method: 'POST' }).catch(() => {});
+        setIsInitialized(false);
+        setScriptText('');
+        if (hermesSessionId) {
+            const headers = { 'Content-Type': 'application/json' };
+            const adminKey = getApiKey();
+            if (adminKey) headers['x-admin-trial-key'] = adminKey;
+            fetch(`${HERMES_API}/api/sessions/${hermesSessionId}/clear`, { method: 'POST', headers }).catch(() => {});
+        }
     };
 
     const toggleSkill = (skillName) => setActiveSkills(prev => prev.includes(skillName) ? prev.filter(n => n !== skillName) : [...prev, skillName]);
@@ -1102,33 +1988,97 @@ export default function DirectorAgentPage({ activeTool, setActiveTool }) {
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     <div className="max-w-4xl mx-auto px-6 py-6">
-                        {/* Hero + Reference Board */}
-                        <DirectorHero onSend={handleSend} />
-                        <ReferenceBoard
-                            references={references} onUpload={handleRefUpload} onRemove={handleRefRemove}
-                            onClose={() => setShowReferenceBoard(false)}
-                            onSelectFromGallery={(cat) => setGalleryPickerCategory(cat)}
-                        />
-
-                        {/* Pipeline */}
-                        {isThinking && <PipelineFlow activeStep={activePipelineStep} />}
-
-                        {/* Progress */}
-                        <GenerationProgress isThinking={isThinking} />
-
-                        {/* Messages */}
-                        <div className="space-y-4">
-                            {messages.map((msg, i) => (<MessageBubble key={i} msg={msg} />))}
-                            {isThinking && (
-                                <div className="flex gap-3 justify-start">
-                                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-xl shadow-violet-900/30 relative">
-                                        <div className="absolute inset-0 rounded-xl bg-white/10 animate-ping opacity-25 scale-75" /><Film className="w-4 h-4 text-white" />
+                        {!isInitialized ? (
+                                <ProjectSetupWizard
+                                    videoDuration={videoDuration}
+                                    setVideoDuration={setVideoDuration}
+                                    platform={platform}
+                                    setPlatform={setPlatform}
+                                    videoGoal={videoGoal}
+                                    setVideoGoal={setVideoGoal}
+                                    scriptText={scriptText}
+                                    setScriptText={setScriptText}
+                                    directorMode={directorMode}
+                                    setDirectorMode={setDirectorMode}
+                                    references={references}
+                                    handleRefUpload={handleRefUpload}
+                                    handleRefRemove={handleRefRemove}
+                                    setGalleryPickerCategory={setGalleryPickerCategory}
+                                    onInitialize={handleInitialize}
+                                    isSessionReady={sessionReady}
+                                />
+                        ) : (
+                            <>
+                                {/* Collapsed Spec Bar */}
+                                <div className="glass-card rounded-2xl p-4 mb-6 flex items-center justify-between border border-white/[0.06] bg-[#0a0a14]/60 backdrop-blur-md shadow-xl animate-fade-in">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-600/20 border border-violet-500/30 flex items-center justify-center shrink-0">
+                                            <Film className="w-4 h-4 text-violet-400 animate-pulse" />
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-white/50">Spec:</span>
+                                            <span className="px-2 py-0.5 rounded bg-violet-500/10 text-violet-400 text-[9px] font-bold border border-violet-500/20">{videoDuration}</span>
+                                            <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[9px] font-bold border border-blue-500/20">{platform}</span>
+                                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[9px] font-bold border border-emerald-500/20">{videoGoal}</span>
+                                            <span className={cn("px-2 py-0.5 rounded text-[9px] font-bold border", scriptText ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20" : "bg-red-500/10 text-red-400 border-red-500/20")}>
+                                                {scriptText ? `Script (${scriptText.split(/\s+/).filter(Boolean).length} words)` : 'No Script'}
+                                            </span>
+                                            <span className="px-2 py-0.5 rounded bg-pink-500/10 text-pink-400 text-[9px] font-bold border border-pink-500/20">{references.length} Assets</span>
+                                        </div>
                                     </div>
-                                    <div className="glass-card rounded-2xl px-4 py-3"><ThinkingIndicator /></div>
+                                    <button onClick={() => setIsInitialized(false)} className="px-3.5 py-1.5 rounded-xl border border-white/5 hover:border-violet-500/30 hover:bg-violet-500/5 text-white/50 hover:text-violet-300 text-[9px] font-bold transition-all uppercase tracking-wider">
+                                        Edit Setup
+                                    </button>
                                 </div>
-                            )}
-                            <div ref={bottomRef} />
-                        </div>
+
+                                {/* Pipeline */}
+                                {isThinking && <PipelineFlow activeStep={activePipelineStep} />}
+
+                                {/* Progress */}
+                                <GenerationProgress isThinking={isThinking} />
+
+                                {/* Messages */}
+                                <div className="space-y-4">
+                                    {messages.map((msg, i) => {
+                                        const defaultAspect = platform === 'Instagram' || platform === 'TikTok' ? '9:16' : '16:9';
+                                        return (
+                                            <MessageBubble 
+                                                key={i} 
+                                                msg={msg} 
+                                                references={references} 
+                                                userId={userId} 
+                                                getApiKey={getApiKey} 
+                                                defaultAspectRatio={defaultAspect} 
+                                                directorMode={directorMode}
+                                                isLast={i === messages.length - 1}
+                                                onSend={handleSend}
+                                            />
+                                        );
+                                    })}
+                                    {isThinking && (
+                                        <div className="flex gap-3 justify-start">
+                                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-xl shadow-violet-900/30 relative">
+                                                <div className="absolute inset-0 rounded-xl bg-white/10 animate-ping opacity-25 scale-75" /><Film className="w-4 h-4 text-white" />
+                                            </div>
+                                            <div className="glass-card rounded-2xl px-4 py-3"><ThinkingIndicator /></div>
+                                        </div>
+                                    )}
+                                    <div ref={bottomRef} />
+                                </div>
+                            </>
+                        )}
+                        
+                        {isInitialized && directorMode === 'workshop' && !isThinking && messages.length > 0 && (
+                            <div className="mt-6 flex justify-center animate-fade-in">
+                                <button 
+                                    onClick={() => handleSend("✨ Explore Creative Directions. Please brainstorm distinct paths (Cinematic, Emotional, Metaphorical, Luxury, Viral, Minimal, Fashion, Documentary) for this project with hooks and metaphors for each.")}
+                                    className="px-5 py-2.5 rounded-full bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-indigo-500/30 text-indigo-300 text-[10px] font-bold uppercase tracking-wider shadow-[0_0_20px_rgba(99,102,241,0.15)] hover:shadow-[0_0_30px_rgba(99,102,241,0.25)] hover:scale-105 hover:border-indigo-400/50 hover:text-indigo-200 transition-all duration-300 flex items-center gap-2"
+                                >
+                                    <Sparkles className="w-4 h-4 text-indigo-400" />
+                                    Explore Creative Directions
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -1141,7 +2091,7 @@ export default function DirectorAgentPage({ activeTool, setActiveTool }) {
                                     {REF_CATEGORIES.map(cat => { const count = references.filter(r => r.category === cat.id).length; if (count === 0) return null; const CatIcon = cat.icon; return (<span key={cat.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/5 text-[8px] text-white/50 font-mono"><CatIcon className="w-2.5 h-2.5" />{count} {cat.label}</span>); })}
                                 </div>
                                 <span className="text-[9px] text-white/30 ml-auto">{references.length} reference{references.length > 1 ? 's' : ''} loaded</span>
-                                <button onClick={() => setShowReferenceBoard(true)} className="text-[8px] font-semibold text-violet-400/60 hover:text-violet-300 transition-colors uppercase tracking-wider ml-2">Edit</button>
+                                <button onClick={() => setIsInitialized(false)} className="text-[8px] font-semibold text-violet-400/60 hover:text-violet-300 transition-colors uppercase tracking-wider ml-2">Edit</button>
                                 <button onClick={() => setReferences([])} className="text-white/30 hover:text-red-400 transition-colors p-0.5"><X size={13} /></button>
                             </div>
                         )}

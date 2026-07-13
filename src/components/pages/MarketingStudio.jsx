@@ -1110,7 +1110,8 @@ Any written text, characters, letters, numbers, and labels inside the image must
         const costKey = generateMode === 'image' ? imageEngine : videoEngine;
 
         if (!canAfford(costKey, requiredCredits)) {
-            alert(`Insufficient Shorts! You need ${requiredCredits}⚡, but you only have ${userCredits}⚡.`);
+            alert(`Insufficient Shorts! You need ${requiredCredits}⚡, but you only have ${userCredits}⚡. Redirecting to Pricing...`);
+            useAppStore.getState().setActiveTab('pricing');
             return;
         }
 

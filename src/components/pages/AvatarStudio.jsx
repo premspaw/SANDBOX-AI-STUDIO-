@@ -755,7 +755,7 @@ export default function AvatarStudio() {
               <div className="flex gap-2.5 p-3.5 bg-red-950/15 border border-red-500/25 text-red-300 rounded-xl text-[10px] leading-relaxed">
                 <ShieldAlert className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Insufficient Balance:</strong> Generating reference boards requires <strong>{requiredCredits} credits</strong>. Please upgrade.
+                  <strong>Insufficient Balance:</strong> Generating reference boards requires <strong>{requiredCredits} credits</strong>. Please <span className="underline cursor-pointer font-bold text-red-400 hover:text-red-300" onClick={() => useAppStore.getState().setActiveTab('pricing')}>upgrade here</span>.
                 </p>
               </div>
             )}

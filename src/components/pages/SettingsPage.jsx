@@ -232,7 +232,7 @@ export default function SettingsPage() {
                             </div>
                         </div>
                         <button
-                            onClick={() => window.location.href = '/pricing#top-up'}
+                            onClick={() => setActiveTabGlobal('pricing')}
                             className="bg-[#bef264] text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-[#a3d951] active:scale-95 transition-all ml-4 shadow-lg shadow-[#bef264]/10"
                         >
                             TOP UP
@@ -358,7 +358,7 @@ export default function SettingsPage() {
                                         {/* Quick Actions */}
                                         <div className="pt-2 flex flex-wrap gap-3">
                                             <button
-                                                onClick={() => setActiveTab('billing')}
+                                                onClick={() => setActiveTabGlobal('pricing')}
                                                 className="flex items-center gap-2 px-5 py-2.5 bg-[#bef264] text-black font-black uppercase text-[10px] tracking-widest rounded-xl hover:scale-[1.02] active:scale-95 transition-all"
                                             >
                                                 <TrendingUp size={12} /> Upgrade Plan
@@ -417,13 +417,13 @@ export default function SettingsPage() {
 
                                         <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-2 gap-3">
                                             <button
-                                                onClick={() => window.location.href = '/pricing'}
+                                                onClick={() => setActiveTabGlobal('pricing')}
                                                 className="py-3 bg-[#bef264] text-black font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-[#a3d951] transition-all hover:scale-[1.02] active:scale-95"
                                             >
                                                 <TrendingUp size={12} className="inline mr-2" />Upgrade Plan
                                             </button>
                                             <button
-                                                onClick={() => window.location.href = '/pricing#top-up'}
+                                                onClick={() => setActiveTabGlobal('pricing')}
                                                 className="py-3 bg-white/5 border border-[#bef264]/30 text-[#bef264] hover:bg-[#bef264]/10 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all active:scale-95"
                                             >
                                                 <Coins size={12} className="inline mr-2" />Top-Up Credits
