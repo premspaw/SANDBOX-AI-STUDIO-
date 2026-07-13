@@ -3949,7 +3949,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
       if (engine === 'omni-flash') {
         setVideoProgressMsg('Submitting to Gemini Omni Flash...');
         const resolvedAspectRatio = activeTab === 'talking-head' ? thAspectRatio : (aspectRatio === '1:1' ? '9:16' : aspectRatio as any);
-        const resolvedDuration = activeTab === 'talking-head' ? parseInt(thDuration) : (splitScenes.length > 0 ? 10 : parseInt(durationSeconds));
+        const resolvedDuration = activeTab === 'talking-head' ? parseInt(thDuration) : parseInt(durationSeconds);
         const resolvedIncludeAudio = activeTab === 'talking-head' ? true : includeAudio;
 
         let imageToSend = '';
@@ -4070,7 +4070,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             image: imageToSend,
             script: promptText,
             userId: currentUserId,
-            duration: activeTab === 'talking-head' ? thDuration : (splitScenes.length > 0 ? '8' : durationSeconds),
+            duration: activeTab === 'talking-head' ? thDuration : durationSeconds,
             resolution: videoResolution,
             model: engine === 'veo3' ? 'veo3' : 'veo_fast',
             aspect_ratio: activeTab === 'talking-head' ? thAspectRatio : aspectRatio
@@ -4106,7 +4106,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
           numberOfVideos: 1,
           resolution: videoResolution as any,
           aspectRatio: activeTab === 'talking-head' ? thAspectRatio : (aspectRatio === '1:1' ? '9:16' : aspectRatio as any),
-          durationSeconds: activeTab === 'talking-head' ? parseInt(thDuration) : (splitScenes.length > 0 ? 8 : parseInt(durationSeconds)),
+          durationSeconds: activeTab === 'talking-head' ? parseInt(thDuration) : parseInt(durationSeconds),
           includeAudio: activeTab === 'talking-head' ? true : includeAudio
         }
       };

@@ -5,6 +5,8 @@ import { SCENE_STYLES, MULTI_SHOT_PRESETS, BROLL_PRESETS } from '../constants/vi
 import { buildScenePrompt, validateScenePrompt, detectUgcCategory } from '../constants/ugcPromptTemplates';
 import { getApiUrl, resolveUrl } from '../../../config/apiConfig';
 import { fileToBase64 } from '../utils/imageUtils';
+import HooksLibraryModal from './HooksLibraryModal';
+import { HookTemplate } from '../constants/hooksLibrary';
 
 const SPEECH_TAGS = [
   { label: '🤫 Whisper', value: '[whisper]' },
@@ -17,6 +19,7 @@ const SPEECH_TAGS = [
 export default function SplitScenesPanel() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [selectedBRollPreset, setSelectedBRollPreset] = useState('broll_auto');
+  const [isHookModalOpen, setIsHookModalOpen] = useState(false);
   const {
     splitScenes,
     setSplitScenes,
@@ -82,6 +85,46 @@ export default function SplitScenesPanel() {
       const pos = start + tag.length;
       textarea.setSelectionRange(pos, pos);
     }, 0);
+  };
+
+  const handleBalanceScript = () => {
+    setSplitScenes((prev: SplitScene[]) => {
+      const allText = prev.map(s => s.dialog || '').join(' ');
+      const words = allText.trim().split(/\s+/).filter(Boolean);
+      const N = prev.length;
+      if (N === 0) return prev;
+      
+      const baseWords = Math.floor(words.length / N);
+      const remainder = words.length % N;
+      
+      let currentIndex = 0;
+      const updated = prev.map((s, i) => {
+        const wordsForThisScene = baseWords + (i < remainder ? 1 : 0);
+        const end = currentIndex + wordsForThisScene;
+        const sceneDialog = words.slice(currentIndex, end).join(' ');
+        currentIndex = end;
+        
+        let newPrompt = s.prompt || '';
+        if (newPrompt && sceneDialog.trim() !== '') {
+          if (/The creator is saying:\s*/i.test(newPrompt)) {
+            newPrompt = newPrompt.replace(/(The creator is saying:\s*)(.*?)(?=\s*Visual style preset details:|$)/is, `$1${sceneDialog}`);
+          } else if (/omit any sentence or phrase:\n"/i.test(newPrompt)) {
+            newPrompt = newPrompt.replace(/(omit any sentence or phrase:\n")(.*?)(")/is, `$1${sceneDialog}$3`);
+          } else if (/DIALOGUE THIS SCENE \(say EVERY word\):\n"/i.test(newPrompt)) {
+            newPrompt = newPrompt.replace(/(DIALOGUE THIS SCENE \(say EVERY word\):\n")(.*?)(")/is, `$1${sceneDialog}$3`);
+          } else if (/Use any provided script text \("/i.test(newPrompt)) {
+            newPrompt = newPrompt.replace(/(Use any provided script text \(")(.*?)("\) purely as thematic inspiration)/is, `$1${sceneDialog}$3`);
+          } else if (s.dialog && newPrompt.includes(`"${s.dialog}"`)) {
+            newPrompt = newPrompt.replace(`"${s.dialog}"`, `"${sceneDialog}"`);
+          }
+        }
+        
+        return { ...s, dialog: sceneDialog, prompt: newPrompt };
+      });
+      setSpokenDialog(updated.map((s: SplitScene) => s.dialog || '').join(' '));
+      return updated;
+    });
+    showToast('Script & AI prompts balanced across all scenes', 'success');
   };
 
   const customRef = sc?.refImage;
@@ -229,10 +272,44 @@ export default function SplitScenesPanel() {
     }
   };
 
+  const handleSelectHook = (hook: HookTemplate) => {
+    // Create a new SplitScene for the hook
+    const hookScene: SplitScene = {
+      label: `Hook: ${hook.name}`,
+      dialog: hook.exampleDialogue,
+      prompt: hook.visualPrompt.replace(/^Length:.*?\n+/im, ''),
+      refImage: effectiveRefImage || characterImg?.url || productImg?.url || null
+    };
+    
+    setSplitScenes((prev) => {
+      const newScenes = [hookScene, ...prev];
+      // Renumber labels for non-hook scenes if they were auto-generated 'Scene X'
+      return newScenes.map((s, i) => {
+        if (s.label.startsWith('Scene ')) {
+          return { ...s, label: `Scene ${i + 1}` };
+        }
+        return s;
+      });
+    });
+    
+    // Set focus to the new hook scene tab
+    setActiveSplitTab(0);
+    setActiveSceneIndex(0);
+    setVideoPrompt(hookScene.prompt);
+    setSpokenDialog(hookScene.dialog);
+  };
+
   return (
     <div className="mx-4 mt-2 bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-xl">
       {/* Tab headers */}
       <div className="flex border-b border-white/10 overflow-x-auto no-scrollbar" style={{ scrollbarWidth: 'none' }}>
+        <button 
+          onClick={() => setIsHookModalOpen(true)}
+          className="min-w-[90px] py-2 flex items-center justify-center gap-1.5 text-[8px] font-black uppercase tracking-widest text-[#c8f135] bg-[#c8f135]/5 hover:bg-[#c8f135]/15 transition-all border-r border-white/10 shrink-0"
+          title="Add a high-retention AI Visual Hook to the beginning of your script"
+        >
+          <Sparkles size={10} /> Add Hook
+        </button>
         {splitScenes.map((sc, i) => (
           <button key={i} onClick={() => {
             setActiveSplitTab(i);
@@ -452,17 +529,27 @@ export default function SplitScenesPanel() {
               placeholder="Edit dialogue..."
             />
             {/* Speech tag injectors */}
-            <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {SPEECH_TAGS.map((tag) => (
-                <button
-                  key={tag.value}
-                  type="button"
-                  onClick={() => injectSpeechTag(tag.value)}
-                  className="px-2 py-0.5 bg-white/3 border border-white/8 hover:border-[#c8f135]/40 hover:bg-[#c8f135]/5 text-white/40 hover:text-[#c8f135] rounded-md text-[8px] font-mono transition-all uppercase cursor-pointer"
-                >
-                  {tag.label}
-                </button>
-              ))}
+            <div className="flex flex-wrap gap-1.5 mt-1.5 items-center justify-between">
+              <div className="flex flex-wrap gap-1.5">
+                {SPEECH_TAGS.map((tag) => (
+                  <button
+                    key={tag.value}
+                    type="button"
+                    onClick={() => injectSpeechTag(tag.value)}
+                    className="px-2 py-0.5 bg-white/3 border border-white/8 hover:border-[#c8f135]/40 hover:bg-[#c8f135]/5 text-white/40 hover:text-[#c8f135] rounded-md text-[8px] font-mono transition-all uppercase cursor-pointer"
+                  >
+                    {tag.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={handleBalanceScript}
+                className="px-2 py-1 bg-white/5 border border-white/10 hover:border-[#c8f135]/40 text-white/60 hover:text-[#c8f135] hover:bg-[#c8f135]/5 rounded-md text-[8px] font-mono transition-all uppercase cursor-pointer flex items-center gap-1 shrink-0"
+                title="Auto-adjust and evenly balance the script across all scenes"
+              >
+                <Sparkles size={8} /> Balance Script
+              </button>
             </div>
           </div>
 
@@ -617,6 +704,12 @@ export default function SplitScenesPanel() {
           );
         })()}
       </div>
+
+      <HooksLibraryModal 
+        isOpen={isHookModalOpen} 
+        onClose={() => setIsHookModalOpen(false)} 
+        onSelectHook={handleSelectHook} 
+      />
     </div>
   );
 }

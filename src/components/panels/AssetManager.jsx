@@ -4,6 +4,7 @@ import { getApiUrl } from '../../config/apiConfig';
 import { AssetsLibrary } from './AssetsLibrary';
 import { Search, Database, Image as ImageIcon, Video, Music, X, Upload, Trash2, CheckCircle2, Brain, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { HOOK_CATEGORIES, HOOK_TEMPLATES } from '../../features/UGCStudio/constants/hooksLibrary';
 
 export const AssetManager = () => {
     const [assets, setAssets] = useState(INITIAL_ASSETS);
@@ -387,6 +388,12 @@ export const AssetManager = () => {
                             className={`text-xs font-bold tracking-widest uppercase pb-1 border-b-2 transition-all ${activeTab === 'hermes' ? 'border-blue-500 text-blue-400' : 'border-transparent text-zinc-500 hover:text-white'}`}
                         >
                             Hermes Skills
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('hooks')}
+                            className={`text-xs font-bold tracking-widest uppercase pb-1 border-b-2 transition-all ${activeTab === 'hooks' ? 'border-orange-500 text-orange-400' : 'border-transparent text-zinc-500 hover:text-white'}`}
+                        >
+                            Hooks (UGC)
                         </button>
                     </div>
                 </div>
@@ -811,6 +818,10 @@ export const AssetManager = () => {
                     <section className="h-full overflow-y-auto pr-2 custom-scrollbar">
                         <HermesSkillsManager setStatus={setStatus} />
                     </section>
+                ) : activeTab === 'hooks' ? (
+                    <section className="h-full overflow-y-auto pr-2 custom-scrollbar">
+                        <HooksManager setStatus={setStatus} />
+                    </section>
                 ) : (
                     <section className="space-y-6">
                         <div className="flex justify-between items-center">
@@ -1192,3 +1203,113 @@ const HermesSkillsManager = ({ setStatus }) => {
         </div>
     );
 };
+
+const HooksManager = ({ setStatus }) => {
+    const [previews, setPreviews] = useState({});
+    const [isUploading, setIsUploading] = useState(false);
+
+    React.useEffect(() => {
+        try {
+            const stored = localStorage.getItem('admin_hook_previews');
+            if (stored) setPreviews(JSON.parse(stored));
+        } catch (e) {
+            // Ignore parse errors
+        }
+    }, []);
+
+    const handleUpload = async (e, hookId) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        setStatus({ type: 'info', message: `Uploading preview for ${hookId}...` });
+
+        try {
+            const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+            });
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const headers = { 'Content-Type': 'application/json' };
+            if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+            const response = await fetch(getApiUrl('/api/landing-assets-upload'), {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    fileName: `hook-preview-${hookId}-${Date.now()}.mp4`,
+                    category: 'hooks',
+                    type: file.type.startsWith('video') ? 'video' : 'image',
+                    base64
+                })
+            });
+
+            if (!response.ok) throw new Error("Upload failed");
+            const data = await response.json();
+            
+            if (data.success && data.url) {
+                const newPreviews = { ...previews, [hookId]: data.url };
+                setPreviews(newPreviews);
+                localStorage.setItem('admin_hook_previews', JSON.stringify(newPreviews));
+                setStatus({ type: 'success', message: `Preview uploaded for ${hookId}!` });
+            } else {
+                throw new Error("No URL returned");
+            }
+        } catch (error) {
+            setStatus({ type: 'error', message: error.message });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    return (
+        <div className="space-y-8 pb-12">
+            <div>
+                <h3 className="text-xl font-bold text-orange-400 italic">Hooks (UGC) Visuals</h3>
+                <p className="text-xs text-zinc-500">Upload 9:16 video previews for UGC hooks. Previews map by Hook ID.</p>
+            </div>
+
+            {HOOK_CATEGORIES.map(category => {
+                const categoryHooks = HOOK_TEMPLATES.filter(h => h.categoryId === category.id);
+                if (categoryHooks.length === 0) return null;
+
+                return (
+                    <div key={category.id} className="mb-8 bg-black/20 p-6 rounded-3xl border border-white/5 shadow-2xl">
+                        <h4 className="text-sm font-bold uppercase tracking-widest text-white mb-6 border-b border-white/10 pb-4">
+                            {category.icon} {category.name} <span className="text-white/30 font-mono ml-2 text-[10px]">({categoryHooks.length} hooks)</span>
+                        </h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            {categoryHooks.map(hook => (
+                                <div key={hook.id} className="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-col gap-2 relative group hover:border-orange-500/50 transition-colors">
+                                    <p className="text-xs font-bold text-white truncate" title={hook.name}>{hook.name}</p>
+                                    
+                                    <div className="w-full aspect-[9/16] bg-black/60 rounded-lg overflow-hidden flex items-center justify-center relative border border-white/5 shadow-inner">
+                                        {previews[hook.id] ? (
+                                            <video src={previews[hook.id]} className="w-full h-full object-cover" autoPlay loop muted playsInline />
+                                        ) : (
+                                            <span className="text-[9px] uppercase tracking-widest text-white/30 flex flex-col items-center gap-2">
+                                                <Upload size={14} className="text-white/20" />
+                                                No Preview
+                                            </span>
+                                        )}
+                                        
+                                        <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center cursor-pointer transition-opacity backdrop-blur-sm">
+                                            <Upload size={20} className="text-white mb-2" />
+                                            <span className="text-[10px] font-bold text-white uppercase">Upload</span>
+                                            <input type="file" className="hidden" accept="video/*,image/*" onChange={(e) => handleUpload(e, hook.id)} disabled={isUploading} />
+                                        </label>
+                                    </div>
+                                    <div className="text-[9px] text-zinc-500 font-mono text-center truncate bg-black/40 py-1 rounded-md mt-1">{hook.id}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+

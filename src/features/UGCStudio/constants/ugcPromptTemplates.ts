@@ -201,31 +201,52 @@ export function buildScenePrompt(p: BuildScenePromptParams): string {
       : `This is a ${p.totalDurationSec}-second video.`;
 
   if (p.isBRollMontage) {
-    return `Create a ${p.sceneDurationSec}-second ultra-realistic vertical UGC video. ${sceneContext}
+    return `You are an award-winning commercial director. Before generating the timeline, silently create a visual storyboard. Every shot must answer one question: What does this shot sell? (Beauty? Trust? Luxury? Comfort? Transformation? Convenience? Flavor? Confidence?). Never generate filler shots.
+
+Create a ${p.sceneDurationSec}-second ultra-realistic vertical UGC video. ${sceneContext}
 
 ${refLines.join('\n')}
 
 Category focus: B-Roll / Product Montage. ${p.bRollType ? `Specifically focus on: **${p.bRollType}**.` : ''}
 
-IMPORTANT: This is a cinematic B-roll / Montage scene. NO talking head. NO spoken dialogue.
+IMPORTANT: This is a cinematic B-roll / Montage scene. NO talking head. NO spoken dialogue. The character must NOT speak to the camera. Use any provided script text ("${p.dialog}") purely as thematic inspiration for the visual actions.
 
-Style:
-Authentic smartphone front-camera visual look. Pure camera footage ONLY (no digital overlays, no recording icons, no phone UI). Natural handheld movement but smooth and deliberate. Real indoor or natural lighting only. Show the product in its best light. No beauty filter, no cinematic grading, no artificial sharpening. Keep facial details realistic.
+UGC DIRECTOR BRIEF & PRODUCT ANALYSIS:
+Extract the following from the provided product details ("${p.productDetails}"):
+• Product type, Material, Color, Texture, Key ingredients, Packaging, Size, Intended use, Premium details, Target emotion.
+Every shot must intentionally highlight one of these attributes.
+Before generating the shots, first infer the product category, the user's intent, and the primary selling point. Every B-roll shot must visually communicate a benefit, feature, emotion, or transformation.
 
-Dialogue for this scene:
-NO DIALOGUE OR VOICE-OVER. The character must NOT speak to the camera. Use any provided script text ("${p.dialog}") purely as thematic inspiration for the visual actions.
+EMOTIONAL DIRECTION:
+Choose the emotional visual language according to the product category:
+- Luxury → elegant, smooth movements
+- Food → delicious sensory moments
+- Skincare → soft, calming, clean shots
+- Fitness → energetic, powerful movements
+- Technology → futuristic precision
+- Fashion → stylish, confident movement
 
-Break this scene into sequential shots covering the full ${p.sceneDurationSec} seconds. You have complete freedom to define the timecode timestamps (e.g., [0-4s], [4-8s]) based on visual pacing.
+THE HOOK SHOT:
+The first 2 seconds must immediately capture attention. Use openings like: Extreme macro, Fast hand movement, Product entering frame, Camera hidden behind object, Reflection reveal, Door opening, Steam reveal, Snap focus, Water splash, Fabric whip, Object drop, or Natural transition.
+
+SHOT VARIETY & EDITING RHYTHM:
+Alternate between: Wide, Medium, Close, Extreme Close, Action, Reaction, Environment, Macro. Never repeat the same framing twice.
+Possible shot types to use: Macro Texture, Hero Product Shot, Rack Focus, Hand Interaction, Over Shoulder, Top Down, Side Tracking, Reflection Shot, Silhouette, Product Rotation, Push In, Pull Back, Reveal Shot, Motion Detail, Lifestyle Wide, Environmental Detail, Natural POV.
+
+CAMERA LANGUAGE:
+Combine these movements: Slow Push In, Push Out, Tracking Left, Tracking Right, Handheld Follow, Orbit, Slider Motion, Static Macro, Top Down, Natural POV, Shoulder Follow, Low Angle, High Angle, Reveal Through Object.
+
+PRODUCT INTERACTION:
+The creator must naturally interact with the product. Do not just say "interacting". Use specific actions: Pick up, Rotate, Open, Close, Press, Peel, Pour, Spray, Swipe, Apply, Taste, Wear, Hold, Pass between hands, Place on surface, Remove cap, Button press, Slide open, Fold, Stretch, Flip, Shake, Tap, Inspect, Smell, Use naturally.
+
+CINEMATIC MICRO MOMENTS:
+Include high-end micro moments: Water droplets, Steam, Condensation, Fabric movement, Hair movement, Dust particles, Sunlight reflections, Glass reflections, Tiny splashes, Foam, Cream spreading, Oil glistening, Finger dragging, Liquid dripping, Packaging crinkle.
+
+Break this scene into sequential shots covering the full ${p.sceneDurationSec} seconds. You have complete freedom to define the timecode timestamps based on visual editing rhythm.
 
 For each shot segment:
-- Write the entire segment description as ONE unified paragraph. Blend all descriptions (camera movement, visual action, sound effects) into one block of text.
-- Mix extreme close-ups on product details/textures, creator's hands interacting with the product, and cinematic establishing shots of the location.
-- Creator's face can be shown reacting or using the product, but they MUST NOT be speaking.
-
-UGC DIRECTOR BRIEF:
-- Act as a top-tier director for a UGC ad. Thoroughly analyze the provided Product scan data, Character, and Location.
-- Purposefully design the multi-shot layers and B-roll based on the product details ("${p.productDetails}") and context. Do NOT give random shots. Every shot must be purposefully selected to showcase the product.
-- Sound: rich diegetic sound effects (foley) matching the actions (e.g., lid popping, liquid pouring, fabric swishing, ambient room tone). NO music.
+- Write the entire segment description as ONE unified paragraph. Blend all descriptions (camera movement, visual action, interactions, micro moments, sound effects) into one block of text.
+- Sound: rich diegetic sound effects (foley) matching the actions (e.g., lid popping, liquid pouring, fabric swishing). NO music.
 
 ${GLOBAL_UGC_STYLE_BLOCK}
 

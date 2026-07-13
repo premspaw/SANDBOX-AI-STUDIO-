@@ -53,6 +53,11 @@
             "tag": "NEW TAG",
             "name": "FOOD VLog",
             "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783875397189.mp4"
+        },
+        {
+            "tag": "NEW TAG",
+            "name": "Jewellery",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783879918655.mp4"
         }
     ],
     "productAssets": [
@@ -80,6 +85,11 @@
             "tag": "PRODUCT",
             "name": "New Product Video",
             "src": ""
+        },
+        {
+            "tag": "PRODUCT",
+            "name": "Product Showcase",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783876078553.mp4"
         }
     ],
     "cinemaAssets": [
@@ -124,6 +134,20 @@
             "name": "Food vlog",
             "meta": "AI GENERATED",
             "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783860835485.mp4",
+            "big": false
+        },
+        {
+            "tag": "Product ",
+            "name": "Product ",
+            "meta": "AI GENERATED",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783876275036.mp4",
+            "big": false
+        },
+        {
+            "tag": "Product",
+            "name": "Jewellery",
+            "meta": "AI GENERATED",
+            "src": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/landing/assets/uploaded_1783879817633.mp4",
             "big": false
         }
     ]
