@@ -448,7 +448,7 @@ export default function createRouter(deps) {
     router.get('/seedance/status/:requestId', async (req, res) => {
         try {
             const { requestId } = req.params;
-            const { userId, aspectRatio = '16:9', engine, folder } = req.query;
+            const { userId, aspectRatio = '16:9', engine, folder, projectId } = req.query;
 
             console.log(`[SEEDANCE-STATUS] Checking status | id: ${requestId} | engine: ${engine}`);
 
@@ -484,7 +484,8 @@ export default function createRouter(deps) {
                         const ab = await videoResp.arrayBuffer();
                         if (!ab || ab.byteLength === 0) throw new Error('Empty response');
                         console.log(`[SEEDANCE-STATUS-ARK] Downloaded ${(ab.byteLength / 1024 / 1024).toFixed(1)}MB, uploading to Supabase...`);
-                        supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, folder);
+                        const extraMeta = projectId ? { projectId } : {};
+                        supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, folder, undefined, undefined, extraMeta);
                     } catch (dlErr) {
                         console.warn(`[SEEDANCE-STATUS-ARK] Download/upload failed (${dlErr.message}), returning Ark URL directly`);
                         supabaseUrl = finalUrl;
@@ -517,6 +518,10 @@ export default function createRouter(deps) {
                 const pollData = await pollResp.json();
 
                 if (pollData.code !== 200) {
+                    if (pollData.code === 422 && (pollData.msg === 'recordInfo is null' || !pollData.data)) {
+                        console.log(`[SEEDANCE-STATUS-KIE] Task ${requestId} not propagated yet (recordInfo is null). Treating as processing.`);
+                        return res.json({ status: 'processing' });
+                    }
                     throw new Error(`Kie.ai Polling Failed: ${pollData.msg || JSON.stringify(pollData)}`);
                 }
 
@@ -546,7 +551,8 @@ export default function createRouter(deps) {
                         const ab = await videoResp.arrayBuffer();
                         if (!ab || ab.byteLength === 0) throw new Error('Empty response');
                         console.log(`[SEEDANCE-STATUS-KIE] Downloaded ${(ab.byteLength / 1024 / 1024).toFixed(1)}MB, uploading to Supabase...`);
-                        supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, folder);
+                        const extraMeta = projectId ? { projectId } : {};
+                        supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, folder, undefined, undefined, extraMeta);
                     } catch (dlErr) {
                         console.warn(`[SEEDANCE-STATUS-KIE] Download/upload failed (${dlErr.message}), returning Kie URL directly`);
                         supabaseUrl = finalUrl;

@@ -109,10 +109,10 @@ async function uploadToGoogleFileApi(base64Data, mimeType, apiKey, token) {
         'Content-Length': bodyBuffer.length
     };
     
-    if (apiKey) {
-        uploadUrl += `&key=${apiKey}`;
-    } else if (token) {
+    if (token) {
         headers['Authorization'] = `Bearer ${token}`;
+    } else if (apiKey) {
+        uploadUrl += `&key=${apiKey}`;
     }
     
     console.log(`[OMNI-I2V] Uploading reference video to Google File API... (size: ${bodyBuffer.length} bytes)`);
@@ -140,10 +140,10 @@ async function uploadToGoogleFileApi(base64Data, mimeType, apiKey, token) {
         attempts++;
         let checkUrl = `https://generativelanguage.googleapis.com/v1beta/files/${fileId}`;
         const checkHeaders = {};
-        if (apiKey) {
-            checkUrl += `?key=${apiKey}`;
-        } else if (token) {
+        if (token) {
             checkHeaders['Authorization'] = `Bearer ${token}`;
+        } else if (apiKey) {
+            checkUrl += `?key=${apiKey}`;
         }
         
         const checkResp = await fetch(checkUrl, { headers: checkHeaders });
@@ -368,15 +368,46 @@ export default function createRouter(deps) {
                 }
             }
 
+            async function uploadVideoReference(base64Data, mimeType) {
+                const buffer = Buffer.from(base64Data, 'base64');
+                if (uploadVideoToSupabase) {
+                    try {
+                        console.log(`[OMNI-I2V] Uploading reference video (${buffer.length} bytes) to Cloudflare R2...`);
+                        const r2Url = await uploadVideoToSupabase(buffer, targetUserId || 'anon', validAspectRatio, 'reference', 'Omni Reference Video', 'Omni Flash');
+                        if (r2Url) {
+                            console.log(`[OMNI-I2V] ✅ Reference video uploaded to Cloudflare R2: ${r2Url}`);
+                            return r2Url;
+                        }
+                    } catch (r2Err) {
+                        console.warn(`[OMNI-I2V] Cloudflare R2 upload failed (${r2Err.message}), trying GCS / File API...`);
+                    }
+                }
+                if (token || VERTEX_PROJECT_ID) {
+                    try {
+                        const gsUri = await uploadToGcs(buffer, mimeType);
+                        return gsUri;
+                    } catch (gcsErr) {
+                        console.warn(`[OMNI-I2V] GCS upload failed (${gcsErr.message}), falling back to Google File API...`);
+                    }
+                }
+                return await uploadToGoogleFileApi(base64Data, mimeType, apiKey, token);
+            }
+
             if (primaryImageResolved) {
                 const isVideo = primaryImageResolved.mimeType && primaryImageResolved.mimeType.startsWith('video/');
                 if (isVideo) {
-                    broadcastProgress(taskId, 1.5, 3, 'Processing reference video inline...');
-                    inputParts.push({
-                        type: 'video',
-                        data: primaryImageResolved.data,
-                        mime_type: sanitizeMime(primaryImageResolved.mimeType, 'video/mp4')
-                    });
+                    // Omni Flash does NOT support inline video/mp4 base64 — must upload via GCS / File API
+                    broadcastProgress(taskId, 1.5, 3, 'Uploading reference video...');
+                    try {
+                        const fileUri = await uploadVideoReference(
+                            primaryImageResolved.data,
+                            sanitizeMime(primaryImageResolved.mimeType, 'video/mp4')
+                        );
+                        inputParts.push({ type: 'video', uri: fileUri });
+                        console.log(`[OMNI-I2V] Reference video uploaded: ${fileUri}`);
+                    } catch (fileApiErr) {
+                        console.warn(`[OMNI-I2V] Reference video upload failed, skipping: ${fileApiErr.message}`);
+                    }
                 } else {
                     inputParts.push({
                         type: 'image',
@@ -388,7 +419,7 @@ export default function createRouter(deps) {
 
             // 2. Count image references resolved so far
             const imageCount = inputParts.filter(p => p.type === 'image').length;
-            const videoCount = inputParts.filter(p => p.type === 'video').length;
+            const videoCount = inputParts.filter(p => p.type === 'video' || p.type === 'document').length;
 
             // 3. Add other references only if task is reference_to_video or edit (or auto-inferring and we have image(s)/video(s))
             // Under user rules, we strictly filter board references based on mentions in the chat box!
@@ -398,11 +429,14 @@ export default function createRouter(deps) {
                 (imageCount > 0) || 
                 (videoCount > 0)
             );
-            const allowedToRefVideos = promptLower.includes('@video') && (
+            const hasRefVideosInBody = Boolean(req.body.ref_videos && req.body.ref_videos.length > 0) || Boolean(req.body.refVideo);
+            const allowedToRefVideos = (promptLower.includes('@video') || promptLower.includes('@ref_video') || hasRefVideosInBody) && (
                 requestedTask === 'reference_to_video' || 
                 requestedTask === 'edit' || 
+                requestedTask === 'auto' ||
                 (imageCount > 0) || 
-                (videoCount > 0)
+                (videoCount > 0) ||
+                hasRefVideosInBody
             );
             const allowedToRefAudios = promptLower.includes('@audio') && (
                 requestedTask === 'reference_to_video' || 
@@ -426,11 +460,25 @@ export default function createRouter(deps) {
                         if (isTagged) {
                             const resolved = await resolveMediaToBase64(imgUrl);
                             if (resolved) {
-                                inputParts.push({
-                                    type: 'image',
-                                    data: resolved.data,
-                                    mime_type: sanitizeMime(resolved.mimeType, 'image/png')
-                                });
+                                const isVid = resolved.mimeType && resolved.mimeType.startsWith('video/');
+                                if (isVid) {
+                                    try {
+                                        const fileUri = await uploadVideoReference(
+                                            resolved.data,
+                                            sanitizeMime(resolved.mimeType, 'video/mp4')
+                                        );
+                                        inputParts.push({ type: 'video', uri: fileUri });
+                                        console.log(`[OMNI-I2V] Tagged video uploaded to File API: ${fileUri}`);
+                                    } catch (fileApiErr) {
+                                        console.warn(`[OMNI-I2V] File API upload failed for tagged video: ${fileApiErr.message}`);
+                                    }
+                                } else {
+                                    inputParts.push({
+                                        type: 'image',
+                                        data: resolved.data,
+                                        mime_type: sanitizeMime(resolved.mimeType, 'image/png')
+                                    });
+                                }
                             }
                         }
                     }
@@ -443,52 +491,66 @@ export default function createRouter(deps) {
                         if (refImg === inputImage || (fallbackImgUrl && refImg === fallbackImgUrl)) continue;
                         const resolved = await resolveMediaToBase64(refImg);
                         if (resolved) {
-                            inputParts.push({
-                                type: 'image',
-                                data: resolved.data,
-                                mime_type: sanitizeMime(resolved.mimeType, 'image/png')
-                            });
+                            const isVid = resolved.mimeType && resolved.mimeType.startsWith('video/');
+                            if (isVid) {
+                                try {
+                                    const fileUri = await uploadVideoReference(
+                                        resolved.data,
+                                        sanitizeMime(resolved.mimeType, 'video/mp4')
+                                    );
+                                    inputParts.push({ type: 'video', uri: fileUri });
+                                    console.log(`[OMNI-I2V] Legacy ref video uploaded to File API: ${fileUri}`);
+                                } catch (fileApiErr) {
+                                    console.warn(`[OMNI-I2V] File API upload failed for legacy ref video: ${fileApiErr.message}`);
+                                }
+                            } else {
+                                inputParts.push({
+                                    type: 'image',
+                                    data: resolved.data,
+                                    mime_type: sanitizeMime(resolved.mimeType, 'image/png')
+                                });
+                            }
                         }
                     }
                 }
             }
 
-            const updatedImageCount = inputParts.filter(p => p.type === 'image').length;
-
-            // Only add videos and audios if we have at least one image reference to satisfy reference_to_video constraints
-            if (updatedImageCount > 0) {
-                if (allowedToRefVideos) {
-                    // Reference videos from board (ref_videos)
-                    const refVideos = req.body.ref_videos || [];
-                    for (const refVid of refVideos) {
-                        const vidUrl = refVid.url || refVid.imageUrl;
-                        if (vidUrl) {
+            if (allowedToRefVideos) {
+                // Reference videos from board or direct upload must go through GCS / File API
+                const refVideos = req.body.ref_videos || (req.body.refVideo ? [{ url: req.body.refVideo }] : []);
+                for (const refVid of refVideos) {
+                    const vidUrl = refVid.url || refVid.imageUrl || refVid;
+                    if (vidUrl) {
+                        try {
                             const resolved = await resolveMediaToBase64(vidUrl);
                             if (resolved) {
-                                inputParts.push({
-                                    type: 'video',
-                                    data: resolved.data,
-                                    mime_type: sanitizeMime(resolved.mimeType, 'video/mp4')
-                                });
+                                const fileUri = await uploadVideoReference(
+                                    resolved.data,
+                                    sanitizeMime(resolved.mimeType, 'video/mp4')
+                                );
+                                inputParts.push({ type: 'video', uri: fileUri });
+                                console.log(`[OMNI-I2V] Ref video uploaded to GCS / File API: ${fileUri}`);
                             }
+                        } catch (fileApiErr) {
+                            console.warn(`[OMNI-I2V] File API upload failed for ref video, skipping: ${fileApiErr.message}`);
                         }
                     }
                 }
+            }
 
-                if (allowedToRefAudios) {
-                    // Reference audios from board (ref_audios)
-                    const refAudios = req.body.ref_audios || [];
-                    for (const refAud of refAudios) {
-                        const audUrl = refAud.url || refAud.imageUrl;
-                        if (audUrl) {
-                            const resolved = await resolveMediaToBase64(audUrl);
-                            if (resolved) {
-                                inputParts.push({
-                                    type: 'audio',
-                                    data: resolved.data,
-                                    mime_type: sanitizeMime(resolved.mimeType, 'audio/mp3')
-                                });
-                            }
+            if (allowedToRefAudios) {
+                // Reference audios from board (ref_audios)
+                const refAudios = req.body.ref_audios || [];
+                for (const refAud of refAudios) {
+                    const audUrl = refAud.url || refAud.imageUrl;
+                    if (audUrl) {
+                        const resolved = await resolveMediaToBase64(audUrl);
+                        if (resolved) {
+                            inputParts.push({
+                                type: 'audio',
+                                data: resolved.data,
+                                mime_type: sanitizeMime(resolved.mimeType, 'audio/mp3')
+                            });
                         }
                     }
                 }
@@ -510,23 +572,38 @@ export default function createRouter(deps) {
             }
 
             const finalImageCount = inputParts.filter(p => p.type === 'image').length;
-            const finalVideoCount = inputParts.filter(p => p.type === 'video').length;
+            const finalVideoCount = inputParts.filter(p => p.type === 'video' || p.type === 'document').length;
             const finalAudioCount = inputParts.filter(p => p.type === 'audio').length;
 
             let taskType = 'text_to_video';
-            if (requestedTask) {
-                taskType = requestedTask;
-            } else {
-                if (finalImageCount === 1 && finalVideoCount === 0 && finalAudioCount === 0) {
-                    taskType = 'image_to_video';
-                } else if (finalImageCount > 1 || finalVideoCount > 0 || finalAudioCount > 0) {
-                    taskType = 'reference_to_video';
-                }
+            if (finalVideoCount > 0 && finalImageCount === 0) {
+                taskType = 'edit';
+            } else if (finalImageCount === 1 && finalVideoCount === 0 && finalAudioCount === 0) {
+                taskType = 'image_to_video';
+            } else if (finalImageCount > 0 || finalVideoCount > 0 || finalAudioCount > 0) {
+                taskType = 'reference_to_video';
             }
-            
-            const modelName = modelLower.includes('flash') ? 'gemini-omni-flash-preview' : 'gemini-omni-preview';
 
-            const finalTaskType = req.body.task && req.body.task !== 'auto' ? req.body.task : taskType;
+            let finalTaskType = req.body.task && req.body.task !== 'auto' ? req.body.task : taskType;
+
+            // Vertex AI Interactions API parameter constraints:
+            // 1. 'reference_to_video' requires at least 1 image or audio reference.
+            if (finalTaskType === 'reference_to_video' && finalImageCount === 0 && finalAudioCount === 0 && finalVideoCount === 0) {
+                finalTaskType = 'text_to_video';
+            }
+
+            // 2. 'image_to_video' requires at least 1 image
+            if (finalTaskType === 'image_to_video' && finalImageCount === 0) {
+                finalTaskType = 'text_to_video';
+            }
+
+            // 3. 'edit' requires exactly 1 input video
+            if (finalTaskType === 'edit' && finalVideoCount === 0) {
+                console.warn(`[OMNI-I2V] Task 'edit' requested but finalVideoCount is 0. Falling back to reference_to_video or text_to_video.`);
+                finalTaskType = finalImageCount > 0 ? 'reference_to_video' : 'text_to_video';
+            }
+
+            const modelName = modelLower.includes('flash') ? 'gemini-omni-flash-preview' : 'gemini-omni-preview';
 
             const responseFormat = {
                 type: "video",
@@ -568,11 +645,14 @@ export default function createRouter(deps) {
                         sdkContent = finalInput.map(part => {
                             if (part.type === 'text') return { type: 'text', text: part.text };
                             if (part.type === 'image') return { type: 'image', data: part.data, mime_type: part.mime_type };
-                            if (part.type === 'video') return part.uri ? { type: 'video', uri: part.uri } : { type: 'video', data: part.data };
+                            if (part.type === 'video' || part.type === 'document') {
+                                if (part.data) return { type: 'document', data: part.data };
+                                if (part.uri) return { type: 'document', uri: part.uri };
+                                return null;
+                            }
                             if (part.type === 'audio') return { type: 'audio', data: part.data, mime_type: part.mime_type };
-                            if (part.type === 'document') return { type: 'document', uri: part.uri };
                             return part;
-                        });
+                        }).filter(Boolean);
                     } else {
                         sdkContent = [{ type: 'text', text: String(finalInput) }];
                     }
@@ -679,11 +759,8 @@ export default function createRouter(deps) {
                         console.log(`[OMNI-I2V] [Vertex AI SDK] Video downloaded via URI (${videoBuffer.length} bytes)`);
                     }
                 } catch (serviceErr) {
-                    if ((isAdmin && isOmniFlash) || apiKey === 'VERTEX_AI_CLIENT') {
-                        console.error(`[OMNI-I2V] [Vertex AI SDK] Admin Omni generation failed:`, serviceErr);
-                        throw serviceErr;
-                    }
-                    console.warn(`[OMNI-I2V] [Vertex AI SDK] Failed. Error: ${serviceErr.message}. Falling back to API Key...`);
+                    console.error(`[OMNI-I2V] [Vertex AI SDK] Vertex AI Omni generation failed:`, serviceErr);
+                    throw serviceErr;
                 }
             }
 
@@ -815,7 +892,12 @@ export default function createRouter(deps) {
             console.error('[OMNI-I2V] Error:', error);
             const taskId = req.body.nodeId ? `veo-${req.body.nodeId}` : 'veo-default';
             broadcastProgress(taskId, 0, 0, `Error: ${error.message}`);
-            res.status(500).json({ error: error.message || 'Video generation failed' });
+            
+            let msg = error.message || 'Video generation failed';
+            if (msg.includes('Responsible AI') || msg.includes('violates Google')) {
+                msg = "Google's Responsible AI policy blocked this prompt or reference media. Please modify your text prompt or reference images and try again.";
+            }
+            res.status(400).json({ error: msg });
         }
     });
 

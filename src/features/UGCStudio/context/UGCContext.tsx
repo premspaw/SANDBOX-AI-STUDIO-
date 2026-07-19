@@ -26,6 +26,7 @@ export interface GalleryItem {
   loading?: boolean;
   createdAt?: number;
   error?: string;
+  projectId?: string;
 }
 
 export interface TimelineItem {
@@ -148,6 +149,8 @@ export interface UGCContextType {
   setVideoPrompt: (v: string) => void;
   videoGenMode: 'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash';
   setVideoGenMode: (v: 'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash') => void;
+  thAnimation: string;
+  setThAnimation: (v: string) => void;
   isGeneratingVideo: boolean;
   setIsGeneratingVideo: (v: boolean) => void;
   videoProgressMsg: string;
@@ -204,7 +207,12 @@ export interface UGCContextType {
   processTimeline: () => Promise<void>;
 
   // ── Gallery ───────────────────────────────────────────────────────────────
+  projects: { id: string, name: string }[];
+  setProjects: React.Dispatch<React.SetStateAction<{ id: string, name: string }[]>>;
+  activeProjectId: string;
+  setActiveProjectId: (id: string) => void;
   gallery: GalleryItem[];
+  rawGallery: GalleryItem[];
   setGallery: React.Dispatch<React.SetStateAction<GalleryItem[]>>;
   galleryTab: 'all' | 'image' | 'video';
   setGalleryTab: (v: 'all' | 'image' | 'video') => void;
@@ -364,7 +372,7 @@ export interface UGCContextType {
   generateAllSplitPrompts: () => Promise<void>;
   generateVideoWithMotionRef: (sceneIdx: number) => Promise<void>;
   isGeneratingMotionRef: boolean;
-  generateGeneralVideoPrompt: () => Promise<void>;
+  generateGeneralVideoPrompt: (overrideScript?: string) => Promise<void>;
   isGeneratingGeneralPrompt: boolean;
   isExpandModalOpen: boolean;
   setIsExpandModalOpen: (v: boolean) => void;

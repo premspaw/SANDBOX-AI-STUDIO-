@@ -171,10 +171,12 @@ export default function HomeTourTab() {
 
   // ── Local state ──────────────────────────────────────────────
   const [realtorImg, setRealtorImg] = useState<{ url: string; file: File } | null>(null);
+  const [startFrameImg, setStartFrameImg] = useState<{ url: string; file: File } | null>(null);
   const [propertyName, setPropertyName] = useState('');
   const [propertyPrice, setPropertyPrice] = useState('');
   const [propertyLocation, setPropertyLocation] = useState('');
   const [tourStyle, setTourStyle] = useState<'friendly' | 'luxury' | 'energetic' | 'minimal'>('friendly');
+  const [pathStyle, setPathStyle] = useState<'Walking Path' | 'Camera Path' | 'Reveal Path' | 'Story Path'>('Walking Path');
   const [chatTab, setChatTab] = useState<'script' | 'video'>('script');
 
   // Continuous Walkthrough States
@@ -211,6 +213,12 @@ export default function HomeTourTab() {
     setRealtorImg({ url: URL.createObjectURL(file), file });
   };
 
+  const handleStartFrameUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setStartFrameImg({ url: URL.createObjectURL(file), file });
+  };
+
   // ── Upload room image ─────────────────────────────────────────
   const handleRoomUpload = (roomId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -244,9 +252,12 @@ export default function HomeTourTab() {
 
   // ── Add custom room slot ──────────────────────────────────────
   const addCustomRoom = () => {
+    const roomName = window.prompt("Enter the name for the custom room (e.g., Terrace, Basement):");
+    if (!roomName || roomName.trim() === '') return;
+
     const newRoom: RoomSlot = {
       id: `custom-${Date.now()}`,
-      label: 'Custom Room',
+      label: roomName.trim(),
       icon: Home,
       images: [],
       script: '',
@@ -578,19 +589,26 @@ Return a JSON object structured exactly as:
         propertyLocation && `Location: ${propertyLocation}`,
       ].filter(Boolean).join(', ');
 
-      const numSegments = Math.min(Math.floor(continuousDuration / 10), filledRooms.length - 1);
+      const numSegments = filledRooms.length - 1;
+      const actualDuration = numSegments * 10;
       const activeSequence = filledRooms.slice(0, numSegments + 1);
 
       const segmentInstructions = [];
       for (let i = 0; i < numSegments; i++) {
         const fromRoom = activeSequence[i]?.label || `Room ${i + 1}`;
         const toRoom = activeSequence[i + 1]?.label || `Room ${i + 2}`;
-        segmentInstructions.push(`   - For Segment Index ${i}: describe camera pan/dolly walking from ${fromRoom} into ${toRoom}.`);
+        
+        let pathInstruction = `describe camera pan/dolly walking from ${fromRoom} into ${toRoom}`;
+        if (pathStyle === 'Camera Path') pathInstruction = `describe a cinematic, smooth, floating camera transition moving directly from ${fromRoom} into ${toRoom} (focus on pure camera movement)`;
+        else if (pathStyle === 'Reveal Path') pathInstruction = `describe a suspenseful reveal transition, starting close on an architectural detail in ${fromRoom} and smoothly opening up to reveal ${toRoom}`;
+        else if (pathStyle === 'Story Path') pathInstruction = `describe a narrative-driven transition following a lifestyle flow from ${fromRoom} into ${toRoom}`;
+
+        segmentInstructions.push(`   - For Segment Index ${i}: ${pathInstruction}.`);
       }
 
       const prompt = `
 You are a professional real estate video copywriter.
-Generate a single continuous property tour voiceover monologue script and visual scene prompts for a ${continuousDuration}-second walkthrough.
+Generate a single continuous property tour voiceover monologue script and visual scene prompts for a ${actualDuration}-second walkthrough.
 The tour transitions through the following rooms in order:
 ${activeSequence.map((r, i) => `${i + 1}. Room: "${r?.label || 'Room'}"`).join('\n')}
 
@@ -699,7 +717,7 @@ Return a JSON object structured exactly as:
       return;
     }
 
-    const numSegments = Math.min(Math.floor(continuousDuration / 10), filledRooms.length - 1);
+    const numSegments = filledRooms.length - 1;
     if (continuousSegments.length === 0) {
       showToast('Please auto-write the script/prompt sequence first', 'error');
       return;
@@ -771,7 +789,16 @@ Return a JSON object structured exactly as:
         setVideoProgressMsg(`Generating Segment ${i + 1}/${numSegments}: ${startRoom.label} → ${endRoom.label}...`);
 
         let imagePayload: { imageBytes: string; mimeType: string } | undefined;
-        if (realtorImg) {
+        
+        if (i === 0 && startFrameImg) {
+          try {
+            const blob = await fetchImageAsBlob(startFrameImg.url || URL.createObjectURL(startFrameImg.file));
+            const base64 = await resizeImage(blob);
+            imagePayload = { imageBytes: base64, mimeType: 'image/jpeg' };
+          } catch(e) {}
+        }
+
+        if (!imagePayload && realtorImg) {
           let compositePrompt = `
 The FIRST image is the REALTOR/AGENT reference photo.
 The SECOND image is the ${startRoom.label} of a property.
@@ -832,7 +859,7 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
         }
 
         let finalPrompt = segmentData.prompt;
-        finalPrompt += `\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. The background structure, walls, cabinets, furniture, and geometric details MUST remain 100% stable. No transitions, no flips. Only smooth, steady forward walkthrough camera motion.`;
+        finalPrompt += `\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, cabinets, furniture, and geometric details MUST remain 100% stable. No weird transitions. Only smooth, steady forward walkthrough camera motion.`;
 
         if (realtorImg) {
           finalPrompt += `\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.`;
@@ -850,6 +877,28 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
         }
 
         let refImagesList: any[] = [];
+        
+        if (startFrameImg) {
+          try {
+            const blob = await fetchImageAsBlob(startFrameImg.url || URL.createObjectURL(startFrameImg.file));
+            const base64 = await resizeImage(blob);
+            refImagesList.push({ url: `data:image/jpeg;base64,${base64}` });
+          } catch (e) {
+            console.warn('[HomeTour-Omni] Failed to attach startFrameImg:', e);
+          }
+        }
+
+        // Add realtor image as the primary character reference if it exists
+        if (realtorImg) {
+          try {
+            const blob = await fetchImageAsBlob(realtorImg.url || URL.createObjectURL(realtorImg.file));
+            const base64 = await resizeImage(blob);
+            refImagesList.push({ url: `data:image/jpeg;base64,${base64}` });
+          } catch (e) {
+            console.warn('[HomeTour-Omni] Failed to attach realtor image as reference:', e);
+          }
+        }
+
         // Add startRoom secondary images
         if (startRoom.images && startRoom.images.length > 1) {
           for (let imgIdx = 1; imgIdx < startRoom.images.length; imgIdx++) {
@@ -1102,10 +1151,17 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     try {
       const ai = new GoogleGenAI({ apiKey: getApiKey() });
 
-      // Build image payload — combine realtor + room image
       let imagePayload: { imageBytes: string; mimeType: string } | undefined;
 
-      if (realtorImg && room.images && room.images.length > 0) {
+      if (startFrameImg) {
+        try {
+          const blob = await fetchImageAsBlob(startFrameImg.url || URL.createObjectURL(startFrameImg.file));
+          const base64 = await resizeImage(blob);
+          imagePayload = { imageBytes: base64, mimeType: 'image/jpeg' };
+        } catch(e) {}
+      }
+
+      if (!imagePayload && realtorImg && room.images && room.images.length > 0) {
         let compositePrompt = `
 The FIRST image is the REALTOR/AGENT reference photo.
 The SECOND image is the ${room.label} of a property.
@@ -1178,7 +1234,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             imagePayload = { imageBytes: base64, mimeType: 'image/jpeg' };
           }
         }
-      } else if (room.images && room.images.length > 0) {
+      } else if (!imagePayload && room.images && room.images.length > 0) {
         // Just use room image directly
         const blob = await fetchImageAsBlob(room.images[0].url);
         const base64 = await resizeImage(blob);
@@ -1207,7 +1263,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         }
 
         // Add strict geometry and layout preservation to prevent morphing, transitions, flips or perspective warping
-        finalPrompt += `\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No transitions, no flips. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).`;
+        finalPrompt += `\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No weird transitions. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).`;
 
         // Add a short face-consistency instruction when a realtor image is present
         if (realtorImg) {
@@ -1226,6 +1282,16 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
         // Resolve realtor image as a reference image for face identity lock in Omni Flash
         let refImagesList: any[] = [];
+        
+        if (startFrameImg) {
+          try {
+            const base64 = await resizeImage(startFrameImg.file);
+            refImagesList.push({ url: `data:${startFrameImg.file.type || 'image/jpeg'};base64,${base64}` });
+          } catch (e) {
+            console.warn('[HomeTour-Omni] Failed to attach startFrameImg:', e);
+          }
+        }
+        
         if (realtorImg) {
           try {
             const base64 = await resizeImage(realtorImg.file);
@@ -1487,6 +1553,43 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
           )}
         </div>
 
+        {/* Start Frame Upload */}
+        <div className="p-4 border-b border-[#1e1e24] pt-2">
+          <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+            <Camera size={10} className="text-[#c8f135]" /> Start Frame / Outfit Lock
+          </p>
+          <label className="relative block cursor-pointer group">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleStartFrameUpload}
+              className="hidden"
+            />
+            {startFrameImg ? (
+              <div className="relative rounded-xl overflow-hidden h-20 border border-[#c8f135]/40">
+                <img
+                  src={resolveUrl(startFrameImg.url)}
+                  className="w-full h-full object-cover"
+                  alt="Start Frame"
+                />
+                <button
+                  onClick={e => { e.preventDefault(); setStartFrameImg(null); }}
+                  className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center animate-none transition-none"
+                >
+                  <X size={9} className="text-white" />
+                </button>
+                <div className="absolute bottom-1 left-1 bg-black/60 px-1.5 py-0.5 rounded text-[7px] text-[#c8f135] font-black uppercase">
+                  Start Frame ✓
+                </div>
+              </div>
+            ) : (
+              <div className="h-14 border-2 border-dashed border-[#1e1e24] rounded-xl flex flex-col items-center justify-center gap-1 hover:border-[#c8f135]/40 transition-colors">
+                <Upload size={12} className="text-white/20" />
+                <span className="text-[8px] font-bold uppercase tracking-widest text-white/30">Attach Start Frame</span>
+              </div>
+            )}
+          </label>
+        </div>
 
 
         {/* Room Slots List */}
@@ -1754,6 +1857,26 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                     </div>
                   </div>
 
+                  {/* Path Style Dropdown */}
+                  <div className="relative group py-1">
+                    <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[8px] font-black uppercase text-white/60 hover:text-[#c8f135] hover:border-[#c8f135]/40 transition-all font-mono">
+                      <Sparkles size={9} className="text-[#c8f135]" />
+                      <span>Path: {pathStyle.split(' ')[0]}</span>
+                      <ChevronDown size={8} />
+                    </button>
+                    <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block bg-[#0e0e10] border border-[#1e1e24] rounded-xl py-1 min-w-[120px] shadow-xl z-50">
+                      {(['Walking Path', 'Camera Path', 'Reveal Path', 'Story Path'] as const).map(style => (
+                        <button
+                          key={style}
+                          onClick={() => setPathStyle(style)}
+                          className="w-full text-left px-3 py-1.5 text-[8px] font-black uppercase text-white/50 hover:text-[#c8f135] hover:bg-white/5 transition-all"
+                        >
+                          {style}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Language Dropdown */}
                   <div className="relative group py-1">
                     <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[8px] font-black uppercase text-white/60 hover:text-[#c8f135] hover:border-[#c8f135]/40 transition-all font-mono">
@@ -2007,7 +2130,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                         <textarea
                           value={continuousScript}
                           onChange={e => setContinuousScript(e.target.value)}
-                          placeholder={`Full walkthrough tour voiceover script for ${continuousDuration} seconds...`}
+                          placeholder={`Full walkthrough tour voiceover script for ${Math.max(0, filledRoomCount - 1) * 10} seconds...`}
                           rows={5}
                           className="w-full bg-black/40 border border-[#1e1e24] rounded-xl px-3 py-2 text-[10px] text-white/80 focus:outline-none focus:border-[#c8f135]/40 resize-none leading-relaxed flex-1 font-sans"
                         />
@@ -2068,29 +2191,17 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                             <span className="text-[#c8f135] font-black">OMNI FLASH ⚡</span>
                           </div>
                           
-                          {/* Duration Selector */}
+                          {/* Duration Display */}
                           <div className="flex items-center justify-between">
                             <span className="text-[8px] font-mono uppercase text-white/30">Total Duration</span>
-                            <div className="flex items-center gap-1">
-                              {([10, 20, 30] as const).map(d => (
-                                <button
-                                  key={d}
-                                  onClick={() => setContinuousDuration(d)}
-                                  className={`px-1.5 py-0.5 rounded text-[8px] font-black border transition-all ${
-                                    continuousDuration === d
-                                      ? 'bg-[#c8f135] text-black border-[#c8f135]'
-                                      : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'
-                                  }`}
-                                >
-                                  {d}s
-                                </button>
-                              ))}
-                            </div>
+                            <span className="text-[8px] font-black text-[#c8f135]">
+                              {Math.max(0, filledRoomCount - 1) * 10}s
+                            </span>
                           </div>
 
                           <div className="flex items-center justify-between text-[8px] font-mono text-white/55 border-t border-white/5 pt-1.5">
                             <span className="uppercase text-white/30">Specs</span>
-                            <span>{filledRoomCount} rooms · {continuousDuration}s walkthrough</span>
+                            <span>{filledRoomCount} rooms · {Math.max(0, filledRoomCount - 1) * 10}s walkthrough</span>
                           </div>
                         </div>
 
@@ -2109,7 +2220,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                               {isGeneratingContinuousVideo ? (
                                 <><Loader2 size={10} className="animate-spin" />{videoProgressMsg}</>
                               ) : (
-                                <><Film size={10} /> Gen Walkthrough (⚡ {getCurrentCost(false, 10) * Math.min(Math.floor(continuousDuration / 10), filledRoomCount - 1)})</>
+                                <><Film size={10} /> Gen Walkthrough (⚡ {getCurrentCost(false, 10) * Math.max(0, filledRoomCount - 1)})</>
                               )}
                             </button>
                           ) : (

@@ -8,10 +8,10 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Sparkles, Video, Trash2, Camera, Film, Play, Loader2, X,
+  Sparkles, Video, Trash2, Camera, Film, Play, Loader2, X, Music,
   Clapperboard, Image as ImageIcon, Send, Download, ChevronDown,
   ChevronUp, Settings2, Maximize2, Clock, Ratio, Zap, Eye, Users,
-  Pencil, Grid, Tv, Upload
+  Pencil, Grid, Tv, Upload, Sliders
 } from 'lucide-react';
 import { useShorts } from '../../hooks/useShorts';
 import { useAppStore } from '../../store';
@@ -19,12 +19,13 @@ import { supabase } from '../../lib/supabase';
 import { getApiUrl, resolveUrl } from '../../config/apiConfig';
 import { cn } from '../../lib/utils';
 import { ReferencePanel } from './ReferencePanel';
+import { SidePanel } from './SidePanel';
 import { CAMERA_ANGLES, CAMERA_MODELS, ANGLE_NARRATIVES } from './constants';
 import { InpaintEditor } from '../common/InpaintEditor';
 import { compressImageToMax1024 } from '../../services/geminiService';
 import { CinematicLightbox } from './CinematicLightbox';
 import { StoryboardEditor } from './StoryboardEditor';
-import { buildSeedanceContentArray } from './SeedanceEngine';
+import { buildSeedanceContentArray, isVideo, isAudio } from './SeedanceEngine';
 
 /* ─── URL NORMALIZATION & DEDUPLICATION HELPERS ─────────────────── */
 const getNormalizedPath = (url) => {
@@ -143,13 +144,14 @@ const ENGINES = [
   { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 12⚡/s (720p) / 7⚡/s (480p)',          cost: 12 },
   { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 7⚡/s (480p) / 15⚡/s (720p) / 35⚡/s (1080p) / 70⚡/s (4K)', cost: 15 },
   { id: 'seedance-mini',                 label: 'Seedance Mini',    icon: '🧊', desc: 'ByteDance — 7⚡/s (720p) / 5⚡/s (480p)',  cost: 7 },
+  { id: 'kling/v3-turbo-image-to-video', label: 'Kling V3 Turbo',   icon: '🔥', desc: 'Kling — 9.8⚡/s (720p) / 12.3⚡/s (1080p) (V3 Turbo high fidelity)', cost: 9.8 },
   { id: 'omni-flash',                    label: 'Omni Flash',      icon: '✨', desc: 'Omni fast — 1.6⚡/s (2.75⚡/s audio)',           cost: 1.6 },
 ];
 
 const IMAGE_ENGINES = [
-  { id: 'nano-banana-2-lite', label: 'Nano Banana 2 Lite', icon: '⚡', desc: 'Google ultra-fast lite engine — 0.5⚡ flat rate', cost: 0.5 },
-  { id: 'nano-banana-2',   label: 'Nano Banana 2',   icon: '🎨', desc: 'Google highest-fidelity photo gen — 1⚡ flat rate', cost: 1 },
-  { id: 'nano-banana-pro', label: 'Nano Banana Pro', icon: '💎', desc: 'Google maximum fidelity image engine — 3⚡ flat rate', cost: 3 },
+  { id: 'nano-banana-2-lite', label: 'NB2 Lite', icon: '⚡', desc: 'Google ultra-fast lite engine — 0.5⚡ flat rate', cost: 0.5 },
+  { id: 'nano-banana-2',   label: 'NB2',   icon: '🎨', desc: 'Google highest-fidelity photo gen — 1⚡ flat rate', cost: 1 },
+  { id: 'nano-banana-pro', label: 'NB2 Pro', icon: '💎', desc: 'Google maximum fidelity image engine — 3⚡ flat rate', cost: 3 },
   { id: 'gpt-image-2',     label: 'GPT Image Pro',   icon: '🤖', desc: 'OpenAI layout & text design — 2⚡ flat rate',                 cost: 2 },
 ];
 
@@ -180,9 +182,12 @@ const DURATION_OPTIONS = [
 ];
 
 const SEEDANCE_DURATION_OPTIONS = [
-  { value: 5,  label: '5 Seconds',  desc: 'Quick burst — ideal for ads' },
-  { value: 10, label: '10 Seconds', desc: 'Standard narrative length' },
-  { value: 15, label: '15 Seconds', desc: 'Extended scene — maximum duration' },
+  { value: 3,  label: '3 Seconds',  desc: 'Ultra-fast micro clip' },
+  { value: 4,  label: '4 Seconds',  desc: 'Quick burst — dynamic movement' },
+  { value: 5,  label: '5 Seconds',  desc: 'Standard burst — ideal for ads' },
+  { value: 6,  label: '6 Seconds',  desc: 'Extended burst — smooth scene' },
+  { value: 10, label: '10 Seconds', desc: 'Narrative length — extended motion' },
+  { value: 15, label: '15 Seconds', desc: 'Full scene — maximum duration' },
 ];
 
 const OMNI_DURATION_OPTIONS = [
@@ -464,6 +469,9 @@ const DEFAULT_CINEMA_ASSETS = [];
 const cleanErrorMessage = (msg) => {
   if (!msg || typeof msg !== 'string') return '';
   let cleaned = msg;
+  if (cleaned.toLowerCase().includes('pixel count') || cleaned.includes('409600')) {
+    return "Reference Video Resolution Too Low: ByteDance Seedance 2.0 requires reference videos to have a total resolution of at least 409,600 pixels (e.g. at least 640x640, 854x480, or 1280x720). Please upload a higher resolution reference video.";
+  }
   if (cleaned.toLowerCase().includes('real person') || cleaned.toLowerCase().includes('realperson')) {
     return "Real-Person Policy Flagged: Volcano/BytePlus Ark safety filters restrict generating video from reference images that resemble real people. Recommendations: 1) Switch to Veo 3.1 or 2) Use a more stylized or cartoonish/drawn reference image.";
   }
@@ -471,6 +479,66 @@ const cleanErrorMessage = (msg) => {
     return "Safety Filter Blocked: The prompt or input image triggered the model's safety filters. Please refine your prompt text or try a different reference image.";
   }
   return cleaned;
+};
+
+// A fast local-state wrapper for the prompt input to prevent typing lag
+// since CinematicStudio is a massive component that takes time to re-render.
+const FastPromptInput = ({
+  textareaRef,
+  promptText,
+  handleTextChange,
+  canGenerate,
+  handleGenerate,
+  activeTab,
+  isBusy
+}) => {
+  const [localVal, setLocalVal] = React.useState(promptText);
+
+  // Sync from parent if parent changes externally (e.g. pills inserted, recipe inserted)
+  React.useEffect(() => {
+    setLocalVal(promptText);
+  }, [promptText]);
+
+  // Auto-resize effect to prevent layout cutoff and text blocking
+  React.useEffect(() => {
+    const tx = textareaRef.current;
+    if (tx) {
+      tx.style.height = "auto";
+      const nextHeight = Math.min(tx.scrollHeight, 180);
+      tx.style.height = `${nextHeight}px`;
+    }
+  }, [localVal, textareaRef]);
+
+  const handleChange = (e) => {
+    const value = e.target.value;
+    const selectionStart = e.target.selectionStart;
+    setLocalVal(value);
+    // Wrap parent call in startTransition to prevent UI blocking
+    React.startTransition(() => {
+      handleTextChange({ target: { value, selectionStart } });
+    });
+  };
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={localVal}
+      onChange={handleChange}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          if (canGenerate) handleGenerate();
+        }
+      }}
+      placeholder={activeTab === 'image' 
+        ? "Describe your premium image masterwork - subject, lighting, style preset... Type @ to tag reference elements."
+        : "Describe your cinematic video scenario - camera movements, lighting, mood... Type @ to tag reference elements."
+      }
+      rows={1}
+      disabled={isBusy}
+      className="w-full bg-transparent text-xs text-white placeholder-white/20 outline-none resize-none font-medium leading-relaxed custom-scrollbar py-2 min-h-[36px]"
+    />
+  );
 };
 
 /* ─── MAIN COMPONENT ────────────────────────────────────────── */
@@ -483,13 +551,25 @@ export default function CinematicStudio() {
   const { refresh: refreshShorts } = useShorts() || { refresh: () => {} };
   const spendShorts = useAppStore(state => state.spendShorts);
   const refundShorts = useAppStore(state => state.refundShorts);
+  const projects = useAppStore(state => state.projects || [{ id: 'default', name: 'Default Project' }]);
+  const setProjects = useAppStore(state => state.setProjects);
+  const activeProjectId = useAppStore(state => state.activeProjectId || 'default');
+  const setActiveProjectId = useAppStore(state => state.setActiveProjectId);
 
-  // Core Inputs
+  // Core Inputs for Veo 3.1
   const [promptText, setPromptText] = useState('');
   const [firstFrameImage, setFirstFrameImage] = useState('');
   const [firstFramePreview, setFirstFramePreview] = useState('');
   const [lastFrameImage, setLastFrameImage] = useState('');
   const [lastFramePreview, setLastFramePreview] = useState('');
+
+  // Core Inputs for Omni Flash
+  const [omniPromptText, setOmniPromptText] = useState('');
+  const [omniFirstFrameImage, setOmniFirstFrameImage] = useState('');
+  const [omniFirstFramePreview, setOmniFirstFramePreview] = useState('');
+  const [omniLastFrameImage, setOmniLastFrameImage] = useState('');
+  const [omniLastFramePreview, setOmniLastFramePreview] = useState('');
+
   const [uploadTarget, setUploadTarget] = useState('first'); // 'first' | 'last'
   const [isUploading, setIsUploading] = useState(false);
 
@@ -513,11 +593,18 @@ export default function CinematicStudio() {
   const [cameraMovement, setCameraMovement] = useState(() => localStorage.getItem('cs_cameraMovement') || 'none');
   const isConsumerCam = ['iphone', 'gopro', 'vhs', 'disposable'].includes(camera);
   const [showAnglesModal, setShowAnglesModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showProjectDropdown, setShowProjectDropdown] = useState(false);
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
   const [showPayloadModal, setShowPayloadModal] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedPayload, setCopiedPayload] = useState(false);
   const [generateAudio, setGenerateAudio] = useState(() => localStorage.getItem('cs_generateAudio') === 'true');
+  const [useCameraSettings, setUseCameraSettings] = useState(() => localStorage.getItem('cs_useCameraSettings') !== 'false');
   const [omniTask, setOmniTask] = useState(() => localStorage.getItem('cs_omniTask') || 'auto');
+  const [showSidePanel, setShowSidePanel] = useState(false);
+  const [panelTab, setPanelTab] = useState('veo'); // 'veo' | 'omni'
 
   const isSeed = useMemo(() => activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini', [activeEngine]);
   const isOmni = useMemo(() => activeEngine === 'omni' || activeEngine === 'omni-flash', [activeEngine]);
@@ -534,6 +621,7 @@ export default function CinematicStudio() {
     localStorage.setItem('cs_duration', String(duration));
     localStorage.setItem('cs_camera', camera);
     localStorage.setItem('cs_omniTask', omniTask);
+    localStorage.setItem('cs_useCameraSettings', useCameraSettings);
     localStorage.setItem('cs_lens', lens);
     localStorage.setItem('cs_angle', angle);
     localStorage.setItem('cs_lensModel', lensModel);
@@ -548,7 +636,7 @@ export default function CinematicStudio() {
     }
   }, [
     activeTab, imageStyle, activeEngine, aspectRatio, resolution,
-    variationCount, duration, camera, omniTask, lens, angle, lensModel, cameraMovement, generateAudio
+    variationCount, duration, camera, omniTask, lens, angle, lensModel, cameraMovement, generateAudio, useCameraSettings
   ]);
 
   // Automatically take default lens for selected Camera + Angle (framing & perspective)
@@ -588,14 +676,17 @@ export default function CinematicStudio() {
         else setDuration(8);
       }
     } else if (isSeed) {
-      const maxRes = activeEngine === 'seedace' ? '4k' : '720p';
+      const maxRes = '720p';
       const resIdx = ['480p', '720p', '1080p', '4k'].indexOf(resolution);
       const maxIdx = ['480p', '720p', '1080p', '4k'].indexOf(maxRes);
       if (resIdx > maxIdx) {
         setResolution(maxRes);
       }
-      if (![5, 10, 15].includes(duration)) {
-        if (duration <= 7) setDuration(5);
+      if (![3, 4, 5, 6, 10, 15].includes(duration)) {
+        if (duration <= 3) setDuration(3);
+        else if (duration <= 4) setDuration(4);
+        else if (duration <= 5) setDuration(5);
+        else if (duration <= 7) setDuration(6);
         else if (duration <= 12) setDuration(10);
         else setDuration(15);
       }
@@ -608,15 +699,6 @@ export default function CinematicStudio() {
     }
   }, [activeEngine, resolution, duration]);
 
-  // Clear first/last frame when switching to seedance engines
-  useEffect(() => {
-    if (isSeed) {
-      setFirstFrameImage('');
-      setFirstFramePreview('');
-      setLastFrameImage('');
-      setLastFramePreview('');
-    }
-  }, [isSeed]);
 
   const handleCameraChange = (camId) => {
     const cam = CAMERA_MODELS.find(c => c.id === camId) || CAMERA_MODELS[0];
@@ -672,6 +754,13 @@ export default function CinematicStudio() {
     }
   });
 
+  const filteredGallery = useMemo(() => {
+    return gallery.filter(item => {
+      const itemProj = item.projectId || 'default';
+      return itemProj === activeProjectId;
+    });
+  }, [gallery, activeProjectId]);
+
   // Fetch previously generated assets from server on mount
   useEffect(() => {
     let active = true;
@@ -694,11 +783,15 @@ export default function CinematicStudio() {
             .map(asset => {
               let aspectVal = asset.aspect || '16:9';
               let isGridVal = false;
+              let projIdVal = 'default';
               if (asset.metadata) {
                 try {
                   const meta = typeof asset.metadata === 'string' ? JSON.parse(asset.metadata) : asset.metadata;
                   aspectVal = meta.aspect || meta.aspectRatio || meta.aspect_ratio || aspectVal;
                   isGridVal = !!meta.isGrid;
+                  if (meta.projectId) {
+                    projIdVal = meta.projectId;
+                  }
                 } catch (_) { /* ignore malformed metadata JSON */ }
               }
               const cleanPrompt = asset.prompt || '';
@@ -717,7 +810,8 @@ export default function CinematicStudio() {
                 engine: cleanEngine,
                 aspect: aspectVal,
                 ts: asset.created_at ? new Date(asset.created_at).getTime() : Date.now(),
-                isGrid: finalIsGrid
+                isGrid: finalIsGrid,
+                projectId: projIdVal
               };
             });
           
@@ -772,7 +866,8 @@ export default function CinematicStudio() {
       prompt: lightboxItem ? `${lightboxItem.prompt} (Brush Edited)` : "Brush Edited Image",
       engine: lightboxItem ? `${lightboxItem.engine} + Edit` : "Inpainted",
       aspect: lightboxItem ? lightboxItem.aspect : "16:9",
-      ts: Date.now()
+      ts: Date.now(),
+      projectId: activeProjectId
     };
     
     setGallery(prev => [newItem, ...prev]);
@@ -845,7 +940,8 @@ DO NOT add new objects or change the scene. Enhance only.
           prompt: `${item.prompt} (Upscaled)`,
           engine: `${item.engine} (2K)`,
           aspect: item.aspect || "16:9",
-          ts: Date.now()
+          ts: Date.now(),
+          projectId: activeProjectId
         };
 
         // Add the new 2K upscaled image to the top of the gallery, preserving the original image
@@ -941,7 +1037,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           engine: `${item.engine} (Grid)`,
           aspect: item.aspect || "16:9",
           ts: Date.now(),
-          isGrid: true
+          isGrid: true,
+          projectId: activeProjectId
         };
 
         setGallery(prev => [newItem, ...prev]);
@@ -1055,6 +1152,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     ...mergedBoard.wardrobes.map(i => ({ ...i, category: 'wardrobe', prefix: 'ward' })),
     ...mergedBoard.props.map(i => ({ ...i, category: 'prop', prefix: 'prop' })),
     ...mergedBoard.moods.map(i => ({ ...i, category: 'mood', prefix: 'mood' })),
+    ...(mergedBoard.ref_images || []).map((i, idx) => ({ ...i, name: i.name || `img${idx + 1}`, category: 'ref_images', prefix: 'img' })),
+    ...(mergedBoard.ref_videos || []).map((i, idx) => ({ ...i, name: i.name || `vid${idx + 1}`, category: 'ref_videos', prefix: 'vid' })),
+    ...(mergedBoard.ref_audios || []).map((i, idx) => ({ ...i, name: i.name || `aud${idx + 1}`, category: 'ref_audios', prefix: 'aud' })),
   ]
 
   // Seedance-specific reference media (separate from @mention system)
@@ -1113,9 +1213,13 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     setPromptText(prev => prev.replace(regex, ''))
   }
 
-  const handleTextChange = (e) => {
+  const handleTextChange = useCallback((e) => {
     const val = e.target.value
     setPromptText(val)
+    if (activeEngine === 'kling/v3-turbo-image-to-video') {
+      setMentionSearch(null)
+      return
+    }
     const cursor = e.target.selectionStart || 0
     const match = val.slice(0, cursor).match(/@(\w*)$/)
     if (match) {
@@ -1125,7 +1229,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     } else {
       setMentionSearch(null)
     }
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeEngine])
 
   const selectMention = (item) => {
     const text = promptText || ''
@@ -1311,6 +1416,23 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       const assetType = isVideoFile ? 'video' : isAudioFile ? 'audio' : 'image';
       const ext = isVideoFile ? 'mp4' : isAudioFile ? 'mp3' : 'png';
 
+      if (isVideoFile) {
+        const videoDims = await new Promise((resolve) => {
+          const v = document.createElement('video');
+          v.preload = 'metadata';
+          v.onloadedmetadata = () => {
+            window.URL.revokeObjectURL(v.src);
+            resolve({ width: v.videoWidth, height: v.videoHeight });
+          };
+          v.onerror = () => resolve(null);
+          v.src = URL.createObjectURL(file);
+        });
+        if (videoDims && (videoDims.width * videoDims.height < 409600)) {
+          const totalPx = videoDims.width * videoDims.height;
+          throw new Error(`Video resolution is too low (${videoDims.width}x${videoDims.height} = ${totalPx.toLocaleString()} pixels). Seedance 2.0 requires reference videos to be at least 409,600 total pixels (e.g. 640x640 or 854x480).`);
+        }
+      }
+
       let base64;
       if (isImageFile) {
         base64 = await compressImage(file);
@@ -1442,12 +1564,21 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       }
       return Math.ceil(costPerSec * 1.1 * duration);
     }
+    if (engineId === 'kling/v3-turbo-image-to-video') {
+      const costPerSec = (resolution === '1080p') ? (0.1125 * 1.30 * 84) : (0.09 * 1.30 * 84); // 12.285 or 9.828 credits/sec
+      return Math.round(costPerSec * duration);
+    }
     return (ENGINES.find(e => e.id === engineId)?.cost || 2) * duration;
   };
 
-  const isBusy = status === 'generating' || status === 'polling';
+  const isBusy = isSubmitting;
   const requiredCredits = getRequiredCredits(activeEngine) * variationCount;
-  const canGenerate = (promptText.trim() || firstFramePreview) && userCredits >= requiredCredits && !isBusy;
+  // Memoize so getTaggedRefItems regex only runs when promptText actually changes
+  const taggedItems = useMemo(() => getTaggedRefItems(promptText), [promptText, allRefItems]); // eslint-disable-line react-hooks/exhaustive-deps
+  const taggedItemsCount = taggedItems.length;
+  const hasRefBoardMedia = Boolean(seedanceRefs?.ref_images?.length > 0 || seedanceRefs?.ref_videos?.length > 0 || seedanceRefs?.ref_audios?.length > 0);
+  const hasInput = Boolean(promptText.trim() || firstFramePreview || taggedItemsCount > 0 || hasRefBoardMedia);
+  const canGenerate = hasInput && userCredits >= requiredCredits && !isBusy;
 
   const triggerRefund = async (reason) => {
     try {
@@ -1458,18 +1589,45 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     }
   };
 
-  // Auto-resize textarea
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
-    }
-  }, [promptText]);
+  // Note: textarea auto-resize is handled inside FastPromptInput — no duplicate effect needed here
 
   /* ─── UPLOAD ─────────────────────────────────────────────── */
+  const handleClearRef = (target) => {
+    if (panelTab === 'omni') {
+      if (target === 'first') {
+        setOmniFirstFrameImage('');
+        setOmniFirstFramePreview('');
+      } else if (target === 'last') {
+        setOmniLastFrameImage('');
+        setOmniLastFramePreview('');
+      } else if (target === 'third') {
+        const thirdImg = seedanceRefs?.ref_images?.[0];
+        if (thirdImg) {
+          handleRemoveSeedanceRef(thirdImg.id, 'ref_images');
+        }
+      }
+    } else {
+      if (target === 'first') {
+        setFirstFrameImage('');
+        setFirstFramePreview('');
+      } else if (target === 'last') {
+        setLastFrameImage('');
+        setLastFramePreview('');
+      }
+    }
+  };
+
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !supabase) return;
+
+    if (uploadTarget === 'ref_images') {
+      // Direct pass to reference board upload for Slot 3 image
+      await handleSeedanceRefUpload(file, 'ref_images');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     setIsUploading(true);
     setErrorMsg('');
 
@@ -1491,10 +1649,18 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         });
       }
 
-      if (uploadTarget === 'first' || activeTab === 'image') {
-        setFirstFramePreview(previewUrl);
+      if (panelTab === 'omni') {
+        if (uploadTarget === 'first') {
+          setOmniFirstFramePreview(previewUrl);
+        } else {
+          setOmniLastFramePreview(previewUrl);
+        }
       } else {
-        setLastFramePreview(previewUrl);
+        if (uploadTarget === 'first' || activeTab === 'image') {
+          setFirstFramePreview(previewUrl);
+        } else {
+          setLastFramePreview(previewUrl);
+        }
       }
 
       const resp = await fetch(getApiUrl('/api/save-asset'), {
@@ -1514,20 +1680,30 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       const data = await resp.json();
       const publicUrl = data.url || data.path || previewUrl;
 
-      if (uploadTarget === 'first' || activeTab === 'image') {
-        setFirstFrameImage(publicUrl);
+      if (panelTab === 'omni') {
+        if (uploadTarget === 'first') {
+          setOmniFirstFrameImage(publicUrl);
+        } else {
+          setOmniLastFrameImage(publicUrl);
+        }
       } else {
-        setLastFrameImage(publicUrl);
+        if (uploadTarget === 'first' || activeTab === 'image') {
+          setFirstFrameImage(publicUrl);
+        } else {
+          setLastFrameImage(publicUrl);
+        }
       }
     } catch (err) {
       console.error('[Cinema Upload]:', err);
       setErrorMsg(`Upload failed: ${err.message}`);
       const showToast = useAppStore.getState().showToast;
       if (showToast) showToast(`Upload failed: ${err.message}`, "error");
-      if (uploadTarget === 'first' || activeTab === 'image') {
-        setFirstFramePreview('');
+      if (panelTab === 'omni') {
+        if (uploadTarget === 'first') setOmniFirstFramePreview('');
+        else setOmniLastFramePreview('');
       } else {
-        setLastFramePreview('');
+        if (uploadTarget === 'first' || activeTab === 'image') setFirstFramePreview('');
+        else setLastFramePreview('');
       }
     } finally {
       setIsUploading(false);
@@ -1535,16 +1711,6 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     }
   };
 
-  const handleClearRef = (target) => {
-    if (target === 'first') {
-      setFirstFrameImage('');
-      setFirstFramePreview('');
-    } else {
-      setLastFrameImage('');
-      setLastFramePreview('');
-    }
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
 
   /* ─── SEEDANCE POLL ──────────────────────────────────────── */
   const pollSeedanceTask = async (taskId, activePrompt, activeRatio, engine, tempId = null) => {
@@ -1557,12 +1723,12 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       setPollMsg(`Rendering video... (${elapsed}s)`);
 
       try {
-        const res = await fetch(getApiUrl(`/api/seedance/status/${taskId}?userId=${userId}&aspectRatio=${activeRatio}&engine=${engine}`));
+        const res = await fetch(getApiUrl(`/api/seedance/status/${taskId}?userId=${userId}&aspectRatio=${activeRatio}&engine=${engine}&projectId=${activeProjectId}`));
         const json = await res.json();
         const st = json.status;
 
         if (st === 'completed') {
-          const url = json.url;
+          const url = json.url || json.videoUrl || json.video_url || json.resultUrl || json.data?.url;
           if (url) {
             const finishedItem = {
               id: Date.now(),
@@ -1571,7 +1737,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               prompt: activePrompt,
               engine: engineLabel,
               aspect: activeRatio,
-              ts: Date.now()
+              ts: Date.now(),
+              projectId: activeProjectId
             };
 
             setGallery(prev => {
@@ -1584,6 +1751,14 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             setStatus('idle');
             setPollMsg('');
             refreshShorts();
+            return;
+          } else {
+            if (tempId) {
+              setGallery(prev => prev.filter(item => item.id !== tempId));
+            }
+            setStatus('error');
+            setErrorMsg(`${engineLabel} compilation completed but video URL was empty.`);
+            setPollMsg('');
             return;
           }
         }
@@ -1618,9 +1793,96 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     await triggerRefund('cinematic_video_generation');
   };
 
+  const pollKlingTask = async (taskId, activePrompt, activeRatio, engine, tempId = null) => {
+    setStatus('polling');
+    const engineLabel = 'Kling V3 Turbo';
+
+    for (let i = 0; i < 120; i++) {
+      await new Promise(r => setTimeout(r, 6000));
+      const elapsed = (i + 1) * 6;
+      setPollMsg(`Rendering video... (${elapsed}s)`);
+
+      try {
+        const res = await fetch(getApiUrl(`/api/kling/status/${taskId}?userId=${userId}&aspectRatio=${activeRatio}`));
+        const json = await res.json();
+        const st = json.status;
+
+        if (st === 'completed') {
+          const url = json.url || json.videoUrl;
+          if (url) {
+            const finishedItem = {
+              id: Date.now(),
+              type: 'video',
+              url: url,
+              prompt: activePrompt,
+              engine: engineLabel,
+              aspect: activeRatio,
+              ts: Date.now(),
+              projectId: activeProjectId
+            };
+
+            setGallery(prev => {
+              if (tempId && prev.some(item => item.id === tempId)) {
+                return prev.map(item => item.id === tempId ? finishedItem : item);
+              }
+              return [finishedItem, ...prev];
+            });
+
+            setStatus('idle');
+            setPollMsg('');
+            refreshShorts();
+            return;
+          } else {
+            if (tempId) {
+              setGallery(prev => prev.filter(item => item.id !== tempId));
+            }
+            setStatus('error');
+            setErrorMsg(`${engineLabel} compilation completed but video URL was empty.`);
+            setPollMsg('');
+            return;
+          }
+        }
+
+        if (st === 'failed' || st === 'error') {
+          if (tempId) {
+            setGallery(prev => prev.filter(item => item.id !== tempId));
+          }
+          setStatus('error');
+          const cleanErr = cleanErrorMessage(json.error || json.message || `${engineLabel} generation failed.`);
+          setErrorMsg(cleanErr);
+          setPollMsg('');
+          const showToast = useAppStore.getState().showToast;
+          if (showToast) showToast(cleanErr, "error");
+          await triggerRefund('cinematic_video_generation');
+          return;
+        }
+      } catch (pollErr) {
+        console.warn('[Kling Poll Error]:', pollErr.message);
+        continue;
+      }
+    }
+    if (tempId) {
+      setGallery(prev => prev.filter(item => item.id !== tempId));
+    }
+    setStatus('error');
+    const timeoutMsg = `${engineLabel} compilation timed out.`;
+    setErrorMsg(timeoutMsg);
+    setPollMsg('');
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) showToast(timeoutMsg, "error");
+    await triggerRefund('cinematic_video_generation');
+  };
+
   const getCompiledPrompt = () => {
-    let basePrompt = promptText.trim();
-    if (!basePrompt && firstFramePreview) {
+    const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash';
+    let basePrompt = isOmniEngine ? omniPromptText.trim() : promptText.trim();
+    const firstPreview = isOmniEngine ? omniFirstFramePreview : firstFramePreview;
+    
+    if (!useCameraSettings) {
+      return basePrompt;
+    }
+
+    if (!basePrompt && firstPreview) {
       const selectedAngle = CAMERA_ANGLES.find(a => a.id === angle);
       const angleLabel = selectedAngle ? selectedAngle.label : 'selected';
       basePrompt = `Change the reference image to ${angleLabel} camera angle, only angle need to change, rest all the same.`;
@@ -1683,11 +1945,13 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
     // Append starting and ending frame guidance instructions naturally (for video)
     if (activeTab === 'video') {
-      if (firstFrameImage && lastFrameImage) {
+      const primaryImg = isOmniEngine ? omniFirstFrameImage : firstFrameImage;
+      const secondaryImg = isOmniEngine ? omniLastFrameImage : lastFrameImage;
+      if (primaryImg && secondaryImg) {
         compiledPrompt = `${compiledPrompt}. Animation Flow: Interpolate seamlessly, starting exactly from the visual composition of the first frame image and morphing naturally to terminate precisely on the last frame image composition.`;
-      } else if (firstFrameImage) {
+      } else if (primaryImg) {
         compiledPrompt = `${compiledPrompt}. Animation Flow: Begin the shot starting from the visual layout and details of the first frame image, animating it forward dynamically with realistic movement.`;
-      } else if (lastFrameImage) {
+      } else if (secondaryImg) {
         compiledPrompt = `${compiledPrompt}. Animation Flow: Animate the camera and scene naturally to terminate exactly on the composition and framing of the last frame image.`;
       }
     }
@@ -1719,7 +1983,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       }
     }
 
-    // Auto-include Mood/Style reference alignment directive if present and not already tagged
+    // [DISABLED] Auto-include Mood/Style reference alignment directive if present and not already tagged
+    // Users complained it forces mood references when they only want character references.
+    /*
     const moodRef = mergedBoard.moods?.[0];
     if (moodRef?.imageUrl) {
       const isAlreadyTagged = taggedItems.some(item => item.id === moodRef.id);
@@ -1731,6 +1997,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         }
       }
     }
+    */
 
     return compiledPrompt;
   };
@@ -1751,11 +2018,13 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       if (firstFrameImage) {
         reqRefImages.push(firstFrameImage);
       }
-      // Auto-include staged/saved Mood/Style reference image from the Reference Board if present
+      // [DISABLED] Auto-include staged/saved Mood/Style reference image from the Reference Board if present
+      /*
       const moodItem = mergedBoard.moods?.[0];
       if (moodItem?.imageUrl && !reqRefImages.includes(moodItem.imageUrl)) {
         reqRefImages.push(moodItem.imageUrl);
       }
+      */
       taggedItems.forEach(item => {
         if (item.imageUrl && !reqRefImages.includes(item.imageUrl)) {
           reqRefImages.push(item.imageUrl);
@@ -1781,7 +2050,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       const identity_gcs_uris = taggedItems.map(item => ({ name: item.name, uri: item.imageUrl }));
 
       if (activeEngine === 'seedance-fast' || activeEngine === 'seedace') {
-        const seedanceContentArray = buildSeedanceContentArray(compiled, taggedItems, null, null, seedanceRefs);
+        const seedanceContentArray = buildSeedanceContentArray(compiled, taggedItems, null, null, null);
         return {
           engine: activeEngine,
           model: activeEngine === 'seedance-fast' ? 'dreamina-seedance-2-0-fast-260128' : 'dreamina-seedance-2-0-260128',
@@ -1795,7 +2064,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       }
 
       if (activeEngine === 'seedance-mini') {
-        const seedanceContentArray = buildSeedanceContentArray(compiled, taggedItems, null, null, seedanceRefs);
+        const seedanceContentArray = buildSeedanceContentArray(compiled, taggedItems, null, null, null);
         return {
           engine: activeEngine,
           model: 'bytedance/seedance-2-mini',
@@ -1820,9 +2089,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         identity_images,
         identity_gcs_uris,
         referenceImages: identity_images,
-        ref_images: seedanceRefs.ref_images || [],
-        ref_videos: seedanceRefs.ref_videos || [],
-        ref_audios: seedanceRefs.ref_audios || [],
+        ref_images: taggedItems.map(item => ({ url: item.imageUrl || item.url || item.data || item })),
+        ref_videos: taggedItems.filter(item => isVideo(item)).map(item => ({ url: item.imageUrl || item.url || item.data || item })),
+        ref_audios: taggedItems.filter(item => isAudio(item)).map(item => ({ url: item.imageUrl || item.url || item.data || item })),
         task: omniTask,
         generateAudio
       };
@@ -1845,7 +2114,31 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   /* ─── GENERATE ───────────────────────────────────────────── */
   const handleGenerate = async () => {
-    if ((!promptText.trim() && !firstFramePreview) || isBusy) return;
+    if (isBusy) return;
+    setIsSubmitting(true);
+    setTimeout(() => setIsSubmitting(false), 5000);
+
+    if (!hasInput) {
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast("Please type prompt text, upload a frame, or tag reference elements before generating.", "error");
+      return;
+    }
+
+    if (userCredits < requiredCredits) {
+      const errText = `Insufficient Shorts credits: Requires ${requiredCredits}⚡, but you currently have ${userCredits}⚡.`;
+      setErrorMsg(errText);
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) {
+        showToast(errText, "error", {
+          label: "⚡ Top Up Credits",
+          onClick: () => {
+            const setTab = useAppStore.getState().setActiveTab;
+            if (setTab) setTab('pricing');
+          }
+        });
+      }
+      return;
+    }
 
     setStatus('generating');
     setErrorMsg('');
@@ -1876,7 +2169,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       const errText = err.message || 'Insufficient credit balance.';
       setErrorMsg(errText);
       const showToast = useAppStore.getState().showToast;
-      if (showToast) showToast(errText, "error");
+      if (showToast) {
+        showToast(errText, "error", {
+          label: "⚡ Top Up Credits",
+          onClick: () => {
+            const setTab = useAppStore.getState().setActiveTab;
+            if (setTab) setTab('pricing');
+          }
+        });
+      }
       return;
     }
 
@@ -1894,11 +2195,13 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         if (firstFrameImage) {
           reqRefImages.push(firstFrameImage);
         }
-        // Auto-include staged/saved Mood/Style reference image from the Reference Board if present
+        // [DISABLED] Auto-include staged/saved Mood/Style reference image from the Reference Board if present
+        /*
         const moodItem = mergedBoard.moods?.[0];
         if (moodItem?.imageUrl && !reqRefImages.includes(moodItem.imageUrl)) {
           reqRefImages.push(moodItem.imageUrl);
         }
+        */
         identity_images.forEach(img => {
           if (!reqRefImages.includes(img)) reqRefImages.push(img);
         });
@@ -1912,7 +2215,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           loading: true,
           prompt: finalPrompt,
           aspect: activeRatio,
-          ts: Date.now() + (variationCount - idx)
+          ts: Date.now() + (variationCount - idx),
+          projectId: activeProjectId
         }));
         setGallery(prev => [...tempItems, ...prev]);
 
@@ -1946,6 +2250,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                 imageSize: resVal,
                 resolution: resVal,
                 userId,
+                projectId: activeProjectId,
                 referenceImages: reqRefImages,
                 creditReason: 'cinematic_image_generation'
               })
@@ -1963,7 +2268,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               prompt: finalPrompt,
               engine: engineLabel,
               aspect: activeRatio,
-              ts: Date.now()
+              ts: Date.now(),
+              projectId: activeProjectId
             };
             setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
             return data.url;
@@ -1992,7 +2298,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       return;
     }
 
-    if (activeEngine !== 'seedace' && activeEngine !== 'seedance-fast' && activeEngine !== 'seedance-mini') {
+    if (activeEngine !== 'seedace' && activeEngine !== 'seedance-fast' && activeEngine !== 'seedance-mini' && activeEngine !== 'kling/v3-turbo-image-to-video') {
       try {
         let targetModel = activeEngine;
         let engineLabel = ENGINES.find(e => e.id === activeEngine)?.label || 'Veo 3.1';
@@ -2010,7 +2316,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           loading: true,
           prompt: compiledPrompt,
           aspect: activeRatio,
-          ts: Date.now() + (variationCount - idx)
+          ts: Date.now() + (variationCount - idx),
+          projectId: activeProjectId
         }));
         setGallery(prev => [...tempItems, ...prev]);
 
@@ -2034,14 +2341,16 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           try {
             const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash';
             const endpointUrl = isOmniEngine ? '/api/omni-i2v' : '/api/veo-i2v';
+            const primaryImg = isOmniEngine ? omniFirstFrameImage : firstFrameImage;
+            const secondaryImg = isOmniEngine ? omniLastFrameImage : lastFrameImage;
             const resp = await fetch(getApiUrl(endpointUrl), {
               method: 'POST',
               headers: _veoHeaders,
               body: JSON.stringify({
-                image: firstFrameImage || undefined,
-                firstFrameImage: firstFrameImage || undefined,
-                lastFrameImage: lastFrameImage || undefined,
-                imageEnd: lastFrameImage || undefined,
+                image: primaryImg || undefined,
+                firstFrameImage: primaryImg || undefined,
+                lastFrameImage: secondaryImg || undefined,
+                imageEnd: secondaryImg || undefined,
                 motionPrompt: tweakedPrompt,
                 duration,
                 aspectRatio: activeRatio,
@@ -2050,11 +2359,12 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                 identity_images,
                 identity_gcs_uris,
                 referenceImages: identity_images,
-                ref_images: seedanceRefs.ref_images || [],
-                ref_videos: seedanceRefs.ref_videos || [],
-                ref_audios: seedanceRefs.ref_audios || [],
+                ref_images: taggedItems.map(item => ({ url: item.imageUrl || item.url || item.data || item })),
+                ref_videos: taggedItems.filter(item => isVideo(item)).map(item => ({ url: item.imageUrl || item.url || item.data || item })),
+                ref_audios: taggedItems.filter(item => isAudio(item)).map(item => ({ url: item.imageUrl || item.url || item.data || item })),
                 task: omniTask,
                 userId,
+                projectId: activeProjectId,
                 generateAudio,
                 creditReason: 'cinematic_video_generation'
               })
@@ -2072,7 +2382,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               prompt: compiledPrompt,
               engine: engineLabel,
               aspect: activeRatio,
-              ts: Date.now()
+              ts: Date.now(),
+              projectId: activeProjectId
             };
             setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
             return data.videoUrl;
@@ -2092,7 +2403,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         setStatus('error');
         setPollMsg('');
         const label = ENGINES.find(e => e.id === activeEngine)?.label || 'Veo 3.1';
-        const cleanErr = cleanErrorMessage(err.message || `${label} engine failed.`);
+        let cleanErr = err.message || `${label} engine failed.`;
+        if (cleanErr.includes('Responsible AI') || cleanErr.includes('violates Google')) {
+          cleanErr = "⚠️ Content Safety Filter: Google's Responsible AI policy blocked this prompt or reference media. Your credits have been automatically refunded.";
+        }
         setErrorMsg(cleanErr);
         const showToast = useAppStore.getState().showToast;
         if (showToast) showToast(cleanErr, "error");
@@ -2112,7 +2426,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           ? 'bytedance/seedance-2-mini'
           : 'dreamina-seedance-2-0-260128';
 
-        const seedanceContentArray = buildSeedanceContentArray(compiledPrompt, taggedItems, null, null, seedanceRefs);
+        const seedanceContentArray = buildSeedanceContentArray(compiledPrompt, taggedItems, null, null, null);
 
         // Pre-populate gallery with placeholder loading item
         const tempItem = {
@@ -2121,7 +2435,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           loading: true,
           prompt: compiledPrompt,
           aspect: activeRatio,
-          ts: Date.now()
+          ts: Date.now(),
+          projectId: activeProjectId
         };
         setGallery(prev => [tempItem, ...prev]);
 
@@ -2136,6 +2451,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             aspectRatio: activeRatio,
             resolution,
             userId,
+            projectId: activeProjectId,
             generateAudio,
             creditReason: 'cinematic_video_generation'
           })
@@ -2158,6 +2474,62 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         const showToast = useAppStore.getState().showToast;
         if (showToast) showToast(cleanErr, "error");
         await triggerRefund('cinematic_video_generation');
+      } finally {
+        setStatus(prev => (prev === 'generating' || prev === 'polling' ? 'idle' : prev));
+        setPollMsg('');
+      }
+    } else if (activeEngine === 'kling/v3-turbo-image-to-video') {
+      const tempId = `temp-kling-${Date.now()}`;
+      try {
+        if (variationCount > 1) {
+          const showToast = useAppStore.getState().showToast;
+          if (showToast) showToast("Kling currently supports 1 variation per request. Processing 1.", "info");
+        }
+
+        // Pre-populate gallery with placeholder loading item
+        const tempItem = {
+          id: tempId,
+          type: 'video',
+          loading: true,
+          prompt: compiledPrompt,
+          aspect: activeRatio,
+          ts: Date.now()
+        };
+        setGallery(prev => [tempItem, ...prev]);
+
+        const resp = await fetch(getApiUrl('/api/kling/generate'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'kling/v3-turbo-image-to-video',
+            prompt: compiledPrompt,
+            firstFrame: firstFrameImage || undefined,
+            lastFrame: lastFrameImage || undefined,
+            duration,
+            resolution,
+            userId,
+            creditReason: 'cinematic_video_generation'
+          })
+        });
+
+        const json = await resp.json();
+        if (!resp.ok) throw new Error(json.error || 'Kling task initialization failed.');
+
+        const taskId = json.requestId;
+        if (!taskId) throw new Error('No task ID returned from backend.');
+
+        await pollKlingTask(taskId, compiledPrompt, activeRatio, activeEngine, tempId);
+      } catch (err) {
+        setGallery(prev => prev.filter(item => item.id !== tempId));
+        setStatus('error');
+        const cleanErr = cleanErrorMessage(err.message || 'Kling engine failed.');
+        setErrorMsg(cleanErr);
+        const showToast = useAppStore.getState().showToast;
+        if (showToast) showToast(cleanErr, "error");
+        await triggerRefund('cinematic_video_generation');
+      } finally {
+        setStatus(prev => (prev === 'generating' || prev === 'polling' ? 'idle' : prev));
+        setPollMsg('');
       }
     }
   };
@@ -2168,11 +2540,11 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   // Distribute gallery items into 5 columns for responsive masonry Grid flow
   const renderItems = [];
-  const hasLoadingItems = gallery.some(item => item.loading);
+  const hasLoadingItems = filteredGallery.some(item => item.loading);
   if (isBusy && !hasLoadingItems) {
     renderItems.push({ isLoader: true });
   }
-  renderItems.push(...gallery);
+  renderItems.push(...filteredGallery);
 
   const columnsData = [[], [], [], [], []];
   renderItems.forEach((item, index) => {
@@ -2195,33 +2567,87 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
 
       {/* ── HEADER ─────────────────────────────────────────── */}
-      <div className="flex items-center gap-4 px-5 py-2 border-b border-white/5 bg-black/50 backdrop-blur-xl flex-shrink-0 z-30 flex-wrap gap-y-2">
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="w-7 h-7 bg-fuchsia-500/10 border border-fuchsia-500/25 rounded-xl flex items-center justify-center">
-            <Clapperboard size={13} className="text-fuchsia-400" />
+      <div className="flex items-center gap-3 px-4 py-1 border-b border-white/5 bg-black/50 backdrop-blur-xl flex-shrink-0 z-30">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div className="w-5 h-5 bg-fuchsia-500/10 border border-fuchsia-500/25 rounded-lg flex items-center justify-center">
+            <Clapperboard size={11} className="text-fuchsia-400" />
           </div>
           <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] leading-none">Cinema Studio</p>
-            <p className="text-[6.5px] font-mono text-gray-500 uppercase tracking-widest mt-0.5">Cinematic AI Video</p>
+            <p className="text-[8px] font-black uppercase tracking-[0.18em] leading-none">Cinema Studio</p>
           </div>
         </div>
 
         <div className="w-px h-4 bg-white/10 flex-shrink-0" />
 
         {/* Credit Badge */}
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-[#c8f135]/15 border-2 border-[#c8f135]/40 rounded-xl shadow-lg shadow-[#c8f135]/5">
-          <Sparkles size={11} className="text-[#c8f135]" />
-          <span className="text-[10px] font-black text-[#c8f135]">{userCredits}</span>
+        <div className="flex items-center gap-1 px-2.5 py-0.5 bg-[#c8f135]/15 border border-[#c8f135]/40 rounded-lg">
+          <Sparkles size={9} className="text-[#c8f135]" />
+          <span className="text-[9px] font-black text-[#c8f135]">{userCredits}</span>
           <span className="text-[7px] font-mono text-gray-400 uppercase tracking-widest">Shorts</span>
+        </div>
+
+        {/* Premium Project Selector Dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowProjectDropdown(prev => !prev)}
+            className="flex items-center gap-1.5 bg-[#0f0f15]/95 border border-white/10 rounded-xl px-3 py-1.5 shadow-lg shadow-black/40 hover:bg-white/[0.03] active:scale-95 transition-all text-white text-[8px] font-black uppercase tracking-wider cursor-pointer select-none"
+          >
+            <Clapperboard size={10} className="text-fuchsia-400" />
+            <span>{projects.find(p => p.id === activeProjectId)?.name || 'Default Project'}</span>
+            <ChevronDown size={10} className={cn("text-gray-400 transition-transform duration-200", showProjectDropdown && "rotate-180")} />
+          </button>
+
+          {showProjectDropdown && (
+            <>
+              {/* Overlay blocker to close dropdown when clicking outside */}
+              <div className="fixed inset-0 z-40" onClick={() => setShowProjectDropdown(false)} />
+              <div className="absolute left-0 mt-1.5 w-48 bg-[#0b0b0e] border border-white/10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.85)] py-1 z-50 overflow-hidden">
+                <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                  {projects.map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveProjectId(p.id);
+                        setShowProjectDropdown(false);
+                      }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 text-[8.5px] font-black uppercase tracking-wider transition-colors",
+                        p.id === activeProjectId
+                          ? "text-[#c8f135] bg-[#c8f135]/5"
+                          : "text-white/60 hover:text-white hover:bg-white/[0.02]"
+                      )}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+                <div className="border-t border-white/5 mt-1 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowProjectDropdown(false);
+                      setNewProjectName('');
+                      setShowNewProjectModal(true);
+                    }}
+                    className="w-full text-left px-3 py-2 text-[8.5px] font-black uppercase tracking-wider text-[#c8f135] hover:bg-[#c8f135]/10 transition-colors flex items-center gap-1"
+                  >
+                    <span>+ New Project...</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
 
         {/* Gallery count + clear */}
         <div className="ml-auto flex items-center gap-2">
-          {gallery.length > 0 && (
+          {filteredGallery.length > 0 && (
             <>
               <span className="text-[8px] font-mono text-gray-500 uppercase tracking-widest">
-                {gallery.length} clip{gallery.length !== 1 ? 's' : ''}
+                {filteredGallery.length} clip{filteredGallery.length !== 1 ? 's' : ''}
               </span>
               <button
                 onClick={handleClearGallery}
@@ -2237,9 +2663,32 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       {/* ── MAIN BODY ──────────────────────────────────────── */}
       <div className="flex-1 relative overflow-hidden">
 
+        {/* Floating Right-Edge Side Drawer Pull Tab (Always rendered & visible) */}
+        <motion.button
+          type="button"
+          onClick={() => setShowSidePanel(prev => !prev)}
+          whileHover={{ scale: 1.05, x: -3 }}
+          whileTap={{ scale: 0.95 }}
+          className={cn(
+            "fixed right-0 top-1/2 -translate-y-1/2 z-[100] py-6 px-2 rounded-l-2xl border-l border-y shadow-2xl flex flex-col items-center gap-2 cursor-pointer transition-all backdrop-blur-2xl",
+            showSidePanel
+              ? "bg-[#c8f135] text-black border-[#c8f135] shadow-[0_0_20px_rgba(200,241,53,0.85)]"
+              : "bg-[#0b0b12]/95 border-violet-500/40 text-violet-300 hover:bg-violet-600/30 hover:text-white"
+          )}
+          title="Toggle Side Drawer Panel"
+        >
+          <Sliders size={14} className={showSidePanel ? "text-black" : "text-violet-400"} />
+          <span
+            style={{ writingMode: 'vertical-lr' }}
+            className={cn("text-[9px] font-black uppercase tracking-widest select-none", showSidePanel ? "text-black" : "text-violet-200")}
+          >
+            Studio
+          </span>
+        </motion.button>
+
         {/* GALLERY BACKGROUND — occupies the full viewport behind everything */}
         <div className="absolute inset-0 overflow-y-auto custom-scrollbar p-4 pb-52">
-          {gallery.length === 0 && !isBusy ? (
+          {filteredGallery.length === 0 && !isBusy ? (
             /* ── EMPTY STATE — Gorgeous Premium Glassmorphism Box ── */
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4 space-y-6 w-full col-span-full py-12">
               <div className="relative">
@@ -2340,7 +2789,6 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                               muted
                               loop
                               playsInline
-                              autoPlay
                               className="w-full h-full object-cover"
                               onMouseEnter={e => e.target.play()}
                               onMouseLeave={e => { e.target.pause(); }}
@@ -2471,6 +2919,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             </div>
           )}
         </div>
+      </div>
 
         {/* ── ERROR BANNER ── */}
         {errorMsg && (
@@ -2484,37 +2933,40 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
         {/* ── FLOATING INPUT DOCK ── */}
         <div className="absolute bottom-0 left-0 right-0 z-30 p-3 pb-2 pointer-events-none">
-          <div className="max-w-2xl mx-auto pointer-events-auto">
+          <div className="max-w-4xl mx-auto pointer-events-auto">
             
             {/* ── TOP FLOATING CONTROL BAR (Style/Movement, Angle, Camera & Lens) ── */}
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar select-none w-full pb-1.5" style={{ scrollbarWidth: 'none' }}>
               {/* Refs Button Pill (Centralized Reference Board control) */}
-              <motion.button
-                onClick={() => { setStagedRefBoard({ ...refBoard }); setShowRefBoard(true); }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border bg-fuchsia-500/10 border-fuchsia-500/20 text-fuchsia-400 hover:bg-fuchsia-500/20 hover:border-fuchsia-500/30 transition-all shrink-0 origin-bottom"
-                title="Open Reference Board to stage Characters, Locations, Wardrobes, Props, and Moods"
-              >
-                {allRefItems.length > 0 && allRefItems[0].imageUrl ? (
-                  <img 
-                    src={resolveUrl(allRefItems[0].imageUrl)} 
-                    alt="Ref Preview" 
-                    className="w-3.5 h-3.5 rounded-full object-cover border border-white/20 shrink-0" 
-                  />
-                ) : (
-                  <Users size={8} className="text-fuchsia-400" />
-                )}
-                <span>Refs</span>
-                {allRefItems.length > 0 && (
-                  <span className="w-3.5 h-3.5 rounded-full bg-fuchsia-500 text-white text-[6px] font-black flex items-center justify-center shrink-0 ml-0.5">
-                    {allRefItems.length}
-                  </span>
-                )}
-              </motion.button>
-
-              {/* Vertical divider line */}
-              <div className="w-px h-3.5 bg-white/10 shrink-0 self-center" />
+              {activeEngine !== 'kling/v3-turbo-image-to-video' && (
+                <>
+                  <motion.button
+                    onClick={() => { setStagedRefBoard({ ...refBoard }); setShowRefBoard(true); }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border bg-fuchsia-500/10 border-fuchsia-500/20 text-fuchsia-400 hover:bg-fuchsia-500/20 hover:border-fuchsia-500/30 transition-all shrink-0 origin-bottom"
+                    title="Open Reference Board to stage Characters, Locations, Wardrobes, Props, and Moods"
+                  >
+                    {allRefItems.length > 0 && allRefItems[0].imageUrl ? (
+                      <img 
+                        src={resolveUrl(allRefItems[0].imageUrl)} 
+                        alt="Ref Preview" 
+                        className="w-3.5 h-3.5 rounded-full object-cover border border-white/20 shrink-0" 
+                      />
+                    ) : (
+                      <Users size={8} className="text-fuchsia-400" />
+                    )}
+                    <span>Refs</span>
+                    {allRefItems.length > 0 && (
+                      <span className="w-3.5 h-3.5 rounded-full bg-fuchsia-500 text-white text-[6px] font-black flex items-center justify-center shrink-0 ml-0.5">
+                        {allRefItems.length}
+                      </span>
+                    )}
+                  </motion.button>
+                  {/* Vertical divider line */}
+                  <div className="w-px h-3.5 bg-white/10 shrink-0 self-center" />
+                </>
+              )}
 
               {/* CAMERA DROPDOWN (Image mode only) */}
               {activeTab === 'image' && (
@@ -2731,6 +3183,63 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                 </UpwardDropdown>
               )}
 
+              {/* DURATION DROPDOWN (Video mode only) */}
+              {activeTab === 'video' && (
+                <UpwardDropdown
+                  icon={<Clock size={9} />}
+                  label={`${duration}s`}
+                  accentColor="fuchsia"
+                >
+                  {(close) => (
+                    <div className="space-y-0.5">
+                      {[
+                        { value: 4, label: '4 Seconds', desc: 'Fast clip' },
+                        { value: 6, label: '6 Seconds', desc: 'Standard clip' },
+                        { value: 8, label: '8 Seconds', desc: 'Extended clip' },
+                        { value: 10, label: '10 Seconds', desc: 'Max Omni duration' }
+                      ].map((opt, i) => (
+                        <motion.button
+                          key={opt.value}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
+                          onClick={() => {
+                            setDuration(opt.value);
+                            localStorage.setItem('cs_duration', String(opt.value));
+                            close();
+                          }}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
+                            duration === opt.value
+                              ? "bg-fuchsia-500/10 border border-fuchsia-500/25"
+                              : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-mono shrink-0 transition-all",
+                            duration === opt.value ? "bg-fuchsia-500/20 text-fuchsia-400 font-bold" : "bg-white/5 text-gray-500"
+                          )}>
+                            {opt.value}s
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={cn(
+                              "text-[10px] font-black uppercase tracking-wider truncate",
+                              duration === opt.value ? "text-fuchsia-400" : "text-white/70"
+                            )}>{opt.label}</p>
+                            <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
+                          </div>
+                          {duration === opt.value && (
+                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-fuchsia-400 flex items-center justify-center shrink-0">
+                              <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </motion.div>
+                          )}
+                        </motion.button>
+                      ))}
+                    </div>
+                  )}
+                </UpwardDropdown>
+              )}
+
               {/* OMNI TASK DROPDOWN (Video only, Omni engine only) */}
               {activeTab === 'video' && isOmni && (
                 <UpwardDropdown
@@ -2798,143 +3307,151 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               )}
             </div>
             
-            {/* ── Main Floating Input Bar (Vertical premium layout) ── */}
-            <div className="relative rounded-2xl border border-white/10 bg-black/75 backdrop-blur-2xl shadow-2xl shadow-black/50 flex flex-col p-2.5 gap-2 w-full">
+            {/* Horizontal Flex Wrapper for Mode Switcher & Input Box */}
+            <div className="flex items-start gap-3 w-full">
               
-              {/* Autocomplete mention popover */}
-              {mentionSearch !== null && mentionField === 'promptText' && (
-                <div className="absolute bottom-full mb-3.5 left-4 w-80 z-[500] bg-[#050505] border-2 border-[#D4FF00] rounded-2xl shadow-[0_-15px_60px_rgba(212,255,0,0.4)] overflow-hidden flex flex-col max-h-[260px] pointer-events-auto">
-                  <div className="p-3 border-b border-white/10 bg-[#D4FF00]/10 flex items-center justify-between">
-                    <span className="text-[10px] font-black text-[#D4FF00] uppercase tracking-widest flex items-center gap-2">
-                      <Users className="w-3.5 h-3.5" /> Tag Reference Element
-                    </span>
-                    <button type="button" onClick={() => setMentionSearch(null)} className="text-[#D4FF00]/40 hover:text-[#D4FF00] p-1"><X size={14} /></button>
-                  </div>
-                  <div className="overflow-y-auto custom-scrollbar bg-black/90 backdrop-blur-2xl flex-1">
-                    {allRefItems
-                      .filter(item => item.name.toLowerCase().includes(mentionSearch.toLowerCase()))
-                      .length > 0 ? (
-                      allRefItems
+              {/* Vertical Mode Switcher Tab (Positioned outside, joined on the left) */}
+              <div className="bg-[#08080c]/95 border border-white/15 rounded-2xl p-1.5 flex flex-col gap-1 shadow-lg shrink-0 select-none backdrop-blur-3xl self-start">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('image');
+                    const lastImg = localStorage.getItem('cs_lastImageEngine') || 'nano-banana-2';
+                    setActiveEngine(lastImg);
+                  }}
+                  className={cn(
+                    "flex flex-col items-center justify-center w-12 h-11 rounded-xl text-[7px] font-black uppercase tracking-wider transition-all",
+                    activeTab === 'image'
+                      ? "bg-[#c8f135] text-black shadow-md shadow-[#c8f135]/20"
+                      : "text-gray-400 hover:bg-white/[0.03] hover:text-white"
+                  )}
+                  title="Switch to Image Generation"
+                >
+                  <ImageIcon size={13} />
+                  <span className="mt-0.5 scale-90 leading-none">Image</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('video');
+                    const lastVid = localStorage.getItem('cs_lastVideoEngine') || 'veo-3.1-lite-generate-preview';
+                    setActiveEngine(lastVid);
+                  }}
+                  className={cn(
+                    "flex flex-col items-center justify-center w-12 h-11 rounded-xl text-[7px] font-black uppercase tracking-wider transition-all",
+                    activeTab === 'video'
+                      ? "bg-fuchsia-500 text-white shadow-md shadow-fuchsia-500/20"
+                      : "text-gray-400 hover:bg-white/[0.03] hover:text-white"
+                  )}
+                  title="Switch to Video Generation"
+                >
+                  <Video size={13} />
+                  <span className="mt-0.5 scale-90 leading-none">Video</span>
+                </button>
+              </div>
+
+              {/* ── Main Floating Input Bar (Vertical premium studio layout) ── */}
+              <div className="relative rounded-2xl border border-white/15 bg-[#08080c]/95 backdrop-blur-3xl shadow-[0_25px_70px_rgba(0,0,0,0.85)] flex flex-col p-3 gap-2.5 flex-1 hover:border-white/20 transition-all duration-300">
+                
+                {/* Autocomplete mention popover */}
+                {mentionSearch !== null && mentionField === 'promptText' && (
+                  <div className="absolute bottom-full mb-3.5 left-4 w-80 z-[500] bg-[#050505] border-2 border-[#D4FF00] rounded-2xl shadow-[0_-15px_60px_rgba(212,255,0,0.4)] overflow-hidden flex flex-col max-h-[260px] pointer-events-auto">
+                    <div className="p-3 border-b border-white/10 bg-[#D4FF00]/10 flex items-center justify-between">
+                      <span className="text-[10px] font-black text-[#D4FF00] uppercase tracking-widest flex items-center gap-2">
+                        <Users className="w-3.5 h-3.5" /> Tag Reference Element
+                      </span>
+                      <button type="button" onClick={() => setMentionSearch(null)} className="text-[#D4FF00]/40 hover:text-[#D4FF00] p-1"><X size={14} /></button>
+                    </div>
+                    <div className="overflow-y-auto custom-scrollbar bg-black/90 backdrop-blur-2xl flex-1">
+                      {allRefItems
                         .filter(item => item.name.toLowerCase().includes(mentionSearch.toLowerCase()))
-                        .map((item, idx) => (
+                        .length > 0 ? (
+                        allRefItems
+                          .filter(item => item.name.toLowerCase().includes(mentionSearch.toLowerCase()))
+                          .map((item, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => selectMention(item)}
+                              className="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-[#D4FF00]/20 transition-colors group border-b border-white/[0.05] last:border-0 text-left text-white"
+                            >
+                              <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden shrink-0 border border-white/10">
+                                {item.category === 'ref_videos' ? (
+                                  <Video className="w-3.5 h-3.5 text-rose-400" />
+                                ) : item.category === 'ref_audios' ? (
+                                  <Music className="w-3.5 h-3.5 text-amber-400" />
+                                ) : (item.imageUrl || item.url) ? (
+                                  <img src={resolveUrl(item.imageUrl || item.url)} className="w-full h-full object-cover" alt={item.name} />
+                                ) : (
+                                  <Users className="w-3.5 h-3.5 text-[#D4FF00]" />
+                                )}
+                              </div>
+                              <div className="text-left flex-1 min-w-0">
+                                <p className="text-xs font-black text-white group-hover:text-[#D4FF00] transition-colors truncate">@{item.name?.replace(/\s+/g, '')}</p>
+                                <p className="text-[8px] text-white/40 uppercase tracking-widest mt-0.5 font-bold">{item.category.replace('_', ' ')}</p>
+                              </div>
+                            </button>
+                          ))
+                      ) : (
+                        <div className="p-6 text-center bg-black/95">
+                          <p className="text-[10px] text-white/50 mb-3 font-bold uppercase tracking-wider">No matching reference elements</p>
                           <button
-                            key={idx}
                             type="button"
-                            onClick={() => selectMention(item)}
-                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[#D4FF00]/20 transition-colors group border-b border-white/[0.05] last:border-0 text-left text-white"
+                            onClick={() => { setShowRefBoard(true); setMentionSearch(null); }}
+                            className="w-full px-4 py-2.5 bg-[#D4FF00] text-black text-[9px] rounded-xl font-black transition-all hover:bg-white uppercase tracking-widest shadow-xl flex items-center justify-center gap-1.5 animate-pulse"
                           >
-                            <div className="text-left flex-1 min-w-0">
-                              <p className="text-xs font-black text-white group-hover:text-[#D4FF00] transition-colors truncate">@{item.name?.replace(/\s+/g, '')}</p>
-                              <p className="text-[8px] text-white/40 uppercase tracking-widest mt-0.5 font-bold">{item.category}</p>
-                            </div>
+                            Load from Elements
                           </button>
-                        ))
-                    ) : (
-                      <div className="p-6 text-center bg-black/95">
-                        <p className="text-[10px] text-white/50 mb-3 font-bold uppercase tracking-wider">No matching reference elements</p>
-                        <button
-                          type="button"
-                          onClick={() => { setShowRefBoard(true); setMentionSearch(null); }}
-                          className="w-full px-4 py-2.5 bg-[#D4FF00] text-black text-[9px] rounded-xl font-black transition-all hover:bg-white uppercase tracking-widest shadow-xl flex items-center justify-center gap-1.5 animate-pulse"
-                        >
-                          Load from Elements
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Tagged Reference Pills (Full-width row at the very top of the input container) */}
+                {taggedItems.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 px-1 border-b border-white/5 pb-2">
+                    {taggedItems.map((item) => (
+                      <div key={item.id} className="flex items-center gap-1 px-2.5 py-1 bg-black/60 border border-[#c8f135]/40 rounded-lg shadow-md text-[9px] font-black uppercase text-[#D4FF00] tracking-wider shrink-0">
+                        {item.category === 'ref_videos' ? (
+                          <Video size={12} className="text-rose-400" />
+                        ) : item.category === 'ref_audios' ? (
+                          <Music size={12} className="text-amber-400" />
+                        ) : (item.imageUrl || item.url) ? (
+                          <img src={resolveUrl(item.imageUrl || item.url)} className="w-4 h-4 rounded object-cover border border-white/20" alt={item.name} />
+                        ) : (
+                          <Users size={12} className="text-[#D4FF00]" />
+                        )}
+                        <span>@{item.name?.replace(/\s+/g, '')}</span>
+                        <button type="button" onClick={() => handleRemoveTag(item)} className="p-0.5 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors ml-0.5">
+                          <X size={10} />
                         </button>
                       </div>
-                    )}
+                    ))}
                   </div>
-                </div>
-              )}
-              
-              {/* Tagged Reference Pills (Full-width row at the very top of the input container, so they never squeeze the input text) */}
-              {getTaggedRefItems(promptText).length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5 px-1 border-b border-white/5 pb-2">
-                  {getTaggedRefItems(promptText).map((item) => (
-                    <div key={item.id} className="flex items-center gap-1 px-2.5 py-1 bg-black/60 border border-[#c8f135]/40 rounded-lg shadow-md text-[9px] font-black uppercase text-[#D4FF00] tracking-wider shrink-0">
-                      <img src={resolveUrl(item.imageUrl)} className="w-4 h-4 rounded object-cover border border-white/20" />
-                      <span>@{item.name}</span>
-                      <button type="button" onClick={() => handleRemoveTag(item)} className="p-0.5 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors ml-0.5">
-                        <X size={10} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+                )}
 
-
-
-              {/* TOP ROW: Switcher, Dividers, Textarea, Upload Slots (on the right side) */}
-              <div className="flex items-start gap-2.5 w-full">
-                
-                {/* Vertical Mode Switcher Tab (Neat left-side layout) */}
-                <div className="bg-[#050505]/80 border border-white/10 rounded-xl p-1 flex flex-col gap-1 shadow-lg shrink-0 select-none mt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('image');
-                      const lastImg = localStorage.getItem('cs_lastImageEngine') || 'nano-banana-2';
-                      setActiveEngine(lastImg);
-                    }}
-                    className={cn(
-                      "flex flex-col items-center justify-center w-10 h-9 rounded-lg text-[7px] font-black uppercase tracking-wider transition-all",
-                      activeTab === 'image'
-                        ? "bg-[#c8f135] text-black shadow-md shadow-[#c8f135]/20"
-                        : "text-gray-400 hover:text-white"
-                    )}
-                    title="Switch to Image Generation"
-                  >
-                    <ImageIcon size={11} />
-                    <span className="mt-0.5 scale-90 leading-none">Image</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab('video');
-                      const lastVid = localStorage.getItem('cs_lastVideoEngine') || 'veo-3.1-lite-generate-preview';
-                      setActiveEngine(lastVid);
-                    }}
-                    className={cn(
-                      "flex flex-col items-center justify-center w-10 h-9 rounded-lg text-[7px] font-black uppercase tracking-wider transition-all",
-                      activeTab === 'video'
-                        ? "bg-fuchsia-500 text-white shadow-md shadow-fuchsia-500/20"
-                        : "text-gray-400 hover:text-white"
-                    )}
-                    title="Switch to Video Generation"
-                  >
-                    <Video size={11} />
-                    <span className="mt-0.5 scale-90 leading-none">Video</span>
-                  </button>
-                </div>
-
-                {/* Vertical divider line */}
-                <div className="w-px self-stretch bg-white/10 shrink-0 my-0.5" />
+              {/* TOP ROW: Textarea, Upload Slots (Vertically Stacked Up and Down on the Right) */}
+              <div className="flex items-start gap-3 w-full">
 
                 {/* Textarea (takes up full remaining width in the middle) */}
                 <div className="flex-1 min-w-0">
-                  <textarea
-                    ref={textareaRef}
-                    value={promptText}
-                    onChange={handleTextChange}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        if (canGenerate) handleGenerate();
-                      }
-                    }}
-                    placeholder={activeTab === 'image' 
-                      ? "Describe your premium image masterwork — subject, lighting, style preset... Type @ to tag reference elements."
-                      : "Describe your cinematic video scenario — camera movements, lighting, mood... Type @ to tag reference elements."
-                    }
-                    rows={1}
-                    disabled={isBusy}
-                    className="w-full bg-transparent text-xs text-white placeholder-white/20 outline-none resize-none font-medium leading-relaxed custom-scrollbar py-2 min-h-[36px]"
+                  <FastPromptInput
+                    textareaRef={textareaRef}
+                    promptText={promptText}
+                    handleTextChange={handleTextChange}
+                    canGenerate={canGenerate}
+                    handleGenerate={handleGenerate}
+                    activeTab={activeTab}
+                    isBusy={isBusy}
                   />
                 </div>
 
                 {/* Vertical divider line before frame slots */}
-                <div className="w-px self-stretch bg-white/10 shrink-0 my-0.5" />
+                <div className="w-px self-stretch bg-white/10 shrink-0" />
 
-                {/* First and Last Frame Image Placeholders or Style Ref Slot (Moved to the RIGHT corner) */}
-                <div className="shrink-0 select-none mt-0.5">
+                {/* First and Last Frame Image Placeholders (STACKED VERTICALLY UP AND DOWN ON THE RIGHT) */}
+                <div className="shrink-0 select-none">
                   {activeTab === 'image' ? (
                     /* ── IMAGE MODE: SINGLE STYLE REF SLOT ── */
                     <div className="flex flex-col items-center gap-1 p-1 bg-white/[0.02] border border-white/5 rounded-xl relative group">
@@ -2968,72 +3485,70 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                       )}
                     </div>
                   ) : (!isOmni || omniTask === 'image_to_video') ? (
-                    /* ── VIDEO MODE: DUAL SLOTS ── */
-                    <div className="flex flex-col items-center gap-1.5 p-1.5 bg-white/[0.02] border border-white/5 rounded-2xl relative group">
-                      <div className="flex items-center gap-1.5">
-                        {/* First Frame Slot */}
-                        {firstFramePreview ? (
-                          <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/10 bg-zinc-900 group/slot shadow-lg">
-                            <img src={resolveUrl(firstFramePreview)} alt="Start Frame" className="w-full h-full object-cover" />
-                            <button
-                              onClick={() => handleClearRef('first')}
-                              className="absolute inset-0 bg-black/60 opacity-0 group-hover/slot:opacity-100 flex items-center justify-center transition-opacity text-red-400"
-                              title="Clear Start Frame"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        ) : (
+                    /* ── VIDEO MODE: DUAL SLOTS (STACKED VERTICALLY UP AND DOWN) ── */
+                    <div className="flex flex-col items-center justify-center gap-1 p-1 bg-black/40 border border-white/10 rounded-xl relative group shrink-0">
+                      {/* First Frame Slot (Top) */}
+                      {firstFramePreview ? (
+                        <div className="relative w-9 h-9 rounded-lg overflow-hidden border border-white/15 bg-zinc-950 group/slot shadow-md">
+                          <img src={resolveUrl(firstFramePreview)} alt="Start Frame" className="w-full h-full object-cover" />
                           <button
-                            onClick={() => { setUploadTarget('first'); setTimeout(() => fileInputRef.current?.click(), 50); }}
-                            disabled={isUploading && uploadTarget === 'first'}
-                            className="w-12 h-12 rounded-xl border-2 border-dashed border-white/10 hover:border-fuchsia-500/40 hover:bg-fuchsia-500/5 flex flex-col items-center justify-center gap-0.5 text-white/30 hover:text-fuchsia-400 transition-all active:scale-95 shadow-inner"
-                            title="Upload Start Frame"
+                            onClick={() => handleClearRef('first')}
+                            className="absolute inset-0 bg-black/60 opacity-0 group-hover/slot:opacity-100 flex items-center justify-center transition-opacity text-red-400"
+                            title="Clear Start Frame"
                           >
-                            {isUploading && uploadTarget === 'first' ? (
-                              <Loader2 size={13} className="animate-spin text-fuchsia-400" />
-                            ) : (
-                              <>
-                                <ImageIcon size={13} />
-                                <span className="text-[6px] font-black uppercase tracking-wider">Start</span>
-                              </>
-                            )}
+                            <Trash2 size={11} />
                           </button>
-                        )}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setUploadTarget('first'); setTimeout(() => fileInputRef.current?.click(), 50); }}
+                          disabled={isUploading && uploadTarget === 'first'}
+                          className="w-9 h-9 rounded-lg border border-dashed border-white/15 hover:border-fuchsia-500/50 hover:bg-fuchsia-500/10 flex flex-col items-center justify-center gap-0 text-white/40 hover:text-fuchsia-400 transition-all active:scale-95 bg-white/[0.02]"
+                          title="Upload Start Frame"
+                        >
+                          {isUploading && uploadTarget === 'first' ? (
+                            <Loader2 size={10} className="animate-spin text-fuchsia-400" />
+                          ) : (
+                            <>
+                              <ImageIcon size={10} />
+                              <span className="text-[5.5px] font-black uppercase tracking-wider">Start</span>
+                            </>
+                          )}
+                        </button>
+                      )}
 
-                        {/* Connection Line/Arrow */}
-                        <div className="text-[9px] font-black text-white/20 select-none px-0.5">➔</div>
+                      {/* Small Down Arrow Divider */}
+                      <div className="text-[7px] font-black text-fuchsia-400/50 select-none leading-none">↓</div>
 
-                        {/* Last Frame Slot */}
-                        {lastFramePreview ? (
-                          <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/10 bg-zinc-900 group/slot shadow-lg">
-                            <img src={resolveUrl(lastFramePreview)} alt="End Frame" className="w-full h-full object-cover" />
-                            <button
-                              onClick={() => handleClearRef('last')}
-                              className="absolute inset-0 bg-black/60 opacity-0 group-hover/slot:opacity-100 flex items-center justify-center transition-opacity text-red-400"
-                              title="Clear End Frame"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        ) : (
+                      {/* Last Frame Slot (Bottom) */}
+                      {lastFramePreview ? (
+                        <div className="relative w-9 h-9 rounded-lg overflow-hidden border border-white/15 bg-zinc-950 group/slot shadow-md">
+                          <img src={resolveUrl(lastFramePreview)} alt="End Frame" className="w-full h-full object-cover" />
                           <button
-                            onClick={() => { setUploadTarget('last'); setTimeout(() => fileInputRef.current?.click(), 50); }}
-                            disabled={isUploading && uploadTarget === 'last'}
-                            className="w-12 h-12 rounded-xl border-2 border-dashed border-white/10 hover:border-fuchsia-500/40 hover:bg-fuchsia-500/5 flex flex-col items-center justify-center gap-0.5 text-white/30 hover:text-fuchsia-400 transition-all active:scale-95 shadow-inner"
-                            title="Upload End Frame"
+                            onClick={() => handleClearRef('last')}
+                            className="absolute inset-0 bg-black/60 opacity-0 group-hover/slot:opacity-100 flex items-center justify-center transition-opacity text-red-400"
+                            title="Clear End Frame"
                           >
-                            {isUploading && uploadTarget === 'last' ? (
-                              <Loader2 size={13} className="animate-spin text-fuchsia-400" />
-                            ) : (
-                              <>
-                                <ImageIcon size={13} />
-                                <span className="text-[6px] font-black uppercase tracking-wider">End</span>
-                              </>
-                            )}
+                            <Trash2 size={11} />
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setUploadTarget('last'); setTimeout(() => fileInputRef.current?.click(), 50); }}
+                          disabled={isUploading && uploadTarget === 'last'}
+                          className="w-9 h-9 rounded-lg border border-dashed border-white/15 hover:border-fuchsia-500/50 hover:bg-fuchsia-500/10 flex flex-col items-center justify-center gap-0 text-white/40 hover:text-fuchsia-400 transition-all active:scale-95 bg-white/[0.02]"
+                          title="Upload End Frame"
+                        >
+                          {isUploading && uploadTarget === 'last' ? (
+                            <Loader2 size={10} className="animate-spin text-fuchsia-400" />
+                          ) : (
+                            <>
+                              <ImageIcon size={10} />
+                              <span className="text-[5.5px] font-black uppercase tracking-wider">End</span>
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
                   ) : null}
                 </div>
@@ -3048,22 +3563,63 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   {/* PROMPT HELPER DROPDOWN */}
                   <UpwardDropdown
                     icon={<Sparkles size={9} />}
-                    label="Prompt Guide"
+                    label="Guide"
                     accentColor="lime"
                   >
                     {(close) => (
-                      <div className="space-y-2 w-72 max-h-80 overflow-y-auto p-1.5 custom-scrollbar">
-                        <div className="border-b border-white/5 pb-1.5 mb-1">
-                          <p className="text-[9px] font-black text-white/40 uppercase tracking-widest px-1">Prompt Construction</p>
-                          <p className="text-[7.5px] text-gray-500 font-medium px-1 mt-0.5 leading-normal">
-                            Build detailed prompts with Style, Subject, Setting, Action, and Composition.
+                      <div className="space-y-4 w-80 max-h-[85vh] overflow-y-auto p-3 custom-scrollbar bg-[#09090b]/98 border border-white/5 rounded-2xl shadow-2xl">
+                        <div className="pb-2 border-b border-white/5">
+                          <p className="text-[9px] font-black text-white uppercase tracking-widest">Prompt Architect</p>
+                          <p className="text-[7.5px] text-gray-500 font-medium mt-0.5 leading-relaxed">
+                            Structure high-fidelity visual prompts using professional templates and style rules.
                           </p>
                         </div>
 
+                        {/* Leera Creator Templates */}
+                        <div className="space-y-2">
+                          <p className="text-[8px] font-black text-amber-400 uppercase tracking-[0.15em] flex items-center gap-1.5">
+                            <span>🎭</span> Character & Location Sheets
+                          </p>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const userInput = window.prompt("Enter character details (e.g. 'young man, athletic build, short black hair' or 'cybernetic explorer'):");
+                                if (userInput !== null && userInput.trim() !== "") {
+                                  setPromptText(`${userInput.trim()} — Character reference sheet of a single consistent character, presented on a pure clean deep neutral grey (#3a3a3c) seamless studio background, clean editorial layout arranged in three vertical sections, horizontal landscape composition read left to right, identical character identity, lighting and color grading across every panel for perfect consistency:\n\n— COLUMN 1 (largest, leftmost): chest-up portrait, front view, head and upper chest in frame, sharp focus on the eyes, soft catchlights in both eyes.\n\n— COLUMN 2: full-body front view, standing relaxed neutral A-pose, arms slightly away from the body, weight evenly distributed, full figure head-to-toe inside the frame with even margins.\n\n— COLUMN 3 (rightmost): full-body back view, same standing pose mirrored, showing hair fall, back posture, garment fit and shoes.\n\nLIGHTING & RENDER: clean soft even studio lighting, large diffused key light with gentle fill, soft natural shadows, no harsh highlights, true-to-life skin tones, neutral white balance, minimal high-fashion editorial presentation, polished modern professional model sheet aesthetic, shot on full-frame camera with an 85mm lens look, shallow yet controlled depth of field, crisp tack-sharp detail, high dynamic range, ultra-realistic photography, highly detailed skin texture with visible open pores, zero makeup, natural raw skin, no plastic or airbrushed textures, complete natural presentation, 8k.`);
+                                }
+                                close();
+                              }}
+                              className="text-left p-2.5 rounded-xl bg-white/[0.01] hover:bg-amber-500/10 text-white/80 hover:text-amber-400 text-[9px] border border-white/5 hover:border-amber-500/20 transition-all font-semibold flex flex-col gap-1"
+                            >
+                              <span className="text-[10px]">👩‍🎤</span>
+                              <span>Character Sheet</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const userInput = window.prompt("Enter location details (e.g., 'A modern beach house at sunset'):");
+                                if (userInput !== null && userInput.trim() !== "") {
+                                  setPromptText(`${userInput.trim()}, cinematic location photography, shot on 35mm lens, realistic textures, motivated lighting with soft falloff, no crushed shadows, depth-of-field control, crisp detail, 8k.`);
+                                }
+                                close();
+                              }}
+                              className="text-left p-2.5 rounded-xl bg-white/[0.01] hover:bg-amber-500/10 text-white/80 hover:text-amber-400 text-[9px] border border-white/5 hover:border-amber-500/20 transition-all font-semibold flex flex-col gap-1"
+                            >
+                              <span className="text-[10px]">🏖️</span>
+                              <span>Location Sheet</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="h-px bg-white/5" />
+
                         {/* Image Editing / Ref Board Hacks (At the very top!) */}
-                        <div className="space-y-1">
-                          <p className="text-[8px] font-black text-rose-400 uppercase tracking-wider px-1">✂️ Edit & Remix (Image-to-Image)</p>
-                          <div className="space-y-1">
+                        <div className="space-y-2">
+                          <p className="text-[8px] font-black text-rose-400 uppercase tracking-[0.15em] flex items-center gap-1.5">
+                            <span>✂️</span> Edit & Remix (Image-to-Image)
+                          </p>
+                          <div className="grid grid-cols-1 gap-1.5">
                             {[
                               { label: 'Change the character', value: 'Change the character: keep style, setting, and composition, but swap the subject to [new subject]' },
                               { label: 'Adjust the composition', value: 'Adjust the composition: change camera angle or framing to [new framing]', resetCamera: true },
@@ -3083,39 +3639,47 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                                   }
                                   close();
                                 }}
-                                className="w-full text-left px-2 py-1.5 rounded-xl bg-white/[0.02] hover:bg-rose-500/10 text-white/80 hover:text-rose-400 text-[9px] truncate border border-white/5 hover:border-rose-500/20 transition-all flex items-center justify-between"
+                                className="w-full text-left px-3 py-2 rounded-xl bg-white/[0.01] hover:bg-rose-500/10 text-white/80 hover:text-rose-400 text-[9px] border border-white/5 hover:border-rose-500/20 transition-all flex items-center justify-between font-medium"
                               >
                                 <span>{edit.label}</span>
                                 {edit.resetCamera && firstFramePreview ? (
-                                  <span className="text-[6.5px] text-rose-400/60 font-bold uppercase tracking-wider">Reset Cam</span>
+                                  <span className="text-[6.5px] text-rose-400/60 font-bold uppercase tracking-wider bg-rose-500/5 px-1.5 py-0.5 rounded border border-rose-500/10">Reset Cam</span>
                                 ) : (
-                                  <span className="text-[7px] text-gray-600 font-mono font-medium">Add helper</span>
+                                  <span className="text-[6.5px] text-gray-600 uppercase tracking-widest font-bold">Remix</span>
                                 )}
                               </button>
                             ))}
                           </div>
                         </div>
 
+                        <div className="h-px bg-white/5" />
+
                         {/* Standard Recipe */}
-                        <div className="space-y-1">
-                          <p className="text-[8px] font-black text-white/40 uppercase tracking-wider px-1">Prompt Recipe</p>
+                        <div className="space-y-2">
+                          <p className="text-[8px] font-black text-white/40 uppercase tracking-[0.15em] flex items-center gap-1.5">
+                            <span>✨</span> Prompt Builder Recipe
+                          </p>
                           <button
                             type="button"
                             onClick={() => {
                               setPromptText(prev => prev ? `${prev}, [Style] of [Subject] in [Setting] doing [Action], [Composition]` : "A [Style] of [Subject] in [Setting] doing [Action], [Composition]");
                               close();
                             }}
-                            className="w-full text-left px-2 py-1.5 rounded-xl bg-white/[0.03] hover:bg-[#c8f135]/10 text-white hover:text-[#c8f135] text-[9px] transition-all font-semibold border border-white/5 hover:border-[#c8f135]/20 flex items-center justify-between"
+                            className="w-full text-left px-3 py-2 rounded-xl bg-white/[0.02] hover:bg-[#c8f135]/10 text-white hover:text-[#c8f135] text-[9px] transition-all font-semibold border border-white/5 hover:border-[#c8f135]/20 flex items-center justify-between"
                           >
-                            <span>✨ Insert Recipe Template</span>
-                            <span className="text-[7.5px] text-gray-600 font-mono font-medium">[Style] of [Subject]...</span>
+                            <span>Insert Structural Template</span>
+                            <span className="text-[7px] text-gray-500 font-mono font-medium">[Style] of [Subject]...</span>
                           </button>
                         </div>
 
+                        <div className="h-px bg-white/5" />
+
                         {/* Styles */}
-                        <div className="space-y-1">
-                          <p className="text-[8px] font-black text-[#c8f135] uppercase tracking-wider px-1">🎨 Styles & Mediums</p>
-                          <div className="grid grid-cols-2 gap-1">
+                        <div className="space-y-2">
+                          <p className="text-[8px] font-black text-[#c8f135] uppercase tracking-[0.15em] flex items-center gap-1.5">
+                            <span>🎨</span> Styles & Mediums
+                          </p>
+                          <div className="grid grid-cols-2 gap-1.5">
                             {[
                               { label: 'Cinematic Photo', value: 'a realistic eye-level cinematic photograph, dramatic lighting' },
                               { label: 'Illustration', value: 'a modern graphical illustration, vibrant color palette' },
@@ -3131,7 +3695,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                                   setPromptText(prev => prev ? `${prev}, ${style.value}` : style.value);
                                   close();
                                 }}
-                                className="text-left px-2 py-1.5 rounded-xl bg-white/[0.02] hover:bg-[#c8f135]/10 text-white/80 hover:text-[#c8f135] text-[9px] truncate border border-white/5 hover:border-[#c8f135]/20 transition-all"
+                                className="text-left px-2.5 py-2 rounded-xl bg-white/[0.01] hover:bg-[#c8f135]/10 text-white/80 hover:text-[#c8f135] text-[9px] truncate border border-white/5 hover:border-[#c8f135]/20 transition-all font-medium"
                               >
                                 {style.label}
                               </button>
@@ -3139,21 +3703,25 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                           </div>
                         </div>
 
+                        <div className="h-px bg-white/5" />
+
                         {/* Cinematic Lighting */}
-                        <div className="space-y-1">
-                          <p className="text-[8px] font-black text-fuchsia-400 uppercase tracking-wider px-1">🎬 Cinematic Lighting</p>
-                          <div className="grid grid-cols-2 gap-1">
+                        <div className="space-y-2">
+                          <p className="text-[8px] font-black text-fuchsia-400 uppercase tracking-[0.15em] flex items-center gap-1.5">
+                            <span>🎬</span> Cinematic Lighting & Atmosphere
+                          </p>
+                          <div className="grid grid-cols-2 gap-1.5">
                             {[
                               { label: '🩸 Horror Night', value: 'horror movie lighting — single flickering overhead fluorescent, deep shadow pools, sickly green-yellow cast, 35mm film grain, blood-red practical lamp glow' },
                               { label: '🔫 80s Action', value: '1980s action blockbuster lighting — high-contrast backlighting, hazy smoke machine fill, warm tungsten glow, strong blue-orange split lighting, 80s anamorphic lens flares' },
                               { label: '🕵️ Neo-Noir', value: 'neo-noir cinematography — venetian blind shadow stripes slicing across the subject, cold blue moonlight fill, warm amber practicals, rain-slicked street reflections' },
                               { label: '🌌 Sci-Fi Cold', value: 'sci-fi cold sterile environment lighting — ice blue LED panel lights, OLED screen glow, hard rim lighting against pure black, clinical white highlights' },
-                              { label: '☀️ Spaghetti Western', value: 'spaghetti western cinematography — harsh midday desert sunlight, extreme low-angle sun, deep eye-socket shadows, dust haze diffusion, bleached warm palette' },
-                              { label: '🌫️ Psychological Thriller', value: 'psychological thriller lighting — oppressive overcast flat light, motivated practical lamp in darkness, shallow depth-of-field shallow focus, uncomfortable green-white fluorescent cast' },
-                              { label: '🏙️ 90s Crime Drama', value: '90s crime drama cinematography — gritty available light, sodium vapor street lamps, blown-out background highlights, hand-held shaky low-light exposure' },
+                              { label: '☀️ Western', value: 'spaghetti western cinematography — harsh midday desert sunlight, extreme low-angle sun, deep eye-socket shadows, dust haze diffusion, bleached warm palette' },
+                              { label: '🌫️ Thriller', value: 'psychological thriller lighting — oppressive overcast flat light, motivated practical lamp in darkness, shallow depth-of-field shallow focus, uncomfortable green-white fluorescent cast' },
+                              { label: '🏙️ Gritty Crime', value: '90s crime drama cinematography — gritty available light, sodium vapor street lamps, blown-out background highlights, hand-held shaky low-light exposure' },
                               { label: '⚔️ Epic Fantasy', value: 'epic fantasy cinematography — golden hour Hero lighting, dramatic torch flame practicals, god-rays piercing through overcast storm sky, desaturated shadow tones' },
-                              { label: '🌊 War Film', value: 'war film cinematography — desaturated muted palette, oppressive overcast sky, wet mud reflections, smoke and debris haze, intense backlit silhouettes' },
-                              { label: '🩷 Romantic Drama', value: 'romantic drama cinematography — warm window light key, silky soft bokeh candle practicals, golden hour magic hour glow, dreamy lens diffusion filter' }
+                              { label: '🌊 Muted War', value: 'war film cinematography — desaturated muted palette, oppressive overcast sky, wet mud reflections, smoke and debris haze, backlit silhouettes' },
+                              { label: '🩷 Romantic', value: 'romantic drama cinematography — warm window light key, silky soft bokeh candle practicals, golden hour magic hour glow, dreamy lens diffusion filter' }
                             ].map(light => (
                               <button
                                 key={light.label}
@@ -3162,7 +3730,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                                   setPromptText(prev => prev ? `${prev}, ${light.value}` : light.value);
                                   close();
                                 }}
-                                className="text-left px-2 py-1.5 rounded-xl bg-white/[0.02] hover:bg-fuchsia-500/10 text-white/80 hover:text-fuchsia-400 text-[9px] border border-white/5 hover:border-fuchsia-500/20 transition-all"
+                                className="text-left px-2.5 py-2 rounded-xl bg-white/[0.01] hover:bg-fuchsia-500/10 text-white/80 hover:text-fuchsia-400 text-[9px] border border-white/5 hover:border-fuchsia-500/20 transition-all font-medium"
                               >
                                 {light.label}
                               </button>
@@ -3308,24 +3876,25 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   {/* RESOLUTION DROPDOWN */}
                   <UpwardDropdown
                     icon={<Tv size={9} />}
-                    label={activeTab === 'image' ? (resolution === '480p' ? 'SD' : resolution === '720p' ? '1K' : resolution === '1080p' ? '2K' : '4K') : resolution}
+                    label={activeTab === 'video' ? (resolution === '480p' ? '480p' : resolution === '720p' ? '720p' : resolution === '1080p' ? '1080p' : resolution === '4k' ? '4K' : resolution) : (resolution === '480p' ? 'SD' : resolution === '720p' ? '1K' : resolution === '1080p' ? '2K' : resolution === '4k' ? '4K' : resolution)}
                     accentColor="lime"
                   >
                     {(close) => (
                       <div className="space-y-0.5 w-48">
                         {RESOLUTION_OPTIONS.filter(opt => {
                           const isSeedance = activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini';
-                          const no4k = activeEngine === 'seedance-fast' || activeEngine === 'seedance-mini' || activeEngine === 'omni-flash';
+                          const no4k = activeEngine === 'seedance-fast' || activeEngine === 'seedance-mini' || activeEngine === 'omni-flash' || activeEngine === 'kling/v3-turbo-image-to-video';
                           if (opt.value === '480p' && !isSeedance) return false;
                           if (no4k && opt.value === '4k') return false;
                           return true;
                         }).map((opt, i) => {
-                          const displayLabel = activeTab === 'image'
-                            ? (opt.value === '480p' ? 'SD' : opt.value === '720p' ? '1K' : opt.value === '1080p' ? '2K' : '4K')
-                            : opt.label;
-                          const displayDesc = activeTab === 'image'
-                            ? (opt.value === '480p' ? 'Standard definition' : opt.value === '720p' ? 'Standard resolution' : opt.value === '1080p' ? 'High resolution (2K)' : 'Ultra-high definition (4K)')
-                            : opt.desc;
+                          const displayLabel = activeTab === 'video'
+                            ? (opt.value === '480p' ? '480p SD' : opt.value === '720p' ? '720p HD' : opt.value === '1080p' ? '1080p Full HD' : '4K Ultra HD')
+                            : (opt.value === '480p' ? 'SD' : opt.value === '720p' ? '1K' : opt.value === '1080p' ? '2K' : opt.value === '4k' ? '4K' : opt.label);
+                          const displayDesc = activeTab === 'video'
+                            ? (opt.value === '480p' ? 'Standard definition (480p)' : opt.value === '720p' ? 'High definition video (720p)' : opt.value === '1080p' ? 'Full HD video (1080p)' : 'Ultra HD video (4K)')
+                            : (opt.value === '480p' ? 'Standard definition' : opt.value === '720p' ? 'Standard resolution (1K)' : opt.value === '1080p' ? 'High resolution (2K)' : 'Ultra-high definition (4K)');
+
                           return (
                             <motion.button
                               key={opt.value}
@@ -3484,6 +4053,22 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                     </button>
                   )}
 
+                  {/* BYPASS CAMERA TOGGLE */}
+                  <button
+                    type="button"
+                    onClick={() => setUseCameraSettings(!useCameraSettings)}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border transition-all shrink-0 select-none",
+                      useCameraSettings
+                        ? "bg-fuchsia-500/20 border-fuchsia-500/40 text-fuchsia-400"
+                        : "bg-black/60 border-white/10 text-gray-500 hover:text-white"
+                    )}
+                    title={useCameraSettings ? "Adding Camera Instructions to Prompt" : "Bypassing Camera Instructions"}
+                  >
+                    <span className="text-[10px]">{useCameraSettings ? '🎥 ON' : '🎥 OFF'}</span>
+                  </button>
+                  
+
 
 
 
@@ -3513,7 +4098,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                 {/* Generate Button (aligned beautifully on the right of bottom row) */}
                 <motion.button
                   onClick={handleGenerate}
-                  disabled={!canGenerate}
+                  disabled={isBusy}
                   whileHover={canGenerate ? { scale: 1.02, backgroundColor: '#d5fb3b' } : {}}
                   whileTap={canGenerate ? { scale: 0.97 } : {}}
                   animate={canGenerate ? {
@@ -3534,7 +4119,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                       ? "bg-[#c8f135] text-black cursor-pointer"
                       : "bg-zinc-900 border border-white/5 text-white/15 cursor-not-allowed"
                   )}
-                  title={`Generate (${requiredCredits} credits)`}
+                  title={
+                    isBusy 
+                      ? "Video generation in progress..." 
+                      : userCredits < requiredCredits 
+                      ? `Insufficient Shorts credits: Requires ${requiredCredits}⚡ (Balance: ${userCredits}⚡)` 
+                      : (!promptText.trim() && !firstFramePreview) 
+                      ? "Enter prompt text or tag reference items to generate" 
+                      : `Generate (${requiredCredits} credits)`
+                  }
                 >
                   {isBusy ? (
                     <div className="flex items-center gap-1.5">
@@ -3605,6 +4198,60 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         seedanceRefs={seedanceRefs}
         onSeedanceRefUpload={handleSeedanceRefUpload}
         onRemoveSeedanceRef={handleRemoveSeedanceRef}
+      />
+
+      {/* VERTEX & OMNI STUDIO SIDE PANEL */}
+      <SidePanel
+        isOpen={showSidePanel}
+        onClose={() => setShowSidePanel(false)}
+        activeEngine={activeEngine}
+        setActiveEngine={setActiveEngine}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        panelTab={panelTab}
+        setPanelTab={setPanelTab}
+        firstFrameImage={firstFrameImage}
+        firstFramePreview={firstFramePreview}
+        lastFrameImage={lastFrameImage}
+        lastFramePreview={lastFramePreview}
+        setFirstFrameImage={setFirstFrameImage}
+        setFirstFramePreview={setFirstFramePreview}
+        setLastFrameImage={setLastFrameImage}
+        setLastFramePreview={setLastFramePreview}
+        omniFirstFrameImage={omniFirstFrameImage}
+        omniFirstFramePreview={omniFirstFramePreview}
+        omniLastFrameImage={omniLastFrameImage}
+        omniLastFramePreview={omniLastFramePreview}
+        setOmniFirstFrameImage={setOmniFirstFrameImage}
+        setOmniFirstFramePreview={setOmniFirstFramePreview}
+        setOmniLastFrameImage={setOmniLastFrameImage}
+        setOmniLastFramePreview={setOmniLastFramePreview}
+        handleFileUpload={handleFileUpload}
+        setUploadTarget={setUploadTarget}
+        handleClearRef={handleClearRef}
+        fileInputRef={fileInputRef}
+        duration={duration}
+        setDuration={setDuration}
+        aspectRatio={aspectRatio}
+        setAspectRatio={setAspectRatio}
+        resolution={resolution}
+        setResolution={setResolution}
+        generateAudio={generateAudio}
+        setGenerateAudio={setGenerateAudio}
+        omniTask={omniTask}
+        setOmniTask={setOmniTask}
+        showRefBoard={showRefBoard}
+        setShowRefBoard={setShowRefBoard}
+        promptText={panelTab === 'omni' ? omniPromptText : promptText}
+        setPromptText={panelTab === 'omni' ? setOmniPromptText : setPromptText}
+        omniPromptText={omniPromptText}
+        setOmniPromptText={setOmniPromptText}
+        handleGenerate={handleGenerate}
+        isBusy={isBusy}
+        userCredits={userCredits}
+        requiredCredits={requiredCredits}
+        canGenerate={canGenerate}
+        allRefItems={allRefItems}
       />
 
       {/* PERSPECTIVE & FRAMING VISUAL MODAL */}
@@ -3768,6 +4415,72 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   className="px-5 py-2 rounded-xl bg-[#c8f135] text-black font-black text-[10px] uppercase tracking-widest hover:bg-[#bce628] hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#c8f135]/20 flex items-center gap-1.5"
                 >
                   <Upload size={12} /> Confirm Upload
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NEW PROJECT CREATION MODAL */}
+      {showNewProjectModal && (
+        <div className="fixed inset-0 z-[50000] flex items-center justify-center p-4">
+          <div onClick={() => setShowNewProjectModal(false)} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+          <div className="relative w-full max-w-sm bg-[#08080c]/95 border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col z-[50001]">
+            <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
+              <h3 className="text-[10px] font-black text-white flex items-center gap-1.5 uppercase tracking-widest">
+                <Clapperboard className="w-3.5 h-3.5 text-[#c8f135]" /> Create New Project
+              </h3>
+              <button onClick={() => setShowNewProjectModal(false)} className="p-1 hover:bg-white/10 rounded-full transition-colors">
+                <X size={14} className="text-gray-400" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Project Name</label>
+                <input
+                  type="text"
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  placeholder="e.g. Neon Tokyo Runner..."
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-white text-[11px] font-bold outline-none focus:border-[#c8f135] focus:bg-white/[0.05] transition-all"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newProjectName.trim()) {
+                      const name = newProjectName.trim();
+                      const newProj = { id: 'proj_' + Date.now(), name };
+                      setProjects(prev => [...prev, newProj]);
+                      setActiveProjectId(newProj.id);
+                      setShowNewProjectModal(false);
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewProjectModal(false)}
+                  className="px-4 py-2 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/5 text-[9px] font-black uppercase tracking-widest transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!newProjectName.trim()}
+                  onClick={() => {
+                    if (newProjectName.trim()) {
+                      const name = newProjectName.trim();
+                      const newProj = { id: 'proj_' + Date.now(), name };
+                      setProjects(prev => [...prev, newProj]);
+                      setActiveProjectId(newProj.id);
+                      setShowNewProjectModal(false);
+                    }
+                  }}
+                  className="px-5 py-2 rounded-xl bg-[#c8f135] disabled:bg-zinc-800 disabled:text-white/20 text-black font-black text-[9px] uppercase tracking-widest hover:bg-[#bce628] hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#c8f135]/20 flex items-center gap-1"
+                >
+                  Create Project
                 </button>
               </div>
             </div>

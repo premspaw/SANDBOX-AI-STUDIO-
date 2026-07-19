@@ -62,6 +62,11 @@ const PricingPage = () => {
             yearlyText: "One-time · No renewal",
             description: "An affordable kickstart with a 6-Month setup value layout!",
             image: "https://jdepbrbujambxvtdiwla.supabase.co/storage/v1/object/public/templates/2a3c4c1e-fd65-4909-bfee-36190c085d94.png",
+            outputSummary: [
+                { label: "UGC Video Ads (10s)", count: "~7 Ads", icon: "📱", color: "text-amber-400 bg-amber-500/10 border-amber-500/25" },
+                { label: "Commercial Video Ads", count: "~8 HD Ads", icon: "🎬", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/25" },
+                { label: "AI Master Photos", count: "~400 Photos", icon: "📸", color: "text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/25" }
+            ],
             features: [
                 "400 High-Speed Renders (Credits)",
                 "Up to 200 Standard Images",
@@ -96,6 +101,11 @@ const PricingPage = () => {
             yearlyText: "One-time · No renewal",
             description: "The choice for professional creators and growing visual brands.",
             image: "/pricing/influencer.png",
+            outputSummary: [
+                { label: "UGC Video Ads (10s)", count: "~45 Ads", icon: "📱", color: "text-amber-400 bg-amber-500/10 border-amber-500/25" },
+                { label: "Commercial Video Ads", count: "~52 HD Ads", icon: "🎬", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/25" },
+                { label: "AI Master Photos", count: "~2,500 Photos", icon: "📸", color: "text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/25" }
+            ],
             features: [
                 "2,500 High-Speed Renders (Credits)",
                 "Up to 1,250 Standard Images",
@@ -132,6 +142,11 @@ const PricingPage = () => {
             yearlyText: "One-time · No renewal",
             description: "Advanced horsepower for Agencies and Power Users.",
             image: "/pricing/director.png",
+            outputSummary: [
+                { label: "UGC Video Ads (10s)", count: "~100 Ads", icon: "📱", color: "text-amber-400 bg-amber-500/10 border-amber-500/25" },
+                { label: "Commercial Video Ads", count: "~114 HD Ads", icon: "🎬", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/25" },
+                { label: "AI Master Photos", count: "~5,500 Photos", icon: "📸", color: "text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/25" }
+            ],
             features: [
                 "5,500 High-Speed Renders (Credits)",
                 "Up to 2,750 Standard Images",
@@ -170,6 +185,11 @@ const PricingPage = () => {
             yearlyText: "One-time · No renewal",
             description: "Maximum cinematic Enterprise Tier for Commercial workflows and large volumes.",
             image: "/pricing/enterprise.png",
+            outputSummary: [
+                { label: "UGC Video Ads (10s)", count: "~200 Ads", icon: "📱", color: "text-amber-400 bg-amber-500/10 border-amber-500/25" },
+                { label: "Commercial Video Ads", count: "~229 HD Ads", icon: "🎬", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/25" },
+                { label: "AI Master Photos", count: "~11,000 Photos", icon: "📸", color: "text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/25" }
+            ],
             features: [
                 "11,000 High-Speed Renders (Credits)",
                 "Up to 5,500 Standard Images",
@@ -237,11 +257,11 @@ const PricingPage = () => {
                             whileHover={{ y: -5, borderColor: plan.popular ? 'rgba(212,255,0,0.5)' : 'rgba(255,255,255,0.15)', boxShadow: plan.popular ? '0 10px 40px rgba(212,255,0,0.1)' : '0 10px 40px rgba(255,255,255,0.02)' }}
                             transition={{ delay: 0.08 * idx, type: "spring", stiffness: 300, damping: 20 }}
                             className={cn(
-                                "relative flex flex-col p-6 rounded-2xl transition-all duration-300 overflow-hidden",
-                                "backdrop-blur-xl border flex-1 h-full min-h-[400px] flex flex-col justify-between",
+                                "relative flex flex-col p-6 rounded-2xl transition-all duration-300 overflow-hidden shadow-2xl",
+                                "backdrop-blur-2xl border flex-1 h-full min-h-[440px] flex flex-col justify-between",
                                 plan.popular
-                                    ? "bg-[#D4FF00]/[0.02] border-[#D4FF00]/20 shadow-[0_0_30px_rgba(212,255,0,0.03)]"
-                                    : "bg-white/[0.01] border-white/5"
+                                    ? "bg-gradient-to-b from-[#D4FF00]/[0.05] via-white/[0.02] to-black/80 border-[#D4FF00]/40 shadow-[0_0_40px_rgba(212,255,0,0.08)]"
+                                    : "bg-gradient-to-b from-white/[0.03] via-white/[0.01] to-black/80 border-white/10 hover:border-white/20"
                             )}
                         >
                             {/* Card Shimmer on popular */}
@@ -290,6 +310,34 @@ const PricingPage = () => {
                                 </div>
                                 {isYearly && <p className="text-[9px] text-[#D4FF00]/80 font-bold uppercase tracking-widest leading-none">{plan.yearlyText || `Billed ₹${(plan.yearlyPrice * 12).toLocaleString()} annually`}</p>}
                             </div>
+
+                            {/* Glassmorphic Deliverables Matrix Box */}
+                            {plan.outputSummary && (
+                                <div className="mb-4 p-3 rounded-xl bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent border border-white/10 backdrop-blur-xl shadow-inner space-y-2 relative overflow-hidden group/box shrink-0">
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent -translate-x-full group-hover/box:translate-x-full transition-transform duration-1000 pointer-events-none" />
+                                    
+                                    <div className="flex items-center justify-between pb-1.5 border-b border-white/5">
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-[#D4FF00] flex items-center gap-1.5">
+                                            <Sparkles size={10} className="text-[#D4FF00] animate-pulse" /> Included Production Output
+                                        </span>
+                                        <span className="text-[8px] font-mono font-bold text-white/40 uppercase">Estimate</span>
+                                    </div>
+
+                                    <div className="space-y-1.5 pt-0.5">
+                                        {plan.outputSummary.map((item, oIdx) => (
+                                            <div key={oIdx} className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-black/50 border border-white/5 hover:border-white/20 transition-all">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <span className="text-xs shrink-0">{item.icon}</span>
+                                                    <span className="text-[10px] font-bold text-white/90 truncate">{item.label}</span>
+                                                </div>
+                                                <span className={cn("text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border shrink-0 shadow-sm", item.color)}>
+                                                    {item.count}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="flex-1 overflow-y-auto custom-scrollbar pr-3 space-y-2.5">
                                 {plan.features.map((feature, fIdx) => (

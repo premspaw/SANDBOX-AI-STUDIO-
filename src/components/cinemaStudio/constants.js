@@ -373,6 +373,33 @@ export const SEEDANCE_REF_CATEGORIES = [
     { id: 'ref_audios', label: 'Reference Audio', desc: 'Up to 3 audio (2–15s)', icon: Music, color: 'text-amber-400', accept: 'audio/mpeg,audio/wav', maxItems: 3 },
 ];
 
+// Omni Flash Interactions API reference categories
+// Based on: https://ai.google.dev/gemini-api/docs/gemini-omni-flash
+// Images → inline base64 (supported). Videos → Google File API URI (supported). Audio → unsupported.
+export const OMNI_REF_CATEGORIES = [
+    {
+        id: 'ref_images',
+        label: 'Subject / Character References',
+        desc: 'Up to 6 images · Used as <IMAGE_REF_N> in prompt',
+        icon: ImagePlus,
+        color: 'text-cyan-400',
+        accept: 'image/*',
+        maxItems: 6,
+        hint: 'Tag in prompt with <IMAGE_REF_0>, <IMAGE_REF_1> etc. or use @image for auto-inject.',
+    },
+    {
+        id: 'ref_videos',
+        label: 'Video Reference (File API)',
+        desc: 'Max 3s clip · Uploaded via Google File API',
+        icon: Video,
+        color: 'text-violet-400',
+        accept: 'video/mp4,video/quicktime,video/webm',
+        maxItems: 1,
+        hint: 'Short motion reference clip. Omni will match motion style. Tag with @video.',
+    },
+];
+
+
 export const PRO_LIGHTING_TRANSFORMS = [
     { id: 'none', label: 'No Transform', category: 'Basic' },
     { id: 'cinematic', label: 'Cinematic', category: 'Basic' },

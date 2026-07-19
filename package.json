@@ -45,6 +45,7 @@
     "google-auth-library": "^10.6.1",
     "googleapis": "^171.4.0",
     "ioredis": "^5.10.0",
+    "jimp": "^1.6.1",
     "lucide-react": "^0.344.0",
     "motion": "^12.38.0",
     "multer": "^2.0.2",

@@ -2410,7 +2410,7 @@ export default function CarouselStudio({ userId }) {
                                     <div className="space-y-4 pt-6">
                                         <div className="flex items-baseline justify-between border-b border-white/5 pb-3">
                                             <div>
-                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-pink-400 font-black">Featured Templates</span>
+                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-pink-400">Featured Templates</span>
                                                 <h3 className="text-white font-black text-xl mt-1">Pre-configured industry presets</h3>
                                             </div>
                                             <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider">Scroll for more industry tabs ↑</span>

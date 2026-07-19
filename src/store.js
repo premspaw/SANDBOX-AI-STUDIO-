@@ -23,6 +23,27 @@ export const useAppStore = create((set, get) => ({
     activeCharacter: null,
     userShorts: 50,
     userProfile: null,
+
+    // Projects
+    projects: (() => {
+        try {
+            const saved = localStorage.getItem('ugc_projects');
+            return saved ? JSON.parse(saved) : [{ id: 'default', name: 'Default Project' }];
+        } catch {
+            return [{ id: 'default', name: 'Default Project' }];
+        }
+    })(),
+    activeProjectId: localStorage.getItem('ugc_active_project_id') || 'default',
+    setProjects: (newProjects) => set((state) => {
+        const projects = typeof newProjects === 'function' ? newProjects(state.projects) : newProjects;
+        localStorage.setItem('ugc_projects', JSON.stringify(projects));
+        return { projects };
+    }),
+    setActiveProjectId: (id) => set(() => {
+        localStorage.setItem('ugc_active_project_id', id);
+        return { activeProjectId: id };
+    }),
+
     cachedAssets: null,
     cachedAssetsUserId: null,
     isAssetsLoading: false,
@@ -121,10 +142,11 @@ export const useAppStore = create((set, get) => ({
     // Toast State
     toast: null,
     toastTimeout: null,
-    showToast: (message, type = 'error') => {
-        set({ toast: { message, type } });
+    showToast: (message, type = 'error', action = null) => {
+        set({ toast: { message, type, action } });
         if (get().toastTimeout) clearTimeout(get().toastTimeout);
-        const timeout = setTimeout(() => set({ toast: null }), 4000);
+        const duration = action ? 7000 : 4000;
+        const timeout = setTimeout(() => set({ toast: null }), duration);
         set({ toastTimeout: timeout });
     },
     hideToast: () => {

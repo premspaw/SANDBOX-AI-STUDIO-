@@ -19,6 +19,7 @@ import compression from 'compression';
 import nodeFetch from 'node-fetch';
 import { decode } from 'base64-arraybuffer';
 import multer from 'multer';
+import { Jimp } from 'jimp';
 import { readFileSync, rmSync } from 'fs';
 import { isValidUuid } from './server/utils/validateUuid.js';
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -1110,7 +1111,7 @@ async function handleOpenAI(req, res) {
 
 async function handleGoogle(req, res) {
     try {
-        const { model, modelEngine, prompt, negativePrompt, negative_prompt, aspect_ratio, aspectRatio, userId, firstFrame, lastFrame, referenceImages = [], quality, resolution, imageSize, size, folder } = req.body;
+        const { model, modelEngine, prompt, negativePrompt, negative_prompt, aspect_ratio, aspectRatio, userId, firstFrame, lastFrame, referenceImages = [], quality, resolution, imageSize, size, folder, projectId } = req.body;
         const targetModel = model || modelEngine;
         const modelLower = (targetModel || '').toLowerCase();
         const isGeminiImage = modelLower.includes('gemini') || modelLower.includes('banana') || modelLower.includes('nb2');
@@ -1386,9 +1387,42 @@ async function handleGoogle(req, res) {
             }
 
             const isGrid = !!req.body.isGrid;
-            const extraMetadata = isGrid ? { isGrid: true } : {};
+            const extraMetadata = { ...(isGrid ? { isGrid: true } : {}), ...(projectId ? { projectId } : {}) };
+            let imageBuffer = Buffer.from(b64, 'base64');
+
+            // Automatically upscale to 2K (or 4K) if requested by the client
+            if (finalImageSize === '2K' || finalImageSize === '4K') {
+                try {
+                    const targetResMultiplier = finalImageSize === '4K' ? 2 : 1;
+                    const image = await Jimp.read(imageBuffer);
+                    
+                    let targetW = 2048 * targetResMultiplier;
+                    let targetH = 2048 * targetResMultiplier;
+                    
+                    if (mappedRatio === '16:9') {
+                        targetW = 2048 * targetResMultiplier;
+                        targetH = 1152 * targetResMultiplier;
+                    } else if (mappedRatio === '9:16') {
+                        targetW = 1152 * targetResMultiplier;
+                        targetH = 2048 * targetResMultiplier;
+                    } else if (mappedRatio === '4:3') {
+                        targetW = 2048 * targetResMultiplier;
+                        targetH = 1536 * targetResMultiplier;
+                    } else if (mappedRatio === '3:4') {
+                        targetW = 1536 * targetResMultiplier;
+                        targetH = 2048 * targetResMultiplier;
+                    }
+                    
+                    console.log(`[handleGoogle] [Resizing] Upscaling generated image from ${image.getWidth()}x${image.getHeight()} to ${targetW}x${targetH} (${finalImageSize})`);
+                    await image.resize(targetW, targetH);
+                    imageBuffer = await image.getBufferAsync(Jimp.MIME_PNG);
+                } catch (jimpErr) {
+                    console.error('[handleGoogle] Jimp upscaling failed fallback to original:', jimpErr.message);
+                }
+            }
+
             const url = await uploadImageToSupabase(
-                Buffer.from(b64, 'base64'), 
+                imageBuffer, 
                 userId, 
                 'image/jpeg', 
                 undefined, 

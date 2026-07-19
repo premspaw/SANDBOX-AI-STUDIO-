@@ -380,7 +380,7 @@ export const SeedanceNode = memo(({ id, data }) => {
                         {/* Duration */}
                         <select value={duration} onChange={e => setDuration(Number(e.target.value))}
                             className="flex-1 bg-white/5 border border-white/10 rounded-md px-1 py-1.5 text-[9px] text-white/50 focus:outline-none focus:border-[#D4FF00]/30">
-                            {[4, 5, 6, 8, 10, 12, 15].map(d => (
+                            {[3, 4, 5, 6, 8, 10, 12, 15].map(d => (
                                 <option key={d} value={d} className="bg-[#111]">{d}s</option>
                             ))}
                         </select>

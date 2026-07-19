@@ -26,6 +26,7 @@ import { useShorts } from '../../../hooks/useShorts';
 import { fileToGenerativePart, resizeImage } from '../utils/imageUtils';
 import { getApiUrl } from '../../../config/apiConfig';
 import { GoogleGenAI } from "@google/genai";
+import { useAppStore } from '../../../store';
 
 // Local helper to upload file to GCS via server API
 const uploadToSupabase = async (blob: Blob, type: 'image' | 'video', promptText: string, userId?: string | null) => {

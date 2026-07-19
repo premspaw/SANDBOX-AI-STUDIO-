@@ -7,9 +7,10 @@
 // USAGE:
 //   const { gallery, addToGallery, galleryTab, setGalleryTab, ... } = useUGCGallery(currentUserId);
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { getApiUrl } from '../../../config/apiConfig';
+import { useAppStore } from '../../../store';
 
 // ── URL Normalization Helper ──────────────────────────────────────────────────
 const getNormalizedPath = (url: string | undefined | null): string => {
@@ -51,6 +52,7 @@ export interface GalleryItem {
   loading?: boolean;
   createdAt?: number;
   error?: string;
+  projectId?: string;
 }
 
 // ── Resolve numeric timestamp for sorting ─────────────────────────────────────
@@ -186,6 +188,11 @@ const persistToLS = (items: GalleryItem[], userId: string) => {
 export function useUGCGallery(currentUserId: string) {
   const lsKey = getLSKey(currentUserId);
 
+  const projects = useAppStore(state => state.projects);
+  const setProjects = useAppStore(state => state.setProjects);
+  const activeProjectId = useAppStore(state => state.activeProjectId);
+  const setActiveProjectId = useAppStore(state => state.setActiveProjectId);
+
   const [gallery, setGallery] = useState<GalleryItem[]>(() => {
     // Start empty for unidentified/anon users — server fetch will populate.
     if (!lsKey) return [];
@@ -226,6 +233,7 @@ export function useUGCGallery(currentUserId: string) {
             type: (a.type === 'video' ? 'video' : 'image') as 'image' | 'video',
             url: a.url,
             prompt: a.prompt || '',
+            projectId: a.projectId || 'default',
             createdAt: a.created_at
               ? new Date(a.created_at).getTime()
               : (a.id?.startsWith?.('local_') ? parseInt(a.id.split('_')[1]) : parseInt(a.id) || Date.now()),
@@ -253,7 +261,7 @@ export function useUGCGallery(currentUserId: string) {
   // prepending a duplicate.
   const addToGallery = useCallback((item: GalleryItem) => {
     setGallery(prev => {
-      const itemWithTime: GalleryItem = { ...item, createdAt: item.createdAt || Date.now() };
+      const itemWithTime: GalleryItem = { ...item, createdAt: item.createdAt || Date.now(), projectId: activeProjectId };
       const existingIdx = prev.findIndex(i => !i.loading && i.url && getNormalizedPath(i.url) === getNormalizedPath(item.url));
       let next: GalleryItem[];
       if (existingIdx !== -1) {
@@ -267,7 +275,7 @@ export function useUGCGallery(currentUserId: string) {
       saveGalleryToIDB(deduped);
       return deduped;
     });
-  }, [currentUserId]);
+  }, [currentUserId, activeProjectId]);
 
   // ── updateGalleryItem ─────────────────────────────────────────────────────
   // After updating (e.g. blob→https URL swap), re-dedup to remove any URL twin.
@@ -281,8 +289,17 @@ export function useUGCGallery(currentUserId: string) {
     });
   }, [currentUserId]);
 
+  const visibleGallery = useMemo(() => {
+    return gallery.filter(item => !item.projectId || item.projectId === activeProjectId);
+  }, [gallery, activeProjectId]);
+
   return {
-    gallery,
+    projects,
+    setProjects,
+    activeProjectId,
+    setActiveProjectId,
+    gallery: visibleGallery,
+    rawGallery: gallery,
     setGallery,
     galleryTab,
     setGalleryTab,

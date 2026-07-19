@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Camera, User, X, Package, MapPin, Search, Volume2, Upload, FileText, Film, Layers, BrainCircuit, Plus, Loader2, ChevronLeft, ChevronRight, Layout, Clock, Sparkles, AlertCircle, CheckCircle, ShieldCheck, Wand2, Play, Video } from 'lucide-react';
+import { Camera, User, X, Package, MapPin, Search, Volume2, Upload, FileText, Film, Layers, BrainCircuit, Plus, Loader2, ChevronLeft, ChevronRight, ChevronDown, Layout, Clock, Sparkles, AlertCircle, CheckCircle, ShieldCheck, Wand2, Play, Video } from 'lucide-react';
 import { useUGC, KnowledgeBaseEntry, SplitScene } from '../context/UGCContext';
 import { Dropdown } from './Dropdown';
 import { SCENE_STYLES } from '../constants/videoStyles';
@@ -22,6 +22,8 @@ export default function LeftSidebar() {
     setThProductImg,
     thLocationImg,
     setThLocationImg,
+    thAnimation,
+    setThAnimation,
     generateTalkingHeadImage,
     thIsGeneratingImg,
     analyzeProduct,
@@ -57,6 +59,10 @@ export default function LeftSidebar() {
     userPrompt,
     setUserPrompt,
     script,
+    generateAllSceneVideos,
+    generateTalkingHeadVideo,
+    generateGeneralVideoPrompt,
+    isGeneratingGeneralPrompt,
     podcastScene,
     setPodcastScene,
     podcastDirectorNote,
@@ -299,6 +305,39 @@ export default function LeftSidebar() {
                 )}
                 {!thProductImg && <p className="text-[7px] text-white/20 font-mono uppercase tracking-widest text-center">Upload a product image first</p>}
               </section>
+
+              {/* Animations */}
+              <section className="space-y-3 border-t border-[#1e1e24] pt-4">
+                <h2 className="text-[10px] font-black text-[#3a3a4a] uppercase tracking-[0.2em] flex items-center gap-1.5">
+                  <Sparkles size={10} className="text-[#c8f135]" /> Motion &amp; Animations
+                </h2>
+                <div className="relative">
+                  <select
+                    value={thAnimation || 'none'}
+                    onChange={(e) => setThAnimation(e.target.value)}
+                    className="w-full appearance-none bg-[#111113] border border-[#1e1e24] rounded-xl pl-3 pr-8 py-2 text-[10px] font-mono text-white/80 focus:outline-none focus:border-[#c8f135]/50 transition-colors cursor-pointer"
+                  >
+                    <option value="none">No Additional Animations</option>
+                    <option value="auto">Auto-Animation (Context-Aware)</option>
+                    <option value="screen_effects">Screen Effects</option>
+                    <option value="dynamic_frames">Dynamic Frames</option>
+                    <option value="focus_effects">Focus Effects</option>
+                    <option value="character_animations">Character Animations</option>
+                    <option value="popup_cards">Pop-up Cards</option>
+                    <option value="comparison_split">Comparison Split</option>
+                    <option value="infographic_cards">Infographic Cards</option>
+                    <option value="cta_animations">CTA Animations</option>
+                    <option value="background_motion">Background Motion</option>
+                    <option value="motion_shapes">Motion Shapes</option>
+                    <option value="camera_graphics">Camera Graphics</option>
+                    <option value="statics_animation">Statics Animation</option>
+                    <option value="social_proof">Social Proof</option>
+                    <option value="ui_overlays">UI Overlays</option>
+                  </select>
+                  <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+                </div>
+                <p className="text-[7px] text-white/20 font-mono uppercase tracking-widest text-center">Applies script-aware motion graphics</p>
+              </section>
             </>
           ) : activeTab === 'podcast' ? (
             <>
@@ -395,10 +434,19 @@ export default function LeftSidebar() {
                         </div>
                         <p className="text-[8px] font-mono text-white/60 leading-relaxed line-clamp-5">{voiceTranscript}</p>
                         <button
-                          onClick={() => { setScript(voiceTranscript); }}
-                          className="w-full py-2 rounded-lg bg-[#c8f135] text-black text-[8px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-[#d4ff3a] transition-all"
+                          onClick={() => { 
+                            setScript(voiceTranscript); 
+                            generateGeneralVideoPrompt(voiceTranscript);
+                          }}
+                          disabled={isGeneratingGeneralPrompt}
+                          className={`w-full py-2 rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${
+                            isGeneratingGeneralPrompt
+                              ? 'bg-white/5 text-white/20 cursor-not-allowed'
+                              : 'bg-[#c8f135] text-black hover:bg-[#d4ff3a]'
+                          }`}
                         >
-                          <Film size={10} /> Use Script &amp; Generate Video
+                          {isGeneratingGeneralPrompt ? <Loader2 size={10} className="animate-spin" /> : <Volume2 size={10} />}
+                          {isGeneratingGeneralPrompt ? 'Generating Prompt...' : 'Use Script & Use Voice'}
                         </button>
                       </div>
                     )}
@@ -786,10 +834,19 @@ export default function LeftSidebar() {
                         </div>
                         <p className="text-[8px] font-mono text-white/60 leading-relaxed line-clamp-5">{voiceTranscript}</p>
                         <button
-                          onClick={() => { setScript(voiceTranscript); }}
-                          className="w-full py-2 rounded-lg bg-[#c8f135] text-black text-[8px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-[#d4ff3a] transition-all"
+                          onClick={() => { 
+                            setScript(voiceTranscript);
+                            generateGeneralVideoPrompt(voiceTranscript);
+                          }}
+                          disabled={isGeneratingGeneralPrompt}
+                          className={`w-full py-2 rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${
+                            isGeneratingGeneralPrompt
+                              ? 'bg-white/5 text-white/20 cursor-not-allowed'
+                              : 'bg-[#c8f135] text-black hover:bg-[#d4ff3a]'
+                          }`}
                         >
-                          <Film size={10} /> Use Script &amp; Generate Video
+                          {isGeneratingGeneralPrompt ? <Loader2 size={10} className="animate-spin" /> : <Volume2 size={10} />}
+                          {isGeneratingGeneralPrompt ? 'Generating Prompt...' : 'Use Script & Use Voice'}
                         </button>
                       </div>
                     )}

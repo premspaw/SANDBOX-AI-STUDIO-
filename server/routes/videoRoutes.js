@@ -118,34 +118,52 @@ export default function createRouter(deps) {
             // Build the instance object (shared for both SDK and REST formats)
             let instance = { prompt: motionPrompt };
 
-            if (image) {
+            const resolveImagePayload = async (imgSrc) => {
+                if (!imgSrc) return null;
                 let imageData = '';
                 let mimeType = 'image/png';
 
-                if (image.startsWith('data:')) {
-                    const match = image.match(/^data:([^;]+);base64,/);
+                if (imgSrc.startsWith('data:')) {
+                    const match = imgSrc.match(/^data:([^;]+);base64,/);
                     if (match) mimeType = match[1];
-                    imageData = image.split(',')[1];
-                } else if (image.startsWith('http') || image.startsWith('//')) {
-                    const fullUrl = image.startsWith('//') ? `https:${image}` : image;
+                    imageData = imgSrc.split(',')[1];
+                } else if (imgSrc.startsWith('http') || imgSrc.startsWith('//')) {
+                    const fullUrl = imgSrc.startsWith('//') ? `https:${imgSrc}` : imgSrc;
                     const imgResp = await fetch(fullUrl);
-                    if (!imgResp.ok) throw new Error(`Failed to fetch input image: ${imgResp.statusText}`);
+                    if (!imgResp.ok) throw new Error(`Failed to fetch image: ${imgResp.statusText}`);
                     const buffer = await imgResp.arrayBuffer();
                     imageData = Buffer.from(buffer).toString('base64');
                     const contentType = imgResp.headers.get('content-type');
                     if (contentType) mimeType = contentType;
                 } else {
-                    imageData = image; // Assume raw base64
+                    imageData = imgSrc;
                 }
 
-                // Structure for Vertex / AI Studio Predict API
-                instance.image = {
+                return {
                     bytesBase64Encoded: imageData,
                     mimeType: mimeType
                 };
+            };
+
+            const firstFrameSrc = image || req.body.firstFrameImage;
+            const lastFrameSrc = req.body.lastFrameImage || req.body.imageEnd;
+
+            if (firstFrameSrc) {
+                const firstFrameObj = await resolveImagePayload(firstFrameSrc);
+                if (firstFrameObj) {
+                    instance.image = firstFrameObj;
+                }
             }
 
-            console.log(`[VEO-I2V] Constructed Instance Keys:`, Object.keys(instance), instance.image ? `| image.mimeType: ${instance.image.mimeType}` : '');
+            if (lastFrameSrc) {
+                const lastFrameObj = await resolveImagePayload(lastFrameSrc);
+                if (lastFrameObj) {
+                    instance.lastImage = lastFrameObj;
+                    instance.lastFrame = lastFrameObj;
+                }
+            }
+
+            console.log(`[VEO-I2V] Constructed Instance Keys:`, Object.keys(instance), instance.image ? `| image.mimeType: ${instance.image.mimeType}` : '', instance.lastImage ? `| lastImage.mimeType: ${instance.lastImage.mimeType}` : '');
 
             broadcastProgress(taskId, 1, 3, 'Veo 3.1 engine initializing...');
 
@@ -186,56 +204,122 @@ export default function createRouter(deps) {
                         throw new Error(operationResultData.error.message || "REST Initiation Failed on Vertex AI");
                     }
 
-                    console.log(`[VEO-I2V] [Vertex AI] Operation started: ${operationResultData.name}`);
+                    const operationName = operationResultData.name;
+                    console.log(`[VEO-I2V] [Vertex AI] Operation started: ${operationName}`);
                     broadcastProgress(taskId, 2, 3, 'Animating scene (Vertex AI Render)...');
 
-                    const pollPath = operationResultData.name.includes('/') ? operationResultData.name : `projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/operations/${operationResultData.name}`;
+                    // Use fetchPredictOperation — the CORRECT polling method for Veo predictLongRunning.
+                    // Standard GET /v1/{operationName} always returns 404 for publisher-scoped Veo operations.
+                    const fetchOpUrl = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${vertexModel}:fetchPredictOperation`;
+
                     let attempts = 0;
-                    const maxAttempts = 60;
+                    const maxAttempts = 38;   // 38 × 8s = 304s (~5 min hard cap)
                     let isDone = false;
                     let operationResult = null;
+                    const pollStartTime = Date.now();
 
                     while (!isDone && attempts < maxAttempts) {
-                        await new Promise(resolve => setTimeout(resolve, 6000));
+                        await new Promise(resolve => setTimeout(resolve, 8000));
                         attempts++;
 
-                        const pollUrl = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/${pollPath}`;
-                        const pollResp = await fetch(pollUrl, {
-                            headers: { 'Authorization': `Bearer ${token}` }
+                        const pollResp = await fetch(fetchOpUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ operationName })
                         });
-                        if (pollResp.status === 404) {
-                            console.log(`[VEO-I2V] [Vertex AI] Operation not propagated yet (404). Waiting...`);
+
+                        if (!pollResp.ok) {
+                            const errText = await pollResp.text().catch(() => pollResp.status);
+                            console.warn(`[VEO-I2V] [Vertex AI] Poll attempt #${attempts} returned ${pollResp.status}: ${errText}`);
+                            if (pollResp.status === 429) {
+                                // Rate-limited — back off extra
+                                await new Promise(resolve => setTimeout(resolve, 10000));
+                            }
                             continue;
                         }
+
                         operationResult = await pollResp.json();
 
                         if (operationResult.error) throw new Error(operationResult.error.message);
                         isDone = operationResult.done;
 
-                        if (attempts % 3 === 0) {
-                            const elapsed = attempts * 6;
-                            console.log(`[VEO-I2V] [Vertex AI] Still generating... (${elapsed}s elapsed)`);
+                        const elapsed = Math.round((Date.now() - pollStartTime) / 1000);
+                        if (attempts % 3 === 0 || isDone) {
+                            console.log(`[VEO-I2V] [Vertex AI] ${isDone ? '✅ Done' : 'Generating...'} (${elapsed}s, poll #${attempts})`);
                             broadcastProgress(taskId, 2, 3, `Rendering video... (${elapsed}s)`);
                         }
                     }
 
-                    if (!isDone) throw new Error('Vertex AI video generation timed out');
+                    if (!isDone) throw new Error('Vertex AI video generation timed out after ~5 min');
 
                     const responseData = operationResult.response;
+
+                    // Detect Safety/RAI Filter Blocking
+                    if (responseData?.raiMediaFilteredCount > 0 || responseData?.raiMediaFilteredReasons) {
+                        const reasons = responseData.raiMediaFilteredReasons ? ` (${responseData.raiMediaFilteredReasons.join(', ')})` : '';
+                        throw new Error(`Video blocked by Google's safety filters/RAI policy${reasons}. Please tweak your prompt and try again.`);
+                    }
+
+                    // Try all known response shapes
+                    // Shape 1: base64 in predictions
                     const b64 = responseData?.predictions?.[0]?.bytesBase64Encoded;
                     if (b64) {
                         videoBuffer = Buffer.from(b64, 'base64');
                         success = true;
-                        console.log(`[VEO-I2V] [Vertex AI] Video generated successfully via base64 predictions (${videoBuffer.length} bytes)`);
-                    } else {
-                        const videoUri = responseData?.generatedVideos?.[0]?.video?.uri || responseData?.predictions?.[0]?.uri;
-                        if (videoUri) {
-                            const downloadUrl = `${videoUri}&key=${token}`;
-                            const videoResp = await fetch(downloadUrl);
+                        console.log(`[VEO-I2V] [Vertex AI] ✅ Got video via base64 predictions (${videoBuffer.length} bytes)`);
+                    }
+
+                    // Shape 2: GCS URI in generatedVideos
+                    if (!success) {
+                        const gcsUri = responseData?.generatedVideos?.[0]?.video?.uri
+                            || responseData?.generatedVideos?.[0]?.uri;
+                        if (gcsUri) {
+                            console.log(`[VEO-I2V] [Vertex AI] Downloading from generatedVideos URI: ${gcsUri}`);
+                            const videoResp = await fetch(gcsUri, { headers: { 'Authorization': `Bearer ${token}` } });
                             if (videoResp.ok) {
                                 videoBuffer = Buffer.from(await videoResp.arrayBuffer());
                                 success = true;
-                                console.log(`[VEO-I2V] [Vertex AI] Video downloaded successfully via URI (${videoBuffer.length} bytes)`);
+                                console.log(`[VEO-I2V] [Vertex AI] ✅ Downloaded via generatedVideos URI (${videoBuffer.length} bytes)`);
+                            } else {
+                                console.warn(`[VEO-I2V] generatedVideos URI download failed: ${videoResp.status}`);
+                            }
+                        }
+                    }
+
+                    // Shape 3: URI in predictions
+                    if (!success) {
+                        const predUri = responseData?.predictions?.[0]?.uri
+                            || responseData?.predictions?.[0]?.video?.uri;
+                        if (predUri) {
+                            console.log(`[VEO-I2V] [Vertex AI] Downloading from predictions URI: ${predUri}`);
+                            const videoResp = await fetch(predUri, { headers: { 'Authorization': `Bearer ${token}` } });
+                            if (videoResp.ok) {
+                                videoBuffer = Buffer.from(await videoResp.arrayBuffer());
+                                success = true;
+                                console.log(`[VEO-I2V] [Vertex AI] ✅ Downloaded via predictions URI (${videoBuffer.length} bytes)`);
+                            }
+                        }
+                    }
+
+                    // Shape 4: fetchPredictOperation-specific .videos array
+                    if (!success) {
+                        const vidObj = operationResult?.videos?.[0] || responseData?.videos?.[0];
+                        const vidUri = vidObj?.uri || vidObj?.video?.uri;
+                        const vidB64 = vidObj?.bytesBase64Encoded;
+                        if (vidB64) {
+                            videoBuffer = Buffer.from(vidB64, 'base64');
+                            success = true;
+                            console.log(`[VEO-I2V] [Vertex AI] ✅ Got video via .videos[].bytesBase64Encoded (${videoBuffer.length} bytes)`);
+                        } else if (vidUri) {
+                            console.log(`[VEO-I2V] [Vertex AI] Downloading from .videos URI: ${vidUri}`);
+                            const videoResp = await fetch(vidUri, { headers: { 'Authorization': `Bearer ${token}` } });
+                            if (videoResp.ok) {
+                                videoBuffer = Buffer.from(await videoResp.arrayBuffer());
+                                success = true;
+                                console.log(`[VEO-I2V] [Vertex AI] ✅ Downloaded via .videos URI (${videoBuffer.length} bytes)`);
                             }
                         }
                     }
@@ -417,7 +501,12 @@ export default function createRouter(deps) {
             if (!apiKey) throw new Error("Kling API Key not configured. Please add KLING_API_KEY to your environment.");
 
             const targetUserId = user ? user.id : userId;
-            const requiredCredits = 7; // Kling costs 7 credits (halved from 15)
+            let requiredCredits = 7;
+            if (model === 'kling/v3-turbo-image-to-video') {
+                const durationSec = Number(duration) || 5;
+                const costPerSec = (req.body.resolution === '1080p') ? (0.1125 * 1.30 * 84) : (0.09 * 1.30 * 84); // 12.285 or 9.828 credits/sec
+                requiredCredits = Math.round(costPerSec * durationSec);
+            }
 
             if (targetUserId) {
                 const creditReason = req.body.creditReason || 'cinematic_video_generation';
@@ -431,26 +520,53 @@ export default function createRouter(deps) {
                 resolveToPublicUrl(lastFrame, targetUserId)
             ]);
 
-            if (!imgUrl) throw new Error("Kling requires at least one starting image URL.");
+            let selectedModel = model;
+            if (!imgUrl && selectedModel === 'kling/v3-turbo-image-to-video') {
+                selectedModel = 'kling/v3-turbo-text-to-video';
+            }
 
-            let image_urls = [imgUrl];
+            let image_urls = [];
+            if (imgUrl) image_urls.push(imgUrl);
             if (tailUrl) image_urls.push(tailUrl);
 
-            const payload = {
-                model: model || "kling-3.0/video",
-                input: {
-                    prompt,
-                    image_urls,
-                    mode: "pro",
-                    sound: false,
-                    multi_shots: false,
-                    duration: String(duration).includes("10") ? "10" : "5",
-                    negative_prompt: negative_prompt || "low quality, blur, distort",
-                    cfg_scale: parseFloat(cfg_scale) || 0.5
-                }
-            };
+            let payload;
+            if (selectedModel === 'kling/v3-turbo-image-to-video') {
+                payload = {
+                    model: 'kling/v3-turbo-image-to-video',
+                    input: {
+                        prompt,
+                        image_urls,
+                        duration: String(duration || "5"),
+                        resolution: req.body.resolution || "720p"
+                    }
+                };
+            } else if (selectedModel === 'kling/v3-turbo-text-to-video') {
+                payload = {
+                    model: 'kling/v3-turbo-text-to-video',
+                    input: {
+                        prompt,
+                        duration: String(duration || "5"),
+                        resolution: req.body.resolution || "720p"
+                    }
+                };
+            } else {
+                if (!imgUrl) throw new Error("Kling requires at least one starting image URL.");
+                payload = {
+                    model: selectedModel || "kling-3.0/video",
+                    input: {
+                        prompt,
+                        image_urls,
+                        mode: "pro",
+                        sound: false,
+                        multi_shots: false,
+                        duration: String(duration || "5"),
+                        negative_prompt: negative_prompt || "low quality, blur, distort",
+                        cfg_scale: parseFloat(cfg_scale) || 0.5
+                    }
+                };
+            }
 
-            console.log(`[KLING-ASYNC] Creating task...`);
+            console.log(`[KLING-ASYNC] Creating task...`, JSON.stringify(payload, null, 2));
             const createResp = await fetch("https://api.kie.ai/api/v1/jobs/createTask", {
                 method: 'POST',
                 headers: {
@@ -486,15 +602,30 @@ export default function createRouter(deps) {
             });
             const pollData = await pollResp.json();
 
-            if (pollData.code !== 200) throw new Error(`Kling Polling Failed: ${pollData.msg}`);
+            if (pollData.code !== 200) {
+                if (pollData.code === 422 && (pollData.msg === 'recordInfo is null' || !pollData.data)) {
+                    console.log(`[KLING-STATUS] Task ${requestId} not propagated yet. Treating as processing.`);
+                    return res.json({ status: 'processing' });
+                }
+                throw new Error(`Kling Polling Failed: ${pollData.msg}`);
+            }
             if (!pollData.data) throw new Error("Kling Polling Success but no data returned.");
 
             const state = pollData.data.state;
             console.log(`[KLING-STATUS] ${requestId}: ${state}`);
 
             if (state === 'success') {
-                const resultJson = JSON.parse(pollData.data.resultJson);
-                const finalUrl = resultJson.resultUrls[0];
+                let finalUrl = pollData.data.videos?.[0]?.url || pollData.data.resultUrl;
+                if (!finalUrl && pollData.data.resultJson) {
+                    try {
+                        const parsed = typeof pollData.data.resultJson === 'string'
+                            ? JSON.parse(pollData.data.resultJson)
+                            : pollData.data.resultJson;
+                        finalUrl = parsed?.resultUrls?.[0] || parsed?.video_url;
+                    } catch (e) {
+                        console.warn('[KLING-STATUS-ERR] Failed to parse resultJson:', e.message);
+                    }
+                }
                 
                 if (!finalUrl) throw new Error("No result URL found.");
                 

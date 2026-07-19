@@ -169,9 +169,7 @@ export default function createRouter(deps) {
                         url: imageData,
                         user_id: userId,
                         created_at: new Date().toISOString(),
-                        metadata: { aspect, ...extraMetadata },
-                        prompt,
-                        engine
+                        metadata: { aspect, engine, prompt, ...extraMetadata }
                     }]).select();
 
                     if (dbError) {
@@ -233,8 +231,11 @@ export default function createRouter(deps) {
             let insertedId = `asset_${Date.now()}`;
             const dbClient = supabaseAdmin || supabase;
             if (dbClient && isValidUuid(userId)) {
-                // Use 'reference_upload' type for ref items so gallery queries can filter them out
-                const dbType = isRefUpload ? 'reference_upload' : type;
+                const dbType = type;
+                const finalMetadata = { aspect, engine, prompt, ...extraMetadata };
+                if (isRefUpload) {
+                    finalMetadata.isReferenceUpload = true;
+                }
                 const { data: dbData, error: dbError } = await dbClient
                     .from('assets')
                     .insert([{
@@ -243,9 +244,7 @@ export default function createRouter(deps) {
                         url: publicUrl,
                         user_id: userId,
                         created_at: new Date().toISOString(),
-                        metadata: { aspect, ...extraMetadata },
-                        prompt,
-                        engine
+                        metadata: finalMetadata
                     }])
                     .select();
                 if (dbError) {

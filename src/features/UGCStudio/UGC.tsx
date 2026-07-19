@@ -344,6 +344,7 @@ export default function UGC() {
   const [thGeneratedVideo, setThGeneratedVideo] = useState<string>('');
   const [thScript, setThScript] = useState<string>('');
   const [thEngine, setThEngine] = useState<'veo3' | 'veo_fast' | 'veo_lite' | 'omni-flash'>('veo_fast');
+  const [thAnimation, setThAnimation] = useState<string>('none');
   const [thIsGeneratingImg, setThIsGeneratingImg] = useState(false);
   const [thIsGeneratingVideo, setThIsGeneratingVideo] = useState(false);
   const [thVideoProgress, setThVideoProgress] = useState('');
@@ -458,7 +459,12 @@ export default function UGC() {
   }, [timeline]);
 
   const {
+    projects,
+    setProjects,
+    activeProjectId,
+    setActiveProjectId,
     gallery,
+    rawGallery,
     setGallery,
     galleryTab,
     setGalleryTab,
@@ -2437,14 +2443,15 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
 
 
 
-  const generateGeneralVideoPrompt = async () => {
-    if (!script && !userPrompt) return;
+  const generateGeneralVideoPrompt = async (overrideScript?: string) => {
+    const dialogText = overrideScript || script || userPrompt;
+    if (!dialogText) return;
     setIsGeneratingGeneralPrompt(true);
     try {
       const { parts, instructions, refMappings } = await getMultimodalParts(null);
 
       const aiPrompt = buildMultiReferencePrompt({
-        dialog: script || userPrompt,
+        dialog: dialogText,
         productDetails,
         selectedVideoStyle,
         VIDEO_STYLES,
@@ -2926,8 +2933,18 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
         : thEngine === 'veo_lite'
         ? 'veo-3.1-lite-generate-preview'
         : 'veo-3.1-fast-generate-preview';
+        
+      let animationPrompt = '';
+      if (thAnimation && thAnimation !== 'none') {
+        const readableAnimation = thAnimation.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+        if (thAnimation === 'auto') {
+          animationPrompt = ' Also add dynamic, contextual motion graphics and UI overlays that fit the topic of the script (e.g. if medical, use clean aesthetic cards; if coaching, use engaging text pop-ups). Keep it highly realistic and natural, not complicated.';
+        } else {
+          animationPrompt = ` Also integrate high-quality, contextual ${readableAnimation} animations that match the script's theme and subject matter perfectly. Keep it highly realistic and natural, not complicated.`;
+        }
+      }
 
-      const talkingPrompt = `A confident creator looks directly into the camera and delivers this message with natural, expressive lip sync: "${thScript.trim().substring(0, 400)}". They speak clearly, with hook energy — engaging the viewer from the first frame. Realistic facial movements, natural blinks, slight head movement. Shot in ${thAspectRatio} portrait. Cinematic UGC style.${imagePayload ? ' Animate from the reference image — keep face, background and outfit consistent.' : ''}`;
+      const talkingPrompt = `A confident creator looks directly into the camera and delivers this message with natural, expressive lip sync: "${thScript.trim().substring(0, 400)}". They speak clearly, with hook energy — engaging the viewer from the first frame. Realistic facial movements, natural blinks, slight head movement. Shot in ${thAspectRatio} portrait. Cinematic UGC style.${imagePayload ? ' Animate from the reference image — keep face, background and outfit consistent.' : ''}${animationPrompt}`;
 
       updateGalleryItem(placeholderThVideoId, { prompt: talkingPrompt.substring(0, 1000) });
 
@@ -2993,11 +3010,21 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
         const customKey = getApiKey();
         if (customKey) headers['x-admin-trial-key'] = customKey;
 
+        let audioToSend = undefined;
+        if (voiceSampleFile) {
+          try {
+            const b64 = await fileToBase64(voiceSampleFile);
+            const mime = voiceSampleFile.type || 'audio/mp3';
+            audioToSend = `data:${mime};base64,${b64}`;
+          } catch (e) { console.error('Failed to encode voice sample', e); }
+        }
+
         const resp = await fetch(getApiUrl('/api/omni-i2v'), {
           method: 'POST',
           headers,
           body: JSON.stringify({
             image: imageToSend || undefined,
+            audio: audioToSend,
             motionPrompt: talkingPrompt,
             duration: parseInt(thDuration),
             aspectRatio: thAspectRatio,
@@ -3347,11 +3374,21 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
           }
           const finalMotionPrompt = (prompt.includes('Dialogue to speak:') ? prompt : `${prompt} ${dialogueInstruction}`).substring(0, 1000);
 
+          let audioToSend = undefined;
+          if (voiceSampleFile) {
+            try {
+              const b64 = await fileToBase64(voiceSampleFile);
+              const mime = voiceSampleFile.type || 'audio/mp3';
+              audioToSend = `data:${mime};base64,${b64}`;
+            } catch (e) { console.error('Failed to encode voice sample', e); }
+          }
+
           const resp = await fetch(getApiUrl('/api/omni-i2v'), {
             method: 'POST',
             headers,
             body: JSON.stringify({
               image: imageToSend || undefined,
+              audio: audioToSend,
               motionPrompt: finalMotionPrompt,
               duration: resolvedDuration,
               aspectRatio: resolvedAspectRatio,
@@ -4027,12 +4064,31 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         const customKey = getApiKey();
         if (customKey) headers['x-admin-trial-key'] = customKey;
 
+        let audioToSend = undefined;
+        if (voiceSampleFile) {
+          try {
+            const b64 = await fileToBase64(voiceSampleFile);
+            const mime = voiceSampleFile.type || 'audio/webm';
+            const match = b64.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              audioToSend = `data:${match[1]};base64,${match[2]}`;
+            } else {
+              audioToSend = `data:${mime};base64,${b64}`;
+            }
+          } catch (e) {
+            console.error('Failed to convert voice sample to base64', e);
+          }
+        }
+        
+        // Remove <IMAGE_REF_x> tags since Omni Flash doesn't use this syntax
+        const cleanedMotionPrompt = promptText.replace(/<IMAGE_REF_\d+>/g, 'the reference image').substring(0, 1000);
+
         const resp = await fetch(getApiUrl('/api/omni-i2v'), {
           method: 'POST',
           headers,
           body: JSON.stringify({
             image: imageToSend || undefined,
-            motionPrompt: promptText.substring(0, 1000),
+            motionPrompt: cleanedMotionPrompt,
             duration: resolvedDuration,
             aspectRatio: resolvedAspectRatio,
             resolution: '720p',
@@ -4040,7 +4096,8 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             userId: currentUserId,
             generateAudio: resolvedIncludeAudio,
             creditReason: 'veo_fast',
-            ref_images: refImagesList
+            ref_images: refImagesList,
+            audio: audioToSend
           })
         });
 
@@ -4339,6 +4396,11 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     addToTimeline,
     processTimeline,
     gallery,
+    rawGallery,
+    projects,
+    setProjects,
+    activeProjectId,
+    setActiveProjectId,
     setGallery,
     galleryTab,
     setGalleryTab,
@@ -4386,6 +4448,8 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     setThProductImg,
     thLocationImg,
     setThLocationImg,
+    thAnimation,
+    setThAnimation,
     toast,
     setToast,
     showToast,
@@ -4789,6 +4853,28 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
                 {/* Bottom action bar */}
                 <div className="flex items-center gap-2 px-4 pb-3">
+                  <select 
+                    className="bg-white/5 hover:bg-[#c8f135]/10 border border-white/10 hover:border-[#c8f135]/20 text-white hover:text-[#c8f135] rounded-xl px-2 py-2 text-[10px] font-bold focus:outline-none max-w-[120px] transition-colors cursor-pointer"
+                    value={activeProjectId}
+                    title="Select Project"
+                    onChange={(e) => {
+                      if (e.target.value === 'new') {
+                        const name = prompt('Enter new project name:');
+                        if (name) {
+                          const newProj = { id: `proj_${Date.now()}`, name };
+                          setProjects(prev => [...prev, newProj]);
+                          setActiveProjectId(newProj.id);
+                        }
+                      } else {
+                        setActiveProjectId(e.target.value);
+                      }
+                    }}
+                  >
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id} className="bg-[#1e1e24] text-white">{p.name}</option>
+                    ))}
+                    <option value="new" className="bg-[#1e1e24] text-[#c8f135] font-bold">+ New Project...</option>
+                  </select>
                   <input
                     type="text"
                     value={userPrompt}

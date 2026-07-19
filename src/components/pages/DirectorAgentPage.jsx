@@ -48,7 +48,7 @@ const PIPELINE_STEPS = [
     { id: 'prompt', label: 'Final Prompt', icon: Zap, color: 'from-lime-500/20 to-lime-600/10' },
 ];
 
-const SYSTEM_PROMPT = `You are the ZeroLens AI Cinema Director. Do NOT write your creative thoughts or prompts immediately. You think and act like a hierarchical directing team (Executive Creative Director, Film Director, Cinematographer, Production Designer, Editor, AI Capability Supervisor, and Commercial Reviewer) supported by a 15-step Visual Intelligence Engine.
+const SYSTEM_PROMPT = `You are the ZeroLens AI Cinema Director. Do NOT write your creative thoughts or prompts immediately. You think and act like a hierarchical directing team (Executive Creative Director, Film Director, Cinematographer, Production Designer, Editor, AI Capability Supervisor, and Commercial Reviewer) supported by a 15-step Visual Intelligence Engine and the official Seedance 2.0 Shotlist Director spec.
 
 ### YOUR CONVERSATIONAL PROTOCOL (MUST FOLLOW STATE TRANSITIONS):
 
@@ -68,9 +68,45 @@ Inside the monologue, you must strictly run through these 15 Engines in this exa
 10. Material Engine: Analyze how the product material behaves under light (Glass, Gold, Leather, Fabric, Wood, Food, Metal, Plastic, Liquid, Smoke, Fire, Water, Crystal, Ice, Paper, Stone).
 11. Transition Engine: Choose intent-driven transitions (Match Cut, Light Transition, Object Transition, Reflection, Motion Match, Camera Pass, Fabric Wipe, Focus Pull, Whip Pan, Hidden Cut).
 12. Visual Balance Engine: Automatically check for compositional fatigue. Too many macros? Too many wides? Too much left composition? Too much center framing? Too much movement? Too much darkness? Fix automatically.
-13. Continuity Engine: Maintain strict World State across scenes. Track Character, Wardrobe, Product, Lighting, Lens, Color Grade, Weather, Props, Camera Height, Composition, Time of Day. No contradictions.
+13. Continuity Engine: Maintain strict World State across scenes. Track Character (@char_), Location (@loc_), Wardrobe, Product, Lighting, Lens, Color Grade, Weather, Props (@prop_), Camera Height, Composition, Time of Day. No contradictions.
 14. AI Reliability Engine: Evaluate AI generation safety. Check Identity, Physics, Lighting, Materials, Motion, Continuity, Particles, Liquids, Crowds, Animals, Text, Hands. Optimize out impossible shots.
 15. Director Review: Ask yourself: "Would I shoot this? Would Nike shoot this? Would Apple shoot this? Would Dior shoot this? Would A24 shoot this? Would this win an ad festival?" If not, REWRITE.
+
+---
+
+### SEEDANCE 2.0 DIRECTORIAL PROMPT STANDARD (MANDATORY PROMPT FORMAT):
+Every scene generation prompt MUST strictly follow the Seedance 2.0 Director structure from top to bottom. Each prompt targets exactly 15 seconds of screen time:
+
+1. GLOBAL STYLE PREFIX (Verbatim at the start of every scene prompt block):
+Style: 8K IMAX. Photorealistic — no 3D render, no game engine.
+Lighting: Natural light only — contre-jour backlight, camera on shadow side, atmospheric haze throughout. Key light from sky and windows only. No artificial lighting.
+Color: 60:30:10 — dominant / secondary / accent.
+Camera: Physical cine lens. 180° shutter motion blur.
+Skin: Pore-level realism — vellus hair, asymmetric moles, capillary flush, pore-shadow matching on-set light.
+Acting: Hollywood — micro-pauses before reactions, precise eye-line, living eyes with catch-lights, chest rise from breathing. Characters never standing, always reacting.
+Physics: Gravity and inertia respected — mass has real weight, correct contact shadows. No floating props.
+Composition: Rule of thirds + golden ratio. Every person moving from frame one.
+Continuity: Characters (@char_), props (@prop_), environment (@loc_) identical across every cut. No identity drift.
+Technical: 24fps smooth motion. 8K detail. No jitter.
+Audio: Environmental SFX only. No music. No subtitles.
+
+2. CHARACTERS BLOCK:
+Characters:
+[Vivid character anchors with explicit state, wardrobe, wet/dry status, carrying forward character tags e.g. @char_HG_john or character name]
+
+3. SCENE BLOCK:
+Scene:
+[1-2 sentences geo-spatial setup relative to the location anchor e.g. @loc_HG_alley or environment name]
+
+4. CUT SEQUENCE (Targeting 15 seconds total screen time):
+CUT 1 — [shot type, lens, movement]:
+[Specific acting beat, micro-pause, eye-line, camera move, lighting, sound cue]
+
+CUT 2 — [shot type, lens, movement]:
+[Next cinematic beat]
+
+CUT 3 — [shot type, lens, movement]:
+[Final beat of this 15-second prompt]
 
 ---
 
@@ -96,7 +132,7 @@ Inside the monologue, you must strictly run through these 15 Engines in this exa
 
 #### Turn 5 (Final Prompt Pack Generation):
 - Run a final Director Review in your [INNER MONOLOGUE].
-- Output the final production-ready prompt pack (storyboard sequence, shot list, camera suggestions, character actions, sound cues) including the Scene-by-Scene Generation Prompts mapped to the Seedance multishot cinematic spec, inheriting all rules from the Global Director Bible. CRITICAL: You MUST wrap each scene's final generation prompt inside its own separate markdown code block (using \`\`\` scene ... \`\`\` formatting) so the frontend video rendering panels appear correctly.
+- Output the final production-ready prompt pack mapped to the Seedance multishot 15-second cinematic spec (Style Prefix + Characters + Scene + CUT 1/2/3 structure). CRITICAL: You MUST wrap each scene's final generation prompt inside its own separate markdown code block (using \`\`\` scene ... \`\`\` formatting) so the frontend video rendering panels appear correctly.
 
 Keep your language professional, direct, and creative. You are an expert commercial filmmaker.`;
 
@@ -108,18 +144,19 @@ const SUGGESTED_PROMPTS = [
 ];
 
 const REF_CATEGORIES = [
-    { id: 'character', label: 'Character', icon: User, color: 'from-violet-500 to-purple-600', desc: 'Face, body, identity references' },
-    { id: 'product', label: 'Product', icon: Box, color: 'from-amber-500 to-orange-600', desc: 'Product packaging, textures' },
-    { id: 'location', label: 'Location', icon: MapPin, color: 'from-emerald-500 to-teal-600', desc: 'Shooting settings, environments' },
-    { id: 'first_frame', label: 'First Frame', icon: Image, color: 'from-blue-500 to-cyan-600', desc: 'Starting reference frame' },
-    { id: 'brand_guidelines', label: 'Brand Guidelines', icon: FileText, color: 'from-pink-500 to-rose-600', desc: 'Style guide, color rules' },
-    { id: 'logo', label: 'Logo', icon: Target, color: 'from-yellow-500 to-amber-600', desc: 'Brand logo graphic files' },
-    { id: 'voice', label: 'Voice', icon: Volume2, color: 'from-cyan-500 to-teal-600', desc: 'Audio clips, voice styling' },
+    { id: 'character', label: 'Character', icon: User, color: 'from-violet-500 to-purple-600', desc: 'Face, body, identity references (@char_)', mode: 'cinema' },
+    { id: 'location', label: 'Location', icon: MapPin, color: 'from-emerald-500 to-teal-600', desc: 'Shooting settings, environments (@loc_)', mode: 'cinema' },
+    { id: 'prop', label: 'Prop / Element', icon: Box, color: 'from-amber-500 to-orange-600', desc: 'Key objects, weapons, vehicles (@prop_)', mode: 'cinema' },
+    { id: 'first_frame', label: 'First Frame', icon: Image, color: 'from-blue-500 to-cyan-600', desc: 'Starting reference frame', mode: 'cinema' },
+    { id: 'voice', label: 'Voice', icon: Volume2, color: 'from-cyan-500 to-teal-600', desc: 'Audio clips, voice styling', mode: 'cinema' },
+    { id: 'product', label: 'Product', icon: Box, color: 'from-amber-500 to-orange-600', desc: 'Product packaging, commercial textures', mode: 'commercial' },
+    { id: 'brand_guidelines', label: 'Brand Guidelines', icon: FileText, color: 'from-pink-500 to-rose-600', desc: 'Style guide, color rules', mode: 'commercial' },
+    { id: 'logo', label: 'Logo', icon: Target, color: 'from-yellow-500 to-amber-600', desc: 'Brand logo graphic files', mode: 'commercial' },
 ];
 
 const CATEGORY_FIELDS = {
     character: [
-        { name: 'characterName', label: 'Character Name', type: 'text', placeholder: 'e.g. Detective Miller, John Doe, Protagonist' },
+        { name: 'characterName', label: 'Character Name', type: 'text', placeholder: 'e.g. Detective Miller, John Doe, Protagonist (@char_)' },
         { name: 'age', label: 'Age', type: 'text', placeholder: 'e.g. 20s, 30s, Teenager, Elder' },
         { name: 'gender', label: 'Gender', type: 'select', options: ['Select Gender', 'Male', 'Female', 'Non-Binary', 'Androgynous', 'Custom'] },
         { name: 'hair', label: 'Hair Details', type: 'text', placeholder: 'e.g. Short dark hair, blonde curls' },
@@ -128,19 +165,24 @@ const CATEGORY_FIELDS = {
         { name: 'expression', label: 'Facial Expression', type: 'text', placeholder: 'e.g. Neutral, intense gaze, smiling' },
         { name: 'body', label: 'Body Type/Details', type: 'text', placeholder: 'e.g. Athletic build, tall, rugged' },
     ],
-    product: [
-        { name: 'productName', label: 'Product Name', type: 'text', placeholder: 'e.g. Skincare Serum, Energy Drink' },
-        { name: 'material', label: 'Material/Texture', type: 'text', placeholder: 'e.g. Amber glass bottle, matte cardboard' },
-        { name: 'color', label: 'Product Color', type: 'text', placeholder: 'e.g. Translucent gold, crimson red' },
-        { name: 'details', label: 'Product Specifications', type: 'textarea', placeholder: 'e.g. Premium skincare serum bottle with white dropper' }
-    ],
     location: [
-        { name: 'locationName', label: 'Location Name', type: 'text', placeholder: 'e.g. Melancholic Cafe, Neon Alleyway, Kitchen Set' },
+        { name: 'locationName', label: 'Location Name', type: 'text', placeholder: 'e.g. Melancholic Cafe, Neon Alleyway, Kitchen Set (@loc_)' },
         { name: 'environment', label: 'Environment', type: 'select', options: ['Select Environment', 'Indoor', 'Outdoor', 'Studio Set', 'Mixed'] },
         { name: 'placeType', label: 'Place Type', type: 'text', placeholder: 'e.g. Kitchen, Hall, Cafe, Office, Alleyway, Desert' },
         { name: 'lighting', label: 'Lighting & Mood', type: 'text', placeholder: 'e.g. Neon twilight, high-contrast chiaroscuro, dim candlelit' },
         { name: 'style', label: 'Architecture Style', type: 'text', placeholder: 'e.g. Cyberpunk, Victorian gothic, minimalist scandinavian' },
         { name: 'timeOfDay', label: 'Time of Day', type: 'text', placeholder: 'e.g. Golden hour, midnight, early morning' }
+    ],
+    prop: [
+        { name: 'propName', label: 'Prop Name', type: 'text', placeholder: 'e.g. Ancient Sword, Cyberpunk Phone, Vintage Watch (@prop_)' },
+        { name: 'material', label: 'Material/Texture', type: 'text', placeholder: 'e.g. Weathered steel, glowing neon glass, worn leather' },
+        { name: 'details', label: 'Prop Specifications', type: 'textarea', placeholder: 'e.g. Plasma rifle with blue energy LED meters' }
+    ],
+    product: [
+        { name: 'productName', label: 'Product Name', type: 'text', placeholder: 'e.g. Skincare Serum, Energy Drink' },
+        { name: 'material', label: 'Material/Texture', type: 'text', placeholder: 'e.g. Amber glass bottle, matte cardboard' },
+        { name: 'color', label: 'Product Color', type: 'text', placeholder: 'e.g. Translucent gold, crimson red' },
+        { name: 'details', label: 'Product Specifications', type: 'textarea', placeholder: 'e.g. Premium skincare serum bottle with white dropper' }
     ],
     first_frame: [
         { name: 'frameName', label: 'Frame Description', type: 'text', placeholder: 'e.g. Starting static shot of product on table' },
@@ -524,18 +566,59 @@ function ReferenceSection({ category, references, onUpload, onRemove, onSelectFr
 }
 
 function ReferenceBoard({ references, onUpload, onRemove, onClose, onSelectFromGallery }) {
+    const [boardMode, setBoardMode] = useState('cinema');
+
+    const filteredCategories = REF_CATEGORIES.filter(cat => {
+        if (boardMode === 'all') return true;
+        return cat.mode === boardMode;
+    });
+
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                     <PanelRight className="w-4 h-4 text-violet-400" />
                     <h2 className="text-sm font-bold apple-text-heading text-white/80">Reference Board</h2>
-                    <span className="text-[9px] text-white/30 font-mono bg-white/5 px-2 py-0.5 rounded-md">{references.filter(r => r.type?.startsWith('video/')).length > 0 ? `${references.length} files` : `${references.length} images`}</span>
+                    <span className="text-[9px] text-white/30 font-mono bg-white/5 px-2 py-0.5 rounded-md">
+                        {references.filter(r => r.type?.startsWith('video/')).length > 0 ? `${references.length} files` : `${references.length} files`}
+                    </span>
                 </div>
-                <button onClick={onClose} className="text-[8px] font-semibold text-white/30 hover:text-white/60 transition-colors uppercase tracking-wider">Hide</button>
+                <div className="flex items-center gap-2">
+                    {/* Mode Selector Tabs */}
+                    <div className="flex items-center p-0.5 rounded-xl bg-white/[0.04] border border-white/10">
+                        <button
+                            onClick={() => setBoardMode('cinema')}
+                            className={cn(
+                                'px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all',
+                                boardMode === 'cinema' ? 'bg-violet-600 text-white shadow-md' : 'text-white/40 hover:text-white/70'
+                            )}
+                        >
+                            Cinema
+                        </button>
+                        <button
+                            onClick={() => setBoardMode('commercial')}
+                            className={cn(
+                                'px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all',
+                                boardMode === 'commercial' ? 'bg-amber-600 text-white shadow-md' : 'text-white/40 hover:text-white/70'
+                            )}
+                        >
+                            Commercial / Ads
+                        </button>
+                        <button
+                            onClick={() => setBoardMode('all')}
+                            className={cn(
+                                'px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all',
+                                boardMode === 'all' ? 'bg-white/15 text-white shadow-md' : 'text-white/40 hover:text-white/70'
+                            )}
+                        >
+                            All
+                        </button>
+                    </div>
+                    <button onClick={onClose} className="text-[8px] font-semibold text-white/30 hover:text-white/60 transition-colors uppercase tracking-wider ml-1">Hide</button>
+                </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-                {REF_CATEGORIES.map(cat => (
+                {filteredCategories.map(cat => (
                     <ReferenceSection key={cat.id} category={cat} references={references} onUpload={onUpload} onRemove={onRemove} onSelectFromGallery={onSelectFromGallery} />
                 ))}
             </div>
@@ -906,9 +989,9 @@ function VideoPromptGenerator({ promptText, references, userId, getApiKey, defau
                         aspectRatio,
                         resolution: '720p',
                         model: 'gemini-omni-flash-preview',
-                        ref_images: refImages,
-                        ref_videos: refVideos,
-                        ref_audios: refAudios,
+                        ref_images: refImages.map(url => ({ url })),
+                        ref_videos: refVideos.map(url => ({ url })),
+                        ref_audios: refAudios.map(url => ({ url })),
                         userId,
                         generateAudio,
                         creditReason: 'cinematic_video_generation'
@@ -1457,7 +1540,10 @@ function MessageBubble({ msg, references = [], userId, getApiKey, defaultAspectR
 export default function DirectorAgentPage({ activeTool, setActiveTool }) {
     const userProfile = useAppStore(state => state.userProfile);
     const userId = userProfile?.id;
-
+    const projects = useAppStore(state => state.projects);
+    const activeProjectId = useAppStore(state => state.activeProjectId);
+    const setActiveProjectId = useAppStore(state => state.setActiveProjectId);
+    const setProjects = useAppStore(state => state.setProjects);
     const [hermesSessionId, setHermesSessionId] = useState(null);
     const [sessionReady, setSessionReady] = useState(false);
     const [messages, setMessages] = useState([
@@ -1593,10 +1679,10 @@ export default function DirectorAgentPage({ activeTool, setActiveTool }) {
 
     const handleRefRemove = (category, id) => setReferences(prev => prev.filter(r => !(r.category === category && r.id === id)));
 
-    const [customPersona, setCustomPersona] = useState(() => localStorage.getItem('director_custom_persona') || '');
+    const [customPersona, setCustomPersona] = useState(() => localStorage.getItem(`director_custom_persona_${activeProjectId}`) || '');
     const [dbSkills, setDbSkills] = useState([]);
     const [activeSkills, setActiveSkills] = useState(() => {
-        const saved = localStorage.getItem('director_active_skills');
+        const saved = localStorage.getItem(`director_active_skills_${activeProjectId}`);
         return saved ? JSON.parse(saved) : [];
     });
     const [showMemoryImport, setShowMemoryImport] = useState(false);
@@ -1604,8 +1690,18 @@ export default function DirectorAgentPage({ activeTool, setActiveTool }) {
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [configTab, setConfigTab] = useState('persona');
 
-    useEffect(() => { localStorage.setItem('director_custom_persona', customPersona); }, [customPersona]);
-    useEffect(() => { localStorage.setItem('director_active_skills', JSON.stringify(activeSkills)); }, [activeSkills]);
+    useEffect(() => { localStorage.setItem(`director_custom_persona_${activeProjectId}`, customPersona); }, [customPersona, activeProjectId]);
+    useEffect(() => { localStorage.setItem(`director_active_skills_${activeProjectId}`, JSON.stringify(activeSkills)); }, [activeSkills, activeProjectId]);
+
+    // Reset state when project changes
+    useEffect(() => {
+        setCustomPersona(localStorage.getItem(`director_custom_persona_${activeProjectId}`) || '');
+        const savedSkills = localStorage.getItem(`director_active_skills_${activeProjectId}`);
+        setActiveSkills(savedSkills ? JSON.parse(savedSkills) : []);
+        setMessages([{ role: 'assistant', content: "Welcome to AI Cinema Director. Let's create your next masterpiece.", options: ["Help me set up"] }]);
+        setReferences([]);
+        setIsInitialized(false);
+    }, [activeProjectId]);
 
     useEffect(() => {
         const fetchDbSkills = async () => {
@@ -1657,12 +1753,12 @@ export default function DirectorAgentPage({ activeTool, setActiveTool }) {
 
         const storedVersion = localStorage.getItem('director_prompt_version');
         if (storedVersion !== PROMPT_VERSION) { 
-            localStorage.removeItem('director_session_id'); 
+            localStorage.removeItem(`director_session_id_${activeProjectId}`); 
             localStorage.setItem('director_prompt_version', PROMPT_VERSION); 
         }
 
         const checkOrCreateSession = async () => {
-            const existingId = localStorage.getItem('director_session_id');
+            const existingId = localStorage.getItem(`director_session_id_${activeProjectId}`);
             if (existingId) {
                 try {
                     const r = await fetch(`${HERMES_API}/api/sessions/${existingId}`);
@@ -1677,7 +1773,7 @@ export default function DirectorAgentPage({ activeTool, setActiveTool }) {
                 } catch (e) {
                     console.debug('[DirectorAgent] Error checking session:', e);
                 }
-                localStorage.removeItem('director_session_id');
+                localStorage.removeItem(`director_session_id_${activeProjectId}`);
             }
 
             try {
@@ -1688,7 +1784,7 @@ export default function DirectorAgentPage({ activeTool, setActiveTool }) {
                 });
                 const data = await r.json();
                 if (data.session_id && !cancelled) {
-                    localStorage.setItem('director_session_id', data.session_id);
+                    localStorage.setItem(`director_session_id_${activeProjectId}`, data.session_id);
                     setHermesSessionId(data.session_id);
                     setSessionReady(true);
                     if (retryInterval) clearInterval(retryInterval);
@@ -1711,7 +1807,7 @@ export default function DirectorAgentPage({ activeTool, setActiveTool }) {
             cancelled = true;
             if (retryInterval) clearInterval(retryInterval);
         };
-    }, [sessionReady]);
+    }, [sessionReady, activeProjectId]);
 
     const saveChatHistory = async (nextMessages) => {
         if (!userId || !supabase) return;
@@ -1899,6 +1995,30 @@ Please start the Creative Director session. Analyze my specifications and perfor
                     <div className={cn("mt-3 flex items-center gap-1.5 px-2 py-0.5 rounded-full w-fit border", sessionReady ? "bg-emerald-500/10 border-emerald-500/20" : "bg-yellow-500/10 border-yellow-500/20")}>
                         <div className={cn("w-1 h-1 rounded-full animate-pulse", sessionReady ? "bg-emerald-400" : "bg-yellow-400")} />
                         <span className={cn("text-[7px] font-bold uppercase tracking-wider", sessionReady ? "text-emerald-400" : "text-yellow-400")}>{sessionReady ? "Session Ready" : "Connecting"}</span>
+                    </div>
+
+                    <div className="mt-4">
+                        <select 
+                            className="w-full bg-[#12121a] hover:bg-[#1a1a24] border border-white/10 hover:border-violet-500/30 text-white hover:text-violet-300 rounded-xl px-3 py-2 text-[10px] font-bold focus:outline-none transition-colors cursor-pointer"
+                            value={activeProjectId}
+                            onChange={(e) => {
+                                if (e.target.value === 'new') {
+                                    const name = window.prompt("Enter new project name:");
+                                    if (name && name.trim()) {
+                                        const newId = Date.now().toString(36);
+                                        setProjects([...projects, { id: newId, name: name.trim() }]);
+                                        setActiveProjectId(newId);
+                                    }
+                                } else {
+                                    setActiveProjectId(e.target.value);
+                                }
+                            }}
+                        >
+                            {projects.map(p => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                            <option value="new" className="text-violet-400">+ New Project...</option>
+                        </select>
                     </div>
                 </div>
 
@@ -2105,14 +2225,15 @@ Please start the Creative Director session. Analyze my specifications and perfor
                                             {references
                                                 .filter(r => {
                                                     const idx = references.indexOf(r);
-                                                    const tag = r.type?.startsWith('video/') ? 'Video' : 'Image';
+                                                    const tag = r.type?.startsWith('video/') ? 'Video' : r.type?.startsWith('audio/') ? 'Audio' : 'Image';
                                                     const label = `${tag} ${idx + 1}`;
                                                     return !mentionFilter || label.toLowerCase().includes(mentionFilter.toLowerCase()) || r.name.toLowerCase().includes(mentionFilter.toLowerCase()) || r.categoryLabel.toLowerCase().includes(mentionFilter.toLowerCase());
                                                 })
                                                 .map((r, i) => {
                                                     const idx = references.indexOf(r);
                                                     const isVideo = r.type?.startsWith('video/');
-                                                    const tag = isVideo ? 'Video' : 'Image';
+                                                    const isAudio = r.type?.startsWith('audio/');
+                                                    const tag = isVideo ? 'Video' : isAudio ? 'Audio' : 'Image';
                                                     return (
                                                         <button key={r.id} onClick={() => {
                                                             const before = input.slice(0, mentionCursorPos - 1);
@@ -2122,20 +2243,20 @@ Please start the Creative Director session. Analyze my specifications and perfor
                                                             textRef.current?.focus();
                                                         }}
                                                             className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-white/[0.04] transition-all text-left border-b border-white/[0.03] last:border-b-0">
-                                                            <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center shrink-0', isVideo ? 'bg-gradient-to-br from-red-500/20 to-orange-500/10' : 'bg-white/[0.06]')}>
-                                                                {isVideo ? <Play className="w-3.5 h-3.5 text-red-400" /> : <Image className="w-3.5 h-3.5 text-violet-400" />}
+                                                            <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center shrink-0', isVideo ? 'bg-gradient-to-br from-red-500/20 to-orange-500/10' : isAudio ? 'bg-gradient-to-br from-amber-500/20 to-yellow-500/10' : 'bg-white/[0.06]')}>
+                                                                {isVideo ? <Play className="w-3.5 h-3.5 text-red-400" /> : isAudio ? <Music className="w-3.5 h-3.5 text-amber-400" /> : <Image className="w-3.5 h-3.5 text-violet-400" />}
                                                             </div>
                                                             <div className="min-w-0 flex-1">
                                                                 <p className="text-[11px] font-semibold text-white/80">@{tag} {idx + 1}</p>
                                                                 <p className="text-[8px] text-white/30 truncate">{r.categoryLabel} — {r.name}</p>
                                                             </div>
-                                                            <span className={cn('text-[7px] font-mono px-1.5 py-0.5 rounded-md shrink-0', isVideo ? 'bg-red-500/10 text-red-400' : 'bg-violet-500/10 text-violet-400')}>{tag}</span>
+                                                            <span className={cn('text-[7px] font-mono px-1.5 py-0.5 rounded-md shrink-0', isVideo ? 'bg-red-500/10 text-red-400' : isAudio ? 'bg-amber-500/10 text-amber-400' : 'bg-violet-500/10 text-violet-400')}>{tag}</span>
                                                         </button>
                                                     );
                                                 })}
                                             {references.filter(r => {
                                                 const idx = references.indexOf(r);
-                                                const tag = r.type?.startsWith('video/') ? 'Video' : 'Image';
+                                                const tag = r.type?.startsWith('video/') ? 'Video' : r.type?.startsWith('audio/') ? 'Audio' : 'Image';
                                                 const label = `@${tag} ${idx + 1}`;
                                                 return !mentionFilter || label.toLowerCase().includes(mentionFilter.toLowerCase()) || r.name.toLowerCase().includes(mentionFilter.toLowerCase()) || r.categoryLabel.toLowerCase().includes(mentionFilter.toLowerCase());
                                             }).length === 0 && (

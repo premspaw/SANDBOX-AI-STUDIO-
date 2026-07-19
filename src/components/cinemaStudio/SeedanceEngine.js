@@ -3,16 +3,28 @@
  * Utility for formatting Cinema Studio inputs into Seedance 2.0 Multimodal Payloads.
  */
 
-export const isVideo = (url) => {
-    if (!url) return false;
-    const lower = url.toLowerCase();
-    return lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.includes('video/mp4');
+export const isVideo = (urlOrItem) => {
+    if (!urlOrItem) return false;
+    if (typeof urlOrItem === 'object') {
+        if (urlOrItem.category === 'ref_videos' || urlOrItem.category === 'video ref') return true;
+        if (urlOrItem.type?.startsWith('video/')) return true;
+        urlOrItem = urlOrItem.url || urlOrItem.imageUrl || '';
+    }
+    if (typeof urlOrItem !== 'string') return false;
+    const lower = urlOrItem.toLowerCase();
+    return lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.endsWith('.webm') || lower.endsWith('.m4v') || lower.includes('video/mp4') || lower.includes('/video/') || lower.includes('type=video');
 };
 
-export const isAudio = (url) => {
-    if (!url) return false;
-    const lower = url.toLowerCase();
-    return lower.endsWith('.mp3') || lower.endsWith('.wav') || lower.includes('audio/mpeg');
+export const isAudio = (urlOrItem) => {
+    if (!urlOrItem) return false;
+    if (typeof urlOrItem === 'object') {
+        if (urlOrItem.category === 'ref_audios' || urlOrItem.category === 'audio ref') return true;
+        if (urlOrItem.type?.startsWith('audio/')) return true;
+        urlOrItem = urlOrItem.url || urlOrItem.imageUrl || '';
+    }
+    if (typeof urlOrItem !== 'string') return false;
+    const lower = urlOrItem.toLowerCase();
+    return lower.endsWith('.mp3') || lower.endsWith('.wav') || lower.endsWith('.aac') || lower.endsWith('.m4a') || lower.endsWith('.ogg') || lower.includes('audio/mpeg') || lower.includes('/audio/') || lower.includes('type=audio');
 };
 
 /**
@@ -40,16 +52,17 @@ export const buildSeedanceContentArray = (compiledPrompt, taggedItems, firstFram
     const usedUrls = new Set();
 
     // Helper to add visual/audio elements
-    const addElement = (url, forceRole = null) => {
+    const addElement = (urlOrItem, forceRole = null) => {
+        const url = typeof urlOrItem === 'string' ? urlOrItem : (urlOrItem.url || urlOrItem.imageUrl);
         if (!url || usedUrls.has(url)) return;
         
-        if (isVideo(url)) {
+        if (isVideo(urlOrItem)) {
             content.push({
                 type: "video_url",
                 video_url: { url },
                 role: forceRole || "reference_video"
             });
-        } else if (isAudio(url)) {
+        } else if (isAudio(urlOrItem)) {
             content.push({
                 type: "audio_url",
                 audio_url: { url },
@@ -78,57 +91,13 @@ export const buildSeedanceContentArray = (compiledPrompt, taggedItems, firstFram
     // 3. Add Tagged Reference Items from Refboard (@mention system)
     if (taggedItems && taggedItems.length > 0) {
         taggedItems.forEach(item => {
-            if (item.imageUrl) {
-                // Determine if it's an asset URI or a standard URL
-                const url = item.imageUrl.startsWith('asset://') ? item.imageUrl : item.imageUrl;
-                addElement(url);
+            const url = item.imageUrl || item.url;
+            if (url) {
+                const cleanUrl = url.startsWith('asset://') ? url : url;
+                const role = isVideo(item) ? "reference_video" : isAudio(item) ? "reference_audio" : "reference_image";
+                addElement(cleanUrl, role);
             }
         });
-    }
-
-    // 4. Add Seedance-specific reference media (from the Seedance References section)
-    if (seedanceRefs) {
-        // Reference images (up to 9)
-        if (seedanceRefs.ref_images && seedanceRefs.ref_images.length > 0) {
-            seedanceRefs.ref_images.forEach(item => {
-                const url = item.url || item.imageUrl;
-                if (url) addElement(url, "reference_image");
-            });
-        }
-
-        // Reference videos (up to 3)
-        if (seedanceRefs.ref_videos && seedanceRefs.ref_videos.length > 0) {
-            seedanceRefs.ref_videos.forEach(item => {
-                const url = item.url || item.imageUrl;
-                if (url) {
-                    if (!usedUrls.has(url)) {
-                        content.push({
-                            type: "video_url",
-                            video_url: { url },
-                            role: "reference_video"
-                        });
-                        usedUrls.add(url);
-                    }
-                }
-            });
-        }
-
-        // Reference audio (up to 3)
-        if (seedanceRefs.ref_audios && seedanceRefs.ref_audios.length > 0) {
-            seedanceRefs.ref_audios.forEach(item => {
-                const url = item.url || item.imageUrl;
-                if (url) {
-                    if (!usedUrls.has(url)) {
-                        content.push({
-                            type: "audio_url",
-                            audio_url: { url },
-                            role: "reference_audio"
-                        });
-                        usedUrls.add(url);
-                    }
-                }
-            });
-        }
     }
 
     return content;

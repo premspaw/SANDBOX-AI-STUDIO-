@@ -75,11 +75,21 @@ export default function SplitScenesPanel() {
     const end = textarea.selectionEnd;
     const text = sc.dialog || '';
     const newDialog = `${text.substring(0, start)}${tag}${text.substring(end)}`;
+    
+    // Also append the tag to the video prompt so Omni Flash uses it visually
+    const newPrompt = sc.prompt ? `${sc.prompt} ${tag}` : tag;
+    
     setSplitScenes((prev: SplitScene[]) =>
       prev.map((s: SplitScene, idx: number) =>
-        idx === activeSplitTab ? { ...s, dialog: newDialog } : s
+        idx === activeSplitTab ? { ...s, dialog: newDialog, prompt: newPrompt } : s
       )
     );
+    
+    // Update the local state for video prompt if we are on the active tab
+    if (activeSplitTab === splitScenes.findIndex(s => s === sc)) {
+      setVideoPrompt(newPrompt);
+    }
+
     setTimeout(() => {
       textarea.focus();
       const pos = start + tag.length;
