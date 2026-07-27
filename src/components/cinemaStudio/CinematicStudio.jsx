@@ -2786,12 +2786,11 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                           ) : (
                             <video
                               src={resolveUrl(item.url)}
+                              autoPlay
                               muted
                               loop
                               playsInline
                               className="w-full h-full object-cover"
-                              onMouseEnter={e => e.target.play()}
-                              onMouseLeave={e => { e.target.pause(); }}
                             />
                           )}
                           {/* Play or view overlay */}

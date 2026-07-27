@@ -267,7 +267,7 @@ function VCell({ cell, style = {}, onClick, aspectRatio = '3/4' }) {
           <>
             <video
               key={cell.src}
-              muted playsInline preload="metadata"
+              autoPlay muted loop playsInline preload="metadata"
               src={resolveAsset(cell.src)}
               style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 1 }}
             />
