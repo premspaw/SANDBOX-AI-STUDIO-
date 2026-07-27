@@ -26,6 +26,7 @@ import { compressImageToMax1024 } from '../../services/geminiService';
 import { CinematicLightbox } from './CinematicLightbox';
 import { StoryboardEditor } from './StoryboardEditor';
 import { buildSeedanceContentArray, isVideo, isAudio } from './SeedanceEngine';
+import { LazyVideo } from './LazyVideo';
 
 /* ─── URL NORMALIZATION & DEDUPLICATION HELPERS ─────────────────── */
 const getNormalizedPath = (url) => {
@@ -2784,14 +2785,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                               )}
                             </>
                           ) : (
-                            <video
-                              src={resolveUrl(item.url)}
-                              autoPlay
-                              muted
-                              loop
-                              playsInline
-                              className="w-full h-full object-cover"
-                            />
+                            <LazyVideo src={item.url} aspect={item.aspect} />
                           )}
                           {/* Play or view overlay */}
                           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
