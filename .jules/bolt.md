@@ -1,0 +1,3 @@
+## 2026-05-24 - Zustand Monolithic Subscription Bottleneck
+**Learning:** In React applications using Zustand, components that subscribe to the entire store (`const store = useAppStore()`) will re-render whenever *any* part of the store changes. In this codebase, operations like dragging nodes on the canvas trigger high-frequency updates to node positions, causing all "monolithic" subscribers to re-render at 60fps, even if they don't depend on node positions.
+**Action:** Always use granular selectors (e.g., `useAppStore(state => state.property)`) for Zustand store access, especially in persistent UI components like `SonicDock` or `DirectorHUD`.
