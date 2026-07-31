@@ -1,17 +1,25 @@
 import React, { memo, useEffect } from 'react';
 import { Position, useUpdateNodeInternals } from 'reactflow';
 import { motion } from 'framer-motion';
+import { useShallow } from 'zustand/react/shallow';
 import MagneticHandle from '../edges/MagneticHandle';
 import { Maximize2, Loader2, Search, X, Zap, ScanLine } from 'lucide-react';
 
 import { useAppStore } from '../../store';
 
-export default memo(({ id, data }) => {
-    const { setFocusMode } = useAppStore();
+const IdentityNode = memo(({ id, data }) => {
+    const setFocusMode = useAppStore(s => s.setFocusMode);
     const updateNodeInternals = useUpdateNodeInternals();
-    const edges = useAppStore(s => s.edges);
-    const isTargetConnected = edges.some(e => e.target === id);
-    const isSourceConnected = edges.some(e => e.source === id);
+
+    // Performance Optimization: Use granular selectors with useShallow to prevent re-renders
+    // when unrelated edges change. The component now only re-renders if this specific
+    // node's connection status changes.
+    const { isTargetConnected, isSourceConnected } = useAppStore(
+        useShallow(s => ({
+            isTargetConnected: s.edges.some(e => e.target === id),
+            isSourceConnected: s.edges.some(e => e.source === id)
+        }))
+    );
 
     useEffect(() => {
         updateNodeInternals(id);
@@ -164,3 +172,6 @@ export default memo(({ id, data }) => {
         </div>
     );
 });
+
+IdentityNode.displayName = 'IdentityNode';
+export default IdentityNode;
