@@ -84,27 +84,92 @@ export const withTimeout = <T>(
     ),
   ]);
 
-/** Safely parse JSON, falling back to null on failure. Supports objects, arrays, and markdown wrappers. */
+/** Safely parse JSON, falling back to robust sanitization and regex extraction on failure. */
 export const safeJsonParse = (text: string | undefined): any => {
-  if (!text?.trim()) return null;
+  if (!text || !text.trim()) return null;
   let cleanText = text.trim();
-  if (cleanText.startsWith('```')) {
-    cleanText = cleanText.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
-  }
+
+  // Strip markdown code fences if present
+  cleanText = cleanText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+  // 1st Attempt: Standard parse
   try {
     return JSON.parse(cleanText);
-  } catch (e) {
-    const arrayMatch = cleanText.match(/\[[\s\S]*\]/);
-    if (arrayMatch) {
-      try { return JSON.parse(arrayMatch[0]); } catch { /* fall through */ }
-    }
-    const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      try { return JSON.parse(jsonMatch[0]); } catch { /* fall through */ }
-    }
-    console.error("safeJsonParse failed to parse text:", e, text);
-    return null;
+  } catch {
+    /* continue to fallback strategies */
   }
+
+  // Sanitization helper to clean LLM output artifacts
+  const sanitize = (str: string): string => {
+    return str
+      // Remove trailing commas before } or ]
+      .replace(/,\s*([\}\]])/g, '$1')
+      // Strip non-ASCII / Japanese / Chinese garbage characters outside quoted strings
+      .replace(/("[^"\\]*(?:\\.[^"\\]*)*")|([^\x00-\x7F]+)/g, (match, group1) => {
+        if (group1) return group1;
+        return '';
+      })
+      // Strip stray tokens between string value and closing brace/comma
+      .replace(/("[^"\\]*(?:\\.[^"\\]*)*")\s*[^"\{\}\[\],:\s]+(\s*[\}\]])/g, '$1$2');
+  };
+
+  // 2nd Attempt: Sanitized text parse
+  try {
+    return JSON.parse(sanitize(cleanText));
+  } catch {
+    /* continue */
+  }
+
+  // 3rd Attempt: Extract array or object block
+  const arrayMatch = cleanText.match(/\[[\s\S]*\]/);
+  if (arrayMatch) {
+    try {
+      return JSON.parse(sanitize(arrayMatch[0]));
+    } catch {
+      /* continue */
+    }
+  }
+
+  const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      return JSON.parse(sanitize(jsonMatch[0]));
+    } catch {
+      /* continue */
+    }
+  }
+
+  // 4th Attempt: Extract individual valid JSON objects
+  if (cleanText.includes('{')) {
+    const objectMatches = cleanText.match(/\{[\s\S]*?\}/g);
+    if (objectMatches && objectMatches.length > 0) {
+      const recoveredObjects: any[] = [];
+      for (const objStr of objectMatches) {
+        try {
+          const parsed = JSON.parse(sanitize(objStr));
+          if (parsed && typeof parsed === 'object') {
+            recoveredObjects.push(parsed);
+          }
+        } catch {
+          try {
+            const cleaned = objStr.replace(/[\r\n]+/g, ' ').replace(/,\s*\}/g, '}');
+            const parsed = JSON.parse(sanitize(cleaned));
+            if (parsed && typeof parsed === 'object') {
+              recoveredObjects.push(parsed);
+            }
+          } catch {
+            /* skip corrupted single object */
+          }
+        }
+      }
+      if (recoveredObjects.length > 0) {
+        return recoveredObjects;
+      }
+    }
+  }
+
+  console.error("safeJsonParse failed to parse text:", text);
+  return null;
 };
 
 /** Convert a File to a Gemini-compatible inlineData part. */

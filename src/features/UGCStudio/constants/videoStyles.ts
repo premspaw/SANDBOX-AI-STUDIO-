@@ -90,6 +90,27 @@ export const SCENE_STYLES: Record<string, SceneStyle> = {
     promptModifier:
       'creator filming a mirror selfie, tilted phone visible, casual natural lighting, authentic home environment',
   },
+  car_vlog: {
+    name: '🚗 Car Vlog Talking',
+    group: 'Talking',
+    description: 'Casual in-car chat, natural windshield light',
+    promptModifier:
+      'casual car vlog direct-to-camera, seatbelt on, natural sunlight through windshield, authentic intimate conversation',
+  },
+  grwm_talk: {
+    name: '💄 GRWM Talking',
+    group: 'Talking',
+    description: 'Get Ready With Me, applying product while talking',
+    promptModifier:
+      'candid Get Ready With Me (GRWM) style, creator multi-tasking while speaking warmly into camera',
+  },
+  street_interview: {
+    name: '🎤 Street Interview',
+    group: 'Talking',
+    description: 'Handheld mic street interview, asking passersby questions',
+    promptModifier:
+      'street interview vox-pop format, interviewer holding a wireless handheld microphone up to a person on a busy city sidewalk, casual outdoor daylight, natural reactions',
+  },
   // Camera Cuts
   fast_cut: {
     name: '✂️ Fast Cut',
@@ -111,6 +132,20 @@ export const SCENE_STYLES: Record<string, SceneStyle> = {
     description: 'First-person view looking down at product in hand',
     promptModifier:
       'first-person point-of-view POV shot, looking down at product in hands, hands interacting with product naturally',
+  },
+  whip_pan: {
+    name: '🌀 Whip Pan Transition',
+    group: 'Camera Cuts',
+    description: 'Fast motion-blur whip pan between angles',
+    promptModifier:
+      'fast whip pan transition with natural motion blur, swift directional camera sweep connecting scene cuts',
+  },
+  '360_orbit': {
+    name: '🔄 360° Product Orbit',
+    group: 'Camera Cuts',
+    description: 'Smooth circular orbit around creator or product',
+    promptModifier:
+      'smooth 360-degree circular orbit camera movement surrounding subject, keeping product in crisp focus',
   },
   // Product Focus
   cinematic_b_roll: {
@@ -140,6 +175,56 @@ export const SCENE_STYLES: Record<string, SceneStyle> = {
     description: 'Sequential transformation reveal with contrast',
     promptModifier:
       'sequential before and after transformation reveal, clear contrast and transition, split screen or side-by-side style comparison',
+  },
+  hands_in_frame: {
+    name: '🤲 Hands-on Demo',
+    group: 'Product Focus',
+    description: 'Tactile interaction, holding/swatching up-close',
+    promptModifier:
+      'hands-on tactile product demonstration, hands interacting smoothly, swatching texture, lifting product into key light',
+  },
+  floating_hero: {
+    name: '✨ Floating Hero Shot',
+    group: 'Product Focus',
+    description: 'Product suspended/highlighted with studio keylight',
+    promptModifier:
+      'hero product presentation, clean background, elegant product orientation, premium lighting highlights',
+  },
+  // Fashion & Styling
+  runway_walk: {
+    name: '👠 Runway / OOTD Walk',
+    group: 'Fashion & Styling',
+    description: 'Model strut towards camera, dynamic 360° turn',
+    promptModifier:
+      'full-length OOTD outfit showcase, model walking confidently towards camera, 360-degree slow spin turn, showing garment movement and fit',
+  },
+  outfit_change_transition: {
+    name: '✨ Snap Outfit Transition',
+    group: 'Fashion & Styling',
+    description: 'Finger snap or jump-cut outfit change',
+    promptModifier:
+      'high-fashion outfit change, seamless jump cut transition on snap or jump, vibrant style contrast, dynamic pose',
+  },
+  fabric_macro: {
+    name: '🧶 Fabric & Texture Detail',
+    group: 'Fashion & Styling',
+    description: 'Macro close-up on stitching, weave, silk or leather',
+    promptModifier:
+      'macro close-up on luxury fabric texture, stitching details, material flexibility, silk sheen, tactile touch',
+  },
+  mirror_outfit_check: {
+    name: '🪞 Mirror Outfit Check',
+    group: 'Fashion & Styling',
+    description: 'Full-length mirror fit check in aesthetic setting',
+    promptModifier:
+      'full-length mirror selfie fit check, aesthetic fitting room lighting, phone held casually, showing full outfit styling',
+  },
+  editorial_pose: {
+    name: '📸 Editorial / Lookbook',
+    group: 'Fashion & Styling',
+    description: 'Vogue lookbook style pose changes & sunlit mood',
+    promptModifier:
+      'high-fashion editorial lookbook styling, elegant pose adjustments, aesthetic lighting, premium streetwear or couture vibe',
   },
   // Educational
   tutorial_step: {
@@ -514,6 +599,92 @@ ${REALISM_BLOCK}
 
 Return ONLY the final prompt text with timecodes. No preamble.`;
     }
+  },
+
+  // ── 8. Fashion & Styling Lookbook ─────────────────────────────────────────
+  {
+    id: 'fashion_styling',
+    label: 'Fashion & Styling Lookbook',
+    emoji: '👗',
+    description: 'OOTD transitions, fabric macros, full-body strut, mirror check & styling tips',
+    buildPrompt(ctx) {
+      const { dialog, sceneIdx, totalScenes, sceneDurationSec, productDetails, instructions, refMappings } = ctx;
+      const creator = refMappings.character || '<IMAGE_REF_0>';
+      const product = refMappings.product || '<IMAGE_REF_1>';
+      const location = refMappings.location || '';
+      const locationLine = location ? `LOCATION REF: ${location} — match this aesthetic background.` : 'Setting: Aesthetic, brightly lit bedroom, chic dressing room, or sunlit urban street.';
+      return `You are the world's best UGC video director specialising in Fashion, Apparel & Styling content.
+Write the Gemini Omni Flash video prompt for Scene ${sceneIdx + 1} of ${totalScenes}.
+
+DIALOGUE THIS SCENE (say EVERY word):
+"${dialog}"
+
+PRODUCT/GARMENT: ${productDetails || 'fashion apparel or accessory'}
+CREATOR REF: ${creator} (keep hairstyle, makeup, and creator identity 100% consistent)
+GARMENT/PRODUCT REF: ${product} (show exact colors, fit, drape, texture, and tailoring)
+${locationLine}
+
+${firstFrameRule(refMappings, sceneIdx)}
+
+REFERENCE TAGS IN USE:
+${instructions.join('\n')}
+
+UGC DIRECTOR BRIEF:
+- Open with a captivating fashion hook: full-body OOTD strut towards camera OR quick snap outfit transition.
+- Mix: direct-to-camera styling tips (lip-syncing warmly while holding or showing garment detail) + dynamic movement (360-degree spin, garment drape movement, walking into frame, mirror selfie angle) + macro fabric close-ups (stitching, texture, weave).
+- Show how the garment fits and moves on the body naturally in real-world lighting.
+- Creator feels like an authentic fashion influencer sharing an effortless outfit check with followers — stylish, confident, approachable.
+- Creator face shots: natural skin, genuine smile or confident gaze, lip-syncing word-for-word to camera.
+- Sound: subtle fabric swish, heel steps, ambient home or city sound. NO background music.
+
+${timecodeInstruction(sceneDurationSec)}
+${REALISM_BLOCK}
+
+Return ONLY the final prompt text with timecodes. No preamble.`;
+    }
+  },
+
+  // ── 9. Street Interview / Vox-Pop ─────────────────────────────────────────
+  {
+    id: 'street_interview',
+    label: 'Street Interview / Vox-Pop',
+    emoji: '🎤',
+    description: 'Handheld mic, city sidewalk, asking passersby real questions & reactions',
+    buildPrompt(ctx) {
+      const { dialog, sceneIdx, totalScenes, sceneDurationSec, productDetails, instructions, refMappings } = ctx;
+      const creator = refMappings.character || '<IMAGE_REF_0>';
+      const product = refMappings.product || '<IMAGE_REF_1>';
+      const location = refMappings.location || '';
+      const locationLine = location ? `LOCATION REF: ${location} — match this setting.` : 'Setting: Busy city sidewalk, urban pedestrian street with natural daylight and ambient city life.';
+      return `You are the world's best UGC video director specialising in Street Interviews and Vox-Pop social content.
+Write the Gemini Omni Flash video prompt for Scene ${sceneIdx + 1} of ${totalScenes}.
+
+DIALOGUE THIS SCENE (say EVERY word):
+"${dialog}"
+
+PRODUCT: ${productDetails || 'featured product or service'}
+CREATOR/HOST REF: ${creator} (holding a handheld wireless microphone with foam windscreen)
+PRODUCT REF: ${product}
+${locationLine}
+
+${firstFrameRule(refMappings, sceneIdx)}
+
+REFERENCE TAGS IN USE:
+${instructions.join('\n')}
+
+UGC DIRECTOR BRIEF:
+- Format: High-engagement street interview (Vox-Pop style).
+- Host holding a handheld microphone extends it towards the interviewee or camera when speaking.
+- Mix: Host holding mic introducing the question on sidewalk + interviewing a passerby + close-up of product being shown to the interviewee + reaction shot (laughter, shock, amazement).
+- Realistic street lighting: natural daylight, city reflections, pedestrian movement in background (softly blurred).
+- Dialogue delivery: spontaneous, energetic street-interview cadence.
+- Sound design: ambient city noise (faint traffic, footsteps, outdoor reverb), clear mic audio. NO background music.
+
+${timecodeInstruction(sceneDurationSec)}
+${REALISM_BLOCK}
+
+Return ONLY the final prompt text with timecodes. No preamble.`;
+    }
   }
 ];
 
@@ -521,6 +692,7 @@ export const BROLL_PRESETS = [
   { id: 'broll_auto', emoji: '✨', label: 'Auto-Detect Action' },
   { id: 'broll_unboxing', emoji: '📦', label: 'Detailed Unboxing' },
   { id: 'broll_usage', emoji: '🖐️', label: 'Product Usage / Demo' },
+  { id: 'broll_street', emoji: '🎤', label: 'Street Interview' },
   { id: 'broll_skincare', emoji: '🧴', label: 'Skincare Routine' },
   { id: 'broll_food', emoji: '🍔', label: 'Food & Cooking' },
   { id: 'broll_fashion', emoji: '👗', label: 'Fashion & Styling' },

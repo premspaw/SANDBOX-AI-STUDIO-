@@ -43,6 +43,14 @@ export const useAppStore = create((set, get) => ({
         localStorage.setItem('ugc_active_project_id', id);
         return { activeProjectId: id };
     }),
+    deleteProject: (id) => set((state) => {
+        if (id === 'default') return state;
+        const projects = state.projects.filter(p => p.id !== id);
+        const activeProjectId = state.activeProjectId === id ? 'default' : state.activeProjectId;
+        localStorage.setItem('ugc_projects', JSON.stringify(projects));
+        localStorage.setItem('ugc_active_project_id', activeProjectId);
+        return { projects, activeProjectId };
+    }),
 
     cachedAssets: null,
     cachedAssetsUserId: null,

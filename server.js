@@ -780,6 +780,7 @@ function findVideoInResponse(obj) {
 async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9', folder = 'generated', prompt = '', engine = '', extraMetadata = {}) {
     const name = `veo_${userId || 'anon'}_${Date.now()}.mp4`;
     const filePath = `users/${userId || 'anon'}/${folder}/${name}`;
+    const projectId = extraMetadata.projectId || extraMetadata.project_id || (folder !== 'generated' ? folder : 'default');
 
     try {
         console.log(`[STORAGE-VIDEO] Uploading video ${name} via storageService...`);
@@ -791,8 +792,9 @@ async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9', 
             type: 'video',
             url: publicUrl,
             user_id: userId || 'local_user',
+            project_id: projectId,
             aspect: aspectRatio,
-            metadata: { folder, ...extraMetadata },
+            metadata: { folder, projectId, project_id: projectId, ...extraMetadata },
             prompt: prompt,
             engine: engine
         });
@@ -803,7 +805,8 @@ async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9', 
                 await dbClient.from('assets').insert([{
                     name, type: 'video', url: publicUrl,
                     user_id: userId, created_at: new Date().toISOString(),
-                    metadata: { aspect: aspectRatio, folder, ...extraMetadata },
+                    project_id: projectId,
+                    metadata: { aspect: aspectRatio, folder, projectId, project_id: projectId, ...extraMetadata },
                     prompt: prompt,
                     engine: engine
                 }]);
@@ -823,6 +826,7 @@ async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg
     const ext = mimeType.split('/')[1] || 'jpg';
     const name = `gen_${userId || 'anon'}_${Date.now()}.${ext}`;
     let filePath = (userId && userId !== 'anon') ? `users/${userId}/${folder}/${name}` : `${folder}/anon/${name}`;
+    const projectId = extraMetadata.projectId || extraMetadata.project_id || (folder !== 'generated' ? folder : 'default');
 
     try {
         const publicUrl = await storageService.uploadToGCS(imageBuffer, filePath, mimeType, targetBucket);
@@ -833,8 +837,9 @@ async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg
             type: 'image',
             url: publicUrl,
             user_id: userId || 'local_user',
+            project_id: projectId,
             aspect: aspectRatio,
-            metadata: { folder, ...extraMetadata },
+            metadata: { folder, projectId, project_id: projectId, ...extraMetadata },
             prompt: prompt,
             engine: engine
         });
@@ -860,11 +865,23 @@ async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg
     }
 }
 
-async function resolveImageForGemini(imageUrl, gcsUri) {
-    if (gcsUri && gcsUri.startsWith('gs://')) {
+async function resolveImageForGemini(imageUrlInput, gcsUri) {
+    let imageUrl = imageUrlInput;
+    if (imageUrlInput && typeof imageUrlInput === 'object') {
+        imageUrl = imageUrlInput.url || imageUrlInput.data || imageUrlInput.dataUrl || imageUrlInput.imageUrl || imageUrlInput.file || '';
+        while (imageUrl && typeof imageUrl === 'object') {
+            imageUrl = imageUrl.url || imageUrl.data || imageUrl.dataUrl || imageUrl.imageUrl || '';
+        }
+        if (!gcsUri && imageUrlInput.gcsUri) gcsUri = imageUrlInput.gcsUri;
+    }
+    if (!imageUrl || typeof imageUrl !== 'string') {
+        console.error('[resolveImageForGemini] Provided image URL is invalid or non-string:', imageUrlInput);
+        return null;
+    }
+    if (gcsUri && typeof gcsUri === 'string' && gcsUri.startsWith('gs://')) {
         return { fileData: { fileUri: gcsUri, mimeType: gcsUri.endsWith('.png') ? 'image/png' : 'image/jpeg' } };
     }
-    if (imageUrl && imageUrl.startsWith('data:')) {
+    if (imageUrl.startsWith('data:')) {
         try {
             const [meta, b64] = imageUrl.split(',');
             const mimeType = meta.match(/:(.*?);/)?.[1] || 'image/jpeg';
@@ -875,9 +892,10 @@ async function resolveImageForGemini(imageUrl, gcsUri) {
         }
     }
     try {
+        const fullUrl = imageUrl.startsWith('//') ? `https:${imageUrl}` : imageUrl;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
-        const resp = await fetch(imageUrl, { signal: controller.signal });
+        const resp = await fetch(fullUrl, { signal: controller.signal });
         clearTimeout(timeoutId);
 
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -890,8 +908,13 @@ async function resolveImageForGemini(imageUrl, gcsUri) {
     }
 }
 
-async function resolveFrameUri(frameData) {
-    if (!frameData) return null;
+async function resolveFrameUri(frameDataInput) {
+    if (!frameDataInput) return null;
+    let frameData = frameDataInput;
+    while (frameData && typeof frameData === 'object') {
+        frameData = frameData.url || frameData.data || frameData.dataUrl || frameData.imageUrl || '';
+    }
+    if (!frameData || typeof frameData !== 'string') return null;
     try {
         let buffer;
         let mimeType = 'image/png';
@@ -913,9 +936,16 @@ async function resolveFrameUri(frameData) {
     }
 }
 
-async function resolveToPublicUrl(imgData, userId) {
-    if (!imgData) return null;
+async function resolveToPublicUrl(imgDataInput, userId) {
+    if (!imgDataInput) return null;
+    // Unwrap object inputs like { url: '...' } before calling string methods
+    let imgData = imgDataInput;
+    while (imgData && typeof imgData === 'object') {
+        imgData = imgData.url || imgData.data || imgData.dataUrl || imgData.imageUrl || '';
+    }
+    if (!imgData || typeof imgData !== 'string') return null;
     if (imgData.startsWith('http')) return imgData;
+    if (imgData.startsWith('//')) return `https:${imgData}`;
     try {
         const buffer = imgData.startsWith('data:') ? Buffer.from(imgData.split(',')[1], 'base64') : Buffer.from(imgData, 'base64');
         const name = `asset_${Date.now()}.jpg`;
@@ -974,10 +1004,18 @@ async function handleKling(req, res) {
     }
 }
 
-// Resolve any image source (data URI, raw base64, or HTTP URL) to a raw Buffer + mimeType
-// WITHOUT going through GCS storage — avoids MIME corruption and unnecessary roundtrips.
-async function resolveImageToBuffer(imgSrc) {
-    if (!imgSrc) return null;
+async function resolveImageToBuffer(imgSrcInput) {
+    if (!imgSrcInput) return null;
+
+    // Unwrap object inputs like { url: '...' } before calling string methods
+    let imgSrc = imgSrcInput;
+    while (imgSrc && typeof imgSrc === 'object') {
+        imgSrc = imgSrc.url || imgSrc.data || imgSrc.dataUrl || imgSrc.imageUrl || '';
+    }
+    if (!imgSrc || typeof imgSrc !== 'string') return null;
+
+    // Protocol-relative URL — normalize to https
+    if (imgSrc.startsWith('//')) imgSrc = `https:${imgSrc}`;
 
     // HTTP/HTTPS URL — fetch directly
     if (imgSrc.startsWith('http://') || imgSrc.startsWith('https://')) {
@@ -1145,19 +1183,19 @@ async function handleGoogle(req, res) {
             const op = await resp.json();
             res.json(op);
         } else {
-            let activeModel = model || 'gemini-3.1-flash-image-preview';
+            let activeModel = model || 'gemini-3.1-flash-image';
             const modelLower = activeModel.toLowerCase();
             // nb2-open = gemini-3.1-flash-image (GA open model, distinct from preview)
             if (modelLower === 'nano-banana-2-open' || modelLower === 'nb2-open') {
                 activeModel = 'gemini-3.1-flash-image';
-            } else if (modelLower === 'nano-banana-2' || modelLower === 'nano-banana') {
-                activeModel = 'gemini-3.1-flash-image-preview';
+            } else if (modelLower === 'nano-banana-2' || modelLower === 'nano-banana' || modelLower === 'gemini-3.1-flash-image-preview') {
+                activeModel = 'gemini-3.1-flash-image'; // preview name retired, use GA
             } else if (modelLower === 'nano-banana-2-lite' || modelLower === 'nb2-lite' || modelLower === 'gemini-3.1-flash-lite' || modelLower === 'gemini-3.1-flash-lite-image') {
                 activeModel = 'gemini-3.1-flash-lite-image';
             } else if (modelLower === 'nano-banana-pro' || modelLower === 'pro' || modelLower === 'gemini-3-pro-image') {
                 activeModel = 'gemini-3-pro-image-preview';
             } else if (modelLower === 'gemini-2.5-flash-image') {
-                activeModel = 'gemini-3.1-flash-image-preview';
+                activeModel = 'gemini-3.1-flash-image'; // map old alias to GA model
             }
 
             let compiledPrompt = prompt || '';

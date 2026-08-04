@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Upload, User, Box, FileText, Camera, Play, Pause, Wand2, Loader2, Volume2, VolumeX, Sparkles, Video, X, Scissors, Plus, Trash2, ChevronRight, ChevronLeft, ChevronDown, Layout, AlertCircle, HelpCircle, Settings, SidebarClose, Download, GripVertical, Check, CheckCircle, BrainCircuit, Zap, ShieldCheck, Shield, Clock, Activity, Maximize, Layers, Search, Package, Droplets, Wind, Fingerprint, Lock, PlayCircle, RotateCcw, Film, MapPin, Pencil } from 'lucide-react';
+import { Upload, User, Box, FileText, Camera, Play, Pause, Wand2, Loader2, Volume2, VolumeX, Sparkles, Video, X, Scissors, Plus, Trash2, Folder, ChevronRight, ChevronLeft, ChevronDown, Layout, AlertCircle, HelpCircle, Settings, SidebarClose, Download, GripVertical, Check, CheckCircle, BrainCircuit, Zap, ShieldCheck, Shield, Clock, Activity, Maximize, Layers, Search, Package, Droplets, Wind, Fingerprint, Lock, PlayCircle, RotateCcw, Film, MapPin, Pencil } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
@@ -123,13 +123,15 @@ export default function UGC() {
     });
   };
 
-  const fetchImageAsBlob = async (url: string) => {
+  const fetchImageAsBlob = async (url: any) => {
     if (!url) throw new Error("No URL provided");
-    if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')) {
-      const res = await fetch(url);
+    const actualUrl = typeof url === 'string' ? url : (url.url || url.dataUrl || url.imageUrl || '');
+    if (!actualUrl || typeof actualUrl !== 'string') throw new Error("Invalid image URL provided");
+    if (actualUrl.startsWith('data:') || actualUrl.startsWith('blob:') || actualUrl.startsWith('http://localhost') || actualUrl.startsWith('http://127.0.0.1')) {
+      const res = await fetch(actualUrl);
       return await res.blob();
     }
-    const proxyUrl = getApiUrl(`/api/proxy-image?url=${encodeURIComponent(url)}`);
+    const proxyUrl = getApiUrl(`/api/proxy-image?url=${encodeURIComponent(actualUrl)}`);
     const res = await fetch(proxyUrl);
     if (!res.ok) throw new Error(`Proxy fetch failed: ${res.statusText}`);
     return await res.blob();
@@ -463,6 +465,7 @@ export default function UGC() {
     setProjects,
     activeProjectId,
     setActiveProjectId,
+    deleteProject,
     gallery,
     rawGallery,
     setGallery,
@@ -1946,41 +1949,27 @@ Return a detailed JSON with:
   };
 
   const resolveRefTags = (sceneRefImgUrl?: string | null) => {
-    const imageToSend = sceneRefImgUrl || generatedImg || null;
+    const mappings: Record<string, string> = {};
 
-    const refsToResolve: { type: string; url: string | null }[] = [
-      { type: 'character', url: characterImg?.url || null },
-      { type: 'product', url: productImg?.url || null },
-      { type: 'location', url: locationImg?.url || null },
-    ];
+    // Standardized Tag Contracts:
+    // Image 1 (<IMAGE_REF_0>): Person / Character identity reference
+    // Image 2 (<IMAGE_REF_1>): Product packaging & details reference
+    // Image 3 (<IMAGE_REF_2>): Stage / Location / Room background reference
+    if (characterImg?.url) mappings.character = '<IMAGE_REF_0>';
+    if (productImg?.url) mappings.product = '<IMAGE_REF_1>';
+    if (locationImg?.url) mappings.location = '<IMAGE_REF_2>';
 
     if (splitScenes.length > 0) {
       const sc = splitScenes[activeSplitTab];
       const customSceneRefs = sc?.refImages || (sc?.refImage ? [sc.refImage] : []);
       customSceneRefs.forEach((ref, idx) => {
-        refsToResolve.push({ type: `custom_${idx}`, url: ref });
+        mappings[`custom_${idx}`] = `<IMAGE_REF_${3 + idx}>`;
       });
     } else {
       attachedRefImages.forEach((ref, idx) => {
-        refsToResolve.push({ type: `custom_${idx}`, url: ref });
+        mappings[`custom_${idx}`] = `<IMAGE_REF_${3 + idx}>`;
       });
     }
-
-    const filteredRefs = refsToResolve.filter(r => r.url && r.url !== imageToSend);
-    
-    const seenUrls = new Set<string>();
-    const uniqueRefs: { type: string; url: string }[] = [];
-    for (const ref of filteredRefs) {
-      if (ref.url && !seenUrls.has(ref.url)) {
-        seenUrls.add(ref.url);
-        uniqueRefs.push({ type: ref.type, url: ref.url });
-      }
-    }
-
-    const mappings: Record<string, string> = {};
-    uniqueRefs.forEach((ref, idx) => {
-      mappings[ref.type] = `<IMAGE_REF_${idx}>`;
-    });
 
     return mappings;
   };
@@ -1989,29 +1978,28 @@ Return a detailed JSON with:
     const imagesToConvert: { tag: string; url: string }[] = [];
     const refMappings = resolveRefTags(sceneRefImgUrl);
 
-    // 1. Add Scene Reference / First Frame
-    if (sceneRefImgUrl) {
-      imagesToConvert.push({ tag: '<FIRST_FRAME>', url: sceneRefImgUrl });
-    } else if (generatedImg) {
-      imagesToConvert.push({ tag: '<FIRST_FRAME>', url: generatedImg });
+    // 1. Start Frame / First Frame Reference (<FIRST_FRAME>)
+    const effectiveStartFrame = sceneRefImgUrl || generatedImg || null;
+    if (effectiveStartFrame) {
+      imagesToConvert.push({ tag: '<FIRST_FRAME>', url: effectiveStartFrame });
     }
 
-    // 2. Add Character Image
+    // 2. Person / Character Image (<IMAGE_REF_0>)
     if (characterImg?.url && refMappings.character) {
       imagesToConvert.push({ tag: refMappings.character, url: characterImg.url });
     }
 
-    // 3. Add Product Image
+    // 3. Product Image (<IMAGE_REF_1>)
     if (productImg?.url && refMappings.product) {
       imagesToConvert.push({ tag: refMappings.product, url: productImg.url });
     }
 
-    // 4. Add Location Image
+    // 4. Stage / Location Image (<IMAGE_REF_2>)
     if (locationImg?.url && refMappings.location) {
       imagesToConvert.push({ tag: refMappings.location, url: locationImg.url });
     }
 
-    // 5. Add Custom Scene / Global References
+    // 5. Custom Scene / Global References
     if (splitScenes.length > 0) {
       const sc = splitScenes[activeSplitTab];
       const customSceneRefs = sc?.refImages || (sc?.refImage ? [sc.refImage] : []);
@@ -2263,6 +2251,8 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
           characterRefTag,
           productRefTag,
           locationRefTag,
+          multiShotPreset: selectedMultiShotPreset,
+          productAnalysis: productAnalysis ? (typeof productAnalysis === 'string' ? productAnalysis : JSON.stringify(productAnalysis)) : undefined
         });
 
         parts.push({ text: metaPrompt });
@@ -2747,9 +2737,8 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
 
       contents.push({ text: promptInstructions });
 
-    // gemini-3.1-flash-image-preview = Nano Banana 2 (correct per official docs)
-    // gemini-3.1-flash-image = Nano Banana 2 GA/Open model
-    const modelName = imgEngine === 'nb2-lite' ? 'gemini-3.1-flash-lite-image' : imgEngine === 'nb2-open' ? 'gemini-3.1-flash-image' : 'gemini-3.1-flash-image-preview';
+    // gemini-3.1-flash-image = Nano Banana 2 (GA model — preview name retired)
+    const modelName = imgEngine === 'nb2-lite' ? 'gemini-3.1-flash-lite-image' : 'gemini-3.1-flash-image';
 
     console.log(`[NB2 generateImage] Starting — model: ${modelName}, aspectRatio: ${aspectRatio}, parts: ${contents.length}`);
     console.time('[NB2 generateImage] API call duration');
@@ -2866,7 +2855,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       contents.push({ text: promptInstructions });
 
       const response = await ai.models.generateContent({
-        model: imgEngine === 'nb2-lite' ? 'gemini-3.1-flash-lite-image' : imgEngine === 'nb2-open' ? 'gemini-3.1-flash-image' : 'gemini-3.1-flash-image-preview',
+        model: imgEngine === 'nb2-lite' ? 'gemini-3.1-flash-lite-image' : 'gemini-3.1-flash-image',
         contents: [{ parts: contents }],
         config: {
           responseModalities: ['TEXT', 'IMAGE'],
@@ -2948,10 +2937,10 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
 
       updateGalleryItem(placeholderThVideoId, { prompt: talkingPrompt.substring(0, 1000) });
 
-      setThVideoProgress('Submitting to Veo…');
+      setThVideoProgress('✨ Directing your video scene...');
 
       if (isAdmin || isGlobalAdmin) {
-        setThVideoProgress('Submitting to Vertex AI (Veo 3.1)...');
+        setThVideoProgress('🔥 Generating high-converting video...');
         const headers: any = { 'Content-Type': 'application/json' };
         const customKey = getApiKey();
         if (customKey) headers['x-admin-trial-key'] = customKey;
@@ -2966,13 +2955,15 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
             duration: thDuration,
             resolution: '720p',
             model: thEngine === 'veo3' ? 'veo3' : 'veo_fast',
-            aspect_ratio: thAspectRatio
+            aspect_ratio: thAspectRatio,
+            projectId: activeProjectId || 'default',
+            folder: activeProjectId || 'default'
           })
         });
 
         const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || 'Vertex AI Talking Head generation failed.');
-        if (!data.url) throw new Error('Vertex AI returned no video URL.');
+        if (!resp.ok) throw new Error(data.error || 'Talking Head generation failed.');
+        if (!data.url) throw new Error('Returned no video URL.');
 
         setThGeneratedVideo(data.url);
         updateGalleryItem(placeholderThVideoId, {
@@ -2982,7 +2973,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
         });
         setThIsGeneratingVideo(false);
         setThVideoProgress('');
-        showToast('Talking Head video ready via Vertex AI!', 'success');
+        showToast('Talking Head video ready!', 'success');
         return;
       }
 
@@ -3000,7 +2991,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       if (imagePayload) videoRequest.image = imagePayload;
 
       if (thEngine === 'omni-flash') {
-        setThVideoProgress('Submitting to Gemini Omni Flash...');
+        setThVideoProgress('✨ Directing your talking scene...');
         let imageToSend = '';
         if (imagePayload) {
           imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
@@ -3752,7 +3743,8 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             size: aspectRatio === '16:9' ? '1536x1024' : aspectRatio === '1:1' ? '1024x1024' : '1024x1536',
             aspect_ratio: aspectRatio,
             userId: currentUserId,
-            folder: 'ugc/generated',
+            folder: activeProjectId || 'default',
+            projectId: activeProjectId || 'default',
             ...(primaryImage && { image: primaryImage }),
             ...(secondaryImage && { secondImage: secondaryImage }),
           }),
@@ -3763,7 +3755,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         if (url) { 
           generatedUrl = url; 
           setMontageGeneratedImg(url); 
-          updateGalleryItem(placeholderMontageId, { url, loading: false }); 
+          updateGalleryItem(placeholderMontageId, { url, loading: false, projectId: activeProjectId || 'default' }); 
         }
       } else {
         setMontageImgProgressMsg('AI Generating Reference Image...');
@@ -3788,7 +3780,8 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             prompt: contents.find(c => c.text)?.text || promptInstructions,
             aspect_ratio: aspectRatio,
             userId: currentUserId,
-            folder: 'ugc/generated',
+            folder: activeProjectId || 'default',
+            projectId: activeProjectId || 'default',
             referenceImages: refImages,
           }),
         });
@@ -3811,10 +3804,12 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             if (pollData.status === 'done' && pollData.imageUrl) {
               generatedUrl = pollData.imageUrl;
               setMontageGeneratedImg(pollData.imageUrl);
-              updateGalleryItem(placeholderMontageId, { url: pollData.imageUrl, loading: false });
+              updateGalleryItem(placeholderMontageId, { url: pollData.imageUrl, loading: false, projectId: activeProjectId || 'default' });
               break;
             }
-            if (pollData.status === 'failed') throw new Error(pollData.error || 'Image generation failed');
+            if (pollData.status === 'error') {
+              throw new Error(`Queue job failed: ${pollData.error || 'Unknown'}`);
+            }
             setMontageImgProgressMsg(`Generating… (${attempts * 3}s)`);
           }
           if (!generatedUrl) throw new Error('NB2 image generation timed out — try again');
@@ -3845,7 +3840,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
   // ─────────────────────────────────────────────────────────────────────────
 
-  const generateVideo = async (overridePrompt?: string, referenceImageUrl?: string) => {
+  const generateVideo = async (overridePrompt?: string, referenceImageUrl?: string, targetDuration?: number) => {
     const unitCost = getCurrentCost(false);
     if (!isAdmin && !isGlobalAdmin) {
       const spendRes = await spend('veo_fast', unitCost as any);
@@ -3918,9 +3913,15 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         (scenes[activeSceneIndex]?.prompt || '').toLowerCase().includes('broll')
       );
 
-      let dialogue = dialogueText ? ` Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): "${dialogueText}".` : '';
+      // Vocal acoustic directive for Gemini Audio engine
+      const hasSpeechTags = dialogueText && /\[(whisper|gasp|sigh|laughter|laugh|pause|gasping|whispering)\]/i.test(dialogueText);
+      const speechTagDirective = hasSpeechTags
+        ? ` VOCAL AUDIO PERFORMANCE DIRECTIVE: The audio track MUST execute all bracketed speech tags inside the dialogue as real vocal acoustic sound effects: [whisper] = speak the following words in a quiet, soft breathy whisper; [gasp] = audible gasp intake of breath; [sigh] = exhaling sigh sound; [laughter] = laugh naturally while speaking; [pause] = silent pause for 1-2 seconds. Do NOT read the bracketed tag names out loud; instead perform the actual vocal audio effect!`
+        : '';
+
+      let dialogue = dialogueText ? ` Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): "${dialogueText}".${speechTagDirective}` : '';
       if (dialogueText && hasVoiceover) {
-        dialogue = ` Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): "${dialogueText}" (strictly lip-sync only the portions where the face is on screen/speaking in the timecodes; all other portions must be generated as off-camera voice-over narration with no mouth/lip movement).`;
+        dialogue = ` Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): "${dialogueText}" (strictly lip-sync only the portions where the face is on screen/speaking in the timecodes; all other portions must be generated as off-camera voice-over narration with no mouth/lip movement).${speechTagDirective}`;
       }
 
       let promptText: string;
@@ -3991,7 +3992,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
       const engine = activeTab === 'talking-head' ? thEngine : videoGenMode;
 
       if (engine === 'omni-flash') {
-        setVideoProgressMsg('Submitting to Gemini Omni Flash...');
+        setVideoProgressMsg('✨ Directing your video scene...');
         const resolvedAspectRatio = activeTab === 'talking-head' ? thAspectRatio : (aspectRatio === '1:1' ? '9:16' : aspectRatio as any);
         const resolvedDuration = activeTab === 'talking-head' ? parseInt(thDuration) : parseInt(durationSeconds);
         const resolvedIncludeAudio = activeTab === 'talking-head' ? true : includeAudio;
@@ -4049,12 +4050,9 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         const locBase64 = resolvedList[2];
         const customB64s = resolvedList.slice(3);
 
-        const allRefs = [
-          charBase64,
-          prodBase64,
-          locBase64,
-          ...customB64s
-        ].filter((val): val is string => !!val && val !== imageToSend);
+        const allRefs = (customB64s.length > 0)
+          ? [...customB64s, charBase64, prodBase64, locBase64].filter((val): val is string => !!val && val !== imageToSend)
+          : [charBase64, prodBase64, locBase64].filter((val): val is string => !!val && val !== imageToSend);
 
         // Deduplicate references to prevent sending the same image twice
         const uniqueRefs = Array.from(new Set(allRefs));
@@ -4081,7 +4079,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         }
         
         // Remove <IMAGE_REF_x> tags since Omni Flash doesn't use this syntax
-        const cleanedMotionPrompt = promptText.replace(/<IMAGE_REF_\d+>/g, 'the reference image').substring(0, 1000);
+        const cleanedMotionPrompt = promptText.replace(/<IMAGE_REF_\d+>/g, 'the reference image').substring(0, 3500);
 
         const resp = await fetch(getApiUrl('/api/omni-i2v'), {
           method: 'POST',
@@ -4117,10 +4115,10 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         return;
       }
 
-      setVideoProgressMsg('Igniting the Motion Engine...');
+      setVideoProgressMsg('✨ Bringing your scene to life...');
 
       if (isAdmin || isGlobalAdmin) {
-        setVideoProgressMsg('Submitting to Vertex AI (Veo 3.1)...');
+        setVideoProgressMsg('🔥 Generating high-converting video...');
         const headers: any = { 'Content-Type': 'application/json' };
         const customKey = getApiKey();
         if (customKey) headers['x-admin-trial-key'] = customKey;
@@ -4137,7 +4135,9 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             duration: activeTab === 'talking-head' ? thDuration : durationSeconds,
             resolution: videoResolution,
             model: engine === 'veo3' ? 'veo3' : 'veo_fast',
-            aspect_ratio: activeTab === 'talking-head' ? thAspectRatio : aspectRatio
+            aspect_ratio: activeTab === 'talking-head' ? thAspectRatio : aspectRatio,
+            projectId: activeProjectId || 'default',
+            folder: activeProjectId || 'default'
           })
         });
 
@@ -4401,6 +4401,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     setProjects,
     activeProjectId,
     setActiveProjectId,
+    deleteProject,
     setGallery,
     galleryTab,
     setGalleryTab,
@@ -4853,28 +4854,49 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
                 {/* Bottom action bar */}
                 <div className="flex items-center gap-2 px-4 pb-3">
-                  <select 
-                    className="bg-white/5 hover:bg-[#c8f135]/10 border border-white/10 hover:border-[#c8f135]/20 text-white hover:text-[#c8f135] rounded-xl px-2 py-2 text-[10px] font-bold focus:outline-none max-w-[120px] transition-colors cursor-pointer"
-                    value={activeProjectId}
-                    title="Select Project"
-                    onChange={(e) => {
-                      if (e.target.value === 'new') {
-                        const name = prompt('Enter new project name:');
-                        if (name) {
-                          const newProj = { id: `proj_${Date.now()}`, name };
-                          setProjects(prev => [...prev, newProj]);
-                          setActiveProjectId(newProj.id);
+                  {/* Folder Selector Pill */}
+                  <div className="flex items-center gap-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-2 py-1.5 shrink-0 transition-colors">
+                    <Folder size={11} className="text-[#c8f135]" />
+                    <select 
+                      className="bg-transparent text-white hover:text-[#c8f135] text-[10px] font-bold focus:outline-none max-w-[110px] cursor-pointer transition-colors"
+                      value={activeProjectId}
+                      title="Select Active Folder"
+                      onChange={(e) => {
+                        if (e.target.value === 'new') {
+                          const name = prompt('Enter new folder name:');
+                          if (name && name.trim()) {
+                            const newProj = { id: `proj_${Date.now()}`, name: name.trim() };
+                            setProjects((prev: any[]) => [...prev, newProj]);
+                            setActiveProjectId(newProj.id);
+                          }
+                        } else {
+                          setActiveProjectId(e.target.value);
                         }
-                      } else {
-                        setActiveProjectId(e.target.value);
-                      }
-                    }}
-                  >
-                    {projects.map(p => (
-                      <option key={p.id} value={p.id} className="bg-[#1e1e24] text-white">{p.name}</option>
-                    ))}
-                    <option value="new" className="bg-[#1e1e24] text-[#c8f135] font-bold">+ New Project...</option>
-                  </select>
+                      }}
+                    >
+                      {projects.map((p: any) => (
+                        <option key={p.id} value={p.id} className="bg-[#1e1e24] text-white">{p.name}</option>
+                      ))}
+                      <option value="new" className="bg-[#1e1e24] text-[#c8f135] font-bold">+ New Folder...</option>
+                    </select>
+
+                    {/* Delete Folder option — available for custom folders */}
+                    {activeProjectId && activeProjectId !== 'default' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const activeProjName = projects.find((p: any) => p.id === activeProjectId)?.name || 'this folder';
+                          if (window.confirm(`Are you sure you want to delete folder "${activeProjName}"?`)) {
+                            deleteProject(activeProjectId);
+                          }
+                        }}
+                        title="Delete active folder"
+                        className="p-1 text-white/30 hover:text-red-400 transition-colors rounded-lg hover:bg-white/10 ml-0.5"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="text"
                     value={userPrompt}

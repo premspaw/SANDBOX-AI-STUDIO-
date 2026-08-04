@@ -10,6 +10,7 @@ import { InpaintEditor } from '../common/InpaintEditor';
 import { getApiUrl, resolveUrl } from '../../config/apiConfig';
 import { buildSeedanceContentArray } from '../cinemaStudio/SeedanceEngine';
 import { AddTemplateModal } from './AddTemplateModal';
+import { SidePanel } from '../cinemaStudio/SidePanel';
 
 const ENGINES = [
   { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — 2.5⚡/s (4.5⚡/s audio)', cost: 2.5 },
@@ -302,6 +303,8 @@ export default function MarketingStudio() {
     const [isPostProcessing, setIsPostProcessing] = useState(false);
     const [editInstruction, setEditInstruction] = useState('');
     const [showEditBar, setShowEditBar] = useState(false);
+    const [showSidePanel, setShowSidePanel] = useState(false);
+    const [panelTab, setPanelTab] = useState('veo');
     const [generateMode, setGenerateMode] = useState('image');
     const [imageEngine, setImageEngine] = useState('gpt-image-2');
     const [videoEngine, setVideoEngine] = useState('veo-3.1-fast-generate-preview');
@@ -1878,6 +1881,31 @@ Any written text, characters, letters, numbers, and labels inside the image must
                     </button>
                     <div className="flex-1 flex flex-col h-full overflow-hidden relative">
 
+                        {/* Floating Right-Edge Side Drawer Pull Tab */}
+                        <motion.button
+                            type="button"
+                            onClick={() => setShowSidePanel(prev => !prev)}
+                            whileHover={{ scale: 1.05, x: -3 }}
+                            whileTap={{ scale: 0.95 }}
+                            animate={{ right: showSidePanel ? '36rem' : '0rem' }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+                            className={cn(
+                                "fixed top-1/2 -translate-y-1/2 z-[130] py-6 px-2.5 rounded-l-2xl border-l border-y shadow-2xl flex flex-col items-center gap-2 cursor-pointer transition-colors backdrop-blur-2xl",
+                                showSidePanel
+                                    ? "bg-[#c8f135] text-black border-[#c8f135] shadow-[0_0_20px_rgba(200,241,53,0.85)]"
+                                    : "bg-[#0b0b12]/95 border-violet-500/40 text-violet-300 hover:bg-violet-600/30 hover:text-white"
+                            )}
+                            title="Toggle Studio Side Panel"
+                        >
+                            <Sliders size={14} className={showSidePanel ? "text-black" : "text-violet-400"} />
+                            <span
+                                style={{ writingMode: 'vertical-lr' }}
+                                className={cn("text-[9px] font-black uppercase tracking-widest select-none", showSidePanel ? "text-black" : "text-violet-200")}
+                            >
+                                Studio
+                            </span>
+                        </motion.button>
+
                             {/* ── UGC-STYLE FIXED GRID ── */}
                             <div className="flex-1 overflow-y-auto bg-[#0a0a0a] custom-scrollbar" style={{paddingBottom:'80px', minHeight:0}}>
                                 {isGenerating && generationHistory.length === 0 ? (
@@ -1988,7 +2016,10 @@ Any written text, characters, letters, numbers, and labels inside the image must
                             </div>
 
                             {/* ── BOTTOM: HigsFields-style floating input bar ── */}
-                            <div className="absolute bottom-0 left-0 right-0 z-10 flex flex-col items-center pb-4 pt-10 bg-gradient-to-t from-black/75 via-black/30 to-transparent pointer-events-none">
+                            <div className={cn(
+                                "absolute bottom-0 left-0 right-0 z-10 flex flex-col items-center pb-4 pt-10 bg-gradient-to-t from-black/75 via-black/30 to-transparent pointer-events-none transition-all duration-300 ease-in-out",
+                                showSidePanel ? "pr-0 lg:pr-[37rem]" : "pr-0"
+                            )}>
                             <div className="pointer-events-auto w-full max-w-4xl px-4">
 
                                 {/* Real Estate property details panel (collapsible, above bar) */}
@@ -2828,6 +2859,41 @@ Any written text, characters, letters, numbers, and labels inside the image must
                 onSave={handleAddTemplate}
             />
         )}
+
+        {/* Side Panel Drawer for Marketing Studio */}
+        <SidePanel
+            isOpen={showSidePanel}
+            onClose={() => setShowSidePanel(false)}
+            activeEngine={videoEngine}
+            setActiveEngine={setVideoEngine}
+            activeTab={generateMode}
+            setActiveTab={setGenerateMode}
+            panelTab={panelTab}
+            setPanelTab={setPanelTab}
+            firstFrameImage={firstFrame?.file || null}
+            firstFramePreview={firstFrame?.preview || null}
+            lastFrameImage={lastFrame?.file || null}
+            lastFramePreview={lastFrame?.preview || null}
+            setFirstFrameImage={(img) => setFirstFrame(prev => ({ ...prev, file: img }))}
+            setFirstFramePreview={(prev) => setFirstFrame(p => ({ ...p, preview: prev }))}
+            setLastFrameImage={(img) => setLastFrame(prev => ({ ...prev, file: img }))}
+            setLastFramePreview={(prev) => setLastFrame(p => ({ ...p, preview: prev }))}
+            duration={videoDuration}
+            setDuration={setVideoDuration}
+            aspectRatio={imageSize}
+            setAspectRatio={setImageSize}
+            generateAudio={generateAudio}
+            setGenerateAudio={setGenerateAudio}
+            omniTask={omniTask}
+            setOmniTask={setOmniTask}
+            promptText={promptText}
+            setPromptText={setPromptText}
+            handleGenerate={handleGenerate}
+            isBusy={isGenerating}
+            userCredits={userCredits}
+            requiredCredits={getRequiredCredits(generateMode === 'image' ? imageEngine : videoEngine)}
+            canGenerate={!isGenerating && !!promptText.trim()}
+        />
         </>
     );
 }

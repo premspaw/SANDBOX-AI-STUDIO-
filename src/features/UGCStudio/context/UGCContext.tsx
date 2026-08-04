@@ -56,6 +56,7 @@ export interface SplitScene {
   prompt: string;
   refImage?: string | null;
   refImages?: string[] | null;
+  duration?: number;
 }
 
 // ── Context shape ──────────────────────────────────────────────────────────────
@@ -157,7 +158,7 @@ export interface UGCContextType {
   setVideoProgressMsg: (v: string) => void;
   videoError: string;
   videoTimedOut: boolean;
-  generateVideo: (prompt?: string, refImage?: string) => Promise<void>;
+  generateVideo: (prompt?: string, refImage?: string, targetDuration?: number) => Promise<void>;
   generateAllSceneVideos: () => Promise<void>;
   generateTalkingHeadImage: () => Promise<void>;
   generateTalkingHeadVideo: () => Promise<void>;
@@ -211,6 +212,7 @@ export interface UGCContextType {
   setProjects: React.Dispatch<React.SetStateAction<{ id: string, name: string }[]>>;
   activeProjectId: string;
   setActiveProjectId: (id: string) => void;
+  deleteProject: (id: string) => void;
   gallery: GalleryItem[];
   rawGallery: GalleryItem[];
   setGallery: React.Dispatch<React.SetStateAction<GalleryItem[]>>;

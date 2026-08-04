@@ -570,6 +570,8 @@ export default function CinematicStudio() {
   const [omniFirstFramePreview, setOmniFirstFramePreview] = useState('');
   const [omniLastFrameImage, setOmniLastFrameImage] = useState('');
   const [omniLastFramePreview, setOmniLastFramePreview] = useState('');
+  const [omniRefVideoPreview, setOmniRefVideoPreview] = useState('');
+  const [omniRefVideoDuration, setOmniRefVideoDuration] = useState(0);
 
   const [uploadTarget, setUploadTarget] = useState('first'); // 'first' | 'last'
   const [isUploading, setIsUploading] = useState(false);
@@ -662,9 +664,10 @@ export default function CinematicStudio() {
     const isVeo3 = activeEngine.startsWith('veo-3.1');
     
     if (isOmniEngine) {
-      if (![4, 6, 10].includes(duration)) {
+      if (![4, 6, 8, 10].includes(duration)) {
         if (duration < 5) setDuration(4);
-        else if (duration < 8) setDuration(6);
+        else if (duration < 7) setDuration(6);
+        else if (duration < 9) setDuration(8);
         else setDuration(10);
       }
       if (activeEngine === 'omni-flash' && resolution === '4k') {
@@ -677,11 +680,14 @@ export default function CinematicStudio() {
         else setDuration(8);
       }
     } else if (isSeed) {
-      const maxRes = '720p';
-      const resIdx = ['480p', '720p', '1080p', '4k'].indexOf(resolution);
-      const maxIdx = ['480p', '720p', '1080p', '4k'].indexOf(maxRes);
-      if (resIdx > maxIdx) {
-        setResolution(maxRes);
+      const isLimitedSeed = activeEngine === 'seedance-fast' || activeEngine === 'seedance-mini';
+      if (isLimitedSeed) {
+        const maxRes = '720p';
+        const resIdx = ['480p', '720p', '1080p', '4k'].indexOf(resolution);
+        const maxIdx = ['480p', '720p', '1080p', '4k'].indexOf(maxRes);
+        if (resIdx > maxIdx) {
+          setResolution(maxRes);
+        }
       }
       if (![3, 4, 5, 6, 10, 15].includes(duration)) {
         if (duration <= 3) setDuration(3);
@@ -913,7 +919,7 @@ DO NOT add new objects or change the scene. Enhance only.
 [Semantic Context: ${item.prompt || 'Cinematic portrait'}]`;
 
       const payload = {
-        model: 'gemini-3.1-flash-image-preview', // Call supported model directly to prevent pro-image retirement error!
+        model: 'gemini-3.1-flash-image', // GA model name (preview name retired)
         prompt,
         aspect_ratio: item.aspect || '16:9',
         quality: '2k',
@@ -1014,7 +1020,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gemini-3.1-flash-image-preview',
+          model: 'gemini-3.1-flash-image',
           prompt: anglesPrompt,
           negativePrompt: "text, watermark, logo, labels, words, overlays, numbers, subtitles, letters, borders, frames, gridlines, grid lines, dividers, lines, caption, name tags, stamps, text banners, signatures",
           aspectRatio: item.aspect || '16:9',
@@ -1594,7 +1600,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   /* ─── UPLOAD ─────────────────────────────────────────────── */
   const handleClearRef = (target) => {
-    if (panelTab === 'omni') {
+    if (panelTab === 'omni' || isOmni) {
       if (target === 'first') {
         setOmniFirstFrameImage('');
         setOmniFirstFramePreview('');
@@ -2051,7 +2057,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       const identity_gcs_uris = taggedItems.map(item => ({ name: item.name, uri: item.imageUrl }));
 
       if (activeEngine === 'seedance-fast' || activeEngine === 'seedace') {
-        const seedanceContentArray = buildSeedanceContentArray(compiled, taggedItems, null, null, null);
+        const seedanceContentArray = buildSeedanceContentArray(compiled, taggedItems, firstFrameImage, lastFrameImage, seedanceRefs);
         return {
           engine: activeEngine,
           model: activeEngine === 'seedance-fast' ? 'dreamina-seedance-2-0-fast-260128' : 'dreamina-seedance-2-0-260128',
@@ -2065,7 +2071,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       }
 
       if (activeEngine === 'seedance-mini') {
-        const seedanceContentArray = buildSeedanceContentArray(compiled, taggedItems, null, null, null);
+        const seedanceContentArray = buildSeedanceContentArray(compiled, taggedItems, firstFrameImage, lastFrameImage, seedanceRefs);
         return {
           engine: activeEngine,
           model: 'bytedance/seedance-2-mini',
@@ -2091,7 +2097,11 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         identity_gcs_uris,
         referenceImages: identity_images,
         ref_images: taggedItems.map(item => ({ url: item.imageUrl || item.url || item.data || item })),
-        ref_videos: taggedItems.filter(item => isVideo(item)).map(item => ({ url: item.imageUrl || item.url || item.data || item })),
+        ref_videos: [
+          ...(omniRefVideoPreview ? [{ url: omniRefVideoPreview, duration: omniRefVideoDuration }] : []),
+          ...taggedItems.filter(item => isVideo(item)).map(item => ({ url: item.imageUrl || item.url || item.data || item }))
+        ],
+        refVideo: omniRefVideoPreview || undefined,
         ref_audios: taggedItems.filter(item => isAudio(item)).map(item => ({ url: item.imageUrl || item.url || item.data || item })),
         task: omniTask,
         generateAudio
@@ -2114,12 +2124,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   };
 
   /* ─── GENERATE ───────────────────────────────────────────── */
-  const handleGenerate = async () => {
+  const handleGenerate = async (overridePrompt, overrideEngine) => {
     if (isBusy) return;
     setIsSubmitting(true);
     setTimeout(() => setIsSubmitting(false), 5000);
 
-    if (!hasInput) {
+    // Use override engine if provided (avoids React batching race from SidePanel)
+    const resolvedEngine = overrideEngine || activeEngine;
+
+    if (!hasInput && !overridePrompt) {
       const showToast = useAppStore.getState().showToast;
       if (showToast) showToast("Please type prompt text, upload a frame, or tag reference elements before generating.", "error");
       return;
@@ -2145,7 +2158,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     setErrorMsg('');
     setPollMsg('');
 
-    const basePrompt = promptText.trim();
+    // Use overridePrompt from SidePanel if provided to bypass stale state reads
+    const basePrompt = overridePrompt
+      ? overridePrompt.trim()
+      : (resolvedEngine === 'omni' || resolvedEngine === 'omni-flash') ? omniPromptText.trim() : promptText.trim();
     const activeRatio = aspectRatio;
 
     // Identify all active reference tags using getTaggedRefItems
@@ -2361,7 +2377,11 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                 identity_gcs_uris,
                 referenceImages: identity_images,
                 ref_images: taggedItems.map(item => ({ url: item.imageUrl || item.url || item.data || item })),
-                ref_videos: taggedItems.filter(item => isVideo(item)).map(item => ({ url: item.imageUrl || item.url || item.data || item })),
+                ref_videos: [
+                  ...(omniRefVideoPreview ? [{ url: omniRefVideoPreview, duration: omniRefVideoDuration }] : []),
+                  ...taggedItems.filter(item => isVideo(item)).map(item => ({ url: item.imageUrl || item.url || item.data || item }))
+                ],
+                refVideo: omniRefVideoPreview || undefined,
                 ref_audios: taggedItems.filter(item => isAudio(item)).map(item => ({ url: item.imageUrl || item.url || item.data || item })),
                 task: omniTask,
                 userId,
@@ -2427,7 +2447,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           ? 'bytedance/seedance-2-mini'
           : 'dreamina-seedance-2-0-260128';
 
-        const seedanceContentArray = buildSeedanceContentArray(compiledPrompt, taggedItems, null, null, null);
+        const seedanceContentArray = buildSeedanceContentArray(compiledPrompt, taggedItems, firstFrameImage, lastFrameImage, seedanceRefs);
 
         // Pre-populate gallery with placeholder loading item
         const tempItem = {
@@ -2670,13 +2690,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           onClick={() => setShowSidePanel(prev => !prev)}
           whileHover={{ scale: 1.05, x: -3 }}
           whileTap={{ scale: 0.95 }}
+          animate={{ right: showSidePanel ? '36rem' : '0rem' }}
+          transition={{ type: 'spring', damping: 28, stiffness: 260 }}
           className={cn(
-            "fixed right-0 top-1/2 -translate-y-1/2 z-[100] py-6 px-2 rounded-l-2xl border-l border-y shadow-2xl flex flex-col items-center gap-2 cursor-pointer transition-all backdrop-blur-2xl",
+            "fixed top-1/2 -translate-y-1/2 z-[130] py-6 px-2 rounded-l-2xl border-l border-y shadow-2xl flex flex-col items-center gap-2 cursor-pointer transition-colors backdrop-blur-2xl",
             showSidePanel
               ? "bg-[#c8f135] text-black border-[#c8f135] shadow-[0_0_20px_rgba(200,241,53,0.85)]"
               : "bg-[#0b0b12]/95 border-violet-500/40 text-violet-300 hover:bg-violet-600/30 hover:text-white"
           )}
-          title="Toggle Side Drawer Panel"
+          title="Toggle Studio Side Panel"
         >
           <Sliders size={14} className={showSidePanel ? "text-black" : "text-violet-400"} />
           <span
@@ -2925,7 +2947,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         )}
 
         {/* ── FLOATING INPUT DOCK ── */}
-        <div className="absolute bottom-0 left-0 right-0 z-30 p-3 pb-2 pointer-events-none">
+        <div className={cn(
+          "absolute bottom-0 left-0 right-0 z-30 p-3 pb-2 pointer-events-none transition-all duration-300 ease-in-out",
+          showSidePanel ? "pr-0 lg:pr-[37rem]" : "pr-0"
+        )}>
           <div className="max-w-4xl mx-auto pointer-events-auto">
             
             {/* ── TOP FLOATING CONTROL BAR (Style/Movement, Angle, Camera & Lens) ── */}
@@ -4090,7 +4115,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
                 {/* Generate Button (aligned beautifully on the right of bottom row) */}
                 <motion.button
-                  onClick={handleGenerate}
+                  onClick={() => handleGenerate()}
                   disabled={isBusy}
                   whileHover={canGenerate ? { scale: 1.02, backgroundColor: '#d5fb3b' } : {}}
                   whileTap={canGenerate ? { scale: 0.97 } : {}}
@@ -4219,6 +4244,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         setOmniFirstFramePreview={setOmniFirstFramePreview}
         setOmniLastFrameImage={setOmniLastFrameImage}
         setOmniLastFramePreview={setOmniLastFramePreview}
+        omniRefVideoPreview={omniRefVideoPreview}
+        setOmniRefVideoPreview={setOmniRefVideoPreview}
+        omniRefVideoDuration={omniRefVideoDuration}
+        setOmniRefVideoDuration={setOmniRefVideoDuration}
         handleFileUpload={handleFileUpload}
         setUploadTarget={setUploadTarget}
         handleClearRef={handleClearRef}

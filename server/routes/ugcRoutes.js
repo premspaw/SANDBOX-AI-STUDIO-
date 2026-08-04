@@ -1295,8 +1295,8 @@ Return ONLY valid JSON.`
     // ── Generic Text Generation (server-side, uses SDK/Service Account) ──
     router.post('/generate-text', async (req, res) => {
         try {
-            const { prompt, model, responseSchema, userId } = req.body;
-            if (!prompt) return res.status(400).json({ error: 'prompt is required' });
+            const { prompt, model, responseSchema, userId, parts } = req.body;
+            if (!prompt && !parts) return res.status(400).json({ error: 'prompt or parts is required' });
 
             const selectedModel = model || 'gemini-2.5-flash';
             console.log(`[UGC-TEXT] Server-side text generation — model: ${selectedModel}`);
@@ -1312,7 +1312,9 @@ Return ONLY valid JSON.`
 
             const result = await gemini.models.generateContent({
                 model: selectedModel,
-                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                contents: parts && Array.isArray(parts)
+                    ? [{ role: 'user', parts }]
+                    : [{ role: 'user', parts: [{ text: prompt }] }],
                 config,
             });
 

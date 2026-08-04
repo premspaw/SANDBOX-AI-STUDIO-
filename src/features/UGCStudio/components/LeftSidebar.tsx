@@ -646,6 +646,61 @@ export default function LeftSidebar() {
                 </div>
               </div>
 
+              {/* Product Scan section */}
+              <section className="space-y-3 border-t border-[#1e1e24] pt-4">
+                <h2 className="text-[10px] font-black text-[#3a3a4a] uppercase tracking-[0.2em] flex items-center gap-1.5">
+                  <Search size={10} className="text-[#c8f135]" /> Product Scan
+                </h2>
+                <button
+                  onClick={analyzeProduct}
+                  disabled={isAnalyzing || !productImg}
+                  className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                    isAnalyzing
+                      ? 'bg-white/5 text-white/20 cursor-not-allowed'
+                      : !productImg
+                      ? 'bg-white/5 text-white/10 cursor-not-allowed border border-white/5'
+                      : 'bg-[#c8f135]/15 border border-[#c8f135]/30 text-[#c8f135] hover:bg-[#c8f135] hover:text-black'
+                  }`}
+                >
+                  {isAnalyzing ? (
+                    <><Loader2 size={10} className="animate-spin" /> Scanning…</>
+                  ) : (
+                    <><Search size={10} /> {productAnalysis ? 'Re-Scan Product' : 'Scan Product'}</>
+                  )}
+                </button>
+
+                {/* Description result */}
+                {productAnalysis && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                    className="space-y-2.5"
+                  >
+                    {productAnalysis.productName && (
+                      <p className="text-[10px] font-black text-white tracking-wide leading-tight">{productAnalysis.productName}</p>
+                    )}
+                    {productAnalysis.description && (
+                      <p className="text-[8px] text-white/40 font-mono leading-relaxed line-clamp-4">{productAnalysis.description}</p>
+                    )}
+                    {productAnalysis.keyBenefits && productAnalysis.keyBenefits.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {productAnalysis.keyBenefits.slice(0, 4).map((b, i) => (
+                          <span key={i} className="px-1.5 py-0.5 rounded-md bg-[#c8f135]/10 border border-[#c8f135]/20 text-[7px] font-black text-[#c8f135] uppercase tracking-widest leading-tight">{b}</span>
+                        ))}
+                      </div>
+                    )}
+                    {productAnalysis.targetAudience && (
+                      <p className="text-[7px] text-white/25 font-mono uppercase tracking-widest">
+                        <span className="text-white/40">For: </span>{productAnalysis.targetAudience}
+                      </p>
+                    )}
+                  </motion.div>
+                )}
+
+                {!productImg && (
+                   <p className="text-[7px] text-white/20 font-mono uppercase tracking-widest text-center">Upload a product image first</p>
+                )}
+              </section>
+
               {/* ── Reference Video (Motion Placeholder) ───────────────────────── */}
               <section className="space-y-2 border-t border-[#1e1e24] pt-4">
                 <h2 className="text-[10px] font-black text-[#3a3a4a] uppercase tracking-[0.2em] flex items-center gap-1.5">
@@ -731,61 +786,6 @@ export default function LeftSidebar() {
                 )}
               </section>
 
-              {/* Product Scan section */}
-              <section className="space-y-3 border-t border-[#1e1e24] pt-4">
-                <h2 className="text-[10px] font-black text-[#3a3a4a] uppercase tracking-[0.2em] flex items-center gap-1.5">
-                  <Search size={10} className="text-[#c8f135]" /> Product Scan
-                </h2>
-                <button
-                  onClick={analyzeProduct}
-                  disabled={isAnalyzing || !productImg}
-                  className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
-                    isAnalyzing
-                      ? 'bg-white/5 text-white/20 cursor-not-allowed'
-                      : !productImg
-                      ? 'bg-white/5 text-white/10 cursor-not-allowed border border-white/5'
-                      : 'bg-[#c8f135]/15 border border-[#c8f135]/30 text-[#c8f135] hover:bg-[#c8f135] hover:text-black'
-                  }`}
-                >
-                  {isAnalyzing ? (
-                    <><Loader2 size={10} className="animate-spin" /> Scanning…</>
-                  ) : (
-                    <><Search size={10} /> {productAnalysis ? 'Re-Scan Product' : 'Scan Product'}</>
-                  )}
-                </button>
-
-                {/* Description result */}
-                {productAnalysis && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                    className="space-y-2.5"
-                  >
-                    {productAnalysis.productName && (
-                      <p className="text-[10px] font-black text-white tracking-wide leading-tight">{productAnalysis.productName}</p>
-                    )}
-                    {productAnalysis.description && (
-                      <p className="text-[8px] text-white/40 font-mono leading-relaxed line-clamp-4">{productAnalysis.description}</p>
-                    )}
-                    {productAnalysis.keyBenefits && productAnalysis.keyBenefits.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {productAnalysis.keyBenefits.slice(0, 4).map((b, i) => (
-                          <span key={i} className="px-1.5 py-0.5 rounded-md bg-[#c8f135]/10 border border-[#c8f135]/20 text-[7px] font-black text-[#c8f135] uppercase tracking-widest leading-tight">{b}</span>
-                        ))}
-                      </div>
-                    )}
-                    {productAnalysis.targetAudience && (
-                      <p className="text-[7px] text-white/25 font-mono uppercase tracking-widest">
-                        <span className="text-white/40">For: </span>{productAnalysis.targetAudience}
-                      </p>
-                    )}
-                  </motion.div>
-                )}
-
-                {!productImg && (
-                   <p className="text-[7px] text-white/20 font-mono uppercase tracking-widest text-center">Upload a product image first</p>
-                )}
-              </section>
-
 
 
               {/* Voice Sample Upload — UGC */}
@@ -867,30 +867,83 @@ export default function LeftSidebar() {
                 )}
               </section>
 
-              {/* Reference Video — only in video mode */}
-              {leftPanelMode === 'video' && <section className="space-y-2 border-t border-[#1e1e24] pt-4">
-                <h2 className="text-[10px] font-black text-[#3a3a4a] uppercase tracking-[0.2em]">Reference Video</h2>
-                <div className="relative group h-12 bg-[#111113] border border-[#1e1e24] rounded-xl overflow-hidden cursor-pointer hover:border-[#c8f135]/40 transition-colors flex items-center justify-center">
-                  <input type="file" accept="video/*" onChange={handleVideoUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                  {sourceVideo ? (
-                    <>
-                      <video src={resolveUrl(sourceVideo.url)} className="w-full h-full object-cover opacity-50" />
-                      <div className="absolute inset-0 flex items-center justify-center"><Play size={16} className="text-white/60" /></div>
-                    </>
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-[#2a2a3a] group-hover:text-[#c8f135]/60 transition-colors">
-                      <Video size={14} strokeWidth={1.5} />
-                      <span className="text-[7px] font-black uppercase tracking-widest text-[#555]">Upload Reference Video</span>
-                    </div>
+              {/* Reference Video — UGC Viral Concept Clone & Script Transcriber */}
+              {leftPanelMode === 'video' && (
+                <section className="space-y-2.5 border-t border-[#1e1e24] pt-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-[10px] font-black text-white/70 uppercase tracking-[0.2em] flex items-center gap-1.5">
+                      <Video size={11} className="text-[#c8f135]" /> Reference Video
+                    </h2>
+                    <span className="text-[7px] font-mono font-bold uppercase tracking-wider text-[#c8f135] bg-[#c8f135]/10 px-1.5 py-0.5 rounded border border-[#c8f135]/20">
+                      Concept Cloner
+                    </span>
+                  </div>
+
+                  {/* Feature Pills */}
+                  <div className="flex flex-wrap gap-1">
+                    <span className="text-[7px] font-mono text-white/50 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-md">
+                      📜 Script Transcribing
+                    </span>
+                    <span className="text-[7px] font-mono text-white/50 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-md">
+                      🎬 Action Extraction
+                    </span>
+                    <span className="text-[7px] font-mono text-[#c8f135]/80 bg-[#c8f135]/5 border border-[#c8f135]/20 px-1.5 py-0.5 rounded-md">
+                      ✨ Viral Concept Clone
+                    </span>
+                  </div>
+
+                  <p className="text-[7.5px] font-mono text-white/30 uppercase tracking-widest leading-relaxed">
+                    Upload a viral video to transcribe script, extract character actions &amp; build remix montage.
+                  </p>
+
+                  {/* Larger Upload Drop Zone */}
+                  <div className="relative group h-24 bg-[#111113] border border-dashed border-[#2a2a35] hover:border-[#c8f135]/50 rounded-xl overflow-hidden cursor-pointer transition-all flex flex-col items-center justify-center p-2 shadow-inner">
+                    <input 
+                      type="file" 
+                      accept="video/*" 
+                      onChange={handleVideoUpload} 
+                      className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                    />
+                    {sourceVideo ? (
+                      <>
+                        <video src={resolveUrl(sourceVideo.url)} className="w-full h-full object-cover opacity-60 rounded-lg" />
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                          <Play size={20} className="text-[#c8f135] drop-shadow-md" />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 text-[#444] group-hover:text-[#c8f135]/80 transition-colors">
+                        <Video size={20} strokeWidth={1.5} className="text-white/30 group-hover:text-[#c8f135]" />
+                        <span className="text-[8px] font-black uppercase tracking-widest text-white/60 group-hover:text-white">
+                          Upload UGC Reference Video
+                        </span>
+                        <span className="text-[6.5px] font-mono text-white/20 uppercase tracking-wider">
+                          MP4 / MOV / WEBM · UP TO 30S
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {sourceVideo && (
+                    <button 
+                      onClick={analyzeVideo} 
+                      disabled={isAnalyzingVideo} 
+                      className={`w-full py-2.5 rounded-xl text-[8.5px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer ${
+                        isAnalyzingVideo 
+                          ? 'bg-white/5 border border-white/5 text-white/30 cursor-not-allowed' 
+                          : 'bg-[#c8f135]/15 border border-[#c8f135]/50 text-[#c8f135] hover:bg-[#c8f135]/25 hover:border-[#c8f135] hover:shadow-[0_0_15px_rgba(200,241,53,0.2)]'
+                      }`}
+                    >
+                      {isAnalyzingVideo ? (
+                        <><Loader2 size={10} className="animate-spin" /><span>{analysisProgress || 'Analyzing Video…'}</span></>
+                      ) : (
+                        <><Sparkles size={10} /><span>Transcribe Script &amp; Clone Concept</span></>
+                      )}
+                    </button>
                   )}
-                </div>
-                {sourceVideo && (
-                  <button onClick={analyzeVideo} disabled={isAnalyzingVideo} className={`w-full py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${isAnalyzingVideo ? 'bg-white/5 text-white/20' : 'bg-white/5 border border-white/10 text-white/50 hover:bg-white/10'}`}>
-                    {isAnalyzingVideo ? <><Loader2 size={10} className="animate-spin" />{analysisProgress || 'Analyzing...'}</> : <><Sparkles size={10} />Analyze Video</>}
-                  </button>
-                )}
-                <MontagePanel />
-              </section>}
+                  <MontagePanel />
+                </section>
+              )}
 
               {/* Scene Templates shortcut */}
               <button onClick={() => setShowTemplates(true)} className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-dashed border-[#1e1e24] text-[#3a3a4a] text-[8px] font-black uppercase tracking-widest hover:border-[#c8f135]/40 hover:text-[#c8f135]/60 transition-all">
@@ -993,24 +1046,38 @@ export default function LeftSidebar() {
                   onChange={e => setSelectedSceneStyle(e.target.value)}
                   className="w-full bg-[#111113] border border-[#1e1e24] hover:border-[#c8f135]/30 rounded-lg px-2.5 py-1.5 text-[8px] font-black uppercase tracking-widest text-white/70 hover:text-white cursor-pointer transition-all outline-none appearance-none"
                 >
-                  <optgroup label="── Talking">
+                  <optgroup label="── Talking" className="bg-[#0c0c0c] text-white/90">
                     <option value="normal_talking">🎙️ Normal Talking</option>
                     <option value="walk_talk">🚶 Walk &amp; Talk</option>
+                    <option value="street_interview">🎤 Street Interview</option>
                     <option value="reaction_shot">😲 Reaction Shot</option>
                     <option value="mirror_selfie">🪞 Mirror Selfie</option>
+                    <option value="car_vlog">🚗 Car Vlog</option>
+                    <option value="grwm_talk">💄 GRWM Talking</option>
                   </optgroup>
-                  <optgroup label="── Camera Cuts">
+                  <optgroup label="── Camera Cuts" className="bg-[#0c0c0c] text-white/90">
                     <option value="fast_cut">✂️ Fast Cut</option>
                     <option value="dramatic_zoom">🔍 Dramatic Zoom</option>
                     <option value="pov_shot">👆 POV Shot</option>
+                    <option value="whip_pan">🌀 Whip Pan</option>
+                    <option value="360_orbit">🔄 360° Orbit</option>
                   </optgroup>
-                  <optgroup label="── Product Focus">
+                  <optgroup label="── Product Focus" className="bg-[#0c0c0c] text-white/90">
                     <option value="cinematic_b_roll">🎥 Cinematic B-Roll</option>
                     <option value="close_up_detail">🔬 Close-Up Detail</option>
                     <option value="unboxing">📦 Unboxing</option>
                     <option value="before_after">🔄 Before &amp; After</option>
+                    <option value="hands_in_frame">🤲 Hands-on Demo</option>
+                    <option value="floating_hero">✨ Floating Hero</option>
                   </optgroup>
-                  <optgroup label="── Educational">
+                  <optgroup label="── Fashion &amp; Styling" className="bg-[#0c0c0c] text-white/90">
+                    <option value="runway_walk">👠 Runway / OOTD Walk</option>
+                    <option value="outfit_change_transition">✨ Snap Outfit Change</option>
+                    <option value="fabric_macro">🧶 Fabric Detail Macro</option>
+                    <option value="mirror_outfit_check">🪞 Mirror Fit Check</option>
+                    <option value="editorial_pose">📸 Editorial Lookbook</option>
+                  </optgroup>
+                  <optgroup label="── Educational" className="bg-[#0c0c0c] text-white/90">
                     <option value="tutorial_step">🎓 Tutorial Step</option>
                     <option value="dynamic_action">⚡ Dynamic Action</option>
                   </optgroup>

@@ -233,7 +233,7 @@ export function useUGCGallery(currentUserId: string) {
             type: (a.type === 'video' ? 'video' : 'image') as 'image' | 'video',
             url: a.url,
             prompt: a.prompt || '',
-            projectId: a.projectId || 'default',
+            projectId: a.projectId || a.project_id || a.metadata?.projectId || a.metadata?.project_id || a.metadata?.folder || 'default',
             createdAt: a.created_at
               ? new Date(a.created_at).getTime()
               : (a.id?.startsWith?.('local_') ? parseInt(a.id.split('_')[1]) : parseInt(a.id) || Date.now()),
@@ -261,7 +261,11 @@ export function useUGCGallery(currentUserId: string) {
   // prepending a duplicate.
   const addToGallery = useCallback((item: GalleryItem) => {
     setGallery(prev => {
-      const itemWithTime: GalleryItem = { ...item, createdAt: item.createdAt || Date.now(), projectId: activeProjectId };
+      const itemWithTime: GalleryItem = {
+        ...item,
+        createdAt: item.createdAt || Date.now(),
+        projectId: item.projectId || activeProjectId || 'default'
+      };
       const existingIdx = prev.findIndex(i => !i.loading && i.url && getNormalizedPath(i.url) === getNormalizedPath(item.url));
       let next: GalleryItem[];
       if (existingIdx !== -1) {
@@ -290,14 +294,23 @@ export function useUGCGallery(currentUserId: string) {
   }, [currentUserId]);
 
   const visibleGallery = useMemo(() => {
-    return gallery.filter(item => !item.projectId || item.projectId === activeProjectId);
+    if (!activeProjectId || activeProjectId === 'default') {
+      return gallery;
+    }
+    return gallery.filter(item => {
+      const itemProj = item.projectId || 'default';
+      return itemProj === activeProjectId;
+    });
   }, [gallery, activeProjectId]);
+
+  const deleteProject = useAppStore(state => state.deleteProject);
 
   return {
     projects,
     setProjects,
     activeProjectId,
     setActiveProjectId,
+    deleteProject,
     gallery: visibleGallery,
     rawGallery: gallery,
     setGallery,

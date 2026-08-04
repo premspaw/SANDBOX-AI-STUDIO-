@@ -137,6 +137,7 @@ export interface BuildScenePromptParams {
   sceneDurationSec: number;   // Duration of this clip in seconds (e.g. 10)
   totalDurationSec: number;   // Full stitched video duration (e.g. 30)
   productDetails: string;
+  productAnalysis?: string;
   category: string;           // from detectUgcCategory
   hasCharacterRef: boolean;
   hasProductRef: boolean;
@@ -148,6 +149,7 @@ export interface BuildScenePromptParams {
   firstFrameRefTag?: string;  // e.g. "<IMAGE_REF_3>" (the scene's custom ref image)
   isBRollMontage?: boolean;
   bRollType?: string;
+  multiShotPreset?: string;
 }
 
 export function buildScenePrompt(p: BuildScenePromptParams): string {
@@ -155,6 +157,18 @@ export function buildScenePrompt(p: BuildScenePromptParams): string {
 
   // Reference declarations — natural language, no jargon
   const refLines: string[] = [];
+
+  if (p.multiShotPreset) {
+    refLines.push(
+      `- DIRECTOR SHOT TEMPLATE & PRESET: Choreograph this scene following the "${p.multiShotPreset}" visual direction, camera pacing, and shot style.`
+    );
+  }
+
+  if (p.productAnalysis) {
+    refLines.push(
+      `- PRODUCT SCAN DNA ANALYSIS: Incorporate these analyzed product features, packaging details, and key ingredients into the scene visuals: ${p.productAnalysis}`
+    );
+  }
 
   if (p.hasFirstFrame && p.firstFrameRefTag) {
     refLines.push(
@@ -201,56 +215,47 @@ export function buildScenePrompt(p: BuildScenePromptParams): string {
       : `This is a ${p.totalDurationSec}-second video.`;
 
   if (p.isBRollMontage) {
-    return `You are an award-winning commercial director. Before generating the timeline, silently create a visual storyboard. Every shot must answer one question: What does this shot sell? (Beauty? Trust? Luxury? Comfort? Transformation? Convenience? Flavor? Confidence?). Never generate filler shots.
+    return `You are an award-winning commercial director specializing in viral high-converting UGC B-Roll montages.
 
-Create a ${p.sceneDurationSec}-second ultra-realistic vertical UGC video. ${sceneContext}
+Create a ${p.sceneDurationSec}-second ultra-realistic vertical UGC B-Roll video. ${sceneContext}
 
 ${refLines.join('\n')}
 
-Category focus: B-Roll / Product Montage. ${p.bRollType ? `Specifically focus on: **${p.bRollType}**.` : ''}
+Category focus: B-Roll / Commercial Product Montage. ${p.bRollType ? `Specifically focus on: **${p.bRollType}**.` : ''}
 
-IMPORTANT: This is a cinematic B-roll / Montage scene. NO talking head. NO spoken dialogue. The character must NOT speak to the camera. Use any provided script text ("${p.dialog}") purely as thematic inspiration for the visual actions.
+CRITICAL DIRECTIVES FOR THIS B-ROLL SCENE:
+1. NO TALKING HEAD / NO DIALOGUE LIP-SYNC: The creator must NOT speak to the camera. The scene is 100% visual cinematic action, product focus, and aesthetic movement.
+2. MULTI-REFERENCE FRAME INTEGRATION:
+   - Starting Frame (${p.firstFrameRefTag || '<IMAGE_REF_0>'}): Animate starting directly from the static visual composition, character posture, and room lighting of the scene starting frame (${p.firstFrameRefTag || '<IMAGE_REF_0>'}).
+   - Product Reference: Maintain 100% exact product packaging, labeling, color, texture, and branding from the product reference image.
+   - Stage / Location Reference: Keep background room setting, lighting, and environment consistent.
+   - Character Reference: Maintain identical face identity, skin tone, hair, and clothing style.
+
+3. CATEGORY SPECIFIC B-ROLL CHOREOGRAPHY:
+   - FASHION & APPAREL: Close-up macro on fabric weave, stitching details, material flexibility, silk sheen, outfit drape in motion, creator adjusting collar/sleeves, full-length fit check.
+   - JEWELRY & ACCESSORIES: Micro-zoom on shimmering metal and gemstones, creator's fingers gently touching or fastening necklace/earrings/watch, rack focus from soft face to sharp jewelry detail.
+   - PRODUCT & PACKAGING: Macro texture shot, hero product rotation, hands opening box/cap, finger dragging across texture, liquid drop or mist spray.
+   - FOOD, DRINK & SKINCARE: Droplet spreading, steam rising, cream/serum application on skin, rich sensory close-up.
 
 UGC DIRECTOR BRIEF & PRODUCT ANALYSIS:
-Extract the following from the provided product details ("${p.productDetails}"):
-• Product type, Material, Color, Texture, Key ingredients, Packaging, Size, Intended use, Premium details, Target emotion.
-Every shot must intentionally highlight one of these attributes.
-Before generating the shots, first infer the product category, the user's intent, and the primary selling point. Every B-roll shot must visually communicate a benefit, feature, emotion, or transformation.
+Product details: "${p.productDetails}"
+${p.productAnalysis ? `Analyzed Product DNA: ${p.productAnalysis}` : ''}
 
-EMOTIONAL DIRECTION:
-Choose the emotional visual language according to the product category:
-- Luxury → elegant, smooth movements
-- Food → delicious sensory moments
-- Skincare → soft, calming, clean shots
-- Fitness → energetic, powerful movements
-- Technology → futuristic precision
-- Fashion → stylish, confident movement
+THE HOOK SHOT (First 2 seconds):
+Immediate visual hook: Extreme macro texture, fast hand interaction, product entering frame, reflection reveal, snap focus, water splash, fabric whip, or object movement.
 
-THE HOOK SHOT:
-The first 2 seconds must immediately capture attention. Use openings like: Extreme macro, Fast hand movement, Product entering frame, Camera hidden behind object, Reflection reveal, Door opening, Steam reveal, Snap focus, Water splash, Fabric whip, Object drop, or Natural transition.
-
-SHOT VARIETY & EDITING RHYTHM:
-Alternate between: Wide, Medium, Close, Extreme Close, Action, Reaction, Environment, Macro. Never repeat the same framing twice.
-Possible shot types to use: Macro Texture, Hero Product Shot, Rack Focus, Hand Interaction, Over Shoulder, Top Down, Side Tracking, Reflection Shot, Silhouette, Product Rotation, Push In, Pull Back, Reveal Shot, Motion Detail, Lifestyle Wide, Environmental Detail, Natural POV.
-
-CAMERA LANGUAGE:
-Combine these movements: Slow Push In, Push Out, Tracking Left, Tracking Right, Handheld Follow, Orbit, Slider Motion, Static Macro, Top Down, Natural POV, Shoulder Follow, Low Angle, High Angle, Reveal Through Object.
+CAMERA MOVEMENTS:
+Use dynamic camera language: Slow Push In, Push Out, Tracking Left/Right, Handheld Follow, Orbit, Static Macro, Top Down POV, Low Angle, Reveal Shot.
 
 PRODUCT INTERACTION:
-The creator must naturally interact with the product. Do not just say "interacting". Use specific actions: Pick up, Rotate, Open, Close, Press, Peel, Pour, Spray, Swipe, Apply, Taste, Wear, Hold, Pass between hands, Place on surface, Remove cap, Button press, Slide open, Fold, Stretch, Flip, Shake, Tap, Inspect, Smell, Use naturally.
+The creator must naturally interact with the product or outfit: Pick up, Rotate, Open, Close, Press, Pour, Spray, Apply, Wear, Hold, Pass between hands, Inspect, Touch gently.
 
-CINEMATIC MICRO MOMENTS:
-Include high-end micro moments: Water droplets, Steam, Condensation, Fabric movement, Hair movement, Dust particles, Sunlight reflections, Glass reflections, Tiny splashes, Foam, Cream spreading, Oil glistening, Finger dragging, Liquid dripping, Packaging crinkle.
-
-Break this scene into sequential shots covering the full ${p.sceneDurationSec} seconds. You have complete freedom to define the timecode timestamps based on visual editing rhythm.
-
-For each shot segment:
-- Write the entire segment description as ONE unified paragraph. Blend all descriptions (camera movement, visual action, interactions, micro moments, sound effects) into one block of text.
-- Sound: rich diegetic sound effects (foley) matching the actions (e.g., lid popping, liquid pouring, fabric swishing). NO music.
+Break this scene into sequential shots covering the full ${p.sceneDurationSec} seconds with timestamp labels ([0-3s], [3-6s], etc.).
+Write each timecode segment as ONE unified, vivid block combining visual action, camera movement, product interaction, and diegetic sound effects.
 
 ${GLOBAL_UGC_STYLE_BLOCK}
 
-Return only the final prompt text, structured with your custom timecode labels. No introductory or explanatory text. Write each timecode as one continuous block.`;
+Return only the final prompt text structured with timecode labels. No introductory commentary.`;
   }
 
   return `Create a ${p.sceneDurationSec}-second ultra-realistic vertical UGC video. ${sceneContext}

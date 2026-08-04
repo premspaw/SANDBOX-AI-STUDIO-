@@ -55,11 +55,11 @@ function getWordRange(language: string, isOmni: boolean, sceneCount: number, isM
     if (isMultiShot) {
       if (isDravidian) return `Strictly 20-22 spoken words per 10-second scene (natural Dravidian pace ~2.0 words/sec — 20 min, 22 max). Total ≈ ${sceneCount * 21} words.`;
       if (isHindi)    return `Strictly 22-24 spoken words per 10-second scene (energetic Hindi pace ~2.2 words/sec — 22 min, 24 max). Total ≈ ${sceneCount * 23} words.`;
-      return               `Strictly 24-28 spoken words per 10-second scene (natural English pace ~2.6 words/sec — 24 min, 28 max). Total ≈ ${sceneCount * 26} words.`;
+      return               `Strictly 22-25 spoken words per 10-second scene (natural English pace ~2.3 words/sec — 22 min, 25 max). Total ≈ ${sceneCount * 23} words.`;
     } else {
       if (isDravidian) return `Strictly 20-22 spoken words or less per 10-second scene (natural Dravidian pace ~2.0 words/sec — 20 min, 22 max). Total ≈ ${sceneCount * 21} words.`;
-      if (isHindi)    return `Strictly 24-26 spoken words or less per 10-second scene (energetic Hindi pace ~2.5 words/sec — 24 min, 26 max). Total ≈ ${sceneCount * 25} words.`;
-      return               `Strictly 28-30 spoken words or less per 10-second scene (natural English pace ~2.8 words/sec — 28 min, 30 max). Total ≈ ${sceneCount * 29} words.`;
+      if (isHindi)    return `Strictly 22-24 spoken words or less per 10-second scene (energetic Hindi pace ~2.3 words/sec — 22 min, 24 max). Total ≈ ${sceneCount * 23} words.`;
+      return               `Strictly 22-25 spoken words per 10-second scene (natural English pace ~2.4 words/sec — 22 min, 25 max). Total ≈ ${sceneCount * 23} words.`;
     }
   } else {
     // 8-second scenes

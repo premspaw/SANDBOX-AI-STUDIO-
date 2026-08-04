@@ -44,7 +44,7 @@ async function testImageGen(modelName) {
 
 async function runTests() {
     await testImageGen('gemini-2.5-flash-image');
-    await testImageGen('gemini-3.1-flash-image-preview');
+    await testImageGen('gemini-3.1-flash-image');
     await testImageGen('gemini-3-pro-image-preview');
 }
 

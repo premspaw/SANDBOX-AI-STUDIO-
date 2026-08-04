@@ -55,6 +55,7 @@ const uploadToSupabase = async (blob: Blob, type: 'image' | 'video', promptText:
 export const MontagePanel: React.FC = () => {
   const {
     currentUserId,
+    activeProjectId,
     isAdmin,
     isGlobalAdmin,
     activeTab,
@@ -110,7 +111,8 @@ export const MontagePanel: React.FC = () => {
     generateMontageReferenceImage,
     showVideoMontageOptions: showMontageOptions,
     setShowVideoMontageOptions: setShowMontageOptions,
-    videoGenMode
+    videoGenMode,
+    setVideoGenMode
   } = useUGC();
 
   const { spend, refund } = useShorts();
@@ -155,7 +157,14 @@ export const MontagePanel: React.FC = () => {
 
       if (montageGeneratedImg) {
         setVideoProgressMsg('Loading Generated Reference...');
-        imageMime = montageGeneratedImg.split(';')[0].split(':')[1] || 'image/png';
+        if (montageGeneratedImg.startsWith('data:')) {
+          const match = montageGeneratedImg.match(/^data:([^;]+);base64,/);
+          imageMime = match ? match[1] : 'image/jpeg';
+        } else if (montageGeneratedImg.toLowerCase().includes('.png')) {
+          imageMime = 'image/png';
+        } else {
+          imageMime = 'image/jpeg';
+        }
         const imgBlob = await fetchImageAsBlob(montageGeneratedImg);
         imageBase64 = await resizeImage(imgBlob);
       } else if (activeProductImg) {
@@ -164,7 +173,7 @@ export const MontagePanel: React.FC = () => {
       }
 
       if (videoGenMode === 'omni-flash') {
-        setVideoProgressMsg('Submitting to Gemini Omni Flash...');
+        setVideoProgressMsg('✨ Crafting your viral performance video...');
         let imageToSend = '';
         if (imageBase64) {
           imageToSend = `data:${imageMime};base64,${imageBase64}`;
@@ -210,57 +219,81 @@ export const MontagePanel: React.FC = () => {
         return;
       }
 
-      setVideoProgressMsg(`Submitting to Veo-3...`);
+      const selectedVeoModel = (videoGenMode as string) === 'veo_standard' ? 'veo_standard' : 'veo_fast';
+      const engineTitle = selectedVeoModel === 'veo_standard' ? 'Veo 3 Standard' : 'Veo 3 Fast';
+      setIsGeneratingVideo(true);
+      setVideoProgressMsg(`✨ Bringing your scene to life...`);
 
       if (isAdmin || isGlobalAdmin) {
-        setVideoProgressMsg('Submitting to Vertex AI (Veo 3.1)...');
         const headers: any = { 'Content-Type': 'application/json' };
         const customKey = getApiKey();
         if (customKey) headers['x-admin-trial-key'] = customKey;
 
         const imageToSend = imageBase64 ? `data:${imageMime};base64,${imageBase64}` : undefined;
 
-        const resp = await fetch(getApiUrl('/api/ugc/video'), {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            image: imageToSend,
-            script: option.prompt,
-            userId: currentUserId,
-            duration: duration,
-            resolution: '720p',
-            model: 'veo_fast',
-            aspect_ratio: aspectRatio === '1:1' ? '9:16' : aspectRatio
-          })
-        });
+        // Progress message cycler while waiting for API
+        const veoMsgs = [
+          `✨ Bringing your scene to life...`,
+          `🎬 Directing character & camera motion...`,
+          `🔥 Rendering high-converting visuals...`,
+          `✨ Polishing lighting & color depth...`,
+          `🚀 Finalizing your cinematic video clip...`
+        ];
+        let veoStep = 0;
+        const progressTimer = setInterval(() => {
+          veoStep = (veoStep + 1) % veoMsgs.length;
+          setVideoProgressMsg(veoMsgs[veoStep]);
+        }, 3500);
 
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || 'Vertex AI Montage generation failed.');
-        if (!data.url) throw new Error('Vertex AI returned no video URL.');
+        try {
+          const resp = await fetch(getApiUrl('/api/ugc/video'), {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              image: imageToSend,
+              script: option.prompt,
+              userId: currentUserId,
+              duration: duration,
+              resolution: '720p',
+              model: selectedVeoModel,
+              aspect_ratio: aspectRatio === '1:1' ? '9:16' : aspectRatio,
+              projectId: activeProjectId || 'default',
+              folder: activeProjectId || 'default'
+            })
+          });
 
-        const tempId = Date.now().toString();
-        const newItemId = Math.random().toString(36).substr(2, 9);
-        const newItem = {
-          id: newItemId,
-          type: 'video' as const,
-          url: data.url,
-          start: 0,
-          end: duration,
-          duration: duration
-        };
-        addToTimeline(newItem);
-        addToGallery({
-          id: tempId,
-          type: 'video',
-          url: data.url,
-          prompt: option.prompt.substring(0, 1000)
-        });
-        showToast(`${option.title} montage ready via Vertex AI!`, 'success');
-        setShowMontageOptions(false);
-        setMontageGeneratedImg('');
-        setIsGeneratingVideo(false);
-        setVideoProgressMsg('');
-        return;
+          clearInterval(progressTimer);
+          const data = await resp.json();
+          if (!resp.ok) throw new Error(data.error || `${engineTitle} Montage generation failed.`);
+          if (!data.url) throw new Error(`${engineTitle} returned no video URL.`);
+
+          const tempId = Date.now().toString();
+          const newItemId = Math.random().toString(36).substr(2, 9);
+          const newItem = {
+            id: newItemId,
+            type: 'video' as const,
+            url: data.url,
+            start: 0,
+            end: duration,
+            duration: duration
+          };
+          addToTimeline(newItem);
+          addToGallery({
+            id: tempId,
+            type: 'video',
+            url: data.url,
+            prompt: option.prompt.substring(0, 1000)
+          });
+          showToast(`${option.title} montage ready via ${engineTitle}!`, 'success');
+          setShowMontageOptions(false);
+          setMontageGeneratedImg('');
+          setIsGeneratingVideo(false);
+          setVideoProgressMsg('');
+          return;
+        } catch (veoErr) {
+          clearInterval(progressTimer);
+          throw veoErr;
+        }
       }
       let operation = await ai.models.generateVideos({
         model: 'veo-3.1-fast-generate-preview',
@@ -393,9 +426,26 @@ export const MontagePanel: React.FC = () => {
             </div>
           ) : montageOptions.length > 0 ? (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Film size={12} className="text-[#c8f135]" />
-                <span className="text-[10px] font-black text-white uppercase tracking-widest">Select a Clip to Review</span>
+              <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+                <div className="flex items-center gap-1.5">
+                  <Film size={12} className="text-[#c8f135]" />
+                  <span className="text-[10px] font-black text-white uppercase tracking-widest">Select a Clip to Review</span>
+                </div>
+                
+                {/* Video Engine Selector Pill */}
+                <div className="relative shrink-0">
+                  <select
+                    value={videoGenMode || 'omni-flash'}
+                    onChange={e => setVideoGenMode(e.target.value as any)}
+                    className="appearance-none bg-[#c8f135]/10 border border-[#c8f135]/30 hover:border-[#c8f135]/60 rounded-lg pl-6 pr-5 py-1 text-[7.5px] font-mono text-[#c8f135] uppercase tracking-wider cursor-pointer transition-all focus:outline-none"
+                  >
+                    <option value="omni-flash" className="bg-[#0c0c0c] text-white">✨ Gemini Omni Flash</option>
+                    <option value="veo_fast" className="bg-[#0c0c0c] text-white">⚡ Veo 3 Fast</option>
+                    <option value="veo_standard" className="bg-[#0c0c0c] text-white">🎬 Veo 3 Standard</option>
+                  </select>
+                  <Sparkles size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
+                  <ChevronDown size={7} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[#c8f135]/60 pointer-events-none" />
+                </div>
               </div>
               <div className="flex flex-col gap-1.5">
                 {montageOptions.map((option, optI) => (
@@ -582,6 +632,20 @@ export const MontagePanel: React.FC = () => {
                       <p className="text-[7px] font-mono text-gray-600 uppercase tracking-wider mb-2">
                         {montageAudioEnabled ? '🔊 Audio ON' : '🔇 Muted'} &nbsp;·&nbsp; {montageDuration}s clip (⚡ {getCurrentCost(true)})
                       </p>
+
+                      {/* Active video generation loading card */}
+                      {isGeneratingVideo && (
+                        <div className="mb-2.5 p-2.5 bg-[#c8f135]/10 border border-[#c8f135]/30 rounded-lg flex items-center gap-2.5 animate-in fade-in duration-300">
+                          <Loader2 size={14} className="animate-spin text-[#c8f135] shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[8.5px] font-black uppercase tracking-widest text-[#c8f135]">Generating Performance Video</p>
+                              <span className="text-[7px] font-mono text-white/50 uppercase">{(videoGenMode as string) === 'omni-flash' ? '✨ Omni Flash' : (videoGenMode as string) === 'veo_standard' ? '🎬 Veo 3 Standard' : '⚡ Veo 3 Fast'}</span>
+                            </div>
+                            <p className="text-[7.5px] font-mono text-white/80 uppercase tracking-tight truncate mt-0.5">{videoProgressMsg || 'Submitting to video generation engine...'}</p>
+                          </div>
+                        </div>
+                      )}
 
                       <button
                         type="button"

@@ -39,19 +39,54 @@ async function stripAudioFromBuffer(inputBuffer) {
     }
 }
 
+const ALLOWED_MIME_TYPES = new Set([
+    'image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif', 
+    'image/gif', 'image/bmp', 'image/tiff', 'video/mp4', 'video/webm', 'video/quicktime', 'audio/mp3', 'audio/wav', 'audio/mpeg'
+]);
+
+function sanitizeMime(mime, defaultMime = 'image/jpeg') {
+    if (!mime || typeof mime !== 'string') return defaultMime;
+    let cleaned = mime.split(';')[0].trim().toLowerCase();
+    if (cleaned === 'image/jpg') cleaned = 'image/jpeg';
+    
+    if (ALLOWED_MIME_TYPES.has(cleaned)) {
+        return cleaned;
+    }
+    
+    if (mime.endsWith('.png')) return 'image/png';
+    if (mime.endsWith('.jpg') || mime.endsWith('.jpeg')) return 'image/jpeg';
+    if (mime.endsWith('.webp')) return 'image/webp';
+    if (mime.endsWith('.gif')) return 'image/gif';
+    if (mime.endsWith('.mp4')) return 'video/mp4';
+    if (mime.endsWith('.webm')) return 'video/webm';
+    
+    return defaultMime;
+}
+
 async function resolveMediaToBase64(mediaUrl) {
     if (!mediaUrl) return null;
+    if (typeof mediaUrl !== 'string') {
+        if (typeof mediaUrl === 'object' && mediaUrl.url) {
+            mediaUrl = mediaUrl.url;
+        } else {
+            return null;
+        }
+    }
+    mediaUrl = mediaUrl.trim();
     let data = '';
-    let mimeType = 'application/octet-stream';
+    let mimeType = 'image/jpeg';
 
     if (mediaUrl.startsWith('data:')) {
         const match = mediaUrl.match(/^data:([^;]+);base64,/);
         if (match) mimeType = match[1];
-        data = mediaUrl.split(',')[1];
-    } else if (mediaUrl.startsWith('http') || mediaUrl.startsWith('//')) {
-        const fullUrl = mediaUrl.startsWith('//') ? `https:${mediaUrl}` : mediaUrl;
+        data = mediaUrl.split(',')[1] || '';
+    } else if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://') || mediaUrl.startsWith('//') || mediaUrl.startsWith('/')) {
+        let fullUrl = mediaUrl;
+        if (mediaUrl.startsWith('//')) fullUrl = `https:${mediaUrl}`;
+        else if (mediaUrl.startsWith('/')) fullUrl = `https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev${mediaUrl}`;
+        
         const resp = await fetch(fullUrl);
-        if (!resp.ok) throw new Error(`Failed to fetch media from URL: ${resp.statusText}`);
+        if (!resp.ok) throw new Error(`Failed to fetch media from URL (${resp.status}): ${resp.statusText}`);
         const buffer = await resp.arrayBuffer();
         data = Buffer.from(buffer).toString('base64');
         const contentType = resp.headers.get('content-type');
@@ -59,14 +94,13 @@ async function resolveMediaToBase64(mediaUrl) {
     } else {
         data = mediaUrl; // Assume raw base64
     }
-    return { data, mimeType };
-}
 
-function sanitizeMime(mime, defaultMime) {
-    if (!mime || mime === 'application/octet-stream') {
-        return defaultMime;
-    }
-    return mime;
+    if (mediaUrl.toLowerCase().includes('.png')) mimeType = 'image/png';
+    else if (mediaUrl.toLowerCase().includes('.jpg') || mediaUrl.toLowerCase().includes('.jpeg')) mimeType = 'image/jpeg';
+    else if (mediaUrl.toLowerCase().includes('.webp')) mimeType = 'image/webp';
+    else if (mediaUrl.toLowerCase().includes('.mp4')) mimeType = 'video/mp4';
+
+    return { data, mimeType: sanitizeMime(mimeType, 'image/jpeg') };
 }
 
 async function uploadToGoogleFileApi(base64Data, mimeType, apiKey, token) {
@@ -368,8 +402,68 @@ export default function createRouter(deps) {
                 }
             }
 
+async function trimVideoBufferToMaxDuration(inputBuffer, maxDurationSec = 10) {
+    const tempDir = os.tmpdir();
+    const uniqueId = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const inputPath = path.join(tempDir, `omni_ref_in_${uniqueId}.mp4`);
+    const outputPath = path.join(tempDir, `omni_ref_trimmed_${uniqueId}.mp4`);
+    
+    await fs.promises.writeFile(inputPath, inputBuffer);
+    
+    try {
+        const duration = await new Promise((resolve) => {
+            ffmpeg.ffprobe(inputPath, (err, metadata) => {
+                if (err || !metadata?.format?.duration) {
+                    resolve(null);
+                } else {
+                    resolve(metadata.format.duration);
+                }
+            });
+        });
+
+        if (duration && duration <= maxDurationSec) {
+            console.log(`[OMNI-REF-VIDEO] Duration is ${duration.toFixed(1)}s (<= ${maxDurationSec}s). No trimming needed.`);
+            await fs.promises.unlink(inputPath).catch(() => {});
+            return inputBuffer;
+        }
+
+        console.log(`[OMNI-REF-VIDEO] ✂️ Reference video duration is ${duration ? duration.toFixed(1) : 'unknown'}s (> ${maxDurationSec}s). Trimming to ${maxDurationSec}s...`);
+
+        await new Promise((resolve, reject) => {
+            ffmpeg(inputPath)
+                .setStartTime(0)
+                .setDuration(maxDurationSec)
+                .outputOptions(['-c:v libx264', '-preset ultrafast', '-c:a copy'])
+                .output(outputPath)
+                .on('end', resolve)
+                .on('error', reject)
+                .run();
+        });
+
+        const trimmedBuffer = await fs.promises.readFile(outputPath);
+        await Promise.all([
+            fs.promises.unlink(inputPath).catch(() => {}),
+            fs.promises.unlink(outputPath).catch(() => {})
+        ]);
+        console.log(`[OMNI-REF-VIDEO] ✅ Trimmed reference video successfully (${trimmedBuffer.length} bytes).`);
+        return trimmedBuffer;
+    } catch (err) {
+        console.warn(`[OMNI-REF-VIDEO] Trimming failed (${err.message}). Using original buffer as fallback.`);
+        await fs.promises.unlink(inputPath).catch(() => {});
+        await fs.promises.unlink(outputPath).catch(() => {});
+        return inputBuffer;
+    }
+}
+
             async function uploadVideoReference(base64Data, mimeType) {
-                const buffer = Buffer.from(base64Data, 'base64');
+                let buffer = Buffer.from(base64Data, 'base64');
+                try {
+                    buffer = await trimVideoBufferToMaxDuration(buffer, 10);
+                } catch (trimErr) {
+                    console.warn(`[OMNI-I2V] Reference video trim check failed:`, trimErr.message);
+                }
+                const trimmedBase64 = buffer.toString('base64');
+
                 if (uploadVideoToSupabase) {
                     try {
                         console.log(`[OMNI-I2V] Uploading reference video (${buffer.length} bytes) to Cloudflare R2...`);
@@ -390,7 +484,7 @@ export default function createRouter(deps) {
                         console.warn(`[OMNI-I2V] GCS upload failed (${gcsErr.message}), falling back to Google File API...`);
                     }
                 }
-                return await uploadToGoogleFileApi(base64Data, mimeType, apiKey, token);
+                return await uploadToGoogleFileApi(trimmedBase64, mimeType, apiKey, token);
             }
 
             if (primaryImageResolved) {

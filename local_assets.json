@@ -1,5 +1,1147 @@
 [
   {
+    "id": "local_1785502701191_wklik",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785502700595.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785502700595.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "REFERENCE LOCK: Maintain the exact room layout, furniture placement, colors, materials, proportions, and architectural details from the reference image. Do not redesign, replace, remove, or reposition any furniture or decorative elements. Preserve the realtor's facial identity, hairstyle, clothing, body proportions, and speaking style consistently throughout the entire shot. CHARACTER ACTION: The realtor, with a friendly demeanor, enters the kitchen, confidently introducing each feature with natural pointing gestures, briefly looking toward the feature before returning her gaze to the camera. She gestures towards the cabinetry, then the countertops, then sweeps her hand across the U-shaped layout towards the window. CAMERA BEHAVIOR: The camera smoothly follows her movement, revealing each feature only when she gestures toward it, starting with a wide shot of the entrance to the kitchen and moving with her. Smooth handheld gimbal movement with realistic operator motion, subtle acceleration and deceleration, maintaining stable framing. ENVIRONMENT REVEAL: As the realtor moves, the camera gradually reveals the sleek cream and taupe cabinetry, gleaming black granite countertops, integrated appliances, the bright window over the sink, and the spacious U-shaped layout, highlighting the thoughtful design. LIGHTING: Preserve the lighting exactly as shown in the reference image, enhancing only the natural warmth and depth without altering the room's original mood. CONTINUITY: One continuous cinematic shot. No cuts. Consistent identity. ENDING: The camera settles into a balanced hero composition showcasing the entire kitchen as the realtor finishes her sentence with a warm smile, holding a relaxed presentation pose before the shot ends. The character says: 'Step into this beautifully designed kitchen, featuring sleek cream and taupe cabinetry with gleaming black granite countertops. Notice the integrated appliances and thoughtful under-cabinet lighting. The spacious U-shape a",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-31T12:58:21.191Z"
+  },
+  {
+    "id": "local_1785502662995_xjreq",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785502661960.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785502661960.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Kitchen, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-31T12:57:42.995Z"
+  },
+  {
+    "id": "local_1785502623169_heqee",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785502622613.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785502622613.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "Maintain the exact room layout, furniture placement, colors, materials, proportions, and architectural details from the reference image. Do not redesign, replace, remove, or reposition any furniture or decorative elements. Preserve the realtor's facial identity, hairstyle, clothing, body proportions, and speaking style consistently throughout the entire shot. The realtor stands near the entrance of the U-shaped kitchen, confidently sweeping her hand to showcase the layout, then gestures towards the sleek upper white and lower beige cabinetry, the black granite countertops, and the integrated stainless steel appliances including the gas hob, chimney, and microwave, briefly looking towards the contemporary stainless steel sink area by the window before returning her gaze to the camera. The camera smoothly follows her movement, revealing each feature only when she gestures toward it. Smooth handheld gimbal movement with realistic operator motion, subtle acceleration and deceleration, maintaining stable framing. The camera gradually reveals the room's key architectural features and premium furnishings, highlighting the glossy neutral-toned cabinetry, black granite countertops, the tiled backsplash, and the contemporary stainless steel sink area with the large window allowing natural light. Preserve the lighting exactly as shown in the reference image, enhancing only the natural warmth and depth without altering the room's original mood. One continuous cinematic shot. No cuts. Consistent identity. The character says: 'Experience this modern kitchen, featuring sleek cabinetry, rich black granite, and premium integrated appliances. Ready for your culinary creations.' The camera settles into a balanced hero composition showing the overall kitchen, with the realtor finishing her sentence with a warm smile, holding a relaxed presentation pose before the shot ends.\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is complete",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-31T12:57:03.170Z"
+  },
+  {
+    "id": "local_1785502588823_45042",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785502587483.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785502587483.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Kitchen, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-31T12:56:28.823Z"
+  },
+  {
+    "id": "local_1785424940451_37grx",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785424940074.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785424940074.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "marketing/generated",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "marketing/generated",
+      "project_id": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: make the paltform little biiger near the shiva linga  make the entire little relastc (Upscaled) - Extracted Angle 3]",
+    "engine": "gemini-3.1-flash-image",
+    "created_at": "2026-07-30T15:22:20.452Z"
+  },
+  {
+    "id": "local_1785424917964_k2tfs",
+    "name": "crop_1785424917642.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1785424917642.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "make the paltform little biiger near the shiva linga  make the entire little relastc (Upscaled) - Extracted Angle 3",
+    "engine": "NB2 Lite (2K) (Angle 3)",
+    "created_at": "2026-07-30T15:21:57.964Z"
+  },
+  {
+    "id": "local_1785424871074_tel4r",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785424870606.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785424870606.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "marketing/generated",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "marketing/generated",
+      "project_id": "marketing/generated",
+      "isGrid": true
+    },
+    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
+    "engine": "gemini-3.1-flash-image",
+    "created_at": "2026-07-30T15:21:11.074Z"
+  },
+  {
+    "id": "local_1785423788760_a8heg",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785423787588.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785423787588.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "marketing/generated",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "marketing/generated",
+      "project_id": "marketing/generated"
+    },
+    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: make the paltform little biiger near the shiva linga  make the entire little relastc]",
+    "engine": "gemini-3.1-flash-image",
+    "created_at": "2026-07-30T15:03:08.760Z"
+  },
+  {
+    "id": "local_1785423719481_5prl3",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785423719164.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785423719164.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "the paltform is not enginnered its should be natual  and no light [seed: 547119]",
+    "engine": "nano-banana-2-lite",
+    "created_at": "2026-07-30T15:01:59.481Z"
+  },
+  {
+    "id": "local_1785423588300_oer0s",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785423588012.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785423588012.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "make the paltform little biiger near the shiva linga  make the entire little relastc [seed: 115994]",
+    "engine": "nano-banana-2-lite",
+    "created_at": "2026-07-30T14:59:48.300Z"
+  },
+  {
+    "id": "local_1785423439070_s9kts",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785423438600.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785423438600.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "cave], cinematic location photography, shot on 35mm lens, realistic textures, motivated lighting with soft falloff, no crushed shadows, depth-of-field contrA colossal ancient underground cave, completely enclosed with no visible sky, no sunlight, and no direct light rays, illuminated only by subtle ambient cave bounce light, soft moisture reflections, and atmospheric darkness. The environment feels naturally dark, mysterious, and sacred.\nA long, straight, naturally formed rocky pathway extends across a bottomless abyss, leading toward a rough 400–600 sq. ft. stone platform suspended in the center of the cavern. The pathway is not engineered—its edges are chipped, cracked, uneven, weathered, and naturally carved over thousands of years. The platform is large enough for an intense cinematic fight sequence, surrounded by deadly drops on every side.\nAt the center of the platform stands an ancient black stone Shivling, aged for centuries with worn textures, subtle moss, mineral deposits, and sacred markings. From the cave ceiling directly above the Shivling, a tiny natural water drip falls continuously, one drop at a time, perfectly aligned with the center of the Shivling. The drip is delicate and sacred—not a waterfall—creating gentle ripples on the wet stone below.\nBeside the Shivling stands a tall, ancient Trishul, inspired by traditional Himalayan temple craftsmanship. The Trishul is rustic, forged metal, weathered with age, oxidized, scratched, slightly corroded, with intricate carvings, no cloth, no flags, no decorations. It appears heavy, sacred, and centuries old.\nThe cave is massive in scale, with towering rock walls far away from the platform, creating a grand sense of emptiness. Deep chasms disappear into darkness. Gigantic stalactites hang from the ceiling. The cave walls are damp with natural mineral streaks. A few thin, realistic waterfalls flow quietly down distant cave walls, disappearing into the abyss below. They are subtle environmental elements, not dominant features.\nThe atmosphere contains soft volumetric cave mist, cool humidity, floating dust particles, and faint water vapor. Wet rocks reflect tiny amounts of ambient light, emphasizing realism. Everything feels ancient, untouched, and sacred.\nCinematography: Shot on ARRI Alexa 65, Panavision anamorphic lenses, 24mm ultra-wide lens, extreme wide establishing shot, symmetrical composition, epic scale, deep perspective, cinematic depth, HDR, ultra-high dynamic range, subtle film grain, natural color grading, realistic textures, physically accurate lighting, global illumination, ray-traced reflections, ultra-photorealistic, 8K, IMAX quality.\nLighting: The cave is completely enclosed with no sunlight or visible light beams. Lighting comes from soft ambient cave reflections, wet rock bounce light, distant cool blue ambience, and the faint reflections of damp stone. The mood should feel exactly like a person carrying a single burning torch could naturally illuminate parts of the cave during a scene, creating dramatic cinematic contrast without any artificial lighting.\nMood: Ancient, mystical, lonely, sacred, tense, realistic, rustic, epic, timeless, silent, awe-inspiring, dangerous. The environment should feel like an undiscovered temple hidden beneath the earth for thousands of years.\nStyle Keywords: hyper-realistic, cinematic, photorealistic, ancient cave, underground temple, sacred Shivling, rustic Trishul, realistic rock textures, wet limestone, volumetric mist, natural water drip, subtle waterfalls, epic environment design, Hollywood production design, IMAX frame, dark fantasy realism, Unreal Engine 5 quality, Oscar-winning cinematography, Roger Deakins-inspired lighting, Denis Villeneuve atmosphere, 8K masterpiece. [seed: 528400]",
+    "engine": "nano-banana-2-lite",
+    "created_at": "2026-07-30T14:57:19.070Z"
+  },
+  {
+    "id": "local_1785423015919_m10df",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785423015644.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785423015644.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "cave], cinematic location photography, shot on 35mm lens, realistic textures, motivated lighting with soft falloff, no crushed shadows, depth-of-field contrA colossal ancient underground cave, completely enclosed with no visible sky, no sunlight, and no direct light rays, illuminated only by subtle ambient cave bounce light, soft moisture reflections, and atmospheric darkness. The environment feels naturally dark, mysterious, and sacred.\nA long, straight, naturally formed rocky pathway extends across a bottomless abyss, leading toward a rough 200–300 sq. ft. stone platform suspended in the center of the cavern. The pathway is not engineered—its edges are chipped, cracked, uneven, weathered, and naturally carved over thousands of years. The platform is large enough for an intense cinematic fight sequence, surrounded by deadly drops on every side.\nAt the center of the platform stands an ancient black stone Shivling, aged for centuries with worn textures, subtle moss, mineral deposits, and sacred markings. From the cave ceiling directly above the Shivling, a tiny natural water drip falls continuously, one drop at a time, perfectly aligned with the center of the Shivling. The drip is delicate and sacred—not a waterfall—creating gentle ripples on the wet stone below.\nBeside the Shivling stands a tall, ancient Trishul, inspired by traditional Himalayan temple craftsmanship. The Trishul is rustic, forged metal, weathered with age, oxidized, scratched, slightly corroded, with intricate carvings, no cloth, no flags, no decorations. It appears heavy, sacred, and centuries old.\nThe cave is massive in scale, with towering rock walls far away from the platform, creating a grand sense of emptiness. Deep chasms disappear into darkness. Gigantic stalactites hang from the ceiling. The cave walls are damp with natural mineral streaks. A few thin, realistic waterfalls flow quietly down distant cave walls, disappearing into the abyss below. They are subtle environmental elements, not dominant features.\nThe atmosphere contains soft volumetric cave mist, cool humidity, floating dust particles, and faint water vapor. Wet rocks reflect tiny amounts of ambient light, emphasizing realism. Everything feels ancient, untouched, and sacred.\nCinematography: Shot on ARRI Alexa 65, Panavision anamorphic lenses, 24mm ultra-wide lens, extreme wide establishing shot, symmetrical composition, epic scale, deep perspective, cinematic depth, HDR, ultra-high dynamic range, subtle film grain, natural color grading, realistic textures, physically accurate lighting, global illumination, ray-traced reflections, ultra-photorealistic, 8K, IMAX quality.\nLighting: The cave is completely enclosed with no sunlight or visible light beams. Lighting comes from soft ambient cave reflections, wet rock bounce light, distant cool blue ambience, and the faint reflections of damp stone. The mood should feel exactly like a person carrying a single burning torch could naturally illuminate parts of the cave during a scene, creating dramatic cinematic contrast without any artificial lighting.\nMood: Ancient, mystical, lonely, sacred, tense, realistic, rustic, epic, timeless, silent, awe-inspiring, dangerous. The environment should feel like an undiscovered temple hidden beneath the earth for thousands of years.\nStyle Keywords: hyper-realistic, cinematic, photorealistic, ancient cave, underground temple, sacred Shivling, rustic Trishul, realistic rock textures, wet limestone, volumetric mist, natural water drip, subtle waterfalls, epic environment design, Hollywood production design, IMAX frame, dark fantasy realism, Unreal Engine 5 quality, Oscar-winning cinematography, Roger Deakins-inspired lighting, Denis Villeneuve atmosphere, 8K masterpiece. [seed: 84399]",
+    "engine": "nano-banana-2-lite",
+    "created_at": "2026-07-30T14:50:15.919Z"
+  },
+  {
+    "id": "local_1785422919654_m58td",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785422917720.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785422917720.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "cave], cinematic location photography, shot on 35mm lens, realistic textures, motivated lighting with soft falloff, no crushed shadows, depth-of-field contrA colossal ancient underground cave, completely enclosed with no visible sky, no sunlight, and no direct light rays, illuminated only by subtle ambient cave bounce light, soft moisture reflections, and atmospheric darkness. The environment feels naturally dark, mysterious, and sacred.\nA long, straight, naturally formed rocky pathway extends across a bottomless abyss, leading toward a rough 200–300 sq. ft. stone platform suspended in the center of the cavern. The pathway is not engineered—its edges are chipped, cracked, uneven, weathered, and naturally carved over thousands of years. The platform is large enough for an intense cinematic fight sequence, surrounded by deadly drops on every side.\nAt the center of the platform stands an ancient black stone Shivling, aged for centuries with worn textures, subtle moss, mineral deposits, and sacred markings. From the cave ceiling directly above the Shivling, a tiny natural water drip falls continuously, one drop at a time, perfectly aligned with the center of the Shivling. The drip is delicate and sacred—not a waterfall—creating gentle ripples on the wet stone below.\nBeside the Shivling stands a tall, ancient Trishul, inspired by traditional Himalayan temple craftsmanship. The Trishul is rustic, forged metal, weathered with age, oxidized, scratched, slightly corroded, with intricate carvings, no cloth, no flags, no decorations. It appears heavy, sacred, and centuries old.\nThe cave is massive in scale, with towering rock walls far away from the platform, creating a grand sense of emptiness. Deep chasms disappear into darkness. Gigantic stalactites hang from the ceiling. The cave walls are damp with natural mineral streaks. A few thin, realistic waterfalls flow quietly down distant cave walls, disappearing into the abyss below. They are subtle environmental elements, not dominant features.\nThe atmosphere contains soft volumetric cave mist, cool humidity, floating dust particles, and faint water vapor. Wet rocks reflect tiny amounts of ambient light, emphasizing realism. Everything feels ancient, untouched, and sacred.\nCinematography: Shot on ARRI Alexa 65, Panavision anamorphic lenses, 24mm ultra-wide lens, extreme wide establishing shot, symmetrical composition, epic scale, deep perspective, cinematic depth, HDR, ultra-high dynamic range, subtle film grain, natural color grading, realistic textures, physically accurate lighting, global illumination, ray-traced reflections, ultra-photorealistic, 8K, IMAX quality.\nLighting: The cave is completely enclosed with no sunlight or visible light beams. Lighting comes from soft ambient cave reflections, wet rock bounce light, distant cool blue ambience, and the faint reflections of damp stone. The mood should feel exactly like a person carrying a single burning torch could naturally illuminate parts of the cave during a scene, creating dramatic cinematic contrast without any artificial lighting.\nMood: Ancient, mystical, lonely, sacred, tense, realistic, rustic, epic, timeless, silent, awe-inspiring, dangerous. The environment should feel like an undiscovered temple hidden beneath the earth for thousands of years.\nStyle Keywords: hyper-realistic, cinematic, photorealistic, ancient cave, underground temple, sacred Shivling, rustic Trishul, realistic rock textures, wet limestone, volumetric mist, natural water drip, subtle waterfalls, epic environment design, Hollywood production design, IMAX frame, dark fantasy realism, Unreal Engine 5 quality, Oscar-winning cinematography, Roger Deakins-inspired lighting, Denis Villeneuve atmosphere, 8K masterpiece. [seed: 573083]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-30T14:48:39.654Z"
+  },
+  {
+    "id": "local_1785422850581_mj8ni",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785422850159.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785422850159.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "cave], cinematic location photography, shot on 35mm lens, realistic textures, motivated lighting with soft falloff, no crushed shadows, depth-of-field control, crisp detail, 8k.VM2853:1  Console Ninja extension is connected to Vite, see https://tinyurl.com/2vt8jxzw for more info.\nCinematicStudio.jsx:2000 Uncaught (in promise) TypeError: overridePrompt.trim is not a function\n    at handleGenerate (CinematicStudio.jsx:2000:56)\n    at HTMLUnknownElement.callCallback2 (chunk-NFC5BX5N.js?v=c1415d2a:3674:22)\n    at Object.invokeGuardedCallbackDev (chunk-NFC5BX5N.js?v=c1415d2a:3699:24)\n    at invokeGuardedCallback (chunk-NFC5BX5N.js?v=c1415d2a:3733:39)\n    at invokeGuardedCallbackAndCatchFirstError (chunk-NFC5BX5N.js?v=c1415d2a:3736:33)\n    at executeDispatch (chunk-NFC5BX5N.js?v=c1415d2a:7014:11)\n    at processDispatchQueueItemsInOrder (chunk-NFC5BX5N.js?v=c1415d2a:7034:15)\n    at processDispatchQueue (chunk-NFC5BX5N.js?v=c1415d2a:7043:13)\n    at dispatchEventsForPlugins (chunk-NFC5BX5N.js?v=c1415d2a:7051:11)\n    at chunk-NFC5BX5N.js?v=c1415d2a:7174:20\n    at batchedUpdates$1 (chunk-NFC5BX5N.js?v=c1415d2a:18913:20)\n    at batchedUpdates (chunk-NFC5BX5N.js?v=c1415d2a:3579:20)\n    at dispatchEventForPluginEventSystem (chunk-NFC5BX5N.js?v=c1415d2a:7173:11)\n    at dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay (chunk-NFC5BX5N.js?v=c1415d2a:5478:13)\n    at dispatchEvent (chunk-NFC5BX5N.js?v=c1415d2a:5472:13)\n    at dispatchDiscreteEvent (chunk-NFC5BX5N.js?v=c1415d2a:5449:13)\nCinematicStudio.jsx:2000 Uncaught (in promise) TypeError: overridePrompt.trim is not a function\n    at handleGenerate (CinematicStudio.jsx:2000:56)\n    at HTMLUnknownElement.callCallback2 (chunk-NFC5BX5N.js?v=c1415d2a:3674:22)\n    at Object.invokeGuardedCallbackDev (chunk-NFC5BX5N.js?v=c1415d2a:3699:24)\n    at invokeGuardedCallback (chunk-NFC5BX5N.js?v=c1415d2a:3733:39)\n    at invokeGuardedCallbackAndCatchFirstError (chunk-NFC5BX5N.js?v=c1415d2a:3736:33)\n    at executeDispatch (chunk-NFC5BX5N.js?v=c1415d2a:7014:11)\n    at processDispatchQueueItemsInOrder (chunk-NFC5BX5N.js?v=c1415d2a:7034:15)\n    at processDispatchQueue (chunk-NFC5BX5N.js?v=c1415d2a:7043:13)\n    at dispatchEventsForPlugins (chunk-NFC5BX5N.js?v=c1415d2a:7051:11)\n    at chunk-NFC5BX5N.js?v=c1415d2a:7174:20\n    at batchedUpdates$1 (chunk-NFC5BX5N.js?v=c1415d2a:18913:20)\n    at batchedUpdates (chunk-NFC5BX5N.js?v=c1415d2a:3579:20)\n    at dispatchEventForPluginEventSystem (chunk-NFC5BX5N.js?v=c1415d2a:7173:11)\n    at dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay (chunk-NFC5BX5N.js?v=c1415d2a:5478:13)\n    at dispatchEvent (chunk-NFC5BX5N.js?v=c1415d2a:5472:13)\n    at dispatchDiscreteEvent (chunk-NFC5BX5N.js?v=c1415d2a:5449:13)\nCinematicStudio.jsx:2000 Uncaught (in promise) TypeError: overridePrompt.trim is not a function\n    at handleGenerate (CinematicStudio.jsx:2000:56)\n    at HTMLUnknownElement.callCallback2 (chunk-NFC5BX5N.js?v=c1415d2a:3674:22)\n    at Object.invokeGuardedCallbackDev (chunk-NFC5BX5N.js?v=c1415d2a:3699:24)\n    at invokeGuardedCallback (chunk-NFC5BX5N.js?v=c1415d2a:3733:39)\n    at invokeGuardedCallbackAndCatchFirstError (chunk-NFC5BX5N.js?v=c1415d2a:3736:33)\n    at executeDispatch (chunk-NFC5BX5N.js?v=c1415d2a:7014:11)\n    at processDispatchQueueItemsInOrder (chunk-NFC5BX5N.js?v=c1415d2a:7034:15)\n    at processDispatchQueue (chunk-NFC5BX5N.js?v=c1415d2a:7043:13)\n    at dispatchEventsForPlugins (chunk-NFC5BX5N.js?v=c1415d2a:7051:11)\n    at chunk-NFC5BX5N.js?v=c1415d2a:7174:20\n    at batchedUpdates$1 (chunk-NFC5BX5N.js?v=c1415d2a:18913:20)\n    at batchedUpdates (chunk-NFC5BX5N.js?v=c1415d2a:3579:20)\n    at dispatchEventForPluginEventSystem (chunk-NFC5BX5N.js?v=c1415d2a:7173:11)\n    at dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay (chunk-NFC5BX5N.js?v=c1415d2a:5478:13)\n    at dispatchEvent (chunk-NFC5BX5N.js?v=c1415d2a:5472:13)\n    at dispatchDiscreteEvent (chunk-NFC5BX5N.js?v=c1415d2a:5449:13)\n(anonymous) @ CinematicStudio.jsx:2156\ncallCallback2 @ chunk-NFC5BX5N.js?v=c1415d2a:3674\ninvokeGuardedCallbackDev @ chunk-NFC5BX5N.js?v=c1415d2a:3699\ninvokeGuardedCallback @ chunk-NFC5BX5N.js?v=c1415d2a:3733\ninvokeGuardedCallbackAndCatchFirstError @ chunk-NFC5BX5N.js?v=c1415d2a:3736\nexecuteDispatch @ chunk-NFC5BX5N.js?v=c1415d2a:7014\nprocessDispatchQueueItemsInOrder @ chunk-NFC5BX5N.js?v=c1415d2a:7034\nprocessDispatchQueue @ chunk-NFC5BX5N.js?v=c1415d2a:7043\ndispatchEventsForPlugins @ chunk-NFC5BX5N.js?v=c1415d2a:7051\n(anonymous) @ chunk-NFC5BX5N.js?v=c1415d2a:7174\nbatchedUpdates$1 @ chunk-NFC5BX5N.js?v=c1415d2a:18913\nbatchedUpdates @ chunk-NFC5BX5N.js?v=c1415d2a:3579\ndispatchEventForPluginEventSystem @ chunk-NFC5BX5N.js?v=c1415d2a:7173\ndispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-NFC5BX5N.js?v=c1415d2a:5478\ndispatchEvent @ chunk-NFC5BX5N.js?v=c1415d2a:5472\ndispatchDiscreteEvent @ chunk-NFC5BX5N.js?v=c1415d2a:5449\nCinematicStudio.jsx:2237 [CinematicStudio] Generating 1 image variations... [seed: 871639]",
+    "engine": "nano-banana-2-lite",
+    "created_at": "2026-07-30T14:47:30.581Z"
+  },
+  {
+    "id": "local_1785422792149_mv9u3",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785422790683.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785422790683.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "A colossal ancient underground cave, completely enclosed with no visible sky, no sunlight, and no direct light rays, illuminated only by subtle ambient cave bounce light, soft moisture reflections, and atmospheric darkness. The environment feels naturally dark, mysterious, and sacred.\n\nA long, straight, naturally formed rocky pathway extends across a bottomless abyss, leading toward a rough 200–300 sq. ft. stone platform suspended in the center of the cavern. The pathway is not engineered—its edges are chipped, cracked, uneven, weathered, and naturally carved over thousands of years. The platform is large enough for an intense cinematic fight sequence, surrounded by deadly drops on every side.\n\nAt the center of the platform stands an ancient black stone Shivling, aged for centuries with worn textures, subtle moss, mineral deposits, and sacred markings. From the cave ceiling directly above the Shivling, a tiny natural water drip falls continuously, one drop at a time, perfectly aligned with the center of the Shivling. The drip is delicate and sacred—not a waterfall—creating gentle ripples on the wet stone below.\n\nBeside the Shivling stands a tall, ancient Trishul, inspired by traditional Himalayan temple craftsmanship. The Trishul is rustic, forged metal, weathered with age, oxidized, scratched, slightly corroded, with intricate carvings, no cloth, no flags, no decorations. It appears heavy, sacred, and centuries old.\n\nThe cave is massive in scale, with towering rock walls far away from the platform, creating a grand sense of emptiness. Deep chasms disappear into darkness. Gigantic stalactites hang from the ceiling. The cave walls are damp with natural mineral streaks. A few thin, realistic waterfalls flow quietly down distant cave walls, disappearing into the abyss below. They are subtle environmental elements, not dominant features.\n\nThe atmosphere contains soft volumetric cave mist, cool humidity, floating dust particles, and faint water vapor. Wet rocks reflect tiny amounts of ambient light, emphasizing realism. Everything feels ancient, untouched, and sacred.\n\nCinematography: Shot on ARRI Alexa 65, Panavision anamorphic lenses, 24mm ultra-wide lens, extreme wide establishing shot, symmetrical composition, epic scale, deep perspective, cinematic depth, HDR, ultra-high dynamic range, subtle film grain, natural color grading, realistic textures, physically accurate lighting, global illumination, ray-traced reflections, ultra-photorealistic, 8K, IMAX quality.\n\nLighting: The cave is completely enclosed with no sunlight or visible light beams. Lighting comes from soft ambient cave reflections, wet rock bounce light, distant cool blue ambience, and the faint reflections of damp stone. The mood should feel exactly like a person carrying a single burning torch could naturally illuminate parts of the cave during a scene, creating dramatic cinematic contrast without any artificial lighting.\n\nMood: Ancient, mystical, lonely, sacred, tense, realistic, rustic, epic, timeless, silent, awe-inspiring, dangerous. The environment should feel like an undiscovered temple hidden beneath the earth for thousands of years.\n\nStyle Keywords: hyper-realistic, cinematic, photorealistic, ancient cave, underground temple, sacred Shivling, rustic Trishul, realistic rock textures, wet limestone, volumetric mist, natural water drip, subtle waterfalls, epic environment design, Hollywood production design, IMAX frame, dark fantasy realism, Unreal Engine 5 quality, Oscar-winning cinematography, Roger Deakins-inspired lighting, Denis Villeneuve atmosphere, 8K masterpiece. [seed: 714352]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-30T14:46:32.149Z"
+  },
+  {
+    "id": "local_1785263817660_ew8jx",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785263816545.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785263816545.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Front Elevation of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Front Elevation, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T18:36:57.660Z"
+  },
+  {
+    "id": "local_1785263767228_u1n55",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785263766011.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785263766011.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Front Elevation of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Front Elevation, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T18:36:07.228Z"
+  },
+  {
+    "id": "local_1785263697844_vqssa",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785263696063.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785263696063.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Front Elevation of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Front Elevation, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T18:34:57.844Z"
+  },
+  {
+    "id": "local_1785263650704_lw6zw",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785263649118.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785263649118.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Front Elevation of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Front Elevation, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T18:34:10.705Z"
+  },
+  {
+    "id": "local_1785263564845_u05b1",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785263562094.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785263562094.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Front Elevation of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Front Elevation, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T18:32:44.845Z"
+  },
+  {
+    "id": "local_1785263500342_64r6p",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785263498895.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785263498895.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Front Elevation of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Front Elevation, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T18:31:40.342Z"
+  },
+  {
+    "id": "local_1785250618111_x1a9x",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785250617358.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785250617358.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "REFERENCE LOCK: Maintain the exact room layout, furniture placement, colors, materials, proportions, and architectural details from the reference image. Do not redesign, replace, remove, or reposition any furniture or decorative elements. Preserve the realtor's facial identity, hairstyle, clothing, body proportions, and speaking style consistently throughout the entire shot. CHARACTER ACTION: The realtor confidently introduces each kitchen feature with natural pointing gestures, briefly looking toward the feature before returning her gaze to the camera, emphasizing the premium quality and functionality. CAMERA BEHAVIOR: The camera smoothly follows her movement, revealing each feature only when she gestures toward it. Smooth handheld gimbal movement with realistic operator motion, subtle acceleration and deceleration, maintaining stable framing. ENVIRONMENT REVEAL: The camera gradually reveals the kitchen's key architectural features, premium appliances, and luxurious finishes, showcasing its spacious and functional design. LIGHTING: Preserve the lighting exactly as shown in the reference image, enhancing only the natural warmth and depth without altering the room's original mood. CONTINUITY: One continuous cinematic shot. No cuts. Consistent identity. ENDING: The camera settles into a balanced hero composition of the kitchen island and main cooking area while the realtor finishes her sentence with a warm smile, holding a relaxed presentation pose before the shot ends. DIALOGUE INCLUSION: The character says: 'Notice this incredible kitchen, truly the heart of this home and a chef's dream. Featuring professional-grade appliances, expansive quartz countertops, and custom cabinetry. It's perfect for entertaining and everyday luxury.'\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, kitchen counters, cabinets, furniture, an",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T14:56:58.111Z"
+  },
+  {
+    "id": "local_1785250565037_i3rjw",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785250563859.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785250563859.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Kitchen, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T14:56:05.037Z"
+  },
+  {
+    "id": "local_1785249532260_wc2gi",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785249531775.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785249531775.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "0:16–0:20\nBeautiful hero shot of the complete kitchen. Warm LED lighting glows beneath the cabinets while the designer gestures across the entire space.\n\nVoice:\n\"Every detail combines intelligent storage, premium hardware and elegant design for everyday living.\"\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No weird transitions. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T14:38:52.260Z"
+  },
+  {
+    "id": "local_1785249498076_gwtao",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785249496849.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785249496849.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Kitchen, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T14:38:18.077Z"
+  },
+  {
+    "id": "local_1785249307086_s56x4",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785249306347.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785249306347.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "0:08–0:12\nClose-up of the tall pull-out pantry. The pantry slides out smoothly while the designer demonstrates its operation.\n\nVoice:\n\"A full-height pull-out pantry keeps groceries, spices and bottles neatly organised with effortless access.\"\n\nHard Cut\n\n0:12–0:16\nClose-up of the hydraulic overhead cabinet. The lift-up door opens smoothly to reveal organised spice jars.\n\nVoice:\n\"Hydraulic lift-up cabinets provide soft-close operation and easy access to frequently used essentials.\"\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No weird transitions. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T14:35:07.086Z"
+  },
+  {
+    "id": "local_1785249097162_dqx55",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785249096468.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785249096468.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "0:00–0:04\nMedium-wide shot of the complete kitchen. A professionally dressed interior designer stands naturally beside the counter, looking into the camera.\n\nVoice:\n\"This modular kitchen is designed to maximise storage while maintaining a clean, modern aesthetic.\"\n\nHard Cut\n\n0:04–0:08\nClose-up of the sink area and window. The designer points towards the sink and premium faucet.\n\nVoice:\n\"The spacious stainless-steel sink is positioned beside a large window, bringing in natural light and creating a comfortable workspace.\"\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No weird transitions. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T14:31:37.163Z"
+  },
+  {
+    "id": "local_1785249041762_okbqk",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785249039292.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785249039292.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Kitchen, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T14:30:41.762Z"
+  },
+  {
+    "id": "local_1785248840619_3j7uo",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785248839447.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785248839447.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Kitchen, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T14:27:20.619Z"
+  },
+  {
+    "id": "local_1785247512991_s74y3",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785247511700.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785247511700.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Kitchen, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T14:05:12.991Z"
+  },
+  {
+    "id": "local_1785247463575_6vd4d",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785247462541.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785247462541.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "Ultra realistic photo of a real estate agent standing inside a Front Elevation. CRITICAL: The agent's face and likeness MUST exactly match the provided reference photo. Natural lighting, warm and welcoming, lifelike textures, ultra-realistic.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T14:04:23.575Z"
+  },
+  {
+    "id": "local_1785247330558_alc6m",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785247329896.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785247329896.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "n0–4 sec: \"Welcome to this modern modular kitchen. Every unit is designed for maximum storage and functionality.\"\n\n4–8 sec: Camera moves toward the sink. Host points at the stainless-steel sink and premium faucet. \"This spacious sink area sits beside a large window for natural light, making daily cleaning comfortable.\"\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No weird transitions. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T14:02:10.558Z"
+  },
+  {
+    "id": "local_1785247285041_vzb37",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785247283862.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785247283862.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Kitchen, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T14:01:25.041Z"
+  },
+  {
+    "id": "local_1785247136709_1kv2d",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785247135562.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785247135562.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Kitchen, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T13:58:56.709Z"
+  },
+  {
+    "id": "local_1785245770096_vtvan",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785245769580.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785245769580.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "0:08 – 0:12 (Pull-out pantry and cutlery drawer)\n\"Here you have dedicated pull-out pantry units and organised cutlery drawers, so spices, groceries, and utensils stay neatly arranged and are always within easy reach.\"\n\n0:12 – 0:16 (Sink, countertop, hob, chimney)\n\"The kitchen includes a premium quartz countertop, a deep stainless-steel sink, and a built-in hob with chimney, offering durability, easy maintenance, and a seamless cooking experience.\"\n\n0:16 – 0:20 (Base pull-out basket, final wide shot with LED lighting)\n\"At the bottom, the pull-out basket is ideal for storing heavy pots and pans, while the soft-close drawers, under-cabinet LED lighting, and smart layout combine functionality with a premium finish.\"\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No weird transitions. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T13:36:10.096Z"
+  },
+  {
+    "id": "local_1785245722872_7w9ge",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785245722006.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785245722006.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Kitchen, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T13:35:22.872Z"
+  },
+  {
+    "id": "local_1785244984804_kpnoe",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785244983695.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785244983695.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "0:00 – 0:04 (Wide shot of the complete kitchen)\n\"This modular kitchen is thoughtfully designed to maximise every inch of available space while maintaining a clean, modern look that's perfect for apartment living.\"\n\n0:04 – 0:08 (Close-up of the overhead hydraulic cabinet opening)\n\"These overhead cabinets feature hydraulic soft-close hinges, making them smooth, silent, and easy to access while providing generous storage for everyday essentials.\"\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No weird transitions. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T13:23:04.804Z"
+  },
+  {
+    "id": "local_1785244930691_55m8d",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785244928886.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785244928886.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Kitchen, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T13:22:10.692Z"
+  },
+  {
+    "id": "local_1785244824603_di7fg",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785244823908.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785244823908.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "0:10 – 0:14 (Sink, countertop, hob, chimney)\n\"The kitchen features a premium quartz countertop, a deep stainless-steel sink, and a built-in hob with chimney, combining durability with everyday convenience.\"\n\n0:14 – 0:17 (Base pull-out basket opening)\n\"The pull-out basket is designed to store heavy pots and pans, making storage both practical and easily accessible.\"\n\n0:17 – 0:20 (Final wide hero shot with LED lighting)\n\"Soft-close drawers, warm under-cabinet LED lighting, and a smart layout come together to create a stylish, functional kitchen built for modern living.\"\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No weird transitions. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T13:20:24.604Z"
+  },
+  {
+    "id": "local_1785244787647_o1q1w",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785244786624.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785244786624.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Kitchen, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T13:19:47.647Z"
+  },
+  {
+    "id": "local_1785242334120_ppjty",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785242333401.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785242333401.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "0:10 – 0:14 (Sink, countertop, hob, chimney)\n\"The kitchen features a premium quartz countertop, a deep stainless-steel sink, and a built-in hob with chimney, combining durability with everyday convenience.\"\n\n0:14 – 0:17 (Base pull-out basket opening)\n\"The pull-out basket is designed to store heavy pots and pans, making storage both practical and easily accessible.\"\n\n0:17 – 0:20 (Final wide hero shot with LED lighting)\n\"Soft-close drawers, warm under-cabinet LED lighting, and a smart layout come together to create a stylish, functional kitchen built for modern living.\"\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No weird transitions. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.\n\nThe person in the video is speaking to the camera. They say exactly: \"Stepping into this incredible kitchen, you'll immediately notice the high-end appliances and custom cabinetry. It's truly a chef's dream, offering both beauty and exceptional functionality for entertaining.\"",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T12:38:54.120Z"
+  },
+  {
+    "id": "local_1785242294990_s4973",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785242293269.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785242293269.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Kitchen, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T12:38:14.990Z"
+  },
+  {
+    "id": "local_1785242233716_mmzln",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785242232194.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785242232194.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "0:10 – 0:14 (Sink, countertop, hob, chimney)\n\"The kitchen features a premium quartz countertop, a deep stainless-steel sink, and a built-in hob with chimney, combining durability with everyday convenience.\"\n\n0:14 – 0:17 (Base pull-out basket opening)\n\"The pull-out basket is designed to store heavy pots and pans, making storage both practical and easily accessible.\"\n\n0:17 – 0:20 (Final wide hero shot with LED lighting)\n\"Soft-close drawers, warm under-cabinet LED lighting, and a smart layout come together to create a stylish, functional kitchen built for modern living.\"\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No weird transitions. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.\n\nThe person in the video is speaking to the camera. They say exactly: \"Stepping into this incredible kitchen, you'll immediately notice the high-end appliances and custom cabinetry. It's truly a chef's dream, offering both beauty and exceptional functionality for entertaining.\"",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T12:37:13.716Z"
+  },
+  {
+    "id": "local_1785242183977_1gp2i",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785242182736.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785242182736.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Kitchen, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T12:36:23.977Z"
+  },
+  {
+    "id": "local_1785242060393_natl7",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785242059518.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785242059518.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "0:10 – 0:14 (Sink, countertop, hob, chimney)\n\"The kitchen features a premium quartz countertop, a deep stainless-steel sink, and a built-in hob with chimney, combining durability with everyday convenience.\"\n\n0:14 – 0:17 (Base pull-out basket opening)\n\"The pull-out basket is designed to store heavy pots and pans, making storage both practical and easily accessible.\"\n\n0:17 – 0:20 (Final wide hero shot with LED lighting)\n\"Soft-close drawers, warm under-cabinet LED lighting, and a smart layout come together to create a stylish, functional kitchen built for modern living.\"\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No weird transitions. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T12:34:20.393Z"
+  },
+  {
+    "id": "local_1785242024503_hshs0",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785242023368.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785242023368.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor \nstanding inside the Kitchen, facing the camera \nwith a welcoming gesture. \nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike textures, cinematic realism. \nNo collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T12:33:44.504Z"
+  },
+  {
+    "id": "local_1785241847238_hytak",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785241845907.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785241845907.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Kitchen of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Kitchen, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T12:30:47.238Z"
+  },
+  {
+    "id": "local_1785241579140_9ll03",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785241577741.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785241577741.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "ugc/generated",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated",
+      "projectId": "ugc/generated",
+      "project_id": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the Front Elevation of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the Front Elevation, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature of the agent exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T12:26:19.140Z"
+  },
+  {
+    "id": "local_1785239101601_1qm43",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785239100887.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785239100887.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "0:00 – 0:03 (Wide shot of the complete kitchen)\n\"This modular kitchen is thoughtfully designed to maximise every inch of available space while maintaining a clean, modern look that's perfect for apartment living.\"\n\n0:03 – 0:06 (Hydraulic overhead cabinet opening)\n\"These overhead cabinets feature hydraulic soft-close hinges, making them smooth, silent, and easy to access while providing generous storage.\"\n\n0:06 – 0:10 (Pull-out pantry and cutlery drawer)\n\"Dedicated pull-out pantry units and organised cutlery drawers keep spices, groceries, and utensils neatly arranged and always within easy reach.\"\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No weird transitions. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T11:45:01.601Z"
+  },
+  {
+    "id": "local_1785237345982_rsaty",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785237344883.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785237344883.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "Ultra realistic architectural photography of a Front Elevation. Lifelike textures, bright natural lighting, ultra-realistic, 8k resolution.",
+    "engine": "nano-banana-2-open",
+    "created_at": "2026-07-28T11:15:45.982Z"
+  },
+  {
+    "id": "local_1785236826884_lzfrx",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785236825772.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785236825772.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "**10-Second Realtor Kitchen Walkthrough**\n\n**0:00 – 0:02**\n\"This modular kitchen is designed to maximise space while keeping everything within easy reach.\"\n\n**0:02 – 0:04**\n\"These hydraulic overhead cabinets open smoothly and offer generous storage for your daily essentials.\"\n\n**0:04 – 0:06**\n\"The pull-out pantry and soft-close drawers keep groceries, utensils, and cookware neatly organised.\"\n\n**0:06 – 0:08**\n\"Here you'll find a premium quartz countertop, a deep stainless-steel sink, and a built-in hob with chimney.\"\n\n**0:08 – 0:10**\n\"Every detail is planned for functionality, durability, and a clean, modern apartment lifestyle.\"\n\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No weird transitions. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T11:07:06.884Z"
+  },
+  {
+    "id": "local_1785236751330_1iqnz",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785236750630.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785236750630.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "REFERENCE LOCK: Maintain the exact room layout, furniture placement, colors, materials, proportions, and architectural details from the reference image. Do not redesign, replace, remove, or reposition any furniture or decorative elements. Preserve the realtor's facial identity, hairstyle, clothing, body proportions, and speaking style consistently throughout the entire shot. CHARACTER ACTION: The realtor enters the L-shaped kitchen, confidently turning to face the main area, then gestures with an open hand toward the overall sleek design, and points toward the integrated appliances and smart storage solutions as she speaks, briefly looking toward the feature before returning her gaze to the camera. CAMERA BEHAVIOR: The camera smoothly follows her movement with a natural, stable handheld gimbal motion, subtly accelerating and decelerating, maintaining stable framing, revealing each feature only when she gestures toward it. ENVIRONMENT REVEAL: The camera gradually reveals the room's key architectural features and premium furnishings, including the two-tone glossy cabinetry, black quartz countertop, stainless steel sink under the bright window, integrated hob and microwave, and hidden storage. LIGHTING: Preserve the lighting exactly as shown in the reference image, enhancing only the natural warmth and depth without altering the room's original mood. CONTINUITY: One continuous cinematic shot. No cuts. Consistent identity. ENDING: The camera settles into a balanced hero composition, framing the realtor in front of the window area, while she finishes her sentence with a warm smile, holding a relaxed presentation pose before the shot ends. DIALOGUE INCLUSION: The character says: 'Step into this bright, modern kitchen. Notice the sleek two-tone cabinetry, premium black countertops, and integrated appliances. Smart storage solutions like pull-out pantries make cooking a delight in this stylish space.'\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the r",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T11:05:51.330Z"
+  },
+  {
+    "id": "local_1785234909781_idlus",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785234908693.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785234908693.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "The creator, wearing the chocolate brown midi dress (mid-torso visible), stands in a softly lit, natural home setting. They make soft eye contact, delivering lines with calm, natural facial expressions and a subtle, relaxed hand gesture, almost as if sharing a secret. Direct-to-camera, relaxed lip-sync. I've found the outfit that just makes you feel expensive, like, instantly. It's got this vibe. Perfect for upscale nights, you know? No but Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): \"I've found the outfit that just makes you feel expensive, like, instantly. It's got this vibe. Perfect for upscale nights, you know? No but\". Style: Ultra-realistic raw footage, natural looking normal video quality, super natural, no background blur, no bokeh, sharp focus across the entire frame, shot on a normal phone, mobile video aesthetic, natural lighting, super real human appearance, authentic and imperfect, 4K resolution, natural camera movement, no 85mm lens, no bokeh portrait effect, zero depth of field blur, direct-to-camera, relaxed lip-sync, creator talking directly to the camera in a natural environment. UGC Creator Style: The creator is in a natural, relatable environment, talking directly to the camera. Performance Style: calm and natural delivery, subtle hand gestures, gentle pacing, conversational tone, minimal dramatic movements, soft eye contact. The creator is speaking the script dialogue clearly with natural mouth movements. High quality facial animation. Avoid high-end commercial sets. FACE IDENTITY LOCK — CRITICAL: The creator's face MUST remain 100% identical to the reference image throughout the entire video. Do NOT change any facial features, skin tone, eye shape, nose, lips, or face structure. Maintain natural facial symmetry. This is a real person — do not idealize, stylize, or alter their appearance in any way. The person speaks like a natural UGC creator — authentic, direct, and relatable. Animate starting from the first reference image. Use the additional reference images provided to maintain strict visual consistency for the product appearance, character details, and location background.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T10:35:09.781Z"
+  },
+  {
+    "id": "local_1785234775731_osxot",
+    "name": "gen_1785234775341.png",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/gen_1785234775341.png",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated"
+    },
+    "created_at": "2026-07-28T10:32:55.731Z"
+  },
+  {
+    "id": "local_1785234494521_xmpdy",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785234494077.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785234494077.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "A close-up, slightly overhead shot of a person's hands laying out a brown ruched midi dress on a clean, light-colored bedspread. They then place a small gold necklace and some earrings next to it, deliberating. Soft, diffused daylight from a window, a glimpse of a bedside table with a water glass in the background, shot on iPhone, realistic UGC style, 4k.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T10:28:14.521Z"
+  },
+  {
+    "id": "local_1785234448358_uz9z6",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785234447667.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/proj_1785183250500/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785234447667.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "proj_1785183250500",
+      "projectId": "proj_1785183250500"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: Styling for a Night Out — A close-up, slightly overhead shot of a person's hands laying out a brown ruched midi dress on a clean, light-colored be.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T10:27:28.358Z"
+  },
+  {
+    "id": "local_1785233760471_o2xt8",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785233759966.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/default/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785233759966.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "default",
+      "projectId": "default"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: 🚗 Car Vlog Talking — A real person naturally using/holding PRODUCT: Sophisticated Evening Ensemble\nDESCRIPTION: This exquisite ensemble featu.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T10:16:00.471Z"
+  },
+  {
+    "id": "local_1785233581549_j50a6",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785233580938.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/default/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785233580938.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "default",
+      "projectId": "default"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: 🎤 Street Interview — A real person naturally using/holding PRODUCT: Sophisticated Evening Ensemble\nDESCRIPTION: This exquisite ensemble featu.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T10:13:01.549Z"
+  },
+  {
+    "id": "local_1785233521192_f3fqc",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785233520592.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/default/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785233520592.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "default",
+      "projectId": "default"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: Everyday Elegance — A full-body shot of a woman walking casually across a brightly lit room in her home (e.g., from living room to kitchen),.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T10:12:01.192Z"
+  },
+  {
+    "id": "local_1785233439646_npows",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785233439141.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785233439141.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "A close-up shot, starting from the waist and moving down to mid-thigh, highlighting the ruched detailing and soft drape of the brown midi dress fabric as the person stands naturally. Subtle movement as they shift weight. Shot in a well-lit living room with natural light, on iPhone, realistic UGC style, 4k.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T10:10:39.646Z"
+  },
+  {
+    "id": "local_1785233171033_war4f",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785233170338.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/default/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785233170338.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "default",
+      "projectId": "default"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: Dress Details — A close-up shot, starting from the waist and moving down to mid-thigh, highlighting the ruched detailing and soft drape .\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T10:06:11.033Z"
+  },
+  {
+    "id": "local_1785232367318_wa4ys",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785232366775.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/default/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785232366775.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "default",
+      "projectId": "default"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: Ready for the Evening — A person wearing a brown ruched midi dress walks gracefully across a living room, perhaps twirling slightly, showcasing .\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T09:52:47.318Z"
+  },
+  {
+    "id": "local_1785232309983_6czrd",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785232309310.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/default/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785232309310.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "default",
+      "projectId": "default"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: Fabric & Fit — A close-up shot of a hand gently running over the ruched fabric of a brown midi dress while it's being worn, showing the.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T09:51:49.983Z"
+  },
+  {
+    "id": "local_1785230557150_ubdt0",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785230556394.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/default/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785230556394.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "default",
+      "projectId": "default"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: 🎙️ Normal Talking — A real person naturally using/holding the product in an authentic home environment. Ultra-realistic UGC photo, natural l.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-28T09:22:37.150Z"
+  },
+  {
+    "id": "local_1785227718011_qdb9f",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785227717398.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785227717398.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "The creator, a fashion-conscious woman, is wearing the black halter-neck midi dress, gold jewelry, and has the YSL shoulder bag visible. She stands casually in a well-lit, natural home environment, looking directly into the camera with soft eye contact and a slight, excited smile. She uses subtle, natural hand gestures, maintaining a relaxed posture while speaking. Visual style preset details: direct-to-camera, relaxed lip-sync, creator talking directly to the camera in a natural environment. [whisper] [whisper]Okay, I was trying to find a perfect look for this gala, and honestly, this black and gold ensemble just solved everything. I'm not even kidding. Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): \"[whisper]Okay, I was trying to find a perfect look for this gala, and honestly, this black and gold ensemble just solved everything. I'm not even kidding.\". VOCAL AUDIO PERFORMANCE DIRECTIVE: The audio track MUST execute all bracketed speech tags inside the dialogue as real vocal acoustic sound effects: [whisper] = speak the following words in a quiet, soft breathy whisper; [gasp] = audible gasp intake of breath; [sigh] = exhaling sigh sound; [laughter] = laugh naturally while speaking; [pause] = silent pause for 1-2 seconds. Do NOT read the bracketed tag names out loud; instead perform the actual vocal audio effect! Style: Ultra-realistic raw footage, natural looking normal video quality, super natural, no background blur, no bokeh, sharp focus across the entire frame, shot on a normal phone, mobile video aesthetic, natural lighting, super real human appearance, authentic and imperfect, 4K resolution, natural camera movement, no 85mm lens, no bokeh portrait effect, zero depth of field blur, macro close-up on luxury fabric texture, stitching details, material flexibility, silk sheen, tactile touch. UGC Creator Style: The creator is in a natural, relatable environment, talking directly to the camera. Performance Style: calm and natural delivery, subtle hand gestures, gentle pacing, conversational tone, minimal dramatic movements, soft eye contact. The creator is speaking the script dialogue clearly with natural mouth movements. High quality facial animation. Avoid high-end commercial sets. FACE IDENTITY LOCK — CRITICAL: The creator's face MUST remain 100% identical to the reference image throughout the entire video. Do NOT change any facial features, skin tone, eye shape, nose, lips, or face structure. Maintain natural facial symmetry. This is a real person — do not idealize, stylize, or alter their appearance in any way. The person speaks like a natural UGC creator — authentic, direct, and relatable. Animate starting from the first reference image. Use the additional reference images provided to maintain strict visual consistency for the product appearance, character details, and location background.",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T08:35:18.012Z"
+  },
+  {
+    "id": "local_1785226881589_n2emm",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785226880969.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785226880969.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "The creator stands naturally in a modern bedroom, looking directly into the camera. At the exact moment they snap their fingers, the entire room instantly transforms into a luxury penthouse while the creator's position, facial expression, body posture, and camera framing remain perfectly identical.\n\nNatural movement, realistic physics, cinematic lighting, seamless transition, photorealistic, shallow depth of field, handheld smartphone camera, authentic UGC style. No subtitles. No background music. Natural room ambience only. I wasn't expecting this... Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): \"I wasn't expecting this...\". Style: Ultra-realistic raw footage, natural looking normal video quality, super natural, no background blur, no bokeh, sharp focus across the entire frame, shot on a normal phone, ",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T08:21:21.589Z"
+  },
+  {
+    "id": "local_1785226784467_5szs3",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785226783532.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785226783532.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated"
+    },
+    "prompt": "The creator walks directly toward the camera until their hand completely covers the lens. As the hand moves away, they are standing in a completely different location. Natural movement, cinematic realism, pure UGC camera style. No subtitles. No background music. Let me show you a secret. Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): \"Let me show you a secret.\". Style: Ultra-realistic raw footage, natural looking normal video quality, super natural, no background blur, no bokeh, sharp focus across the entire frame, shot on a normal phone, mobile video aesthetic, natural lighting, super real human appearance, authentic and imperfect, 4K resolution, natural camera movement, no 85mm lens, no bokeh portrait effect, zero depth of field blur, direct-to-camera, relaxed lip-sync, creator talking directly to the ",
+    "engine": "Omni Flash",
+    "created_at": "2026-07-28T08:19:44.467Z"
+  },
+  {
+    "id": "local_1785182391449_opsnm",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785182390889.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785182390889.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: 🪞 Mirror Outfit Check — A real person naturally using/holding PRODUCT: Elegant Black Halter Dress & Accessories Ensemble\nDESCRIPTION: This curat.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-27T19:59:51.449Z"
+  },
+  {
+    "id": "local_1785181872481_k2nhz",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785181871875.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785181871875.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: 👠 Runway / OOTD Walk — A real person naturally using/holding the product in an authentic home environment. Ultra-realistic UGC photo, natural l.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-27T19:51:12.481Z"
+  },
+  {
+    "id": "local_1785181009956_41815",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785181008473.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785181008473.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "ugc/generated"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: 🎙️ Normal Talking — A real person naturally using/holding PRODUCT: Elegant Black Halter Midi Dress Outfit with Gold Accessories\nDESCRIPTION:.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-27T19:36:49.956Z"
+  },
+  {
+    "id": "local_1785180688090_r7a4f",
+    "name": "gen_anon_1785180686797.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/generated/anon/gen_anon_1785180686797.jpeg",
+    "user_id": "local_user",
+    "aspect": "1:1",
+    "metadata": {
+      "folder": "marketing/generated"
+    },
+    "prompt": "A futuristic cinema camera studio",
+    "engine": "nano-banana-2",
+    "created_at": "2026-07-27T19:31:28.090Z"
+  },
+  {
     "id": "local_1784481684050_mej1g",
     "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1784481683187.mp4",
     "type": "video",
@@ -5782,679 +6924,5 @@
     "user_id": "anon",
     "aspect": "16:9",
     "created_at": "2026-06-21T16:52:35.671Z"
-  },
-  {
-    "id": "local_1782070227694_yno3l_guest",
-    "name": "ref_1782070227129.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/ref_1782070227129.png",
-    "user_id": "local_user",
-    "aspect": "16:9",
-    "created_at": "2026-06-21T19:30:27.694Z"
-  },
-  {
-    "id": "local_1782068265705_fjtvu_guest",
-    "name": "ref_1782068264821.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/ref_1782068264821.png",
-    "user_id": "local_user",
-    "aspect": "16:9",
-    "created_at": "2026-06-21T18:57:45.705Z"
-  },
-  {
-    "id": "local_1782060935521_cnegk_guest",
-    "name": "ref_1782060933174.mp4",
-    "type": "video",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/anon/generated/ref_1782060933174.mp4",
-    "user_id": "local_user",
-    "aspect": "16:9",
-    "created_at": "2026-06-21T16:55:35.521Z"
-  },
-  {
-    "id": "local_1782060844729_74mr8_guest",
-    "name": "ref_1782060844051.mp4",
-    "type": "video",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/anon/generated/ref_1782060844051.mp4",
-    "user_id": "local_user",
-    "aspect": "16:9",
-    "created_at": "2026-06-21T16:54:04.729Z"
-  },
-  {
-    "id": "local_1781692136039_c33kv",
-    "name": "upload_1781692135310.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1781692135310.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "uploads"
-    },
-    "created_at": "2026-06-17T10:28:56.039Z"
-  },
-  {
-    "id": "local_1781692088767_mpmdw",
-    "name": "upload_1781692088109.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1781692088109.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "uploads"
-    },
-    "created_at": "2026-06-17T10:28:08.767Z"
-  },
-  {
-    "id": "local_1781692059437_nzvh3",
-    "name": "upload_1781692058544.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1781692058544.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "uploads"
-    },
-    "created_at": "2026-06-17T10:27:39.437Z"
-  },
-  {
-    "id": "local_1781691097022_ul36o",
-    "name": "upload_1781691096213.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1781691096213.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "uploads"
-    },
-    "created_at": "2026-06-17T10:11:37.022Z"
-  },
-  {
-    "id": "local_1781690978808_spvu2",
-    "name": "upload_1781690977895.mp4",
-    "type": "video",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1781690977895.mp4",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "uploads"
-    },
-    "created_at": "2026-06-17T10:09:38.808Z"
-  },
-  {
-    "id": "local_1781689096429_xv52w",
-    "name": "upload_1781689094461.mp4",
-    "type": "video",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1781689094461.mp4",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "uploads"
-    },
-    "created_at": "2026-06-17T09:38:16.429Z"
-  },
-  {
-    "id": "local_1781688616625_510oq",
-    "name": "upload_1781688613357.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1781688613357.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "uploads"
-    },
-    "created_at": "2026-06-17T09:30:16.625Z"
-  },
-  {
-    "id": "local_1781688554310_xckyb",
-    "name": "upload_1781688553100.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1781688553100.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "uploads"
-    },
-    "created_at": "2026-06-17T09:29:14.310Z"
-  },
-  {
-    "id": "local_1781688501895_f1se3",
-    "name": "upload_1781688500981.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1781688500981.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "uploads"
-    },
-    "created_at": "2026-06-17T09:28:21.895Z"
-  },
-  {
-    "id": "local_1781538346749_tqnfx",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781538342816.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781538342816.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "1:1",
-    "metadata": {
-      "folder": "marketing"
-    },
-    "created_at": "2026-06-15T15:45:46.749Z"
-  },
-  {
-    "id": "local_1781536196745_9ca2r",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781536195291.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781536195291.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "1:1",
-    "metadata": {
-      "folder": "marketing"
-    },
-    "created_at": "2026-06-15T15:09:56.745Z"
-  },
-  {
-    "id": "local_1781534973395_blmmq",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781534971784.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781534971784.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "1:1",
-    "metadata": {
-      "folder": "marketing"
-    },
-    "created_at": "2026-06-15T14:49:33.395Z"
-  },
-  {
-    "id": "local_1781534846644_c3cv5",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781534845465.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781534845465.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "1:1",
-    "metadata": {
-      "folder": "marketing"
-    },
-    "created_at": "2026-06-15T14:47:26.644Z"
-  },
-  {
-    "id": "local_1781435949290_sf854",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781435948409.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781435948409.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "1:1",
-    "metadata": {
-      "folder": "marketing"
-    },
-    "created_at": "2026-06-14T11:19:09.290Z"
-  },
-  {
-    "id": "local_1781433564199_yts70",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781433563134.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781433563134.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "1:1",
-    "created_at": "2026-06-14T10:39:24.199Z"
-  },
-  {
-    "id": "local_1781432957598_bkwl4",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781432956927.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781432956927.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "1:1",
-    "created_at": "2026-06-14T10:29:17.598Z"
-  },
-  {
-    "id": "local_1781431212595_c4gdx",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781431210684.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781431210684.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "1:1",
-    "created_at": "2026-06-14T10:00:12.595Z"
-  },
-  {
-    "id": "local_1781431005286_j9a1x",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781431004021.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781431004021.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "1:1",
-    "created_at": "2026-06-14T09:56:45.286Z"
-  },
-  {
-    "id": "local_1781430770742_kkmyp",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781430764061.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781430764061.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "1:1",
-    "created_at": "2026-06-14T09:52:50.742Z"
-  },
-  {
-    "id": "local_1781430736374_j3hpg",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781430734827.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781430734827.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "1:1",
-    "created_at": "2026-06-14T09:52:16.374Z"
-  },
-  {
-    "id": "local_1781430365265_u8hu7",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781430364046.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781430364046.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "1:1",
-    "created_at": "2026-06-14T09:46:05.265Z"
-  },
-  {
-    "id": "local_1781430219282_mm2jh",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781430217993.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781430217993.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "1:1",
-    "created_at": "2026-06-14T09:43:39.282Z"
-  },
-  {
-    "id": "local_1781429558542_9a9rn",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781429557052.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781429557052.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "1:1",
-    "created_at": "2026-06-14T09:32:38.542Z"
-  },
-  {
-    "id": "local_1781429538964_qzeo2",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781429537840.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781429537840.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "1:1",
-    "created_at": "2026-06-14T09:32:18.964Z"
-  },
-  {
-    "id": "custom_1781375219511",
-    "name": "{\"id\":\"custom_1781375219511\",\"name\":\"AROMATIC CHICKEN BIRYANI\",\"prompt\":\"{\\n  \\\"image_edit_prompt\\\": {\\n    \\\"type\\\": \\\"South Indian breakfast recipe infographic overlay\\\",\\n    \\\"input_image\\\": \\\"[ATTACHED_IMAGE]\\\",\\n    \\\"instruction\\\": \\\"Analyze the uploaded image and automatically identify the food, ingredients, cooking style, cuisine type, garnishes, plating style, textures, colors, and preparation method. Transform the image into a premium editorial recipe infographic while preserving the original food as the hero subject.\\\",\\n    \\\"auto_analysis\\\": {\\n      \\\"detect_food_type\\\": true,\\n      \\\"detect_cuisine\\\": true,\\n      \\\"detect_main_ingredients\\\": true,\\n      \\\"detect_garnishes\\\": true,\\n      \\\"detect_cooking_method\\\": true,\\n      \\\"detect_serving_style\\\": true,\\n      \\\"generate_recipe_steps\\\": true,\\n      \\\"generate_cooking_flow\\\": true\\n    },\\n    \\\"style\\\": {\\n      \\\"theme\\\": \\\"Premium Food Magazine Infographic\\\",\\n      \\\"background\\\": \\\"Clean soft white editorial background\\\",\\n      \\\"view\\\": \\\"Top-down flat lay composition\\\",\\n      \\\"design_style\\\": \\\"Luxury cookbook + Pinterest recipe tutorial aesthetic\\\",\\n      \\\"lighting\\\": \\\"Warm natural restaurant lighting\\\",\\n      \\\"graphics\\\": \\\"Thin dotted connector lines, elegant food sketch icons, subtle arrows\\\",\\n      \\\"typography\\\": \\\"Modern sans-serif mixed with handwritten annotations\\\",\\n      \\\"negative_space\\\": \\\"Clean and premium\\\"\\n    },\\n    \\\"ingredients_section\\\": {\\n      \\\"mode\\\": \\\"AI Generated\\\",\\n      \\\"layout\\\": \\\"Ingredients floating around upper half of canvas\\\",\\n      \\\"instruction\\\": \\\"Automatically extract or intelligently infer ingredients from the uploaded food image and display each ingredient with minimal labels connected using thin editorial pointer lines.\\\"\\n    },\\n    \\\"process_flow\\\": {\\n      \\\"mode\\\": \\\"AI Generated\\\",\\n      \\\"layout\\\": \\\"Vertical infographic flow\\\",\\n      \\\"connector_style\\\": \\\"Thin dotted lines with elegant arrows\\\",\\n      \\\"instruction\\\": \\\"Automatically generate 4–8 preparation steps based on the detected dish and cooking method. Create matching culinary icons for every step.\\\"\\n    },\\n    \\\"final_presentation\\\": {\\n      \\\"position\\\": \\\"Bottom center\\\",\\n      \\\"dish\\\": \\\"Use uploaded image dish as final hero presentation\\\",\\n      \\\"presentation_style\\\": \\\"Premium restaurant plating\\\",\\n      \\\"shadow\\\": \\\"Soft cinematic shadow\\\"\\n    },\\n    \\\"creative_enhancements\\\": {\\n      \\\"add_hand_drawn_food_sketches\\\": true,\\n      \\\"add_subtle_spice_particles\\\": true,\\n      \\\"add_food_related_doodles\\\": true,\\n      \\\"add_ingredient_icons\\\": true,\\n      \\\"add_editorial_annotations\\\": true,\\n      \\\"maintain_clean_negative_space\\\": true\\n    },\\n    \\\"smart_adaptation\\\": {\\n      \\\"if_breakfast\\\": \\\"Generate breakfast recipe workflow\\\",\\n      \\\"if_dessert\\\": \\\"Generate dessert preparation workflow\\\",\\n      \\\"if_street_food\\\": \\\"Generate street-food preparation workflow\\\",\\n      \\\"if_drink\\\": \\\"Generate beverage-making workflow\\\",\\n      \\\"if_salad\\\": \\\"Generate ingredient assembly workflow\\\",\\n      \\\"if_main_course\\\": \\\"Generate cooking and plating workflow\\\",\\n      \\\"if_bakery\\\": \\\"Generate baking workflow\\\",\\n      \\\"if_unknown\\\": \\\"Generate best possible preparation flow based on visual analysis\\\"\\n    },\\n    \\\"output_format\\\": {\\n      \\\"aspect_ratio\\\": \\\"Match user requested ratio automatically\\\",\\n      \\\"quality\\\": \\\"Ultra detailed\\\",\\n      \\\"resolution_style\\\": \\\"4K editorial food photography infographic\\\"\\n    }\\n  }\\n}\",\"aspect\":\"16/9\",\"category\":\"food\",\"isTemplate\":true}",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1781375219511.png",
-    "type": "marketing_template",
-    "user_id": "local_user",
-    "created_at": "2026-06-14T08:52:22.769Z"
-  },
-  {
-    "id": "custom_1781374103896",
-    "name": "{\"id\":\"custom_1781374103896\",\"name\":\"CRISPY MASALA FRIES\",\"prompt\":\"Analyze the uploaded food/recipe image.  \\n  \\n### Step 1: Extract Content  \\n  \\n* Identify the main dish name.  \\n* Extract only the key ingredients visible or strongly associated with the dish.  \\n* Ignore measurements, quantities, calories, timings, servings, recipe steps, icons, watermarks, logos, and unnecessary text.  \\n* Correct spelling mistakes if present.  \\n* Simplify ingredient names when needed.  \\n* Keep all text clean, minimal, and restaurant-menu style.  \\n  \\n### Step 2: Transform into a Premium Café Food Poster  \\n  \\n#### Design Style  \\n  \\n* Theme: Premium minimalist café advertisement  \\n  \\n* Background: Soft café-inspired editorial background (NOT black)  \\n  \\n* Automatically choose the most suitable background based on the food colors:  \\n  \\n  * Warm Cream (#F7F3EE)  \\n  * Soft Beige Stone (#EFE7DC)  \\n  * Sage Green (#E8EFE6)  \\n  * Light Olive (#DDE5D3)  \\n  * Terracotta Cream (#F4E4D6)  \\n  * Light Concrete (#ECEAE6)  \\n  \\n* Accent Colors:  \\n  \\n  * Burnt Orange (#C76B29)  \\n  * Chef Green (#2E7D32)  \\n  * Olive Green (#4F6B3C)  \\n  \\n#### Typography  \\n  \\n* Dish Name:  \\n  \\n  * Large, bold, premium restaurant typography  \\n  * Elegant spacing  \\n  * High-end menu aesthetic  \\n  \\n* Ingredients:  \\n  \\n  * Clean minimal sans-serif  \\n  * Small elegant bullet points or inline layout  \\n  \\n#### Layout  \\n  \\n* Top:  \\n  \\n  * Dish name  \\n  * Small premium brand logo/name  \\n  \\n* Center:  \\n  \\n  * Large hero food image  \\n  * Main focus of the poster  \\n  * Enhanced food styling  \\n  \\n* Bottom or Side:  \\n  \\n  * Minimal ingredient list  \\n  * Optional tagline  \\n  * Optional chef badge  \\n  \\n#### Visual Enhancements  \\n  \\n* Enhance food texture, freshness, and color naturally.  \\n  \\n* Add soft circular glow behind the dish.  \\n  \\n* Add subtle shadows for depth.  \\n  \\n* Add elegant garnish elements matching the cuisine:  \\n  \\n  * Herbs  \\n  * Curry leaves  \\n  * Peppercorns  \\n  * Spices  \\n  * Fresh ingredients  \\n  \\n* Maintain lots of clean negative space.  \\n  \\n* Use luxury magazine-style composition.  \\n  \\n#### Branding  \\n  \\n* Generate a creative premium café brand name that matches the cuisine.  \\n* Add a short premium tagline.  \\n  \\nExamples:  \\n  \\n* Authentic • Fresh • Handcrafted  \\n* Soft • Steamed • Traditional  \\n* Crispy • Golden • Delicious  \\n* Fresh • Flavorful • Made Daily  \\n  \\n#### Optional Elements  \\n  \\n* Small \\\"Chef Special\\\" badge.  \\n* Subtle decorative food illustrations.  \\n* Minimal premium dividers.  \\n  \\n#### Formatting Rules  \\n  \\n* Clean alignment.  \\n* Premium restaurant advertisement look.  \\n* No recipe instructions.  \\n* No preparation steps.  \\n* No nutrition information.  \\n* No clutter.  \\n* No infographic workflow.  \\n  \\n#### Output  \\n  \\n* High-resolution vertical poster.  \\n* Aspect Ratio: 9:16.  \\n* Instagram-ready.  \\n* Premium café marketing poster.  \\n* Pinterest-worthy editorial food photography.  \\n* Luxury restaurant menu advertisement aesthetic.  \\n* Automatically adapt colors, garnishes, typography, and branding to match the detected dish and cuisine.\",\"aspect\":\"16/9\",\"category\":\"food\",\"isTemplate\":true}",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1781374103896.png",
-    "type": "marketing_template",
-    "user_id": "local_user",
-    "created_at": "2026-06-14T08:51:53.646Z"
-  },
-  {
-    "id": "custom_1781373827502",
-    "name": "{\"id\":\"custom_1781373827502\",\"name\":\"AUTHENTIC FILTER COFFEE\",\"prompt\":\"Analyze the uploaded food/recipe image. \\n \\n### Step 1: Extract Content \\n \\n* Identify the main dish name. \\n* Extract only the key ingredients visible or strongly associated with the dish. \\n* Ignore measurements, quantities, calories, timings, servings, recipe steps, icons, watermarks, logos, and unnecessary text. \\n* Correct spelling mistakes if present. \\n* Simplify ingredient names when needed. \\n* Keep all text clean, minimal, and restaurant-menu style. \\n \\n### Step 2: Transform into a Premium Café Food Poster \\n \\n#### Design Style \\n \\n* Theme: Premium minimalist café advertisement \\n \\n* Background: Soft café-inspired editorial background (NOT black) \\n \\n* Automatically choose the most suitable background based on the food colors: \\n \\n  * Warm Cream (#F7F3EE) \\n  * Soft Beige Stone (#EFE7DC) \\n  * Sage Green (#E8EFE6) \\n  * Light Olive (#DDE5D3) \\n  * Terracotta Cream (#F4E4D6) \\n  * Light Concrete (#ECEAE6) \\n \\n* Accent Colors: \\n \\n  * Burnt Orange (#C76B29) \\n  * Chef Green (#2E7D32) \\n  * Olive Green (#4F6B3C) \\n \\n#### Typography \\n \\n* Dish Name: \\n \\n  * Large, bold, premium restaurant typography \\n  * Elegant spacing \\n  * High-end menu aesthetic \\n \\n* Ingredients: \\n \\n  * Clean minimal sans-serif \\n  * Small elegant bullet points or inline layout \\n \\n#### Layout \\n \\n* Top: \\n \\n  * Dish name \\n  * Small premium brand logo/name \\n \\n* Center: \\n \\n  * Large hero food image \\n  * Main focus of the poster \\n  * Enhanced food styling \\n \\n* Bottom or Side: \\n \\n  * Minimal ingredient list \\n  * Optional tagline \\n  * Optional chef badge \\n \\n#### Visual Enhancements \\n \\n* Enhance food texture, freshness, and color naturally. \\n \\n* Add soft circular glow behind the dish. \\n \\n* Add subtle shadows for depth. \\n \\n* Add elegant garnish elements matching the cuisine: \\n \\n  * Herbs \\n  * Curry leaves \\n  * Peppercorns \\n  * Spices \\n  * Fresh ingredients \\n \\n* Maintain lots of clean negative space. \\n \\n* Use luxury magazine-style composition. \\n \\n#### Branding \\n \\n* Generate a creative premium café brand name that matches the cuisine. \\n* Add a short premium tagline. \\n \\nExamples: \\n \\n* Authentic • Fresh • Handcrafted \\n* Soft • Steamed • Traditional \\n* Crispy • Golden • Delicious \\n* Fresh • Flavorful • Made Daily \\n \\n#### Optional Elements \\n \\n* Small \\\"Chef Special\\\" badge. \\n* Subtle decorative food illustrations. \\n* Minimal premium dividers. \\n \\n#### Formatting Rules \\n \\n* Clean alignment. \\n* Premium restaurant advertisement look. \\n* No recipe instructions. \\n* No preparation steps. \\n* No nutrition information. \\n* No clutter. \\n* No infographic workflow. \\n \\n#### Output \\n \\n* High-resolution vertical poster. \\n* Aspect Ratio: 9:16. \\n* Instagram-ready. \\n* Premium café marketing poster. \\n* Pinterest-worthy editorial food photography. \\n* Luxury restaurant menu advertisement aesthetic. \\n* Automatically adapt colors, garnishes, typography, and branding to match the detected dish and cuisine.\",\"aspect\":\"16/9\",\"category\":\"food\",\"isTemplate\":true}",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1781373827502.png",
-    "type": "marketing_template",
-    "user_id": "local_user",
-    "created_at": "2026-06-14T08:51:23.858Z"
-  },
-  {
-    "id": "custom_1781373332073",
-    "name": "{\"id\":\"custom_1781373332073\",\"name\":\"TRADITIONAL MASALA CHAI\",\"prompt\":\"{\\n  \\\"image_edit_prompt\\\": {\\n    \\\"type\\\": \\\"South Indian breakfast recipe infographic overlay\\\",\\n    \\\"input_image\\\": \\\"[ATTACHED_IMAGE]\\\",\\n    \\\"instruction\\\": \\\"Analyze the uploaded image and automatically identify the food, ingredients, cooking style, cuisine type, garnishes, plating style, textures, colors, and preparation method. Transform the image into a premium editorial recipe infographic while preserving the original food as the hero subject.\\\",\\n    \\\"auto_analysis\\\": {\\n      \\\"detect_food_type\\\": true,\\n      \\\"detect_cuisine\\\": true,\\n      \\\"detect_main_ingredients\\\": true,\\n      \\\"detect_garnishes\\\": true,\\n      \\\"detect_cooking_method\\\": true,\\n      \\\"detect_serving_style\\\": true,\\n      \\\"generate_recipe_steps\\\": true,\\n      \\\"generate_cooking_flow\\\": true\\n    },\\n    \\\"style\\\": {\\n      \\\"theme\\\": \\\"Premium Food Magazine Infographic\\\",\\n      \\\"background\\\": \\\"Clean soft white editorial background\\\",\\n      \\\"view\\\": \\\"Top-down flat lay composition\\\",\\n      \\\"design_style\\\": \\\"Luxury cookbook + Pinterest recipe tutorial aesthetic\\\",\\n      \\\"lighting\\\": \\\"Warm natural restaurant lighting\\\",\\n      \\\"graphics\\\": \\\"Thin dotted connector lines, elegant food sketch icons, subtle arrows\\\",\\n      \\\"typography\\\": \\\"Modern sans-serif mixed with handwritten annotations\\\",\\n      \\\"negative_space\\\": \\\"Clean and premium\\\"\\n    },\\n    \\\"ingredients_section\\\": {\\n      \\\"mode\\\": \\\"AI Generated\\\",\\n      \\\"layout\\\": \\\"Ingredients floating around upper half of canvas\\\",\\n      \\\"instruction\\\": \\\"Automatically extract or intelligently infer ingredients from the uploaded food image and display each ingredient with minimal labels connected using thin editorial pointer lines.\\\"\\n    },\\n    \\\"process_flow\\\": {\\n      \\\"mode\\\": \\\"AI Generated\\\",\\n      \\\"layout\\\": \\\"Vertical infographic flow\\\",\\n      \\\"connector_style\\\": \\\"Thin dotted lines with elegant arrows\\\",\\n      \\\"instruction\\\": \\\"Automatically generate 4–8 preparation steps based on the detected dish and cooking method. Create matching culinary icons for every step.\\\"\\n    },\\n    \\\"final_presentation\\\": {\\n      \\\"position\\\": \\\"Bottom center\\\",\\n      \\\"dish\\\": \\\"Use uploaded image dish as final hero presentation\\\",\\n      \\\"presentation_style\\\": \\\"Premium restaurant plating\\\",\\n      \\\"shadow\\\": \\\"Soft cinematic shadow\\\"\\n    },\\n    \\\"creative_enhancements\\\": {\\n      \\\"add_hand_drawn_food_sketches\\\": true,\\n      \\\"add_subtle_spice_particles\\\": true,\\n      \\\"add_food_related_doodles\\\": true,\\n      \\\"add_ingredient_icons\\\": true,\\n      \\\"add_editorial_annotations\\\": true,\\n      \\\"maintain_clean_negative_space\\\": true\\n    },\\n    \\\"smart_adaptation\\\": {\\n      \\\"if_breakfast\\\": \\\"Generate breakfast recipe workflow\\\",\\n      \\\"if_dessert\\\": \\\"Generate dessert preparation workflow\\\",\\n      \\\"if_street_food\\\": \\\"Generate street-food preparation workflow\\\",\\n      \\\"if_drink\\\": \\\"Generate beverage-making workflow\\\",\\n      \\\"if_salad\\\": \\\"Generate ingredient assembly workflow\\\",\\n      \\\"if_main_course\\\": \\\"Generate cooking and plating workflow\\\",\\n      \\\"if_bakery\\\": \\\"Generate baking workflow\\\",\\n      \\\"if_unknown\\\": \\\"Generate best possible preparation flow based on visual analysis\\\"\\n    },\\n    \\\"output_format\\\": {\\n      \\\"aspect_ratio\\\": \\\"Match user requested ratio\\\",\\n      \\\"quality\\\": \\\"Ultra detailed\\\",\\n      \\\"resolution_style\\\": \\\"4K editorial food photography infographic\\\"\\n    }\\n  }\\n}\",\"aspect\":\"16/9\",\"category\":\"food\",\"isTemplate\":true}",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1781373332073.png",
-    "type": "marketing_template",
-    "user_id": "local_user",
-    "created_at": "2026-06-14T08:50:52.942Z"
-  },
-  {
-    "id": "custom_1781372848531",
-    "name": "{\"id\":\"custom_1781372848531\",\"name\":\"HYDERABADI CHICKEN BIRYANI\",\"prompt\":\"Analyze the uploaded food/recipe image.\\n\\nStep 1: Extract content\\n- Identify the main dish name\\n- Extract key ingredients only (ignore measurements if cluttered)\\n- REMOVE steps, instructions, calories, timings, servings, icons, or extra text\\n- Fix spelling mistakes if present\\n- Keep it clean and minimal (restaurant style, not recipe style)\\n\\nStep 2: Convert into a premium food poster\\n\\nDesign Style:\\n- Theme: Dark luxury / modern restaurant\\n- Background: Black or dark textured\\n- Accent Color: Vibrant orange (#FF6A00) or chef-style green (#2E7D32)\\n- Typography:\\n   • Dish name → bold, large, premium\\n   • Ingredients → clean, minimal sans-serif\\n\\nLayout:\\n- Top: Dish Name (e.g., “Chimichurri Steak Bowl”)\\n- Center: Large hero food image (focus on dish)\\n- Bottom or side: Ingredients list (clean bullets or inline)\\n\\nVisual Elements:\\n- Add realistic food styling (enhance colors, lighting)\\n- Use circular glow / plate highlight behind dish\\n- Add subtle garnish elements (herbs, spices around)\\n- Soft shadows for depth\\n\\nFormatting:\\n- Keep spacing clean and premium\\n- Do NOT overcrowd with text\\n- Align everything neatly\\n\\nExtra Enhancements:\\n- Add tagline (e.g., “Fresh • Flavorful • Fire Grilled”)\\n- Add a creative brand name (e.g., “Urban Grill Kitchen” or “Flavour Bowl Co.”)\\n- Optional: small “Chef Special” badge\\n\\nOutput:\\n- Generate high-resolution vertical poster (9:16)\\n- Instagram-ready, premium food advertisement style\",\"aspect\":\"16/9\",\"category\":\"food\",\"isTemplate\":true}",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1781372848531.png",
-    "type": "marketing_template",
-    "user_id": "local_user",
-    "created_at": "2026-06-14T08:50:19.808Z"
-  },
-  {
-    "id": "custom_1781371689186",
-    "name": "{\"id\":\"custom_1781371689186\",\"name\":\"SOFT FLUFFY SOUTH INDIAN IDLI\",\"prompt\":\"{\\n  \\\"image_edit_prompt\\\": {\\n    \\\"type\\\": \\\"South Indian breakfast recipe infographic overlay\\\",\\n    \\\"input_image\\\": \\\"[ATTACHED_IMAGE]\\\",\\n    \\\"instruction\\\": \\\"Analyze the uploaded image and automatically identify the food, ingredients, cooking style, cuisine type, garnishes, plating style, textures, colors, and preparation method. Transform the image into a premium editorial recipe infographic while preserving the original food as the hero subject.\\\",\\n    \\\"auto_analysis\\\": {\\n      \\\"detect_food_type\\\": true,\\n      \\\"detect_cuisine\\\": true,\\n      \\\"detect_main_ingredients\\\": true,\\n      \\\"detect_garnishes\\\": true,\\n      \\\"detect_cooking_method\\\": true,\\n      \\\"detect_serving_style\\\": true,\\n      \\\"generate_recipe_steps\\\": true,\\n      \\\"generate_cooking_flow\\\": true\\n    },\\n    \\\"style\\\": {\\n      \\\"theme\\\": \\\"Premium Food Magazine Infographic\\\",\\n      \\\"background\\\": \\\"Clean soft white editorial background\\\",\\n      \\\"view\\\": \\\"Top-down flat lay composition\\\",\\n      \\\"design_style\\\": \\\"Luxury cookbook + Pinterest recipe tutorial aesthetic\\\",\\n      \\\"lighting\\\": \\\"Warm natural restaurant lighting\\\",\\n      \\\"graphics\\\": \\\"Thin dotted connector lines, elegant food sketch icons, subtle arrows\\\",\\n      \\\"typography\\\": \\\"Modern sans-serif mixed with handwritten annotations\\\",\\n      \\\"negative_space\\\": \\\"Clean and premium\\\"\\n    },\\n    \\\"ingredients_section\\\": {\\n      \\\"mode\\\": \\\"AI Generated\\\",\\n      \\\"layout\\\": \\\"Ingredients floating around upper half of canvas\\\",\\n      \\\"instruction\\\": \\\"Automatically extract or intelligently infer ingredients from the uploaded food image and display each ingredient with minimal labels connected using thin editorial pointer lines.\\\"\\n    },\\n    \\\"process_flow\\\": {\\n      \\\"mode\\\": \\\"AI Generated\\\",\\n      \\\"layout\\\": \\\"Vertical infographic flow\\\",\\n      \\\"connector_style\\\": \\\"Thin dotted lines with elegant arrows\\\",\\n      \\\"instruction\\\": \\\"Automatically generate 4–8 preparation steps based on the detected dish and cooking method. Create matching culinary icons for every step.\\\"\\n    },\\n    \\\"final_presentation\\\": {\\n      \\\"position\\\": \\\"Bottom center\\\",\\n      \\\"dish\\\": \\\"Use uploaded image dish as final hero presentation\\\",\\n      \\\"presentation_style\\\": \\\"Premium restaurant plating\\\",\\n      \\\"shadow\\\": \\\"Soft cinematic shadow\\\"\\n    },\\n    \\\"creative_enhancements\\\": {\\n      \\\"add_hand_drawn_food_sketches\\\": true,\\n      \\\"add_subtle_spice_particles\\\": true,\\n      \\\"add_food_related_doodles\\\": true,\\n      \\\"add_ingredient_icons\\\": true,\\n      \\\"add_editorial_annotations\\\": true,\\n      \\\"maintain_clean_negative_space\\\": true\\n    },\\n    \\\"smart_adaptation\\\": {\\n      \\\"if_breakfast\\\": \\\"Generate breakfast recipe workflow\\\",\\n      \\\"if_dessert\\\": \\\"Generate dessert preparation workflow\\\",\\n      \\\"if_street_food\\\": \\\"Generate street-food preparation workflow\\\",\\n      \\\"if_drink\\\": \\\"Generate beverage-making workflow\\\",\\n      \\\"if_salad\\\": \\\"Generate ingredient assembly workflow\\\",\\n      \\\"if_main_course\\\": \\\"Generate cooking and plating workflow\\\",\\n      \\\"if_bakery\\\": \\\"Generate baking workflow\\\",\\n      \\\"if_unknown\\\": \\\"Generate best possible preparation flow based on visual analysis\\\"\\n    },\\n    \\\"output_format\\\": {\\n      \\\"aspect_ratio\\\": \\\"Match user requested ratio automatically\\\",\\n      \\\"quality\\\": \\\"Ultra detailed\\\",\\n      \\\"resolution_style\\\": \\\"4K editorial food photography infographic\\\"\\n    }\\n  }\\n}\",\"aspect\":\"16/9\",\"category\":\"food\",\"isTemplate\":true}",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1781371689186.png",
-    "type": "marketing_template",
-    "user_id": "local_user",
-    "created_at": "2026-06-14T08:49:24.620Z"
-  },
-  {
-    "id": "custom_1781371116254",
-    "name": "{\"id\":\"custom_1781371116254\",\"name\":\"CRISPY MASALA DOSA\",\"prompt\":\"{\\n  \\\"image_edit_prompt\\\": {\\n    \\\"type\\\": \\\"South Indian breakfast recipe infographic overlay\\\",\\n    \\\"input_image\\\": \\\"[ATTACHED_IMAGE]\\\",\\n    \\\"instruction\\\": \\\"Analyze the uploaded image and automatically identify the food, ingredients, cooking style, cuisine type, garnishes, plating style, textures, colors, and preparation method. Transform the image into a premium editorial recipe infographic while preserving the original food as the hero subject.\\\",\\n    \\\"auto_analysis\\\": {\\n      \\\"detect_food_type\\\": true,\\n      \\\"detect_cuisine\\\": true,\\n      \\\"detect_main_ingredients\\\": true,\\n      \\\"detect_garnishes\\\": true,\\n      \\\"detect_cooking_method\\\": true,\\n      \\\"detect_serving_style\\\": true,\\n      \\\"generate_recipe_steps\\\": true,\\n      \\\"generate_cooking_flow\\\": true\\n    },\\n    \\\"style\\\": {\\n      \\\"theme\\\": \\\"Premium Food Magazine Infographic\\\",\\n      \\\"background\\\": \\\"Clean soft white editorial background\\\",\\n      \\\"view\\\": \\\"Top-down flat lay composition\\\",\\n      \\\"design_style\\\": \\\"Luxury cookbook + Pinterest recipe tutorial aesthetic\\\",\\n      \\\"lighting\\\": \\\"Warm natural restaurant lighting\\\",\\n      \\\"graphics\\\": \\\"Thin dotted connector lines, elegant food sketch icons, subtle arrows\\\",\\n      \\\"typography\\\": \\\"Modern sans-serif mixed with handwritten annotations\\\",\\n      \\\"negative_space\\\": \\\"Clean and premium\\\"\\n    },\\n    \\\"ingredients_section\\\": {\\n      \\\"mode\\\": \\\"AI Generated\\\",\\n      \\\"layout\\\": \\\"Ingredients floating around upper half of canvas\\\",\\n      \\\"instruction\\\": \\\"Automatically extract or intelligently infer ingredients from the uploaded food image and display each ingredient with minimal labels connected using thin editorial pointer lines.\\\"\\n    },\\n    \\\"process_flow\\\": {\\n      \\\"mode\\\": \\\"AI Generated\\\",\\n      \\\"layout\\\": \\\"Vertical infographic flow\\\",\\n      \\\"connector_style\\\": \\\"Thin dotted lines with elegant arrows\\\",\\n      \\\"instruction\\\": \\\"Automatically generate 4–8 preparation steps based on the detected dish and cooking method. Create matching culinary icons for every step.\\\"\\n    },\\n    \\\"final_presentation\\\": {\\n      \\\"position\\\": \\\"Bottom center\\\",\\n      \\\"dish\\\": \\\"Use uploaded image dish as final hero presentation\\\",\\n      \\\"presentation_style\\\": \\\"Premium restaurant plating\\\",\\n      \\\"shadow\\\": \\\"Soft cinematic shadow\\\"\\n    },\\n    \\\"creative_enhancements\\\": {\\n      \\\"add_hand_drawn_food_sketches\\\": true,\\n      \\\"add_subtle_spice_particles\\\": true,\\n      \\\"add_food_related_doodles\\\": true,\\n      \\\"add_ingredient_icons\\\": true,\\n      \\\"add_editorial_annotations\\\": true,\\n      \\\"maintain_clean_negative_space\\\": true\\n    },\\n    \\\"smart_adaptation\\\": {\\n      \\\"if_breakfast\\\": \\\"Generate breakfast recipe workflow\\\",\\n      \\\"if_dessert\\\": \\\"Generate dessert preparation workflow\\\",\\n      \\\"if_street_food\\\": \\\"Generate street-food preparation workflow\\\",\\n      \\\"if_drink\\\": \\\"Generate beverage-making workflow\\\",\\n      \\\"if_salad\\\": \\\"Generate ingredient assembly workflow\\\",\\n      \\\"if_main_course\\\": \\\"Generate cooking and plating workflow\\\",\\n      \\\"if_bakery\\\": \\\"Generate baking workflow\\\",\\n      \\\"if_unknown\\\": \\\"Generate best possible preparation flow based on visual analysis\\\"\\n    },\\n    \\\"output_format\\\": {\\n      \\\"aspect_ratio\\\": \\\"Match user requested ratio automatically\\\",\\n      \\\"quality\\\": \\\"Ultra detailed\\\",\\n      \\\"resolution_style\\\": \\\"4K editorial food photography infographic\\\"\\n    }\\n  }\\n}\",\"aspect\":\"16/9\",\"category\":\"food\",\"isTemplate\":true}",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/marketing/reference/user_sandbox/ref_1781371116254.png",
-    "type": "marketing_template",
-    "user_id": "local_user",
-    "created_at": "2026-06-14T08:48:57.344Z"
-  },
-  {
-    "id": "local_1781189660528_j83rl",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781189659896.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/ugc/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781189659896.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-11T14:54:20.528Z"
-  },
-  {
-    "id": "local_1781189455486_as9xs",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781189455043.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781189455043.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-11T14:50:55.486Z"
-  },
-  {
-    "id": "local_1781189091378_s9e5i",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781189090879.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781189090879.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-11T14:44:51.378Z"
-  },
-  {
-    "id": "local_1781186818669_mvol0",
-    "name": "upload_1781186816792.mp4",
-    "type": "video",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1781186816792.mp4",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "created_at": "2026-06-11T14:06:58.669Z"
-  },
-  {
-    "id": "local_1781186713994_mv8cf",
-    "name": "upload_1781186711175.mp4",
-    "type": "video",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1781186711175.mp4",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "created_at": "2026-06-11T14:05:13.994Z"
-  },
-  {
-    "id": "local_1781186634514_4rn3h",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781186633928.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781186633928.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-11T14:03:54.514Z"
-  },
-  {
-    "id": "local_1781186580530_w90hv",
-    "name": "upload_1781186578850.mp4",
-    "type": "video",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1781186578850.mp4",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "created_at": "2026-06-11T14:03:00.530Z"
-  },
-  {
-    "id": "local_1781186507995_6myv2",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781186507418.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781186507418.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-11T14:01:47.995Z"
-  },
-  {
-    "id": "local_1781185828321_8pxsj",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781185827736.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781185827736.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-11T13:50:28.321Z"
-  },
-  {
-    "id": "local_1781184411344_resgo",
-    "name": "upload_1781184407024.mp4",
-    "type": "video",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1781184407024.mp4",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "created_at": "2026-06-11T13:26:51.345Z"
-  },
-  {
-    "id": "local_1781184288426_qv2tj",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781184287745.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781184287745.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-11T13:24:48.426Z"
-  },
-  {
-    "id": "local_1781184235911_62hwv",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781184235020.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781184235020.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-11T13:23:55.911Z"
-  },
-  {
-    "id": "local_1781183798434_626o3",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781183797915.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781183797915.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-11T13:16:38.434Z"
-  },
-  {
-    "id": "local_1781183703787_hyb3o",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781183703206.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781183703206.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-11T13:15:03.788Z"
-  },
-  {
-    "id": "local_1781183205473_ks7r5",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781183204896.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781183204896.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-11T13:06:45.473Z"
-  },
-  {
-    "id": "local_1781117373347_vm853",
-    "name": "upload_1781117370874.mp4",
-    "type": "video",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1781117370874.mp4",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "created_at": "2026-06-10T18:49:33.347Z"
-  },
-  {
-    "id": "local_1781117016707_ezy18",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781117016142.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781117016142.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-10T18:43:36.707Z"
-  },
-  {
-    "id": "local_1781115786770_34ygr",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781115786147.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781115786147.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-10T18:23:06.770Z"
-  },
-  {
-    "id": "local_1781115742140_l7aun",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781115741677.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781115741677.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-10T18:22:22.140Z"
-  },
-  {
-    "id": "local_1781115722353_os74q",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781115721685.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781115721685.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-10T18:22:02.353Z"
-  },
-  {
-    "id": "local_1781115374028_pan3a",
-    "name": "upload_1781115371183.mp4",
-    "type": "video",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1781115371183.mp4",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "created_at": "2026-06-10T18:16:14.029Z"
-  },
-  {
-    "id": "local_1781114462052_wl2sx",
-    "name": "upload_1781114458580.mp4",
-    "type": "video",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1781114458580.mp4",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "created_at": "2026-06-10T18:01:02.053Z"
-  },
-  {
-    "id": "local_1781114252696_pild0",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781114252019.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781114252019.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-10T17:57:32.696Z"
-  },
-  {
-    "id": "local_1781114207589_bbu9f",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781114206645.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781114206645.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-10T17:56:47.589Z"
-  },
-  {
-    "id": "local_1781114163107_jjhfs",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781114161500.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1781114161500.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-10T17:56:03.107Z"
-  },
-  {
-    "id": "local_1780902915822_odqij",
-    "name": "ref_1780902914713.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/ref_1780902914713.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "created_at": "2026-06-08T07:15:15.822Z"
-  },
-  {
-    "id": "local_1780660418670_ig11a",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780660417465.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780660417465.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-05T11:53:38.670Z"
-  },
-  {
-    "id": "local_1780660036380_93h22",
-    "name": "upload_1780660035381.mp4",
-    "type": "video",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/uploads/upload_1780660035381.mp4",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "created_at": "2026-06-05T11:47:16.380Z"
-  },
-  {
-    "id": "local_1780659986350_kk8r1",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780659984835.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780659984835.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-05T11:46:26.351Z"
-  },
-  {
-    "id": "local_1780659879670_6hd4d",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780659877985.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780659877985.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-05T11:44:39.670Z"
-  },
-  {
-    "id": "local_1780659616256_oigwo",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780659615831.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780659615831.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-05T11:40:16.257Z"
-  },
-  {
-    "id": "local_1780659559923_ryymt",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780659559483.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780659559483.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-05T11:39:19.923Z"
-  },
-  {
-    "id": "local_1780659241666_ur7p3",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780659241060.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780659241060.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-05T11:34:01.666Z"
-  },
-  {
-    "id": "local_1780659040262_l7z6w",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780659039760.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780659039760.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-05T11:30:40.262Z"
-  },
-  {
-    "id": "local_1780658687877_4bs0n",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780658687280.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780658687280.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-05T11:24:47.877Z"
-  },
-  {
-    "id": "local_1780658580242_dkusb",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780658579534.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1780658579534.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "created_at": "2026-06-05T11:23:00.242Z"
   }
 ]

@@ -5,6 +5,8 @@ import {
   Upload, Trash2, Check, Zap, Cpu, Code, HelpCircle, RefreshCw, Sliders, Play, Loader2, ChevronDown, Users, Tag
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { getApiUrl } from '../../config/apiConfig';
+import { useAppStore } from '../../store';
 
 // Premium Glassmorphic Dropdown Component
 const GlassSelect = React.memo(({ value, onChange, options, label, icon: Icon, accent = 'violet', align = 'up' }) => {
@@ -100,6 +102,10 @@ export const SidePanel = React.memo(({
   setOmniFirstFramePreview,
   setOmniLastFrameImage,
   setOmniLastFramePreview,
+  omniRefVideoPreview: propOmniRefVideoPreview,
+  setOmniRefVideoPreview: propSetOmniRefVideoPreview,
+  omniRefVideoDuration = 0,
+  setOmniRefVideoDuration,
   handleFileUpload,
   setUploadTarget,
   handleClearRef,
@@ -131,8 +137,14 @@ export const SidePanel = React.memo(({
 
   // Dedicated Video File Input Ref & State for Omni Flash Reference Video
   const videoInputRef = useRef(null);
-  const [videoPreview, setVideoPreview] = useState(null);
+  const [localVideoPreview, setLocalVideoPreview] = useState(null);
   const [isVideoUploading, setIsVideoUploading] = useState(false);
+
+  const videoPreview = propOmniRefVideoPreview !== undefined ? propOmniRefVideoPreview : localVideoPreview;
+  const setVideoPreview = (val) => {
+    setLocalVideoPreview(val);
+    if (propSetOmniRefVideoPreview) propSetOmniRefVideoPreview(val);
+  };
 
   // Textarea Ref & Local Prompt State for zero input latency
   const textareaRef = useRef(null);
@@ -153,49 +165,79 @@ export const SidePanel = React.memo(({
 
   const triggerGenerateVeo = () => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    // Flush local prompt to parent first, then schedule generate on next tick
+    // to avoid React state-batching races where handleGenerate reads stale promptText.
+    const engineToUse = isVeoEngine ? activeEngine : 'veo-3.1-generate-preview';
     setPromptText(localPrompt);
     setActiveTab('video');
     if (!isVeoEngine) {
-      setActiveEngine('veo-3.1-generate-preview');
+      setActiveEngine(engineToUse);
     }
-    setTimeout(() => {
-      handleGenerate();
-    }, 100);
+    // Use queueMicrotask so React can commit state before we call handleGenerate.
+    queueMicrotask(() => handleGenerate(localPrompt, engineToUse));
   };
 
   const triggerGenerateOmni = () => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    const engineToUse = isOmniEngine ? activeEngine : 'omni-flash';
     setPromptText(localPrompt);
     setActiveTab('video');
     if (!isOmniEngine) {
-      setActiveEngine('omni-flash');
+      setActiveEngine(engineToUse);
     }
-    setTimeout(() => {
-      handleGenerate();
-    }, 100);
+    queueMicrotask(() => handleGenerate(localPrompt, engineToUse));
   };
 
-  const handleVideoSelect = (e) => {
+  const handleVideoSelect = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
       setIsVideoUploading(true);
       const blobUrl = URL.createObjectURL(file);
       setVideoPreview(blobUrl);
 
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const base64Url = ev.target.result;
-        if (panelTab === 'omni') {
-          setOmniFirstFrameImage(base64Url);
-          setOmniFirstFramePreview(base64Url);
-        } else {
-          setFirstFrameImage(base64Url);
-          setFirstFramePreview(base64Url);
+      // Check reference video duration
+      const tempVideo = document.createElement('video');
+      tempVideo.preload = 'metadata';
+      tempVideo.src = blobUrl;
+      tempVideo.onloadedmetadata = () => {
+        const dur = tempVideo.duration || 0;
+        if (setOmniRefVideoDuration) setOmniRefVideoDuration(dur);
+        if (dur > 10) {
+          const showToast = useAppStore.getState().showToast;
+          if (showToast) {
+            showToast(`Reference video is ${Math.round(dur * 10) / 10}s long. Omni Flash accepts max 10s (auto-trimmed to 10s).`, "info");
+          }
         }
-        setIsVideoUploading(false);
       };
-      reader.onerror = () => setIsVideoUploading(false);
-      reader.readAsDataURL(file);
+
+      try {
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          const base64Url = ev.target.result;
+          try {
+            const resp = await fetch(getApiUrl('/api/save-asset'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                imageData: base64Url,
+                type: 'video',
+                fileName: `ref_video_${Date.now()}.mp4`,
+                folder: 'reference'
+              })
+            });
+            if (resp.ok) {
+              const data = await resp.json();
+              const publicUrl = data.url || data.path || base64Url;
+              setVideoPreview(publicUrl);
+            }
+          } catch (_) { /* fallback to blobUrl */ }
+          setIsVideoUploading(false);
+        };
+        reader.onerror = () => setIsVideoUploading(false);
+        reader.readAsDataURL(file);
+      } catch (err) {
+        setIsVideoUploading(false);
+      }
     }
   };
 
@@ -206,7 +248,7 @@ export const SidePanel = React.memo(({
     return [
       ...(firstPreview ? [{ name: 'FIRST_FRAME', category: 'Keyframe 1', imageUrl: firstPreview, isKeyframe: true }] : []),
       ...(lastPreview ? [{ name: 'LAST_FRAME', category: 'Keyframe 2', imageUrl: lastPreview, isKeyframe: true }] : []),
-      ...(videoPreview ? [{ name: 'REF_VIDEO', category: 'Reference Video', isVideo: true }] : []),
+      ...(videoPreview ? [{ name: 'REF_VIDEO', category: 'Reference Video', isVideo: true, imageUrl: videoPreview, url: videoPreview }] : []),
       ...(allRefItems || [])
     ];
   }, [panelTab, firstFramePreview, lastFramePreview, omniFirstFramePreview, omniLastFramePreview, videoPreview, allRefItems]);
@@ -250,59 +292,59 @@ export const SidePanel = React.memo(({
     return (localPrompt || '').match(/@[\w_]+/g) || [];
   }, [localPrompt]);
 
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[120] flex justify-end pointer-events-none">
-        {/* Hidden Dedicated Video File Input */}
-        <input
-          ref={videoInputRef}
-          type="file"
-          accept="video/*"
-          className="hidden"
-          onChange={handleVideoSelect}
-        />
+      {isOpen && (
+        <div className="fixed inset-0 z-[120] flex justify-end pointer-events-none">
+          {/* Hidden Dedicated Video File Input */}
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={handleVideoSelect}
+          />
 
-        {/* Slide-over Glassmorphic Drawer (Slides from Right) */}
-        <motion.div
-          initial={{ x: '100%' }}
-          animate={{ x: 0 }}
-          exit={{ x: '100%' }}
-          transition={{ type: 'spring', damping: 26, stiffness: 230 }}
-          className="relative w-full max-w-xl bg-[#08080f]/95 border-l border-white/15 shadow-[0_0_80px_rgba(139,92,246,0.3)] flex flex-col h-full overflow-hidden backdrop-blur-3xl text-white z-10 pointer-events-auto"
-        >
-          {/* Background Ambient Gradient Orbs */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-20 left-0 w-80 h-80 bg-fuchsia-600/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute top-1/2 right-10 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+          {/* Slide-over Glassmorphic Drawer (Slides from Right) */}
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+            className="relative w-full max-w-xl bg-[#08080f]/95 border-l border-white/15 shadow-[0_0_80px_rgba(139,92,246,0.3)] flex flex-col h-full overflow-hidden backdrop-blur-3xl text-white z-10 pointer-events-auto"
+          >
+            {/* Background Ambient Gradient Orbs */}
+            <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-20 left-0 w-80 h-80 bg-fuchsia-600/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute top-1/2 right-10 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Glass Header with ZeroLens Branding */}
-          <div className="px-4 py-2 border-b border-white/10 bg-gradient-to-r from-violet-950/40 via-fuchsia-950/30 to-black/40 backdrop-blur-2xl flex items-center justify-between relative z-10">
-            <div className="flex items-center gap-2.5">
-              <div className="p-0.5 rounded-xl bg-gradient-to-tr from-violet-500 via-fuchsia-500 to-cyan-400 shadow-md shadow-fuchsia-500/20">
-                <div className="w-6 h-6 rounded-[10px] bg-[#0d0d15] flex items-center justify-center">
-                  <Clapperboard className="w-3 h-3 text-fuchsia-400" />
+            {/* Glass Header with ZeroLens Branding */}
+            <div className="px-5 py-3 border-b border-white/10 bg-gradient-to-r from-violet-950/40 via-fuchsia-950/30 to-black/40 backdrop-blur-2xl flex items-center justify-between relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="p-1 rounded-xl bg-gradient-to-tr from-violet-500 via-fuchsia-500 to-cyan-400 shadow-md shadow-fuchsia-500/20">
+                  <div className="w-7 h-7 rounded-[10px] bg-[#0d0d15] flex items-center justify-center">
+                    <Clapperboard className="w-4 h-4 text-fuchsia-400" />
+                  </div>
+                </div>
+                <div>
+                  <h2 className="text-xs font-black tracking-[0.2em] uppercase bg-gradient-to-r from-white via-violet-200 to-fuchsia-200 bg-clip-text text-transparent leading-none">
+                    ZeroLens
+                  </h2>
+                  <p className="text-[8px] font-bold uppercase tracking-widest text-fuchsia-400/70 leading-none mt-1">
+                    Cinematic Studio
+                  </p>
                 </div>
               </div>
-              <div>
-                <h2 className="text-[10px] font-black tracking-[0.2em] uppercase bg-gradient-to-r from-white via-violet-200 to-fuchsia-200 bg-clip-text text-transparent leading-none">
-                  ZeroLens
-                </h2>
-                <p className="text-[7px] font-bold uppercase tracking-widest text-fuchsia-400/70 leading-none mt-0.5">
-                  Cinematic Studio
-                </p>
-              </div>
-            </div>
 
-            <button
-              onClick={onClose}
-              className="p-2.5 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-all border border-transparent hover:border-white/10 active:scale-95 cursor-pointer flex items-center justify-center shrink-0"
-              title="Close Panel"
-            >
-              <X size={20} className="stroke-[2.5]" />
-            </button>
-          </div>
+              {/* Prominent Enlarged Close Button */}
+              <button
+                onClick={onClose}
+                className="w-11 h-11 rounded-2xl bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/40 text-gray-300 hover:text-white transition-all active:scale-95 cursor-pointer flex items-center justify-center shrink-0 shadow-lg group"
+                title="Close Studio Panel"
+              >
+                <X size={24} className="stroke-[2.5] transition-transform group-hover:scale-110" />
+              </button>
+            </div>
 
           {/* Glass Navigation Tabs Bar */}
           <div className="px-5 pt-3.5 pb-2.5 bg-black/40 border-b border-white/10 backdrop-blur-2xl flex items-center gap-2 relative z-10">
@@ -580,7 +622,8 @@ export const SidePanel = React.memo(({
                     options={[
                       { value: 4, label: '4 Seconds', desc: 'Short dynamic clip' },
                       { value: 6, label: '6 Seconds', desc: 'Standard video clip' },
-                      { value: 8, label: '8 Seconds', desc: 'Extended camera shot' }
+                      { value: 8, label: '8 Seconds', desc: 'Extended camera shot' },
+                      { value: 10, label: '10 Seconds', desc: 'Maximum video clip' }
                     ]}
                   />
 
@@ -764,9 +807,22 @@ export const SidePanel = React.memo(({
                           <Video className="w-3 h-3" /> Reference Video
                         </span>
                         {videoPreview && (
-                          <button onClick={() => setVideoPreview(null)} className="p-1 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors cursor-pointer">
-                            <Trash2 size={12} />
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            {omniRefVideoDuration > 0 && (
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold font-mono border ${
+                                omniRefVideoDuration > 10
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                  : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                              }`}>
+                                {omniRefVideoDuration > 10
+                                  ? `✂️ ${Math.round(omniRefVideoDuration)}s → 10s max`
+                                  : `⏱️ ${Math.round(omniRefVideoDuration * 10) / 10}s`}
+                              </span>
+                            )}
+                            <button onClick={() => { setVideoPreview(null); if (setOmniRefVideoDuration) setOmniRefVideoDuration(0); }} className="p-1 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors cursor-pointer">
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
                         )}
                       </div>
                       {isVideoUploading ? (
@@ -865,6 +921,59 @@ export const SidePanel = React.memo(({
                       ))}
                     </div>
                   )}
+                </div>
+
+                {/* 4. FOURTH SECTION: Omni Flash Video Parameters */}
+                <div className="grid grid-cols-2 gap-3.5 pt-3 border-t border-white/10">
+                  <GlassSelect
+                    label="Resolution"
+                    value={resolution}
+                    onChange={setResolution}
+                    options={[
+                      { value: '720p', label: '720p HD', desc: 'Standard High Definition' },
+                      { value: '1080p', label: '1080p Full HD', desc: 'Full HD Quality' }
+                    ]}
+                  />
+
+                  <GlassSelect
+                    label="Duration"
+                    value={duration}
+                    onChange={(val) => setDuration(Number(val))}
+                    options={[
+                      { value: 4, label: '4 Seconds', desc: 'Short dynamic clip' },
+                      { value: 6, label: '6 Seconds', desc: 'Standard video clip' },
+                      { value: 8, label: '8 Seconds', desc: 'Extended camera shot' },
+                      { value: 10, label: '10 Seconds', desc: 'Maximum Omni Flash clip' }
+                    ]}
+                  />
+
+                  <GlassSelect
+                    label="Aspect Ratio"
+                    value={aspectRatio}
+                    onChange={setAspectRatio}
+                    options={[
+                      { value: '16:9', label: '16:9 Landscape', desc: 'Widescreen cinematic' },
+                      { value: '9:16', label: '9:16 Portrait', desc: 'Mobile vertical reel' },
+                      { value: '1:1', label: '1:1 Square', desc: 'Social feed post' }
+                    ]}
+                  />
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-300">Audio Track</label>
+                    <button
+                      type="button"
+                      onClick={() => setGenerateAudio(!generateAudio)}
+                      className={cn(
+                        "w-full py-2.5 px-3.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all backdrop-blur-xl shadow-md cursor-pointer select-none",
+                        generateAudio
+                          ? "bg-gradient-to-r from-fuchsia-600/30 to-violet-600/30 border-fuchsia-400 text-fuchsia-200"
+                          : "bg-[#0e0e18]/90 border-white/15 text-gray-400 hover:text-white"
+                      )}
+                    >
+                      <span>{generateAudio ? 'Audio Enabled' : 'Muted'}</span>
+                      {generateAudio && <Check className="w-3.5 h-3.5 text-fuchsia-400" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1034,8 +1143,8 @@ export const SidePanel = React.memo(({
             </div>
 
             <button
-              onClick={panelTab === 'omni' ? triggerGenerateOmni : triggerGenerateVeo}
-              disabled={isBusy || !canGenerate}
+              onClick={panelTab === 'docs' ? undefined : panelTab === 'omni' ? triggerGenerateOmni : triggerGenerateVeo}
+              disabled={isBusy || !canGenerate || panelTab === 'docs'}
               className={cn(
                 "h-13 py-3.5 px-8 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2.5 transition-all shadow-[0_0_40px_rgba(200,241,53,0.4)] border border-[#d4ff00]/40 backdrop-blur-2xl shrink-0 active:scale-95",
                 canGenerate
@@ -1058,6 +1167,7 @@ export const SidePanel = React.memo(({
           </div>
         </motion.div>
       </div>
+      )}
     </AnimatePresence>
   );
 });

@@ -36,7 +36,7 @@ export default function createRouter(deps) {
             }
 
             // Test 2: Try generating an image to verify image generation capabilities
-            const testImgUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`;
+            const testImgUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${apiKey}`;
             const imgResp = await fetch(testImgUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -273,7 +273,7 @@ export default function createRouter(deps) {
 
             if (model === 'gemini' || model === 'nano-banana-2' || model === 'gemini-3.1-flash-image-preview' || model === 'nano-banana-2-lite' || model === 'nb2-lite' || model === 'gemini-3.1-flash-lite' || model === 'gemini-3.1-flash-lite-image' || model === 'nano-banana-pro' || model === 'gemini-3-pro-image-preview' || model === 'nano-banana-2-open' || model === 'nb2-open' || model === 'gemini-3.1-flash-image') {
                 const apiKey = await resolveGoogleApiKey(req, targetUserId, false);
-                let activeModel = 'gemini-3.1-flash-image-preview';
+                let activeModel = 'gemini-3.1-flash-image';
                 if (model === 'nano-banana-2-lite' || model === 'nb2-lite' || model === 'gemini-3.1-flash-lite' || model === 'gemini-3.1-flash-lite-image') {
                     activeModel = 'gemini-3.1-flash-lite-image';
                 } else if (model === 'nano-banana-pro' || model === 'gemini-3-pro-image-preview') {

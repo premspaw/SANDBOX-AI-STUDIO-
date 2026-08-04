@@ -56,7 +56,14 @@ function VideoThumbnail({ url, className }: { url: string; className?: string })
   );
 }
 
-export default function GalleryGrid() {
+interface GalleryGridProps {
+  onSetStartFrame?: (img: { url: string; file?: File } | null) => void;
+  startFrameUrl?: string;
+  onSetRealtor?: (img: { url: string; file?: File } | null) => void;
+  realtorUrl?: string;
+}
+
+export default function GalleryGrid({ onSetStartFrame, startFrameUrl, onSetRealtor, realtorUrl }: GalleryGridProps) {
   const {
     gallery,
     setGallery,
@@ -327,70 +334,119 @@ export default function GalleryGrid() {
                         <Download size={14} />
                       </button>
                     </div>
-                    {item.type === 'image' && (() => {
-                      // Check if this image is already in the active scene's refImages array
-                      const activeSceneRefs: string[] = splitScenes.length > 0
-                        ? (splitScenes[activeSplitTab]?.refImages || (splitScenes[activeSplitTab]?.refImage ? [splitScenes[activeSplitTab].refImage as string] : []))
-                        : [];
-                      const isAttachedToActiveScene = splitScenes.length > 0 && activeSceneRefs.includes(item.url);
-                      const isAttachedToGlobal = splitScenes.length === 0 && (attachedRefImages || []).includes(item.url);
-                      const isAdded = isAttachedToActiveScene || isAttachedToGlobal;
-                      const isFull = splitScenes.length > 0 ? activeSceneRefs.length >= 3 : (attachedRefImages || []).length >= 3;
-
-                      return (
-                        <button
-                          title={isAdded ? 'Remove reference' : isFull ? 'Max 3 refs' : 'Attach for video'}
-                          onClick={e => {
-                            e.stopPropagation();
-                            if (splitScenes.length > 0) {
-                              setSplitScenes((prev: any[]) =>
-                                prev.map((s, idx) => {
-                                  if (idx !== activeSplitTab) return s;
-                                  const currentRefs: string[] = s.refImages || (s.refImage ? [s.refImage] : []);
-                                  let newRefs: string[];
-                                  if (currentRefs.includes(item.url)) {
-                                    // Toggle off — remove from array
-                                    newRefs = currentRefs.filter((r: string) => r !== item.url);
-                                  } else if (currentRefs.length < 3) {
-                                    // Append
-                                    newRefs = [...currentRefs, item.url];
-                                  } else {
-                                    // Full — do nothing
-                                    showToast('Max 3 reference images per scene', 'error');
-                                    return s;
-                                  }
-                                  return { ...s, refImage: newRefs[0] || null, refImages: newRefs };
-                                })
-                              );
-                              showToast(isAdded ? 'Reference removed' : 'Image attached to active scene!', isAdded ? 'info' : 'success');
-                            } else {
-                              const currentGlobalRefs = attachedRefImages || [];
-                              let newGlobalRefs: string[];
-                              if (currentGlobalRefs.includes(item.url)) {
-                                newGlobalRefs = currentGlobalRefs.filter((r: string) => r !== item.url);
-                              } else if (currentGlobalRefs.length < 3) {
-                                newGlobalRefs = [...currentGlobalRefs, item.url];
+                    {item.type === 'image' && (
+                      <div className="flex flex-col gap-1 w-[90%] px-1 relative z-25">
+                        {/* Start Frame / Outfit Lock Button */}
+                        {onSetStartFrame && (
+                          <button
+                            title={startFrameUrl === item.url ? 'Start Frame Locked' : 'Set as Start Frame / Outfit Lock'}
+                            onClick={e => {
+                              e.stopPropagation();
+                              if (startFrameUrl === item.url) {
+                                onSetStartFrame(null);
+                                showToast('Removed from Start Frame', 'info');
                               } else {
-                                showToast('Max 3 reference images', 'error');
-                                return;
+                                onSetStartFrame({ url: item.url });
+                                showToast('Set as Start Frame / Outfit Lock!', 'success');
                               }
-                              setAttachedRefImages(newGlobalRefs);
-                              setAttachedRefImage(newGlobalRefs[0] || null);
-                              showToast(isAttachedToGlobal ? 'Reference removed' : 'Image attached — ready to make a video!', isAttachedToGlobal ? 'info' : 'success');
-                            }
-                          }}
-                          className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border transition-all shadow-lg text-[8px] font-black uppercase tracking-wider ${
-                            isAdded
-                              ? 'bg-[#c8f135] text-black border-[#c8f135]'
-                              : isFull
-                              ? 'bg-black/40 text-white/20 border-white/10 cursor-not-allowed'
-                              : 'bg-black/80 hover:bg-[#c8f135]/20 hover:border-[#c8f135]/50 text-white hover:text-[#c8f135] border-white/20'
-                          }`}
-                        >
-                          <Plus size={10} /> {isAdded ? 'Added' : isFull ? 'Full' : 'Use for Video'}
-                        </button>
-                      );
-                    })()}
+                            }}
+                            className={`w-full flex items-center justify-center gap-1 py-1 rounded-lg border transition-all text-[7.5px] font-black uppercase tracking-wider ${
+                              startFrameUrl === item.url
+                                ? 'bg-[#c8f135] text-black border-[#c8f135]'
+                                : 'bg-black/80 hover:bg-[#c8f135]/20 hover:border-[#c8f135]/50 text-white hover:text-[#c8f135] border-white/20'
+                            }`}
+                          >
+                            <Film size={8} /> {startFrameUrl === item.url ? 'Start Frame Set' : 'Use as Start Frame'}
+                          </button>
+                        )}
+
+                        {/* Agent / Face Reference Button */}
+                        {onSetRealtor && (
+                          <button
+                            title={realtorUrl === item.url ? 'Agent Face Locked' : 'Set as Agent / Face Reference'}
+                            onClick={e => {
+                              e.stopPropagation();
+                              if (realtorUrl === item.url) {
+                                onSetRealtor(null);
+                                showToast('Removed from Agent Reference', 'info');
+                              } else {
+                                onSetRealtor({ url: item.url });
+                                showToast('Set as Agent / Face Reference!', 'success');
+                              }
+                            }}
+                            className={`w-full flex items-center justify-center gap-1 py-1 rounded-lg border transition-all text-[7.5px] font-black uppercase tracking-wider ${
+                              realtorUrl === item.url
+                                ? 'bg-[#c8f135] text-black border-[#c8f135]'
+                                : 'bg-black/80 hover:bg-[#c8f135]/20 hover:border-[#c8f135]/50 text-white hover:text-[#c8f135] border-white/20'
+                            }`}
+                          >
+                            <Plus size={8} /> {realtorUrl === item.url ? 'Agent Set' : 'Use as Agent'}
+                          </button>
+                        )}
+
+                        {/* Existing Attach reference button */}
+                        {(() => {
+                          const activeSceneRefs: string[] = splitScenes.length > 0
+                            ? (splitScenes[activeSplitTab]?.refImages || (splitScenes[activeSplitTab]?.refImage ? [splitScenes[activeSplitTab].refImage as string] : []))
+                            : [];
+                          const isAttachedToActiveScene = splitScenes.length > 0 && activeSceneRefs.includes(item.url);
+                          const isAttachedToGlobal = splitScenes.length === 0 && (attachedRefImages || []).includes(item.url);
+                          const isAdded = isAttachedToActiveScene || isAttachedToGlobal;
+                          const isFull = splitScenes.length > 0 ? activeSceneRefs.length >= 3 : (attachedRefImages || []).length >= 3;
+
+                          return (
+                            <button
+                              title={isAdded ? 'Remove reference' : isFull ? 'Max 3 refs' : 'Attach for video'}
+                              onClick={e => {
+                                e.stopPropagation();
+                                if (splitScenes.length > 0) {
+                                  setSplitScenes((prev: any[]) =>
+                                    prev.map((s, idx) => {
+                                      if (idx !== activeSplitTab) return s;
+                                      const currentRefs: string[] = s.refImages || (s.refImage ? [s.refImage] : []);
+                                      let newRefs: string[];
+                                      if (currentRefs.includes(item.url)) {
+                                        newRefs = currentRefs.filter((r: string) => r !== item.url);
+                                      } else if (currentRefs.length < 3) {
+                                        newRefs = [...currentRefs, item.url];
+                                      } else {
+                                        showToast('Max 3 reference images per scene', 'error');
+                                        return s;
+                                      }
+                                      return { ...s, refImage: newRefs[0] || null, refImages: newRefs };
+                                    })
+                                  );
+                                  showToast(isAdded ? 'Reference removed' : 'Image attached to active scene!', isAdded ? 'info' : 'success');
+                                } else {
+                                  const currentGlobalRefs = attachedRefImages || [];
+                                  let newGlobalRefs: string[];
+                                  if (currentGlobalRefs.includes(item.url)) {
+                                    newGlobalRefs = currentGlobalRefs.filter((r: string) => r !== item.url);
+                                  } else if (currentGlobalRefs.length < 3) {
+                                    newGlobalRefs = [...currentGlobalRefs, item.url];
+                                  } else {
+                                    showToast('Max 3 reference images', 'error');
+                                    return;
+                                  }
+                                  setAttachedRefImages(newGlobalRefs);
+                                  setAttachedRefImage(newGlobalRefs[0] || null);
+                                  showToast(isAttachedToGlobal ? 'Reference removed' : 'Image attached — ready to make a video!', isAttachedToGlobal ? 'info' : 'success');
+                                }
+                              }}
+                              className={`w-full flex items-center justify-center gap-1 py-1 rounded-lg border transition-all text-[7.5px] font-black uppercase tracking-wider ${
+                                isAdded
+                                  ? 'bg-[#c8f135] text-black border-[#c8f135]'
+                                  : isFull
+                                  ? 'bg-black/40 text-white/20 border-white/10 cursor-not-allowed'
+                                  : 'bg-black/80 hover:bg-[#c8f135]/20 hover:border-[#c8f135]/50 text-white hover:text-[#c8f135] border-white/20'
+                              }`}
+                            >
+                              <Plus size={8} /> {isAdded ? 'Added to Refs' : isFull ? 'Refs Full' : 'Use as Scene Ref'}
+                            </button>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               );

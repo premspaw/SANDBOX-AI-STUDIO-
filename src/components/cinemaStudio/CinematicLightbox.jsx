@@ -94,7 +94,7 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
 [Subject and Context: ${lightboxItem.prompt || 'Cinematic photo'}]`;
 
       const payload = {
-        model: 'gemini-3.1-flash-image-preview',
+        model: 'gemini-3.1-flash-image',
         prompt: prompt,
         aspect_ratio: lightboxItem.aspect || '16:9',
         referenceImages: [lightboxItem.url],

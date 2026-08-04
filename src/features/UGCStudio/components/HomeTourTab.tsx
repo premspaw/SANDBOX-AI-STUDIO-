@@ -4,10 +4,11 @@ import {
   Film, Loader2, ChevronDown, Play,
   Building, Trees, Sofa, UtensilsCrossed,
   Bath, BedDouble, Car, Maximize,
-  ChevronLeft, ChevronRight, FileText, Sparkles, RefreshCw
+  ChevronLeft, ChevronRight, FileText, Sparkles, RefreshCw, Scissors, Trash2
 } from 'lucide-react';
 import { useUGC } from '../context/UGCContext';
 import GalleryGrid from './GalleryGrid';
+import MentionTextarea, { roomToMentionToken } from './MentionTextarea';
 import { useShorts } from '../../../hooks/useShorts';
 import { fileToBase64, resizeImage } from '../utils/imageUtils';
 import { uploadToSupabase } from '../utils/storageUtils';
@@ -29,14 +30,14 @@ interface RoomSlot {
 
 // ── Default room slots ────────────────────────────────────────
 const DEFAULT_ROOMS: Omit<RoomSlot, 'images' | 'script' | 'prompt' | 'generatedVideo'>[] = [
-  { id: 'front',    label: 'Front Elevation', icon: Building, duration: 5 },
-  { id: 'living',   label: 'Living Room',     icon: Sofa,     duration: 5 },
-  { id: 'kitchen',  label: 'Kitchen',         icon: UtensilsCrossed, duration: 5 },
-  { id: 'bedroom1', label: 'Bedroom 1',       icon: BedDouble, duration: 5 },
-  { id: 'bedroom2', label: 'Bedroom 2',       icon: BedDouble, duration: 5 },
-  { id: 'bathroom', label: 'Bathroom',        icon: Bath,      duration: 5 },
-  { id: 'lawn',     label: 'Lawn / Garden',   icon: Trees,     duration: 5 },
-  { id: 'parking',  label: 'Parking / Garage',icon: Car,       duration: 5 },
+  { id: 'front',    label: 'Front Elevation', icon: Building, duration: 10 },
+  { id: 'living',   label: 'Living Room',     icon: Sofa,     duration: 10 },
+  { id: 'kitchen',  label: 'Kitchen',         icon: UtensilsCrossed, duration: 10 },
+  { id: 'bedroom1', label: 'Bedroom 1',       icon: BedDouble, duration: 10 },
+  { id: 'bedroom2', label: 'Bedroom 2',       icon: BedDouble, duration: 10 },
+  { id: 'bathroom', label: 'Bathroom',        icon: Bath,      duration: 10 },
+  { id: 'lawn',     label: 'Lawn / Garden',   icon: Trees,     duration: 10 },
+  { id: 'parking',  label: 'Parking / Garage',icon: Car,       duration: 10 },
 ];
 
 // ── Prompt builder per room ───────────────────────────────────
@@ -155,6 +156,7 @@ export default function HomeTourTab() {
     setVideoGenMode,
     videoResolution,
     aspectRatio,
+    setAspectRatio,
     includeAudio,
     isGeneratingVideo,
     setIsGeneratingVideo,
@@ -170,8 +172,8 @@ export default function HomeTourTab() {
   } = useUGC();
 
   // ── Local state ──────────────────────────────────────────────
-  const [realtorImg, setRealtorImg] = useState<{ url: string; file: File } | null>(null);
-  const [startFrameImg, setStartFrameImg] = useState<{ url: string; file: File } | null>(null);
+  const [realtorImg, setRealtorImg] = useState<{ url: string; file?: File } | null>(null);
+  const [startFrameImg, setStartFrameImg] = useState<{ url: string; file?: File } | null>(null);
   const [propertyName, setPropertyName] = useState('');
   const [propertyPrice, setPropertyPrice] = useState('');
   const [propertyLocation, setPropertyLocation] = useState('');
@@ -187,6 +189,174 @@ export default function HomeTourTab() {
   const [selectedContinuousSegments, setSelectedContinuousSegments] = useState<Set<number>>(new Set());
   const [isGeneratingContinuousScript, setIsGeneratingContinuousScript] = useState(false);
   const [isGeneratingContinuousVideo, setIsGeneratingContinuousVideo] = useState(false);
+  const [autoWriteMode, setAutoWriteMode] = useState<boolean>(true);
+  const [manualDuration, setManualDuration] = useState<number>(30);
+
+  const parseTimeToSeconds = (timeStr: string): number => {
+    const parts = timeStr.trim().split(':').map(Number);
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      return parts[0] * 60 + parts[1];
+    }
+    return 0;
+  };
+
+  const parseScriptIntoSegments = (text: string, activeSequence: any[], manualDurationVal: number) => {
+    if (!text || !text.trim()) return [];
+    const trimmed = text.trim();
+    const newSegments: { segmentIndex: number; script: string; prompt: string }[] = [];
+
+    // Format 1: JSON prompt structure (object or array)
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((item, idx) => {
+            newSegments.push({
+              segmentIndex: idx,
+              script: item.dialogue || item.script || item.text || '',
+              prompt: item.prompt || item.visual_prompt || item.description || JSON.stringify(item)
+            });
+          });
+          if (newSegments.length > 0) return newSegments;
+        } else if (parsed.segments && Array.isArray(parsed.segments)) {
+          parsed.segments.forEach((seg: any, idx: number) => {
+            newSegments.push({
+              segmentIndex: seg.segmentIndex ?? idx,
+              script: seg.script || seg.dialogue || '',
+              prompt: seg.prompt || seg.visual_prompt || seg.description || ''
+            });
+          });
+          if (newSegments.length > 0) return newSegments;
+        } else if (parsed.prompt || parsed.dialogue) {
+          newSegments.push({
+            segmentIndex: 0,
+            script: parsed.dialogue || '',
+            prompt: parsed.prompt || ''
+          });
+          return newSegments;
+        }
+      } catch (e) {
+        // Fall back to text parsing if not valid JSON
+      }
+    }
+
+    const rawBlocks = trimmed.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+    const hasTimestamps = rawBlocks.some(b => /\d+:\d+\s*[-–—]\s*\d+:\d+/.test(b));
+
+    // Format 2: Timestamped blocks (e.g. 0:00 - 0:10 (Visual) "Dialogue")
+    if (hasTimestamps) {
+      interface ParsedBlock {
+        timeRange: string;
+        startSeconds: number;
+        visualDesc: string;
+        spokenScript: string;
+      }
+      const groups: { [key: number]: ParsedBlock[] } = {};
+
+      rawBlocks.forEach((block) => {
+        const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+        let timeRange = '';
+        let startSeconds = 0;
+        let visualDesc = '';
+        let spokenScript = '';
+
+        lines.forEach(line => {
+          const matchTime = line.match(/^(\d+:\d+)\s*[-–—]\s*(\d+:\d+)\s*(?:\(([^)]+)\))?/i);
+          if (matchTime) {
+            timeRange = `${matchTime[1]} - ${matchTime[2]}`;
+            startSeconds = parseTimeToSeconds(matchTime[1]);
+            visualDesc = matchTime[3] || '';
+          } else if (line.startsWith('"') || line.startsWith('“') || line.startsWith("'")) {
+            spokenScript = line.replace(/^["'“`]|["'”`]$/g, '').trim();
+          } else {
+            if (!visualDesc) visualDesc = line;
+            else if (!spokenScript) spokenScript = line;
+          }
+        });
+
+        const segmentIndex = Math.floor(startSeconds / 10);
+        if (!groups[segmentIndex]) groups[segmentIndex] = [];
+        groups[segmentIndex].push({ timeRange, startSeconds, visualDesc, spokenScript });
+      });
+
+      const sortedIndices = Object.keys(groups).map(Number).sort((a, b) => a - b);
+      sortedIndices.forEach((origIndex, idx) => {
+        const group = groups[origIndex];
+        group.sort((a, b) => a.startSeconds - b.startSeconds);
+
+        const combinedScript = group.map(b => b.spokenScript).filter(Boolean).join(' ');
+        const combinedPrompt = group.map(b => {
+          return b.visualDesc ? `${b.visualDesc}. ${b.spokenScript}` : b.spokenScript;
+        }).join(' ');
+
+        newSegments.push({
+          segmentIndex: idx,
+          script: combinedScript.trim() || combinedPrompt.trim(),
+          prompt: combinedPrompt.trim()
+        });
+      });
+      return newSegments;
+    }
+
+    // Format 3: Explicit Clip/Shot/Scene header blocks or @mention blocks
+    const clipBlocks = rawBlocks.filter(b => /^(clip|shot|scene)\s*\d+/i.test(b) || b.includes('@'));
+    if (clipBlocks.length >= 2) {
+      clipBlocks.forEach((block, idx) => {
+        const dialogueMatch = block.match(/(?:dialogue|speech|voiceover):\s*["'“`]?([^"'”`\n]+)["'”`]?/i);
+        const script = dialogueMatch ? dialogueMatch[1].trim() : block;
+        
+        newSegments.push({
+          segmentIndex: idx,
+          script,
+          prompt: block.replace(/(?:dialogue|speech|voiceover):\s*["'“`]?([^"'”`\n]+)["'”`]?/i, '').trim()
+        });
+      });
+      return newSegments;
+    }
+
+    // Format 4: Default paragraph/duration split
+    const targetSec = manualDurationVal || 30;
+    const numSegments = Math.max(1, Math.floor(targetSec / 10));
+    const blocks = rawBlocks.length >= numSegments 
+      ? rawBlocks 
+      : trimmed.split(/(?<=[.!?])\s+|\n+/).filter(s => s.trim().length > 0);
+
+    const sentencesPerSeg = Math.max(1, Math.ceil(blocks.length / numSegments));
+
+    for (let i = 0; i < numSegments; i++) {
+      const chunkSentences = blocks.slice(i * sentencesPerSeg, (i + 1) * sentencesPerSeg);
+      const chunkText = chunkSentences.join(' ').replace(/^["'“`]|["'”`]$/g, '').trim() || trimmed;
+
+      newSegments.push({
+        segmentIndex: i,
+        script: chunkText,
+        prompt: chunkText
+      });
+    }
+
+    return newSegments;
+  };
+
+  const handleSplitManualPrompt = (customText?: string) => {
+    const textToUse = typeof customText === 'string' ? customText : continuousScript;
+    if (!textToUse || !textToUse.trim()) {
+      if (typeof customText !== 'string') {
+        showToast('Please paste or enter your custom prompt script first', 'error');
+      }
+      return;
+    }
+    const activeSequence = getActiveWalkthroughSequence();
+    const segments = parseScriptIntoSegments(textToUse, activeSequence, manualDuration);
+    setContinuousSegments(segments);
+
+    const initialSet = new Set<number>();
+    segments.forEach((_, idx) => initialSet.add(idx));
+    setSelectedContinuousSegments(initialSet);
+
+    if (typeof customText !== 'string') {
+      showToast(`Split prompt into ${segments.length} segments!`, 'success');
+    }
+  };;
 
   // Script and language states
   const [language, setLanguage] = useState('English');
@@ -225,7 +395,7 @@ export default function HomeTourTab() {
     if (!file) return;
     const url = URL.createObjectURL(file);
     setRooms(prev => prev.map(r => {
-      if (r.id === roomId && r.images.length < 3) {
+      if (r.id === roomId && r.images.length < 4) {
         return { ...r, images: [...r.images, { url, file }] };
       }
       return r;
@@ -321,18 +491,17 @@ Property Details:
 For each room, generate:
 1. "script": A spoken monologue for this room.
    - It MUST be written in ${language} (if Dravidian/Hindi, write in that language's script).
-   - The script must fit the duration of the room (target ~3 words per second: e.g., 12-15 words for 4-5s, 18-20 words for 6s, 24-25 words for 8s, 25-30 words for 10s).
-   - CRITICAL: Provide ONLY the raw spoken words. Do NOT include ANY timestamps (like [0:00 - 0:05]), room names (like "KITCHEN:"), speaker labels, or stage directions in the script text. Output strictly the monologue.
-   - CRITICAL RESTRICTION: You are STRICTLY FORBIDDEN from using the word "Welcome" or any greeting. Do not say "Welcome to this...". Start immediately with a transition or an engaging observation about the space (e.g. "Step into this beautiful...", "Notice the...", "Here we have...").
+   - CRITICAL WORD COUNT LIMIT FOR 10-SECOND SHOTS: The script monologue MUST be strictly between 18 and 22 words maximum per 10-second shot (ABSOLUTE MAX 25 SHORT WORDS). Do NOT write 35+ or 40+ words — it is physically impossible to speak that fast naturally in 10 seconds! Keep sentences punchy, clear, and elegant.
+   - CRITICAL: Provide ONLY the raw spoken words. Do NOT include ANY timestamps (like [0:00 - 0:10]), room names (like "KITCHEN:"), speaker labels, or stage directions in the script text. Output strictly the monologue.
+   - CRITICAL RESTRICTION: You are STRICTLY FORBIDDEN from using the word "Welcome" or any greeting. Start immediately with a sharp observation about the space (e.g. "Step into this beautiful...", "Notice the...", "Here we have...").
 2. "prompt": A detailed visual motion prompt describing the cinematic video shot for this room. Use this EXACT Universal Prompt Structure:
+   - MULTI-IMAGE FEATURE SHOWCASE: Visually analyze the attached reference photos for this room. Describe smooth camera dolly/pan movements and subtle cuts showcasing key features (e.g., cabinetry, countertops, sink, lighting, appliances) across 5 to 10 seconds.
    - REFERENCE LOCK: "Maintain the exact room layout, furniture placement, colors, materials, proportions, and architectural details from the reference image. Do not redesign, replace, remove, or reposition any furniture or decorative elements." If "Has Realtor" is Yes: "Preserve the realtor's facial identity, hairstyle, clothing, body proportions, and speaking style consistently throughout the entire shot."
    - CHARACTER ACTION (If "Has Realtor" is Yes): Give the realtor specific, purposeful behavior (e.g., "confidently introduces each feature with natural pointing gestures, briefly looking toward the feature before returning her gaze to the camera").
-   - CAMERA BEHAVIOR: Make the realtor drive the camera. (e.g., "The camera smoothly follows her movement, revealing each feature only when she gestures toward it.") Use terms like "Smooth handheld gimbal movement with realistic operator motion, subtle acceleration and deceleration, maintaining stable framing."
-   - ENVIRONMENT REVEAL: Do NOT force a list of objects. Let the camera discover the room (e.g., "the camera gradually reveals the room's key architectural features and premium furnishings").
-   - LIGHTING: Do NOT over-specify lighting. Simply write: "Preserve the lighting exactly as shown in the reference image, enhancing only the natural warmth and depth without altering the room's original mood."
+   - CAMERA BEHAVIOR: Smooth gimbal movement following the realtor or panning across key room details.
+   - LIGHTING: "Preserve the lighting exactly as shown in the reference image, enhancing natural warmth and depth."
    - CONTINUITY: "One continuous cinematic shot. No cuts. Consistent identity."
-   - ENDING: End stronger. (e.g., "The camera settles into a balanced hero composition while the realtor finishes her sentence with a warm smile, holding a relaxed presentation pose before the shot ends.")
-   - DIALOGUE INCLUSION: You MUST include the exact spoken dialogue from the "script" inside this "prompt" field so the director knows what is being said. Format it like: "The character says: '[exact dialogue]'. When it cuts to B-roll, voiceover continues: '[exact dialogue]'."
+   - DIALOGUE INCLUSION: Include exact spoken dialogue inside the prompt field formatted as: "The character says: '[exact dialogue]'."
 
 Return a JSON array of objects, each object structured as:
 {
@@ -482,10 +651,16 @@ Return a JSON array of objects, each object structured as:
 
       const ai = new GoogleGenAI({ apiKey: getApiKey() });
       
+      const minWords = Math.round(room.duration * 1.8);
+      const maxWords = Math.round(room.duration * 2.2);
+
+      const num10sClips = Math.max(1, Math.ceil(room.duration / 10));
+
       const prompt = `
-You are a professional real estate video copywriter.
-Generate a property tour script and visual video prompt for the following single room:
-- Room: "${room.label}" (Duration: ${room.duration} seconds, Timestamp Range: ${timeRange})
+You are a professional real estate video copywriter & director for Google Omni Flash.
+Generate a property tour script and 10-second segmented visual video prompts for the following single room:
+- Room: "${room.label}" (Selected Duration: ${room.duration} seconds — requiring ${num10sClips} x 10-second Omni Flash video clips)
+- Attached Reference Photos: ${room.images?.length || 0} photos
 
 Property Details:
 - Context: ${propertyContext || 'Premium Property'}
@@ -494,25 +669,22 @@ Property Details:
 - Has Realtor/Agent: ${realtorImg ? 'Yes' : 'No'}
 
 Please generate:
-1. "script": A spoken monologue for this room. 
-   - It MUST be written in ${language} (if Dravidian/Hindi, write in that language's script, e.g., Telugu script for Telugu, Devanagari script for Hindi).
-   - The script must fit the duration of the room (target ~3 words per second: e.g., 12-15 words for 4-5s, 18-20 words for 6s, 24-25 words for 8s, 25-30 words for 10s).
-   - CRITICAL: Provide ONLY the raw spoken words. Do NOT include ANY timestamps (like [0:00 - 0:05]), room names (like "KITCHEN:"), speaker labels, or stage directions in the script text. Output strictly the monologue.
-   - CRITICAL RESTRICTION: You are STRICTLY FORBIDDEN from using the word "Welcome" or any greeting. Do not say "Welcome to this...". Start immediately with an engaging observation about the space (e.g. "Step into this beautiful...", "Notice the...", "Here we have...").
-2. "prompt": A detailed visual motion prompt describing the cinematic video shot for this room. Use this EXACT Universal Prompt Structure:
-   - REFERENCE LOCK: "Maintain the exact room layout, furniture placement, colors, materials, proportions, and architectural details from the reference image. Do not redesign, replace, remove, or reposition any furniture or decorative elements." If "Has Realtor" is Yes: "Preserve the realtor's facial identity, hairstyle, clothing, body proportions, and speaking style consistently throughout the entire shot."
-   - CHARACTER ACTION (If "Has Realtor" is Yes): Give the realtor specific, purposeful behavior (e.g., "confidently introduces each feature with natural pointing gestures, briefly looking toward the feature before returning her gaze to the camera").
-   - CAMERA BEHAVIOR: Make the realtor drive the camera. (e.g., "The camera smoothly follows her movement, revealing each feature only when she gestures toward it.") Use terms like "Smooth handheld gimbal movement with realistic operator motion, subtle acceleration and deceleration, maintaining stable framing."
-   - ENVIRONMENT REVEAL: Do NOT force a list of objects. Let the camera discover the room (e.g., "the camera gradually reveals the room's key architectural features and premium furnishings").
-   - LIGHTING: Do NOT over-specify lighting. Simply write: "Preserve the lighting exactly as shown in the reference image, enhancing only the natural warmth and depth without altering the room's original mood."
-   - CONTINUITY: "One continuous cinematic shot. No cuts. Consistent identity."
-   - ENDING: End stronger. (e.g., "The camera settles into a balanced hero composition while the realtor finishes her sentence with a warm smile, holding a relaxed presentation pose before the shot ends.")
-   - DIALOGUE INCLUSION: You MUST include the exact spoken dialogue from the "script" inside this "prompt" field so the director knows what is being said. Format it like: "The character says: '[exact dialogue]'. When it cuts to B-roll, voiceover continues: '[exact dialogue]'."
+1. "script": A complete continuous spoken monologue for this room (${room.duration} seconds total). 
+   - It MUST be written in ${language} (if Dravidian/Hindi, write in that language's script).
+   - CRITICAL DYNAMIC WORD COUNT LIMIT FOR ${room.duration} SECONDS: The script monologue MUST be strictly between ${minWords} and ${maxWords} words total (target ~2.0 to 2.2 words per second). For ${room.duration}s, write between ${minWords} and ${maxWords} words. Do NOT exceed ${maxWords} words! Keep dialogue natural, clear, and elegant.
+   - CRITICAL: Provide ONLY the raw spoken words. Do NOT include ANY timestamps, room names (like "KITCHEN:"), speaker labels, or stage directions in the script text. Output strictly the monologue.
+   - CRITICAL RESTRICTION: You are STRICTLY FORBIDDEN from using the word "Welcome" or any greeting. Start immediately with an engaging observation about the space.
+
+2. "prompt": 10-SECOND SEGMENTED OMNI FLASH PROMPTS.
+   - CRITICAL OMNI FLASH REQUIREMENT: The Omni Flash video generator accepts ONLY 10 SECONDS of video prompt input per clip. Because this room duration is ${room.duration} seconds (${num10sClips} x 10s clips), you MUST format the "prompt" field as ${num10sClips} distinct 10-second timestamped scene blocks (e.g. 0:00–0:10, 0:10–0:20, 0:20–0:30).
+   - For EACH 10-second clip block, describe the camera framing, lighting, and visual features from attached reference photos for that 10s window, along with its 10s voiceover excerpt inside quotes.
+   - Example format for ${room.duration}s:
+${Array.from({ length: num10sClips }).map((_, i) => `     ${(i * 10).toString().padStart(2, '0')}:00–${((i + 1) * 10).toString().padStart(2, '0')}:00 (${i === 0 ? 'Wide shot of complete room' : i === 1 ? 'Close-up shot of sink and window' : 'Hero shot of storage cabinets'}) "spoken dialogue for clip ${i + 1}"`).join('\n')}
 
 Return a JSON object structured exactly as:
 {
-  "script": "spoken monologue in ${language}",
-  "prompt": "visual prompt for video generation"
+  "script": "complete monologue in ${language}",
+  "prompt": "formatted 10-second segmented Omni Flash prompts"
 }
       `.trim();
 
@@ -565,6 +737,17 @@ Return a JSON object structured exactly as:
       setRooms(prev => prev.map(r =>
         r.id === roomId ? { ...r, script: `${prefix}${cleanScript}`, prompt: generated.prompt } : r
       ));
+
+      // If room duration is > 10s or prompt has timestamps, auto-populate continuousSegments for Omni Flash
+      if (room.duration > 10 || generated.prompt.includes('0:00') || generated.prompt.includes('00:00')) {
+        const parsedSegs = parseScriptIntoSegments(generated.prompt, activeSequence, room.duration);
+        if (parsedSegs.length > 0) {
+          setContinuousScript(generated.prompt);
+          setContinuousSegments(parsedSegs);
+          setSelectedContinuousSegments(new Set(parsedSegs.map((_, idx) => idx)));
+        }
+      }
+
       showToast(`Script rewritten for ${room.label} in ${language}!`, 'success');
     } catch (e) {
       handleApiError(e, 'Single room script generation');
@@ -575,9 +758,9 @@ Return a JSON object structured exactly as:
 
   // ── Generate AI script for continuous walkthrough ───────────────
   const generateContinuousTourScript = async () => {
-    const filledRooms = rooms.filter(r => r.images && r.images.length > 0);
-    if (filledRooms.length < 2) {
-      showToast('Please upload photos for at least 2 rooms first', 'error');
+    const activeSequence = getActiveWalkthroughSequence();
+    if (activeSequence.length < 2 && !rooms.some(r => r.images && r.images.length > 0)) {
+      showToast('Please upload photos for at least 2 shots or rooms first', 'error');
       return;
     }
 
@@ -589,14 +772,13 @@ Return a JSON object structured exactly as:
         propertyLocation && `Location: ${propertyLocation}`,
       ].filter(Boolean).join(', ');
 
-      const numSegments = filledRooms.length - 1;
+      const numSegments = Math.max(1, activeSequence.length - 1);
       const actualDuration = numSegments * 10;
-      const activeSequence = filledRooms.slice(0, numSegments + 1);
 
       const segmentInstructions = [];
       for (let i = 0; i < numSegments; i++) {
-        const fromRoom = activeSequence[i]?.label || `Room ${i + 1}`;
-        const toRoom = activeSequence[i + 1]?.label || `Room ${i + 2}`;
+        const fromRoom = activeSequence[i]?.label || `Shot ${i + 1}`;
+        const toRoom = activeSequence[(i + 1) % activeSequence.length]?.label || `Shot ${i + 2}`;
         
         let pathInstruction = `describe camera pan/dolly walking from ${fromRoom} into ${toRoom}`;
         if (pathStyle === 'Camera Path') pathInstruction = `describe a cinematic, smooth, floating camera transition moving directly from ${fromRoom} into ${toRoom} (focus on pure camera movement)`;
@@ -606,38 +788,78 @@ Return a JSON object structured exactly as:
         segmentInstructions.push(`   - For Segment Index ${i}: ${pathInstruction}.`);
       }
 
-      const prompt = `
-You are a professional real estate video copywriter.
-Generate a single continuous property tour voiceover monologue script and visual scene prompts for a ${actualDuration}-second walkthrough.
-The tour transitions through the following rooms in order:
-${activeSequence.map((r, i) => `${i + 1}. Room: "${r?.label || 'Room'}"`).join('\n')}
+      // Read all images for visual analysis
+      let parts: any[] = [];
+      for (const r of activeSequence) {
+        if (r.images && r.images.length > 0) {
+          for (const img of r.images) {
+            try {
+              const blob = await fetchImageAsBlob(img.url);
+              const base64 = await fileToBase64(blob);
+              parts.push({ text: `\n--- Photo of ${r.label} ---` });
+              parts.push({
+                inlineData: {
+                  data: base64,
+                  mimeType: blob.type || 'image/jpeg'
+                }
+              });
+            } catch (e) {
+              console.warn('[ContinuousScript] Failed to resolve image for', r.label, e);
+            }
+          }
+        }
+      }
+
+      const visualContextInstruction = parts.length > 0
+        ? `\nCRITICAL VISUAL ANALYSIS: I have attached photos of the rooms/spaces. You MUST analyze these photos. Do NOT hallucinate generic room features. Your generated "script" and "segments" MUST accurately describe the specific furniture, kitchen accessories (like cutlery drawers, hydraulic lift cabinets, pull-out shelves), layout, colors, and architectural details visible in these photos.`
+        : '';
+
+      const promptText = `
+You are a master real estate & interior architecture video director and copywriter.
+${visualContextInstruction}
+
+TASK: Generate a multi-shot showcase prompt script for Google Omni Flash / Veo (${actualDuration} Seconds Total | Multi-Shot with Hard Cuts).
+
+The property tour moves through the following rooms/spaces:
+${activeSequence.map((r, i) => `${i + 1}. Room: "${r?.label || 'Room'}" (${r.images?.length || 0} reference photos attached)`).join('\n')}
 
 Property Details:
-- Context: ${propertyContext || 'Premium Property'}
+- Context: ${propertyContext || 'Premium Modular Property'}
 - Tone: ${tourStyle}
 - Language: ${language}
 - Has Realtor: ${realtorImg ? 'Yes' : 'No'}
 
-Please generate:
-1. "script": A single cohesive spoken monologue for the entire tour (duration: ${continuousDuration} seconds).
-   - It MUST be written in ${language} (using native script).
-   - Keep it natural, warm, and highly engaging. Do not include labels or timestamps in the spoken script.
-2. "segments": An array of exactly ${numSegments} objects. One for each transition segment of 10 seconds.
+CRITICAL INSTRUCTIONS FOR DYNAMIC SCRIPT & SHOTS:
+1. "script": Format the main script as an AI-driven multi-shot showcase with explicit Hard Cuts.
+   - USE YOUR AI BRAIN FOR DEEP VISUAL ANALYSIS: Carefully analyze ALL attached reference photos for each room slot (${activeSequence.map(r => r.label).join(', ')}). Look at what specific features are visible in each uploaded photo (e.g. overall room layout, sink & window, tall pull-out pantry, hydraulic overhead lift cabinets, under-cabinet LED lighting, built-in appliances, cutlery drawers).
+   - DYNAMIC IMAGE-DRIVEN TIMINGS: Do NOT force rigid static timestamps. Dynamically assign start and end timestamps (e.g. 0:00–0:04, 0:04–0:08, 0:08–0:13, etc.) based on the number and complexity of features visible in the uploaded images, adding up to exactly ${actualDuration} seconds total.
+   - DEDICATED FEATURE SHOTS: Create a dedicated shot segment for each key feature visible in the reference photos. Explicitly describe what feature from the uploaded photos is being showcased in that shot segment.
+   - SPOKEN MONOLOGUE PACING: Match the voice monologue to the shot duration (~2.5 to 3.0 words per second: e.g. 10–14 words for a 4s shot, 15–20 words for a 6s shot, 18–22 words max for a 10s shot). Keep sentences natural, clear, and punchy.
+   - Format EACH shot in the script as:
+     [start_time]–[end_time]
+     [Shot framing and detailed visual description of features from reference image]
+     Voice: "[spoken monologue in ${language}]"
+     Hard Cut
+
+2. "segments": An array of exactly ${numSegments} objects. One for each 10-second video generation block.
 ${segmentInstructions.join('\n')}
-   - If realtor is present, describe the realtor standing/gesturing to show the transition.
+   - In each segment prompt, describe camera movement across the specific features shown in the reference photos (e.g. sink, pull-out pantry, hydraulic cabinets, lighting).
+   - Include strict geometric & reference locks: "Preserve every cabinet, countertop, sink, pull-out pantry, hydraulic cabinet, lighting, appliances, colours, materials, textures, and layout exactly as shown in reference images. No object morphing, no camera distortion, crisp transitions."
 
 Return a JSON object structured exactly as:
 {
-  "script": "full monologue script across all rooms",
+  "script": "the complete formatted Multi-Shot with Hard Cuts script text",
   "segments": [
     {
       "segmentIndex": 0,
-      "script": "monologue portion for this 10-second segment",
-      "prompt": "visual motion prompt for walking from Room A to Room B"
+      "script": "spoken monologue for segment 0",
+      "prompt": "detailed visual motion prompt for segment 0"
     }
   ]
 }
       `.trim();
+
+      parts.unshift({ text: promptText });
 
       const responseSchema = {
         type: 'OBJECT',
@@ -666,7 +888,7 @@ Return a JSON object structured exactly as:
         const serverResp = await fetch(getApiUrl('/api/ugc/generate-text'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, model: 'gemini-2.5-flash', responseSchema }),
+          body: JSON.stringify({ prompt: promptText, parts, model: 'gemini-2.5-flash', responseSchema }),
         });
         if (serverResp.ok) {
           const serverData = await serverResp.json();
@@ -683,7 +905,7 @@ Return a JSON object structured exactly as:
         const ai = new GoogleGenAI({ apiKey: getApiKey() });
         const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
-          contents: prompt,
+          contents: parts,
           config: {
             responseMimeType: 'application/json',
             responseSchema,
@@ -711,15 +933,24 @@ Return a JSON object structured exactly as:
 
   // ── Generate Video for Continuous Walkthrough ───────────────────
   const generateContinuousVideo = async (specificSegmentIndex?: number) => {
-    const filledRooms = rooms.filter(r => r.images && r.images.length > 0);
-    if (filledRooms.length < 2) {
-      showToast('Please upload photos for at least 2 rooms first', 'error');
+    const activeSequence = getActiveWalkthroughSequence();
+    if (autoWriteMode && activeSequence.length < 2 && !rooms.some(r => r.images && r.images.length > 0)) {
+      showToast('Please upload photos for at least 2 shots or rooms first', 'error');
       return;
     }
 
-    const numSegments = filledRooms.length - 1;
-    if (continuousSegments.length === 0) {
-      showToast('Please auto-write the script/prompt sequence first', 'error');
+    let currentSegments = continuousSegments;
+    if (currentSegments.length === 0 && continuousScript.trim()) {
+      currentSegments = parseScriptIntoSegments(continuousScript, activeSequence, manualDuration);
+      setContinuousSegments(currentSegments);
+      const initialSet = new Set<number>();
+      currentSegments.forEach((_, idx) => initialSet.add(idx));
+      setSelectedContinuousSegments(initialSet);
+    }
+
+    const numSegments = Math.max(1, currentSegments.length > 0 ? currentSegments.length : activeSequence.length - 1);
+    if (currentSegments.length === 0) {
+      showToast('Please auto-write or split the script/prompt sequence first', 'error');
       return;
     }
 
@@ -758,13 +989,12 @@ Return a JSON object structured exactly as:
       const generatedClips: { index: number; url: string; roomId: string; galleryId: string }[] = [];
 
       for (const i of segmentsToGenerateList) {
-        if (i >= filledRooms.length - 1) continue;
-        const startRoom = filledRooms[i];
-        const endRoom = filledRooms[i + 1];
+        const startRoom = activeSequence[i % activeSequence.length] || activeSequence[0];
+        const endRoom = activeSequence[(i + 1) % activeSequence.length] || activeSequence[0];
         const galleryId = `room-vid-${startRoom?.id || i}-${Date.now()}`;
         pendingGalleryIds.push(galleryId);
 
-        const segmentData = continuousSegments.find(s => s.segmentIndex === i) || {
+        const segmentData = currentSegments.find(s => s.segmentIndex === i) || {
           prompt: `Camera moves from ${startRoom.label} to ${endRoom.label}...`
         };
 
@@ -778,10 +1008,9 @@ Return a JSON object structured exactly as:
       }
 
       for (const i of segmentsToGenerateList) {
-        if (i >= filledRooms.length - 1) continue;
-        const startRoom = filledRooms[i];
-        const endRoom = filledRooms[i + 1];
-        const segmentData = continuousSegments.find(s => s.segmentIndex === i) || {
+        const startRoom = activeSequence[i % activeSequence.length] || activeSequence[0];
+        const endRoom = activeSequence[(i + 1) % activeSequence.length] || activeSequence[0];
+        const segmentData = currentSegments.find(s => s.segmentIndex === i) || {
           script: `Touring from ${startRoom.label} to ${endRoom.label}`,
           prompt: `A continuous camera walkthrough walking from ${startRoom.label} into ${endRoom.label}.`
         };
@@ -792,7 +1021,7 @@ Return a JSON object structured exactly as:
         
         if (i === 0 && startFrameImg) {
           try {
-            const blob = await fetchImageAsBlob(startFrameImg.url || URL.createObjectURL(startFrameImg.file));
+            const blob = await fetchImageAsBlob(startFrameImg.url || (startFrameImg.file ? URL.createObjectURL(startFrameImg.file) : ''));
             const base64 = await resizeImage(blob);
             imagePayload = { imageBytes: base64, mimeType: 'image/jpeg' };
           } catch(e) {}
@@ -807,7 +1036,7 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
           `.trim();
 
           const refImages = [
-            { url: realtorImg.url || URL.createObjectURL(realtorImg.file) },
+            { url: realtorImg.url || (realtorImg.file ? URL.createObjectURL(realtorImg.file) : '') },
             { url: startRoom.images[0].url }
           ];
 
@@ -817,7 +1046,7 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
             body: JSON.stringify({
               model: 'nano-banana-2',
               prompt: compositePrompt,
-              aspect_ratio: '9:16',
+              aspect_ratio: aspectRatio,
               size: '2K',
               userId: currentUserId,
               folder: 'ugc/generated',
@@ -880,7 +1109,7 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
         
         if (startFrameImg) {
           try {
-            const blob = await fetchImageAsBlob(startFrameImg.url || URL.createObjectURL(startFrameImg.file));
+            const blob = await fetchImageAsBlob(startFrameImg.url || (startFrameImg.file ? URL.createObjectURL(startFrameImg.file) : ''));
             const base64 = await resizeImage(blob);
             refImagesList.push({ url: `data:image/jpeg;base64,${base64}` });
           } catch (e) {
@@ -891,7 +1120,7 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
         // Add realtor image as the primary character reference if it exists
         if (realtorImg) {
           try {
-            const blob = await fetchImageAsBlob(realtorImg.url || URL.createObjectURL(realtorImg.file));
+            const blob = await fetchImageAsBlob(realtorImg.url || (realtorImg.file ? URL.createObjectURL(realtorImg.file) : ''));
             const base64 = await resizeImage(blob);
             refImagesList.push({ url: `data:image/jpeg;base64,${base64}` });
           } catch (e) {
@@ -899,11 +1128,11 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
           }
         }
 
-        // Add startRoom secondary images
-        if (startRoom.images && startRoom.images.length > 1) {
-          for (let imgIdx = 1; imgIdx < startRoom.images.length; imgIdx++) {
+        // Add startRoom images
+        if (startRoom.images && startRoom.images.length > 0) {
+          for (const img of startRoom.images) {
             try {
-              const blob = await fetchImageAsBlob(startRoom.images[imgIdx].url);
+              const blob = await fetchImageAsBlob(img.url);
               const base64 = await resizeImage(blob);
               refImagesList.push({ url: `data:image/jpeg;base64,${base64}` });
             } catch(e) { }
@@ -923,7 +1152,7 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
         }
 
         // Attach up to 2 other rooms from the sidebar to give the model more context
-        const otherRooms = filledRooms.filter(r => r.id !== startRoom.id && r.id !== endRoom.id).slice(0, 2);
+        const otherRooms = activeSequence.filter(r => r.id !== startRoom.id && r.id !== endRoom.id).slice(0, 2);
         for (const r of otherRooms) {
           if (r.images && r.images.length > 0) {
             try {
@@ -965,7 +1194,7 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
       setRooms(prev => prev.map(r => {
         const clip = generatedClips.find(c => c.roomId === r.id);
         if (clip) {
-          const segData = continuousSegments.find(s => s.segmentIndex === clip.index);
+          const segData = currentSegments.find(s => s.segmentIndex === clip.index);
           const prefix = `[${clip.index * 10}:00 - ${(clip.index + 1) * 10}:00] ${r.label.toUpperCase()}: `;
           return {
             ...r,
@@ -1035,9 +1264,11 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
       let prompt = '';
       let refImages: any[] | undefined = undefined;
 
-      const getBase64WithPrefix = async (imgObj: { url?: string; file?: File }) => {
+      const getBase64WithPrefix = async (imgObj: any) => {
+        if (!imgObj) throw new Error("No image data found");
         let blob = imgObj.file;
-        if (!blob && imgObj.url) blob = await fetchImageAsBlob(imgObj.url) as any;
+        const rawUrl = typeof imgObj === 'string' ? imgObj : (imgObj.url || imgObj.dataUrl || imgObj.imageUrl || '');
+        if (!blob && rawUrl) blob = await fetchImageAsBlob(rawUrl) as any;
         if (!blob) throw new Error("No image data found");
         const b64 = await fileToBase64(blob);
         return `data:${blob.type || 'image/jpeg'};base64,${b64}`;
@@ -1046,12 +1277,12 @@ CRITICAL: The face/likeness must match the first reference photo exactly.
       if (realtorImg && room.images && room.images.length > 0) {
         prompt = `The FIRST image is the REALTOR/AGENT reference photo.\nThe SECOND image is the ${room.label} of a property.\nTASK: Generate ONE single coherent ultra-realistic photo of this realtor standing inside the ${room.label}, facing the camera with a welcoming gesture.\nCRITICAL: The agent's face, identity, and likeness MUST exactly match the first reference photo.\nThe room background must match the second image exactly.\nUltra-realistic, lifelike texture, cinematic realism. No collage. One unified photo.`;
         refImages = [
-          { url: await getBase64WithPrefix({ file: realtorImg.file }) },
+          { url: await getBase64WithPrefix(realtorImg) },
           { url: await getBase64WithPrefix(room.images[0]) }
         ];
       } else if (realtorImg && (!room.images || room.images.length === 0)) {
         prompt = `Ultra realistic photo of a real estate agent standing inside a ${room.label}. CRITICAL: The agent's face and likeness MUST exactly match the provided reference photo. Natural lighting, warm and welcoming, lifelike textures, ultra-realistic.`;
-        refImages = [{ url: await getBase64WithPrefix({ file: realtorImg.file }) }];
+        refImages = [{ url: await getBase64WithPrefix(realtorImg) }];
       } else if (!realtorImg && room.images && room.images.length > 0) {
         prompt = `Ultra realistic architectural photography of a ${room.label}. Enhance the provided room photo. Lifelike textures, bright natural lighting, ultra-realistic, 8k resolution.`;
         refImages = [{ url: await getBase64WithPrefix(room.images[0]) }];
@@ -1071,7 +1302,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         body: JSON.stringify({
           model: imgEngine === 'gpt2' ? 'gpt-image-1' : imgEngine === 'nb2-lite' ? 'nano-banana-2-lite' : imgEngine === 'nb2-open' ? 'nano-banana-2-open' : 'nano-banana-2',
           prompt,
-          aspect_ratio: '9:16',
+          aspect_ratio: aspectRatio,
           size: '2K',
           userId: currentUserId,
           folder: 'ugc/generated',
@@ -1155,7 +1386,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
       if (startFrameImg) {
         try {
-          const blob = await fetchImageAsBlob(startFrameImg.url || URL.createObjectURL(startFrameImg.file));
+          const blob = await fetchImageAsBlob(startFrameImg.url || (startFrameImg.file ? URL.createObjectURL(startFrameImg.file) : ''));
           const base64 = await resizeImage(blob);
           imagePayload = { imageBytes: base64, mimeType: 'image/jpeg' };
         } catch(e) {}
@@ -1188,7 +1419,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         };
 
         const refImages: any[] = [
-          { url: await getBase64WithPrefix({ file: realtorImg.file }) },
+          { url: await getBase64WithPrefix(realtorImg) },
           { url: await getBase64WithPrefix(room.images[0]) }
         ];
 
@@ -1198,7 +1429,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
           body: JSON.stringify({
             model: 'nano-banana-2',
             prompt: compositePrompt,
-            aspect_ratio: '9:16',
+            aspect_ratio: aspectRatio,
             size: '2K',
             userId: currentUserId,
             folder: 'ugc/generated',
@@ -1285,8 +1516,9 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         
         if (startFrameImg) {
           try {
-            const base64 = await resizeImage(startFrameImg.file);
-            refImagesList.push({ url: `data:${startFrameImg.file.type || 'image/jpeg'};base64,${base64}` });
+            const blob = await fetchImageAsBlob(startFrameImg.url || (startFrameImg.file ? URL.createObjectURL(startFrameImg.file) : ''));
+            const base64 = await resizeImage(blob);
+            refImagesList.push({ url: `data:${blob.type || 'image/jpeg'};base64,${base64}` });
           } catch (e) {
             console.warn('[HomeTour-Omni] Failed to attach startFrameImg:', e);
           }
@@ -1294,10 +1526,24 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         
         if (realtorImg) {
           try {
-            const base64 = await resizeImage(realtorImg.file);
-            refImagesList.push({ url: `data:${realtorImg.file.type || 'image/jpeg'};base64,${base64}` });
+            const blob = await fetchImageAsBlob(realtorImg.url || (realtorImg.file ? URL.createObjectURL(realtorImg.file) : ''));
+            const base64 = await resizeImage(blob);
+            refImagesList.push({ url: `data:${blob.type || 'image/jpeg'};base64,${base64}` });
           } catch (e) {
             console.warn('[HomeTour-Omni] Failed to resolve realtor reference image:', e);
+          }
+        }
+
+        // Add all images of the current room as references
+        if (room.images && room.images.length > 0) {
+          for (const img of room.images) {
+            try {
+              const blob = await fetchImageAsBlob(img.url);
+              const base64 = await resizeImage(blob);
+              refImagesList.push({ url: `data:image/jpeg;base64,${base64}` });
+            } catch (e) {
+              console.warn('[HomeTour-Omni] Failed to attach current room image:', e);
+            }
           }
         }
 
@@ -1492,7 +1738,109 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
   };
 
   // ── Helpers ───────────────────────────────────────────────────
+  const getActiveWalkthroughSequence = () => {
+    // 1. Check if active room has 2 or more uploaded photos
+    const activeRoomObj = rooms.find(r => r.id === activeRoomId);
+    if (activeRoomObj && activeRoomObj.images && activeRoomObj.images.length >= 2) {
+      return activeRoomObj.images.map((img, idx) => ({
+        id: `${activeRoomObj.id}-${idx}`,
+        label: `${activeRoomObj.label} (Shot ${idx + 1})`,
+        images: [img]
+      }));
+    }
+
+    // 2. Otherwise collect all rooms with uploaded photos
+    const filled = rooms.filter(r => r.images && r.images.length > 0);
+    if (filled.length >= 2) {
+      return filled.map(r => ({
+        id: r.id,
+        label: r.label,
+        images: r.images
+      }));
+    }
+
+    // 3. Otherwise flatten any uploaded photos across all rooms
+    const allPhotos: { id: string; label: string; images: { url: string; file: File }[] }[] = [];
+    rooms.forEach(r => {
+      if (r.images && r.images.length > 0) {
+        r.images.forEach((img, idx) => {
+          allPhotos.push({
+            id: `${r.id}-${idx}`,
+            label: `${r.label}${r.images.length > 1 ? ` (Shot ${idx + 1})` : ''}`,
+            images: [img]
+          });
+        });
+      }
+    });
+
+    if (allPhotos.length > 0) return allPhotos;
+
+    // Default fallback if no room photos uploaded yet
+    return rooms.slice(0, 2).map(r => ({ id: r.id, label: r.label, images: [] }));
+  };
+
+  const resolveMentionedRoomIds = (text: string): string[] => {
+    if (!text) return [];
+    let textToAnalyze = text;
+    if (text.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(text);
+        textToAnalyze = [
+          parsed.prompt || '',
+          parsed.dialogue || '',
+          JSON.stringify(parsed.room_references || []),
+          JSON.stringify(parsed.character_reference || [])
+        ].join(' ');
+      } catch (e) {}
+    }
+
+    const tokens = Array.from(textToAnalyze.matchAll(/@([a-zA-Z0-9_\-]+)/g)).map(m => m[1].toLowerCase());
+    if (tokens.length === 0) return [];
+    const matchedRoomIds = new Set<string>();
+
+    rooms.forEach(r => {
+      const roomToken = roomToMentionToken(r.label).toLowerCase();
+      const roomLabelLower = r.label.toLowerCase();
+
+      const isMatched = tokens.some(t => {
+        if (t === roomToken || t === r.id.toLowerCase()) return true;
+        if (roomToken.includes(t) || t.includes(roomToken)) return true;
+        if (roomLabelLower.includes(t) || t.includes(roomLabelLower)) return true;
+        if ((t === 'exterior' || t === 'front' || t === 'facade' || t === 'outdoor') && (r.id === 'front' || roomLabelLower.includes('front'))) return true;
+        if ((t === 'living' || t === 'hall' || t === 'lounge') && r.id === 'living') return true;
+        if ((t === 'bed' || t === 'bedroom') && r.id.startsWith('bedroom')) return true;
+        if ((t === 'bath' || t === 'washroom') && r.id === 'bathroom') return true;
+        if ((t === 'lawn' || t === 'garden') && r.id === 'lawn') return true;
+        return false;
+      });
+
+      if (isMatched) {
+        matchedRoomIds.add(r.id);
+      }
+    });
+
+    return Array.from(matchedRoomIds);
+  };
+
+  const activeSequence = getActiveWalkthroughSequence();
   const filledRoomCount = rooms.filter(r => r.images && r.images.length > 0).length;
+  const mentionableRooms = [
+    ...(realtorImg ? [{
+      id: 'realtor',
+      label: 'Realtor / Host',
+      thumb: realtorImg.url,
+      type: 'realtor' as const
+    }] : []),
+    ...rooms
+      .filter(r => r.images && r.images.length > 0)
+      .map(r => ({
+        id: r.id,
+        label: r.label,
+        thumb: r.images[0].url,
+        type: 'room' as const
+      }))
+  ];
+  const sequenceShotCount = activeSequence.length;
   const totalDuration = rooms
     .filter(r => r.images && r.images.length > 0)
     .reduce((acc, r) => acc + r.duration, 0);
@@ -1726,16 +2074,31 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             <p className="text-[9px] font-black text-white/30 uppercase tracking-widest flex items-center gap-1.5">
               <Sparkles size={10} className="text-[#c8f135]" /> Room Generator
             </p>
-            <select
-              value={imgEngine}
-              onChange={e => setImgEngine(e.target.value as any)}
-              className="bg-black/40 border border-[#1e1e24] px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase text-white/80 outline-none cursor-pointer hover:border-white/20 transition-colors"
-            >
-              <option value="nb2" className="bg-[#0a0a0c]">NB2 (1 cr)</option>
-              <option value="nb2-open" className="bg-[#0a0a0c]">NB2 GA (1 cr)</option>
-              <option value="nb2-lite" className="bg-[#0a0a0c]">NB2 Lite (0.5 cr)</option>
-              <option value="gpt2" className="bg-[#0a0a0c]">GT2 (1-3 cr)</option>
-            </select>
+            <div className="flex items-center gap-1.5">
+              {/* Aspect Ratio Selector */}
+              <select
+                value={aspectRatio}
+                onChange={e => setAspectRatio(e.target.value as any)}
+                className="bg-black/40 border border-[#1e1e24] px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase text-white/80 outline-none cursor-pointer hover:border-white/20 transition-colors"
+                title="Aspect Ratio"
+              >
+                <option value="9:16" className="bg-[#0a0a0c]">9:16 Ratio</option>
+                <option value="16:9" className="bg-[#0a0a0c]">16:9 Ratio</option>
+                <option value="1:1" className="bg-[#0a0a0c]">1:1 Ratio</option>
+              </select>
+
+              {/* Model/Engine Selector */}
+              <select
+                value={imgEngine}
+                onChange={e => setImgEngine(e.target.value as any)}
+                className="bg-black/40 border border-[#1e1e24] px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase text-white/80 outline-none cursor-pointer hover:border-white/20 transition-colors"
+              >
+                <option value="nb2" className="bg-[#0a0a0c]">NB2 (1 cr)</option>
+                <option value="nb2-open" className="bg-[#0a0a0c]">NB2 GA (1 cr)</option>
+                <option value="nb2-lite" className="bg-[#0a0a0c]">NB2 Lite (0.5 cr)</option>
+                <option value="gpt2" className="bg-[#0a0a0c]">GT2 (1-3 cr)</option>
+              </select>
+            </div>
           </div>
           <button 
             onClick={generateActiveRoomImage}
@@ -1791,7 +2154,12 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
       <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden relative">
         
         {/* Gallery Content */}
-        <GalleryGrid />
+        <GalleryGrid
+          onSetStartFrame={setStartFrameImg}
+          startFrameUrl={startFrameImg?.url}
+          onSetRealtor={setRealtorImg}
+          realtorUrl={realtorImg?.url}
+        />
 
         {/* ── ACTIVE ROOM CONTROLS DOCKED PANEL ── */}
         {activeRoom && (
@@ -1852,6 +2220,34 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                           className="w-full text-left px-3 py-1.5 text-[8px] font-black uppercase text-white/50 hover:text-[#c8f135] hover:bg-white/5 transition-all"
                         >
                           {style}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Duration Pill Selector */}
+                  <div className="relative group py-1">
+                    <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#c8f135]/10 border border-[#c8f135]/30 text-[8px] font-black uppercase text-[#c8f135] hover:bg-[#c8f135]/20 transition-all font-mono">
+                      <span>Duration: {tourMode === 'individual' ? activeRoom.duration : manualDuration}s</span>
+                      <ChevronDown size={8} />
+                    </button>
+                    <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block bg-[#0e0e10] border border-[#1e1e24] rounded-xl py-1 min-w-[120px] shadow-xl z-50">
+                      {[10, 20, 30, 40, 50, 60].map(dur => (
+                        <button
+                          key={dur}
+                          onClick={() => {
+                            if (tourMode === 'individual') {
+                              setRooms(prev => prev.map(r => r.id === activeRoom.id ? { ...r, duration: dur } : r));
+                            } else {
+                              setManualDuration(dur);
+                              handleSplitManualPrompt();
+                            }
+                          }}
+                          className={`w-full text-left px-3 py-1.5 text-[8px] font-black uppercase hover:text-[#c8f135] hover:bg-white/5 transition-all ${
+                            (tourMode === 'individual' ? activeRoom.duration : manualDuration) === dur ? 'text-[#c8f135] bg-white/5' : 'text-white/50'
+                          }`}
+                        >
+                          {dur} Seconds ({dur / 10} clip{dur > 10 ? 's' : ''})
                         </button>
                       ))}
                     </div>
@@ -2006,25 +2402,38 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                             <span className="text-[#c8f135] font-black">OMNI FLASH ⚡</span>
                           </div>
                           
-                          {/* Shot Duration selector */}
+                          {/* Shot Duration selector & Aspect Ratio Selector */}
                           <div className="flex items-center justify-between">
                             <span className="text-[8px] font-mono uppercase text-white/30">Duration</span>
-                            <div className="flex items-center gap-1">
-                              {([4, 6, 8, 10] as const).map(d => (
-                                <button
-                                  key={d}
-                                  onClick={() => setRooms(prev => prev.map(r =>
-                                    r.id === activeRoom.id ? { ...r, duration: d } : r
-                                  ))}
-                                  className={`px-1.5 py-0.5 rounded text-[8px] font-black border transition-all ${
-                                    activeRoom.duration === d
-                                      ? 'bg-[#c8f135] text-black border-[#c8f135]'
-                                      : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'
-                                  }`}
-                                >
-                                  {d}s
-                                </button>
-                              ))}
+                            <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                                {([10, 20, 30, 40, 50, 60] as const).map(d => (
+                                  <button
+                                    key={d}
+                                    onClick={() => setRooms(prev => prev.map(r =>
+                                      r.id === activeRoom.id ? { ...r, duration: d } : r
+                                    ))}
+                                    className={`px-1.5 py-0.5 rounded text-[8px] font-black border transition-all ${
+                                      activeRoom.duration === d
+                                        ? 'bg-[#c8f135] text-black border-[#c8f135]'
+                                        : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'
+                                    }`}
+                                  >
+                                    {d}s
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* Ratio Dropdown Select */}
+                              <select
+                                value={aspectRatio}
+                                onChange={e => setAspectRatio(e.target.value as any)}
+                                className="bg-black/50 border border-white/10 px-1.5 py-0.5 rounded text-[8px] font-mono font-black text-[#c8f135] outline-none cursor-pointer hover:border-white/20 transition-colors"
+                              >
+                                <option value="9:16" className="bg-[#0e0e10] text-white">9:16</option>
+                                <option value="16:9" className="bg-[#0e0e10] text-white">16:9</option>
+                                <option value="1:1" className="bg-[#0e0e10] text-white">1:1</option>
+                              </select>
                             </div>
                           </div>
 
@@ -2077,9 +2486,9 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
                             <button
                               onClick={generateFullTour}
-                              disabled={isGeneratingVideo || filledRoomCount === 0}
+                              disabled={isGeneratingVideo || filledRoomCount === 0 || tourMode === 'individual'}
                               className={`py-2 rounded-xl text-[8px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
-                                isGeneratingVideo || filledRoomCount === 0
+                                (isGeneratingVideo || filledRoomCount === 0 || tourMode === 'individual')
                                   ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
                                   : 'bg-[#c8f135] text-black hover:bg-[#d4ff3a] border border-[#c8f135]'
                               }`}
@@ -2097,7 +2506,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                     </>
                   ) : (
                     <>
-                      {/* Continuous Mode Column 1: Voiceover Monologue */}
+                      {/* Continuous Mode Column 1: Voiceover Monologue / Custom Prompt Input */}
                       <div className="flex flex-col space-y-2 bg-white/5 border border-white/10 p-3 rounded-xl relative overflow-hidden font-sans">
                         {isGeneratingContinuousScript && (
                           <div className="absolute inset-0 z-10 bg-black/70 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center gap-2">
@@ -2115,70 +2524,231 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                             </p>
                           </div>
                         )}
-                        <div className="flex items-center justify-between">
-                          <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">
-                            Full Tour Monologue
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate">
+                            {autoWriteMode ? 'Full Tour Script' : 'Custom Prompt'}
                           </p>
-                          <button
-                            onClick={generateContinuousTourScript}
-                            disabled={isGeneratingContinuousScript || filledRoomCount < 2}
-                            className="text-[8px] font-black text-[#c8f135] uppercase tracking-widest hover:underline flex items-center gap-1 font-mono"
-                          >
-                            <Sparkles size={8} /> Auto Write
-                          </button>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setAutoWriteMode(!autoWriteMode)}
+                              className={`px-1.5 py-0.5 rounded-full border text-[7px] font-mono font-black uppercase tracking-tight transition-all cursor-pointer flex items-center gap-1 ${
+                                autoWriteMode
+                                  ? 'bg-[#c8f135]/20 border-[#c8f135]/50 text-[#c8f135]'
+                                  : 'bg-white/5 border-white/10 text-white/40 hover:text-white'
+                              }`}
+                              title={autoWriteMode ? 'Auto-Write: ON (AI script)' : 'Auto-Write: OFF (Paste custom prompt)'}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${autoWriteMode ? 'bg-[#c8f135] animate-pulse' : 'bg-white/30'}`} />
+                              Auto-Write {autoWriteMode ? 'ON' : 'OFF'}
+                            </button>
+
+                            {!autoWriteMode ? (
+                              <select
+                                value={manualDuration}
+                                onChange={e => setManualDuration(Number(e.target.value))}
+                                className="appearance-none bg-black/50 border border-white/15 rounded-md px-1.5 py-0.5 text-[7px] font-mono text-[#c8f135] uppercase tracking-tight focus:outline-none cursor-pointer"
+                                title="Target Duration"
+                              >
+                                <option value={10} className="bg-[#0c0c0c] text-white">10s</option>
+                                <option value={20} className="bg-[#0c0c0c] text-white">20s</option>
+                                <option value={30} className="bg-[#0c0c0c] text-white">30s</option>
+                                <option value={40} className="bg-[#0c0c0c] text-white">40s</option>
+                                <option value={50} className="bg-[#0c0c0c] text-white">50s</option>
+                                <option value={60} className="bg-[#0c0c0c] text-white">60s</option>
+                              </select>
+                            ) : (
+                              <button
+                                onClick={generateContinuousTourScript}
+                                disabled={isGeneratingContinuousScript || filledRoomCount < 2}
+                                className="text-[8px] font-black text-[#c8f135] uppercase tracking-widest hover:underline flex items-center gap-1 font-mono"
+                              >
+                                <Sparkles size={8} /> Write
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <textarea
+
+                        <MentionTextarea
                           value={continuousScript}
-                          onChange={e => setContinuousScript(e.target.value)}
-                          placeholder={`Full walkthrough tour voiceover script for ${Math.max(0, filledRoomCount - 1) * 10} seconds...`}
-                          rows={5}
+                          onChange={(val) => {
+                            setContinuousScript(val);
+                          }}
+                          onPaste={(pastedVal) => {
+                            setContinuousScript(pastedVal);
+                            handleSplitManualPrompt(pastedVal);
+                          }}
+                          rooms={mentionableRooms}
+                          placeholder={
+                            autoWriteMode
+                              ? `Full walkthrough tour voiceover script for ${Math.max(0, filledRoomCount - 1) * 10} seconds... type @ to tag a room`
+                              : `Paste your custom walkthrough prompt here... type @ to tag a room`
+                          }
+                          rows={4}
                           className="w-full bg-black/40 border border-[#1e1e24] rounded-xl px-3 py-2 text-[10px] text-white/80 focus:outline-none focus:border-[#c8f135]/40 resize-none leading-relaxed flex-1 font-sans"
                         />
+
+                        {!autoWriteMode && (
+                          <button
+                            type="button"
+                            onClick={() => handleSplitManualPrompt()}
+                            className="w-full py-1.5 bg-[#c8f135]/15 border border-[#c8f135]/40 text-[#c8f135] font-black text-[8px] uppercase tracking-widest rounded-lg hover:bg-[#c8f135]/25 transition-all flex items-center justify-center gap-1.5"
+                          >
+                            <Scissors size={10} /> ✂️ Split Prompt into 10s Scenes ({manualDuration}s total)
+                          </button>
+                        )}
                       </div>
 
                       {/* Continuous Mode Column 2: Transition Prompts Preview */}
                       <div className="flex flex-col space-y-2 bg-white/5 border border-white/10 p-3 rounded-xl relative overflow-hidden font-mono">
                         <div className="flex items-center justify-between">
                           <p className="text-[9px] font-black text-white/30 uppercase tracking-widest">
-                            Walkthrough Prompts
+                            Walkthrough Prompts ({continuousSegments.length})
                           </p>
+                          {continuousSegments.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setContinuousSegments([]);
+                                setSelectedContinuousSegments(new Set());
+                                showToast('Cleared walkthrough prompts', 'info');
+                              }}
+                              className="text-[7.5px] font-mono font-black uppercase text-red-400 hover:text-red-300 flex items-center gap-0.5 hover:underline cursor-pointer"
+                              title="Clear all split prompt segments"
+                            >
+                              <Trash2 size={8} /> Clear All
+                            </button>
+                          )}
                         </div>
                         {continuousSegments.length > 0 ? (
-                          <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1 custom-scrollbar flex-1">
-                            {continuousSegments.map(seg => (
-                              <div key={seg.segmentIndex} className="p-1.5 rounded bg-black/30 border border-white/5 space-y-1">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-1.5">
-                                    <input 
-                                      type="checkbox"
-                                      checked={selectedContinuousSegments.has(seg.segmentIndex)}
-                                      onChange={() => {
-                                        const newSet = new Set(selectedContinuousSegments);
-                                        if (newSet.has(seg.segmentIndex)) newSet.delete(seg.segmentIndex);
-                                        else newSet.add(seg.segmentIndex);
-                                        setSelectedContinuousSegments(newSet);
-                                      }}
-                                      className="w-3 h-3 rounded bg-black/40 border border-white/20 accent-[#c8f135]"
-                                    />
-                                    <p className="text-[7px] font-black uppercase text-[#c8f135]/80">Segment {seg.segmentIndex + 1} (10s)</p>
+                          <div className="flex-1 flex flex-col space-y-2 overflow-hidden">
+                            <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar flex-1">
+                              {continuousSegments.map(seg => (
+                                <div key={seg.segmentIndex} className="p-1.5 rounded bg-black/30 border border-white/5 space-y-1.5">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5">
+                                      <input 
+                                        type="checkbox"
+                                        checked={selectedContinuousSegments.has(seg.segmentIndex)}
+                                        onChange={() => {
+                                          const newSet = new Set(selectedContinuousSegments);
+                                          if (newSet.has(seg.segmentIndex)) newSet.delete(seg.segmentIndex);
+                                          else newSet.add(seg.segmentIndex);
+                                          setSelectedContinuousSegments(newSet);
+                                        }}
+                                        className="w-3 h-3 rounded bg-black/40 border border-white/20 accent-[#c8f135]"
+                                      />
+                                      <p className="text-[7.5px] font-black uppercase text-[#c8f135]/80">Segment {seg.segmentIndex + 1} (10s)</p>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => generateContinuousVideo(seg.segmentIndex)}
+                                        disabled={isGeneratingContinuousVideo}
+                                        className="px-1.5 py-0.5 rounded bg-[#c8f135]/10 hover:bg-[#c8f135]/20 text-[#c8f135] text-[7px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                                      >
+                                        Gen
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updated = continuousSegments.filter(s => s.segmentIndex !== seg.segmentIndex)
+                                            .map((s, idx) => ({ ...s, segmentIndex: idx }));
+                                          setContinuousSegments(updated);
+                                          const newSet = new Set<number>();
+                                          updated.forEach((_, idx) => newSet.add(idx));
+                                          setSelectedContinuousSegments(newSet);
+                                        }}
+                                        className="p-0.5 rounded hover:bg-red-500/20 text-white/30 hover:text-red-400 transition-colors cursor-pointer"
+                                        title="Delete segment"
+                                      >
+                                        <X size={9} />
+                                      </button>
+                                    </div>
                                   </div>
-                                  <button
-                                    onClick={() => generateContinuousVideo(seg.segmentIndex)}
-                                    disabled={isGeneratingContinuousVideo}
-                                    className="px-1.5 py-0.5 rounded bg-[#c8f135]/10 hover:bg-[#c8f135]/20 text-[#c8f135] text-[7px] font-black uppercase tracking-wider transition-all"
-                                  >
-                                    Gen
-                                  </button>
+                                  <div className="space-y-0.5">
+                                    <span className="text-[6px] uppercase text-white/30 font-black tracking-wider block">Motion Prompt</span>
+                                    <textarea
+                                      value={seg.prompt}
+                                      onChange={e => {
+                                        const newVal = e.target.value;
+                                        setContinuousSegments(prev => prev.map(s => 
+                                          s.segmentIndex === seg.segmentIndex ? { ...s, prompt: newVal } : s
+                                        ));
+                                      }}
+                                      rows={2}
+                                      className="w-full bg-black/50 border border-white/10 rounded px-1.5 py-0.5 text-[8px] text-white/70 focus:outline-none focus:border-[#c8f135]/40 resize-none leading-normal font-sans"
+                                    />
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <span className="text-[6px] uppercase text-white/30 font-black tracking-wider block">Voiceover Script</span>
+                                    <textarea
+                                      value={seg.script}
+                                      onChange={e => {
+                                        const newVal = e.target.value;
+                                        setContinuousSegments(prev => prev.map(s => 
+                                          s.segmentIndex === seg.segmentIndex ? { ...s, script: newVal } : s
+                                        ));
+                                      }}
+                                      rows={2}
+                                      className="w-full bg-black/50 border border-white/10 rounded px-1.5 py-0.5 text-[8px] text-white/70 focus:outline-none focus:border-[#c8f135]/40 resize-none leading-normal font-sans"
+                                    />
+                                  </div>
                                 </div>
-                                <p className="text-[8px] font-mono text-white/55 leading-relaxed">{seg.prompt}</p>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const activeSequence = getActiveWalkthroughSequence();
+                                const newIdx = continuousSegments.length;
+                                const fromRoom = activeSequence[newIdx % activeSequence.length]?.label || `Room`;
+                                setContinuousSegments(prev => [
+                                  ...prev,
+                                  {
+                                    segmentIndex: newIdx,
+                                    script: `Walking around the ${fromRoom}`,
+                                    prompt: `Continuous camera walkthrough showing the details of ${fromRoom}.`
+                                  }
+                                ]);
+                                setSelectedContinuousSegments(prev => {
+                                  const newSet = new Set(prev);
+                                  newSet.add(newIdx);
+                                  return newSet;
+                                });
+                                showToast('Added new 10s walkthrough segment!', 'success');
+                              }}
+                              className="w-full py-1 bg-white/5 border border-white/10 hover:border-white/20 text-white/70 hover:text-white font-mono text-[7.5px] uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0"
+                            >
+                              + Add 10s Segment
+                            </button>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-center flex-1 text-center p-4 border border-dashed border-white/10 rounded-xl">
-                            <p className="text-[9px] text-white/20 uppercase tracking-wider font-mono">
-                              Press "Auto Write" to generate transitions
-                            </p>
+                          <div className="flex flex-col flex-1 gap-2">
+                            <div className="flex items-center justify-center flex-1 text-center p-4 border border-dashed border-white/10 rounded-xl">
+                              <p className="text-[9px] text-white/20 uppercase tracking-wider font-mono">
+                                {autoWriteMode ? 'Press "Auto Write" to generate transitions' : 'Paste prompt above to generate segments'}
+                              </p>
+                            </div>
+                            {!autoWriteMode && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const activeSequence = getActiveWalkthroughSequence();
+                                  setContinuousSegments([
+                                    {
+                                      segmentIndex: 0,
+                                      script: `Welcome to this property tour!`,
+                                      prompt: `A beautiful walkthrough starting in the ${activeSequence[0]?.label || 'property'}.`
+                                    }
+                                  ]);
+                                  setSelectedContinuousSegments(new Set([0]));
+                                }}
+                                className="w-full py-1 bg-white/5 border border-white/10 hover:border-white/20 text-white/70 hover:text-white font-mono text-[7.5px] uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0"
+                              >
+                                + Add 10s Segment
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -2191,23 +2761,36 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                             <span className="text-[#c8f135] font-black">OMNI FLASH ⚡</span>
                           </div>
                           
-                          {/* Duration Display */}
+                          {/* Duration Display & Aspect Ratio Select */}
                           <div className="flex items-center justify-between">
                             <span className="text-[8px] font-mono uppercase text-white/30">Total Duration</span>
-                            <span className="text-[8px] font-black text-[#c8f135]">
-                              {Math.max(0, filledRoomCount - 1) * 10}s
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[8px] font-black text-[#c8f135]">
+                                {continuousSegments.length > 0 ? continuousSegments.length * 10 : Math.max(1, sequenceShotCount - 1) * 10}s
+                              </span>
+                              
+                              {/* Ratio Dropdown Select */}
+                              <select
+                                value={aspectRatio}
+                                onChange={e => setAspectRatio(e.target.value as any)}
+                                className="bg-black/50 border border-white/10 px-1.5 py-0.5 rounded text-[8px] font-mono font-black text-[#c8f135] outline-none cursor-pointer hover:border-white/20 transition-colors"
+                              >
+                                <option value="9:16" className="bg-[#0e0e10] text-white">9:16</option>
+                                <option value="16:9" className="bg-[#0e0e10] text-white">16:9</option>
+                                <option value="1:1" className="bg-[#0e0e10] text-white">1:1</option>
+                              </select>
+                            </div>
                           </div>
 
                           <div className="flex items-center justify-between text-[8px] font-mono text-white/55 border-t border-white/5 pt-1.5">
                             <span className="uppercase text-white/30">Specs</span>
-                            <span>{filledRoomCount} rooms · {Math.max(0, filledRoomCount - 1) * 10}s walkthrough</span>
+                            <span>{sequenceShotCount} shots · {continuousSegments.length > 0 ? continuousSegments.length * 10 : Math.max(1, sequenceShotCount - 1) * 10}s walkthrough</span>
                           </div>
                         </div>
 
                         {/* Action trigger */}
                         <div className="space-y-1.5">
-                          {filledRoomCount >= 2 ? (
+                          {(sequenceShotCount >= 2 || !autoWriteMode || rooms.some(r => r.images && r.images.length > 0)) ? (
                             <button
                               onClick={() => generateContinuousVideo()}
                               disabled={isGeneratingContinuousVideo || continuousSegments.length === 0}
@@ -2220,7 +2803,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                               {isGeneratingContinuousVideo ? (
                                 <><Loader2 size={10} className="animate-spin" />{videoProgressMsg}</>
                               ) : (
-                                <><Film size={10} /> Gen Walkthrough (⚡ {getCurrentCost(false, 10) * Math.max(0, filledRoomCount - 1)})</>
+                                <><Film size={10} /> Gen Walkthrough (⚡ {getCurrentCost(false, 10) * Math.max(1, continuousSegments.length)})</>
                               )}
                             </button>
                           ) : (

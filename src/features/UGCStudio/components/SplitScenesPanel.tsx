@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { X, ChevronDown, Sparkles, Camera, Check, Loader2, Film } from 'lucide-react';
+import { X, ChevronDown, Sparkles, Camera, Check, Loader2, Film, Clock, Image as ImageIcon } from 'lucide-react';
 import { useUGC, SplitScene } from '../context/UGCContext';
 import { SCENE_STYLES, MULTI_SHOT_PRESETS, BROLL_PRESETS } from '../constants/videoStyles';
 import { buildScenePrompt, validateScenePrompt, detectUgcCategory } from '../constants/ugcPromptTemplates';
@@ -20,6 +20,7 @@ export default function SplitScenesPanel() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [selectedBRollPreset, setSelectedBRollPreset] = useState('broll_auto');
   const [isHookModalOpen, setIsHookModalOpen] = useState(false);
+  const [isGalleryPickerOpen, setIsGalleryPickerOpen] = useState(false);
   const {
     splitScenes,
     setSplitScenes,
@@ -62,6 +63,7 @@ export default function SplitScenesPanel() {
     generateVideoWithMotionRef,
     isGeneratingMotionRef,
     refVideoFile,
+    gallery,
   } = useUGC();
 
   if (splitScenes.length === 0) return null;
@@ -198,21 +200,41 @@ export default function SplitScenesPanel() {
         // Switch active tab so user sees progress
         setActiveSplitTab(idx);
 
-        const currentSceneRefParts = [...refParts];
-        let currentRefIdx = refIdx;
-        let firstFrameRefTag = '';
+        const currentSceneRefParts = [];
+        const firstFrameRefTag = '<FIRST_FRAME>';
+        const sceneCharRefTag = '<IMAGE_REF_0>';
+        const sceneProdRefTag = '<IMAGE_REF_1>';
+        const sceneLocRefTag = '<IMAGE_REF_2>';
 
-        if (scene.refImage) {
-          const scenePart = await urlToGenerativePart(scene.refImage);
-          if (scenePart) {
-            currentSceneRefParts.push(scenePart);
-            firstFrameRefTag = `<IMAGE_REF_${currentRefIdx++}>`;
+        const sceneCustomRefs = scene.refImages || (scene.refImage ? [scene.refImage] : []);
+        const startFrameUrl = sceneCustomRefs[0] || (idx === 0 ? effectiveRefImage : null);
+        if (startFrameUrl) {
+          const part = await urlToGenerativePart(startFrameUrl);
+          if (part) {
+            currentSceneRefParts.push(part);
           }
-        } else if (idx === 0 && effectiveRefImage) {
-          const scenePart = await urlToGenerativePart(effectiveRefImage);
-          if (scenePart) {
-            currentSceneRefParts.push(scenePart);
-            firstFrameRefTag = `<IMAGE_REF_${currentRefIdx++}>`;
+        }
+
+        // Add Fallback Sidebar Assets:
+        // Image 1 (<IMAGE_REF_0>): Person / Character identity reference
+        if (hasCharacterRef && characterImg?.url) {
+          const part = await urlToGenerativePart(characterImg.url);
+          if (part) {
+            currentSceneRefParts.push(part);
+          }
+        }
+        // Image 2 (<IMAGE_REF_1>): Product reference
+        if (hasProductRef && productImg?.url) {
+          const part = await urlToGenerativePart(productImg.url);
+          if (part) {
+            currentSceneRefParts.push(part);
+          }
+        }
+        // Image 3 (<IMAGE_REF_2>): Stage / Location reference
+        if (hasLocationRef && locationImg?.url) {
+          const part = await urlToGenerativePart(locationImg.url);
+          if (part) {
+            currentSceneRefParts.push(part);
           }
         }
 
@@ -227,13 +249,15 @@ export default function SplitScenesPanel() {
           hasCharacterRef,
           hasProductRef,
           hasLocationRef,
-          hasFirstFrame: !!(scene.refImage || (idx === 0 && effectiveRefImage)),
-          characterRefTag,
-          productRefTag,
-          locationRefTag,
+          hasFirstFrame: !!startFrameUrl,
+          characterRefTag: sceneCharRefTag,
+          productRefTag: sceneProdRefTag,
+          locationRefTag: sceneLocRefTag,
           firstFrameRefTag,
           isBRollMontage,
-          bRollType: selectedBRollPreset === 'broll_auto' ? '' : BROLL_PRESETS.find(p => p.id === selectedBRollPreset)?.label || ''
+          bRollType: selectedBRollPreset === 'broll_auto' ? '' : BROLL_PRESETS.find(p => p.id === selectedBRollPreset)?.label || '',
+          multiShotPreset: selectedMultiShotPreset,
+          productAnalysis: productAnalysis ? (typeof productAnalysis === 'string' ? productAnalysis : JSON.stringify(productAnalysis)) : undefined
         });
 
         const parts = [...currentSceneRefParts, { text: metaPrompt }];
@@ -288,7 +312,8 @@ export default function SplitScenesPanel() {
       label: `Hook: ${hook.name}`,
       dialog: hook.exampleDialogue,
       prompt: hook.visualPrompt.replace(/^Length:.*?\n+/im, ''),
-      refImage: effectiveRefImage || characterImg?.url || productImg?.url || null
+      refImage: effectiveRefImage || characterImg?.url || productImg?.url || null,
+      duration: 4
     };
     
     setSplitScenes((prev) => {
@@ -309,94 +334,162 @@ export default function SplitScenesPanel() {
     setSpokenDialog(hookScene.dialog);
   };
 
+  const handleRemoveScene = (e: React.MouseEvent, indexToRemove: number) => {
+    e.stopPropagation();
+    const remaining = splitScenes.filter((_, idx) => idx !== indexToRemove);
+
+    // Renumber Scene X labels
+    const renumbered = remaining.map((s, i) => {
+      if (s.label.startsWith('Scene ')) {
+        return { ...s, label: `Scene ${i + 1}` };
+      }
+      return s;
+    });
+
+    setSplitScenes(renumbered);
+
+    if (renumbered.length === 0) {
+      setActiveSplitTab(0);
+      setActiveSceneIndex(0);
+      setVideoPrompt('');
+      return;
+    }
+
+    let newActive = activeSplitTab;
+    if (activeSplitTab === indexToRemove) {
+      newActive = Math.max(0, indexToRemove - 1);
+    } else if (activeSplitTab > indexToRemove) {
+      newActive = activeSplitTab - 1;
+    }
+
+    setActiveSplitTab(newActive);
+    setActiveSceneIndex(newActive);
+    setVideoPrompt(renumbered[newActive]?.prompt || '');
+  };
+
   return (
     <div className="mx-4 mt-2 bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-xl">
       {/* Tab headers */}
       <div className="flex border-b border-white/10 overflow-x-auto no-scrollbar" style={{ scrollbarWidth: 'none' }}>
         <button 
           onClick={() => setIsHookModalOpen(true)}
-          className="min-w-[90px] py-2 flex items-center justify-center gap-1.5 text-[8px] font-black uppercase tracking-widest text-[#c8f135] bg-[#c8f135]/5 hover:bg-[#c8f135]/15 transition-all border-r border-white/10 shrink-0"
+          className="min-w-[90px] py-2 px-2.5 flex items-center justify-center gap-1.5 text-[8px] font-black uppercase tracking-widest text-[#c8f135] bg-[#c8f135]/5 hover:bg-[#c8f135]/15 transition-all border-r border-white/10 shrink-0"
           title="Add a high-retention AI Visual Hook to the beginning of your script"
         >
           <Sparkles size={10} /> Add Hook
         </button>
         {splitScenes.map((sc, i) => (
-          <button key={i} onClick={() => {
-            setActiveSplitTab(i);
-            setActiveSceneIndex(i);
-            setSelectedPromptVariant(0);
-            setVideoPrompt(splitScenes[i]?.prompt || '');
-          }}
-            className={`min-w-[90px] sm:flex-1 py-2 text-[8px] font-black uppercase tracking-widest transition-all ${
-              activeSplitTab === i ? 'bg-[#c8f135]/15 text-[#c8f135] border-b-2 border-[#c8f135]' : 'text-white/30 hover:text-white/60'
-            }`}>
-            {sc.label}
-          </button>
+          <div
+            key={i}
+            onClick={() => {
+              setActiveSplitTab(i);
+              setActiveSceneIndex(i);
+              setSelectedPromptVariant(0);
+              setVideoPrompt(splitScenes[i]?.prompt || '');
+            }}
+            className={`min-w-[90px] sm:flex-1 py-2 px-2.5 flex items-center justify-between gap-1.5 text-[8px] font-black uppercase tracking-widest cursor-pointer transition-all border-r border-white/5 shrink-0 select-none ${
+              activeSplitTab === i 
+                ? 'bg-[#c8f135]/15 text-[#c8f135] border-b-2 border-[#c8f135]' 
+                : 'text-white/40 hover:text-white/80 hover:bg-white/[0.04]'
+            }`}
+          >
+            <span className="truncate max-w-[130px]" title={sc.label}>{sc.label}</span>
+            <button
+              type="button"
+              onClick={(e) => handleRemoveScene(e, i)}
+              title={`Remove ${sc.label}`}
+              className="p-0.5 rounded-full hover:bg-white/10 text-white/30 hover:text-red-400 transition-all shrink-0 ml-1"
+            >
+              <X size={9} />
+            </button>
+          </div>
         ))}
-        <button onClick={() => { setSplitScenes([]); setSpokenDialog(''); }} className="px-3 text-white/20 hover:text-white/50 transition-colors shrink-0 ml-auto border-l border-white/10"><X size={9} /></button>
+        <button 
+          onClick={() => { setSplitScenes([]); setSpokenDialog(''); }} 
+          className="px-3 text-white/20 hover:text-white/50 transition-colors shrink-0 ml-auto border-l border-white/10"
+          title="Clear all scenes"
+        >
+          <X size={9} />
+        </button>
       </div>
 
       {/* Active scene body */}
       <div className="p-3 space-y-2.5 relative">
 
-        {/* Single control row: Preset ▼  |  Style ▼  |  AI Prompt  |  Multi-Shot */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Single control row: compact pills fitting gracefully on one row */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 whitespace-nowrap">
 
-          {/* Preset Dropdown */}
-          <div className="relative shrink-0">
-            <select
-              value={selectedMultiShotPreset}
-              onChange={e => setSelectedMultiShotPreset(e.target.value)}
-              className="appearance-none bg-black/30 border border-white/5 hover:border-white/10 rounded-xl pl-6 pr-6 py-1.5 text-[8px] font-mono text-white/80 uppercase tracking-wider cursor-pointer transition-all focus:outline-none focus:border-[#c8f135]/30"
-            >
-              {MULTI_SHOT_PRESETS.map(p => (
-                <option key={p.id} value={p.id}>{p.emoji} {p.label}</option>
-              ))}
-            </select>
-            <Sparkles size={8} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#c8f135]/60 pointer-events-none" />
-            <ChevronDown size={8} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
-          </div>
+          {/* Multi-Shot Director Preset Dropdown — shown when Multi-Shot mode is ON */}
+          {multiShotPrompt ? (
+            <div className="relative shrink-0">
+              <select
+                value={selectedMultiShotPreset}
+                onChange={e => setSelectedMultiShotPreset(e.target.value)}
+                className="appearance-none bg-[#c8f135]/10 border border-[#c8f135]/30 hover:border-[#c8f135]/60 rounded-lg pl-5 pr-5 py-1 text-[7.5px] font-mono text-[#c8f135] uppercase tracking-wider cursor-pointer transition-all focus:outline-none"
+              >
+                {MULTI_SHOT_PRESETS.map(p => (
+                  <option key={p.id} value={p.id} className="bg-[#0c0c0c] text-white/90">{p.emoji} {p.label}</option>
+                ))}
+              </select>
+              <Sparkles size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
+              <ChevronDown size={7} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[#c8f135]/60 pointer-events-none" />
+            </div>
+          ) : (
+            /* Scene Style Dropdown — shown when in single-scene / standard mode */
+            <div className="relative w-36 shrink-0">
+              <select
+                value={selectedSceneStyle}
+                onChange={e => setSelectedSceneStyle(e.target.value)}
+                className="w-full appearance-none bg-black/30 border border-white/5 hover:border-white/10 rounded-lg pl-6 pr-5 py-1 text-[7.5px] font-mono text-white/80 uppercase tracking-wider cursor-pointer transition-all focus:outline-none focus:border-[#c8f135]/30 truncate"
+              >
+                <optgroup label="🎙️ Talking" className="bg-[#0c0c0c] text-white/90">
+                  <option value="normal_talking">🎙️ Normal Talking</option>
+                  <option value="walk_talk">🚶 Walk &amp; Talk</option>
+                  <option value="street_interview">🎤 Street Interview</option>
+                  <option value="reaction_shot">😲 Reaction Shot</option>
+                  <option value="mirror_selfie">🪞 Mirror Selfie</option>
+                  <option value="car_vlog">🚗 Car Vlog</option>
+                  <option value="grwm_talk">💄 GRWM Talking</option>
+                </optgroup>
+                <optgroup label="✂️ Camera Cuts" className="bg-[#0c0c0c] text-white/90">
+                  <option value="fast_cut">✂️ Fast Cut</option>
+                  <option value="dramatic_zoom">🔍 Dramatic Zoom</option>
+                  <option value="pov_shot">👆 POV Shot</option>
+                  <option value="whip_pan">🌀 Whip Pan</option>
+                  <option value="360_orbit">🔄 360° Orbit</option>
+                </optgroup>
+                <optgroup label="🎥 Product Focus" className="bg-[#0c0c0c] text-white/90">
+                  <option value="cinematic_b_roll">🎥 Cinematic B-Roll</option>
+                  <option value="close_up_detail">🔬 Close-Up Detail</option>
+                  <option value="unboxing">📦 Unboxing</option>
+                  <option value="before_after">🔄 Before &amp; After</option>
+                  <option value="hands_in_frame">🤲 Hands-on Demo</option>
+                  <option value="floating_hero">✨ Floating Hero</option>
+                </optgroup>
+                <optgroup label="👗 Fashion &amp; Styling" className="bg-[#0c0c0c] text-white/90">
+                  <option value="runway_walk">👠 Runway / OOTD</option>
+                  <option value="outfit_change_transition">✨ Snap Outfit</option>
+                  <option value="fabric_macro">🧶 Fabric Detail</option>
+                  <option value="mirror_outfit_check">🪞 Mirror Fit</option>
+                  <option value="editorial_pose">📸 Editorial</option>
+                </optgroup>
+                <optgroup label="🎓 Educational" className="bg-[#0c0c0c] text-white/90">
+                  <option value="tutorial_step">🎓 Tutorial</option>
+                  <option value="dynamic_action">⚡ Action</option>
+                </optgroup>
+              </select>
+              <Sparkles size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
+              <ChevronDown size={7} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+            </div>
+          )}
 
-          {/* Style Dropdown — narrow */}
-          <div className="relative w-40 shrink-0">
-            <select
-              value={selectedSceneStyle}
-              onChange={e => setSelectedSceneStyle(e.target.value)}
-              className="w-full appearance-none bg-black/30 border border-white/5 hover:border-white/10 rounded-xl pl-7 pr-6 py-1.5 text-[8px] font-mono text-white/80 uppercase tracking-wider cursor-pointer transition-all focus:outline-none focus:border-[#c8f135]/30"
-            >
-              <optgroup label="🎙️ Talking" className="bg-[#0c0c0c] text-white/90">
-                <option value="normal_talking">🎙️ Normal Talking</option>
-                <option value="walk_talk">🚶 Walk &amp; Talk</option>
-                <option value="reaction_shot">😲 Reaction Shot</option>
-                <option value="mirror_selfie">🪞 Mirror Selfie</option>
-              </optgroup>
-              <optgroup label="✂️ Camera Cuts" className="bg-[#0c0c0c] text-white/90">
-                <option value="fast_cut">✂️ Fast Cut</option>
-                <option value="dramatic_zoom">🔍 Dramatic Zoom</option>
-                <option value="pov_shot">👆 POV Shot</option>
-              </optgroup>
-              <optgroup label="🎥 Product Focus" className="bg-[#0c0c0c] text-white/90">
-                <option value="cinematic_b_roll">🎥 Cinematic B-Roll</option>
-                <option value="close_up_detail">🔬 Close-Up Detail</option>
-                <option value="unboxing">📦 Unboxing</option>
-                <option value="before_after">🔄 Before &amp; After</option>
-              </optgroup>
-              <optgroup label="🎓 Educational" className="bg-[#0c0c0c] text-white/90">
-                <option value="tutorial_step">🎓 Tutorial Step</option>
-                <option value="dynamic_action">⚡ Dynamic Action</option>
-              </optgroup>
-            </select>
-            <Sparkles size={8} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
-            <ChevronDown size={8} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
-          </div>
-
-          {/* AI Prompt pill — single scene. Dim when Multi-Shot mode is active */}
+          {/* AI Prompt pill — single scene */}
           <button
             type="button"
             onClick={() => handleGeneratePrompt(false)}
             disabled={isGeneratingSplitPrompt}
             title="Generate prompt for this scene only"
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[8px] font-black uppercase tracking-widest transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[7.5px] font-black uppercase tracking-wider transition-all shrink-0 cursor-pointer ${
               isGeneratingSplitPrompt
                 ? 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
                 : multiShotPrompt
@@ -405,68 +498,80 @@ export default function SplitScenesPanel() {
             }`}
           >
             {isGeneratingSplitPrompt && !multiShotPrompt
-              ? <><Loader2 size={8} className="animate-spin" /><span>Generating…</span></>
-              : <><Sparkles size={8} /><span>AI Prompt</span></>
+              ? <><Loader2 size={7} className="animate-spin" /><span>Gen…</span></>
+              : <><Sparkles size={7} /><span>AI Prompt</span></>
             }
           </button>
 
-          {/* Multi-Shot pill — all scenes. Dim when inactive, bright yellow when ON */}
+          {/* Multi-Shot Mode Toggle */}
           <button
             type="button"
-            title={multiShotPrompt ? 'Multi-Shot Prompt: ON (generates a continuous prompt per scene, covering the full script)' : 'Multi-Shot Prompt: OFF'}
+            title={multiShotPrompt ? 'Multi-Shot Mode: ON' : 'Multi-Shot Mode: OFF'}
             onClick={() => {
-              const nextVal = !multiShotPrompt;
-              setMultiShotPrompt(nextVal);
-              if (nextVal) {
-                handleGenerateAllScenePrompts();
-              } else {
-                handleGeneratePrompt(false);
-              }
+              setMultiShotPrompt(!multiShotPrompt);
             }}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[8px] font-black uppercase tracking-widest transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[7.5px] font-black uppercase tracking-wider transition-all shrink-0 cursor-pointer ${
               multiShotPrompt
-                ? 'bg-[#c8f135]/20 border-[#c8f135]/60 text-[#c8f135] shadow-[0_0_10px_rgba(200,241,53,0.15)]'
-                : 'bg-white/3 border-white/8 text-white/30 hover:text-white/60 hover:border-white/20'
+                ? 'bg-[#c8f135]/20 border-[#c8f135]/60 text-[#c8f135] shadow-[0_0_8px_rgba(200,241,53,0.15)]'
+                : 'bg-white/3 border-white/8 text-white/40 hover:text-white/70 hover:border-white/20'
             }`}
           >
-            {isGeneratingSplitPrompt && multiShotPrompt ? (
-              <><Loader2 size={8} className="animate-spin" /><span>All Scenes…</span></>
-            ) : (
-              <><Film size={8} className={multiShotPrompt ? 'text-[#c8f135]' : ''} /><span>Multi-Shot</span></>
-            )}
+            <Film size={7} className={multiShotPrompt ? 'text-[#c8f135]' : ''} />
+            <span>Multi-Shot {multiShotPrompt ? 'ON' : 'OFF'}</span>
           </button>
+
+          {/* Generate All Scenes Button — shown when Multi-Shot mode is ON */}
+          {multiShotPrompt && (
+            <button
+              type="button"
+              onClick={() => handleGenerateAllScenePrompts(false)}
+              disabled={isGeneratingSplitPrompt}
+              title="Generate multi-shot prompts for all scenes"
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[7.5px] font-black uppercase tracking-wider transition-all shrink-0 cursor-pointer ${
+                isGeneratingSplitPrompt
+                  ? 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
+                  : 'bg-[#c8f135] border-[#c8f135] text-black hover:bg-[#b8e125] shadow-[0_0_10px_rgba(200,241,53,0.25)]'
+              }`}
+            >
+              {isGeneratingSplitPrompt ? (
+                <><Loader2 size={7} className="animate-spin text-black" /><span>Generating…</span></>
+              ) : (
+                <><Sparkles size={7} className="text-black" /><span>✨ Generate All</span></>
+              )}
+            </button>
+          )}
 
           {/* B-Roll Template Dropdown */}
           <div className="relative shrink-0">
             <select
               value={selectedBRollPreset}
               onChange={e => setSelectedBRollPreset(e.target.value)}
-              className="appearance-none bg-blue-500/5 border border-blue-500/20 hover:border-blue-500/40 rounded-xl pl-6 pr-6 py-1.5 text-[8px] font-mono text-blue-300 uppercase tracking-wider cursor-pointer transition-all focus:outline-none"
+              className="appearance-none bg-blue-500/5 border border-blue-500/20 hover:border-blue-500/40 rounded-lg pl-5 pr-5 py-1 text-[7.5px] font-mono text-blue-300 uppercase tracking-wider cursor-pointer transition-all focus:outline-none"
             >
               {BROLL_PRESETS.map(p => (
                 <option key={p.id} value={p.id} className="bg-[#0c0c0c] text-white/90">{p.emoji} {p.label}</option>
               ))}
             </select>
-            <Film size={8} className="absolute left-2 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" />
-            <ChevronDown size={8} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+            <Film size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" />
+            <ChevronDown size={7} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
           </div>
 
           {/* B-Roll / Montage button */}
           <button
             type="button"
-            title="Generate a dynamic B-roll montage for all scenes (no voiceover)"
+            title="Generate a dynamic B-roll montage for all scenes"
             onClick={() => handleGenerateAllScenePrompts(true)}
             disabled={isGeneratingSplitPrompt}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[8px] font-black uppercase tracking-widest transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[7.5px] font-black uppercase tracking-wider transition-all shrink-0 cursor-pointer ${
               isGeneratingSplitPrompt
                 ? 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
-                : 'bg-blue-500/10 border-blue-500/40 text-blue-300 hover:bg-blue-500/20 hover:border-blue-500/70 hover:shadow-[0_0_12px_rgba(59,130,246,0.15)]'
+                : 'bg-blue-500/10 border-blue-500/40 text-blue-300 hover:bg-blue-500/20 hover:border-blue-500/70'
             }`}
           >
             {isGeneratingSplitPrompt ? (
-              <><Loader2 size={8} className="animate-spin" /><span>Generating…</span></>
+              <><Loader2 size={7} className="animate-spin" /><span>Gen…</span></>
             ) : (
-              <><Film size={8} /><span>B-Roll / Montage</span></>
+              <><Film size={7} /><span>B-Roll</span></>
             )}
           </button>
 
@@ -567,46 +672,52 @@ export default function SplitScenesPanel() {
           <div className="flex flex-col items-end gap-3 w-full md:w-auto shrink-0 pt-2 md:pt-0 border-t border-white/5 md:border-t-0">
 
             {/* Reference images list (up to 3) */}
-            <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
               {(() => {
                 const currentRefs = sc?.refImages || (sc?.refImage ? [sc.refImage] : []);
-                return currentRefs.map((refUrl, idx) => (
-                  <div key={refUrl} className="flex items-center gap-2 px-2 py-1 bg-[#c8f135]/5 border border-[#c8f135]/20 rounded-xl relative animate-in fade-in duration-200 shrink-0 group/att shadow-inner">
-                    <img
-                      src={resolveUrl(refUrl)}
-                      alt={`Scene Ref ${idx + 1}`}
-                      className="w-9 h-9 rounded-lg object-cover border border-[#c8f135]/40 shadow-md shrink-0"
-                    />
-                    <div className="flex flex-col text-left">
-                      <span className="text-[7px] font-black uppercase tracking-wider text-[#c8f135]">Reference</span>
-                      <span className="text-[5px] font-mono uppercase tracking-tighter text-[#c8f135]/50">Attached ✓</span>
+
+                return currentRefs.map((refUrl, idx) => {
+                  const tagBadge = `<IMAGE_REF_${idx}>`;
+
+                  return (
+                    <div key={refUrl} className="relative group/att bg-[#111113] border border-[#c8f135]/30 rounded-xl p-1 shrink-0 shadow-lg flex flex-col items-center">
+                      <img
+                        src={resolveUrl(refUrl)}
+                        alt={`Scene Ref ${idx + 1}`}
+                        className="w-14 h-14 rounded-lg object-cover border border-white/10 shadow-md shrink-0"
+                      />
+                      <span className="mt-1 text-[6px] font-mono font-bold text-[#c8f135] bg-black/80 px-1 py-0.5 rounded border border-[#c8f135]/30 leading-none">
+                        {tagBadge}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSplitScenes((prev: SplitScene[]) =>
+                            prev.map((s, sIdx) => {
+                              if (sIdx !== activeSplitTab) return s;
+                              const updatedRefs = (s.refImages || []).filter((r) => r !== refUrl);
+                              return { ...s, refImage: updatedRefs[0] || null, refImages: updatedRefs };
+                            })
+                          );
+                        }}
+                        className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-all shadow-lg cursor-pointer shrink-0 opacity-0 group-hover/att:opacity-100 border border-black/20 z-20"
+                        title={`Remove ${tagBadge}`}
+                      >
+                        <X size={7} className="text-white" />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSplitScenes((prev: SplitScene[]) =>
-                          prev.map((s, sIdx) => {
-                            if (sIdx !== activeSplitTab) return s;
-                            const updatedRefs = (s.refImages || []).filter((r) => r !== refUrl);
-                            return { ...s, refImage: updatedRefs[0] || null, refImages: updatedRefs };
-                          })
-                        );
-                      }}
-                      className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-all shadow-lg cursor-pointer shrink-0 opacity-0 group-hover/att:opacity-100 border border-black/20"
-                      title="Remove Reference"
-                    >
-                      <X size={7} className="text-white" />
-                    </button>
-                  </div>
-                ));
+                  );
+                });
               })()}
 
-              {/* Add Ref slot — shown if < 3 refs */}
+              {/* Add Ref slot — Upload file */}
               {(() => {
                 const currentRefs = sc?.refImages || (sc?.refImage ? [sc.refImage] : []);
                 if (currentRefs.length >= 3) return null;
+                const nextTagIndex = currentRefs.length;
+
                 return (
-                  <label className="flex items-center gap-2 px-2.5 py-1.5 bg-white/3 border border-dashed border-white/10 hover:border-[#c8f135]/40 hover:bg-[#c8f135]/5 rounded-xl cursor-pointer transition-all text-left">
+                  <label className="flex flex-col items-center justify-center w-14 h-14 bg-white/3 border border-dashed border-white/15 hover:border-[#c8f135]/60 hover:bg-[#c8f135]/5 rounded-xl cursor-pointer transition-all text-center group">
                     <input
                       type="file"
                       accept="image/*"
@@ -629,11 +740,9 @@ export default function SplitScenesPanel() {
                         }
                       }}
                     />
-                    <Camera size={11} className="text-white/30 shrink-0" />
-                    <div className="flex flex-col">
-                      <span className="text-[7.5px] font-black uppercase tracking-wider text-white/40">Add Ref</span>
-                      <span className="text-[6px] font-mono text-white/20 uppercase tracking-tighter">Upload</span>
-                    </div>
+                    <Camera size={14} className="text-white/40 group-hover:text-[#c8f135] transition-colors mb-0.5" />
+                    <span className="text-[6.5px] font-black uppercase tracking-wider text-white/50 group-hover:text-[#c8f135]">Upload</span>
+                    <span className="text-[5.5px] font-mono text-[#c8f135]/80 uppercase tracking-tighter leading-none mt-0.5">&lt;REF_{nextTagIndex}&gt;</span>
                   </label>
                 );
               })()}

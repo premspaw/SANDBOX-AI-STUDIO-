@@ -72,22 +72,69 @@ export const withTimeout = <T extends unknown>(promise: Promise<T>, timeoutMs: n
   ]);
 };
 
-export const safeJsonParse = (text: string | undefined) => {
-  if (!text || !text.trim()) return {};
+export const safeJsonParse = (text: string | undefined): any => {
+  if (!text || !text.trim()) return null;
+  let cleanText = text.trim();
+  cleanText = cleanText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
   try {
-    return JSON.parse(text);
-  } catch (e) {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      try {
-        return JSON.parse(jsonMatch[0]);
-      } catch (e2) {
-        console.error("Failed to parse extracted JSON", e2);
-      }
-    }
-    console.error("JSON parse failed", e, text);
-    return {};
+    return JSON.parse(cleanText);
+  } catch {
+    /* continue */
   }
+
+  const sanitize = (str: string): string => {
+    return str
+      .replace(/,\s*([\}\]])/g, '$1')
+      .replace(/("[^"\\]*(?:\\.[^"\\]*)*")|([^\x00-\x7F]+)/g, (match, group1) => {
+        if (group1) return group1;
+        return '';
+      })
+      .replace(/("[^"\\]*(?:\\.[^"\\]*)*")\s*[^"\{\}\[\],:\s]+(\s*[\}\]])/g, '$1$2');
+  };
+
+  try {
+    return JSON.parse(sanitize(cleanText));
+  } catch {
+    /* continue */
+  }
+
+  const arrayMatch = cleanText.match(/\[[\s\S]*\]/);
+  if (arrayMatch) {
+    try {
+      return JSON.parse(sanitize(arrayMatch[0]));
+    } catch {
+      /* continue */
+    }
+  }
+
+  const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      return JSON.parse(sanitize(jsonMatch[0]));
+    } catch {
+      /* continue */
+    }
+  }
+
+  if (cleanText.includes('{')) {
+    const objectMatches = cleanText.match(/\{[\s\S]*?\}/g);
+    if (objectMatches && objectMatches.length > 0) {
+      const recovered: any[] = [];
+      for (const objStr of objectMatches) {
+        try {
+          const parsed = JSON.parse(sanitize(objStr));
+          if (parsed && typeof parsed === 'object') recovered.push(parsed);
+        } catch {
+          /* continue */
+        }
+      }
+      if (recovered.length > 0) return recovered;
+    }
+  }
+
+  console.error("safeJsonParse failed to parse text:", text);
+  return null;
 };
 
 export const fileToGenerativePart = async (file: File) => {
