@@ -39,11 +39,29 @@ const getAllowedCorsOrigins = () => {
         .split(',')
         .map(normalizeOrigin)
         .filter(Boolean);
-    const defaults = [APP_ORIGIN];
+    const defaults = [
+        APP_ORIGIN,
+        'https://zerolens.in',
+        'https://www.zerolens.in'
+    ];
     if (process.env.NODE_ENV !== 'production') {
-        defaults.push('http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3002', 'http://127.0.0.1:3002');
+        defaults.push('http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://127.0.0.1:5174', 'http://localhost:3002', 'http://127.0.0.1:3002');
     }
     return [...new Set([...configured, ...defaults])];
+};
+
+const isOriginAllowed = (origin) => {
+    if (!origin) return true;
+    const normalized = normalizeOrigin(origin);
+    if (!normalized) return true;
+    const allowed = getAllowedCorsOrigins();
+    if (allowed.includes(normalized)) return true;
+
+    if (/^https?:\/\/([a-z0-9-]+\.)*zerolens\.in$/i.test(normalized)) return true;
+    if (/^https?:\/\/([a-z0-9-]+\.)*railway\.app$/i.test(normalized)) return true;
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(normalized)) return true;
+
+    return false;
 };
 
 // -------------------------------------------------------------
@@ -462,17 +480,13 @@ const port = process.env.PORT || 3002;
 // Storage Base URL for GCS Assets
 const storageBase = `https://storage.googleapis.com/${process.env.GCS_BUCKET_NAME || 'zerolensbucket_1'}`;
 
-// Middleware
-const allowedCorsOrigins = getAllowedCorsOrigins();
 app.use(cors({
     origin(origin, callback) {
-        if (!origin) return callback(null, true);
-        const normalized = normalizeOrigin(origin);
-        if (process.env.NODE_ENV !== 'production') {
-            const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(normalized);
-            if (isLocal) return callback(null, true);
+        if (!origin || isOriginAllowed(origin)) {
+            return callback(null, true);
         }
-        return callback(null, allowedCorsOrigins.includes(normalized));
+        console.warn(`[CORS Blocked] Origin: ${origin}`);
+        return callback(null, false);
     },
     credentials: true
 }));
