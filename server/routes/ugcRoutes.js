@@ -158,30 +158,29 @@ export default function createRouter(deps) {
                     }
                 } catch (vertexErr) {
                     console.warn(`[Video API] [Vertex AI] Failed. Error: ${vertexErr.message}. Falling back to Google AI Studio...`);
-                    if (apiKey === 'VERTEX_AI_CLIENT') {
-                        throw vertexErr;
-                    }
                 }
             }
 
             // --- Option B: Google AI Studio / Gemini API (Fallback) ---
-            if (!success && apiKey && apiKey !== 'VERTEX_AI_CLIENT') {
-                try {
-                    let aiStudioModelName = 'veo-3.1-generate-preview';
-                    if (model === 'veo-fast' || model === 'veo_fast') {
-                        aiStudioModelName = 'veo-3.1-fast-generate-preview';
-                    } else if (model === 'veo-lite' || model === 'veo_lite') {
-                        aiStudioModelName = 'veo-3.1-lite-generate-preview';
-                    }
-                    let url = `https://generativelanguage.googleapis.com/v1beta/models/${aiStudioModelName}:predictLongRunning`;
-                    let headers = { 'Content-Type': 'application/json' };
-                    if (apiKey) {
-                        url += `?key=${apiKey}`;
-                        console.log(`[Video API] [AI Studio] Calling model ${aiStudioModelName} via API Key`);
-                    } else {
-                        headers['Authorization'] = `Bearer ${vertexToken}`;
-                        console.log(`[Video API] [AI Studio] Calling model ${aiStudioModelName} via Service Account token`);
-                    }
+            if (!success) {
+                const studioKey = (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : (process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
+                if (studioKey || vertexToken) {
+                    try {
+                        let aiStudioModelName = 'veo-3.1-generate-preview';
+                        if (model === 'veo-fast' || model === 'veo_fast') {
+                            aiStudioModelName = 'veo-3.1-fast-generate-preview';
+                        } else if (model === 'veo-lite' || model === 'veo_lite') {
+                            aiStudioModelName = 'veo-3.1-lite-generate-preview';
+                        }
+                        let url = `https://generativelanguage.googleapis.com/v1beta/models/${aiStudioModelName}:predictLongRunning`;
+                        let headers = { 'Content-Type': 'application/json' };
+                        if (studioKey) {
+                            url += `?key=${studioKey}`;
+                            console.log(`[Video API] [AI Studio Fallback] Calling model ${aiStudioModelName} via API Key`);
+                        } else {
+                            headers['Authorization'] = `Bearer ${vertexToken}`;
+                            console.log(`[Video API] [AI Studio Fallback] Calling model ${aiStudioModelName} via Service Account token`);
+                        }
 
                     const response = await fetch(url, {
                         method: 'POST',
@@ -253,6 +252,7 @@ export default function createRouter(deps) {
                     throw new Error(`Video generation failed on both Vertex AI and Google AI Studio: ${studioErr.message}`);
                 }
             }
+        }
 
             if (!success || !videoBuffer) {
                 throw new Error('Video generation failed to return valid video buffer.');
@@ -1058,25 +1058,24 @@ Return ONLY valid JSON.`
                     }
                 } catch (vertexErr) {
                     console.warn(`[UGC-PREVIEW] [Vertex AI] Failed. Error: ${vertexErr.message}. Falling back to Google AI Studio...`);
-                    if (apiKey === 'VERTEX_AI_CLIENT') {
-                        throw vertexErr;
-                    }
                 }
             }
 
             // --- Option B: Google AI Studio / Gemini API (Fallback) ---
-            if (!success && apiKey && apiKey !== 'VERTEX_AI_CLIENT') {
-                try {
-                    const veoModel = 'veo-3.1-generate-preview';
-                    let veoEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${veoModel}:predictLongRunning`;
-                    let headers = { 'Content-Type': 'application/json' };
-                    if (apiKey) {
-                        veoEndpoint += `?key=${apiKey}`;
-                        console.log(`[UGC-PREVIEW] [AI Studio] Calling model ${veoModel} via API Key`);
-                    } else {
-                        headers['Authorization'] = `Bearer ${token}`;
-                        console.log(`[UGC-PREVIEW] [AI Studio] Calling model ${veoModel} via Service Account token`);
-                    }
+            if (!success) {
+                const studioKey = (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : (process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
+                if (studioKey || token) {
+                    try {
+                        const veoModel = 'veo-3.1-generate-preview';
+                        let veoEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${veoModel}:predictLongRunning`;
+                        let headers = { 'Content-Type': 'application/json' };
+                        if (studioKey) {
+                            veoEndpoint += `?key=${studioKey}`;
+                            console.log(`[UGC-PREVIEW] [AI Studio Fallback] Calling model ${veoModel} via API Key`);
+                        } else {
+                            headers['Authorization'] = `Bearer ${token}`;
+                            console.log(`[UGC-PREVIEW] [AI Studio Fallback] Calling model ${veoModel} via Service Account token`);
+                        }
 
                     const veoInitResp = await withRetry(() => fetch(veoEndpoint, {
                         method: 'POST',
@@ -1160,6 +1159,7 @@ Return ONLY valid JSON.`
                     throw new Error(`Video generation failed on both Vertex AI and Google AI Studio: ${studioErr.message}`);
                 }
             }
+        }
 
             if (!success || !videoBuffer) {
                 throw new Error('Video generation failed to return valid video buffer.');

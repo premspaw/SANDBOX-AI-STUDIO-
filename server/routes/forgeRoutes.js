@@ -55,7 +55,8 @@ export default function createRouter(deps) {
                 user = await requireAuth(req);
             } catch (_) {}
             const targetUserId = user ? user.id : req.body.userId;
-            const apiKey = await resolveGoogleApiKey(req, targetUserId);
+            const rawApiKey = await resolveGoogleApiKey(req, targetUserId);
+            const apiKey = (rawApiKey && rawApiKey !== 'VERTEX_AI_CLIENT') ? rawApiKey : (process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
 
             const prompt = `You are an elite cinematic prompt engineer. Your task is to take a raw description and transform it into a high-fidelity, visually rich narrative prompt.
             
@@ -120,7 +121,8 @@ export default function createRouter(deps) {
                 user = await requireAuth(req);
             } catch (_) {}
             const targetUserId = user ? user.id : req.body.userId;
-            const apiKey = await resolveGoogleApiKey(req, targetUserId);
+            const rawApiKey = await resolveGoogleApiKey(req, targetUserId);
+            const apiKey = (rawApiKey && rawApiKey !== 'VERTEX_AI_CLIENT') ? rawApiKey : (process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
             const projectId = process.env.GOOGLE_PROJECT_ID;
             const location = process.env.GOOGLE_LOCATION || 'us-central1';
 

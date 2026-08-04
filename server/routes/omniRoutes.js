@@ -853,21 +853,22 @@ async function trimVideoBufferToMaxDuration(inputBuffer, maxDurationSec = 10) {
                         console.log(`[OMNI-I2V] [Vertex AI SDK] Video downloaded via URI (${videoBuffer.length} bytes)`);
                     }
                 } catch (serviceErr) {
-                    console.error(`[OMNI-I2V] [Vertex AI SDK] Vertex AI Omni generation failed:`, serviceErr);
-                    throw serviceErr;
+                    console.warn(`[OMNI-I2V] [Vertex AI SDK] Vertex AI Omni generation failed (${serviceErr.message}). Trying Google AI Studio Fallback...`);
                 }
             }
 
-            // --- Option B: User API Key (Fallback) ---
-            if (!success && apiKey && apiKey !== 'VERTEX_AI_CLIENT') {
-                try {
-                    const endpoint = `https://generativelanguage.googleapis.com/v1beta/interactions?key=${apiKey}`;
-                    const headers = { 'Content-Type': 'application/json' };
+            // --- Option B: User API Key / System Fallback Key ---
+            if (!success) {
+                const studioKey = (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : (process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
+                if (studioKey) {
+                    try {
+                        const endpoint = `https://generativelanguage.googleapis.com/v1beta/interactions?key=${studioKey}`;
+                        const headers = { 'Content-Type': 'application/json' };
 
-                    // Force URI delivery mode for Google AI Studio API Key fallback
-                    reqBody.response_format.delivery = "uri";
+                        // Force URI delivery mode for Google AI Studio API Key fallback
+                        reqBody.response_format.delivery = "uri";
 
-                    console.log(`[OMNI-I2V] [API Key] Sending request to ${endpoint}`);
+                        console.log(`[OMNI-I2V] [AI Studio Fallback] Sending request to ${endpoint}`);
                     const restResponse = await fetch(endpoint, {
                         method: 'POST',
                         headers,
@@ -953,6 +954,7 @@ async function trimVideoBufferToMaxDuration(inputBuffer, maxDurationSec = 10) {
                     throw new Error(`Video generation failed on both Service Account and API Key: ${apiKeyErr.message}`);
                 }
             }
+        }
 
             if (!success || !videoBuffer) {
                 throw new Error('Video generation failed to return valid video buffer.');

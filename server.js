@@ -1286,18 +1286,21 @@ async function handleGoogle(req, res) {
                         throw new Error('No predictions returned from Vertex AI Imagen');
                     }
                 } catch (vertexErr) {
-                    console.warn(`[handleGoogle] [Vertex AI] Failed. Error: ${vertexErr.message}.`);
-                    if (apiKey === 'VERTEX_AI_CLIENT' && !isGeminiImageModel) {
-                        throw vertexErr;
-                    }
+                    console.warn(`[handleGoogle] [Vertex AI] Failed. Error: ${vertexErr.message}. Falling back to Google AI Studio...`);
                 }
             }
 
             // --- Option B: Google AI Studio Imagen / Gemini API (Fallback) ---
-            if (!success && (apiKey || token)) {
+            if (!success) {
                 try {
                     let ai;
-                    if (apiKey === 'VERTEX_AI_CLIENT') {
+                    const systemKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+                    const activeApiKey = (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : systemKey;
+
+                    if (activeApiKey) {
+                        ai = new GoogleGenAI({ apiKey: activeApiKey });
+                        console.log(`[handleGoogle] [AI Studio SDK Fallback] Calling model ${activeModel} via API Key`);
+                    } else if (apiKey === 'VERTEX_AI_CLIENT' || token) {
                         const activeModelLower = activeModel.toLowerCase();
                         const needsGlobal = activeModelLower.includes('gemini') || activeModelLower.includes('banana') || activeModelLower.includes('omni');
                         const authOptions = {};
