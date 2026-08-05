@@ -564,7 +564,9 @@ export default function CinematicStudio() {
   const [lastFrameImage, setLastFrameImage] = useState('');
   const [lastFramePreview, setLastFramePreview] = useState('');
 
-  // Core Inputs for Omni Flash
+  // Core Inputs for Omni Flash (Up to 5 Reference Image Slots)
+  const [omniRefImages, setOmniRefImages] = useState(['', '', '', '', '']);
+  const [omniRefPreviews, setOmniRefPreviews] = useState(['', '', '', '', '']);
   const [omniPromptText, setOmniPromptText] = useState('');
   const [omniFirstFrameImage, setOmniFirstFrameImage] = useState('');
   const [omniFirstFramePreview, setOmniFirstFramePreview] = useState('');
@@ -1124,6 +1126,19 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   const setRefBoard = setVideoRefBoard
 
   const [showRefBoard, setShowRefBoard] = useState(false)
+
+  // Auto-close template/reference board when Studio side panel opens, and vice-versa
+  useEffect(() => {
+    if (showSidePanel) {
+      setShowRefBoard(false);
+    }
+  }, [showSidePanel]);
+
+  useEffect(() => {
+    if (showRefBoard) {
+      setShowSidePanel(false);
+    }
+  }, [showRefBoard]);
   const [showLibPicker, setShowLibPicker] = useState(false)
   const [libPickerTarget, setLibPickerTarget] = useState(null)
   const refUploadInputRef = useRef(null)
@@ -1511,11 +1526,17 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     });
   };
 
+  // Debounced gallery persistence — avoids blocking the main thread on every gallery update
   useEffect(() => {
-    if (!galleryLSKey) return; // Don't persist when user is not identified
-    try {
-      localStorage.setItem(galleryLSKey, JSON.stringify(gallery));
-    } catch (_) { /* ignore localStorage quota issues */ }
+    if (!galleryLSKey) return;
+    const timer = setTimeout(() => {
+      try {
+        // Only persist non-loading, non-blob items to keep localStorage lean
+        const persistable = gallery.filter(item => !item.loading && item.url && !item.url.startsWith('blob:'));
+        localStorage.setItem(galleryLSKey, JSON.stringify(persistable));
+      } catch (_) { /* ignore localStorage quota issues */ }
+    }, 800);
+    return () => clearTimeout(timer);
   }, [gallery, galleryLSKey]);
 
   const fileInputRef = useRef(null);
@@ -1600,18 +1621,27 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   /* ─── UPLOAD ─────────────────────────────────────────────── */
   const handleClearRef = (target) => {
+    if (typeof target === 'number') {
+      setOmniRefImages(prev => { const n = [...prev]; n[target] = ''; return n; });
+      setOmniRefPreviews(prev => { const n = [...prev]; n[target] = ''; return n; });
+      if (target === 0) { setOmniFirstFrameImage(''); setOmniFirstFramePreview(''); }
+      if (target === 1) { setOmniLastFrameImage(''); setOmniLastFramePreview(''); }
+      return;
+    }
     if (panelTab === 'omni' || isOmni) {
       if (target === 'first') {
         setOmniFirstFrameImage('');
         setOmniFirstFramePreview('');
+        setOmniRefImages(prev => { const n = [...prev]; n[0] = ''; return n; });
+        setOmniRefPreviews(prev => { const n = [...prev]; n[0] = ''; return n; });
       } else if (target === 'last') {
         setOmniLastFrameImage('');
         setOmniLastFramePreview('');
+        setOmniRefImages(prev => { const n = [...prev]; n[1] = ''; return n; });
+        setOmniRefPreviews(prev => { const n = [...prev]; n[1] = ''; return n; });
       } else if (target === 'third') {
-        const thirdImg = seedanceRefs?.ref_images?.[0];
-        if (thirdImg) {
-          handleRemoveSeedanceRef(thirdImg.id, 'ref_images');
-        }
+        setOmniRefImages(prev => { const n = [...prev]; n[2] = ''; return n; });
+        setOmniRefPreviews(prev => { const n = [...prev]; n[2] = ''; return n; });
       }
     } else {
       if (target === 'first') {
@@ -1656,11 +1686,20 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         });
       }
 
-      if (panelTab === 'omni') {
-        if (uploadTarget === 'first') {
+      if (panelTab === 'omni' || (typeof uploadTarget === 'string' && uploadTarget.startsWith('omni_ref_'))) {
+        if (typeof uploadTarget === 'string' && uploadTarget.startsWith('omni_ref_')) {
+          const idx = parseInt(uploadTarget.split('_')[2], 10);
+          if (!isNaN(idx) && idx >= 0 && idx < 5) {
+            setOmniRefPreviews(prev => { const n = [...prev]; n[idx] = previewUrl; return n; });
+            if (idx === 0) setOmniFirstFramePreview(previewUrl);
+            if (idx === 1) setOmniLastFramePreview(previewUrl);
+          }
+        } else if (uploadTarget === 'first') {
           setOmniFirstFramePreview(previewUrl);
+          setOmniRefPreviews(prev => { const n = [...prev]; n[0] = previewUrl; return n; });
         } else {
           setOmniLastFramePreview(previewUrl);
+          setOmniRefPreviews(prev => { const n = [...prev]; n[1] = previewUrl; return n; });
         }
       } else {
         if (uploadTarget === 'first' || activeTab === 'image') {
@@ -1687,11 +1726,20 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       const data = await resp.json();
       const publicUrl = data.url || data.path || previewUrl;
 
-      if (panelTab === 'omni') {
-        if (uploadTarget === 'first') {
+      if (panelTab === 'omni' || (typeof uploadTarget === 'string' && uploadTarget.startsWith('omni_ref_'))) {
+        if (typeof uploadTarget === 'string' && uploadTarget.startsWith('omni_ref_')) {
+          const idx = parseInt(uploadTarget.split('_')[2], 10);
+          if (!isNaN(idx) && idx >= 0 && idx < 5) {
+            setOmniRefImages(prev => { const n = [...prev]; n[idx] = publicUrl; return n; });
+            if (idx === 0) setOmniFirstFrameImage(publicUrl);
+            if (idx === 1) setOmniLastFrameImage(publicUrl);
+          }
+        } else if (uploadTarget === 'first') {
           setOmniFirstFrameImage(publicUrl);
+          setOmniRefImages(prev => { const n = [...prev]; n[0] = publicUrl; return n; });
         } else {
           setOmniLastFrameImage(publicUrl);
+          setOmniRefImages(prev => { const n = [...prev]; n[1] = publicUrl; return n; });
         }
       } else {
         if (uploadTarget === 'first' || activeTab === 'image') {
@@ -1705,13 +1753,6 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       setErrorMsg(`Upload failed: ${err.message}`);
       const showToast = useAppStore.getState().showToast;
       if (showToast) showToast(`Upload failed: ${err.message}`, "error");
-      if (panelTab === 'omni') {
-        if (uploadTarget === 'first') setOmniFirstFramePreview('');
-        else setOmniLastFramePreview('');
-      } else {
-        if (uploadTarget === 'first' || activeTab === 'image') setFirstFramePreview('');
-        else setLastFramePreview('');
-      }
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -2373,10 +2414,13 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                 aspectRatio: activeRatio,
                 resolution,
                 model: targetModel,
-                identity_images,
+                identity_images: isOmniEngine ? [...omniRefImages.filter(Boolean), ...identity_images] : identity_images,
                 identity_gcs_uris,
-                referenceImages: identity_images,
-                ref_images: taggedItems.map(item => ({ url: item.imageUrl || item.url || item.data || item })),
+                referenceImages: isOmniEngine ? [...omniRefImages.filter(Boolean), ...identity_images] : identity_images,
+                ref_images: [
+                  ...(isOmniEngine ? omniRefImages.filter(Boolean).map(url => ({ url })) : []),
+                  ...taggedItems.map(item => ({ url: item.imageUrl || item.url || item.data || item }))
+                ],
                 ref_videos: [
                   ...(omniRefVideoPreview ? [{ url: omniRefVideoPreview, duration: omniRefVideoDuration }] : []),
                   ...taggedItems.filter(item => isVideo(item)).map(item => ({ url: item.imageUrl || item.url || item.data || item }))
@@ -2560,17 +2604,20 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   };
 
   // Distribute gallery items into 5 columns for responsive masonry Grid flow
-  const renderItems = [];
-  const hasLoadingItems = filteredGallery.some(item => item.loading);
-  if (isBusy && !hasLoadingItems) {
-    renderItems.push({ isLoader: true });
-  }
-  renderItems.push(...filteredGallery);
+  const columnsData = useMemo(() => {
+    const renderItems = [];
+    const hasLoadingItems = filteredGallery.some(item => item.loading);
+    if (isBusy && !hasLoadingItems) {
+      renderItems.push({ isLoader: true });
+    }
+    renderItems.push(...filteredGallery);
 
-  const columnsData = [[], [], [], [], []];
-  renderItems.forEach((item, index) => {
-    columnsData[index % 5].push(item);
-  });
+    const cols = [[], [], [], [], []];
+    renderItems.forEach((item, index) => {
+      cols[index % 5].push(item);
+    });
+    return cols;
+  }, [filteredGallery, isBusy]);
 
   /* ─── RENDER ─────────────────────────────────────────────── */
   return (
@@ -2684,30 +2731,35 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       {/* ── MAIN BODY ──────────────────────────────────────── */}
       <div className="flex-1 relative overflow-hidden">
 
-        {/* Floating Right-Edge Side Drawer Pull Tab (Always rendered & visible) */}
-        <motion.button
-          type="button"
-          onClick={() => setShowSidePanel(prev => !prev)}
-          whileHover={{ scale: 1.05, x: -3 }}
-          whileTap={{ scale: 0.95 }}
-          animate={{ right: showSidePanel ? '36rem' : '0rem' }}
-          transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-          className={cn(
-            "fixed top-1/2 -translate-y-1/2 z-[130] py-6 px-2 rounded-l-2xl border-l border-y shadow-2xl flex flex-col items-center gap-2 cursor-pointer transition-colors backdrop-blur-2xl",
-            showSidePanel
-              ? "bg-[#c8f135] text-black border-[#c8f135] shadow-[0_0_20px_rgba(200,241,53,0.85)]"
-              : "bg-[#0b0b12]/95 border-violet-500/40 text-violet-300 hover:bg-violet-600/30 hover:text-white"
-          )}
-          title="Toggle Studio Side Panel"
+        {/* Wrap in a stable fixed-position div so Framer Motion doesn't clobber -translate-y-1/2 centering */}
+        <div
+          className="fixed top-1/2 -translate-y-1/2 z-[130]"
+          style={{ right: showSidePanel ? '36rem' : '0rem', transition: 'right 0.35s cubic-bezier(0.32,0.72,0,1)' }}
         >
-          <Sliders size={14} className={showSidePanel ? "text-black" : "text-violet-400"} />
-          <span
-            style={{ writingMode: 'vertical-lr' }}
-            className={cn("text-[9px] font-black uppercase tracking-widest select-none", showSidePanel ? "text-black" : "text-violet-200")}
+          <motion.button
+            type="button"
+            onClick={() => setShowSidePanel(prev => !prev)}
+            whileHover={{ scale: 1.05, x: -3 }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+            className={cn(
+              "py-6 px-2 rounded-l-2xl border-l border-y shadow-2xl flex flex-col items-center gap-2 cursor-pointer transition-colors backdrop-blur-2xl",
+              showSidePanel
+                ? "bg-[#c8f135] text-black border-[#c8f135] shadow-[0_0_20px_rgba(200,241,53,0.85)]"
+                : "bg-[#0b0b12]/95 border-violet-500/40 text-violet-300 hover:bg-violet-600/30 hover:text-white"
+            )}
+            title="Toggle Studio Side Panel"
           >
-            Studio
-          </span>
-        </motion.button>
+            <Sliders size={14} className={showSidePanel ? "text-black" : "text-violet-400"} />
+            <span
+              style={{ writingMode: 'vertical-lr' }}
+              className={cn("text-[9px] font-black uppercase tracking-widest select-none", showSidePanel ? "text-black" : "text-violet-200")}
+            >
+              Studio
+            </span>
+          </motion.button>
+        </div>
+
 
         {/* GALLERY BACKGROUND — occupies the full viewport behind everything */}
         <div className="absolute inset-0 overflow-y-auto custom-scrollbar p-4 pb-52">
@@ -2780,11 +2832,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                     }
 
                     return (
-                      <motion.div
+                      <div
                         key={item.id}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="rounded-2xl border border-white/5 bg-white/[0.02] overflow-hidden group cursor-pointer hover:border-fuchsia-500/20 transition-all"
+                        className="rounded-2xl border border-white/5 bg-white/[0.02] overflow-hidden group cursor-pointer hover:border-fuchsia-500/20 transition-all gallery-item-appear"
                         onClick={() => setLightboxItem(item)}
                       >
                         {/* Media Content */}
@@ -2797,6 +2847,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                               <img
                                 src={resolveUrl(item.url)}
                                 alt={item.prompt}
+                                loading="lazy"
+                                decoding="async"
                                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                               />
                               {upscalingItems[item.id] && (
@@ -2926,7 +2978,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                             </div>
                           </div>
                         </div>
-                      </motion.div>
+                      </div>
                     );
                   })}
                 </div>
@@ -3326,10 +3378,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             </div>
             
             {/* Horizontal Flex Wrapper for Mode Switcher & Input Box */}
-            <div className="flex items-start gap-3 w-full">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-1.5 sm:gap-3 w-full">
               
-              {/* Vertical Mode Switcher Tab (Positioned outside, joined on the left) */}
-              <div className="bg-[#08080c]/95 border border-white/15 rounded-2xl p-1.5 flex flex-col gap-1 shadow-lg shrink-0 select-none backdrop-blur-3xl self-start">
+              {/* Mode Switcher Tab (Horizontal compact on mobile, vertical stacked tab on desktop) */}
+              <div className="bg-[#08080c]/95 border border-white/15 rounded-xl sm:rounded-2xl p-1 sm:p-1.5 flex flex-row sm:flex-col gap-1 shadow-lg shrink-0 select-none backdrop-blur-3xl self-start w-full sm:w-auto justify-center sm:justify-start">
                 <button
                   type="button"
                   onClick={() => {
@@ -3338,15 +3390,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                     setActiveEngine(lastImg);
                   }}
                   className={cn(
-                    "flex flex-col items-center justify-center w-12 h-11 rounded-xl text-[7px] font-black uppercase tracking-wider transition-all",
+                    "flex-1 sm:flex-initial flex items-center sm:flex-col justify-center gap-1.5 sm:gap-0 sm:w-12 h-7 sm:h-11 rounded-lg sm:rounded-xl text-[8px] sm:text-[7px] font-black uppercase tracking-wider transition-all",
                     activeTab === 'image'
                       ? "bg-[#c8f135] text-black shadow-md shadow-[#c8f135]/20"
                       : "text-gray-400 hover:bg-white/[0.03] hover:text-white"
                   )}
                   title="Switch to Image Generation"
                 >
-                  <ImageIcon size={13} />
-                  <span className="mt-0.5 scale-90 leading-none">Image</span>
+                  <ImageIcon size={12} className="shrink-0" />
+                  <span className="sm:mt-0.5 scale-90 leading-none">Image</span>
                 </button>
                 <button
                   type="button"
@@ -3356,20 +3408,20 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                     setActiveEngine(lastVid);
                   }}
                   className={cn(
-                    "flex flex-col items-center justify-center w-12 h-11 rounded-xl text-[7px] font-black uppercase tracking-wider transition-all",
+                    "flex-1 sm:flex-initial flex items-center sm:flex-col justify-center gap-1.5 sm:gap-0 sm:w-12 h-7 sm:h-11 rounded-lg sm:rounded-xl text-[8px] sm:text-[7px] font-black uppercase tracking-wider transition-all",
                     activeTab === 'video'
                       ? "bg-fuchsia-500 text-white shadow-md shadow-fuchsia-500/20"
                       : "text-gray-400 hover:bg-white/[0.03] hover:text-white"
                   )}
                   title="Switch to Video Generation"
                 >
-                  <Video size={13} />
-                  <span className="mt-0.5 scale-90 leading-none">Video</span>
+                  <Video size={12} className="shrink-0" />
+                  <span className="sm:mt-0.5 scale-90 leading-none">Video</span>
                 </button>
               </div>
 
               {/* ── Main Floating Input Bar (Vertical premium studio layout) ── */}
-              <div className="relative rounded-2xl border border-white/15 bg-[#08080c]/95 backdrop-blur-3xl shadow-[0_25px_70px_rgba(0,0,0,0.85)] flex flex-col p-3 gap-2.5 flex-1 hover:border-white/20 transition-all duration-300">
+              <div className="relative rounded-2xl border border-white/15 bg-[#08080c]/95 backdrop-blur-3xl shadow-[0_25px_70px_rgba(0,0,0,0.85)] flex flex-col p-2.5 sm:p-3 gap-2 sm:gap-2.5 flex-1 min-w-0 hover:border-white/20 transition-all duration-300">
                 
                 {/* Autocomplete mention popover */}
                 {mentionSearch !== null && mentionField === 'promptText' && (
@@ -4113,28 +4165,16 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   </motion.button>
                 )}
 
-                {/* Generate Button (aligned beautifully on the right of bottom row) */}
+                {/* Generate Button — CSS pulse replaces framer-motion infinite loop (GPU-friendly) */}
                 <motion.button
                   onClick={() => handleGenerate()}
                   disabled={isBusy}
                   whileHover={canGenerate ? { scale: 1.02, backgroundColor: '#d5fb3b' } : {}}
                   whileTap={canGenerate ? { scale: 0.97 } : {}}
-                  animate={canGenerate ? {
-                    boxShadow: [
-                      "0 0 0px rgba(200, 241, 53, 0)",
-                      "0 0 20px rgba(200, 241, 53, 0.55)",
-                      "0 0 0px rgba(200, 241, 53, 0)"
-                    ]
-                  } : { boxShadow: "none" }}
-                  transition={canGenerate ? {
-                    repeat: Infinity,
-                    duration: 2.2,
-                    ease: "easeInOut"
-                  } : {}}
                   className={cn(
                     "px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all shrink-0 text-[10px] font-black uppercase tracking-widest shadow-lg",
                     canGenerate
-                      ? "bg-[#c8f135] text-black cursor-pointer"
+                      ? "bg-[#c8f135] text-black cursor-pointer generate-btn-pulse"
                       : "bg-zinc-900 border border-white/5 text-white/15 cursor-not-allowed"
                   )}
                   title={
@@ -4240,6 +4280,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         omniFirstFramePreview={omniFirstFramePreview}
         omniLastFrameImage={omniLastFrameImage}
         omniLastFramePreview={omniLastFramePreview}
+        omniRefImages={omniRefImages}
+        omniRefPreviews={omniRefPreviews}
+        setOmniRefImages={setOmniRefImages}
+        setOmniRefPreviews={setOmniRefPreviews}
         setOmniFirstFrameImage={setOmniFirstFrameImage}
         setOmniFirstFramePreview={setOmniFirstFramePreview}
         setOmniLastFrameImage={setOmniLastFrameImage}

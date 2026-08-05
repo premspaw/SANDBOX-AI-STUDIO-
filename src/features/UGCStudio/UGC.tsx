@@ -456,8 +456,12 @@ export default function UGC() {
     return () => { if (interval) clearInterval(interval); };
   }, [isPlaying, totalTimelineDuration]);
 
+  // Debounced — avoids blocking main thread on every timeline update
   useEffect(() => {
-    localStorage.setItem('ugc_timeline_cache', JSON.stringify(timeline));
+    const timer = setTimeout(() => {
+      localStorage.setItem('ugc_timeline_cache', JSON.stringify(timeline));
+    }, 600);
+    return () => clearTimeout(timer);
   }, [timeline]);
 
   const {
@@ -494,12 +498,19 @@ export default function UGC() {
     try { return saved ? JSON.parse(saved) : []; } catch { return []; }
   });
 
+  // Debounced — avoids blocking main thread on every knowledge base update
   useEffect(() => {
-    localStorage.setItem('ugc_knowledge_base', JSON.stringify(knowledgeBase));
+    const timer = setTimeout(() => {
+      localStorage.setItem('ugc_knowledge_base', JSON.stringify(knowledgeBase));
+    }, 600);
+    return () => clearTimeout(timer);
   }, [knowledgeBase]);
 
   useEffect(() => {
-    localStorage.setItem('ugc_trained_strategy', trainedStrategy);
+    const timer = setTimeout(() => {
+      localStorage.setItem('ugc_trained_strategy', trainedStrategy);
+    }, 600);
+    return () => clearTimeout(timer);
   }, [trainedStrategy]);
 
   const handleAdminLogin = async () => {
@@ -579,6 +590,13 @@ export default function UGC() {
   const [sceneContext, setSceneContext] = useState('Studio (Default)');
   const [isUploadingKB, setIsUploadingKB] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+
+  // Auto-close left sidebar on mobile when Scene Templates side panel opens
+  useEffect(() => {
+    if (showTemplates && typeof window !== 'undefined' && window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
+  }, [showTemplates]);
   const [leftPanelMode, setLeftPanelMode] = useState<'image' | 'video'>('video');
   const [imgEngine, setImgEngine] = useState<'nb2' | 'gpt2' | 'nb2-lite' | 'nb2-open'>('nb2');
   const [gpt2Quality, setGpt2Quality] = useState<'low' | 'medium' | 'high'>('low');
@@ -4853,31 +4871,19 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                 </div>
 
                 {/* Bottom action bar */}
-                <div className="flex items-center gap-2 px-4 pb-3">
-                  {/* Folder Selector Pill */}
-                  <div className="flex items-center gap-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-2 py-1.5 shrink-0 transition-colors">
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 px-3 sm:px-4 pb-3">
+                  {/* Folder Selector Pill — Hidden on mobile responsive for max input width */}
+                  <div className="hidden sm:flex items-center gap-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-2 py-1.5 shrink-0 transition-colors">
                     <Folder size={11} className="text-[#c8f135]" />
                     <select 
                       className="bg-transparent text-white hover:text-[#c8f135] text-[10px] font-bold focus:outline-none max-w-[110px] cursor-pointer transition-colors"
                       value={activeProjectId}
                       title="Select Active Folder"
-                      onChange={(e) => {
-                        if (e.target.value === 'new') {
-                          const name = prompt('Enter new folder name:');
-                          if (name && name.trim()) {
-                            const newProj = { id: `proj_${Date.now()}`, name: name.trim() };
-                            setProjects((prev: any[]) => [...prev, newProj]);
-                            setActiveProjectId(newProj.id);
-                          }
-                        } else {
-                          setActiveProjectId(e.target.value);
-                        }
-                      }}
+                      onChange={(e) => setActiveProjectId(e.target.value)}
                     >
                       {projects.map((p: any) => (
                         <option key={p.id} value={p.id} className="bg-[#1e1e24] text-white">{p.name}</option>
                       ))}
-                      <option value="new" className="bg-[#1e1e24] text-[#c8f135] font-bold">+ New Folder...</option>
                     </select>
 
                     {/* Delete Folder option — available for custom folders */}
@@ -4902,13 +4908,13 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                     value={userPrompt}
                     onChange={(e) => setUserPrompt(e.target.value)}
                     placeholder={activeTab === 'podcast' ? 'Podcast direction (topic, host angle, product talking points...)' : 'Creative direction (e.g. energetic demo, focus on results...)'}
-                    className="flex-1 bg-white/5 border border-[#1e1e24] rounded-xl px-3 py-2 text-[11px] text-white placeholder-white/20 focus:outline-none focus:border-[#c8f135]/40 transition-colors"
+                    className="flex-1 min-w-[140px] bg-white/5 border border-[#1e1e24] rounded-xl px-3 py-2 text-[11px] text-white placeholder-white/20 focus:outline-none focus:border-[#c8f135]/40 transition-colors"
                     onKeyDown={(e) => { if (e.key === 'Enter' && !isGeneratingScript) generateScript(); }}
                   />
                   <button
                     onClick={generateScript}
                     disabled={isGeneratingScript}
-                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${isGeneratingScript ? 'bg-white/5 text-white/20' : 'bg-[#c8f135]/15 border border-[#c8f135]/30 text-[#c8f135] hover:bg-[#c8f135] hover:text-black'}`}
+                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 shrink-0 ${isGeneratingScript ? 'bg-white/5 text-white/20' : 'bg-[#c8f135]/15 border border-[#c8f135]/30 text-[#c8f135] hover:bg-[#c8f135] hover:text-black'}`}
                   >
                     {isGeneratingScript ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
                     {activeTab === 'podcast' ? 'Podcast' : 'Script'}

@@ -573,3 +573,81 @@ img {
   animation: sidebar-glow-pulse 2s infinite ease-in-out;
 }
 
+/* Cinema Studio gallery item appear animation — replaces per-item framer-motion to reduce overhead */
+@keyframes gallery-item-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.gallery-item-appear {
+  animation: gallery-item-in 0.25s ease-out both;
+}
+
+/* Optimize will-change only for actively animated elements */
+.gallery-item-appear:hover {
+  will-change: transform;
+}
+
+/* Generate button glow pulse — CSS replaces framer-motion infinite loop for better perf */
+@keyframes generate-btn-glow {
+  0%, 100% { box-shadow: 0 0 0px rgba(200, 241, 53, 0); }
+  50%       { box-shadow: 0 0 22px rgba(200, 241, 53, 0.55); }
+}
+
+.generate-btn-pulse {
+  animation: generate-btn-glow 2.2s ease-in-out infinite;
+}
+
+/* On mobile, disable non-essential animations to reduce paint load */
+@media (max-width: 640px) {
+  .generate-btn-pulse {
+    animation: none;
+  }
+  .gallery-item-appear {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ─── Landing Page CSS Animations (replaces framer-motion infinite loops) ─── */
+
+/* ∞ symbol pulsing glow */
+@keyframes infinity-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(1);    text-shadow: none; }
+  50%       { opacity: 1;   transform: scale(1.15); text-shadow: 0 0 30px rgba(200,241,53,0.6); }
+}
+
+.landing-infinity-pulse {
+  animation: infinity-pulse 2.5s ease-in-out infinite;
+  display: inline-block;
+}
+
+/* Ambient hero orb gentle float */
+@keyframes orb-float {
+  0%   { transform: translate(0px, 0px); }
+  50%  { transform: translate(24px, -20px); }
+  100% { transform: translate(0px, 0px); }
+}
+
+.landing-ambient-orb {
+  animation: orb-float 9s ease-in-out infinite;
+}
+
+/* Disable heavy landing animations on mobile */
+@media (max-width: 640px) {
+  .landing-infinity-pulse {
+    animation: none;
+    opacity: 0.85;
+  }
+  .landing-ambient-orb {
+    animation: none;
+  }
+}
+

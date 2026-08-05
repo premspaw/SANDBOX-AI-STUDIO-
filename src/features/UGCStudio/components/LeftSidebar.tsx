@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Camera, User, X, Package, MapPin, Search, Volume2, Upload, FileText, Film, Layers, BrainCircuit, Plus, Loader2, ChevronLeft, ChevronRight, ChevronDown, Layout, Clock, Sparkles, AlertCircle, CheckCircle, ShieldCheck, Wand2, Play, Video } from 'lucide-react';
 import { useUGC, KnowledgeBaseEntry, SplitScene } from '../context/UGCContext';
@@ -135,14 +135,29 @@ export default function LeftSidebar() {
     lime: '#c8f135',
   };
 
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
 
+  useEffect(() => {
+    const handleResize = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const sidebarWidth = isMobile ? (typeof window !== 'undefined' ? Math.min(Math.round(window.innerWidth * 0.88), 350) : 340) : 280;
 
   return (
     <div className="absolute md:relative flex shrink-0 h-full z-[45]">
+      {/* Mobile backdrop overlay */}
+      {isMobile && isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[40] md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
       <motion.div
-        animate={{ width: isSidebarOpen ? 280 : 0, opacity: isSidebarOpen ? 1 : 0 }}
+        animate={{ width: isSidebarOpen ? sidebarWidth : 0, opacity: isSidebarOpen ? 1 : 0 }}
         transition={{ duration: 0.25, ease: 'easeInOut' }}
-        className="h-full border-r border-[#1e1e24] bg-[#080808] flex flex-col overflow-hidden"
+        className="h-full border-r border-[#1e1e24] bg-[#080808] flex flex-col overflow-hidden relative z-[45]"
         style={{ minWidth: 0 }}
       >
         <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-5">

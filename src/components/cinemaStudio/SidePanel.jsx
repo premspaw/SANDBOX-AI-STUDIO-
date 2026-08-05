@@ -98,6 +98,10 @@ export const SidePanel = React.memo(({
   omniFirstFramePreview,
   omniLastFrameImage,
   omniLastFramePreview,
+  omniRefImages = ['', '', '', '', ''],
+  omniRefPreviews = ['', '', '', '', ''],
+  setOmniRefImages,
+  setOmniRefPreviews,
   setOmniFirstFrameImage,
   setOmniFirstFramePreview,
   setOmniLastFrameImage,
@@ -245,13 +249,25 @@ export const SidePanel = React.memo(({
   const availableMentionItems = useMemo(() => {
     const firstPreview = panelTab === 'omni' ? omniFirstFramePreview : firstFramePreview;
     const lastPreview = panelTab === 'omni' ? omniLastFramePreview : lastFramePreview;
+
+    const omniSlots = [
+      { name: '<FIRST_FRAME>', category: 'Keyframe 1', imageUrl: firstPreview, isKeyframe: true },
+      { name: '<IMAGE_REF_0>', category: 'Reference 1 (Image Ref 1)', imageUrl: omniRefPreviews[0] || omniFirstFramePreview },
+      { name: '<IMAGE_REF_1>', category: 'Reference 2 (Image Ref 2)', imageUrl: omniRefPreviews[1] || omniLastFramePreview },
+      { name: '<IMAGE_REF_2>', category: 'Reference 3 (Image Ref 3)', imageUrl: omniRefPreviews[2] },
+      { name: '<IMAGE_REF_3>', category: 'Reference 4 (Image Ref 4)', imageUrl: omniRefPreviews[3] },
+      { name: '<IMAGE_REF_4>', category: 'Reference 5 (Image Ref 5)', imageUrl: omniRefPreviews[4] }
+    ];
+
     return [
-      ...(firstPreview ? [{ name: 'FIRST_FRAME', category: 'Keyframe 1', imageUrl: firstPreview, isKeyframe: true }] : []),
-      ...(lastPreview ? [{ name: 'LAST_FRAME', category: 'Keyframe 2', imageUrl: lastPreview, isKeyframe: true }] : []),
-      ...(videoPreview ? [{ name: 'REF_VIDEO', category: 'Reference Video', isVideo: true, imageUrl: videoPreview, url: videoPreview }] : []),
+      ...(panelTab === 'omni' ? omniSlots : [
+        ...(firstPreview ? [{ name: 'FIRST_FRAME', category: 'Keyframe 1', imageUrl: firstPreview, isKeyframe: true }] : []),
+        ...(lastPreview ? [{ name: 'LAST_FRAME', category: 'Keyframe 2', imageUrl: lastPreview, isKeyframe: true }] : [])
+      ]),
+      ...(videoPreview ? [{ name: '<REF_VIDEO>', category: 'Reference Video', isVideo: true, imageUrl: videoPreview, url: videoPreview }] : []),
       ...(allRefItems || [])
     ];
-  }, [panelTab, firstFramePreview, lastFramePreview, omniFirstFramePreview, omniLastFramePreview, videoPreview, allRefItems]);
+  }, [panelTab, firstFramePreview, lastFramePreview, omniFirstFramePreview, omniLastFramePreview, omniRefPreviews, videoPreview, allRefItems]);
 
   const handlePromptChange = useCallback((e) => {
     const val = e.target.value;
@@ -295,7 +311,7 @@ export const SidePanel = React.memo(({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[120] flex justify-end pointer-events-none">
+        <div className="fixed inset-0 z-[120] flex items-end sm:items-stretch sm:justify-end">
           {/* Hidden Dedicated Video File Input */}
           <input
             ref={videoInputRef}
@@ -305,21 +321,304 @@ export const SidePanel = React.memo(({
             onChange={handleVideoSelect}
           />
 
-          {/* Slide-over Glassmorphic Drawer (Slides from Right) */}
+          {/* Backdrop — full on mobile, transparent on desktop */}
+          <div
+            className="absolute inset-0 bg-black/60 sm:bg-transparent"
+            onClick={onClose}
+          />
+
+          {/* Panel — bottom-sheet on mobile, slide-from-right on desktop */}
+          <motion.div
+            initial={{ y: '100%', x: 0 }}
+            animate={{ y: 0, x: 0 }}
+            exit={{ y: '100%', x: 0 }}
+            transition={{ type: 'spring', damping: 30, stiffness: 280 }}
+            className="relative w-full sm:hidden bg-[#0a0a12] border-t border-white/20 shadow-[0_-20px_80px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden text-white z-10"
+            style={{ height: '88dvh', borderRadius: '24px 24px 0 0' }}
+          >
+            {/* Mobile Drag Handle */}
+            <div className="flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 rounded-full bg-white/20" />
+            </div>
+
+            {/* Mobile Header */}
+            <div className="px-4 py-2.5 border-b border-white/15 bg-[#12121e] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-violet-500 via-fuchsia-500 to-cyan-400 flex items-center justify-center">
+                  <Clapperboard className="w-3.5 h-3.5 text-white" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-black tracking-widest uppercase text-white leading-none">Studio Panel</p>
+                  <p className="text-[8px] text-fuchsia-400/70 uppercase tracking-widest leading-none mt-0.5">Cinema Settings</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-9 h-9 rounded-xl bg-white/5 active:bg-red-500/20 border border-white/10 text-gray-300 active:scale-95 flex items-center justify-center"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Mobile Tabs */}
+            <div className="px-3 pt-2.5 pb-2 border-b border-white/15 bg-[#0c0c16] flex items-center gap-2 shrink-0">
+              {[['veo','veo-3.1-generate-preview','video',<Film key="f" className="w-3.5 h-3.5" />,'Veo 3.1'],
+                ['omni','omni-flash','video',<Zap key="z" className="w-3.5 h-3.5" />,'Omni Flash']
+              ].map(([tab, engine, aTab, icon, label]) => (
+                <button
+                  key={tab}
+                  onClick={() => {
+                    setPanelTab(tab);
+                    if (aTab) setActiveTab(aTab);
+                    if (engine) {
+                      if (tab === 'veo' && !isVeoEngine) setActiveEngine(engine);
+                      if (tab === 'omni' && !isOmniEngine) setActiveEngine(engine);
+                    }
+                  }}
+                  className={cn(
+                    "flex-1 py-2 px-2 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all border",
+                    panelTab === tab
+                      ? tab === 'omni'
+                        ? "bg-fuchsia-600/25 text-white border-fuchsia-400/50"
+                        : "bg-violet-600/25 text-white border-violet-400/50"
+                      : "bg-white/[0.03] text-gray-400 border-white/10"
+                  )}
+                >
+                  {icon}{label}
+                </button>
+              ))}
+            </div>
+
+            {/* Mobile Scroll Content */}
+            <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 pb-36 bg-[#0a0a12]">
+              {/* ── VEO TAB (mobile) ── */}
+              {panelTab === 'veo' && (
+                <div className="space-y-5">
+                  {/* Keyframe Slots — stacked on mobile */}
+                  <div className="space-y-2.5">
+                    <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
+                      <ImageIcon className="w-3.5 h-3.5 text-violet-400" /> Keyframe Conditioning
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {/* First Frame */}
+                      <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/10 flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-violet-300">First Frame</span>
+                          {firstFramePreview && (
+                            <button onClick={() => handleClearRef('first')} className="p-0.5 text-red-400"><Trash2 size={10} /></button>
+                          )}
+                        </div>
+                        {firstFramePreview ? (
+                          <div className="aspect-video w-full rounded-lg overflow-hidden bg-black/60 border border-white/10">
+                            <img src={firstFramePreview} alt="First Frame" className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setUploadTarget('first'); fileInputRef?.current?.click(); }}
+                            className="aspect-video w-full rounded-lg border border-dashed border-white/20 bg-white/[0.02] flex flex-col items-center justify-center gap-1 text-gray-500"
+                          >
+                            <Upload size={14} className="text-violet-400/70" />
+                            <span className="text-[9px] uppercase tracking-wider">Upload</span>
+                          </button>
+                        )}
+                      </div>
+                      {/* Last Frame */}
+                      <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/10 flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-cyan-300">Last Frame</span>
+                          {lastFramePreview && (
+                            <button onClick={() => handleClearRef('last')} className="p-0.5 text-red-400"><Trash2 size={10} /></button>
+                          )}
+                        </div>
+                        {lastFramePreview ? (
+                          <div className="aspect-video w-full rounded-lg overflow-hidden bg-black/60 border border-white/10">
+                            <img src={lastFramePreview} alt="Last Frame" className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setUploadTarget('last'); fileInputRef?.current?.click(); }}
+                            className="aspect-video w-full rounded-lg border border-dashed border-white/20 bg-white/[0.02] flex flex-col items-center justify-center gap-1 text-gray-500"
+                          >
+                            <Upload size={14} className="text-cyan-400/70" />
+                            <span className="text-[9px] uppercase tracking-wider">Upload</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Prompt Textarea */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-violet-300">Veo 3.1 Prompt</label>
+                    <textarea
+                      value={localPrompt}
+                      onChange={handlePromptChange}
+                      placeholder="Describe your cinematic scene..."
+                      rows={3}
+                      className="w-full bg-black/50 border border-white/15 focus:border-violet-400/70 rounded-xl p-3 text-xs text-white placeholder-gray-500 outline-none resize-none leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Model Variant — horizontal chips on mobile */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-gray-300">Model Variant</label>
+                    <div className="flex gap-2">
+                      {[{id:'veo-3.1-lite-generate-preview',label:'Lite'},{id:'veo-3.1-fast-generate-preview',label:'Fast'},{id:'veo-3.1-generate-preview',label:'High'}].map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => { setActiveTab('video'); setActiveEngine(m.id); }}
+                          className={cn(
+                            "flex-1 py-2.5 rounded-xl border text-[10px] font-bold transition-all",
+                            activeEngine === m.id
+                              ? "bg-violet-600/30 border-violet-400 text-white"
+                              : "bg-white/[0.02] border-white/10 text-gray-400"
+                          )}
+                        >{m.label}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Params — 2-col grid */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <GlassSelect label="Resolution" value={resolution} onChange={setResolution} options={[
+                      {value:'720p',label:'720p HD'},{value:'1080p',label:'1080p FHD'},{value:'4k',label:'4K UHD'}
+                    ]} />
+                    <GlassSelect label="Duration" value={duration} onChange={v => setDuration(Number(v))} options={[
+                      {value:4,label:'4s'},{value:6,label:'6s'},{value:8,label:'8s'},{value:10,label:'10s'}
+                    ]} />
+                    <GlassSelect label="Aspect" value={aspectRatio} onChange={setAspectRatio} options={[
+                      {value:'16:9',label:'16:9'},{value:'9:16',label:'9:16'},{value:'1:1',label:'1:1'}
+                    ]} />
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-300">Audio</label>
+                      <button
+                        onClick={() => setGenerateAudio(!generateAudio)}
+                        className={cn(
+                          "w-full h-[42px] rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all",
+                          generateAudio ? "bg-violet-600/25 border-violet-400 text-violet-200" : "bg-white/[0.02] border-white/15 text-gray-400"
+                        )}
+                      >{generateAudio ? '🔊 On' : '🔇 Off'}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── OMNI TAB (mobile) ── */}
+              {panelTab === 'omni' && (
+                <div className="space-y-5">
+                  <GlassSelect label="Omni Task Mode" icon={Zap} value={omniTask} onChange={v => { setOmniTask(v); localStorage.setItem('cs_omniTask', v); }} align="down" options={[
+                    {value:'auto',label:'Auto Infer',desc:'Auto-detects from inputs'},
+                    {value:'text_to_video',label:'Text → Video',desc:'Generate from prompt'},
+                    {value:'image_to_video',label:'Image → Video',desc:'Animate keyframe'},
+                    {value:'reference_to_video',label:'Reference → Video',desc:'Multi-asset guidance'},
+                    {value:'edit',label:'Video Edit',desc:'Edit with instructions'}
+                  ]} />
+
+                  {/* Reference inputs compact */}
+                  <div className="space-y-2.5">
+                    <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-300">Media Inputs</h3>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[{img: omniFirstFramePreview, label: '1st Frame', target: 'first', clearFn: () => { setOmniFirstFrameImage(''); setOmniFirstFramePreview(''); }},
+                        {img: omniLastFramePreview,  label: 'Last Frame', target: 'last',  clearFn: () => { setOmniLastFrameImage(''); setOmniLastFramePreview(''); }},
+                        {img: videoPreview,          label: 'Ref Video',  target: 'video', clearFn: () => setVideoPreview(null)}
+                      ].map(({img, label, target, clearFn}) => (
+                        <div key={label} className="flex flex-col gap-1">
+                          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{label}</span>
+                          {img ? (
+                            <div className="aspect-square relative rounded-lg overflow-hidden border border-white/15">
+                              {target === 'video'
+                                ? <video src={img} className="w-full h-full object-cover" muted playsInline />
+                                : <img src={img} className="w-full h-full object-cover" alt={label} />}
+                              <button onClick={clearFn} className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-red-500/90 flex items-center justify-center">
+                                <X size={8} className="text-white" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                if (target === 'video') { videoInputRef.current?.click(); }
+                                else { setUploadTarget(target); fileInputRef?.current?.click(); }
+                              }}
+                              className="aspect-square w-full rounded-lg border border-dashed border-white/20 bg-white/[0.02] flex items-center justify-center text-gray-500"
+                            >
+                              <Upload size={14} className="text-fuchsia-400/70" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-fuchsia-300">Omni Prompt</label>
+                    <textarea
+                      value={localPrompt}
+                      onChange={handlePromptChange}
+                      placeholder="Describe your video..."
+                      rows={3}
+                      className="w-full bg-black/50 border border-white/15 focus:border-fuchsia-400/70 rounded-xl p-3 text-xs text-white placeholder-gray-500 outline-none resize-none leading-relaxed"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <GlassSelect label="Resolution" value={resolution} onChange={setResolution} options={[
+                      {value:'720p',label:'720p'},{value:'1080p',label:'1080p'}
+                    ]} />
+                    <GlassSelect label="Duration" value={duration} onChange={v => setDuration(Number(v))} options={[
+                      {value:4,label:'4s'},{value:6,label:'6s'},{value:8,label:'8s'},{value:10,label:'10s'}
+                    ]} />
+                    <GlassSelect label="Aspect" value={aspectRatio} onChange={setAspectRatio} options={[
+                      {value:'16:9',label:'16:9'},{value:'9:16',label:'9:16'},{value:'1:1',label:'1:1'}
+                    ]} />
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-300">Audio</label>
+                      <button
+                        onClick={() => setGenerateAudio(!generateAudio)}
+                        className={cn(
+                          "w-full h-[42px] rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all",
+                          generateAudio ? "bg-fuchsia-600/25 border-fuchsia-400 text-fuchsia-200" : "bg-white/[0.02] border-white/15 text-gray-400"
+                        )}
+                      >{generateAudio ? '🔊 On' : '🔇 Off'}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+
+            </div>
+
+            {/* Mobile Footer Generate Button */}
+            <div className="shrink-0 px-4 py-3 bg-[#080810] border-t border-white/15 flex flex-col gap-2" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}>
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-gray-400">{panelTab === 'veo' ? 'Veo 3.1' : 'Omni Flash'}</span>
+                <span className="text-[#c8f135] font-black">{requiredCredits}⚡ <span className="text-gray-500 font-normal">/ {userCredits}⚡ left</span></span>
+              </div>
+              <button
+                onClick={panelTab === 'omni' ? triggerGenerateOmni : triggerGenerateVeo}
+                disabled={isBusy || !canGenerate}
+                className={cn(
+                  "w-full py-4 rounded-2xl text-sm font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-[0.98]",
+                  canGenerate
+                    ? "bg-[#c8f135] text-black"
+                    : "bg-white/5 text-gray-500 border border-white/5"
+                )}
+              >
+                {isBusy ? (<><Loader2 className="w-4 h-4 animate-spin" /><span>Generating...</span></>) : (<><Sparkles className="w-4 h-4 fill-current" /><span>Generate Video</span></>)}
+              </button>
+            </div>
+          </motion.div>
+
+          {/* Desktop slide-from-right panel (sm and above) */}
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-            className="relative w-full max-w-xl bg-[#08080f]/95 border-l border-white/15 shadow-[0_0_80px_rgba(139,92,246,0.3)] flex flex-col h-full overflow-hidden backdrop-blur-3xl text-white z-10 pointer-events-auto"
+            className="hidden sm:flex relative w-full sm:max-w-xl bg-[#0a0a12] border-l border-white/20 shadow-[-20px_0_60px_rgba(0,0,0,0.95)] flex-col h-full overflow-hidden text-white z-10"
           >
-            {/* Background Ambient Gradient Orbs */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-20 left-0 w-80 h-80 bg-fuchsia-600/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute top-1/2 right-10 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
-            {/* Glass Header with ZeroLens Branding */}
-            <div className="px-5 py-3 border-b border-white/10 bg-gradient-to-r from-violet-950/40 via-fuchsia-950/30 to-black/40 backdrop-blur-2xl flex items-center justify-between relative z-10">
+            {/* Solid Header with ZeroLens Branding */}
+            <div className="px-5 py-3 border-b border-white/15 bg-[#12121e] flex items-center justify-between relative z-10">
               <div className="flex items-center gap-3">
                 <div className="p-1 rounded-xl bg-gradient-to-tr from-violet-500 via-fuchsia-500 to-cyan-400 shadow-md shadow-fuchsia-500/20">
                   <div className="w-7 h-7 rounded-[10px] bg-[#0d0d15] flex items-center justify-center">
@@ -346,8 +645,8 @@ export const SidePanel = React.memo(({
               </button>
             </div>
 
-          {/* Glass Navigation Tabs Bar */}
-          <div className="px-5 pt-3.5 pb-2.5 bg-black/40 border-b border-white/10 backdrop-blur-2xl flex items-center gap-2 relative z-10">
+          {/* Navigation Tabs Bar */}
+          <div className="px-5 pt-3.5 pb-2.5 bg-[#0c0c16] border-b border-white/15 flex items-center gap-2 relative z-10">
             <button
               onClick={() => {
                 setPanelTab('veo');
@@ -384,7 +683,7 @@ export const SidePanel = React.memo(({
           </div>
 
           {/* Panel Content Scroll Area */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6 pb-36 relative z-10">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 space-y-6 pb-28 relative z-10 bg-[#0a0a12]">
             {/* ────────────────────────────────────────────────────────── */}
             {/* TAB 1: VEO 3.1 VERTEX AI WORKSPACE */}
             {/* ────────────────────────────────────────────────────────── */}
@@ -692,156 +991,122 @@ export const SidePanel = React.memo(({
                     <span className="text-[10px] text-fuchsia-400 font-mono font-semibold">Images & Video Clips</span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3.5">
-                    {/* Dynamic Image Reference Slots (up to 3) */}
-                    <div className="col-span-2 grid grid-cols-3 gap-2.5">
-                      {/* Slot 1: First Frame / Keyframe 1 */}
-                      <div className="p-3 rounded-2xl bg-white/[0.02] backdrop-blur-xl border border-white/10 hover:border-fuchsia-500/40 transition-all flex flex-col gap-2 relative shadow-md">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-fuchsia-300 flex items-center gap-1">
-                            <ImageIcon className="w-3 h-3" /> Image Ref 1
-                          </span>
-                          {omniFirstFramePreview && (
-                            <button onClick={() => handleClearRef('first')} className="p-0.5 text-red-400 hover:bg-red-500/20 rounded-md transition-colors cursor-pointer">
-                              <Trash2 size={11} />
+                  <div className="space-y-3">
+                    {/* Progressive Image Reference Slots (Default 3 in grid-cols-3, auto-unlocks 4 & 5 progressively) */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-fuchsia-300 flex items-center gap-1">
+                          <ImageIcon className="w-3.5 h-3.5 text-fuchsia-400" /> Reference Images
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] text-fuchsia-400/80 font-mono">Tag @IMAGE_REF_0..4</span>
+                          {Math.max(3, Math.min(5, (omniRefPreviews.filter(Boolean).length >= 4 ? 5 : omniRefPreviews.filter(Boolean).length >= 3 || omniRefPreviews[2] ? 4 : 3))) < 5 && (
+                            <button
+                              onClick={() => {
+                                // Force reveal next slot by selecting upload target
+                                const currentFilled = omniRefPreviews.filter(Boolean).length;
+                                const nextSlot = Math.min(4, Math.max(3, currentFilled));
+                                setUploadTarget(`omni_ref_${nextSlot}`);
+                                fileInputRef?.current?.click();
+                              }}
+                              className="flex items-center gap-0.5 text-[8px] font-black uppercase tracking-wider text-fuchsia-300 hover:text-white bg-fuchsia-500/20 hover:bg-fuchsia-500/30 px-1.5 py-0.5 rounded border border-fuchsia-500/30 transition-all cursor-pointer"
+                              title="Add another reference image"
+                            >
+                              + Add Ref
                             </button>
                           )}
                         </div>
-                        {omniFirstFramePreview ? (
-                          <div className="aspect-video w-full rounded-xl overflow-hidden bg-black/60 border border-white/15 relative group">
-                            <img src={omniFirstFramePreview} alt="Image Ref 1" className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                              <button onClick={() => { setUploadTarget('first'); fileInputRef?.current?.click(); }} className="px-2 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-[8px] font-bold uppercase tracking-wider cursor-pointer">Replace</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <button onClick={() => { setUploadTarget('first'); fileInputRef?.current?.click(); }} className="aspect-video w-full rounded-xl border border-dashed border-white/20 bg-white/[0.02] hover:bg-fuchsia-500/10 hover:border-fuchsia-400/50 flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-fuchsia-300 transition-all cursor-pointer">
-                            <Upload size={14} className="text-fuchsia-400/70" />
-                            <span className="text-[9px] font-bold uppercase">Upload Image 1</span>
-                          </button>
-                        )}
                       </div>
 
-                      {/* Slot 2: Last Frame / Keyframe 2 (Visible if first is filled) */}
-                      {omniFirstFramePreview ? (
-                        <div className="p-3 rounded-2xl bg-white/[0.02] backdrop-blur-xl border border-white/10 hover:border-fuchsia-500/40 transition-all flex flex-col gap-2 relative shadow-md">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold text-fuchsia-300 flex items-center gap-1">
-                              <ImageIcon className="w-3 h-3" /> Image Ref 2
-                            </span>
-                            {omniLastFramePreview && (
-                              <button onClick={() => handleClearRef('last')} className="p-0.5 text-red-400 hover:bg-red-500/20 rounded-md transition-colors cursor-pointer">
-                                <Trash2 size={11} />
-                              </button>
-                            )}
-                          </div>
-                          {omniLastFramePreview ? (
-                            <div className="aspect-video w-full rounded-xl overflow-hidden bg-black/60 border border-white/15 relative group">
-                              <img src={omniLastFramePreview} alt="Image Ref 2" className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                                <button onClick={() => { setUploadTarget('last'); fileInputRef?.current?.click(); }} className="px-2 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-[8px] font-bold uppercase tracking-wider cursor-pointer">Replace</button>
+                      <div className="grid grid-cols-3 gap-2.5">
+                        {Array.from({ length: Math.min(5, Math.max(3, omniRefPreviews.filter(Boolean).length >= 4 ? 5 : omniRefPreviews.filter(Boolean).length >= 3 || omniRefPreviews[2] ? 4 : 3)) }).map((_, idx) => {
+                          const slotPreview = omniRefPreviews[idx] || (idx === 0 ? omniFirstFramePreview : idx === 1 ? omniLastFramePreview : '');
+                          return (
+                            <div key={idx} className="p-2 rounded-xl bg-white/[0.02] backdrop-blur-md border border-white/10 hover:border-fuchsia-500/40 transition-all flex flex-col gap-1.5 relative shadow-md">
+                              <div className="flex items-center justify-between px-0.5">
+                                <span className="text-[9px] font-mono font-bold text-fuchsia-300 flex items-center gap-1">
+                                  Ref {idx + 1}
+                                </span>
+                                {slotPreview && (
+                                  <button
+                                    onClick={() => handleClearRef(idx)}
+                                    className="p-0.5 text-red-400 hover:bg-red-500/20 rounded transition-colors cursor-pointer"
+                                    title={`Remove Image Ref ${idx + 1}`}
+                                  >
+                                    <Trash2 size={10} />
+                                  </button>
+                                )}
                               </div>
-                            </div>
-                          ) : (
-                            <button onClick={() => { setUploadTarget('last'); fileInputRef?.current?.click(); }} className="aspect-video w-full rounded-xl border border-dashed border-white/20 bg-white/[0.02] hover:bg-fuchsia-500/10 hover:border-fuchsia-400/50 flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-fuchsia-300 transition-all cursor-pointer">
-                              <Upload size={14} className="text-fuchsia-400/70" />
-                              <span className="text-[9px] font-bold uppercase">Upload Image 2</span>
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="p-3 rounded-2xl bg-white/[0.01] border border-white/5 opacity-40 flex flex-col items-center justify-center text-center">
-                          <ImageIcon size={14} className="text-gray-600 mb-1" />
-                          <span className="text-[8px] font-bold uppercase tracking-widest text-gray-500">Slot 2 Lock</span>
-                        </div>
-                      )}
 
-                      {/* Slot 3: Reference Image 3 (Visible if second is filled) */}
-                      {omniFirstFramePreview && omniLastFramePreview ? (
-                        <div className="p-3 rounded-2xl bg-white/[0.02] backdrop-blur-xl border border-white/10 hover:border-fuchsia-500/40 transition-all flex flex-col gap-2 relative shadow-md">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold text-fuchsia-300 flex items-center gap-1">
-                              <ImageIcon className="w-3 h-3" /> Image Ref 3
-                            </span>
-                            {allRefItems.find(i => i.category === 'ref_images') && (
-                              <button
-                                onClick={() => {
-                                  // Clear third reference image if it exists in allRefItems
-                                  const thirdImg = allRefItems.find(i => i.category === 'ref_images');
-                                  if (thirdImg) {
-                                    handleClearRef('third');
-                                  }
-                                }}
-                                className="p-0.5 text-red-400 hover:bg-red-500/20 rounded-md transition-colors cursor-pointer"
-                              >
-                                <Trash2 size={11} />
-                              </button>
-                            )}
-                          </div>
-                          {allRefItems.find(i => i.category === 'ref_images') ? (
-                            <div className="aspect-video w-full rounded-xl overflow-hidden bg-black/60 border border-white/15 relative group">
-                              <img src={allRefItems.find(i => i.category === 'ref_images')?.imageUrl} alt="Image Ref 3" className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                                <button onClick={() => { setUploadTarget('ref_images'); fileInputRef?.current?.click(); }} className="px-2 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-[8px] font-bold uppercase tracking-wider cursor-pointer">Replace</button>
-                              </div>
+                              {slotPreview ? (
+                                <div className="aspect-video w-full rounded-lg overflow-hidden bg-black/60 border border-white/15 relative group">
+                                  <img src={slotPreview} alt={`Ref ${idx + 1}`} className="w-full h-full object-cover" />
+                                  <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                                    <button
+                                      onClick={() => {
+                                        setUploadTarget(idx === 0 ? 'first' : idx === 1 ? 'last' : `omni_ref_${idx}`);
+                                        fileInputRef?.current?.click();
+                                      }}
+                                      className="px-2 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-[8px] font-bold uppercase tracking-wider cursor-pointer"
+                                    >
+                                      Replace
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setUploadTarget(idx === 0 ? 'first' : idx === 1 ? 'last' : `omni_ref_${idx}`);
+                                    fileInputRef?.current?.click();
+                                  }}
+                                  className="aspect-video w-full rounded-lg border border-dashed border-white/20 bg-white/[0.02] hover:bg-fuchsia-500/10 hover:border-fuchsia-400/50 flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-fuchsia-300 transition-all cursor-pointer"
+                                  title={`Upload Image Ref ${idx + 1}`}
+                                >
+                                  <Upload size={14} className="text-fuchsia-400/70" />
+                                  <span className="text-[8px] font-bold uppercase tracking-wider">Upload Ref {idx + 1}</span>
+                                </button>
+                              )}
                             </div>
-                          ) : (
-                            <button onClick={() => { setUploadTarget('ref_images'); fileInputRef?.current?.click(); }} className="aspect-video w-full rounded-xl border border-dashed border-white/20 bg-white/[0.02] hover:bg-fuchsia-500/10 hover:border-fuchsia-400/50 flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-fuchsia-300 transition-all cursor-pointer">
-                              <Upload size={14} className="text-fuchsia-400/70" />
-                              <span className="text-[9px] font-bold uppercase">Upload Image 3</span>
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="p-3 rounded-2xl bg-white/[0.01] border border-white/5 opacity-40 flex flex-col items-center justify-center text-center">
-                          <ImageIcon size={14} className="text-gray-600 mb-1" />
-                          <span className="text-[8px] font-bold uppercase tracking-widest text-gray-500">Slot 3 Lock</span>
-                        </div>
-                      )}
+                          );
+                        })}
+                      </div>
                     </div>
 
-                    {/* Direct Reference Video Upload Slot */}
-                    <div className="p-3.5 rounded-2xl bg-white/[0.02] backdrop-blur-xl border border-white/10 hover:border-cyan-500/40 transition-all flex flex-col gap-2.5 relative shadow-lg">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-cyan-300 flex items-center gap-1">
-                          <Video className="w-3 h-3" /> Reference Video
+                    {/* Direct Reference Video Upload Slot (Compact match with Image slots) */}
+                    <div className="p-2 rounded-xl bg-white/[0.02] backdrop-blur-md border border-white/10 hover:border-cyan-500/40 transition-all flex flex-col gap-1.5 relative shadow-md">
+                      <div className="flex items-center justify-between px-0.5">
+                        <span className="text-[9px] font-mono font-bold text-cyan-300 flex items-center gap-1">
+                          <Video className="w-3 h-3 text-cyan-400" /> Reference Video
                         </span>
                         {videoPreview && (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1">
                             {omniRefVideoDuration > 0 && (
-                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold font-mono border ${
-                                omniRefVideoDuration > 10
-                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                                  : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                              }`}>
-                                {omniRefVideoDuration > 10
-                                  ? `✂️ ${Math.round(omniRefVideoDuration)}s → 10s max`
-                                  : `⏱️ ${Math.round(omniRefVideoDuration * 10) / 10}s`}
+                              <span className="px-1.5 py-0.5 rounded text-[7px] font-mono font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20">
+                                {omniRefVideoDuration > 10 ? `✂️ ${Math.round(omniRefVideoDuration)}s → 10s max` : `⏱️ ${Math.round(omniRefVideoDuration * 10) / 10}s`}
                               </span>
                             )}
-                            <button onClick={() => { setVideoPreview(null); if (setOmniRefVideoDuration) setOmniRefVideoDuration(0); }} className="p-1 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors cursor-pointer">
-                              <Trash2 size={12} />
+                            <button onClick={() => { setVideoPreview(null); if (setOmniRefVideoDuration) setOmniRefVideoDuration(0); }} className="p-0.5 text-red-400 hover:bg-red-500/20 rounded transition-colors cursor-pointer" title="Remove Reference Video">
+                              <Trash2 size={10} />
                             </button>
                           </div>
                         )}
                       </div>
                       {isVideoUploading ? (
-                        <div className="aspect-video w-full rounded-xl border border-cyan-400/50 bg-cyan-950/40 backdrop-blur-md flex flex-col items-center justify-center gap-2 text-cyan-300 shadow-[0_0_25px_rgba(6,182,212,0.35)] animate-pulse">
-                          <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
-                          <span className="text-[10px] font-black uppercase tracking-wider">Uploading Ref Video...</span>
-                          <span className="text-[8px] text-cyan-300/70 font-mono">Preparing Cloudflare R2 Upload</span>
+                        <div className="h-10 w-full rounded-lg border border-cyan-400/50 bg-cyan-950/40 backdrop-blur-md flex items-center justify-center gap-1.5 text-cyan-300 animate-pulse">
+                          <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />
+                          <span className="text-[8px] font-bold uppercase tracking-wider">Uploading Video...</span>
                         </div>
                       ) : videoPreview ? (
-                        <div className="aspect-video w-full rounded-xl overflow-hidden bg-black/60 border border-white/15 relative group shadow-inner">
+                        <div className="h-16 w-full rounded-lg overflow-hidden bg-black/60 border border-white/15 relative group">
                           <video src={videoPreview} controls muted playsInline preload="metadata" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all backdrop-blur-xs">
-                            <button onClick={() => videoInputRef.current?.click()} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider border border-white/20 shadow-md backdrop-blur-md cursor-pointer">Replace Video</button>
+                          <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                            <button onClick={() => videoInputRef.current?.click()} className="px-2 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-[8px] font-bold uppercase tracking-wider cursor-pointer">Replace Video</button>
                           </div>
                         </div>
                       ) : (
-                        <button onClick={() => videoInputRef.current?.click()} className="aspect-video w-full rounded-xl border border-dashed border-white/20 bg-white/[0.02] hover:bg-cyan-500/10 hover:border-cyan-400/50 flex flex-col items-center justify-center gap-1.5 text-gray-400 hover:text-cyan-300 transition-all cursor-pointer">
-                          <Video size={18} className="text-cyan-400/70" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider">Upload Ref Video</span>
+                        <button onClick={() => videoInputRef.current?.click()} className="h-10 w-full rounded-lg border border-dashed border-white/20 bg-white/[0.02] hover:bg-cyan-500/10 hover:border-cyan-400/50 flex items-center justify-center gap-1.5 text-gray-400 hover:text-cyan-300 transition-all cursor-pointer">
+                          <Video size={13} className="text-cyan-400/70" />
+                          <span className="text-[8px] font-bold uppercase tracking-wider">Upload Reference Video (10s max)</span>
                         </button>
                       )}
                     </div>
@@ -978,163 +1243,16 @@ export const SidePanel = React.memo(({
               </div>
             )}
 
-            {/* ────────────────────────────────────────────────────────── */}
-            {/* TAB 3: API SPECS & COOKBOOK DOCUMENTATION VIEWER */}
-            {/* ────────────────────────────────────────────────────────── */}
-            {panelTab === 'docs' && (
-              <div className="space-y-5">
-                {/* Docs Sub-navigation Tabs */}
-                <div className="flex border-b border-white/10 gap-4">
-                  <button
-                    onClick={() => setDocsSection('omni_flash')}
-                    className={cn(
-                      "pb-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer",
-                      docsSection === 'omni_flash'
-                        ? "border-fuchsia-500 text-fuchsia-300"
-                        : "border-transparent text-gray-400 hover:text-white"
-                    )}
-                  >
-                    Gemini Omni Flash Docs
-                  </button>
-                  <button
-                    onClick={() => setDocsSection('veo_cookbook')}
-                    className={cn(
-                      "pb-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer",
-                      docsSection === 'veo_cookbook'
-                        ? "border-cyan-500 text-cyan-300"
-                        : "border-transparent text-gray-400 hover:text-white"
-                    )}
-                  >
-                    Veo 3.1 & Gemini Cookbook
-                  </button>
-                </div>
 
-                {docsSection === 'omni_flash' ? (
-                  <div className="space-y-4 text-xs text-gray-300 leading-relaxed">
-                    <div className="p-4 rounded-2xl bg-fuchsia-950/20 border border-fuchsia-500/30 backdrop-blur-xl">
-                      <h4 className="font-bold text-fuchsia-200 text-xs uppercase tracking-wider">Gemini Omni Flash Overview</h4>
-                      <p className="text-[11px] text-fuchsia-300/80 mt-1">
-                        High-performance multimodal model designed for real-time video generation, editing, and natural conversational guidance via the Vertex AI Interactions API.
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <h5 className="font-bold text-white uppercase text-[10px] tracking-wider">Supported Tasks</h5>
-                      <div className="grid grid-cols-2 gap-2.5 text-[11px]">
-                        <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/10 backdrop-blur-md">
-                          <strong className="text-fuchsia-300">Text-to-Video:</strong> Generate videos from text prompts.
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/10 backdrop-blur-md">
-                          <strong className="text-fuchsia-300">Image-to-Video:</strong> Animate static keyframe images.
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/10 backdrop-blur-md">
-                          <strong className="text-fuchsia-300">Reference-to-Video:</strong> Multi-subject asset boards.
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/10 backdrop-blur-md">
-                          <strong className="text-fuchsia-300">Video Edit:</strong> Natural language video edits.
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <h5 className="font-bold text-white uppercase text-[10px] tracking-wider">Vertex AI Interactions Payload</h5>
-                      <pre className="p-3.5 rounded-2xl bg-black/60 border border-white/10 text-[10px] font-mono text-cyan-300 overflow-x-auto shadow-inner">
-{`POST https://aiplatform.googleapis.com/v1beta1/projects/PROJECT_ID/locations/global/interactions
-{
-  "model": "gemini-omni-flash-preview",
-  "input": [
-    {
-      "type": "user_input",
-      "content": [
-        { "type": "document", "uri": "gs://bucket/motion-ref.mp4" },
-        { "type": "text", "text": "Apply cinematic lighting edit..." }
-      ]
-    }
-  ],
-  "generation_config": {
-    "video_config": { "task": "reference_to_video" }
-  }
-}`}
-                      </pre>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4 text-xs text-gray-300 leading-relaxed">
-                    <div className="p-4 rounded-2xl bg-cyan-950/20 border border-cyan-500/30 backdrop-blur-xl">
-                      <h4 className="font-bold text-cyan-200 text-xs uppercase tracking-wider">Veo 3.1 & Gemini 3.1 Era Specs</h4>
-                      <p className="text-[11px] text-cyan-300/80 mt-1">
-                        Definitive specifications for Google Veo 3.1 video generation, dual keyframe conditioning, and Gemini 3.1 multimodal reasoning.
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <h5 className="font-bold text-white uppercase text-[10px] tracking-wider">Veo 3.1 Dual Frame Conditioning</h5>
-                      <p className="text-[11px] text-gray-400">
-                        Veo 3.1 accepts both <span className="text-cyan-300 font-semibold">firstFrame</span> (Image 1) and <span className="text-cyan-300 font-semibold">lastFrame</span> (Image 2) in the Vertex AI `:predictLongRunning` payload.
-                      </p>
-                      <pre className="p-3.5 rounded-2xl bg-black/60 border border-white/10 text-[10px] font-mono text-violet-300 overflow-x-auto shadow-inner">
-{`POST https://us-central1-aiplatform.googleapis.com/v1/projects/PROJECT_ID/locations/us-central1/publishers/google/models/veo-3.1-generate-001:predictLongRunning
-{
-  "instances": [
-    {
-      "prompt": "Smooth dolly shot from start frame to end frame...",
-      "image": { "bytesBase64Encoded": "...", "mimeType": "image/png" },
-      "lastImage": { "bytesBase64Encoded": "...", "mimeType": "image/png" }
-    }
-  ],
-  "parameters": {
-    "aspectRatio": "16:9",
-    "durationSeconds": 8,
-    "resolution": "1080p"
-  }
-}`}
-                      </pre>
-                    </div>
-
-                    <div className="space-y-2">
-                      <h5 className="font-bold text-white uppercase text-[10px] tracking-wider">Model Matrix</h5>
-                      <div className="overflow-x-auto rounded-xl border border-white/10 shadow-lg">
-                        <table className="w-full text-[10px] text-left border-collapse">
-                          <thead className="bg-white/5 text-gray-300">
-                            <tr>
-                              <th className="p-2.5 border-b border-white/10">Model ID</th>
-                              <th className="p-2.5 border-b border-white/10">Modality</th>
-                              <th className="p-2.5 border-b border-white/10">Capabilities</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/5 text-gray-400">
-                            <tr>
-                              <td className="p-2.5 font-mono text-cyan-300">gemini-omni-flash-preview</td>
-                              <td className="p-2.5">Video & Audio</td>
-                              <td className="p-2.5">Text/Image/Ref/Edit to Video</td>
-                            </tr>
-                            <tr>
-                              <td className="p-2.5 font-mono text-violet-300">veo-3.1-generate-001</td>
-                              <td className="p-2.5">Video</td>
-                              <td className="p-2.5">Cinematic 4K/1080p I2V & Dual Frames</td>
-                            </tr>
-                            <tr>
-                              <td className="p-2.5 font-mono text-violet-300">veo-3.1-fast-generate-001</td>
-                              <td className="p-2.5">Video</td>
-                              <td className="p-2.5">Fast draft video previews</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
-          {/* Spacious Sticky Bottom Glassmorphic Footer Bar */}
-          <div className="absolute bottom-0 left-0 right-0 py-5 px-6 bg-[#06060c]/98 border-t border-white/20 backdrop-blur-3xl flex items-center justify-between gap-6 z-20 shadow-[0_-20px_50px_rgba(0,0,0,0.95)]">
+          {/* Spacious Sticky Bottom Solid Footer Bar */}
+          <div className="absolute bottom-0 left-0 right-0 py-5 px-6 bg-[#080810] border-t border-white/20 flex items-center justify-between gap-6 z-20 shadow-[0_-20px_50px_rgba(0,0,0,0.98)]">
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest truncate">
-                  {panelTab === 'veo' ? 'Veo 3.1 Active' : panelTab === 'omni' ? 'Omni Flash Active' : 'Docs Mode'}
+                  {panelTab === 'veo' ? 'Veo 3.1 Active' : 'Omni Flash Active'}
                 </span>
               </div>
               <span className="text-xs font-black text-[#c8f135] flex items-center gap-1.5 mt-1">
@@ -1143,8 +1261,8 @@ export const SidePanel = React.memo(({
             </div>
 
             <button
-              onClick={panelTab === 'docs' ? undefined : panelTab === 'omni' ? triggerGenerateOmni : triggerGenerateVeo}
-              disabled={isBusy || !canGenerate || panelTab === 'docs'}
+              onClick={panelTab === 'omni' ? triggerGenerateOmni : triggerGenerateVeo}
+              disabled={isBusy || !canGenerate}
               className={cn(
                 "h-13 py-3.5 px-8 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2.5 transition-all shadow-[0_0_40px_rgba(200,241,53,0.4)] border border-[#d4ff00]/40 backdrop-blur-2xl shrink-0 active:scale-95",
                 canGenerate

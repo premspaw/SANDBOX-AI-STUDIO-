@@ -1,5 +1,56 @@
 [
   {
+    "id": "local_1785943408492_om8tg",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785943407836.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785943407836.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": " [seed: 584243]",
+    "engine": "Omni Flash",
+    "created_at": "2026-08-05T15:23:28.492Z"
+  },
+  {
+    "id": "local_1785943393659_69dcq",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785943392847.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785943392847.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "car in beach [seed: 522958]",
+    "engine": "nano-banana-2-lite",
+    "created_at": "2026-08-05T15:23:13.659Z"
+  },
+  {
+    "id": "local_1785943333020_ew5os",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785943331754.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/default/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785943331754.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "default",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "The FIRST image is the PERSON (creator) reference. The SECOND image is the PRODUCT reference.\n        TASK: Generate ONE single, coherent UGC-style photo where this EXACT person is using/wearing/holding this EXACT product in the following scene: 🎙️ Normal Talking — A real person naturally using/holding the product in an authentic home environment. Ultra-realistic UGC photo, natural l.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n        CRITICAL: Do NOT create a collage, side-by-side, or split screen. One unified photo only. Match the person's skin, features, and the product appearance precisely.\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-08-05T15:22:13.020Z"
+  },
+  {
     "id": "local_1785502701191_wklik",
     "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785502700595.mp4",
     "type": "video",
@@ -6897,32 +6948,5 @@
     "user_id": "anon",
     "aspect": "16:9",
     "created_at": "2026-06-21T16:54:04.729Z"
-  },
-  {
-    "id": "local_1782060818587_0p9m7",
-    "name": "ref_1782060816379.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/anon/generated/ref_1782060816379.png",
-    "user_id": "anon",
-    "aspect": "16:9",
-    "created_at": "2026-06-21T16:53:38.587Z"
-  },
-  {
-    "id": "local_1782060776652_pdv01",
-    "name": "frame_1782060776276.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/anon/generated/frame_1782060776276.png",
-    "user_id": "anon",
-    "aspect": "16:9",
-    "created_at": "2026-06-21T16:52:56.652Z"
-  },
-  {
-    "id": "local_1782060755671_uldyw",
-    "name": "ref_1782060755036.mp4",
-    "type": "video",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/anon/generated/ref_1782060755036.mp4",
-    "user_id": "anon",
-    "aspect": "16:9",
-    "created_at": "2026-06-21T16:52:35.671Z"
   }
 ]

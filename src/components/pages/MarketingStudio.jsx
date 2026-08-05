@@ -335,6 +335,19 @@ export default function MarketingStudio() {
     const [inpaintOpen, setInpaintOpen] = useState(false);
     const [upscalingItems, setUpscalingItems] = useState({});
     const [showTemplatePanel, setShowTemplatePanel] = useState(true);
+
+    // Auto-close template panel when studio side panel opens, and vice-versa
+    useEffect(() => {
+        if (showSidePanel) {
+            setShowTemplatePanel(false);
+        }
+    }, [showSidePanel]);
+
+    useEffect(() => {
+        if (showTemplatePanel) {
+            setShowSidePanel(false);
+        }
+    }, [showTemplatePanel]);
     const [customTemplates, setCustomTemplates] = useState({ food: [], restaurant: [], realestate: [], medical: [], other: [] });
     const [showAddModal, setShowAddModal] = useState(false);
     const [templatesLoading, setTemplatesLoading] = useState(true);
@@ -1656,11 +1669,34 @@ Any written text, characters, letters, numbers, and labels inside the image must
             <div className="flex-1 flex overflow-hidden relative">
                 {/* Left Panel: Categories & Templates */}
                 <div className={cn(
-                    "border-white/10 flex flex-col bg-[#0a0a0a] transition-all duration-300 overflow-hidden flex-shrink-0",
+                    "border-white/10 flex flex-col bg-[#0a0a0a] transition-all duration-300 flex-shrink-0 relative",
                     showTemplatePanel 
                         ? "w-full absolute inset-y-0 left-0 z-20 border-r md:relative md:w-1/3 md:min-w-[280px] md:max-w-[400px]" 
                         : "w-0 min-w-0 border-r-0 absolute md:relative"
                 )}>
+                    {/* Floating Pull Tab attached directly to the right border of the Template Panel */}
+                    <motion.button
+                        type="button"
+                        onClick={() => setShowTemplatePanel(v => !v)}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className={cn(
+                            "absolute top-[38%] -translate-y-1/2 left-full z-30 py-5 px-2.5 rounded-r-2xl border-r border-y border-white/20 shadow-2xl flex flex-col items-center gap-2 cursor-pointer transition-all backdrop-blur-2xl whitespace-nowrap",
+                            showTemplatePanel
+                                ? "bg-[#c8f135] text-black border-[#c8f135] shadow-[0_0_20px_rgba(200,241,53,0.85)] max-md:hidden"
+                                : "bg-[#0b0b12]/95 border-fuchsia-500/40 text-fuchsia-300 hover:bg-fuchsia-600/30 hover:text-white"
+                        )}
+                        title={showTemplatePanel ? 'Hide Templates' : 'Show Templates'}
+                    >
+                        <LayoutGrid size={14} className={showTemplatePanel ? "text-black" : "text-fuchsia-400"} />
+                        <span
+                            style={{ writingMode: 'vertical-lr' }}
+                            className={cn("text-[9px] font-black uppercase tracking-widest select-none", showTemplatePanel ? "text-black" : "text-fuchsia-200")}
+                        >
+                            Templates
+                        </span>
+                    </motion.button>
+
                     {/* Mobile Header with close button */}
                     <div className="md:hidden flex items-center justify-between p-3.5 border-b border-white/10 bg-black/40">
                         <span className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em]">Templates</span>
@@ -1858,27 +1894,6 @@ Any written text, characters, letters, numbers, and labels inside the image must
 
                 {/* Right Panel: ChatGPT-style Asset Configuration */}
                 <div className="flex-1 flex flex-col bg-[#0f0f11] relative">
-                    {/* Toggle button — sticks to left edge (or right edge when open on mobile) */}
-                    <button
-                        onClick={() => setShowTemplatePanel(v => !v)}
-                        title={showTemplatePanel ? 'Hide Templates' : 'Show Templates'}
-                        className={cn(
-                            "absolute top-1/2 -translate-y-1/2 z-30 w-5 h-14 flex items-center justify-center transition-all group",
-                            showTemplatePanel
-                                ? "bg-[#c8f135] text-black shadow-[0_0_15px_rgba(200,241,53,0.85)] md:bg-[#111113] md:text-[#c8f135]/60 md:border md:border-[#c8f135]/20 md:border-l-0 md:shadow-none hover:bg-[#c8f135] hover:text-black md:hover:bg-[#c8f135]/5 md:hover:border-[#c8f135]/60 md:hover:text-[#c8f135]"
-                                : "bg-[#c8f135] border border-[#c8f135] border-l-0 text-black hover:bg-[#d4f545] animate-pulse shadow-[0_0_20px_rgba(200,241,53,0.85)] hover:w-6",
-                            showTemplatePanel
-                                ? "right-0 left-auto rounded-l-lg rounded-r-none md:right-auto md:left-0 md:rounded-r-lg md:rounded-l-none"
-                                : "left-0 rounded-r-lg"
-                        )}
-                    >
-                        <ChevronRight className={cn(
-                            "w-3.5 h-3.5 transition-transform duration-300",
-                            showTemplatePanel 
-                                ? "text-black md:text-[#c8f135]/60 group-hover:text-black md:group-hover:text-[#c8f135] rotate-180" 
-                                : "text-black rotate-0"
-                        )} />
-                    </button>
                     <div className="flex-1 flex flex-col h-full overflow-hidden relative">
 
                         {/* Floating Right-Edge Side Drawer Pull Tab */}
@@ -2153,13 +2168,13 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                             className={cn("flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
                                                 referenceImages.length > 0 ? "text-lime-400 bg-lime-500/10 border border-lime-500/30" : "text-white/30 hover:text-white/60 hover:bg-white/5 border border-transparent")}>
                                             <Upload className="w-3 h-3" />
-                                            {referenceImages.length > 0 ? `Photos (${referenceImages.length}) ✓` : 'Photo'}
+                                            {referenceImages.length > 0 ? `Photo (${referenceImages.length})` : 'Photo'}
                                         </button>
 
                                         {/* Size */}
                                          <UpwardDropdown
                                              icon={<LayoutGrid size={8} />}
-                                             label={getAvailableSizes().find(s => s.value === imageSize)?.label || 'Auto'}
+                                             label={getAvailableSizes().find(s => s.value === imageSize)?.ratio || 'Auto'}
                                              accentColor="fuchsia"
                                          >
                                              {(close) => (
@@ -2212,7 +2227,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                          {generateMode === 'image' && (
                                              <UpwardDropdown
                                                  icon={<Sparkles size={8} />}
-                                                 label={`Quality: ${QUALITY_OPTIONS.find(q => q.value === quality)?.label || 'HD'}`}
+                                                 label={QUALITY_OPTIONS.find(q => q.value === quality)?.label || 'HD'}
                                                  accentColor="violet"
                                              >
                                                  {(close) => (
@@ -2262,7 +2277,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                           {generateMode === 'image' && imageEngine === 'gpt-image-2' && (
                                               <UpwardDropdown
                                                   icon={<Sliders size={8} />}
-                                                  label={`Output: ${imageFormat.toUpperCase()} (${imageBackground === 'auto' ? 'Auto BG' : 'Opaque BG'})`}
+                                                  label={imageFormat.toUpperCase()}
                                                   accentColor="cyan"
                                               >
                                                   {(close) => (
@@ -2344,8 +2359,8 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                                   icon={<Sparkles size={8} />}
                                                   label={(() => {
                                                       const taskLabels = {
-                                                          auto: 'Multimodal',
-                                                          image_to_video: 'First Frame to Video'
+                                                          auto: 'Auto',
+                                                          image_to_video: 'I2V'
                                                       };
                                                       return taskLabels[omniTask] || 'Task';
                                                   })()}
@@ -2513,7 +2528,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                          {generateMode === 'video' && (
                                              <UpwardDropdown
                                                  icon={<Clock size={8} />}
-                                                 label={`Time: ${videoDuration}s`}
+                                                 label={`${videoDuration}s`}
                                                  accentColor="cyan"
                                              >
                                                  {(close) => {

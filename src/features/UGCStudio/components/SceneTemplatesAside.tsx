@@ -25,7 +25,7 @@ export default function SceneTemplatesAside() {
     <aside
       onMouseMove={resetSidebarTimer}
       onClick={resetSidebarTimer}
-      className={`absolute right-0 top-0 bottom-0 w-full sm:w-80 overflow-y-auto custom-scrollbar flex flex-col bg-black/95 backdrop-blur-3xl border-l border-[#222] z-50 transition-transform duration-500 shadow-2xl ${
+      className={`absolute right-0 top-0 bottom-0 w-full sm:w-80 overflow-y-auto custom-scrollbar flex flex-col bg-[#09090e] border-l border-white/20 z-50 transition-transform duration-500 shadow-[0_0_50px_rgba(0,0,0,0.95)] ${
         showTemplates ? 'translate-x-0' : 'translate-x-full'
       }`}
     >

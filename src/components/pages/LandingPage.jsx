@@ -155,9 +155,9 @@ function HeroTitle({ isMobile }) {
   const cur = SLIDES[idx];
 
   const slideVariants = {
-    enter: { opacity: 0, scale: 0.98, filter: 'blur(10px)' },
-    center: { opacity: 1, scale: 1, filter: 'blur(0px)', transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } },
-    exit: { opacity: 0, scale: 1.02, filter: 'blur(10px)', transition: { duration: 0.6, ease: [0.77, 0, 0.175, 1] } },
+    enter: { opacity: 0, y: 12 },
+    center: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] } },
+    exit: { opacity: 0, y: -8, transition: { duration: 0.5, ease: [0.77, 0, 0.175, 1] } },
   };
 
   const fs = 'clamp(52px,8.5vw,130px)';
@@ -394,7 +394,7 @@ function UGCCard({ card, assets, index }) {
         {videoSrc ? (
           <video
             key={videoSrc}
-            autoPlay muted loop playsInline
+            autoPlay muted loop playsInline preload="none"
             src={resolveAsset(videoSrc)}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
@@ -770,16 +770,7 @@ function AnimatedStats({ isMobile }) {
             letterSpacing: '0.02em', color: T.lime, lineHeight: 1
           }}>
             <motion.span
-              animate={inView ? {
-                scale: [1, 1.15, 1],
-                opacity: [0.7, 1, 0.7],
-                textShadow: [
-                  '0 0 0px rgba(200,241,53,0)',
-                  '0 0 30px rgba(200,241,53,0.6)',
-                  '0 0 0px rgba(200,241,53,0)',
-                ]
-              } : {}}
-              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+              className="landing-infinity-pulse"
               style={{ display: 'inline-block' }}
             >
               ∞
@@ -986,10 +977,8 @@ export default function LandingPage({ onEnter, onPricing }) {
           {/* Overlays and Vignettes removed for maximum clarity */}
         </div>
 
-        {/* Ambient lime glow top-left */}
-        <motion.div animate={{ x: [0, 24], y: [0, -20] }}
-          transition={{ duration: 9, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
-          style={{
+        {/* Ambient lime glow top-left — CSS animation avoids JS loop */}
+        <div className="landing-ambient-orb" style={{
             position: 'absolute', width: 700, height: 700, borderRadius: '50%',
             background: 'radial-gradient(circle,rgba(200,241,53,0.06) 0%,transparent 65%)',
             top: -200, left: -150, pointerEvents: 'none', zIndex: 1

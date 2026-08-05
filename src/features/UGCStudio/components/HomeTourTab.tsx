@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Upload, X, Plus, MapPin, Home, Camera, 
   Film, Loader2, ChevronDown, Play,
@@ -1846,14 +1846,31 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     .reduce((acc, r) => acc + r.duration, 0);
   const activeRoom = rooms.find(r => r.id === activeRoomId) || rooms[0];
 
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const sidebarWidth = isMobile ? (typeof window !== 'undefined' ? Math.min(Math.round(window.innerWidth * 0.88), 350) : 340) : 288;
+
   // ── Render ────────────────────────────────────────────────────
   return (
     <div className="flex h-full bg-[#050505] relative overflow-hidden">
+      {/* Mobile backdrop overlay */}
+      {isMobile && isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[40] md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
 
       {/* ── LEFT: Room Grid ──────────────────────────────────── */}
       <motion.div
         initial={false}
-        animate={{ width: isSidebarOpen ? 288 : 0, opacity: isSidebarOpen ? 1 : 0 }}
+        animate={{ width: isSidebarOpen ? sidebarWidth : 0, opacity: isSidebarOpen ? 1 : 0 }}
         transition={{ duration: 0.25, ease: 'easeInOut' }}
         className="absolute md:relative shrink-0 h-full border-r border-[#1e1e24] bg-[#080808] flex flex-col overflow-hidden z-[45]"
       >
@@ -2136,7 +2153,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             : 'bg-[#c8f135] border border-[#c8f135] text-black hover:bg-[#d4f545] animate-pulse shadow-[0_0_12px_rgba(200,241,53,0.7)]'
           }`}
         style={{
-          left: isSidebarOpen ? '288px' : '0px',
+          left: isSidebarOpen ? `${sidebarWidth}px` : '0px',
           top: '50%',
           transform: 'translateY(-50%)',
           transition: 'left 0.25s ease-in-out'
