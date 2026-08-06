@@ -575,7 +575,12 @@ export default function CinematicStudio() {
   const [omniRefVideoPreview, setOmniRefVideoPreview] = useState('');
   const [omniRefVideoDuration, setOmniRefVideoDuration] = useState(0);
 
-  const [uploadTarget, setUploadTarget] = useState('first'); // 'first' | 'last'
+  const [uploadTarget, setUploadTargetState] = useState('first'); // 'first' | 'last'
+  const uploadTargetRef = useRef('first');
+  const setUploadTarget = useCallback((t) => {
+    uploadTargetRef.current = t;
+    setUploadTargetState(t);
+  }, []);
   const [isUploading, setIsUploading] = useState(false);
 
   // Settings
@@ -1656,9 +1661,11 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
-    if (!file || !supabase) return;
+    if (!file) return;
 
-    if (uploadTarget === 'ref_images') {
+    const curTarget = uploadTargetRef.current || uploadTarget;
+
+    if (curTarget === 'ref_images') {
       // Direct pass to reference board upload for Slot 3 image
       await handleSeedanceRefUpload(file, 'ref_images');
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -1686,15 +1693,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         });
       }
 
-      if (panelTab === 'omni' || (typeof uploadTarget === 'string' && uploadTarget.startsWith('omni_ref_'))) {
-        if (typeof uploadTarget === 'string' && uploadTarget.startsWith('omni_ref_')) {
-          const idx = parseInt(uploadTarget.split('_')[2], 10);
+      if (panelTab === 'omni' || (typeof curTarget === 'string' && curTarget.startsWith('omni_ref_'))) {
+        if (typeof curTarget === 'string' && curTarget.startsWith('omni_ref_')) {
+          const idx = parseInt(curTarget.split('_')[2], 10);
           if (!isNaN(idx) && idx >= 0 && idx < 5) {
             setOmniRefPreviews(prev => { const n = [...prev]; n[idx] = previewUrl; return n; });
             if (idx === 0) setOmniFirstFramePreview(previewUrl);
             if (idx === 1) setOmniLastFramePreview(previewUrl);
           }
-        } else if (uploadTarget === 'first') {
+        } else if (curTarget === 'first') {
           setOmniFirstFramePreview(previewUrl);
           setOmniRefPreviews(prev => { const n = [...prev]; n[0] = previewUrl; return n; });
         } else {
@@ -1702,7 +1709,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           setOmniRefPreviews(prev => { const n = [...prev]; n[1] = previewUrl; return n; });
         }
       } else {
-        if (uploadTarget === 'first' || activeTab === 'image') {
+        if (curTarget === 'first' || activeTab === 'image') {
           setFirstFramePreview(previewUrl);
         } else {
           setLastFramePreview(previewUrl);
@@ -1726,15 +1733,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       const data = await resp.json();
       const publicUrl = data.url || data.path || previewUrl;
 
-      if (panelTab === 'omni' || (typeof uploadTarget === 'string' && uploadTarget.startsWith('omni_ref_'))) {
-        if (typeof uploadTarget === 'string' && uploadTarget.startsWith('omni_ref_')) {
-          const idx = parseInt(uploadTarget.split('_')[2], 10);
+      if (panelTab === 'omni' || (typeof curTarget === 'string' && curTarget.startsWith('omni_ref_'))) {
+        if (typeof curTarget === 'string' && curTarget.startsWith('omni_ref_')) {
+          const idx = parseInt(curTarget.split('_')[2], 10);
           if (!isNaN(idx) && idx >= 0 && idx < 5) {
             setOmniRefImages(prev => { const n = [...prev]; n[idx] = publicUrl; return n; });
             if (idx === 0) setOmniFirstFrameImage(publicUrl);
             if (idx === 1) setOmniLastFrameImage(publicUrl);
           }
-        } else if (uploadTarget === 'first') {
+        } else if (curTarget === 'first') {
           setOmniFirstFrameImage(publicUrl);
           setOmniRefImages(prev => { const n = [...prev]; n[0] = publicUrl; return n; });
         } else {
@@ -1742,7 +1749,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           setOmniRefImages(prev => { const n = [...prev]; n[1] = publicUrl; return n; });
         }
       } else {
-        if (uploadTarget === 'first' || activeTab === 'image') {
+        if (curTarget === 'first' || activeTab === 'image') {
           setFirstFrameImage(publicUrl);
         } else {
           setLastFrameImage(publicUrl);

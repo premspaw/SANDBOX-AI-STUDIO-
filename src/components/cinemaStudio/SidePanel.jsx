@@ -194,25 +194,34 @@ export const SidePanel = React.memo(({
 
   const handleVideoSelect = async (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setIsVideoUploading(true);
-      const blobUrl = URL.createObjectURL(file);
-      setVideoPreview(blobUrl);
+    if (!file) return;
 
-      // Check reference video duration
-      const tempVideo = document.createElement('video');
-      tempVideo.preload = 'metadata';
-      tempVideo.src = blobUrl;
-      tempVideo.onloadedmetadata = () => {
-        const dur = tempVideo.duration || 0;
-        if (setOmniRefVideoDuration) setOmniRefVideoDuration(dur);
-        if (dur > 10) {
-          const showToast = useAppStore.getState().showToast;
-          if (showToast) {
-            showToast(`Reference video is ${Math.round(dur * 10) / 10}s long. Omni Flash accepts max 10s (auto-trimmed to 10s).`, "info");
-          }
+    setIsVideoUploading(true);
+    const blobUrl = URL.createObjectURL(file);
+
+    // Validate reference video duration (strict 10s max limit)
+    const tempVideo = document.createElement('video');
+    tempVideo.preload = 'metadata';
+    tempVideo.src = blobUrl;
+
+    tempVideo.onloadedmetadata = async () => {
+      const dur = tempVideo.duration || 0;
+      if (dur > 10) {
+        setIsVideoUploading(false);
+        setVideoPreview(null);
+        if (setOmniRefVideoDuration) setOmniRefVideoDuration(0);
+        if (videoInputRef.current) videoInputRef.current.value = '';
+        URL.revokeObjectURL(blobUrl);
+
+        const showToast = useAppStore.getState().showToast;
+        if (showToast) {
+          showToast(`Reference video rejected (${Math.round(dur * 10) / 10}s). Video duration must be 10 seconds or shorter.`, "error");
         }
-      };
+        return;
+      }
+
+      if (setOmniRefVideoDuration) setOmniRefVideoDuration(dur);
+      setVideoPreview(blobUrl);
 
       try {
         const reader = new FileReader();
@@ -242,7 +251,7 @@ export const SidePanel = React.memo(({
       } catch (err) {
         setIsVideoUploading(false);
       }
-    }
+    };
   };
 
   // Build combined list of all available mention items using useMemo
@@ -1072,41 +1081,34 @@ export const SidePanel = React.memo(({
                       </div>
                     </div>
 
-                    {/* Direct Reference Video Upload Slot (Compact match with Image slots) */}
-                    <div className="p-2 rounded-xl bg-white/[0.02] backdrop-blur-md border border-white/10 hover:border-cyan-500/40 transition-all flex flex-col gap-1.5 relative shadow-md">
+                    {/* Direct Reference Video Upload Slot (Square Card) */}
+                    <div className="w-28 p-2 rounded-xl bg-white/[0.02] backdrop-blur-md border border-white/10 hover:border-cyan-500/40 transition-all flex flex-col gap-1.5 relative shadow-md">
                       <div className="flex items-center justify-between px-0.5">
-                        <span className="text-[9px] font-mono font-bold text-cyan-300 flex items-center gap-1">
-                          <Video className="w-3 h-3 text-cyan-400" /> Reference Video
+                        <span className="text-[8px] font-mono font-bold text-cyan-300 flex items-center gap-1 truncate">
+                          <Video className="w-2.5 h-2.5 text-cyan-400" /> Ref Video
                         </span>
                         {videoPreview && (
-                          <div className="flex items-center gap-1">
-                            {omniRefVideoDuration > 0 && (
-                              <span className="px-1.5 py-0.5 rounded text-[7px] font-mono font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20">
-                                {omniRefVideoDuration > 10 ? `✂️ ${Math.round(omniRefVideoDuration)}s → 10s max` : `⏱️ ${Math.round(omniRefVideoDuration * 10) / 10}s`}
-                              </span>
-                            )}
-                            <button onClick={() => { setVideoPreview(null); if (setOmniRefVideoDuration) setOmniRefVideoDuration(0); }} className="p-0.5 text-red-400 hover:bg-red-500/20 rounded transition-colors cursor-pointer" title="Remove Reference Video">
-                              <Trash2 size={10} />
-                            </button>
-                          </div>
+                          <button onClick={() => { setVideoPreview(null); if (setOmniRefVideoDuration) setOmniRefVideoDuration(0); }} className="p-0.5 text-red-400 hover:bg-red-500/20 rounded transition-colors cursor-pointer" title="Remove Reference Video">
+                            <Trash2 size={9} />
+                          </button>
                         )}
                       </div>
                       {isVideoUploading ? (
-                        <div className="h-10 w-full rounded-lg border border-cyan-400/50 bg-cyan-950/40 backdrop-blur-md flex items-center justify-center gap-1.5 text-cyan-300 animate-pulse">
-                          <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />
-                          <span className="text-[8px] font-bold uppercase tracking-wider">Uploading Video...</span>
+                        <div className="aspect-square w-full rounded-lg border border-cyan-400/50 bg-cyan-950/40 backdrop-blur-md flex flex-col items-center justify-center gap-1 text-cyan-300 animate-pulse">
+                          <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+                          <span className="text-[7px] font-bold uppercase tracking-wider">Uploading</span>
                         </div>
                       ) : videoPreview ? (
-                        <div className="h-16 w-full rounded-lg overflow-hidden bg-black/60 border border-white/15 relative group">
+                        <div className="aspect-square w-full rounded-lg overflow-hidden bg-black/60 border border-white/15 relative group">
                           <video src={videoPreview} controls muted playsInline preload="metadata" className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                            <button onClick={() => videoInputRef.current?.click()} className="px-2 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-[8px] font-bold uppercase tracking-wider cursor-pointer">Replace Video</button>
+                            <button onClick={() => videoInputRef.current?.click()} className="px-1.5 py-0.5 bg-white/20 hover:bg-white/30 text-white rounded text-[7px] font-bold uppercase tracking-wider cursor-pointer">Replace</button>
                           </div>
                         </div>
                       ) : (
-                        <button onClick={() => videoInputRef.current?.click()} className="h-10 w-full rounded-lg border border-dashed border-white/20 bg-white/[0.02] hover:bg-cyan-500/10 hover:border-cyan-400/50 flex items-center justify-center gap-1.5 text-gray-400 hover:text-cyan-300 transition-all cursor-pointer">
-                          <Video size={13} className="text-cyan-400/70" />
-                          <span className="text-[8px] font-bold uppercase tracking-wider">Upload Reference Video (10s max)</span>
+                        <button onClick={() => videoInputRef.current?.click()} className="aspect-square w-full rounded-lg border border-dashed border-white/20 bg-white/[0.02] hover:bg-cyan-500/10 hover:border-cyan-400/50 flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-cyan-300 transition-all cursor-pointer" title="Upload Reference Video (10s max)">
+                          <Video size={14} className="text-cyan-400/70" />
+                          <span className="text-[7px] font-bold uppercase tracking-wider text-center">Ref Video</span>
                         </button>
                       )}
                     </div>
