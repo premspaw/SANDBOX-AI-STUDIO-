@@ -98,7 +98,8 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
             }, 5000);
             return () => clearTimeout(timer);
         }
-    }, [activeTab, isCollapsed, toggleCollapse]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab, isCollapsed, toggleCollapse, checkRuntimeMode]);
 
     const navItems = [
         { id: 'avatar', label: 'Avatar Studio', icon: UserFocus, color: 'text-emerald-400', bgColor: 'bg-emerald-400', hoverColor: 'group-hover/navitem:text-emerald-400', glow: 'shadow-[0_0_15px_rgba(52,211,153,0.1)]' },
@@ -130,7 +131,8 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
             }
         }
         checkUser()
-    }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []) // intentionally run once on mount only
 
     return (
         <aside
@@ -232,7 +234,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
 
                         {!isCollapsed && (
                             <button
-                                onClick={() => { }}
+                                onClick={() => setActiveTab('pricing')}
                                 className="text-[8px] font-bold text-[#D4FF00] hover:text-white transition-all duration-200 delay-[250ms] whitespace-nowrap"
                             >
                                 + TOP UP

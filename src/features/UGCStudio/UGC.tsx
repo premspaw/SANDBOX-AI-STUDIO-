@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Upload, User, Box, FileText, Camera, Play, Pause, Wand2, Loader2, Volume2, VolumeX, Sparkles, Video, X, Scissors, Plus, Trash2, Folder, ChevronRight, ChevronLeft, ChevronDown, Layout, AlertCircle, HelpCircle, Settings, SidebarClose, Download, GripVertical, Check, CheckCircle, BrainCircuit, Zap, ShieldCheck, Shield, Clock, Activity, Maximize, Layers, Search, Package, Droplets, Wind, Fingerprint, Lock, PlayCircle, RotateCcw, Film, MapPin, Pencil } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
+// Note: LucideIcons wildcard import removed — use named imports above instead
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 import { supabase as rawSupabase } from '../../lib/supabase';
