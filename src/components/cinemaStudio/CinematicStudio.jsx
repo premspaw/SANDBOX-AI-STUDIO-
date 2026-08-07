@@ -3062,7 +3062,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-1.5 sm:gap-3 w-full">
               
               {/* Mode Switcher Tab (Horizontal compact on mobile, vertical stacked tab on desktop) */}
-              <div className="bg-[#08080c]/95 border border-white/15 rounded-xl sm:rounded-2xl p-1 sm:p-1.5 flex flex-row sm:flex-col gap-1 shadow-lg shrink-0 select-none backdrop-blur-3xl self-start w-full sm:w-auto justify-center sm:justify-start">
+              <div className="bg-[#08080c]/95 border border-white/15 rounded-xl sm:rounded-2xl p-1 sm:p-1.5 flex flex-row sm:flex-col gap-1.5 shadow-lg shrink-0 select-none backdrop-blur-3xl self-stretch justify-center sm:justify-start">
                 <button
                   type="button"
                   onClick={() => {
@@ -3071,15 +3071,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                     setActiveEngine(lastImg);
                   }}
                   className={cn(
-                    "flex-1 sm:flex-initial flex items-center sm:flex-col justify-center gap-1.5 sm:gap-0 sm:w-12 h-7 sm:h-11 rounded-lg sm:rounded-xl text-[8px] sm:text-[7px] font-black uppercase tracking-wider transition-all",
+                    "flex-1 sm:flex-initial flex items-center sm:flex-col justify-center gap-1 sm:gap-1 sm:w-14 h-8 sm:h-16 rounded-xl sm:rounded-2xl text-[9px] sm:text-[8px] font-black uppercase tracking-wider transition-all",
                     activeTab === 'image'
-                      ? "bg-[#c8f135] text-black shadow-md shadow-[#c8f135]/20"
+                      ? "bg-[#c8f135] text-black shadow-lg shadow-[#c8f135]/25 scale-[1.02]"
                       : "text-gray-400 hover:bg-white/[0.03] hover:text-white"
                   )}
                   title="Switch to Image Generation"
                 >
-                  <ImageIcon size={12} className="shrink-0" />
-                  <span className="sm:mt-0.5 scale-90 leading-none">Image</span>
+                  <ImageIcon size={15} className="shrink-0" />
+                  <span className="sm:mt-0.5 font-extrabold leading-none">Image</span>
                 </button>
                 <button
                   type="button"
@@ -3089,15 +3089,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                     setActiveEngine(lastVid);
                   }}
                   className={cn(
-                    "flex-1 sm:flex-initial flex items-center sm:flex-col justify-center gap-1.5 sm:gap-0 sm:w-12 h-7 sm:h-11 rounded-lg sm:rounded-xl text-[8px] sm:text-[7px] font-black uppercase tracking-wider transition-all",
+                    "flex-1 sm:flex-initial flex items-center sm:flex-col justify-center gap-1 sm:gap-1 sm:w-14 h-8 sm:h-16 rounded-xl sm:rounded-2xl text-[9px] sm:text-[8px] font-black uppercase tracking-wider transition-all",
                     activeTab === 'video'
-                      ? "bg-fuchsia-500 text-white shadow-md shadow-fuchsia-500/20"
+                      ? "bg-fuchsia-500 text-white shadow-lg shadow-fuchsia-500/25 scale-[1.02]"
                       : "text-gray-400 hover:bg-white/[0.03] hover:text-white"
                   )}
                   title="Switch to Video Generation"
                 >
-                  <Video size={12} className="shrink-0" />
-                  <span className="sm:mt-0.5 scale-90 leading-none">Video</span>
+                  <Video size={15} className="shrink-0" />
+                  <span className="sm:mt-0.5 font-extrabold leading-none">Video</span>
                 </button>
               </div>
 
@@ -3113,27 +3113,27 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                         onClick={() => { setStagedRefBoard({ ...refBoard }); setShowRefBoard(true); }}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border bg-fuchsia-500/10 border-fuchsia-500/20 text-fuchsia-400 hover:bg-fuchsia-500/20 hover:border-fuchsia-500/30 transition-all shrink-0 origin-bottom"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[8.5px] font-black uppercase tracking-widest border bg-fuchsia-500/20 border-fuchsia-500/40 text-fuchsia-300 hover:bg-fuchsia-500/30 hover:border-fuchsia-500/50 transition-all shrink-0 shadow-md shadow-fuchsia-500/10"
                         title="Open Reference Board to stage Characters, Locations, Wardrobes, Props, and Moods"
                       >
                         {allRefItems.length > 0 && allRefItems[0].imageUrl ? (
                           <img 
                             src={resolveUrl(allRefItems[0].imageUrl)} 
                             alt="Ref Preview" 
-                            className="w-3.5 h-3.5 rounded-full object-cover border border-white/20 shrink-0" 
+                            className="w-4 h-4 rounded-full object-cover border border-white/30 shrink-0" 
                           />
                         ) : (
-                          <Users size={8} className="text-fuchsia-400" />
+                          <Users size={11} className="text-fuchsia-300" />
                         )}
                         <span>Refs</span>
                         {allRefItems.length > 0 && (
-                          <span className="w-3.5 h-3.5 rounded-full bg-fuchsia-500 text-white text-[6px] font-black flex items-center justify-center shrink-0 ml-0.5">
+                          <span className="w-4 h-4 rounded-full bg-fuchsia-500 text-white text-[7px] font-black flex items-center justify-center shrink-0 ml-0.5 shadow-sm">
                             {allRefItems.length}
                           </span>
                         )}
                       </motion.button>
                       {/* Vertical divider line */}
-                      <div className="w-px h-3.5 bg-white/10 shrink-0 self-center" />
+                      <div className="w-px h-4 bg-white/15 shrink-0 self-center" />
                     </>
                   )}
 
