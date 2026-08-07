@@ -1635,11 +1635,24 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   const isBusy = isSubmitting;
   const requiredCredits = getRequiredCredits(activeEngine) * variationCount;
-  // Memoize so getTaggedRefItems regex only runs when promptText actually changes
-  const taggedItems = useMemo(() => getTaggedRefItems(promptText), [promptText, allRefItems]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Evaluate active prompt and inputs across both Veo and Omni/Seedance video tabs
+  const isOmniEngine = panelTab === 'omni' || activeEngine === 'omni' || activeEngine === 'omni-flash';
+  const activePromptText = isOmniEngine ? (omniPromptText || promptText) : (promptText || omniPromptText);
+  const activeFirstFramePreview = omniFirstFramePreview || firstFramePreview || (omniRefPreviews && omniRefPreviews.find(Boolean));
+
+  // Memoize so getTaggedRefItems regex only runs when activePromptText actually changes
+  const taggedItems = useMemo(() => getTaggedRefItems(activePromptText), [activePromptText, allRefItems]); // eslint-disable-line react-hooks/exhaustive-deps
   const taggedItemsCount = taggedItems.length;
-  const hasRefBoardMedia = Boolean(seedanceRefs?.ref_images?.length > 0 || seedanceRefs?.ref_videos?.length > 0 || seedanceRefs?.ref_audios?.length > 0);
-  const hasInput = Boolean(promptText.trim() || firstFramePreview || taggedItemsCount > 0 || hasRefBoardMedia);
+  const hasRefBoardMedia = Boolean(
+    seedanceRefs?.ref_images?.length > 0 || 
+    seedanceRefs?.ref_videos?.length > 0 || 
+    seedanceRefs?.ref_audios?.length > 0 ||
+    omniRefVideoPreview ||
+    (omniRefPreviews && omniRefPreviews.some(Boolean))
+  );
+
+  const hasInput = Boolean(activePromptText.trim() || activeFirstFramePreview || taggedItemsCount > 0 || hasRefBoardMedia);
   const canGenerate = hasInput && userCredits >= requiredCredits && !isBusy;
 
   const triggerRefund = async (reason) => {
@@ -4222,7 +4235,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                       ? "Video generation in progress..." 
                       : userCredits < requiredCredits 
                       ? `Insufficient Shorts credits: Requires ${requiredCredits}⚡ (Balance: ${userCredits}⚡)` 
-                      : (!promptText.trim() && !firstFramePreview) 
+                      : (!activePromptText.trim() && !activeFirstFramePreview && !hasRefBoardMedia) 
                       ? "Enter prompt text or tag reference items to generate" 
                       : `Generate (${requiredCredits} credits)`
                   }
