@@ -39,6 +39,7 @@ export const SonicDock = () => {
     const store = useAppStore();
     const [isRetracted, setIsRetracted] = useState(true);
     const [isExpanded, setIsExpanded] = useState(false);
+    const [narrative, setNarrative] = useState('');
     const mouseX = useMotionValue(Infinity);
 
     const tools = [

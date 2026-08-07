@@ -6,7 +6,7 @@ import { Maximize2, Loader2, Search, X, Zap, ScanLine } from 'lucide-react';
 
 import { useAppStore } from '../../store';
 
-export default memo(({ id, data }) => {
+export const IdentityNode = memo(({ id, data }) => {
     const { setFocusMode } = useAppStore();
     const updateNodeInternals = useUpdateNodeInternals();
     const edges = useAppStore(s => s.edges);
@@ -164,3 +164,5 @@ export default memo(({ id, data }) => {
         </div>
     );
 });
+
+export default IdentityNode;

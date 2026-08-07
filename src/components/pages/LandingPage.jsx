@@ -879,15 +879,6 @@ export default function LandingPage({ onEnter, onPricing }) {
     setIsMuted(!isMuted);
   };
 
-  useEffect(() => {
-    const id = 'ag-fonts';
-    if (document.getElementById(id)) return;
-    const link = document.createElement('link');
-    link.id = id;
-    link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;700;800&display=swap';
-    document.head.appendChild(link);
-  }, []);
 
    const s = {
     page: {

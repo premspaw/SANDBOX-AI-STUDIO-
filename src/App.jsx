@@ -1,13 +1,13 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Bot, X } from 'lucide-react';
 import { Layout } from './components/pages/Layout';
-import LandingPage from './components/pages/LandingPage';
 import { supabase } from './lib/supabase';
 import { initFaviconAnimation } from './utils/favicon';
 import { Toast } from './components/common/Toast';
 import { useAppStore } from './store';
 
-// Lazy imports of panels and inner studio pages
+// Lazy imports — LandingPage is first so it gets its own chunk for instant splitting
+const LandingPage = lazy(() => import('./components/pages/LandingPage'));
 const AuthPage = lazy(() => import('./components/pages/AuthPage'));
 const AssetsLibrary = lazy(() => import('./components/panels/AssetsLibrary').then(m => ({ default: m.AssetsLibrary })));
 const UGC = lazy(() => import('./features/UGCStudio/UGC'));

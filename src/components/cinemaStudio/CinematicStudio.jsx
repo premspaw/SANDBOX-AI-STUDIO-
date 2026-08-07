@@ -482,8 +482,9 @@ const cleanErrorMessage = (msg) => {
   return cleaned;
 };
 
-// A fast local-state wrapper for the prompt input to prevent typing lag
-// since CinematicStudio is a massive component that takes time to re-render.
+// Fully uncontrolled FastPromptInput — zero React re-renders during typing.
+// Uses defaultValue + DOM ref for instant native browser input, debounces
+// parent state sync, and runs auto-resize via rAF to never block paint.
 const FastPromptInput = React.memo(({
   textareaRef,
   promptText,
@@ -493,54 +494,66 @@ const FastPromptInput = React.memo(({
   activeTab,
   isBusy
 }) => {
-  const [localVal, setLocalVal] = React.useState(promptText || '');
   const debounceTimerRef = React.useRef(null);
+  const lastSyncedRef = React.useRef(promptText || '');
 
-  // Sync from parent only if parent changes externally (e.g. pills inserted, recipe inserted)
-  React.useEffect(() => {
-    if (promptText !== undefined && promptText !== localVal) {
-      setLocalVal(promptText);
-    }
-  }, [promptText]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Auto-resize: runs off the critical paint path via rAF
+  const scheduleResize = React.useCallback(() => {
+    requestAnimationFrame(() => {
+      const tx = textareaRef?.current;
+      if (!tx) return;
+      tx.style.height = 'auto';
+      tx.style.height = `${Math.min(tx.scrollHeight, 180)}px`;
+    });
+  }, [textareaRef]);
 
-  // Auto-resize effect to prevent layout cutoff without layout thrashing
+  // Sync from parent ONLY when it genuinely changes externally
+  // (e.g. pill click, recipe insert, clear button) — never during typing
   React.useEffect(() => {
     const tx = textareaRef?.current;
-    if (tx) {
-      tx.style.height = "auto";
-      const nextHeight = Math.min(tx.scrollHeight, 180);
-      tx.style.height = `${nextHeight}px`;
+    if (!tx) return;
+    if (promptText !== undefined && promptText !== lastSyncedRef.current) {
+      lastSyncedRef.current = promptText;
+      tx.value = promptText;  // Direct DOM write — no React re-render
+      scheduleResize();
     }
-  }, [localVal, textareaRef]);
+  }, [promptText, textareaRef, scheduleResize]);
 
-  const handleChange = (e) => {
+  const handleChange = React.useCallback((e) => {
     const value = e.target.value;
     const selectionStart = e.target.selectionStart;
-    setLocalVal(value);
+    lastSyncedRef.current = value;
 
-    // Debounce updating heavy parent state so typing is 100% instant with 0ms lag
+    // Resize off the paint path
+    scheduleResize();
+
+    // Debounce heavy parent update (mention detection, setPromptText, etc.)
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
       React.startTransition(() => {
         handleTextChange({ target: { value, selectionStart } });
       });
-    }, 150);
-  };
+    }, 300);
+  }, [handleTextChange, scheduleResize]);
+
+  const handleKeyDown = React.useCallback((e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const val = textareaRef?.current?.value ?? lastSyncedRef.current;
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      // Flush prompt immediately on Enter before generating
+      handleTextChange({ target: { value: val, selectionStart: val.length } });
+      if (canGenerate) handleGenerate(val);
+    }
+  }, [handleTextChange, handleGenerate, canGenerate, textareaRef]);
 
   return (
     <textarea
       ref={textareaRef}
-      value={localVal}
+      defaultValue={promptText || ''}
       onChange={handleChange}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-          handleTextChange({ target: { value: localVal, selectionStart: localVal.length } });
-          if (canGenerate) handleGenerate(localVal);
-        }
-      }}
-      placeholder={activeTab === 'image' 
+      onKeyDown={handleKeyDown}
+      placeholder={activeTab === 'image'
         ? "Describe your premium image masterwork - subject, lighting, style preset... Type @ to tag reference elements."
         : "Describe your cinematic video scenario - camera movements, lighting, mood... Type @ to tag reference elements."
       }
