@@ -3058,323 +3058,6 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         )}>
           <div className="max-w-4xl mx-auto pointer-events-auto">
             
-            {/* ── TOP FLOATING CONTROL BAR (Style/Movement, Angle, Camera & Lens) ── */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar select-none w-full mb-2 p-2 px-3.5 rounded-2xl bg-[#09090f]/95 border border-white/12 shadow-2xl backdrop-blur-xl" style={{ scrollbarWidth: 'none' }}>
-              {/* Refs Button Pill (Centralized Reference Board control) */}
-              {activeEngine !== 'kling/v3-turbo-image-to-video' && (
-                <>
-                  <motion.button
-                    onClick={() => { setStagedRefBoard({ ...refBoard }); setShowRefBoard(true); }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border bg-fuchsia-500/10 border-fuchsia-500/20 text-fuchsia-400 hover:bg-fuchsia-500/20 hover:border-fuchsia-500/30 transition-all shrink-0 origin-bottom"
-                    title="Open Reference Board to stage Characters, Locations, Wardrobes, Props, and Moods"
-                  >
-                    {allRefItems.length > 0 && allRefItems[0].imageUrl ? (
-                      <img 
-                        src={resolveUrl(allRefItems[0].imageUrl)} 
-                        alt="Ref Preview" 
-                        className="w-3.5 h-3.5 rounded-full object-cover border border-white/20 shrink-0" 
-                      />
-                    ) : (
-                      <Users size={8} className="text-fuchsia-400" />
-                    )}
-                    <span>Refs</span>
-                    {allRefItems.length > 0 && (
-                      <span className="w-3.5 h-3.5 rounded-full bg-fuchsia-500 text-white text-[6px] font-black flex items-center justify-center shrink-0 ml-0.5">
-                        {allRefItems.length}
-                      </span>
-                    )}
-                  </motion.button>
-                  {/* Vertical divider line */}
-                  <div className="w-px h-3.5 bg-white/10 shrink-0 self-center" />
-                </>
-              )}
-
-              {/* CAMERA DROPDOWN (Image mode only) */}
-              {activeTab === 'image' && (
-                <UpwardDropdown
-                  icon={<Video size={8} />}
-                  label={isConsumerCam ? (CAMERA_MODELS.find(c => c.id === camera)?.label || 'Camera') : `${CAMERA_MODELS.find(c => c.id === camera)?.label?.split(' ')[0] || 'Arri'} · ${lens}`}
-                  accentColor="lime"
-                >
-                  {(close) => (
-                    <div className="space-y-0.5">
-                      {CAMERA_MODELS.map((c, i) => (
-                        <motion.button
-                          key={c.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.03, type: 'spring', stiffness: 400, damping: 25 }}
-                          onClick={() => { handleCameraChange(c.id); close(); }}
-                          className={cn(
-                            "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all",
-                            camera === c.id
-                              ? "bg-lime-500/10 border border-lime-500/25"
-                              : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
-                          )}
-                        >
-                          <div className={cn(
-                            "w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0 transition-all",
-                            camera === c.id ? "bg-lime-500/20 text-[#c8f135]" : "bg-white/5 text-gray-500"
-                          )}>
-                            <Video size={10} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={cn(
-                              "text-[10px] font-black uppercase tracking-wider truncate",
-                              camera === c.id ? "text-[#c8f135]" : "text-white/70"
-                            )}>
-                              {c.label}
-                            </p>
-                            <p className="text-[7.5px] text-gray-600 font-medium truncate">{c.desc}</p>
-                          </div>
-                          {camera === c.id && (
-                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-[#c8f135] flex items-center justify-center shrink-0">
-                              <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            </motion.div>
-                          )}
-                        </motion.button>
-                      ))}
-                    </div>
-                  )}
-                </UpwardDropdown>
-              )}
-
-              {/* LENS MODEL DROPDOWN (Image mode only) */}
-              {activeTab === 'image' && !isConsumerCam && (
-                <UpwardDropdown
-                  icon={<Camera size={8} />}
-                  label={`Lens: ${LENS_MODELS.find(l => l.id === lensModel)?.label || 'Lens'}`}
-                  accentColor="violet"
-                >
-                  {(close) => (
-                    <div className="space-y-0.5">
-                      {LENS_MODELS.map((opt, i) => (
-                        <motion.button
-                          key={opt.id}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
-                          onClick={() => { setLensModel(opt.id); close(); }}
-                          className={cn(
-                            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
-                            lensModel === opt.id
-                              ? "bg-violet-500/10 border border-violet-500/25"
-                              : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
-                          )}
-                        >
-                          <div className={cn(
-                            "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
-                            lensModel === opt.id ? "bg-violet-500/20 text-violet-400" : "bg-white/5 text-gray-500"
-                          )}>
-                            <Sparkles size={10} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={cn(
-                              "text-[10px] font-black uppercase tracking-wider truncate",
-                              lensModel === opt.id ? "text-violet-400" : "text-white/70"
-                            )}>
-                              {opt.label}
-                            </p>
-                            <p className="text-[7.5px] text-gray-600 truncate font-semibold">{opt.desc}</p>
-                          </div>
-                          {lensModel === opt.id && (
-                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-violet-400 flex items-center justify-center shrink-0">
-                              <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            </motion.div>
-                          )}
-                        </motion.button>
-                      ))}
-                    </div>
-                  )}
-                </UpwardDropdown>
-              )}
-
-              {/* PERSPECTIVE & FRAMING PILL (Image mode only) */}
-              {activeTab === 'image' && (
-                <motion.button
-                  onClick={() => setShowAnglesModal(true)}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{ type: 'spring', stiffness: 500, damping: 22 }}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest bg-black/60 border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-colors shrink-0"
-                >
-                  <Camera size={8} />
-                  <span className="whitespace-nowrap">{CAMERA_ANGLES.find(a => a.id === angle)?.label || 'Angle'}</span>
-                  <ChevronDown size={7} className="text-gray-600" />
-                </motion.button>
-              )}
-
-              {/* STYLE PRESET DROPDOWN (Image only) */}
-              {activeTab === 'image' && (
-                <UpwardDropdown
-                  icon={<Film size={9} />}
-                  label={STYLE_OPTIONS.find(s => s.value === imageStyle)?.label || 'Style'}
-                  accentColor="violet"
-                >
-                  {(close) => (
-                    <div className="space-y-0.5">
-                      {STYLE_OPTIONS.map((opt, i) => (
-                        <motion.button
-                          key={opt.value}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
-                          onClick={() => { setImageStyle(opt.value); close(); }}
-                          className={cn(
-                            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
-                            imageStyle === opt.value
-                              ? "bg-violet-500/10 border border-violet-500/25"
-                              : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
-                          )}
-                        >
-                          <div className={cn(
-                            "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
-                            imageStyle === opt.value
-                              ? "bg-violet-500/20 text-violet-400"
-                              : "bg-white/5 text-gray-500"
-                          )}>
-                            {opt.icon}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={cn(
-                              "text-[10px] font-black uppercase tracking-wider truncate",
-                              imageStyle === opt.value ? "text-violet-400" : "text-white/70"
-                            )}>{opt.label}</p>
-                            <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
-                          </div>
-                          {imageStyle === opt.value && (
-                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-violet-400 flex items-center justify-center shrink-0">
-                              <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            </motion.div>
-                          )}
-                        </motion.button>
-                      ))}
-                    </div>
-                  )}
-                </UpwardDropdown>
-              )}
-
-              {/* CAMERA MOVEMENT DROPDOWN (Video only) */}
-              {activeTab === 'video' && (
-                <UpwardDropdown
-                  icon={<Camera size={9} />}
-                  label={CAMERA_MOVEMENTS.find(m => m.value === cameraMovement)?.label || 'Camera'}
-                  accentColor="violet"
-                >
-                  {(close) => (
-                    <div className="space-y-0.5">
-                      {CAMERA_MOVEMENTS.map((opt, i) => (
-                        <motion.button
-                          key={opt.value}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
-                          onClick={() => { setCameraMovement(opt.value); close(); }}
-                          className={cn(
-                            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
-                            cameraMovement === opt.value
-                              ? "bg-violet-500/10 border border-violet-500/25"
-                              : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
-                          )}
-                        >
-                          <div className={cn(
-                            "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
-                            cameraMovement === opt.value
-                              ? "bg-violet-500/20 text-violet-400"
-                              : "bg-white/5 text-gray-500"
-                          )}>
-                            {opt.icon}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={cn(
-                              "text-[10px] font-black uppercase tracking-wider truncate",
-                              cameraMovement === opt.value ? "text-violet-400" : "text-white/70"
-                            )}>{opt.label}</p>
-                            <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
-                          </div>
-                          {cameraMovement === opt.value && (
-                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-violet-400 flex items-center justify-center shrink-0">
-                              <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            </motion.div>
-                          )}
-                        </motion.button>
-                      ))}
-                    </div>
-                  )}
-                </UpwardDropdown>
-              )}
-
-
-
-              {/* OMNI TASK DROPDOWN (Video only, Omni engine only) */}
-              {activeTab === 'video' && isOmni && (
-                <UpwardDropdown
-                  icon={<Sparkles size={9} />}
-                  label={(() => {
-                    const taskLabels = {
-                      auto: 'Multimodal',
-                      image_to_video: 'First Frame to Video'
-                    };
-                    return taskLabels[omniTask] || 'Task';
-                  })()}
-                  accentColor="violet"
-                >
-                  {(close) => (
-                    <div className="space-y-0.5">
-                      {[
-                        { id: 'auto', label: 'Multimodal', icon: '✨', desc: 'Default multimodal generation' },
-                        { id: 'image_to_video', label: 'First Frame to Video', icon: '🖼️', desc: 'Animate a starting frame image', disabled: !firstFrameImage },
-                      ].map((opt, i) => (
-                        <motion.button
-                          key={opt.id}
-                          disabled={opt.disabled}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
-                          onClick={() => { if (!opt.disabled) { setOmniTask(opt.id); close(); } }}
-                          className={cn(
-                            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
-                            opt.disabled
-                              ? "opacity-30 cursor-not-allowed"
-                              : omniTask === opt.id
-                              ? "bg-violet-500/10 border border-violet-500/25"
-                              : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
-                          )}
-                        >
-                          <div className={cn(
-                            "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
-                            opt.disabled
-                              ? "bg-white/5 text-gray-700"
-                              : omniTask === opt.id
-                              ? "bg-violet-500/20 text-violet-400"
-                              : "bg-white/5 text-gray-500"
-                          )}>
-                            <span className="text-[10px]">{opt.icon}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={cn(
-                              "text-[10px] font-black uppercase tracking-wider truncate",
-                              opt.disabled
-                                ? "text-white/30"
-                                : omniTask === opt.id ? "text-violet-400" : "text-white/70"
-                            )}>{opt.label}</p>
-                            <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
-                          </div>
-                          {!opt.disabled && omniTask === opt.id && (
-                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-violet-400 flex items-center justify-center shrink-0">
-                              <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            </motion.div>
-                          )}
-                        </motion.button>
-                      ))}
-                    </div>
-                  )}
-                </UpwardDropdown>
-              )}
-            </div>
-            
             {/* Horizontal Flex Wrapper for Mode Switcher & Input Box */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-1.5 sm:gap-3 w-full">
               
@@ -3420,6 +3103,321 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
               {/* ── Main Floating Input Bar (Vertical premium studio layout) ── */}
               <div className="relative rounded-2xl border border-white/15 bg-[#08080c]/95 backdrop-blur-3xl shadow-[0_25px_70px_rgba(0,0,0,0.85)] flex flex-col p-2.5 sm:p-3 gap-2 sm:gap-2.5 flex-1 min-w-0 hover:border-white/20 transition-all duration-300">
+                
+                {/* ── TOP ATTACHED CONTROL BAR (Refs, Camera Movement, Angle, Lens, Style) ── */}
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar select-none w-full pb-2 border-b border-white/10" style={{ scrollbarWidth: 'none' }}>
+                  {/* Refs Button Pill (Centralized Reference Board control) */}
+                  {activeEngine !== 'kling/v3-turbo-image-to-video' && (
+                    <>
+                      <motion.button
+                        onClick={() => { setStagedRefBoard({ ...refBoard }); setShowRefBoard(true); }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border bg-fuchsia-500/10 border-fuchsia-500/20 text-fuchsia-400 hover:bg-fuchsia-500/20 hover:border-fuchsia-500/30 transition-all shrink-0 origin-bottom"
+                        title="Open Reference Board to stage Characters, Locations, Wardrobes, Props, and Moods"
+                      >
+                        {allRefItems.length > 0 && allRefItems[0].imageUrl ? (
+                          <img 
+                            src={resolveUrl(allRefItems[0].imageUrl)} 
+                            alt="Ref Preview" 
+                            className="w-3.5 h-3.5 rounded-full object-cover border border-white/20 shrink-0" 
+                          />
+                        ) : (
+                          <Users size={8} className="text-fuchsia-400" />
+                        )}
+                        <span>Refs</span>
+                        {allRefItems.length > 0 && (
+                          <span className="w-3.5 h-3.5 rounded-full bg-fuchsia-500 text-white text-[6px] font-black flex items-center justify-center shrink-0 ml-0.5">
+                            {allRefItems.length}
+                          </span>
+                        )}
+                      </motion.button>
+                      {/* Vertical divider line */}
+                      <div className="w-px h-3.5 bg-white/10 shrink-0 self-center" />
+                    </>
+                  )}
+
+                  {/* CAMERA DROPDOWN (Image mode only) */}
+                  {activeTab === 'image' && (
+                    <UpwardDropdown
+                      icon={<Video size={8} />}
+                      label={isConsumerCam ? (CAMERA_MODELS.find(c => c.id === camera)?.label || 'Camera') : `${CAMERA_MODELS.find(c => c.id === camera)?.label?.split(' ')[0] || 'Arri'} · ${lens}`}
+                      accentColor="lime"
+                    >
+                      {(close) => (
+                        <div className="space-y-0.5">
+                          {CAMERA_MODELS.map((c, i) => (
+                            <motion.button
+                              key={c.id}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: i * 0.03, type: 'spring', stiffness: 400, damping: 25 }}
+                              onClick={() => { handleCameraChange(c.id); close(); }}
+                              className={cn(
+                                "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left transition-all",
+                                camera === c.id
+                                  ? "bg-lime-500/10 border border-lime-500/25"
+                                  : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                              )}
+                            >
+                              <div className={cn(
+                                "w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0 transition-all",
+                                camera === c.id ? "bg-lime-500/20 text-[#c8f135]" : "bg-white/5 text-gray-500"
+                              )}>
+                                <Video size={10} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={cn(
+                                  "text-[10px] font-black uppercase tracking-wider truncate",
+                                  camera === c.id ? "text-[#c8f135]" : "text-white/70"
+                                )}>
+                                  {c.label}
+                                </p>
+                                <p className="text-[7.5px] text-gray-600 font-medium truncate">{c.desc}</p>
+                              </div>
+                              {camera === c.id && (
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-[#c8f135] flex items-center justify-center shrink-0">
+                                  <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                </motion.div>
+                              )}
+                            </motion.button>
+                          ))}
+                        </div>
+                      )}
+                    </UpwardDropdown>
+                  )}
+
+                  {/* LENS MODEL DROPDOWN (Image mode only) */}
+                  {activeTab === 'image' && !isConsumerCam && (
+                    <UpwardDropdown
+                      icon={<Camera size={8} />}
+                      label={`Lens: ${LENS_MODELS.find(l => l.id === lensModel)?.label || 'Lens'}`}
+                      accentColor="violet"
+                    >
+                      {(close) => (
+                        <div className="space-y-0.5">
+                          {LENS_MODELS.map((opt, i) => (
+                            <motion.button
+                              key={opt.id}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
+                              onClick={() => { setLensModel(opt.id); close(); }}
+                              className={cn(
+                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
+                                lensModel === opt.id
+                                  ? "bg-violet-500/10 border border-violet-500/25"
+                                  : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                              )}
+                            >
+                              <div className={cn(
+                                "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
+                                lensModel === opt.id ? "bg-violet-500/20 text-violet-400" : "bg-white/5 text-gray-500"
+                              )}>
+                                <Sparkles size={10} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={cn(
+                                  "text-[10px] font-black uppercase tracking-wider truncate",
+                                  lensModel === opt.id ? "text-violet-400" : "text-white/70"
+                                )}>
+                                  {opt.label}
+                                </p>
+                                <p className="text-[7.5px] text-gray-600 truncate font-semibold">{opt.desc}</p>
+                              </div>
+                              {lensModel === opt.id && (
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-violet-400 flex items-center justify-center shrink-0">
+                                  <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                </motion.div>
+                              )}
+                            </motion.button>
+                          ))}
+                        </div>
+                      )}
+                    </UpwardDropdown>
+                  )}
+
+                  {/* PERSPECTIVE & FRAMING PILL (Image mode only) */}
+                  {activeTab === 'image' && (
+                    <motion.button
+                      onClick={() => setShowAnglesModal(true)}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest bg-black/60 border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-colors shrink-0"
+                    >
+                      <Camera size={8} />
+                      <span className="whitespace-nowrap">{CAMERA_ANGLES.find(a => a.id === angle)?.label || 'Angle'}</span>
+                      <ChevronDown size={7} className="text-gray-600" />
+                    </motion.button>
+                  )}
+
+                  {/* STYLE PRESET DROPDOWN (Image only) */}
+                  {activeTab === 'image' && (
+                    <UpwardDropdown
+                      icon={<Film size={9} />}
+                      label={STYLE_OPTIONS.find(s => s.value === imageStyle)?.label || 'Style'}
+                      accentColor="violet"
+                    >
+                      {(close) => (
+                        <div className="space-y-0.5">
+                          {STYLE_OPTIONS.map((opt, i) => (
+                            <motion.button
+                              key={opt.value}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
+                              onClick={() => { setImageStyle(opt.value); close(); }}
+                              className={cn(
+                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
+                                imageStyle === opt.value
+                                  ? "bg-violet-500/10 border border-violet-500/25"
+                                  : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                              )}
+                            >
+                              <div className={cn(
+                                "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
+                                imageStyle === opt.value
+                                  ? "bg-violet-500/20 text-violet-400"
+                                  : "bg-white/5 text-gray-500"
+                              )}>
+                                {opt.icon}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={cn(
+                                  "text-[10px] font-black uppercase tracking-wider truncate",
+                                  imageStyle === opt.value ? "text-violet-400" : "text-white/70"
+                                )}>{opt.label}</p>
+                                <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
+                              </div>
+                              {imageStyle === opt.value && (
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-violet-400 flex items-center justify-center shrink-0">
+                                  <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                </motion.div>
+                              )}
+                            </motion.button>
+                          ))}
+                        </div>
+                      )}
+                    </UpwardDropdown>
+                  )}
+
+                  {/* CAMERA MOVEMENT DROPDOWN (Video only) */}
+                  {activeTab === 'video' && (
+                    <UpwardDropdown
+                      icon={<Camera size={9} />}
+                      label={CAMERA_MOVEMENTS.find(m => m.value === cameraMovement)?.label || 'Camera'}
+                      accentColor="violet"
+                    >
+                      {(close) => (
+                        <div className="space-y-0.5">
+                          {CAMERA_MOVEMENTS.map((opt, i) => (
+                            <motion.button
+                              key={opt.value}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
+                              onClick={() => { setCameraMovement(opt.value); close(); }}
+                              className={cn(
+                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
+                                cameraMovement === opt.value
+                                  ? "bg-violet-500/10 border border-violet-500/25"
+                                  : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                              )}
+                            >
+                              <div className={cn(
+                                "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
+                                cameraMovement === opt.value
+                                  ? "bg-violet-500/20 text-violet-400"
+                                  : "bg-white/5 text-gray-500"
+                              )}>
+                                {opt.icon}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={cn(
+                                  "text-[10px] font-black uppercase tracking-wider truncate",
+                                  cameraMovement === opt.value ? "text-violet-400" : "text-white/70"
+                                )}>{opt.label}</p>
+                                <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
+                              </div>
+                              {cameraMovement === opt.value && (
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-violet-400 flex items-center justify-center shrink-0">
+                                  <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                </motion.div>
+                              )}
+                            </motion.button>
+                          ))}
+                        </div>
+                      )}
+                    </UpwardDropdown>
+                  )}
+
+                  {/* OMNI TASK DROPDOWN (Video only, Omni engine only) */}
+                  {activeTab === 'video' && isOmni && (
+                    <UpwardDropdown
+                      icon={<Sparkles size={9} />}
+                      label={(() => {
+                        const taskLabels = {
+                          auto: 'Multimodal',
+                          image_to_video: 'First Frame to Video'
+                        };
+                        return taskLabels[omniTask] || 'Task';
+                      })()}
+                      accentColor="violet"
+                    >
+                      {(close) => (
+                        <div className="space-y-0.5">
+                          {[
+                            { id: 'auto', label: 'Multimodal', icon: '✨', desc: 'Default multimodal generation' },
+                            { id: 'image_to_video', label: 'First Frame to Video', icon: '🖼️', desc: 'Animate a starting frame image', disabled: !firstFrameImage },
+                          ].map((opt, i) => (
+                            <motion.button
+                              key={opt.id}
+                              disabled={opt.disabled}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
+                              onClick={() => { if (!opt.disabled) { setOmniTask(opt.id); close(); } }}
+                              className={cn(
+                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
+                                opt.disabled
+                                  ? "opacity-30 cursor-not-allowed"
+                                  : omniTask === opt.id
+                                  ? "bg-violet-500/10 border border-violet-500/25"
+                                  : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
+                              )}
+                            >
+                              <div className={cn(
+                                "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shrink-0 transition-all",
+                                opt.disabled
+                                  ? "bg-white/5 text-gray-700"
+                                  : omniTask === opt.id
+                                  ? "bg-violet-500/20 text-violet-400"
+                                  : "bg-white/5 text-gray-500"
+                              )}>
+                                <span className="text-[10px]">{opt.icon}</span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={cn(
+                                  "text-[10px] font-black uppercase tracking-wider truncate",
+                                  opt.disabled
+                                    ? "text-white/30"
+                                    : omniTask === opt.id ? "text-violet-400" : "text-white/70"
+                                )}>{opt.label}</p>
+                                <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
+                              </div>
+                              {!opt.disabled && omniTask === opt.id && (
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-violet-400 flex items-center justify-center shrink-0">
+                                  <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                </motion.div>
+                              )}
+                            </motion.button>
+                          ))}
+                        </div>
+                      )}
+                    </UpwardDropdown>
+                  )}
+                </div>
                 
                 {/* Autocomplete mention popover */}
                 {mentionSearch !== null && mentionField === 'promptText' && (
