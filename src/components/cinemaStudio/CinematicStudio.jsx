@@ -3059,7 +3059,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           <div className="max-w-4xl mx-auto pointer-events-auto">
             
             {/* ── TOP FLOATING CONTROL BAR (Style/Movement, Angle, Camera & Lens) ── */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar select-none w-full pb-1.5" style={{ scrollbarWidth: 'none' }}>
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar select-none w-full mb-2 p-2 px-3.5 rounded-2xl bg-[#09090f]/95 border border-white/12 shadow-2xl backdrop-blur-xl" style={{ scrollbarWidth: 'none' }}>
               {/* Refs Button Pill (Centralized Reference Board control) */}
               {activeEngine !== 'kling/v3-turbo-image-to-video' && (
                 <>
@@ -3306,62 +3306,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                 </UpwardDropdown>
               )}
 
-              {/* DURATION DROPDOWN (Video mode only) */}
-              {activeTab === 'video' && (
-                <UpwardDropdown
-                  icon={<Clock size={9} />}
-                  label={`${duration}s`}
-                  accentColor="fuchsia"
-                >
-                  {(close) => (
-                    <div className="space-y-0.5">
-                      {[
-                        { value: 4, label: '4 Seconds', desc: 'Fast clip' },
-                        { value: 6, label: '6 Seconds', desc: 'Standard clip' },
-                        { value: 8, label: '8 Seconds', desc: 'Extended clip' },
-                        { value: 10, label: '10 Seconds', desc: 'Max Omni duration' }
-                      ].map((opt, i) => (
-                        <motion.button
-                          key={opt.value}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.04, type: 'spring', stiffness: 350, damping: 22 }}
-                          onClick={() => {
-                            setDuration(opt.value);
-                            localStorage.setItem('cs_duration', String(opt.value));
-                            close();
-                          }}
-                          className={cn(
-                            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
-                            duration === opt.value
-                              ? "bg-fuchsia-500/10 border border-fuchsia-500/25"
-                              : "border border-transparent hover:bg-white/[0.04] hover:border-white/5"
-                          )}
-                        >
-                          <div className={cn(
-                            "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-mono shrink-0 transition-all",
-                            duration === opt.value ? "bg-fuchsia-500/20 text-fuchsia-400 font-bold" : "bg-white/5 text-gray-500"
-                          )}>
-                            {opt.value}s
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={cn(
-                              "text-[10px] font-black uppercase tracking-wider truncate",
-                              duration === opt.value ? "text-fuchsia-400" : "text-white/70"
-                            )}>{opt.label}</p>
-                            <p className="text-[7.5px] text-gray-600 truncate">{opt.desc}</p>
-                          </div>
-                          {duration === opt.value && (
-                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-4 h-4 rounded-full bg-fuchsia-400 flex items-center justify-center shrink-0">
-                              <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            </motion.div>
-                          )}
-                        </motion.button>
-                      ))}
-                    </div>
-                  )}
-                </UpwardDropdown>
-              )}
+
 
               {/* OMNI TASK DROPDOWN (Video only, Omni engine only) */}
               {activeTab === 'video' && isOmni && (
