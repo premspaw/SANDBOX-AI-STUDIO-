@@ -1,5 +1,124 @@
 [
   {
+    "id": "local_1786043332993_urcun",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786043332243.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786043332243.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "ancient battel field, no warrior  cinematic location photography, shot on 35mm lens, realistic textures, motivated lighting with soft falloff, no crushed shadows, depth-of-field control, crisp detail, 8k.. Perspective: Extreme Wide framing.. Captured on RED V-Raptor, equipped with Cooke S4/i glass optics (warm, soft, organic skin tones with gentle highlight roll-off and classic Cooke look) using a 12mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 940709]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-08-06T19:08:52.993Z"
+  },
+  {
+    "id": "local_1786043236009_19yod",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786043235370.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786043235370.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "ancient battel field, cinematic location photography, shot on 35mm lens, realistic textures, motivated lighting with soft falloff, no crushed shadows, depth-of-field control, crisp detail, 8k.. Perspective: Medium Shot framing.. Captured on ARRI Alexa 35, equipped with Hawk Anamorphic glass optics (epic blockbuster anamorphic lens style with unique vertical oval bokeh) using a 35mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 904905]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-08-06T19:07:16.009Z"
+  },
+  {
+    "id": "local_1786043212842_6ei1u",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786043212257.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786043212257.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "need a Battel feild acinet. Perspective: Medium Shot framing.. Captured on ARRI Alexa 35, equipped with Hawk Anamorphic glass optics (epic blockbuster anamorphic lens style with unique vertical oval bokeh) using a 35mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 264360]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-08-06T19:06:52.842Z"
+  },
+  {
+    "id": "local_1786043010606_r2trw",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786043009957.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786043009957.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "need a Battel feild acient indu mytology filed [seed: 751467]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-08-06T19:03:30.613Z"
+  },
+  {
+    "id": "local_1786042998277_gb3d0",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786042997300.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786042997300.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "need a Battel feild acient indu mytology filed [seed: 956897]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-08-06T19:03:18.277Z"
+  },
+  {
+    "id": "local_1786042997400_byrx6",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786042991989.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786042991989.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "need a Battel feild acient indu mytology filed [seed: 632877]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-08-06T19:03:17.400Z"
+  },
+  {
+    "id": "local_1786042988112_2tt5p",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786042986912.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786042986912.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "marketing/generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "need a Battel feild acient indu mytology filed [seed: 610828]",
+    "engine": "nano-banana-2",
+    "created_at": "2026-08-06T19:03:08.112Z"
+  },
+  {
     "id": "local_1785943408492_om8tg",
     "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1785943407836.mp4",
     "type": "video",
@@ -6885,68 +7004,5 @@
     "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
     "aspect": "16:9",
     "created_at": "2026-06-21T19:30:27.694Z"
-  },
-  {
-    "id": "local_1782068265705_fjtvu",
-    "name": "ref_1782068264821.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/ref_1782068264821.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "created_at": "2026-06-21T18:57:45.705Z"
-  },
-  {
-    "id": "local_1782066756597_nlsee",
-    "name": "ref_1782066756208.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/ref_1782066756208.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "created_at": "2026-06-21T18:32:36.597Z"
-  },
-  {
-    "id": "local_1782063373964_byfoj",
-    "name": "ref_1782063373490.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/ref_1782063373490.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "created_at": "2026-06-21T17:36:13.964Z"
-  },
-  {
-    "id": "local_1782062637052_7g67h",
-    "name": "ref_1782062636694.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/ref_1782062636694.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "created_at": "2026-06-21T17:23:57.053Z"
-  },
-  {
-    "id": "local_1782060988711_2mywi",
-    "name": "ref_1782060988062.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/anon/generated/ref_1782060988062.png",
-    "user_id": "anon",
-    "aspect": "16:9",
-    "created_at": "2026-06-21T16:56:28.711Z"
-  },
-  {
-    "id": "local_1782060935521_cnegk",
-    "name": "ref_1782060933174.mp4",
-    "type": "video",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/anon/generated/ref_1782060933174.mp4",
-    "user_id": "anon",
-    "aspect": "16:9",
-    "created_at": "2026-06-21T16:55:35.521Z"
-  },
-  {
-    "id": "local_1782060844729_74mr8",
-    "name": "ref_1782060844051.mp4",
-    "type": "video",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/anon/generated/ref_1782060844051.mp4",
-    "user_id": "anon",
-    "aspect": "16:9",
-    "created_at": "2026-06-21T16:54:04.729Z"
   }
 ]

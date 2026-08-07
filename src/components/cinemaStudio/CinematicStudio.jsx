@@ -484,7 +484,7 @@ const cleanErrorMessage = (msg) => {
 
 // A fast local-state wrapper for the prompt input to prevent typing lag
 // since CinematicStudio is a massive component that takes time to re-render.
-const FastPromptInput = ({
+const FastPromptInput = React.memo(({
   textareaRef,
   promptText,
   handleTextChange,
@@ -493,16 +493,19 @@ const FastPromptInput = ({
   activeTab,
   isBusy
 }) => {
-  const [localVal, setLocalVal] = React.useState(promptText);
+  const [localVal, setLocalVal] = React.useState(promptText || '');
+  const debounceTimerRef = React.useRef(null);
 
-  // Sync from parent if parent changes externally (e.g. pills inserted, recipe inserted)
+  // Sync from parent only if parent changes externally (e.g. pills inserted, recipe inserted)
   React.useEffect(() => {
-    setLocalVal(promptText);
-  }, [promptText]);
+    if (promptText !== undefined && promptText !== localVal) {
+      setLocalVal(promptText);
+    }
+  }, [promptText]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-resize effect to prevent layout cutoff and text blocking
+  // Auto-resize effect to prevent layout cutoff without layout thrashing
   React.useEffect(() => {
-    const tx = textareaRef.current;
+    const tx = textareaRef?.current;
     if (tx) {
       tx.style.height = "auto";
       const nextHeight = Math.min(tx.scrollHeight, 180);
@@ -514,10 +517,14 @@ const FastPromptInput = ({
     const value = e.target.value;
     const selectionStart = e.target.selectionStart;
     setLocalVal(value);
-    // Wrap parent call in startTransition to prevent UI blocking
-    React.startTransition(() => {
-      handleTextChange({ target: { value, selectionStart } });
-    });
+
+    // Debounce updating heavy parent state so typing is 100% instant with 0ms lag
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      React.startTransition(() => {
+        handleTextChange({ target: { value, selectionStart } });
+      });
+    }, 150);
   };
 
   return (
@@ -528,7 +535,9 @@ const FastPromptInput = ({
       onKeyDown={(e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
-          if (canGenerate) handleGenerate();
+          if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+          handleTextChange({ target: { value: localVal, selectionStart: localVal.length } });
+          if (canGenerate) handleGenerate(localVal);
         }
       }}
       placeholder={activeTab === 'image' 
@@ -540,7 +549,7 @@ const FastPromptInput = ({
       className="w-full bg-transparent text-xs text-white placeholder-white/20 outline-none resize-none font-medium leading-relaxed custom-scrollbar py-2 min-h-[36px]"
     />
   );
-};
+});
 
 /* ─── MAIN COMPONENT ────────────────────────────────────────── */
 export default function CinematicStudio() {
@@ -1161,35 +1170,42 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     setStagedRefBoard(videoRefBoard);
   }, [videoRefBoard]);
 
-  // Flat list of all refBoard items for @mention autocomplete
-  const IdMap = window.Map;
-  const mergedBoard = {
-    characters: [...new IdMap([...(refBoard.characters || []), ...(stagedRefBoard.characters || [])].map(i => [i.id, i])).values()],
-    locations:  [...new IdMap([...(refBoard.locations || []),  ...(stagedRefBoard.locations || []) ].map(i => [i.id, i])).values()],
-    wardrobes:  [...new IdMap([...(refBoard.wardrobes || []),  ...(stagedRefBoard.wardrobes || []) ].map(i => [i.id, i])).values()],
-    props:      [...new IdMap([...(refBoard.props || []),      ...(stagedRefBoard.props || [])     ].map(i => [i.id, i])).values()],
-    moods:      [...new IdMap([...(refBoard.moods || []),      ...(stagedRefBoard.moods || [])     ].map(i => [i.id, i])).values()],
-    ref_images: [...new IdMap([...(refBoard.ref_images || []), ...(stagedRefBoard.ref_images || [])].map(i => [i.id, i])).values()],
-    ref_videos: [...new IdMap([...(refBoard.ref_videos || []), ...(stagedRefBoard.ref_videos || [])].map(i => [i.id, i])).values()],
-    ref_audios: [...new IdMap([...(refBoard.ref_audios || []), ...(stagedRefBoard.ref_audios || [])].map(i => [i.id, i])).values()],
-  }
-  const allRefItems = [
-    ...mergedBoard.characters.map(i => ({ ...i, category: 'character', prefix: 'char' })),
-    ...mergedBoard.locations.map(i => ({ ...i, category: 'location', prefix: 'loc' })),
-    ...mergedBoard.wardrobes.map(i => ({ ...i, category: 'wardrobe', prefix: 'ward' })),
-    ...mergedBoard.props.map(i => ({ ...i, category: 'prop', prefix: 'prop' })),
-    ...mergedBoard.moods.map(i => ({ ...i, category: 'mood', prefix: 'mood' })),
-    ...(mergedBoard.ref_images || []).map((i, idx) => ({ ...i, name: i.name || `img${idx + 1}`, category: 'ref_images', prefix: 'img' })),
-    ...(mergedBoard.ref_videos || []).map((i, idx) => ({ ...i, name: i.name || `vid${idx + 1}`, category: 'ref_videos', prefix: 'vid' })),
-    ...(mergedBoard.ref_audios || []).map((i, idx) => ({ ...i, name: i.name || `aud${idx + 1}`, category: 'ref_audios', prefix: 'aud' })),
-  ]
+  // Flat list of all refBoard items for @mention autocomplete (memoized to avoid re-running Map loops on every keystroke)
+  const allRefItems = useMemo(() => {
+    const IdMap = window.Map;
+    const mergedBoard = {
+      characters: [...new IdMap([...(refBoard.characters || []), ...(stagedRefBoard.characters || [])].map(i => [i.id, i])).values()],
+      locations:  [...new IdMap([...(refBoard.locations || []),  ...(stagedRefBoard.locations || []) ].map(i => [i.id, i])).values()],
+      wardrobes:  [...new IdMap([...(refBoard.wardrobes || []),  ...(stagedRefBoard.wardrobes || []) ].map(i => [i.id, i])).values()],
+      props:      [...new IdMap([...(refBoard.props || []),      ...(stagedRefBoard.props || [])     ].map(i => [i.id, i])).values()],
+      moods:      [...new IdMap([...(refBoard.moods || []),      ...(stagedRefBoard.moods || [])     ].map(i => [i.id, i])).values()],
+      ref_images: [...new IdMap([...(refBoard.ref_images || []), ...(stagedRefBoard.ref_images || [])].map(i => [i.id, i])).values()],
+      ref_videos: [...new IdMap([...(refBoard.ref_videos || []), ...(stagedRefBoard.ref_videos || [])].map(i => [i.id, i])).values()],
+      ref_audios: [...new IdMap([...(refBoard.ref_audios || []), ...(stagedRefBoard.ref_audios || [])].map(i => [i.id, i])).values()],
+    };
+    return [
+      ...mergedBoard.characters.map(i => ({ ...i, category: 'character', prefix: 'char' })),
+      ...mergedBoard.locations.map(i => ({ ...i, category: 'location', prefix: 'loc' })),
+      ...mergedBoard.wardrobes.map(i => ({ ...i, category: 'wardrobe', prefix: 'ward' })),
+      ...mergedBoard.props.map(i => ({ ...i, category: 'prop', prefix: 'prop' })),
+      ...mergedBoard.moods.map(i => ({ ...i, category: 'mood', prefix: 'mood' })),
+      ...(mergedBoard.ref_images || []).map((i, idx) => ({ ...i, name: i.name || `img${idx + 1}`, category: 'ref_images', prefix: 'img' })),
+      ...(mergedBoard.ref_videos || []).map((i, idx) => ({ ...i, name: i.name || `vid${idx + 1}`, category: 'ref_videos', prefix: 'vid' })),
+      ...(mergedBoard.ref_audios || []).map((i, idx) => ({ ...i, name: i.name || `aud${idx + 1}`, category: 'ref_audios', prefix: 'aud' })),
+    ];
+  }, [refBoard, stagedRefBoard]);
 
   // Seedance-specific reference media (separate from @mention system)
-  const seedanceRefs = {
-    ref_images: mergedBoard.ref_images || [],
-    ref_videos: mergedBoard.ref_videos || [],
-    ref_audios: mergedBoard.ref_audios || [],
-  }
+  const seedanceRefs = useMemo(() => {
+    const images = (refBoard.ref_images || []).concat(stagedRefBoard.ref_images || []);
+    const videos = (refBoard.ref_videos || []).concat(stagedRefBoard.ref_videos || []);
+    const audios = (refBoard.ref_audios || []).concat(stagedRefBoard.ref_audios || []);
+    return {
+      ref_images: images,
+      ref_videos: videos,
+      ref_audios: audios,
+    };
+  }, [refBoard, stagedRefBoard]);
 
   const addRefItem = (item) => {
     const categoryKey = item.category.endsWith('s') ? item.category : item.category + 's'
@@ -1682,45 +1698,49 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       const assetType = isVideo ? 'video' : isAudio ? 'audio' : 'image';
       const ext = isVideo ? 'mp4' : isAudio ? 'mp3' : 'png';
 
-      let previewUrl;
-      if (isImage) {
-        previewUrl = await compressImage(file);
+      // Create instant lightweight Object URL (0ms latency preview!)
+      const instantPreview = URL.createObjectURL(file);
+
+      if (panelTab === 'omni' || (typeof curTarget === 'string' && curTarget.startsWith('omni_ref_'))) {
+        if (typeof curTarget === 'string' && curTarget.startsWith('omni_ref_')) {
+          const idx = parseInt(curTarget.split('_')[2], 10);
+          if (!isNaN(idx) && idx >= 0 && idx < 5) {
+            setOmniRefPreviews(prev => { const n = [...prev]; n[idx] = instantPreview; return n; });
+            if (idx === 0) setOmniFirstFramePreview(instantPreview);
+            if (idx === 1) setOmniLastFramePreview(instantPreview);
+          }
+        } else if (curTarget === 'first') {
+          setOmniFirstFramePreview(instantPreview);
+          setOmniRefPreviews(prev => { const n = [...prev]; n[0] = instantPreview; return n; });
+        } else {
+          setOmniLastFramePreview(instantPreview);
+          setOmniRefPreviews(prev => { const n = [...prev]; n[1] = instantPreview; return n; });
+        }
       } else {
-        previewUrl = await new Promise((resolve) => {
+        if (curTarget === 'first' || activeTab === 'image') {
+          setFirstFramePreview(instantPreview);
+        } else {
+          setLastFramePreview(instantPreview);
+        }
+      }
+
+      // Async compress/read for storage persistence without blocking instant UI preview
+      let uploadPayload;
+      if (isImage) {
+        uploadPayload = await compressImage(file);
+      } else {
+        uploadPayload = await new Promise((resolve) => {
           const reader = new FileReader();
           reader.onload = (ev) => resolve(ev.target.result);
           reader.readAsDataURL(file);
         });
       }
 
-      if (panelTab === 'omni' || (typeof curTarget === 'string' && curTarget.startsWith('omni_ref_'))) {
-        if (typeof curTarget === 'string' && curTarget.startsWith('omni_ref_')) {
-          const idx = parseInt(curTarget.split('_')[2], 10);
-          if (!isNaN(idx) && idx >= 0 && idx < 5) {
-            setOmniRefPreviews(prev => { const n = [...prev]; n[idx] = previewUrl; return n; });
-            if (idx === 0) setOmniFirstFramePreview(previewUrl);
-            if (idx === 1) setOmniLastFramePreview(previewUrl);
-          }
-        } else if (curTarget === 'first') {
-          setOmniFirstFramePreview(previewUrl);
-          setOmniRefPreviews(prev => { const n = [...prev]; n[0] = previewUrl; return n; });
-        } else {
-          setOmniLastFramePreview(previewUrl);
-          setOmniRefPreviews(prev => { const n = [...prev]; n[1] = previewUrl; return n; });
-        }
-      } else {
-        if (curTarget === 'first' || activeTab === 'image') {
-          setFirstFramePreview(previewUrl);
-        } else {
-          setLastFramePreview(previewUrl);
-        }
-      }
-
       const resp = await fetch(getApiUrl('/api/save-asset'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          imageData: previewUrl, 
+          imageData: uploadPayload, 
           type: 'reference_upload',
           fileName: `ref_frame_${Date.now()}.${ext}`,
           userId: userId,
@@ -1731,7 +1751,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       if (!resp.ok) throw new Error('Failed to save asset via API');
       
       const data = await resp.json();
-      const publicUrl = data.url || data.path || previewUrl;
+      const publicUrl = data.url || data.path || uploadPayload;
 
       if (panelTab === 'omni' || (typeof curTarget === 'string' && curTarget.startsWith('omni_ref_'))) {
         if (typeof curTarget === 'string' && curTarget.startsWith('omni_ref_')) {

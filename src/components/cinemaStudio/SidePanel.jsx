@@ -353,25 +353,26 @@ export const SidePanel = React.memo(({
             {/* Mobile Header */}
             <div className="px-4 py-2.5 border-b border-white/15 bg-[#12121e] flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-violet-500 via-fuchsia-500 to-cyan-400 flex items-center justify-center">
-                  <Clapperboard className="w-3.5 h-3.5 text-white" />
+                <div className="w-7 h-7 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                  <Zap size={14} />
                 </div>
                 <div>
-                  <p className="text-[11px] font-black tracking-widest uppercase text-white leading-none">Studio Panel</p>
-                  <p className="text-[8px] text-fuchsia-400/70 uppercase tracking-widest leading-none mt-0.5">Cinema Settings</p>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-white">Studio Panel</h3>
+                  <p className="text-[10px] text-cyan-400 font-mono">Gemini Omni Flash Engine</p>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-xl bg-white/5 active:bg-red-500/20 border border-white/10 text-gray-300 active:scale-95 flex items-center justify-center"
+                className="p-1.5 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
             {/* Mobile Tabs */}
             <div className="px-3 pt-2.5 pb-2 border-b border-white/15 bg-[#0c0c16] flex items-center gap-2 shrink-0">
-              {[['veo','veo-3.1-generate-preview','video',<Film key="f" className="w-3.5 h-3.5" />,'Veo 3.1'],
+              {[
+                ['veo','veo-3.1-generate-preview','video',<Film key="f" className="w-3.5 h-3.5" />,'Veo 3.1'],
                 ['omni','omni-flash','video',<Zap key="z" className="w-3.5 h-3.5" />,'Omni Flash']
               ].map(([tab, engine, aTab, icon, label]) => (
                 <button
