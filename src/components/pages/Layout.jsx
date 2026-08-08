@@ -25,6 +25,7 @@ const FULL_BLEED_TABS = new Set([
     'agent',
     'cinematic-studio',
     'yourvoice',
+    'mcp-connection',
 ]);
 
 export function Layout({ children, activeTab, setActiveTab }) {

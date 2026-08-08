@@ -1962,6 +1962,10 @@ import createStorageRouter from './server/routes/storageRoutes.js';
 import createAdminRouter from './server/routes/adminRoutes.js';
 import createAvatarRouter from './server/routes/avatar.js';
 import createYourVoiceRouter from './server/routes/yourVoiceRoutes.js';
+import mcpRouter from './server/routes/mcpRoutes.js';
+
+// ── MCP (Model Context Protocol & ChatGPT Actions Gateway) ───────────────────
+app.use('/api/mcp', mcpRouter);
 
 // ── Credits ──────────────────────────────────────────────────────────────────
 app.use('/api', createCreditsRouter(deps));

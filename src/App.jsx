@@ -24,6 +24,7 @@ const AvatarStudio = lazy(() => import('./components/pages/AvatarStudio'));
 const LivingAvatar = lazy(() => import('./components/pages/LivingAvatar'));
 const CinematicStudio = lazy(() => import('./components/cinemaStudio/CinematicStudio'));
 const YourVoice = lazy(() => import('./components/pages/YourVoice'));
+const McpConnectionPage = lazy(() => import('./components/pages/McpConnectionPage'));
 
 
 // Beautiful, futuristic stand-by placeholder for the new Avatar Studio
@@ -104,6 +105,7 @@ const FULL_HEIGHT_TABS = new Set([
   'agent',
   'cinematic-studio',
   'yourvoice',
+  'mcp-connection',
   'design',
 ])
 
@@ -286,6 +288,8 @@ function App() {
         return <CinematicStudio />;
       case 'yourvoice':
         return <YourVoice />;
+      case 'mcp-connection':
+        return <McpConnectionPage />;
       case 'design':
         return null;
       default:
@@ -295,7 +299,7 @@ function App() {
 
 
   const getContainerClass = () => {
-    if (activeTab === 'settings' || activeTab === 'pricing' || activeTab === 'brand-voice' || activeTab === 'auth') {
+    if (activeTab === 'settings' || activeTab === 'pricing' || activeTab === 'brand-voice' || activeTab === 'auth' || activeTab === 'mcp-connection') {
       return 'h-full w-full overflow-y-auto'
     }
     return FULL_HEIGHT_TABS.has(activeTab) ? 'h-full' : 'p-4'

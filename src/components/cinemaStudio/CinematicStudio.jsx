@@ -142,9 +142,9 @@ const ENGINES = [
   { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — 2.5⚡/s (4.5⚡/s audio)', cost: 2.5 },
   { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3.1 Fast',     icon: '⚡', desc: 'Google Fast — 1.5⚡/s (2.5⚡/s audio)',         cost: 1.5 },
   { id: 'veo-3.1-lite-generate-preview', label: 'Veo 3.1 Lite',     icon: '🍃', desc: 'Google Lite — 1⚡/s (1.5⚡/s audio)',           cost: 1 },
-  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 12⚡/s (720p) / 7⚡/s (480p)',          cost: 12 },
-  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 7⚡/s (480p) / 15⚡/s (720p) / 35⚡/s (1080p) / 70⚡/s (4K)', cost: 15 },
-  { id: 'seedance-mini',                 label: 'Seedance Mini',    icon: '🧊', desc: 'ByteDance — 7⚡/s (720p) / 5⚡/s (480p)',  cost: 7 },
+  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 7⚡/s (480p) / 12⚡/s (720p)',          cost: 12 },
+  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 15⚡/s (720p) / 35⚡/s (1080p)',        cost: 15 },
+  { id: 'seedance-mini',                 label: 'Seedance Mini',    icon: '🧊', desc: 'ByteDance — 5⚡/s (480p) / 7⚡/s (720p)',          cost: 7 },
   { id: 'kling/v3-turbo-image-to-video', label: 'Kling V3 Turbo',   icon: '🔥', desc: 'Kling — 9.8⚡/s (720p) / 12.3⚡/s (1080p) (V3 Turbo high fidelity)', cost: 9.8 },
   { id: 'omni-flash',                    label: 'Omni Flash',      icon: '✨', desc: 'Omni fast — 1.6⚡/s (2.75⚡/s audio)',           cost: 1.6 },
 ];
@@ -709,13 +709,13 @@ export default function CinematicStudio() {
         else setDuration(8);
       }
     } else if (isSeed) {
-      const isLimitedSeed = activeEngine === 'seedance-fast' || activeEngine === 'seedance-mini';
-      if (isLimitedSeed) {
-        const maxRes = '720p';
-        const resIdx = ['480p', '720p', '1080p', '4k'].indexOf(resolution);
-        const maxIdx = ['480p', '720p', '1080p', '4k'].indexOf(maxRes);
-        if (resIdx > maxIdx) {
-          setResolution(maxRes);
+      if (activeEngine === 'seedace') {
+        if (resolution !== '720p' && resolution !== '1080p') {
+          setResolution('720p');
+        }
+      } else if (activeEngine === 'seedance-fast' || activeEngine === 'seedance-mini') {
+        if (resolution !== '480p' && resolution !== '720p') {
+          setResolution('720p');
         }
       }
       if (![3, 4, 5, 6, 10, 15].includes(duration)) {
@@ -1609,7 +1609,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       return (resolution === '480p' ? 7 : 12) * duration; // halved from 15 : 25
     }
     if (engineId === 'seedace') {
-      const costPerSec = resolution === '4k' ? 70 : (resolution === '1080p' ? 35 : (resolution === '480p' ? 7 : 15)); // halved from 140 : 70 : 15 : 30
+      const costPerSec = resolution === '1080p' ? 35 : 15;
       return costPerSec * duration;
     }
     if (engineId === 'seedance-mini') {
@@ -1636,9 +1636,18 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   const isBusy = isSubmitting;
   const requiredCredits = getRequiredCredits(activeEngine) * variationCount;
 
-  // Evaluate active prompt and inputs across both Veo and Omni/Seedance video tabs
-  const isOmniEngine = panelTab === 'omni' || activeEngine === 'omni' || activeEngine === 'omni-flash';
-  const activePromptText = isOmniEngine ? (omniPromptText || promptText) : (promptText || omniPromptText);
+  const handleTextChange = useCallback((e) => {
+    const val = e.target?.value ?? '';
+    const isOmniEngine = panelTab === 'omni' || activeEngine === 'omni' || activeEngine === 'omni-flash';
+    if (isOmniEngine) {
+      setOmniPromptText(val);
+    } else {
+      setPromptText(val);
+    }
+  }, [panelTab, activeEngine]);
+
+  // Evaluate active prompt and inputs across all video engines (Seedance 2.0, Seedance Fast, Veo 3.1, Omni)
+  const activePromptText = (promptText || omniPromptText || '').trim();
   const activeFirstFramePreview = omniFirstFramePreview || firstFramePreview || (omniRefPreviews && omniRefPreviews.find(Boolean));
 
   // Memoize so getTaggedRefItems regex only runs when activePromptText actually changes
@@ -1652,7 +1661,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     (omniRefPreviews && omniRefPreviews.some(Boolean))
   );
 
-  const hasInput = Boolean(activePromptText.trim() || activeFirstFramePreview || taggedItemsCount > 0 || hasRefBoardMedia);
+  const hasInput = Boolean(activePromptText || activeFirstFramePreview || taggedItemsCount > 0 || hasRefBoardMedia);
   const canGenerate = hasInput && userCredits >= requiredCredits && !isBusy;
 
   const triggerRefund = async (reason) => {
@@ -3059,10 +3068,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           <div className="max-w-4xl mx-auto pointer-events-auto">
             
             {/* Horizontal Flex Wrapper for Mode Switcher & Input Box */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-1.5 sm:gap-3 w-full">
+            <div className="flex flex-col sm:flex-row items-stretch gap-1.5 sm:gap-2.5 w-full">
               
-              {/* Mode Switcher Tab (Horizontal compact on mobile, vertical stacked tab on desktop) */}
-              <div className="bg-[#08080c]/95 border border-white/15 rounded-xl sm:rounded-2xl p-1 sm:p-1.5 flex flex-row sm:flex-col gap-1.5 shadow-lg shrink-0 select-none backdrop-blur-3xl self-stretch justify-center sm:justify-start">
+              {/* Mode Switcher Tab (Equal 50-50 split vertical dual-toggle) */}
+              <div className="bg-[#08080c]/95 border border-white/15 rounded-2xl p-1.5 flex flex-row sm:flex-col gap-1.5 shadow-xl shrink-0 select-none backdrop-blur-3xl self-stretch justify-between sm:w-14">
                 <button
                   type="button"
                   onClick={() => {
@@ -3071,15 +3080,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                     setActiveEngine(lastImg);
                   }}
                   className={cn(
-                    "flex-1 sm:flex-initial flex items-center sm:flex-col justify-center gap-1 sm:gap-1 sm:w-14 h-8 sm:h-16 rounded-xl sm:rounded-2xl text-[9px] sm:text-[8px] font-black uppercase tracking-wider transition-all",
+                    "flex-1 flex flex-col items-center justify-center gap-1 rounded-xl text-[8px] font-black uppercase tracking-wider transition-all py-2 sm:py-0",
                     activeTab === 'image'
-                      ? "bg-[#c8f135] text-black shadow-lg shadow-[#c8f135]/25 scale-[1.02]"
-                      : "text-gray-400 hover:bg-white/[0.03] hover:text-white"
+                      ? "bg-[#c8f135] text-black shadow-md shadow-[#c8f135]/25"
+                      : "text-gray-400 hover:bg-white/[0.05] hover:text-white"
                   )}
                   title="Switch to Image Generation"
                 >
                   <ImageIcon size={15} className="shrink-0" />
-                  <span className="sm:mt-0.5 font-extrabold leading-none">Image</span>
+                  <span className="font-extrabold leading-none">Image</span>
                 </button>
                 <button
                   type="button"
@@ -3089,23 +3098,23 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                     setActiveEngine(lastVid);
                   }}
                   className={cn(
-                    "flex-1 sm:flex-initial flex items-center sm:flex-col justify-center gap-1 sm:gap-1 sm:w-14 h-8 sm:h-16 rounded-xl sm:rounded-2xl text-[9px] sm:text-[8px] font-black uppercase tracking-wider transition-all",
+                    "flex-1 flex flex-col items-center justify-center gap-1 rounded-xl text-[8px] font-black uppercase tracking-wider transition-all py-2 sm:py-0",
                     activeTab === 'video'
-                      ? "bg-fuchsia-500 text-white shadow-lg shadow-fuchsia-500/25 scale-[1.02]"
-                      : "text-gray-400 hover:bg-white/[0.03] hover:text-white"
+                      ? "bg-fuchsia-500 text-white shadow-md shadow-fuchsia-500/25"
+                      : "text-gray-400 hover:bg-white/[0.05] hover:text-white"
                   )}
                   title="Switch to Video Generation"
                 >
                   <Video size={15} className="shrink-0" />
-                  <span className="sm:mt-0.5 font-extrabold leading-none">Video</span>
+                  <span className="font-extrabold leading-none">Video</span>
                 </button>
               </div>
 
               {/* ── Main Floating Input Bar (Vertical premium studio layout) ── */}
-              <div className="relative rounded-2xl border border-white/15 bg-[#08080c]/95 backdrop-blur-3xl shadow-[0_25px_70px_rgba(0,0,0,0.85)] flex flex-col p-2.5 sm:p-3 gap-2 sm:gap-2.5 flex-1 min-w-0 hover:border-white/20 transition-all duration-300">
+              <div className="relative rounded-2xl border border-white/15 bg-[#08080c]/95 backdrop-blur-3xl shadow-[0_25px_70px_rgba(0,0,0,0.85)] flex flex-col p-2.5 sm:p-3 gap-2 sm:gap-2 flex-1 min-w-0 hover:border-white/20 transition-all duration-300">
                 
                 {/* ── TOP ATTACHED CONTROL BAR (Refs, Camera Movement, Angle, Lens, Style) ── */}
-                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar select-none w-full pb-2 border-b border-white/10" style={{ scrollbarWidth: 'none' }}>
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar select-none w-full pb-1 mb-0.5 border-b border-white/[0.06]" style={{ scrollbarWidth: 'none' }}>
                   {/* Refs Button Pill (Centralized Reference Board control) */}
                   {activeEngine !== 'kling/v3-turbo-image-to-video' && (
                     <>
@@ -3113,27 +3122,27 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                         onClick={() => { setStagedRefBoard({ ...refBoard }); setShowRefBoard(true); }}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[8.5px] font-black uppercase tracking-widest border bg-fuchsia-500/20 border-fuchsia-500/40 text-fuchsia-300 hover:bg-fuchsia-500/30 hover:border-fuchsia-500/50 transition-all shrink-0 shadow-md shadow-fuchsia-500/10"
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[7.5px] font-black uppercase tracking-widest border bg-fuchsia-500/15 border-fuchsia-500/30 text-fuchsia-400 hover:bg-fuchsia-500/25 hover:border-fuchsia-500/40 transition-all shrink-0 origin-bottom"
                         title="Open Reference Board to stage Characters, Locations, Wardrobes, Props, and Moods"
                       >
                         {allRefItems.length > 0 && allRefItems[0].imageUrl ? (
                           <img 
                             src={resolveUrl(allRefItems[0].imageUrl)} 
                             alt="Ref Preview" 
-                            className="w-4 h-4 rounded-full object-cover border border-white/30 shrink-0" 
+                            className="w-3.5 h-3.5 rounded-full object-cover border border-white/20 shrink-0" 
                           />
                         ) : (
-                          <Users size={11} className="text-fuchsia-300" />
+                          <Users size={9} className="text-fuchsia-400" />
                         )}
                         <span>Refs</span>
                         {allRefItems.length > 0 && (
-                          <span className="w-4 h-4 rounded-full bg-fuchsia-500 text-white text-[7px] font-black flex items-center justify-center shrink-0 ml-0.5 shadow-sm">
+                          <span className="w-3.5 h-3.5 rounded-full bg-fuchsia-500 text-white text-[6.5px] font-black flex items-center justify-center shrink-0 ml-0.5">
                             {allRefItems.length}
                           </span>
                         )}
                       </motion.button>
                       {/* Vertical divider line */}
-                      <div className="w-px h-4 bg-white/15 shrink-0 self-center" />
+                      <div className="w-px h-3.5 bg-white/10 shrink-0 self-center" />
                     </>
                   )}
 

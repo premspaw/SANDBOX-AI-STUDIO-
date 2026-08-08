@@ -1,5 +1,22 @@
 [
   {
+    "id": "local_1786118956527_v8x68",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786118955190.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786118955190.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "22-year-old South Indian woman, dark long hair in a simple clip, plain royal blue cotton kurti, small oxidized jhumkas.\n\nLocation: Middle-class Bengaluru apartment bedroom. Plain light-yellow painted walls, single overhead tube light, basic wooden door frame open behind her leading to a dark hallway.\n\nIntruder: Plain dark hoodie, basic plastic face mask, blue surgical gloves, holding a dark padded rod/bat.\n\nAudio: NO MUSIC. Realistic home Foley sound effects only.\n\n⏱️ Shot 1: 00:00 - 00:10 (Talking to Viewers & Intruder Appears)\nStart Action: Static medium close-up of Ananya sitting in a chair, looking directly into the camera lens with a wide smile.\n\nEnd Action: Ananya speaks cheerfully; in the open background door frame behind her, a hooded figure silently steps out from the dark hallway into the room.\n\nVisual Prompt:\n\nStatic medium close-up shot of Ananya, a 22-year-old South Indian woman with dark long hair, wearing a royal blue cotton kurti, looking directly into the camera lens with a warm smile. Middle-class Indian bedroom setting with light yellow walls and simple tube lighting. On-screen live chat overlays pop up on the left side (@Rahul_21: Super!, @Pooja: Congrats!). In the background wooden door frame, a shadowy figure in a dark hoodie silently steps into the room. Photorealistic, fixed camera angle, authentic Indian interior.\n\nKannada Dialogue:\n\nAnanya: \"ಎಲ್ಲರಿಗೂ ನಮಸ್ಕಾರ, ನಾನು ನಿಮ್ಮ ಅನನ್ಯ! ಫೈನಲಿ ನಮ್ಮ ಚಾನೆಲ್ ಐದು ಲಕ್ಷ ಸಬ್‌ಸ್ಕ್ರೈಬರ್ಸ್ ಕಂಪ್ಲೀಟ್ ಮಾಡಿದೆ. ನಿಮ್ಮ ಪ್ರೀತಿ ಮತ್ತೆ ಸಪೋರ್ಟ್‌ಗೆ ತುಂಬಾ ಥ್ಯಾಂಕ್ ಯು!\" (18 words)\n\nEnglish Meaning: \"Hello everyone, I'm your Ananya! Finally our channel completed five lakh subscribers. Thank you so much for your love and support!\"\n\nSound Effects (SFX): Soft live-chat notification chimes, subtle room ambiance. [seed: 482155]",
+    "engine": "Omni Flash",
+    "created_at": "2026-08-07T16:09:16.527Z"
+  },
+  {
     "id": "local_1786043332993_urcun",
     "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786043332243.jpeg",
     "type": "image",
@@ -6995,14 +7012,5 @@
       "folder": "marketing/generated"
     },
     "created_at": "2026-06-25T15:26:37.290Z"
-  },
-  {
-    "id": "local_1782070227694_yno3l",
-    "name": "ref_1782070227129.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/ref_1782070227129.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "created_at": "2026-06-21T19:30:27.694Z"
   }
 ]
