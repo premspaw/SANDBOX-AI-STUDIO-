@@ -2836,7 +2836,6 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
 
   // ── TALKING HEAD — generate reference image ────────────────────────────────
   const generateTalkingHeadImage = async () => {
-    if (!thPersonImg) { showToast('Upload a person photo first.', 'error'); return; }
     const imgCost = getImageCost();
     if (!isAdmin && !isGlobalAdmin) {
       const spendRes = await spend('veo_fast', imgCost as any);
@@ -2852,22 +2851,35 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       const ai = getAI();
       const contents: any[] = [];
 
-      // Add person image
-      contents.push(await fileToGenerativePart(thPersonImg.file));
-      // Add product image if provided
+      // Add person image if uploaded
+      if (thPersonImg) contents.push(await fileToGenerativePart(thPersonImg.file));
+      // Add product image ONLY if provided by user
       if (thProductImg) contents.push(await fileToGenerativePart(thProductImg.file));
       // Add location image if provided
       if (thLocationImg) contents.push(await fileToGenerativePart(thLocationImg.file));
 
       let promptInstructions = '';
-      if (thProductImg && thLocationImg) {
-        promptInstructions = `Images: PERSON, PRODUCT, LOCATION. Generate ONE photorealistic portrait photo of this person holding or using the product, placed inside the location environment. Match the person's likeness exactly. The person faces directly at camera with a confident, engaging expression — ready to deliver a brand message. Natural lighting, sharp focus on face. No collage.`;
-      } else if (thProductImg) {
-        promptInstructions = `Images: PERSON, PRODUCT. Generate ONE photorealistic portrait photo of this person holding or showcasing the product. They face directly at camera, confident and engaging. Professional UGC lighting. No collage.`;
-      } else if (thLocationImg) {
-        promptInstructions = `Images: PERSON, LOCATION. Generate ONE photorealistic portrait photo of this person placed inside the location. They face camera confidently, ready to speak. Match the location lighting and atmosphere. No collage.`;
+      if (thPersonImg) {
+        if (thProductImg && thLocationImg) {
+          promptInstructions = `Images: PERSON, PRODUCT, LOCATION. Generate ONE photorealistic portrait photo of this person holding or using the product, placed inside the location environment. Match the person's likeness exactly. The person faces directly at camera with a confident, engaging expression — ready to deliver a brand message. Natural lighting, sharp focus on face. No collage.`;
+        } else if (thProductImg) {
+          promptInstructions = `Images: PERSON, PRODUCT. Generate ONE photorealistic portrait photo of this person holding or showcasing the product. They face directly at camera, confident and engaging. Professional UGC lighting. No collage.`;
+        } else if (thLocationImg) {
+          promptInstructions = `Images: PERSON, LOCATION. Generate ONE photorealistic portrait photo of this person placed inside the location environment. They face camera confidently, ready to speak. Match the location lighting and atmosphere. Hands relaxed at sides. DO NOT add or show any product, bottle, box, container, or object in their hands. Person is NOT holding any product. No collage.`;
+        } else {
+          promptInstructions = `Images: PERSON. Generate ONE photorealistic portrait photo of this person facing the camera directly, chest-up shot, confident and engaging expression, professional studio/indoor UGC lighting, clean background. Hands relaxed at sides. DO NOT add or show any product, bottle, package, container, or object in their hands. The person MUST NOT hold any product or item. No collage.`;
+        }
       } else {
-        promptInstructions = `Generate ONE photorealistic portrait photo of this person facing the camera directly, confident and engaging expression, professional UGC lighting, clean background, ready to deliver a brand message.`;
+        // Person photo is empty / not uploaded -> Generate random Indian spokesperson portrait!
+        if (thProductImg && thLocationImg) {
+          promptInstructions = `Images: PRODUCT, LOCATION. Generate ONE photorealistic portrait photo of an attractive Indian content creator / spokesperson holding or using the product, placed inside the location environment. They face directly at camera with a confident, engaging expression. Natural studio lighting, sharp focus on face. 9:16 portrait format. No collage.`;
+        } else if (thProductImg) {
+          promptInstructions = `Images: PRODUCT. Generate ONE photorealistic portrait photo of an attractive Indian content creator / spokesperson holding or showcasing the product. They face directly at camera, confident and engaging. Professional UGC lighting, 9:16 portrait format. No collage.`;
+        } else if (thLocationImg) {
+          promptInstructions = `Images: LOCATION. Generate ONE photorealistic portrait photo of an attractive Indian content creator / spokesperson placed inside the location environment. They face camera confidently, ready to speak. Match the location lighting and atmosphere. Hands relaxed at sides. DO NOT add or show any product, bottle, box, container, or object in their hands. Person is NOT holding any product. 9:16 portrait format. No collage.`;
+        } else {
+          promptInstructions = `Generate ONE photorealistic portrait photo of an attractive Indian content creator / spokesperson, chest-up portrait shot, facing camera directly with a warm, confident, engaging expression. Professional studio/indoor UGC lighting, clean background, 9:16 portrait format, smartphone camera aesthetic. Hands relaxed at sides. DO NOT add or show any product, bottle, package, container, or object in their hands. The person MUST NOT hold any product or item. No collage.`;
+        }
       }
       promptInstructions += ` Style: Ultra-realistic, natural skin texture, sharp face detail, 9:16 portrait format, smartphone camera aesthetic.`;
       contents.push({ text: promptInstructions });
@@ -2951,7 +2963,12 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
         }
       }
 
-      const talkingPrompt = `A confident creator looks directly into the camera and delivers this message with natural, expressive lip sync: "${thScript.trim().substring(0, 400)}". They speak clearly, with hook energy — engaging the viewer from the first frame. Realistic facial movements, natural blinks, slight head movement. Shot in ${thAspectRatio} portrait. Cinematic UGC style.${imagePayload ? ' Animate from the reference image — keep face, background and outfit consistent.' : ''}${animationPrompt}`;
+      let productConstraint = '';
+      if (!thProductImg) {
+        productConstraint = ' DO NOT show or generate any product, bottle, box, container, or object in hands. The spokesperson is speaking naturally to the camera with empty hands relaxed or gesturing naturally.';
+      }
+
+      const talkingPrompt = `A confident creator looks directly into the camera and delivers this message with natural, expressive lip sync: "${thScript.trim().substring(0, 400)}". They speak clearly, with hook energy — engaging the viewer from the first frame. Realistic facial movements, natural blinks, slight head movement. Shot in ${thAspectRatio} portrait. Cinematic UGC style.${imagePayload ? ' Animate from the reference image — keep face, background and outfit consistent.' : ''}${productConstraint}${animationPrompt}`;
 
       updateGalleryItem(placeholderThVideoId, { prompt: talkingPrompt.substring(0, 1000) });
 

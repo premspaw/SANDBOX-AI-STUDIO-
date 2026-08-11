@@ -279,14 +279,13 @@ export default function LeftSidebar() {
               {/* Generate Image button */}
               <button
                 onClick={generateTalkingHeadImage}
-                disabled={thIsGeneratingImg || !thPersonImg}
+                disabled={thIsGeneratingImg}
                 className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
                   thIsGeneratingImg ? 'bg-white/5 text-white/20 cursor-not-allowed' :
-                  !thPersonImg ? 'bg-white/5 text-white/10 cursor-not-allowed border border-white/5' :
                   'bg-[#c8f135] text-black hover:bg-[#d4ff3a] shadow-[0_4px_16px_rgba(200,241,53,0.25)]'
                 }`}
               >
-                {thIsGeneratingImg ? <><Loader2 size={10} className="animate-spin" /> Generating…</> : <><Camera size={10} /> Generate Reference Image <span className="opacity-60">· ⚡ {getImageCost()}</span></>}
+                {thIsGeneratingImg ? <><Loader2 size={10} className="animate-spin" /> Generating…</> : <><Camera size={10} /> {!thPersonImg ? 'Generate Indian Spokesperson' : 'Generate Reference Image'} <span className="opacity-60">· ⚡ {getImageCost()}</span></>}
               </button>
 
               {/* Product Scan */}

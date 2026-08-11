@@ -1,5 +1,90 @@
 [
   {
+    "id": "local_1786450326513_k6d82",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786450326231.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/default/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786450326231.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "default",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "The image is the PERSON (creator) reference.\n        TASK: Generate ONE UGC-style photo of this person in the following scene: 🎙️ Normal Talking — A real person naturally using/holding the product in an authentic home environment. Ultra-realistic UGC photo, natural l.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-08-11T12:12:06.513Z"
+  },
+  {
+    "id": "local_1786450283994_6z0np",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786450283698.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/default/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786450283698.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "default",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "The image is the PERSON (creator) reference.\n        TASK: Generate ONE UGC-style photo of this person in the following scene: 🚶 Walk & Talk — A creator walking outdoors while holding the product up to the camera, handheld vlog style, slight motion blur on backgr.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-08-11T12:11:23.994Z"
+  },
+  {
+    "id": "local_1786450015314_3ynqd",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786450015028.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/default/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786450015028.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "default",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "The image is the PERSON (creator) reference.\n        TASK: Generate ONE UGC-style photo of this person in the following scene: 🚶 Walk & Talk — A creator walking outdoors while holding the product up to the camera, handheld vlog style, slight motion blur on backgr.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-08-11T12:06:55.314Z"
+  },
+  {
+    "id": "local_1786449987983_t7pek",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786449987477.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/default/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786449987477.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "default",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "The image is the PERSON (creator) reference.\n        TASK: Generate ONE UGC-style photo of this person in the following scene: 🚶 Walk & Talk — A creator walking outdoors while holding the product up to the camera, handheld vlog style, slight motion blur on backgr.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-08-11T12:06:27.984Z"
+  },
+  {
+    "id": "local_1786449954486_zup11",
+    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786449954058.jpeg",
+    "type": "image",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/default/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786449954058.jpeg",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "default",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "The image is the PERSON (creator) reference.\n        TASK: Generate ONE UGC-style photo of this person in the following scene: 🎙️ Normal Talking — A real person naturally using/holding the product in an authentic home environment. Ultra-realistic UGC photo, natural l.\n        Style: Ultra-realistic UGC photo, natural look, shot on a phone, authentic lighting, no heavy bokeh, real human appearance, 8K quality. SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side..\n\nCRITICAL FACE LIKENESS LOCK: Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, and natural asymmetry. The face must remain 100% identical to the reference photo without any change in face symmetry.\nSKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural skin texture, micro-hair details, and subtle imperfections. Do NOT airbrush, do NOT use beauty filters, and do NOT make the skin look plastic or cartoonish. It must look like an ultra-natural, unedited photo of a real person.\n\nphoto quality and vibe: non-studio lighting, no oversharpening, real light from the location, iphone photo vibe, imperfect photo quality/raw quality (for realism), random realistic photo taken during a random moment of the day, make sure the lighting is natural and matches the background, 2k. It's better to make it slightly blurry, like a phone photo.",
+    "engine": "nano-banana-2",
+    "created_at": "2026-08-11T12:05:54.486Z"
+  },
+  {
     "id": "local_1786118956527_v8x68",
     "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1786118955190.mp4",
     "type": "video",
@@ -6955,62 +7040,5 @@
       "folder": "marketing/generated"
     },
     "created_at": "2026-06-27T07:50:59.497Z"
-  },
-  {
-    "id": "local_1782546285503_n86ec",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782546284820.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782546284820.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "marketing/generated"
-    },
-    "created_at": "2026-06-27T07:44:45.503Z"
-  },
-  {
-    "id": "local_1782546143142_vd5zq",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782546142716.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782546142716.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "marketing/generated"
-    },
-    "created_at": "2026-06-27T07:42:23.142Z"
-  },
-  {
-    "id": "local_1782498282180_us0hl",
-    "name": "seedref_1782498281662.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/seedref_1782498281662.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "created_at": "2026-06-26T18:24:42.180Z"
-  },
-  {
-    "id": "local_1782401487029_tf5np",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782401485963.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782401485963.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "marketing/generated"
-    },
-    "created_at": "2026-06-25T15:31:27.029Z"
-  },
-  {
-    "id": "local_1782401197290_vi7cq",
-    "name": "gen_test_1782401196198.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/test/marketing/generated/gen_test_1782401196198.jpeg",
-    "user_id": "test",
-    "aspect": "1:1",
-    "metadata": {
-      "folder": "marketing/generated"
-    },
-    "created_at": "2026-06-25T15:26:37.290Z"
   }
 ]
