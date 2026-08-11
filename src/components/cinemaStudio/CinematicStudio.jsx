@@ -1270,23 +1270,27 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   }
 
   const handleTextChange = useCallback((e) => {
-    const val = e.target.value
-    setPromptText(val)
-    if (activeEngine === 'kling/v3-turbo-image-to-video') {
-      setMentionSearch(null)
-      return
-    }
-    const cursor = e.target.selectionStart || 0
-    const match = val.slice(0, cursor).match(/@(\w*)$/)
-    if (match) {
-      setMentionSearch(match[1].toLowerCase())
-      setMentionCursorPos(cursor)
-      setMentionField('promptText')
+    const val = e.target?.value ?? '';
+    const isOmniEngine = panelTab === 'omni' || activeEngine === 'omni' || activeEngine === 'omni-flash';
+    if (isOmniEngine) {
+      setOmniPromptText(val);
     } else {
-      setMentionSearch(null)
+      setPromptText(val);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeEngine])
+    if (activeEngine === 'kling/v3-turbo-image-to-video') {
+      setMentionSearch(null);
+      return;
+    }
+    const cursor = e.target.selectionStart || 0;
+    const match = val.slice(0, cursor).match(/@(\w*)$/);
+    if (match) {
+      setMentionSearch(match[1].toLowerCase());
+      setMentionCursorPos(cursor);
+      setMentionField('promptText');
+    } else {
+      setMentionSearch(null);
+    }
+  }, [panelTab, activeEngine]);
 
   const selectMention = (item) => {
     const text = promptText || ''
@@ -1635,16 +1639,6 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   const isBusy = isSubmitting;
   const requiredCredits = getRequiredCredits(activeEngine) * variationCount;
-
-  const handleTextChange = useCallback((e) => {
-    const val = e.target?.value ?? '';
-    const isOmniEngine = panelTab === 'omni' || activeEngine === 'omni' || activeEngine === 'omni-flash';
-    if (isOmniEngine) {
-      setOmniPromptText(val);
-    } else {
-      setPromptText(val);
-    }
-  }, [panelTab, activeEngine]);
 
   // Evaluate active prompt and inputs across all video engines (Seedance 2.0, Seedance Fast, Veo 3.1, Omni)
   const activePromptText = (promptText || omniPromptText || '').trim();
@@ -2716,8 +2710,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           <span className="text-[7px] font-mono text-gray-400 uppercase tracking-widest">Shorts</span>
         </div>
 
-        {/* Premium Project Selector Dropdown */}
-        <div className="relative">
+        {/* Premium Project Selector Dropdown (Hidden on mobile to save header space) */}
+        <div className="relative hidden sm:block">
           <button
             type="button"
             onClick={() => setShowProjectDropdown(prev => !prev)}
@@ -2774,9 +2768,18 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
         {/* Gallery count + clear */}
         <div className="ml-auto flex items-center gap-2">
+          {/* Mobile Studio SidePanel Trigger */}
+          <button
+            onClick={() => setShowSidePanel(prev => !prev)}
+            className="sm:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-violet-600/20 border border-violet-500/40 text-violet-300 text-[8.5px] font-black uppercase tracking-wider active:scale-95 transition-all"
+          >
+            <Sliders size={11} className="text-violet-400" />
+            <span>Studio</span>
+          </button>
+
           {filteredGallery.length > 0 && (
             <>
-              <span className="text-[8px] font-mono text-gray-500 uppercase tracking-widest">
+              <span className="text-[8px] font-mono text-gray-500 uppercase tracking-widest hidden sm:inline">
                 {filteredGallery.length} clip{filteredGallery.length !== 1 ? 's' : ''}
               </span>
               <button
@@ -2795,7 +2798,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
         {/* Wrap in a stable fixed-position div so Framer Motion doesn't clobber -translate-y-1/2 centering */}
         <div
-          className="fixed top-1/2 -translate-y-1/2 z-[130]"
+          className="fixed top-1/2 -translate-y-1/2 z-[130] hidden sm:block"
           style={{ right: showSidePanel ? '36rem' : '0rem', transition: 'right 0.35s cubic-bezier(0.32,0.72,0,1)' }}
         >
           <motion.button

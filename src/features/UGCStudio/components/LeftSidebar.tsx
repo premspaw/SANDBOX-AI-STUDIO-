@@ -1216,10 +1216,10 @@ export default function LeftSidebar() {
       {/* Drawer toggle button — sits on the right edge of the sidebar wrapper */}
       <button
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className={`absolute -right-5 md:-right-3 top-1/2 -translate-y-1/2 z-30 w-10 h-16 md:w-6 md:h-12 flex items-center justify-center rounded-r-xl transition-all shadow-lg
+        className={`absolute ${isSidebarOpen ? '-right-5 md:-right-3 top-1/2 -translate-y-1/2' : '-right-9 top-16 md:-right-3 md:top-1/2 md:-translate-y-1/2'} z-[60] w-9 h-12 md:w-6 md:h-12 flex items-center justify-center rounded-r-xl transition-all shadow-2xl
           ${isSidebarOpen
             ? 'bg-[#111113] border border-[#c8f135]/20 text-[#c8f135]/60 hover:text-[#c8f135] hover:border-[#c8f135]/60 hover:bg-[#c8f135]/5 shadow-[0_0_8px_rgba(200,241,53,0.1)] hover:shadow-[0_0_12px_rgba(200,241,53,0.35)]'
-            : 'bg-[#c8f135] border border-[#c8f135] text-black hover:bg-[#d4f545] animate-pulse shadow-[0_0_12px_rgba(200,241,53,0.7)]'
+            : 'bg-[#c8f135] border border-[#c8f135] text-black hover:bg-[#d4f545] shadow-[0_0_15px_rgba(200,241,53,0.7)]'
           }`}
         title={isSidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
       >
