@@ -105,7 +105,7 @@ export default function UGC() {
   const currentUserId = userProfile?.id || 'local_user';
   const isGlobalAdmin = userProfile?.role === 'admin';
 
-  const [activeTab, setActiveTab] = useState<'ugc' | 'podcast' | 'talking-head' | 'home-tour' | 'edit'>('ugc');
+  const [activeTab, setActiveTab] = useState<'ugc' | 'podcast' | 'talking-head' | 'ai-avatar' | 'home-tour' | 'edit'>('ugc');
 
   const getApiKey = () => {
     if (userProfile?.role === 'admin' || (userProfile as any)?.email?.startsWith('premspaw@gmail')) {
@@ -2836,9 +2836,12 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
 
   // Talking Head AI Spokesperson Customization States
   const [thSpokespersonGender, setThSpokespersonGender] = useState<'female' | 'male'>('female');
-  const [thSpokespersonRegion, setThSpokespersonRegion] = useState<'south-indian' | 'north-indian' | 'pan-indian' | 'global'>('south-indian');
+  const [thSpokespersonRegion, setThSpokespersonRegion] = useState<'south-indian' | 'north-indian' | 'pan-indian' | 'english-british' | 'american-global' | 'french-european' | 'east-asian' | 'middle-eastern' | 'latino'>('south-indian');
   const [thSpokespersonAge, setThSpokespersonAge] = useState<'20-25' | '25-35' | '35-45'>('25-35');
   const [thSpokespersonOutfit, setThSpokespersonOutfit] = useState<string>('');
+  const [thSpokespersonPose, setThSpokespersonPose] = useState<string>('');
+  const [thSpokespersonShotType, setThSpokespersonShotType] = useState<'single' | 'character-sheet'>('single');
+  const [styleRefImg, setStyleRefImg] = useState<{ url: string; file: File } | null>(null);
 
   // ── TALKING HEAD — generate reference image ────────────────────────────────
   const generateTalkingHeadImage = async () => {
@@ -2853,6 +2856,11 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
     setThIsGeneratingImg(true);
     setThGeneratedImg('');
     setThGeneratedVideo('');
+    showToast('Directing your AI Spokesperson...', 'info');
+
+    const placeholderImgId = `img-pending-${Date.now()}`;
+    addToGallery({ id: placeholderImgId, type: 'image', url: '', loading: true });
+
     try {
       const ai = getAI();
       const contents: any[] = [];
@@ -2878,27 +2886,38 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       } else {
         // Person photo is empty -> Generate AI spokesperson according to user prompt options!
         const genderText = thSpokespersonGender === 'female' ? 'female' : 'male';
-        const regionText = thSpokespersonRegion === 'south-indian' 
-          ? 'South Indian' 
-          : thSpokespersonRegion === 'north-indian'
-          ? 'North Indian'
-          : thSpokespersonRegion === 'pan-indian'
-          ? 'Indian'
-          : 'Global';
+        const regionTextMap: Record<string, string> = {
+          'south-indian': 'South Indian',
+          'north-indian': 'North Indian',
+          'pan-indian': 'Indian',
+          'english-british': 'British/English',
+          'american-global': 'American',
+          'french-european': 'French/European',
+          'east-asian': 'East Asian',
+          'middle-eastern': 'Middle Eastern',
+          'latino': 'Latino/Latina',
+        };
+        const regionText = regionTextMap[thSpokespersonRegion] || 'Indian';
         const ageText = thSpokespersonAge === '20-25' ? 'young 20-25 year old' : thSpokespersonAge === '35-45' ? 'mature 35-45 year old' : '25-35 year old';
         const outfitText = thSpokespersonOutfit.trim() ? `, wearing ${thSpokespersonOutfit.trim()}` : '';
+        const poseText = thSpokespersonPose.trim() ? `. Pose/expression: ${thSpokespersonPose.trim()}.` : '';
+        // Add style reference image to contents if provided
+        if (styleRefImg) contents.push(await fileToGenerativePart(styleRefImg.file));
+        const styleRefNote = styleRefImg ? ' Match the artistic style, lighting mood, and color palette from the style reference image.' : '';
 
-        if (thProductImg && thLocationImg) {
-          promptInstructions = `Images: PRODUCT, LOCATION. Generate ONE photorealistic portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText} holding or using the product, placed inside the location environment. They face directly at camera with a confident, engaging expression. Natural studio lighting, sharp focus on face. 9:16 portrait format. No collage.`;
+        if (thSpokespersonShotType === 'character-sheet') {
+          promptInstructions = `Character reference sheet of a single consistent ${regionText} ${ageText} ${genderText} creator${outfitText}, presented on a pure clean neutral grey background, 3 vertical panels: Column 1 chest-up portrait facing camera, Column 2 full-body front pose, Column 3 3/4 side profile view. Identical facial identity across all panels.${poseText}${styleRefNote}`;
+        } else if (thProductImg && thLocationImg) {
+          promptInstructions = `Images: PRODUCT, LOCATION${styleRefImg ? ', STYLE_REF' : ''}. Generate ONE photorealistic portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText} holding or using the product, placed inside the location environment. They face directly at camera with a confident, engaging expression. Natural studio lighting, sharp focus on face. 9:16 portrait format.${poseText}${styleRefNote} No collage.`;
         } else if (thProductImg) {
-          promptInstructions = `Images: PRODUCT. Generate ONE photorealistic portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText} holding or showcasing the product. They face directly at camera, confident and engaging. Professional UGC lighting, 9:16 portrait format. No collage.`;
+          promptInstructions = `Images: PRODUCT${styleRefImg ? ', STYLE_REF' : ''}. Generate ONE photorealistic portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText} holding or showcasing the product. They face directly at camera, confident and engaging. Professional UGC lighting, 9:16 portrait format.${poseText}${styleRefNote} No collage.`;
         } else if (thLocationImg) {
-          promptInstructions = `Images: LOCATION. Generate ONE photorealistic portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText} placed inside the location environment. They face camera confidently, ready to speak. Match the location lighting and atmosphere. Hands relaxed at sides. DO NOT add or show any product, bottle, box, container, or object in their hands. Person is NOT holding any product. 9:16 portrait format. No collage.`;
+          promptInstructions = `Images: LOCATION${styleRefImg ? ', STYLE_REF' : ''}. Generate ONE photorealistic portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText} placed inside the location environment. They face camera confidently, ready to speak. Match the location lighting and atmosphere. Hands relaxed at sides. DO NOT add or show any product, bottle, box, container, or object in their hands. Person is NOT holding any product. 9:16 portrait format.${poseText}${styleRefNote} No collage.`;
         } else {
-          promptInstructions = `Generate ONE photorealistic portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText}, chest-up portrait shot, facing camera directly with a warm, confident, engaging expression. Professional studio/indoor UGC lighting, clean background, 9:16 portrait format, smartphone camera aesthetic. Hands relaxed at sides. DO NOT add or show any product, bottle, package, container, or object in their hands. The person MUST NOT hold any product or item. No collage.`;
+          promptInstructions = `Generate ONE photorealistic portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText}, chest-up portrait shot, facing camera directly with a warm, confident, engaging expression. Professional studio/indoor UGC lighting, clean background, 9:16 portrait format, smartphone camera aesthetic. Hands relaxed at sides. DO NOT add or show any product, bottle, package, container, or object in their hands. The person MUST NOT hold any product or item.${poseText}${styleRefNote} No collage.`;
         }
       }
-      promptInstructions += ` Style: Ultra-realistic, natural skin texture, sharp face detail, 9:16 portrait format, smartphone camera aesthetic.`;
+      promptInstructions += ` Style: Ultra-realistic 8k resolution, natural skin texture with micro pores, photorealistic skin tone falloff, sharp facial details, crisp tack-sharp focus on eyes, raw unedited smartphone camera aesthetic, zero plastic airbrushing.`;
       contents.push({ text: promptInstructions });
 
       const response = await ai.models.generateContent({
@@ -2921,13 +2940,16 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
           for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
           const blob = new Blob([byteArr], { type: 'image/png' });
           const publicUrl = await uploadToSupabase(blob, 'image', promptInstructions, currentUserId);
-          if (publicUrl) { setThGeneratedImg(publicUrl); addToGallery({ id: Date.now().toString(), type: 'image', url: publicUrl }); }
-          else addToGallery({ id: Date.now().toString(), type: 'image', url });
+          const finalUrl = publicUrl || url;
+          setThGeneratedImg(finalUrl);
+          updateGalleryItem(placeholderImgId, { url: finalUrl, loading: false, prompt: promptInstructions });
+          showToast('AI Spokesperson ready!', 'success');
           break;
         }
       }
     } catch (e) {
       if (!isAdmin && !isGlobalAdmin) refund('veo_fast', imgCost as any);
+      updateGalleryItem(placeholderImgId, { loading: false, url: '' });
       handleApiError(e, 'Talking Head image generation');
     }
     setThIsGeneratingImg(false);
@@ -4509,6 +4531,12 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     setThSpokespersonAge,
     thSpokespersonOutfit,
     setThSpokespersonOutfit,
+    thSpokespersonPose,
+    setThSpokespersonPose,
+    thSpokespersonShotType,
+    setThSpokespersonShotType,
+    styleRefImg,
+    setStyleRefImg,
     thAnimation,
     setThAnimation,
     toast,

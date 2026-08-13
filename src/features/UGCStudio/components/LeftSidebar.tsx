@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Camera, User, X, Package, MapPin, Search, Volume2, Upload, FileText, Film, Layers, BrainCircuit, Plus, Loader2, ChevronLeft, ChevronRight, ChevronDown, Layout, Clock, Sparkles, AlertCircle, CheckCircle, ShieldCheck, Wand2, Play, Video } from 'lucide-react';
+import { Camera, User, X, Package, MapPin, Search, Volume2, Upload, FileText, Film, Layers, BrainCircuit, Plus, Loader2, ChevronLeft, ChevronRight, ChevronDown, Layout, Clock, Sparkles, AlertCircle, CheckCircle, ShieldCheck, Wand2, Play, Video, Image as ImageIcon } from 'lucide-react';
 import { useUGC, KnowledgeBaseEntry, SplitScene } from '../context/UGCContext';
 import { Dropdown } from './Dropdown';
 import { SCENE_STYLES } from '../constants/videoStyles';
@@ -30,6 +30,12 @@ export default function LeftSidebar() {
     setThSpokespersonAge,
     thSpokespersonOutfit,
     setThSpokespersonOutfit,
+    thSpokespersonPose,
+    setThSpokespersonPose,
+    thSpokespersonShotType,
+    setThSpokespersonShotType,
+    styleRefImg,
+    setStyleRefImg,
     thAnimation,
     setThAnimation,
     generateTalkingHeadImage,
@@ -283,20 +289,18 @@ export default function LeftSidebar() {
                   <p className="text-[7px] text-center font-black text-white/20 uppercase tracking-widest">Stage</p>
                 </div>
               </div>
-
               {/* AI Spokesperson Customizer (Visible when no Person image is uploaded) */}
               {!thPersonImg && (
                 <div className="p-3 rounded-xl bg-[#0e0e12] border border-white/10 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[9px] font-black text-[#c8f135] uppercase tracking-wider flex items-center gap-1">
-                      <User size={10} /> AI Spokesperson Prompt
+                      <User size={10} /> AI Spokesperson
                     </span>
-                    <span className="text-[7px] text-white/30 font-mono uppercase">Custom AI</span>
+                    <span className="text-[7px] text-white/30 font-mono uppercase">Prompt Builder</span>
                   </div>
 
-                  {/* Gender + Age Toggles */}
+                  {/* Gender + Age row */}
                   <div className="grid grid-cols-2 gap-1.5">
-                    {/* Gender */}
                     <div className="flex bg-[#16161f] p-0.5 rounded-lg border border-white/5">
                       {(['female', 'male'] as const).map(g => (
                         <button
@@ -311,8 +315,6 @@ export default function LeftSidebar() {
                         </button>
                       ))}
                     </div>
-
-                    {/* Age */}
                     <select
                       value={thSpokespersonAge}
                       onChange={e => setThSpokespersonAge(e.target.value as any)}
@@ -324,21 +326,26 @@ export default function LeftSidebar() {
                     </select>
                   </div>
 
-                  {/* Region / Ethnicity Selector */}
+                  {/* Region / Ethnicity Grid — 9 global options */}
                   <div className="space-y-1">
-                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Region / Style</label>
-                    <div className="grid grid-cols-2 gap-1">
+                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Region / Ethnicity</label>
+                    <div className="grid grid-cols-3 gap-1">
                       {[
-                        { id: 'south-indian', label: 'South Indian' },
-                        { id: 'north-indian', label: 'North Indian' },
-                        { id: 'pan-indian', label: 'Pan-Indian' },
-                        { id: 'global', label: 'Global' },
+                        { id: 'south-indian', label: 'South 🇮🇳' },
+                        { id: 'north-indian', label: 'North 🇮🇳' },
+                        { id: 'pan-indian', label: 'Pan-IN 🇮🇳' },
+                        { id: 'english-british', label: 'British 🇬🇧' },
+                        { id: 'american-global', label: 'American 🇺🇸' },
+                        { id: 'french-european', label: 'European 🇫🇷' },
+                        { id: 'east-asian', label: 'East Asia 🏮' },
+                        { id: 'middle-eastern', label: 'Mid East 🌙' },
+                        { id: 'latino', label: 'Latino 🌎' },
                       ].map(r => (
                         <button
                           key={r.id}
                           type="button"
                           onClick={() => setThSpokespersonRegion(r.id as any)}
-                          className={`py-1 px-2 rounded-lg text-[7.5px] font-bold uppercase tracking-wider border transition-all text-center ${
+                          className={`py-1 px-1.5 rounded-lg text-[7px] font-bold tracking-wide border transition-all text-center leading-tight ${
                             thSpokespersonRegion === r.id
                               ? 'bg-[#c8f135]/15 border-[#c8f135]/40 text-[#c8f135]'
                               : 'bg-[#16161f] border-white/5 text-white/40 hover:text-white'
@@ -350,20 +357,71 @@ export default function LeftSidebar() {
                     </div>
                   </div>
 
-                  {/* Outfit / Custom Look Prompt Box */}
+                  {/* Format */}
                   <div className="space-y-1">
-                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Outfit & Look (Optional)</label>
+                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Format & Layout</label>
+                    <div className="grid grid-cols-2 gap-1">
+                      {[
+                        { id: 'single', label: 'Portrait (Video)' },
+                        { id: 'character-sheet', label: 'Character Sheet' },
+                      ].map(s => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => setThSpokespersonShotType(s.id as any)}
+                          className={`py-1 px-2 rounded-lg text-[7.5px] font-bold uppercase tracking-wider border transition-all text-center ${
+                            thSpokespersonShotType === s.id
+                              ? 'bg-[#c8f135]/15 border-[#c8f135]/40 text-[#c8f135]'
+                              : 'bg-[#16161f] border-white/5 text-white/40 hover:text-white'
+                          }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Outfit input */}
+                  <div className="space-y-1">
+                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Outfit & Look <span className="text-white/20 normal-case">(optional)</span></label>
                     <input
                       type="text"
                       value={thSpokespersonOutfit}
                       onChange={e => setThSpokespersonOutfit(e.target.value)}
-                      placeholder="e.g. saree, blazer, hoodie..."
+                      placeholder="e.g. saree, blazer, hoodie, kurta…"
                       className="w-full bg-[#16161f] border border-white/5 rounded-lg px-2.5 py-1.5 text-[8.5px] text-white placeholder:text-white/20 focus:outline-none focus:border-[#c8f135]/40 font-sans"
                     />
                   </div>
+
+                  {/* Pose / vibe input */}
+                  <div className="space-y-1">
+                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Pose / Vibe <span className="text-white/20 normal-case">(optional)</span></label>
+                    <input
+                      type="text"
+                      value={thSpokespersonPose}
+                      onChange={e => setThSpokespersonPose(e.target.value)}
+                      placeholder="e.g. smiling, hands folded, confident…"
+                      className="w-full bg-[#16161f] border border-white/5 rounded-lg px-2.5 py-1.5 text-[8.5px] text-white placeholder:text-white/20 focus:outline-none focus:border-[#c8f135]/40 font-sans"
+                    />
+                  </div>
+
+                  {/* Style Reference Image */}
+                  <div className="space-y-1">
+                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Style Reference <span className="text-white/20 normal-case">(optional)</span></label>
+                    <div className="relative group aspect-[4/2] bg-[#16161f] border border-white/5 rounded-lg overflow-hidden cursor-pointer hover:border-[#c8f135]/40 flex items-center justify-center">
+                      <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) setStyleRefImg({ file: f, url: URL.createObjectURL(f) }); }} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                      {styleRefImg ? (
+                        <>
+                          <img src={styleRefImg.url} alt="Style Ref" className="w-full h-full object-cover group-hover:opacity-30 transition-opacity" />
+                          <button onClick={ev => { ev.stopPropagation(); setStyleRefImg(null); }} className="absolute inset-0 z-20 flex items-center justify-center text-red-400 opacity-0 group-hover:opacity-100 transition-all pointer-events-none group-hover:pointer-events-auto"><X size={14} /></button>
+                        </>
+                      ) : (
+                        <span className="text-[7.5px] text-white/30 flex items-center gap-1"><ImageIcon size={10} /> Upload mood/style ref</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
-
               {/* Generate Image button */}
               <button
                 onClick={generateTalkingHeadImage}

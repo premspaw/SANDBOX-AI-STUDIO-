@@ -224,8 +224,8 @@ export interface UGCContextType {
   updateGalleryItem: (id: string, updates: Partial<GalleryItem>) => void;
 
   // ── UI / layout ───────────────────────────────────────────────────────────
-  activeTab: 'ugc' | 'podcast' | 'talking-head' | 'home-tour' | 'edit';
-  setActiveTab: (v: 'ugc' | 'podcast' | 'talking-head' | 'home-tour' | 'edit') => void;
+  activeTab: 'ugc' | 'podcast' | 'talking-head' | 'ai-avatar' | 'home-tour' | 'edit';
+  setActiveTab: (v: 'ugc' | 'podcast' | 'talking-head' | 'ai-avatar' | 'home-tour' | 'edit') => void;
   chatTab: 'script' | 'video';
   setChatTab: (v: 'script' | 'video') => void;
   isChatCollapsed: boolean;
@@ -293,15 +293,21 @@ export interface UGCContextType {
   thLocationImg: { url: string; file: File } | null;
   setThLocationImg: (v: { url: string; file: File } | null) => void;
 
-  // AI Spokesperson prompt customization fields
+  // AI Spokesperson / AI Avatar prompt customization fields
   thSpokespersonGender: 'female' | 'male';
   setThSpokespersonGender: (v: 'female' | 'male') => void;
-  thSpokespersonRegion: 'south-indian' | 'north-indian' | 'pan-indian' | 'global';
-  setThSpokespersonRegion: (v: 'south-indian' | 'north-indian' | 'pan-indian' | 'global') => void;
+  thSpokespersonRegion: 'south-indian' | 'north-indian' | 'pan-indian' | 'english-british' | 'american-global' | 'french-european' | 'east-asian' | 'middle-eastern' | 'latino';
+  setThSpokespersonRegion: (v: 'south-indian' | 'north-indian' | 'pan-indian' | 'english-british' | 'american-global' | 'french-european' | 'east-asian' | 'middle-eastern' | 'latino') => void;
   thSpokespersonAge: '20-25' | '25-35' | '35-45';
   setThSpokespersonAge: (v: '20-25' | '25-35' | '35-45') => void;
   thSpokespersonOutfit: string;
   setThSpokespersonOutfit: (v: string) => void;
+  thSpokespersonPose: string;
+  setThSpokespersonPose: (v: string) => void;
+  thSpokespersonShotType: 'single' | 'character-sheet';
+  setThSpokespersonShotType: (v: 'single' | 'character-sheet') => void;
+  styleRefImg: { url: string; file: File } | null;
+  setStyleRefImg: (v: { url: string; file: File } | null) => void;
 
   // ── Toast / error ─────────────────────────────────────────────────────────
   toast: { message: string; type: 'success' | 'error' | 'info' } | null;

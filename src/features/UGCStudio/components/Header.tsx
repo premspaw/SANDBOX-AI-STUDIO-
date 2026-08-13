@@ -1,6 +1,6 @@
 import React from 'react';
 import { useUGC } from '../context/UGCContext';
-import { Film, Volume2, User, Loader2, Wand2, MapPin } from 'lucide-react';
+import { Film, Volume2, User, Loader2, Wand2, MapPin, Sparkles } from 'lucide-react';
 
 export default function Header() {
   const {
@@ -27,6 +27,7 @@ export default function Header() {
           { id: 'ugc', label: 'UGC', icon: Film },
           { id: 'podcast', label: 'Podcast', icon: Volume2 },
           { id: 'talking-head', label: 'Talking Head', icon: User },
+          { id: 'ai-avatar', label: 'AI Creator', icon: Sparkles },
           { id: 'home-tour', label: 'Home Tour', icon: MapPin },
           { id: 'edit', label: 'Edit', icon: Wand2 },
         ].map(tab => {
