@@ -553,6 +553,80 @@ export default function LeftSidebar() {
                 </div>
               </div>
 
+              {/* Generation Controls: Engine, Ratio & Scene Style Toggle */}
+              <div className="p-3 rounded-xl bg-[#0e0e12] border border-white/10 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-black text-[#c8f135] uppercase tracking-wider flex items-center gap-1">
+                    <Wand2 size={10} /> Model &amp; Format
+                  </span>
+                  <span className="text-[7px] text-white/30 font-mono uppercase">Settings</span>
+                </div>
+
+                {/* Engine + Aspect Ratio Grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">AI Engine</label>
+                    <select
+                      value={imgEngine}
+                      onChange={e => setImgEngine(e.target.value as any)}
+                      className="w-full bg-[#16161f] border border-white/5 rounded-lg px-2 py-1.5 text-[8px] font-bold text-white uppercase focus:outline-none cursor-pointer"
+                    >
+                      <option value="nano_banana" className="bg-[#16161f]">Nano Banana 🍌</option>
+                      <option value="gpt2" className="bg-[#16161f]">GPT-2 Studio ✨</option>
+                      <option value="sd" className="bg-[#16161f]">Stable Diffusion 🎨</option>
+                      <option value="imagen" className="bg-[#16161f]">Google Imagen ⚡</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Aspect Ratio</label>
+                    <select
+                      value={aspectRatio}
+                      onChange={e => setAspectRatio(e.target.value as any)}
+                      className="w-full bg-[#16161f] border border-white/5 rounded-lg px-2 py-1.5 text-[8px] font-bold text-white uppercase focus:outline-none cursor-pointer"
+                    >
+                      <option value="9:16" className="bg-[#16161f]">9:16 (Vertical)</option>
+                      <option value="16:9" className="bg-[#16161f]">16:9 (Wide)</option>
+                      <option value="1:1" className="bg-[#16161f]">1:1 (Square)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Scene Style Toggle */}
+                <div className="space-y-1.5 pt-1 border-t border-white/5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40 flex items-center gap-1">
+                      <Film size={9} className="text-[#c8f135]" /> Scene Style
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSceneStyle(selectedSceneStyle ? '' : 'normal_talking')}
+                      className={`px-2 py-0.5 rounded text-[7.5px] font-black uppercase transition-all border ${
+                        selectedSceneStyle
+                          ? 'bg-[#c8f135]/20 text-[#c8f135] border-[#c8f135]/40'
+                          : 'bg-[#16161f] text-white/40 border-white/5 hover:text-white'
+                      }`}
+                    >
+                      {selectedSceneStyle ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+                  {selectedSceneStyle ? (
+                    <select
+                      value={selectedSceneStyle}
+                      onChange={e => setSelectedSceneStyle(e.target.value)}
+                      className="w-full bg-[#16161f] border border-white/5 rounded-lg px-2 py-1.5 text-[8px] font-bold text-white uppercase focus:outline-none cursor-pointer"
+                    >
+                      <option value="normal_talking">🎙️ Normal Talking</option>
+                      <option value="walk_talk">🚶 Walk &amp; Talk</option>
+                      <option value="street_interview">🎤 Street Interview</option>
+                      <option value="reaction_shot">😲 Reaction Shot</option>
+                      <option value="mirror_selfie">🪞 Mirror Selfie</option>
+                      <option value="car_vlog">🚗 Car Vlog</option>
+                      <option value="grwm_talk">💄 GRWM Talking</option>
+                    </select>
+                  ) : null}
+                </div>
+              </div>
+
               {/* Generate Image button */}
               <button
                 onClick={generateTalkingHeadImage}
@@ -562,7 +636,7 @@ export default function LeftSidebar() {
                   'bg-[#c8f135] text-black hover:bg-[#d4ff3a] shadow-[0_4px_16px_rgba(200,241,53,0.25)]'
                 }`}
               >
-                {thIsGeneratingImg ? <><Loader2 size={10} className="animate-spin" /> Generating…</> : <><Camera size={10} /> Generate Reference Image <span className="opacity-60">· ⚡ {getImageCost()}</span></>}
+                {thIsGeneratingImg ? <><Loader2 size={10} className="animate-spin" /> Directing Talking Head…</> : <><Camera size={10} /> Generate Reference Image <span className="opacity-60">· ⚡ {getImageCost()}</span></>}
               </button>
 
               {/* Product Scan */}
@@ -1275,218 +1349,220 @@ export default function LeftSidebar() {
           )}
         </div>
 
-        {/* ── Bottom Controls Bar ── */}
-        <div className="border-t border-[#1e1e24] bg-[#0a0a0a]">
-          {/* Image generation controls */}
-          <div className="p-3 space-y-2">
-            {/* Engine + Ratio row */}
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.15em] mb-1 block">Engine</span>
-                <select
-                  value={imgEngine}
-                  onChange={e => setImgEngine(e.target.value as any)}
-                  className="w-full bg-[#111113] border border-[#1e1e24] px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase text-white/80 outline-none cursor-pointer hover:border-white/20 transition-colors"
-                >
-                  <option value="nb2" className="bg-[#111113]">NB2 (1 cr)</option>
-                  <option value="nb2-open" className="bg-[#111113]">NB2 GA (1 cr)</option>
-                  <option value="nb2-lite" className="bg-[#111113]">NB2 Lite (0.5 cr)</option>
-                  <option value="gpt2" className="bg-[#111113]">GPT-2 (1-3 cr)</option>
-                </select>
-              </div>
-              {imgEngine === 'gpt2' && (
-                <div>
-                  <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.15em] mb-1 block">Quality</span>
-                  <select value={gpt2Quality} onChange={e => setGpt2Quality(e.target.value as any)} className="bg-[#111113] border border-purple-500/30 px-2 py-1 rounded-full text-[8px] font-black uppercase text-purple-300 outline-none cursor-pointer">
-                    <option value="low">Low ⚡</option>
-                    <option value="medium">Med</option>
-                    <option value="high">High ✨</option>
+        {/* ── Bottom Controls Bar (hidden for AI Creator & Talking Head tabs to avoid duplicate fixed controls & buttons) ── */}
+        {activeTab !== 'ai-avatar' && activeTab !== 'talking-head' && (
+          <div className="border-t border-[#1e1e24] bg-[#0a0a0a]">
+            {/* Image generation controls */}
+            <div className="p-3 space-y-2">
+              {/* Engine + Ratio row */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.15em] mb-1 block">Engine</span>
+                  <select
+                    value={imgEngine}
+                    onChange={e => setImgEngine(e.target.value as any)}
+                    className="w-full bg-[#111113] border border-[#1e1e24] px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase text-white/80 outline-none cursor-pointer hover:border-white/20 transition-colors"
+                  >
+                    <option value="nb2" className="bg-[#111113]">NB2 (1 cr)</option>
+                    <option value="nb2-open" className="bg-[#111113]">NB2 GA (1 cr)</option>
+                    <option value="nb2-lite" className="bg-[#111113]">NB2 Lite (0.5 cr)</option>
+                    <option value="gpt2" className="bg-[#111113]">GPT-2 (1-3 cr)</option>
                   </select>
                 </div>
-              )}
-              <div className="w-28">
-                <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.15em] mb-1 block">Ratio</span>
-                <Dropdown
-                  label=""
-                  value={aspectRatio}
-                  options={['9:16', '16:9', '1:1']}
-                  onChange={(ratio) => setAspectRatio(ratio as any)}
-                  direction="up"
-                  icon={Layout}
-                />
-              </div>
-            </div>
-
-            {/* Loading state */}
-            {isGeneratingMontageImg && (
-              <div className="flex items-center gap-2 py-1 animate-pulse">
-                <Loader2 size={11} className="animate-spin text-[#c8f135]" />
-                <span className="text-[8px] font-mono text-[#c8f135] uppercase tracking-widest">{montageImgProgressMsg || 'Generating…'}</span>
-              </div>
-            )}
-
-            {/* Scene Style Selector — controls both image + video */}
-            {activeTab !== 'podcast' && (
-              <div>
-                <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.15em] mb-1 flex items-center gap-1">
-                  <Film size={7} className="text-[#c8f135]" /> Scene Style
-                  <span className="text-white/10 font-normal normal-case tracking-normal"> · applies to image &amp; video</span>
-                </span>
-                <select
-                  value={selectedSceneStyle}
-                  onChange={e => setSelectedSceneStyle(e.target.value)}
-                  className="w-full bg-[#111113] border border-[#1e1e24] hover:border-[#c8f135]/30 rounded-lg px-2.5 py-1.5 text-[8px] font-black uppercase tracking-widest text-white/70 hover:text-white cursor-pointer transition-all outline-none appearance-none"
-                >
-                  <optgroup label="── Talking" className="bg-[#0c0c0c] text-white/90">
-                    <option value="normal_talking">🎙️ Normal Talking</option>
-                    <option value="walk_talk">🚶 Walk &amp; Talk</option>
-                    <option value="street_interview">🎤 Street Interview</option>
-                    <option value="reaction_shot">😲 Reaction Shot</option>
-                    <option value="mirror_selfie">🪞 Mirror Selfie</option>
-                    <option value="car_vlog">🚗 Car Vlog</option>
-                    <option value="grwm_talk">💄 GRWM Talking</option>
-                  </optgroup>
-                  <optgroup label="── Camera Cuts" className="bg-[#0c0c0c] text-white/90">
-                    <option value="fast_cut">✂️ Fast Cut</option>
-                    <option value="dramatic_zoom">🔍 Dramatic Zoom</option>
-                    <option value="pov_shot">👆 POV Shot</option>
-                    <option value="whip_pan">🌀 Whip Pan</option>
-                    <option value="360_orbit">🔄 360° Orbit</option>
-                  </optgroup>
-                  <optgroup label="── Product Focus" className="bg-[#0c0c0c] text-white/90">
-                    <option value="cinematic_b_roll">🎥 Cinematic B-Roll</option>
-                    <option value="close_up_detail">🔬 Close-Up Detail</option>
-                    <option value="unboxing">📦 Unboxing</option>
-                    <option value="before_after">🔄 Before &amp; After</option>
-                    <option value="hands_in_frame">🤲 Hands-on Demo</option>
-                    <option value="floating_hero">✨ Floating Hero</option>
-                  </optgroup>
-                  <optgroup label="── Fashion &amp; Styling" className="bg-[#0c0c0c] text-white/90">
-                    <option value="runway_walk">👠 Runway / OOTD Walk</option>
-                    <option value="outfit_change_transition">✨ Snap Outfit Change</option>
-                    <option value="fabric_macro">🧶 Fabric Detail Macro</option>
-                    <option value="mirror_outfit_check">🪞 Mirror Fit Check</option>
-                    <option value="editorial_pose">📸 Editorial Lookbook</option>
-                  </optgroup>
-                  <optgroup label="── Educational" className="bg-[#0c0c0c] text-white/90">
-                    <option value="tutorial_step">🎓 Tutorial Step</option>
-                    <option value="dynamic_action">⚡ Dynamic Action</option>
-                  </optgroup>
-                </select>
-                {selectedSceneStyle && SCENE_STYLES[selectedSceneStyle] && (
-                  <p className="text-[7px] text-white/25 font-mono mt-0.5 leading-relaxed">
-                    {SCENE_STYLES[selectedSceneStyle].description}
-                  </p>
+                {imgEngine === 'gpt2' && (
+                  <div>
+                    <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.15em] mb-1 block">Quality</span>
+                    <select value={gpt2Quality} onChange={e => setGpt2Quality(e.target.value as any)} className="bg-[#111113] border border-purple-500/30 px-2 py-1 rounded-full text-[8px] font-black uppercase text-purple-300 outline-none cursor-pointer">
+                      <option value="low">Low ⚡</option>
+                      <option value="medium">Med</option>
+                      <option value="high">High ✨</option>
+                    </select>
+                  </div>
                 )}
+                <div className="w-28">
+                  <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.15em] mb-1 block">Ratio</span>
+                  <Dropdown
+                    label=""
+                    value={aspectRatio}
+                    options={['9:16', '16:9', '1:1']}
+                    onChange={(ratio) => setAspectRatio(ratio as any)}
+                    direction="up"
+                    icon={Layout}
+                  />
+                </div>
               </div>
-            )}
 
-            {/* Requirements hint */}
-            {(activeTab === 'podcast'
-              ? !podcastHost1Img && !podcastHost2Img && !podcastProductImg
-              : !characterImg && !productImg) && (
-              <p className="text-[7px] text-white/20 font-mono uppercase tracking-widest text-center py-1">
-                {activeTab === 'podcast' ? 'Upload host 1, host 2, or product above' : 'Upload person and/or product above'}
-              </p>
-            )}
+              {/* Loading state */}
+              {isGeneratingMontageImg && (
+                <div className="flex items-center gap-2 py-1 animate-pulse">
+                  <Loader2 size={11} className="animate-spin text-[#c8f135]" />
+                  <span className="text-[8px] font-mono text-[#c8f135] uppercase tracking-widest">{montageImgProgressMsg || 'Generating…'}</span>
+                </div>
+              )}
 
-            {/* Generate Image button */}
-            <motion.button
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                // Build a style-aware prompt for the reference image
-                const buildRefImagePrompt = (): string => {
-                  if (activeTab === 'podcast') {
-                    return `A two-host podcast studio scene for this topic: ${userPrompt || script || 'branded podcast conversation'}. Show Host 1 and Host 2 at microphones with the product placed naturally in the setup.`;
-                  }
-                  const prod = productDetails ? productDetails.substring(0, 200) : 'the product';
-                  const sceneStyle = SCENE_STYLES[selectedSceneStyle];
+              {/* Scene Style Selector — controls both image + video */}
+              {activeTab !== 'podcast' && (
+                <div>
+                  <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.15em] mb-1 flex items-center gap-1">
+                    <Film size={7} className="text-[#c8f135]" /> Scene Style
+                    <span className="text-white/10 font-normal normal-case tracking-normal"> · applies to image &amp; video</span>
+                  </span>
+                  <select
+                    value={selectedSceneStyle}
+                    onChange={e => setSelectedSceneStyle(e.target.value)}
+                    className="w-full bg-[#111113] border border-[#1e1e24] hover:border-[#c8f135]/30 rounded-lg px-2.5 py-1.5 text-[8px] font-black uppercase tracking-widest text-white/70 hover:text-white cursor-pointer transition-all outline-none appearance-none"
+                  >
+                    <optgroup label="── Talking" className="bg-[#0c0c0c] text-white/90">
+                      <option value="normal_talking">🎙️ Normal Talking</option>
+                      <option value="walk_talk">🚶 Walk &amp; Talk</option>
+                      <option value="street_interview">🎤 Street Interview</option>
+                      <option value="reaction_shot">😲 Reaction Shot</option>
+                      <option value="mirror_selfie">🪞 Mirror Selfie</option>
+                      <option value="car_vlog">🚗 Car Vlog</option>
+                      <option value="grwm_talk">💄 GRWM Talking</option>
+                    </optgroup>
+                    <optgroup label="── Camera Cuts" className="bg-[#0c0c0c] text-white/90">
+                      <option value="fast_cut">✂️ Fast Cut</option>
+                      <option value="dramatic_zoom">🔍 Dramatic Zoom</option>
+                      <option value="pov_shot">👆 POV Shot</option>
+                      <option value="whip_pan">🌀 Whip Pan</option>
+                      <option value="360_orbit">🔄 360° Orbit</option>
+                    </optgroup>
+                    <optgroup label="── Product Focus" className="bg-[#0c0c0c] text-white/90">
+                      <option value="cinematic_b_roll">🎥 Cinematic B-Roll</option>
+                      <option value="close_up_detail">🔬 Close-Up Detail</option>
+                      <option value="unboxing">📦 Unboxing</option>
+                      <option value="before_after">🔄 Before &amp; After</option>
+                      <option value="hands_in_frame">🤲 Hands-on Demo</option>
+                      <option value="floating_hero">✨ Floating Hero</option>
+                    </optgroup>
+                    <optgroup label="── Fashion &amp; Styling" className="bg-[#0c0c0c] text-white/90">
+                      <option value="runway_walk">👠 Runway / OOTD Walk</option>
+                      <option value="outfit_change_transition">✨ Snap Outfit Change</option>
+                      <option value="fabric_macro">🧶 Fabric Detail Macro</option>
+                      <option value="mirror_outfit_check">🪞 Mirror Fit Check</option>
+                      <option value="editorial_pose">📸 Editorial Lookbook</option>
+                    </optgroup>
+                    <optgroup label="── Educational" className="bg-[#0c0c0c] text-white/90">
+                      <option value="tutorial_step">🎓 Tutorial Step</option>
+                      <option value="dynamic_action">⚡ Dynamic Action</option>
+                    </optgroup>
+                  </select>
+                  {selectedSceneStyle && SCENE_STYLES[selectedSceneStyle] && (
+                    <p className="text-[7px] text-white/25 font-mono mt-0.5 leading-relaxed">
+                      {SCENE_STYLES[selectedSceneStyle].description}
+                    </p>
+                  )}
+                </div>
+              )}
 
-                  // Style-specific first-frame reference prompts
-                  if (selectedSceneStyle === 'pov_shot') {
-                    return `First-person POV shot: looking down at ${prod} held in both hands. Realistic hand details, natural indoor lighting, phone-shot authentic feel, first-frame reference for a POV video.`;
-                  }
-                  if (selectedSceneStyle === 'unboxing') {
-                    return `POV overhead shot looking down at a cardboard unboxing box being opened by human hands. The product "${prod}" is nestled inside with tissue paper. Overhead angle, natural home lighting, authentic UGC phone photo style, first-frame reveal shot before product is lifted out. Shot on iPhone, no heavy filters.`;
-                  }
-                  if (selectedSceneStyle === 'cinematic_b_roll') {
-                    return `Cinematic close-up product reveal shot of ${prod}. Shallow depth of field, soft bokeh background, luxury aesthetic, product centered on a clean surface, professional lighting, slow-mo vibe, first frame of a cinematic b-roll sequence.`;
-                  }
-                  if (selectedSceneStyle === 'close_up_detail') {
-                    return `Extreme macro close-up of ${prod} showing texture, color, and fine details. Ultra-sharp focus, cinematic depth of field, studio or natural light, first-frame reference for a detail shot.`;
-                  }
-                  if (selectedSceneStyle === 'before_after') {
-                    return `A person's face before using ${prod}, natural look with no makeup/product applied yet. Clean honest UGC photo, natural lighting, authentic phone photo feel — the "before" half of a before-after reveal.`;
-                  }
-                  if (selectedSceneStyle === 'tutorial_step') {
-                    return `A creator holding ${prod} up toward the camera with one hand, pointing at it with the other, explaining step 1. Educational framing, natural lighting, UGC phone video screenshot style.`;
-                  }
-                  if (selectedSceneStyle === 'dynamic_action') {
-                    return `Action shot of a creator actively demonstrating ${prod} with energy and motion. Slightly blurred background from movement, handheld camera feel, natural lighting, UGC vibe.`;
-                  }
-                  if (selectedSceneStyle === 'walk_talk') {
-                    return `A creator walking outdoors while holding ${prod} up to the camera, handheld vlog style, slight motion blur on background, natural daylight, authentic UGC feel.`;
-                  }
-                  if (selectedSceneStyle === 'reaction_shot') {
-                    return `A creator's face in close-up showing a genuine wide-eyed surprise-delight reaction while holding ${prod}. Expressive emotion, natural lighting, UGC authentic phone photo.`;
-                  }
-                  if (selectedSceneStyle === 'mirror_selfie') {
-                    return `A creator taking a mirror selfie while holding ${prod}, phone visible in the reflection, casual home bathroom or bedroom background, natural lighting, authentic UGC vibe.`;
-                  }
-                  if (selectedSceneStyle === 'fast_cut') {
-                    return `High-energy close-up of ${prod} held up confidently toward the camera, sharp focus, bold natural lighting — the first freeze-frame of a fast-cut sequence. UGC phone style.`;
-                  }
-                  if (selectedSceneStyle === 'dramatic_zoom') {
-                    return `Cinematic wide shot of a creator holding ${prod}, slightly blurred background suggesting a slow push-in zoom is starting. Dramatic moody lighting, hook-worthy framing, UGC cinematic vibe.`;
-                  }
+              {/* Requirements hint */}
+              {(activeTab === 'podcast'
+                ? !podcastHost1Img && !podcastHost2Img && !podcastProductImg
+                : !characterImg && !productImg) && (
+                <p className="text-[7px] text-white/20 font-mono uppercase tracking-widest text-center py-1">
+                  {activeTab === 'podcast' ? 'Upload host 1, host 2, or product above' : 'Upload person and/or product above'}
+                </p>
+              )}
 
-                  // Image-style overrides (when no specific scene style matched)
-                  if (imageStyle === 'ultra-realistic') {
-                    return `A real person naturally using/holding ${prod} in an authentic home environment. Ultra-realistic UGC photo, natural lighting, shot on iPhone, no filters, raw look.`;
-                  }
-                  if (imageStyle === 'iphone') {
-                    return `Casual selfie-style UGC photo of a creator with ${prod}. Shot on iPhone, handheld, relatable vibe, everyday background, natural light.`;
-                  }
-                  if (imageStyle === 'cinematic') {
-                    return `Cinematic product lifestyle photo of ${prod}. Professional lighting, elegant composition, moody atmosphere, polished commercial look.`;
-                  }
+              {/* Generate Image button */}
+              <motion.button
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  // Build a style-aware prompt for the reference image
+                  const buildRefImagePrompt = (): string => {
+                    if (activeTab === 'podcast') {
+                      return `A two-host podcast studio scene for this topic: ${userPrompt || script || 'branded podcast conversation'}. Show Host 1 and Host 2 at microphones with the product placed naturally in the setup.`;
+                    }
+                    const prod = productDetails ? productDetails.substring(0, 200) : 'the product';
+                    const sceneStyle = SCENE_STYLES[selectedSceneStyle];
 
-                  // Default
-                  if (sceneStyle?.promptModifier) {
-                    return `A creator naturally showcasing ${prod}. Scene style: ${sceneStyle.promptModifier}. UGC photo style, authentic look, natural lighting.`;
-                  }
-                  return `A creator naturally using/holding the product: ${prod}. UGC-style photo, natural lighting, authentic look.`;
-                };
+                    // Style-specific first-frame reference prompts
+                    if (selectedSceneStyle === 'pov_shot') {
+                      return `First-person POV shot: looking down at ${prod} held in both hands. Realistic hand details, natural indoor lighting, phone-shot authentic feel, first-frame reference for a POV video.`;
+                    }
+                    if (selectedSceneStyle === 'unboxing') {
+                      return `POV overhead shot looking down at a cardboard unboxing box being opened by human hands. The product "${prod}" is nestled inside with tissue paper. Overhead angle, natural home lighting, authentic UGC phone photo style, first-frame reveal shot before product is lifted out. Shot on iPhone, no heavy filters.`;
+                    }
+                    if (selectedSceneStyle === 'cinematic_b_roll') {
+                      return `Cinematic close-up product reveal shot of ${prod}. Shallow depth of field, soft bokeh background, luxury aesthetic, product centered on a clean surface, professional lighting, slow-mo vibe, first frame of a cinematic b-roll sequence.`;
+                    }
+                    if (selectedSceneStyle === 'close_up_detail') {
+                      return `Extreme macro close-up of ${prod} showing texture, color, and fine details. Ultra-sharp focus, cinematic depth of field, studio or natural light, first-frame reference for a detail shot.`;
+                    }
+                    if (selectedSceneStyle === 'before_after') {
+                      return `A person's face before using ${prod}, natural look with no makeup/product applied yet. Clean honest UGC photo, natural lighting, authentic phone photo feel — the "before" half of a before-after reveal.`;
+                    }
+                    if (selectedSceneStyle === 'tutorial_step') {
+                      return `A creator holding ${prod} up toward the camera with one hand, pointing at it with the other, explaining step 1. Educational framing, natural lighting, UGC phone video screenshot style.`;
+                    }
+                    if (selectedSceneStyle === 'dynamic_action') {
+                      return `Action shot of a creator actively demonstrating ${prod} with energy and motion. Slightly blurred background from movement, handheld camera feel, natural lighting, UGC vibe.`;
+                    }
+                    if (selectedSceneStyle === 'walk_talk') {
+                      return `A creator walking outdoors while holding ${prod} up to the camera, handheld vlog style, slight motion blur on background, natural daylight, authentic UGC feel.`;
+                    }
+                    if (selectedSceneStyle === 'reaction_shot') {
+                      return `A creator's face in close-up showing a genuine wide-eyed surprise-delight reaction while holding ${prod}. Expressive emotion, natural lighting, UGC authentic phone photo.`;
+                    }
+                    if (selectedSceneStyle === 'mirror_selfie') {
+                      return `A creator taking a mirror selfie while holding ${prod}, phone visible in the reflection, casual home bathroom or bedroom background, natural lighting, authentic UGC vibe.`;
+                    }
+                    if (selectedSceneStyle === 'fast_cut') {
+                      return `High-energy close-up of ${prod} held up confidently toward the camera, sharp focus, bold natural lighting — the first freeze-frame of a fast-cut sequence. UGC phone style.`;
+                    }
+                    if (selectedSceneStyle === 'dramatic_zoom') {
+                      return `Cinematic wide shot of a creator holding ${prod}, slightly blurred background suggesting a slow push-in zoom is starting. Dramatic moody lighting, hook-worthy framing, UGC cinematic vibe.`;
+                    }
 
-                const syntheticOption = {
-                  id: 'quick-img',
-                  title: activeTab === 'podcast'
-                    ? 'Podcast Studio Frame'
-                    : (SCENE_STYLES[selectedSceneStyle]?.name || productAnalysis?.productName || 'Product Shot'),
-                  prompt: buildRefImagePrompt(),
-                  icon: selectedSceneStyle === 'unboxing' ? 'Package' : selectedSceneStyle === 'pov_shot' ? 'Fingerprint' : 'Sparkles',
-                };
-                generateMontageReferenceImage(syntheticOption);
-              }}
-              disabled={isGeneratingMontageImg || (activeTab === 'podcast' ? (!podcastHost1Img && !podcastHost2Img && !podcastProductImg) : (!characterImg && !productImg))}
-              className={`w-full py-3 rounded-xl font-black uppercase text-[10px] tracking-[0.15em] transition-all flex items-center justify-center gap-2 ${
-                isGeneratingMontageImg || (activeTab === 'podcast' ? (!podcastHost1Img && !podcastHost2Img && !podcastProductImg) : (!characterImg && !productImg))
-                  ? 'bg-white/5 text-white/20 cursor-not-allowed'
-                  : 'bg-[#c8f135] text-black shadow-[0_6px_20px_rgba(200,241,53,0.25)]'
-              }`}
-            >
-              {isGeneratingMontageImg
-                ? <><Loader2 size={12} className="animate-spin" />{montageImgProgressMsg || 'Generating…'}</>
-                : <>
-                    <Camera size={12} />
-                    {montageGeneratedImg ? 'Regenerate' : 'Generate'}{' '}
-                    {SCENE_STYLES[selectedSceneStyle]?.name?.replace(/^[^a-zA-Z]+/, '') || 'Reference Image'}
-                    {' '}<span className="opacity-60">· ⚡ {getImageCost()}</span>
-                  </>
-              }
-            </motion.button>
+                    // Image-style overrides (when no specific scene style matched)
+                    if (imageStyle === 'ultra-realistic') {
+                      return `A real person naturally using/holding ${prod} in an authentic home environment. Ultra-realistic UGC photo, natural lighting, shot on iPhone, no filters, raw look.`;
+                    }
+                    if (imageStyle === 'iphone') {
+                      return `Casual selfie-style UGC photo of a creator with ${prod}. Shot on iPhone, handheld, relatable vibe, everyday background, natural light.`;
+                    }
+                    if (imageStyle === 'cinematic') {
+                      return `Cinematic product lifestyle photo of ${prod}. Professional lighting, elegant composition, moody atmosphere, polished commercial look.`;
+                    }
+
+                    // Default
+                    if (sceneStyle?.promptModifier) {
+                      return `A creator naturally showcasing ${prod}. Scene style: ${sceneStyle.promptModifier}. UGC photo style, authentic look, natural lighting.`;
+                    }
+                    return `A creator naturally using/holding the product: ${prod}. UGC-style photo, natural lighting, authentic look.`;
+                  };
+
+                  const syntheticOption = {
+                    id: 'quick-img',
+                    title: activeTab === 'podcast'
+                      ? 'Podcast Studio Frame'
+                      : (SCENE_STYLES[selectedSceneStyle]?.name || productAnalysis?.productName || 'Product Shot'),
+                    prompt: buildRefImagePrompt(),
+                    icon: selectedSceneStyle === 'unboxing' ? 'Package' : selectedSceneStyle === 'pov_shot' ? 'Fingerprint' : 'Sparkles',
+                  };
+                  generateMontageReferenceImage(syntheticOption);
+                }}
+                disabled={isGeneratingMontageImg || (activeTab === 'podcast' ? (!podcastHost1Img && !podcastHost2Img && !podcastProductImg) : (!characterImg && !productImg))}
+                className={`w-full py-3 rounded-xl font-black uppercase text-[10px] tracking-[0.15em] transition-all flex items-center justify-center gap-2 ${
+                  isGeneratingMontageImg || (activeTab === 'podcast' ? (!podcastHost1Img && !podcastHost2Img && !podcastProductImg) : (!characterImg && !productImg))
+                    ? 'bg-white/5 text-white/20 cursor-not-allowed'
+                    : 'bg-[#c8f135] text-black shadow-[0_6px_20px_rgba(200,241,53,0.25)]'
+                }`}
+              >
+                {isGeneratingMontageImg
+                  ? <><Loader2 size={12} className="animate-spin" />{montageImgProgressMsg || 'Generating…'}</>
+                  : <>
+                      <Camera size={12} />
+                      {montageGeneratedImg ? 'Regenerate' : 'Generate'}{' '}
+                      {SCENE_STYLES[selectedSceneStyle]?.name?.replace(/^[^a-zA-Z]+/, '') || 'Reference Image'}
+                      {' '}<span className="opacity-60">· ⚡ {getImageCost()}</span>
+                    </>
+                }
+              </motion.button>
+            </div>
           </div>
-        </div>
+        )}
       </motion.div>
 
       {/* Drawer toggle button — sits on the right edge of the sidebar wrapper */}
