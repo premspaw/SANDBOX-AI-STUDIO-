@@ -406,6 +406,83 @@ export default function LeftSidebar() {
                 </div>
               </div>
 
+              {/* Generation Controls: Engine, Ratio & Scene Style Toggle */}
+              <div className="p-3 rounded-xl bg-[#0e0e12] border border-white/10 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-black text-[#c8f135] uppercase tracking-wider flex items-center gap-1">
+                    <Wand2 size={10} /> Model &amp; Format
+                  </span>
+                  <span className="text-[7px] text-white/30 font-mono uppercase">Settings</span>
+                </div>
+
+                {/* Engine + Aspect Ratio Grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Engine Selector */}
+                  <div className="space-y-1">
+                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">AI Engine</label>
+                    <select
+                      value={imgEngine}
+                      onChange={e => setImgEngine(e.target.value as any)}
+                      className="w-full bg-[#16161f] border border-white/5 rounded-lg px-2 py-1.5 text-[8px] font-bold text-white uppercase focus:outline-none cursor-pointer"
+                    >
+                      <option value="nano_banana" className="bg-[#16161f]">Nano Banana 🍌</option>
+                      <option value="gpt2" className="bg-[#16161f]">GPT-2 Studio ✨</option>
+                      <option value="sd" className="bg-[#16161f]">Stable Diffusion 🎨</option>
+                      <option value="imagen" className="bg-[#16161f]">Google Imagen ⚡</option>
+                    </select>
+                  </div>
+
+                  {/* Aspect Ratio */}
+                  <div className="space-y-1">
+                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Aspect Ratio</label>
+                    <select
+                      value={aspectRatio}
+                      onChange={e => setAspectRatio(e.target.value as any)}
+                      className="w-full bg-[#16161f] border border-white/5 rounded-lg px-2 py-1.5 text-[8px] font-bold text-white uppercase focus:outline-none cursor-pointer"
+                    >
+                      <option value="9:16" className="bg-[#16161f]">9:16 (Vertical)</option>
+                      <option value="16:9" className="bg-[#16161f]">16:9 (Wide)</option>
+                      <option value="1:1" className="bg-[#16161f]">1:1 (Square)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Scene Style Toggle & Dropdown */}
+                <div className="space-y-1.5 pt-1 border-t border-white/5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40 flex items-center gap-1">
+                      <Film size={9} className="text-[#c8f135]" /> Scene Style
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSceneStyle(selectedSceneStyle ? '' : 'normal_talking')}
+                      className={`px-2 py-0.5 rounded text-[7.5px] font-black uppercase transition-all border ${
+                        selectedSceneStyle
+                          ? 'bg-[#c8f135]/20 text-[#c8f135] border-[#c8f135]/40'
+                          : 'bg-[#16161f] text-white/40 border-white/5 hover:text-white'
+                      }`}
+                    >
+                      {selectedSceneStyle ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+                  {selectedSceneStyle ? (
+                    <select
+                      value={selectedSceneStyle}
+                      onChange={e => setSelectedSceneStyle(e.target.value)}
+                      className="w-full bg-[#16161f] border border-white/5 rounded-lg px-2 py-1.5 text-[8px] font-bold text-white uppercase focus:outline-none cursor-pointer"
+                    >
+                      <option value="normal_talking">🎙️ Normal Talking</option>
+                      <option value="walk_talk">🚶 Walk &amp; Talk</option>
+                      <option value="street_interview">🎤 Street Interview</option>
+                      <option value="reaction_shot">😲 Reaction Shot</option>
+                      <option value="mirror_selfie">🪞 Mirror Selfie</option>
+                      <option value="car_vlog">🚗 Car Vlog</option>
+                      <option value="grwm_talk">💄 GRWM Talking</option>
+                    </select>
+                  ) : null}
+                </div>
+              </div>
+
               {/* Generate AI Creator button */}
               <button
                 onClick={generateTalkingHeadImage}
