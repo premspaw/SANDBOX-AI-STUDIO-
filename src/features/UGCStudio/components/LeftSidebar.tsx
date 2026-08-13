@@ -232,6 +232,192 @@ export default function LeftSidebar() {
                 )}
               </div>
             </div>
+          ) : activeTab === 'ai-avatar' ? (
+            <>
+              <div className="flex items-center justify-between w-full">
+                <h2 className="text-[10px] font-black text-[#3a3a4a] uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Sparkles size={12} className="text-[#c8f135]" /> AI Creator Studio
+                </h2>
+                <span className="text-[8px] font-black text-[#c8f135] bg-[#c8f135]/10 px-1.5 py-0.5 rounded border border-[#c8f135]/20 uppercase tracking-widest">⚡ {getImageCost()}</span>
+              </div>
+
+              {/* 3 Reference slots: Product / Stage / Style Ref */}
+              <div className="grid grid-cols-3 gap-2">
+                {/* Product */}
+                <div className="space-y-1">
+                  <div className="relative group aspect-square bg-[#111113] border border-[#1e1e24] rounded-xl overflow-hidden cursor-pointer hover:border-[#c8f135]/50 transition-colors flex items-center justify-center">
+                    <input type="file" accept="image/*" onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) setThProductImg({ file: f, url: URL.createObjectURL(f) }); }} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                    {thProductImg ? (
+                      <>
+                        <img src={resolveUrl(thProductImg.url)} alt="Product" className="w-full h-full object-cover transition-opacity duration-200 group-hover:opacity-0" />
+                        <button onClick={ev => { ev.stopPropagation(); setThProductImg(null); }} className="absolute inset-0 z-20 flex items-center justify-center bg-black/90 text-red-500 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"><X size={18} strokeWidth={2} /></button>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 text-[#2a2a3a] group-hover:text-[#c8f135]/60 transition-colors"><Package size={18} strokeWidth={1.5} /></div>
+                    )}
+                  </div>
+                  <p className="text-[7px] text-center font-black text-white/20 uppercase tracking-widest">Product</p>
+                </div>
+                {/* Location / Stage */}
+                <div className="space-y-1">
+                  <div className="relative group aspect-square bg-[#111113] border border-[#1e1e24] rounded-xl overflow-hidden cursor-pointer hover:border-[#c8f135]/50 transition-colors flex items-center justify-center">
+                    <input type="file" accept="image/*" onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) setThLocationImg({ file: f, url: URL.createObjectURL(f) }); }} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                    {thLocationImg ? (
+                      <>
+                        <img src={resolveUrl(thLocationImg.url)} alt="Location" className="w-full h-full object-cover transition-opacity duration-200 group-hover:opacity-0" />
+                        <button onClick={ev => { ev.stopPropagation(); setThLocationImg(null); }} className="absolute inset-0 z-20 flex items-center justify-center bg-black/90 text-red-500 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"><X size={18} strokeWidth={2} /></button>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 text-[#2a2a3a] group-hover:text-[#c8f135]/60 transition-colors"><MapPin size={18} strokeWidth={1.5} /></div>
+                    )}
+                  </div>
+                  <p className="text-[7px] text-center font-black text-white/20 uppercase tracking-widest">Stage</p>
+                </div>
+                {/* Style Ref */}
+                <div className="space-y-1">
+                  <div className="relative group aspect-square bg-[#111113] border border-[#1e1e24] rounded-xl overflow-hidden cursor-pointer hover:border-[#c8f135]/50 transition-colors flex items-center justify-center">
+                    <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) setStyleRefImg({ file: f, url: URL.createObjectURL(f) }); }} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                    {styleRefImg ? (
+                      <>
+                        <img src={styleRefImg.url} alt="Style Ref" className="w-full h-full object-cover transition-opacity duration-200 group-hover:opacity-0" />
+                        <button onClick={ev => { ev.stopPropagation(); setStyleRefImg(null); }} className="absolute inset-0 z-20 flex items-center justify-center bg-black/90 text-red-500 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"><X size={18} strokeWidth={2} /></button>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 text-[#2a2a3a] group-hover:text-[#c8f135]/60 transition-colors"><ImageIcon size={18} strokeWidth={1.5} /></div>
+                    )}
+                  </div>
+                  <p className="text-[7px] text-center font-black text-white/20 uppercase tracking-widest">Style Ref</p>
+                </div>
+              </div>
+
+              {/* Dedicated AI Spokesperson Prompt Builder */}
+              <div className="p-3 rounded-xl bg-[#0e0e12] border border-white/10 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-black text-[#c8f135] uppercase tracking-wider flex items-center gap-1">
+                    <User size={10} /> AI Character Prompt
+                  </span>
+                  <span className="text-[7px] text-white/30 font-mono uppercase">Ultra-Realistic</span>
+                </div>
+
+                {/* Gender + Age row */}
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div className="flex bg-[#16161f] p-0.5 rounded-lg border border-white/5">
+                    {(['female', 'male'] as const).map(g => (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => setThSpokespersonGender(g)}
+                        className={`flex-1 py-1 text-[8px] font-extrabold uppercase rounded-md transition-all ${
+                          thSpokespersonGender === g ? 'bg-[#c8f135] text-black shadow-sm' : 'text-white/40 hover:text-white'
+                        }`}
+                      >
+                        {g === 'female' ? 'Female ♀' : 'Male ♂'}
+                      </button>
+                    ))}
+                  </div>
+                  <select
+                    value={thSpokespersonAge}
+                    onChange={e => setThSpokespersonAge(e.target.value as any)}
+                    className="bg-[#16161f] border border-white/5 rounded-lg px-2 py-1 text-[8px] font-bold text-white uppercase focus:outline-none cursor-pointer"
+                  >
+                    <option value="20-25" className="bg-[#16161f]">Age 20-25</option>
+                    <option value="25-35" className="bg-[#16161f]">Age 25-35</option>
+                    <option value="35-45" className="bg-[#16161f]">Age 35-45</option>
+                  </select>
+                </div>
+
+                {/* Region / Ethnicity Grid — 9 global options */}
+                <div className="space-y-1">
+                  <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Region / Ethnicity</label>
+                  <div className="grid grid-cols-3 gap-1">
+                    {[
+                      { id: 'south-indian', label: 'South 🇮🇳' },
+                      { id: 'north-indian', label: 'North 🇮🇳' },
+                      { id: 'pan-indian', label: 'Pan-IN 🇮🇳' },
+                      { id: 'english-british', label: 'British 🇬🇧' },
+                      { id: 'american-global', label: 'American 🇺🇸' },
+                      { id: 'french-european', label: 'European 🇫🇷' },
+                      { id: 'east-asian', label: 'East Asia 🏮' },
+                      { id: 'middle-eastern', label: 'Mid East 🌙' },
+                      { id: 'latino', label: 'Latino 🌎' },
+                    ].map(r => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => setThSpokespersonRegion(r.id as any)}
+                        className={`py-1 px-1.5 rounded-lg text-[7px] font-bold tracking-wide border transition-all text-center leading-tight ${
+                          thSpokespersonRegion === r.id
+                            ? 'bg-[#c8f135]/15 border-[#c8f135]/40 text-[#c8f135]'
+                            : 'bg-[#16161f] border-white/5 text-white/40 hover:text-white'
+                        }`}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Format */}
+                <div className="space-y-1">
+                  <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Format & Layout</label>
+                  <div className="grid grid-cols-2 gap-1">
+                    {[
+                      { id: 'single', label: 'Portrait (Video)' },
+                      { id: 'character-sheet', label: 'Character Sheet' },
+                    ].map(s => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setThSpokespersonShotType(s.id as any)}
+                        className={`py-1 px-2 rounded-lg text-[7.5px] font-bold uppercase tracking-wider border transition-all text-center ${
+                          thSpokespersonShotType === s.id
+                            ? 'bg-[#c8f135]/15 border-[#c8f135]/40 text-[#c8f135]'
+                            : 'bg-[#16161f] border-white/5 text-white/40 hover:text-white'
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Outfit input */}
+                <div className="space-y-1">
+                  <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Outfit & Wardrobe <span className="text-white/20 normal-case">(optional)</span></label>
+                  <input
+                    type="text"
+                    value={thSpokespersonOutfit}
+                    onChange={e => setThSpokespersonOutfit(e.target.value)}
+                    placeholder="e.g. saree, blazer, hoodie, kurta…"
+                    className="w-full bg-[#16161f] border border-white/5 rounded-lg px-2.5 py-1.5 text-[8.5px] text-white placeholder:text-white/20 focus:outline-none focus:border-[#c8f135]/40 font-sans"
+                  />
+                </div>
+
+                {/* Pose / vibe input */}
+                <div className="space-y-1">
+                  <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Pose / Expression <span className="text-white/20 normal-case">(optional)</span></label>
+                  <input
+                    type="text"
+                    value={thSpokespersonPose}
+                    onChange={e => setThSpokespersonPose(e.target.value)}
+                    placeholder="e.g. smiling, hands folded, confident…"
+                    className="w-full bg-[#16161f] border border-white/5 rounded-lg px-2.5 py-1.5 text-[8.5px] text-white placeholder:text-white/20 focus:outline-none focus:border-[#c8f135]/40 font-sans"
+                  />
+                </div>
+              </div>
+
+              {/* Generate AI Creator button */}
+              <button
+                onClick={generateTalkingHeadImage}
+                disabled={thIsGeneratingImg}
+                className={`w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                  thIsGeneratingImg ? 'bg-white/5 text-white/20 cursor-not-allowed' :
+                  'bg-[#c8f135] text-black hover:bg-[#d4ff3a] shadow-[0_4px_16px_rgba(200,241,53,0.25)]'
+                }`}
+              >
+                {thIsGeneratingImg ? <><Loader2 size={10} className="animate-spin" /> Directing AI Creator…</> : <><Sparkles size={10} /> Generate AI Creator <span className="opacity-60">· ⚡ {getImageCost()}</span></>}
+              </button>
+            </>
           ) : activeTab === 'talking-head' ? (
             <>
               <div className="flex items-center justify-between w-full">
@@ -289,139 +475,7 @@ export default function LeftSidebar() {
                   <p className="text-[7px] text-center font-black text-white/20 uppercase tracking-widest">Stage</p>
                 </div>
               </div>
-              {/* AI Spokesperson Customizer (Visible when no Person image is uploaded) */}
-              {!thPersonImg && (
-                <div className="p-3 rounded-xl bg-[#0e0e12] border border-white/10 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black text-[#c8f135] uppercase tracking-wider flex items-center gap-1">
-                      <User size={10} /> AI Spokesperson
-                    </span>
-                    <span className="text-[7px] text-white/30 font-mono uppercase">Prompt Builder</span>
-                  </div>
 
-                  {/* Gender + Age row */}
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <div className="flex bg-[#16161f] p-0.5 rounded-lg border border-white/5">
-                      {(['female', 'male'] as const).map(g => (
-                        <button
-                          key={g}
-                          type="button"
-                          onClick={() => setThSpokespersonGender(g)}
-                          className={`flex-1 py-1 text-[8px] font-extrabold uppercase rounded-md transition-all ${
-                            thSpokespersonGender === g ? 'bg-[#c8f135] text-black shadow-sm' : 'text-white/40 hover:text-white'
-                          }`}
-                        >
-                          {g === 'female' ? 'Female ♀' : 'Male ♂'}
-                        </button>
-                      ))}
-                    </div>
-                    <select
-                      value={thSpokespersonAge}
-                      onChange={e => setThSpokespersonAge(e.target.value as any)}
-                      className="bg-[#16161f] border border-white/5 rounded-lg px-2 py-1 text-[8px] font-bold text-white uppercase focus:outline-none cursor-pointer"
-                    >
-                      <option value="20-25" className="bg-[#16161f]">Age 20-25</option>
-                      <option value="25-35" className="bg-[#16161f]">Age 25-35</option>
-                      <option value="35-45" className="bg-[#16161f]">Age 35-45</option>
-                    </select>
-                  </div>
-
-                  {/* Region / Ethnicity Grid — 9 global options */}
-                  <div className="space-y-1">
-                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Region / Ethnicity</label>
-                    <div className="grid grid-cols-3 gap-1">
-                      {[
-                        { id: 'south-indian', label: 'South 🇮🇳' },
-                        { id: 'north-indian', label: 'North 🇮🇳' },
-                        { id: 'pan-indian', label: 'Pan-IN 🇮🇳' },
-                        { id: 'english-british', label: 'British 🇬🇧' },
-                        { id: 'american-global', label: 'American 🇺🇸' },
-                        { id: 'french-european', label: 'European 🇫🇷' },
-                        { id: 'east-asian', label: 'East Asia 🏮' },
-                        { id: 'middle-eastern', label: 'Mid East 🌙' },
-                        { id: 'latino', label: 'Latino 🌎' },
-                      ].map(r => (
-                        <button
-                          key={r.id}
-                          type="button"
-                          onClick={() => setThSpokespersonRegion(r.id as any)}
-                          className={`py-1 px-1.5 rounded-lg text-[7px] font-bold tracking-wide border transition-all text-center leading-tight ${
-                            thSpokespersonRegion === r.id
-                              ? 'bg-[#c8f135]/15 border-[#c8f135]/40 text-[#c8f135]'
-                              : 'bg-[#16161f] border-white/5 text-white/40 hover:text-white'
-                          }`}
-                        >
-                          {r.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Format */}
-                  <div className="space-y-1">
-                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Format & Layout</label>
-                    <div className="grid grid-cols-2 gap-1">
-                      {[
-                        { id: 'single', label: 'Portrait (Video)' },
-                        { id: 'character-sheet', label: 'Character Sheet' },
-                      ].map(s => (
-                        <button
-                          key={s.id}
-                          type="button"
-                          onClick={() => setThSpokespersonShotType(s.id as any)}
-                          className={`py-1 px-2 rounded-lg text-[7.5px] font-bold uppercase tracking-wider border transition-all text-center ${
-                            thSpokespersonShotType === s.id
-                              ? 'bg-[#c8f135]/15 border-[#c8f135]/40 text-[#c8f135]'
-                              : 'bg-[#16161f] border-white/5 text-white/40 hover:text-white'
-                          }`}
-                        >
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Outfit input */}
-                  <div className="space-y-1">
-                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Outfit & Look <span className="text-white/20 normal-case">(optional)</span></label>
-                    <input
-                      type="text"
-                      value={thSpokespersonOutfit}
-                      onChange={e => setThSpokespersonOutfit(e.target.value)}
-                      placeholder="e.g. saree, blazer, hoodie, kurta…"
-                      className="w-full bg-[#16161f] border border-white/5 rounded-lg px-2.5 py-1.5 text-[8.5px] text-white placeholder:text-white/20 focus:outline-none focus:border-[#c8f135]/40 font-sans"
-                    />
-                  </div>
-
-                  {/* Pose / vibe input */}
-                  <div className="space-y-1">
-                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Pose / Vibe <span className="text-white/20 normal-case">(optional)</span></label>
-                    <input
-                      type="text"
-                      value={thSpokespersonPose}
-                      onChange={e => setThSpokespersonPose(e.target.value)}
-                      placeholder="e.g. smiling, hands folded, confident…"
-                      className="w-full bg-[#16161f] border border-white/5 rounded-lg px-2.5 py-1.5 text-[8.5px] text-white placeholder:text-white/20 focus:outline-none focus:border-[#c8f135]/40 font-sans"
-                    />
-                  </div>
-
-                  {/* Style Reference Image */}
-                  <div className="space-y-1">
-                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Style Reference <span className="text-white/20 normal-case">(optional)</span></label>
-                    <div className="relative group aspect-[4/2] bg-[#16161f] border border-white/5 rounded-lg overflow-hidden cursor-pointer hover:border-[#c8f135]/40 flex items-center justify-center">
-                      <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) setStyleRefImg({ file: f, url: URL.createObjectURL(f) }); }} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                      {styleRefImg ? (
-                        <>
-                          <img src={styleRefImg.url} alt="Style Ref" className="w-full h-full object-cover group-hover:opacity-30 transition-opacity" />
-                          <button onClick={ev => { ev.stopPropagation(); setStyleRefImg(null); }} className="absolute inset-0 z-20 flex items-center justify-center text-red-400 opacity-0 group-hover:opacity-100 transition-all pointer-events-none group-hover:pointer-events-auto"><X size={14} /></button>
-                        </>
-                      ) : (
-                        <span className="text-[7.5px] text-white/30 flex items-center gap-1"><ImageIcon size={10} /> Upload mood/style ref</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
               {/* Generate Image button */}
               <button
                 onClick={generateTalkingHeadImage}
@@ -431,7 +485,7 @@ export default function LeftSidebar() {
                   'bg-[#c8f135] text-black hover:bg-[#d4ff3a] shadow-[0_4px_16px_rgba(200,241,53,0.25)]'
                 }`}
               >
-                {thIsGeneratingImg ? <><Loader2 size={10} className="animate-spin" /> Generating…</> : <><Camera size={10} /> {!thPersonImg ? 'Generate AI Spokesperson' : 'Generate Reference Image'} <span className="opacity-60">· ⚡ {getImageCost()}</span></>}
+                {thIsGeneratingImg ? <><Loader2 size={10} className="animate-spin" /> Generating…</> : <><Camera size={10} /> Generate Reference Image <span className="opacity-60">· ⚡ {getImageCost()}</span></>}
               </button>
 
               {/* Product Scan */}
