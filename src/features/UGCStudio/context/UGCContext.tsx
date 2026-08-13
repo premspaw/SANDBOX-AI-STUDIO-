@@ -293,6 +293,16 @@ export interface UGCContextType {
   thLocationImg: { url: string; file: File } | null;
   setThLocationImg: (v: { url: string; file: File } | null) => void;
 
+  // AI Spokesperson prompt customization fields
+  thSpokespersonGender: 'female' | 'male';
+  setThSpokespersonGender: (v: 'female' | 'male') => void;
+  thSpokespersonRegion: 'south-indian' | 'north-indian' | 'pan-indian' | 'global';
+  setThSpokespersonRegion: (v: 'south-indian' | 'north-indian' | 'pan-indian' | 'global') => void;
+  thSpokespersonAge: '20-25' | '25-35' | '35-45';
+  setThSpokespersonAge: (v: '20-25' | '25-35' | '35-45') => void;
+  thSpokespersonOutfit: string;
+  setThSpokespersonOutfit: (v: string) => void;
+
   // ── Toast / error ─────────────────────────────────────────────────────────
   toast: { message: string; type: 'success' | 'error' | 'info' } | null;
   setToast: React.Dispatch<React.SetStateAction<{ message: string; type: 'success' | 'error' | 'info' } | null>>;

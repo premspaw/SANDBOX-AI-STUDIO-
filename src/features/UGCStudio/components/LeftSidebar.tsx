@@ -22,6 +22,14 @@ export default function LeftSidebar() {
     setThProductImg,
     thLocationImg,
     setThLocationImg,
+    thSpokespersonGender,
+    setThSpokespersonGender,
+    thSpokespersonRegion,
+    setThSpokespersonRegion,
+    thSpokespersonAge,
+    setThSpokespersonAge,
+    thSpokespersonOutfit,
+    setThSpokespersonOutfit,
     thAnimation,
     setThAnimation,
     generateTalkingHeadImage,
@@ -276,6 +284,86 @@ export default function LeftSidebar() {
                 </div>
               </div>
 
+              {/* AI Spokesperson Customizer (Visible when no Person image is uploaded) */}
+              {!thPersonImg && (
+                <div className="p-3 rounded-xl bg-[#0e0e12] border border-white/10 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black text-[#c8f135] uppercase tracking-wider flex items-center gap-1">
+                      <User size={10} /> AI Spokesperson Prompt
+                    </span>
+                    <span className="text-[7px] text-white/30 font-mono uppercase">Custom AI</span>
+                  </div>
+
+                  {/* Gender + Age Toggles */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {/* Gender */}
+                    <div className="flex bg-[#16161f] p-0.5 rounded-lg border border-white/5">
+                      {(['female', 'male'] as const).map(g => (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() => setThSpokespersonGender(g)}
+                          className={`flex-1 py-1 text-[8px] font-extrabold uppercase rounded-md transition-all ${
+                            thSpokespersonGender === g ? 'bg-[#c8f135] text-black shadow-sm' : 'text-white/40 hover:text-white'
+                          }`}
+                        >
+                          {g === 'female' ? 'Female ♀' : 'Male ♂'}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Age */}
+                    <select
+                      value={thSpokespersonAge}
+                      onChange={e => setThSpokespersonAge(e.target.value as any)}
+                      className="bg-[#16161f] border border-white/5 rounded-lg px-2 py-1 text-[8px] font-bold text-white uppercase focus:outline-none cursor-pointer"
+                    >
+                      <option value="20-25" className="bg-[#16161f]">Age 20-25</option>
+                      <option value="25-35" className="bg-[#16161f]">Age 25-35</option>
+                      <option value="35-45" className="bg-[#16161f]">Age 35-45</option>
+                    </select>
+                  </div>
+
+                  {/* Region / Ethnicity Selector */}
+                  <div className="space-y-1">
+                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Region / Style</label>
+                    <div className="grid grid-cols-2 gap-1">
+                      {[
+                        { id: 'south-indian', label: 'South Indian' },
+                        { id: 'north-indian', label: 'North Indian' },
+                        { id: 'pan-indian', label: 'Pan-Indian' },
+                        { id: 'global', label: 'Global' },
+                      ].map(r => (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => setThSpokespersonRegion(r.id as any)}
+                          className={`py-1 px-2 rounded-lg text-[7.5px] font-bold uppercase tracking-wider border transition-all text-center ${
+                            thSpokespersonRegion === r.id
+                              ? 'bg-[#c8f135]/15 border-[#c8f135]/40 text-[#c8f135]'
+                              : 'bg-[#16161f] border-white/5 text-white/40 hover:text-white'
+                          }`}
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Outfit / Custom Look Prompt Box */}
+                  <div className="space-y-1">
+                    <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Outfit & Look (Optional)</label>
+                    <input
+                      type="text"
+                      value={thSpokespersonOutfit}
+                      onChange={e => setThSpokespersonOutfit(e.target.value)}
+                      placeholder="e.g. saree, blazer, hoodie..."
+                      className="w-full bg-[#16161f] border border-white/5 rounded-lg px-2.5 py-1.5 text-[8.5px] text-white placeholder:text-white/20 focus:outline-none focus:border-[#c8f135]/40 font-sans"
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Generate Image button */}
               <button
                 onClick={generateTalkingHeadImage}
@@ -285,7 +373,7 @@ export default function LeftSidebar() {
                   'bg-[#c8f135] text-black hover:bg-[#d4ff3a] shadow-[0_4px_16px_rgba(200,241,53,0.25)]'
                 }`}
               >
-                {thIsGeneratingImg ? <><Loader2 size={10} className="animate-spin" /> Generating…</> : <><Camera size={10} /> {!thPersonImg ? 'Generate Indian Spokesperson' : 'Generate Reference Image'} <span className="opacity-60">· ⚡ {getImageCost()}</span></>}
+                {thIsGeneratingImg ? <><Loader2 size={10} className="animate-spin" /> Generating…</> : <><Camera size={10} /> {!thPersonImg ? 'Generate AI Spokesperson' : 'Generate Reference Image'} <span className="opacity-60">· ⚡ {getImageCost()}</span></>}
               </button>
 
               {/* Product Scan */}

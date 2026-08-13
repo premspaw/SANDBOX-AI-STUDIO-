@@ -2834,6 +2834,12 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
     return generatedUrl;
   };
 
+  // Talking Head AI Spokesperson Customization States
+  const [thSpokespersonGender, setThSpokespersonGender] = useState<'female' | 'male'>('female');
+  const [thSpokespersonRegion, setThSpokespersonRegion] = useState<'south-indian' | 'north-indian' | 'pan-indian' | 'global'>('south-indian');
+  const [thSpokespersonAge, setThSpokespersonAge] = useState<'20-25' | '25-35' | '35-45'>('25-35');
+  const [thSpokespersonOutfit, setThSpokespersonOutfit] = useState<string>('');
+
   // ── TALKING HEAD — generate reference image ────────────────────────────────
   const generateTalkingHeadImage = async () => {
     const imgCost = getImageCost();
@@ -2870,15 +2876,26 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
           promptInstructions = `Images: PERSON. Generate ONE photorealistic portrait photo of this person facing the camera directly, chest-up shot, confident and engaging expression, professional studio/indoor UGC lighting, clean background. Hands relaxed at sides. DO NOT add or show any product, bottle, package, container, or object in their hands. The person MUST NOT hold any product or item. No collage.`;
         }
       } else {
-        // Person photo is empty / not uploaded -> Generate random Indian spokesperson portrait!
+        // Person photo is empty -> Generate AI spokesperson according to user prompt options!
+        const genderText = thSpokespersonGender === 'female' ? 'female' : 'male';
+        const regionText = thSpokespersonRegion === 'south-indian' 
+          ? 'South Indian' 
+          : thSpokespersonRegion === 'north-indian'
+          ? 'North Indian'
+          : thSpokespersonRegion === 'pan-indian'
+          ? 'Indian'
+          : 'Global';
+        const ageText = thSpokespersonAge === '20-25' ? 'young 20-25 year old' : thSpokespersonAge === '35-45' ? 'mature 35-45 year old' : '25-35 year old';
+        const outfitText = thSpokespersonOutfit.trim() ? `, wearing ${thSpokespersonOutfit.trim()}` : '';
+
         if (thProductImg && thLocationImg) {
-          promptInstructions = `Images: PRODUCT, LOCATION. Generate ONE photorealistic portrait photo of an attractive Indian content creator / spokesperson holding or using the product, placed inside the location environment. They face directly at camera with a confident, engaging expression. Natural studio lighting, sharp focus on face. 9:16 portrait format. No collage.`;
+          promptInstructions = `Images: PRODUCT, LOCATION. Generate ONE photorealistic portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText} holding or using the product, placed inside the location environment. They face directly at camera with a confident, engaging expression. Natural studio lighting, sharp focus on face. 9:16 portrait format. No collage.`;
         } else if (thProductImg) {
-          promptInstructions = `Images: PRODUCT. Generate ONE photorealistic portrait photo of an attractive Indian content creator / spokesperson holding or showcasing the product. They face directly at camera, confident and engaging. Professional UGC lighting, 9:16 portrait format. No collage.`;
+          promptInstructions = `Images: PRODUCT. Generate ONE photorealistic portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText} holding or showcasing the product. They face directly at camera, confident and engaging. Professional UGC lighting, 9:16 portrait format. No collage.`;
         } else if (thLocationImg) {
-          promptInstructions = `Images: LOCATION. Generate ONE photorealistic portrait photo of an attractive Indian content creator / spokesperson placed inside the location environment. They face camera confidently, ready to speak. Match the location lighting and atmosphere. Hands relaxed at sides. DO NOT add or show any product, bottle, box, container, or object in their hands. Person is NOT holding any product. 9:16 portrait format. No collage.`;
+          promptInstructions = `Images: LOCATION. Generate ONE photorealistic portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText} placed inside the location environment. They face camera confidently, ready to speak. Match the location lighting and atmosphere. Hands relaxed at sides. DO NOT add or show any product, bottle, box, container, or object in their hands. Person is NOT holding any product. 9:16 portrait format. No collage.`;
         } else {
-          promptInstructions = `Generate ONE photorealistic portrait photo of an attractive Indian content creator / spokesperson, chest-up portrait shot, facing camera directly with a warm, confident, engaging expression. Professional studio/indoor UGC lighting, clean background, 9:16 portrait format, smartphone camera aesthetic. Hands relaxed at sides. DO NOT add or show any product, bottle, package, container, or object in their hands. The person MUST NOT hold any product or item. No collage.`;
+          promptInstructions = `Generate ONE photorealistic portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText}, chest-up portrait shot, facing camera directly with a warm, confident, engaging expression. Professional studio/indoor UGC lighting, clean background, 9:16 portrait format, smartphone camera aesthetic. Hands relaxed at sides. DO NOT add or show any product, bottle, package, container, or object in their hands. The person MUST NOT hold any product or item. No collage.`;
         }
       }
       promptInstructions += ` Style: Ultra-realistic, natural skin texture, sharp face detail, 9:16 portrait format, smartphone camera aesthetic.`;
@@ -4484,6 +4501,14 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     setThProductImg,
     thLocationImg,
     setThLocationImg,
+    thSpokespersonGender,
+    setThSpokespersonGender,
+    thSpokespersonRegion,
+    setThSpokespersonRegion,
+    thSpokespersonAge,
+    setThSpokespersonAge,
+    thSpokespersonOutfit,
+    setThSpokespersonOutfit,
     thAnimation,
     setThAnimation,
     toast,
