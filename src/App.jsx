@@ -10,16 +10,20 @@ import { useAppStore } from './store';
 function lazyWithRetry(componentImport) {
   return lazy(() =>
     componentImport().catch((error) => {
+      const errStr = String(error?.message || error?.reason || error || '');
       const isChunkError =
         error?.name === 'ChunkLoadError' ||
-        error?.message?.includes('Failed to fetch dynamically imported module') ||
-        error?.message?.includes('Expected a JavaScript-or-Wasm module script') ||
-        error?.message?.includes('Importing a module script failed');
+        errStr.includes('Failed to fetch dynamically imported module') ||
+        errStr.includes('Expected a JavaScript-or-Wasm module script') ||
+        errStr.includes('dynamically imported module') ||
+        errStr.includes('Importing a module script failed') ||
+        errStr.includes('404');
 
       if (isChunkError) {
-        const pageHasAlreadyBeenReloaded = sessionStorage.getItem('chunk_reload_count');
-        if (!pageHasAlreadyBeenReloaded) {
-          sessionStorage.setItem('chunk_reload_count', '1');
+        const lastReload = Number(sessionStorage.getItem('chunk_reload_time') || '0');
+        const now = Date.now();
+        if (now - lastReload > 8000) {
+          sessionStorage.setItem('chunk_reload_time', String(now));
           console.warn('[Vite Chunk Reload] Stale chunk detected after new deployment. Auto-reloading page...');
           window.location.reload();
           return new Promise(() => {});
@@ -213,19 +217,19 @@ function App() {
   useEffect(() => {
     initFaviconAnimation();
 
-    // Clear reload count on successful app initialization
-    sessionStorage.removeItem('chunk_reload_count');
-
     // Global listener for stale chunk / dynamic import errors
     const handleChunkError = (event) => {
-      const msg = event?.reason?.message || event?.message || '';
+      const msg = String(event?.reason?.message || event?.reason || event?.message || event?.error || '');
       if (
         msg.includes('Failed to fetch dynamically imported module') ||
         msg.includes('Expected a JavaScript-or-Wasm module script') ||
+        msg.includes('dynamically imported module') ||
         msg.includes('Importing a module script failed')
       ) {
-        if (!sessionStorage.getItem('chunk_reload_count')) {
-          sessionStorage.setItem('chunk_reload_count', '1');
+        const lastReload = Number(sessionStorage.getItem('chunk_reload_time') || '0');
+        const now = Date.now();
+        if (now - lastReload > 8000) {
+          sessionStorage.setItem('chunk_reload_time', String(now));
           console.warn('[Vite Chunk Listener] Auto-reloading due to new deployment...');
           window.location.reload();
         }
