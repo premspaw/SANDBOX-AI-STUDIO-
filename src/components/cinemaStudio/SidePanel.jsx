@@ -363,39 +363,39 @@ export const SidePanel = React.memo(({
         </div>
 
         {/* Navigation Tabs Bar */}
-        <div className="px-5 pt-3.5 pb-2.5 bg-[#0c0c16] border-b border-white/15 flex items-center gap-2 relative z-10 shrink-0">
+        <div className="px-2 sm:px-5 pt-2.5 sm:pt-3.5 pb-2 sm:pb-2.5 bg-[#0c0c16] border-b border-white/15 flex items-center gap-1.5 sm:gap-2 relative z-10 shrink-0">
           <button
             onClick={() => {
               setPanelTab('veo');
               setActiveTab('video');
-              if (!isVeoEngine) setActiveEngine('veo-3.1-generate-preview');
+              if (!isVeoEngine) setActiveEngine('veo-3.1');
             }}
             className={cn(
-              "flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all border shadow-lg backdrop-blur-xl cursor-pointer select-none",
+              "flex-1 py-2 sm:py-2.5 px-1.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 sm:gap-2 transition-all border shadow-lg backdrop-blur-xl cursor-pointer select-none",
               panelTab === 'veo'
                 ? "bg-gradient-to-r from-violet-600/30 via-violet-500/20 to-fuchsia-500/20 text-white border-violet-400/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]"
                 : "bg-white/[0.03] text-gray-400 border-white/10 hover:bg-white/[0.08] hover:text-white"
             )}
           >
-            <Film className="w-3.5 h-3.5 text-violet-400" />
-            <span>Veo 3.1 Workspace</span>
+            <Film className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+            <span className="truncate">Veo 3.1</span>
           </button>
 
           <button
             onClick={() => {
               setPanelTab('omni');
               setActiveTab('video');
-              if (!isOmniEngine) setActiveEngine('omni-flash-1.1');
+              if (!isOmniEngine) setActiveEngine('gemini-omni-1.1-flash-preview');
             }}
             className={cn(
-              "flex-1 py-2.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all border shadow-lg backdrop-blur-xl cursor-pointer select-none",
+              "flex-1 py-2 sm:py-2.5 px-1.5 sm:px-2 rounded-xl text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all border shadow-lg backdrop-blur-xl cursor-pointer select-none",
               panelTab === 'omni'
                 ? "bg-gradient-to-r from-fuchsia-600/30 via-pink-500/20 to-violet-500/20 text-white border-fuchsia-400/50 shadow-[0_0_20px_rgba(217,70,239,0.3)]"
                 : "bg-white/[0.03] text-gray-400 border-white/10 hover:bg-white/[0.08] hover:text-white"
             )}
           >
-            <Zap className="w-3.5 h-3.5 text-fuchsia-400" />
-            <span>Omni Flash 1.1</span>
+            <Zap className="w-3.5 h-3.5 text-fuchsia-400 shrink-0" />
+            <span className="truncate">Omni 1.1</span>
           </button>
 
           <button
@@ -405,14 +405,14 @@ export const SidePanel = React.memo(({
               setActiveEngine('kling-motion');
             }}
             className={cn(
-              "flex-1 py-2.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all border shadow-lg backdrop-blur-xl cursor-pointer select-none",
+              "flex-1 py-2 sm:py-2.5 px-1.5 sm:px-2 rounded-xl text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all border shadow-lg backdrop-blur-xl cursor-pointer select-none",
               panelTab === 'motion'
                 ? "bg-gradient-to-r from-orange-600/30 via-amber-500/20 to-yellow-500/20 text-white border-orange-400/50 shadow-[0_0_20px_rgba(249,115,22,0.3)]"
                 : "bg-white/[0.03] text-gray-400 border-white/10 hover:bg-white/[0.08] hover:text-white"
             )}
           >
-            <Aperture className="w-3.5 h-3.5 text-orange-400" />
-            <span>Motion Control</span>
+            <Aperture className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+            <span className="truncate">Motion Control</span>
           </button>
         </div>
 
@@ -883,31 +883,31 @@ export const SidePanel = React.memo(({
             </div>
 
             {/* Mobile Tabs */}
-            <div className="px-3 pt-2.5 pb-2 border-b border-white/15 bg-[#0c0c16] flex items-center gap-2 shrink-0">
+            <div className="px-2 pt-2 pb-2 border-b border-white/15 bg-[#0c0c16] flex items-center gap-1.5 shrink-0">
               {[
-                ['veo','veo-3.1-generate-preview','video',<Film key="f" className="w-3.5 h-3.5" />,'Veo 3.1'],
-                ['omni','omni-flash-1.1','video',<Zap key="z" className="w-3.5 h-3.5" />,'Omni Flash 1.1']
+                ['veo','veo-3.1','video',<Film key="f" className="w-3.5 h-3.5 shrink-0" />,'Veo 3.1'],
+                ['omni','gemini-omni-1.1-flash-preview','video',<Zap key="z" className="w-3.5 h-3.5 shrink-0" />,'Omni 1.1'],
+                ['motion','kling-motion','video',<Aperture key="m" className="w-3.5 h-3.5 text-orange-400 shrink-0" />,'Motion']
               ].map(([tab, engine, aTab, icon, label]) => (
                 <button
                   key={tab}
                   onClick={() => {
                     setPanelTab(tab);
                     if (aTab) setActiveTab(aTab);
-                    if (engine) {
-                      if (tab === 'veo' && !isVeoEngine) setActiveEngine(engine);
-                      if (tab === 'omni' && !isOmniEngine) setActiveEngine(engine);
-                    }
+                    if (engine) setActiveEngine(engine);
                   }}
                   className={cn(
-                    "flex-1 py-2 px-2 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all border",
+                    "flex-1 py-2 px-1.5 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 transition-all border truncate",
                     panelTab === tab
                       ? tab === 'omni'
                         ? "bg-fuchsia-600/25 text-white border-fuchsia-400/50"
-                        : "bg-violet-600/25 text-white border-violet-400/50"
+                        : tab === 'motion'
+                          ? "bg-orange-600/25 text-white border-orange-400/50"
+                          : "bg-violet-600/25 text-white border-violet-400/50"
                       : "bg-white/[0.03] text-gray-400 border-white/10"
                   )}
                 >
-                  {icon}{label}
+                  {icon}<span className="truncate">{label}</span>
                 </button>
               ))}
             </div>
@@ -1886,16 +1886,16 @@ export const SidePanel = React.memo(({
           </div>
 
           {/* Spacious Sticky Bottom Solid Footer Bar */}
-          <div className="absolute bottom-0 left-0 right-0 py-5 px-6 bg-[#080810] border-t border-white/20 flex items-center justify-between gap-6 z-20 shadow-[0_-20px_50px_rgba(0,0,0,0.98)]">
+          <div className="absolute bottom-0 left-0 right-0 py-3 sm:py-5 px-3 sm:px-6 bg-[#080810] border-t border-white/20 flex items-center justify-between gap-2 sm:gap-6 z-20 shadow-[0_-20px_50px_rgba(0,0,0,0.98)] pb-safe">
             <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest truncate">
-                  {panelTab === 'veo' ? 'Veo 3.1 Active' : 'Omni Flash Active'}
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span className="text-[9px] sm:text-[10px] font-black text-gray-300 uppercase tracking-wider sm:tracking-widest truncate">
+                  {panelTab === 'veo' ? 'Veo 3.1 Active' : panelTab === 'motion' ? 'Motion Active' : 'Omni Flash Active'}
                 </span>
               </div>
-              <span className="text-xs font-black text-[#c8f135] flex items-center gap-1.5 mt-1">
-                Cost: {requiredCredits} ⚡ <span className="text-[9.5px] font-medium text-gray-400">({userCredits} ⚡ available)</span>
+              <span className="text-[11px] sm:text-xs font-black text-[#c8f135] flex items-center gap-1 mt-0.5 sm:mt-1 truncate">
+                Cost: {requiredCredits} ⚡ <span className="text-[8.5px] sm:text-[9.5px] font-medium text-gray-400">({userCredits} ⚡)</span>
               </span>
             </div>
 
@@ -1903,7 +1903,7 @@ export const SidePanel = React.memo(({
               onClick={panelTab === 'omni' ? triggerGenerateOmni : triggerGenerateVeo}
               disabled={isBusy || !canGenerate}
               className={cn(
-                "h-13 py-3.5 px-8 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2.5 transition-all shadow-[0_0_40px_rgba(200,241,53,0.4)] border border-[#d4ff00]/40 backdrop-blur-2xl shrink-0 active:scale-95",
+                "h-11 sm:h-13 py-2.5 sm:py-3.5 px-3.5 sm:px-8 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest flex items-center justify-center gap-1.5 sm:gap-2.5 transition-all shadow-[0_0_40px_rgba(200,241,53,0.4)] border border-[#d4ff00]/40 backdrop-blur-2xl shrink-0 active:scale-95",
                 canGenerate
                   ? "bg-gradient-to-r from-[#c8f135] via-[#a8e025] to-[#c8f135] hover:shadow-[0_0_50px_rgba(200,241,53,0.7)] text-black cursor-pointer"
                   : "bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed shadow-none"
@@ -1911,13 +1911,13 @@ export const SidePanel = React.memo(({
             >
               {isBusy ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Generating...</span>
+                  <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin shrink-0" />
+                  <span className="truncate">Generating...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4 fill-current" />
-                  <span>Generate Video Now</span>
+                  <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current shrink-0" />
+                  <span className="truncate">Generate Video</span>
                 </>
               )}
             </button>
