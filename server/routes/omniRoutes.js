@@ -268,8 +268,8 @@ export default function createRouter(deps) {
         });
     }
 
-    // Gemini Omni/Omni Flash Image-to-Video: Animate a keyframe image into a clip
-    router.post('/omni-i2v', async (req, res) => {
+    // Gemini Omni/Omni Flash Video Generation Route
+    const handleOmniGenerate = async (req, res) => {
         try {
             let user;
             try {
@@ -1006,9 +1006,12 @@ async function trimVideoBufferToMaxDuration(inputBuffer, maxDurationSec = 10) {
             if (msg.includes('Responsible AI') || msg.includes('violates Google')) {
                 msg = "Google's Responsible AI policy blocked this prompt or reference media. Please modify your text prompt or reference images and try again.";
             }
-            res.status(400).json({ error: msg });
         }
-    });
+    };
+
+    router.post('/omni-i2v', handleOmniGenerate);
+    router.post('/generate', handleOmniGenerate);
+    router.post('/omni/generate', handleOmniGenerate);
 
     return router;
 }

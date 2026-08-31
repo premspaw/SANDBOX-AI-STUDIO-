@@ -1977,6 +1977,7 @@ app.use('/api', createImageRouter(deps));
 app.use('/api', createVideoRouter(deps));
 
 // ── Gemini Omni / Omni Flash ────────────────────────────────────────────────
+app.use('/api/omni', createOmniRouter(deps));
 app.use('/api', createOmniRouter(deps));
 
 // ── Seedance ─────────────────────────────────────────────────────────────────
