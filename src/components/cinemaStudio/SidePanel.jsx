@@ -1054,14 +1054,18 @@ export const SidePanel = React.memo(({
 
                   {/* Model Variant — horizontal chips on mobile */}
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-gray-300">Model Variant</label>
-                    <div className="flex gap-2">
-                      {[{id:'veo-3.1-lite-generate-preview',label:'Lite'},{id:'veo-3.1-fast-generate-preview',label:'Fast'},{id:'veo-3.1-generate-preview',label:'High'}].map(m => (
+                    <label className="text-[10px] font-black uppercase tracking-wider text-gray-300">Model Engine</label>
+                    <div className="flex gap-1.5">
+                      {[
+                        { id: 'veo-3.1', label: 'Veo 3.1 🎬' },
+                        { id: 'veo-fast', label: 'Veo Fast ⚡' },
+                        { id: 'gemini-omni-1.1-flash-preview', label: 'Omni 1.1 ⚡' }
+                      ].map(m => (
                         <button
                           key={m.id}
                           onClick={() => { setActiveTab('video'); setActiveEngine(m.id); }}
                           className={cn(
-                            "flex-1 py-2.5 rounded-xl border text-[10px] font-bold transition-all",
+                            "flex-1 py-2 rounded-xl border text-[10px] font-bold transition-all truncate",
                             activeEngine === m.id
                               ? "bg-violet-600/30 border-violet-400 text-white"
                               : "bg-white/[0.02] border-white/10 text-gray-400"
@@ -1074,7 +1078,7 @@ export const SidePanel = React.memo(({
                   {/* Params — 2-col grid */}
                   <div className="grid grid-cols-2 gap-2.5">
                     <GlassSelect label="Resolution" value={resolution} onChange={setResolution} options={[
-                      {value:'720p',label:'720p HD'},{value:'1080p',label:'1080p FHD'},{value:'4k',label:'4K UHD'}
+                      {value:'360p',label:'360p SD'},{value:'720p',label:'720p HD'},{value:'1080p',label:'1080p FHD'},{value:'4k',label:'4K UHD'}
                     ]} />
                     <GlassSelect label="Duration" value={duration} onChange={v => setDuration(Number(v))} options={[
                       {value:4,label:'4s'},{value:6,label:'6s'},{value:8,label:'8s'},{value:10,label:'10s'}
@@ -1154,9 +1158,31 @@ export const SidePanel = React.memo(({
                     />
                   </div>
 
+                  {/* Model Engine — horizontal chips on mobile */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-gray-300">Model Engine</label>
+                    <div className="flex gap-2">
+                      {[
+                        { id: 'gemini-omni-1.1-flash-preview', label: 'Omni 1.1 Flash ⚡' },
+                        { id: 'gemini-omni-flash-preview', label: 'Omni 1.0 Flash' }
+                      ].map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => { setActiveTab('video'); setActiveEngine(m.id); }}
+                          className={cn(
+                            "flex-1 py-2 rounded-xl border text-[10px] font-bold transition-all truncate",
+                            activeEngine === m.id
+                              ? "bg-fuchsia-600/30 border-fuchsia-400 text-white"
+                              : "bg-white/[0.02] border-white/10 text-gray-400"
+                          )}
+                        >{m.label}</button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-2.5">
                     <GlassSelect label="Resolution" value={resolution} onChange={setResolution} options={[
-                      {value:'720p',label:'720p'},{value:'1080p',label:'1080p'}
+                      {value:'360p',label:'360p SD'},{value:'720p',label:'720p HD'},{value:'1080p',label:'1080p FHD'},{value:'4k',label:'4K UHD'}
                     ]} />
                     <GlassSelect label="Duration" value={duration} onChange={v => setDuration(Number(v))} options={[
                       {value:4,label:'4s'},{value:6,label:'6s'},{value:8,label:'8s'},{value:10,label:'10s'}
