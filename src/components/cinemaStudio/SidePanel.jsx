@@ -151,6 +151,33 @@ export const SidePanel = React.memo(({
     if (propSetOmniRefVideoPreview) propSetOmniRefVideoPreview(val);
   };
 
+  // Multiple driving reference videos state (up to 3 videos for Omni 1.1 Flash)
+  const [refVideoList, setRefVideoList] = useState([]);
+
+  // Sync refVideoList with initial videoPreview or propOmniRefVideoPreview
+  useEffect(() => {
+    if (videoPreview && refVideoList.length === 0) {
+      setRefVideoList([videoPreview]);
+    }
+  }, [videoPreview, refVideoList.length]);
+
+  const addVideoToList = (url) => {
+    setRefVideoList(prev => {
+      const updated = [...prev, url].slice(0, 3);
+      setVideoPreview(updated[0] || null);
+      return updated;
+    });
+  };
+
+  const removeVideoAt = (idx) => {
+    setRefVideoList(prev => {
+      const updated = prev.filter((_, i) => i !== idx);
+      setVideoPreview(updated[0] || null);
+      if (updated.length === 0 && setOmniRefVideoDuration) setOmniRefVideoDuration(0);
+      return updated;
+    });
+  };
+
   // Textarea Ref & Local Prompt State for zero input latency
   const textareaRef = useRef(null);
   const [mentionSearch, setMentionSearch] = useState(null);
@@ -170,21 +197,18 @@ export const SidePanel = React.memo(({
 
   const triggerGenerateVeo = () => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    // Flush local prompt to parent first, then schedule generate on next tick
-    // to avoid React state-batching races where handleGenerate reads stale promptText.
     const engineToUse = isVeoEngine ? activeEngine : 'veo-3.1-generate-preview';
     setPromptText(localPrompt);
     setActiveTab('video');
     if (!isVeoEngine) {
       setActiveEngine(engineToUse);
     }
-    // Use queueMicrotask so React can commit state before we call handleGenerate.
     queueMicrotask(() => handleGenerate(localPrompt, engineToUse));
   };
 
   const triggerGenerateOmni = () => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    const engineToUse = isOmniEngine ? activeEngine : 'omni-flash-1.1';
+    const engineToUse = isOmniEngine ? activeEngine : 'gemini-omni-1.1-flash-preview';
     setPromptText(localPrompt);
     setActiveTab('video');
     if (!isOmniEngine) {
@@ -206,6 +230,12 @@ export const SidePanel = React.memo(({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (refVideoList.length >= 3) {
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast("Maximum 3 driving reference videos allowed.", "warning");
+      return;
+    }
+
     setIsVideoUploading(true);
     const blobUrl = URL.createObjectURL(file);
 
@@ -218,8 +248,6 @@ export const SidePanel = React.memo(({
       const dur = tempVideo.duration || 0;
       if (dur > 10) {
         setIsVideoUploading(false);
-        setVideoPreview(null);
-        if (setOmniRefVideoDuration) setOmniRefVideoDuration(0);
         if (videoInputRef.current) videoInputRef.current.value = '';
         URL.revokeObjectURL(blobUrl);
 
@@ -231,7 +259,7 @@ export const SidePanel = React.memo(({
       }
 
       if (setOmniRefVideoDuration) setOmniRefVideoDuration(dur);
-      setVideoPreview(blobUrl);
+      addVideoToList(blobUrl);
 
       try {
         const reader = new FileReader();
@@ -251,10 +279,18 @@ export const SidePanel = React.memo(({
             if (resp.ok) {
               const data = await resp.json();
               const publicUrl = data.url || data.path || base64Url;
-              setVideoPreview(publicUrl);
+              setRefVideoList(prev => {
+                const copy = [...prev];
+                const lastIdx = copy.indexOf(blobUrl);
+                if (lastIdx !== -1) copy[lastIdx] = publicUrl;
+                else if (copy.length < 3) copy.push(publicUrl);
+                setVideoPreview(copy[0] || null);
+                return copy;
+              });
             }
           } catch (_) { /* fallback to blobUrl */ }
           setIsVideoUploading(false);
+          if (videoInputRef.current) videoInputRef.current.value = '';
         };
         reader.onerror = () => setIsVideoUploading(false);
         reader.readAsDataURL(file);
@@ -421,34 +457,7 @@ export const SidePanel = React.memo(({
           {/* TAB 1: VEO 3.1 & OMNI FLASH WORKSPACE */}
           {panelTab === 'veo' && (
             <div className="space-y-6">
-              {/* Model Variant Chips */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-wider text-gray-300">Model Engine</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'veo-3.1', label: 'Veo 3.1 🎬', desc: 'Google Standard' },
-                    { id: 'veo-fast', label: 'Veo Fast ⚡', desc: 'Fast Generation' },
-                    { id: 'gemini-omni-1.1-flash-preview', label: 'Omni 1.1 Flash ⚡', desc: '1.1 Multi-Ref & Keyframes' }
-                  ].map(m => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => { setActiveTab('video'); setActiveEngine(m.id); }}
-                      className={cn(
-                        "py-2 px-1.5 rounded-xl border text-left transition-all cursor-pointer select-none",
-                        activeEngine === m.id
-                          ? "bg-violet-600/30 border-violet-400 text-white shadow-[0_0_15px_rgba(139,92,246,0.3)]"
-                          : "bg-white/[0.02] border-white/10 text-gray-400 hover:bg-white/[0.06] hover:text-white"
-                      )}
-                    >
-                      <div className="text-[11px] font-bold truncate">{m.label}</div>
-                      <div className="text-[8.5px] text-gray-400 mt-0.5 truncate">{m.desc}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Keyframe Conditioning */}
+              {/* Keyframe Conditioning (AT TOP) */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-black uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
@@ -497,6 +506,35 @@ export const SidePanel = React.memo(({
                 />
               </div>
 
+              {/* Model Engine Selection (AT BOTTOM NEAR PARAMETERS) */}
+              <div className="space-y-2 pt-1 border-t border-white/10">
+                <label className="text-[10px] font-black uppercase tracking-wider text-gray-300 flex items-center gap-1">
+                  <Cpu className="w-3.5 h-3.5 text-violet-400" /> Model Engine Selection
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'veo-3.1', label: 'Veo 3.1 🎬', desc: 'Google Standard' },
+                    { id: 'veo-fast', label: 'Veo Fast ⚡', desc: 'Fast Generation' },
+                    { id: 'gemini-omni-1.1-flash-preview', label: 'Omni 1.1 Flash ⚡', desc: '1.1 Multi-Ref' }
+                  ].map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => { setActiveTab('video'); setActiveEngine(m.id); }}
+                      className={cn(
+                        "py-2 px-1.5 rounded-xl border text-left transition-all cursor-pointer select-none",
+                        activeEngine === m.id
+                          ? "bg-violet-600/30 border-violet-400 text-white shadow-[0_0_15px_rgba(139,92,246,0.3)]"
+                          : "bg-white/[0.02] border-white/10 text-gray-400 hover:bg-white/[0.06] hover:text-white"
+                      )}
+                    >
+                      <div className="text-[11px] font-bold truncate">{m.label}</div>
+                      <div className="text-[8.5px] text-gray-400 mt-0.5 truncate">{m.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Video Specs Grid */}
               <div className="grid grid-cols-2 gap-3">
                 <GlassSelect label="Duration" value={duration} onChange={(val) => setDuration(Number(val))} options={[{ value: 4, label: '4 Seconds' }, { value: 6, label: '6 Seconds' }, { value: 8, label: '8 Seconds' }, { value: 10, label: '10 Seconds' }]} />
@@ -526,32 +564,6 @@ export const SidePanel = React.memo(({
           {/* TAB 2: OMNI FLASH 1.1 WORKSPACE */}
           {panelTab === 'omni' && (
             <div className="space-y-6">
-              {/* Model Variant Chips */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-wider text-gray-300">Model Engine</label>
-                <div className="flex gap-2">
-                  {[
-                    { id: 'gemini-omni-1.1-flash-preview', label: 'Omni 1.1 Flash ⚡', desc: 'Latest Preview' },
-                    { id: 'gemini-omni-flash-preview', label: 'Omni 1.0 Flash', desc: 'Standard Preview' }
-                  ].map(m => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => { setActiveTab('video'); setActiveEngine(m.id); }}
-                      className={cn(
-                        "flex-1 py-2.5 px-3 rounded-xl border text-left transition-all cursor-pointer select-none",
-                        activeEngine === m.id
-                          ? "bg-fuchsia-600/30 border-fuchsia-400 text-white shadow-[0_0_15px_rgba(217,70,239,0.3)]"
-                          : "bg-white/[0.02] border-white/10 text-gray-400 hover:bg-white/[0.06] hover:text-white"
-                      )}
-                    >
-                      <div className="text-xs font-bold">{m.label}</div>
-                      <div className="text-[9px] text-gray-400 mt-0.5">{m.desc}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Task Mode Dropdown */}
               <GlassSelect
                 label="Omni Flash Task Mode"
@@ -662,36 +674,66 @@ export const SidePanel = React.memo(({
                     </div>
                   </div>
 
-                  {/* Direct Reference Video Upload Slot */}
-                  <div className="p-2 rounded-xl bg-white/[0.02] backdrop-blur-md border border-white/10 hover:border-cyan-500/40 transition-all flex flex-col gap-1.5 relative shadow-md">
+                  {/* Sleek Compact Progressive Driving Video References (Up to 3 Videos) */}
+                  <div className="p-2.5 rounded-xl bg-white/[0.02] backdrop-blur-md border border-white/10 hover:border-cyan-500/40 transition-all flex flex-col gap-2 relative shadow-md">
                     <div className="flex items-center justify-between px-0.5">
-                      <span className="text-[9px] font-mono font-bold text-cyan-300 flex items-center gap-1">
-                        <Video className="w-3.5 h-3.5 text-cyan-400" /> Reference Driving Video (10s Max)
+                      <span className="text-[9.5px] font-mono font-bold text-cyan-300 flex items-center gap-1.5">
+                        <Video className="w-3.5 h-3.5 text-cyan-400" /> Reference Driving Videos (10s Max)
                       </span>
-                      {videoPreview && (
-                        <button type="button" onClick={() => { setVideoPreview(null); if (setOmniRefVideoDuration) setOmniRefVideoDuration(0); }} className="p-0.5 text-red-400 hover:bg-red-500/20 rounded transition-colors cursor-pointer" title="Remove Reference Video">
-                          <Trash2 size={12} />
+                      <span className="text-[9px] font-mono text-cyan-400/80 bg-cyan-950/60 px-2 py-0.5 rounded-md border border-cyan-500/30 font-bold">
+                        {refVideoList.length} / 3 Videos
+                      </span>
+                    </div>
+
+                    {/* Progressive Video Cards Row */}
+                    <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-0.5">
+                      {refVideoList.map((vUrl, idx) => (
+                        <div key={idx} className="relative group w-32 h-18 rounded-xl overflow-hidden bg-black border border-cyan-400/40 shrink-0 shadow-lg">
+                          <video src={vUrl} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+                          <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[8px] font-mono text-cyan-300 border border-cyan-400/40 font-bold">
+                            @video_{idx}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeVideoAt(idx)}
+                            className="absolute top-1 right-1 p-1 rounded-lg bg-black/80 hover:bg-red-500 text-white/80 hover:text-white transition-colors cursor-pointer"
+                            title="Remove Video"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
+                      ))}
+
+                      {/* Add Video Button (if < 3 uploaded) */}
+                      {refVideoList.length < 3 && (
+                        <button
+                          type="button"
+                          onClick={() => videoInputRef.current?.click()}
+                          disabled={isVideoUploading}
+                          className={cn(
+                            "rounded-xl border border-dashed flex flex-col items-center justify-center gap-1 transition-all cursor-pointer text-gray-400 hover:text-cyan-300 shrink-0 select-none",
+                            refVideoList.length === 0
+                              ? "w-full h-10 border-cyan-400/30 bg-cyan-950/20 hover:bg-cyan-900/30 hover:border-cyan-400/60 flex-row gap-2"
+                              : "w-28 h-18 border-white/20 bg-white/[0.02] hover:bg-cyan-500/10 hover:border-cyan-400/50"
+                          )}
+                          title="Upload Reference Driving Video (10s max)"
+                        >
+                          {isVideoUploading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin text-cyan-400 shrink-0" />
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-300">Uploading...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Video size={15} className="text-cyan-400/80 shrink-0" />
+                              <span className="text-[9px] font-bold uppercase tracking-wider">
+                                {refVideoList.length === 0 ? "Upload Driving Reference Video (10s max)" : `+ Add Video (${refVideoList.length + 1}/3)`}
+                              </span>
+                            </>
+                          )}
                         </button>
                       )}
                     </div>
-                    {isVideoUploading ? (
-                      <div className="aspect-video w-full rounded-lg border border-cyan-400/50 bg-cyan-950/40 backdrop-blur-md flex flex-col items-center justify-center gap-1 text-cyan-300 animate-pulse">
-                        <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
-                        <span className="text-[8px] font-bold uppercase tracking-wider">Uploading Video</span>
-                      </div>
-                    ) : videoPreview ? (
-                      <div className="aspect-video w-full rounded-lg overflow-hidden bg-black/60 border border-white/15 relative group">
-                        <video src={videoPreview} controls muted playsInline preload="metadata" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                          <button type="button" onClick={() => videoInputRef.current?.click()} className="px-2 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-[8px] font-bold uppercase tracking-wider cursor-pointer">Replace Video</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button type="button" onClick={() => videoInputRef.current?.click()} className="aspect-video w-full rounded-lg border border-dashed border-white/20 bg-white/[0.02] hover:bg-cyan-500/10 hover:border-cyan-400/50 flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-cyan-300 transition-all cursor-pointer" title="Upload Reference Video (10s max)">
-                        <Video size={16} className="text-cyan-400/70" />
-                        <span className="text-[9px] font-bold uppercase tracking-wider">Upload Driving Reference Video</span>
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
@@ -710,6 +752,34 @@ export const SidePanel = React.memo(({
                   placeholder="Describe scene action, camera movements, style, or tag @IMAGE_REF_0..9 or @video..."
                   className="w-full h-28 bg-[#0e0e18]/90 border border-white/15 rounded-2xl p-3.5 text-xs text-white placeholder-white/20 outline-none focus:border-fuchsia-400 transition-all resize-none shadow-inner custom-scrollbar font-sans"
                 />
+              </div>
+
+              {/* Model Engine Selection (AT BOTTOM NEAR PARAMETERS) */}
+              <div className="space-y-2 pt-1 border-t border-white/10">
+                <label className="text-[10px] font-black uppercase tracking-wider text-gray-300 flex items-center gap-1">
+                  <Cpu className="w-3.5 h-3.5 text-fuchsia-400" /> Model Engine Selection
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'gemini-omni-1.1-flash-preview', label: 'Omni 1.1 Flash ⚡', desc: 'Latest Preview (Default)' },
+                    { id: 'gemini-omni-flash-preview', label: 'Omni 1.0 Flash', desc: 'Standard Preview' }
+                  ].map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => { setActiveTab('video'); setActiveEngine(m.id); }}
+                      className={cn(
+                        "py-2 px-2 rounded-xl border text-left transition-all cursor-pointer select-none",
+                        activeEngine === m.id
+                          ? "bg-fuchsia-600/30 border-fuchsia-400 text-white shadow-[0_0_15px_rgba(217,70,239,0.3)]"
+                          : "bg-white/[0.02] border-white/10 text-gray-400 hover:bg-white/[0.06] hover:text-white"
+                      )}
+                    >
+                      <div className="text-[11px] font-bold truncate">{m.label}</div>
+                      <div className="text-[8.5px] text-gray-400 mt-0.5 truncate">{m.desc}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Video Specs Grid */}
