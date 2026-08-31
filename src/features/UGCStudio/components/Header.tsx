@@ -24,10 +24,10 @@ export default function Header() {
       {/* Mode Filter Tabs */}
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar max-w-[calc(100vw-160px)] md:max-w-none py-1 select-none shrink-0" style={{ scrollbarWidth: 'none' }}>
         {[
-          { id: 'ugc', label: 'UGC', icon: Film },
-          { id: 'podcast', label: 'Podcast', icon: Volume2 },
-          { id: 'talking-head', label: 'Talking Head', icon: User },
           { id: 'ai-avatar', label: 'AI Creator', icon: Sparkles },
+          { id: 'ugc', label: 'UGC', icon: Film },
+          { id: 'talking-head', label: 'Talking Head', icon: User },
+          { id: 'podcast', label: 'Podcast', icon: Volume2 },
           { id: 'home-tour', label: 'Home Tour', icon: MapPin },
           { id: 'edit', label: 'Edit', icon: Wand2 },
         ].map(tab => {

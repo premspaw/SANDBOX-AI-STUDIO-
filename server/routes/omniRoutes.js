@@ -257,7 +257,7 @@ export default function createRouter(deps) {
         }
         return new GoogleGenAI({
             vertexai: true,
-            project: VERTEX_PROJECT_ID,
+            project: VERTEX_PROJECT_ID || 'new-zerolens-api',
             location: 'global',
             googleAuthOptions: authOptions,
             httpOptions: {
@@ -691,20 +691,33 @@ async function trimVideoBufferToMaxDuration(inputBuffer, maxDurationSec = 10) {
                 finalTaskType = 'text_to_video';
             }
 
-            // 3. 'edit' requires exactly 1 input video
+            // 3. 'edit' requires at least 1 input video
             if (finalTaskType === 'edit' && finalVideoCount === 0) {
                 console.warn(`[OMNI-I2V] Task 'edit' requested but finalVideoCount is 0. Falling back to reference_to_video or text_to_video.`);
                 finalTaskType = finalImageCount > 0 ? 'reference_to_video' : 'text_to_video';
             }
 
-            const modelName = modelLower.includes('flash') ? 'gemini-omni-flash-preview' : 'gemini-omni-preview';
+            // 4. 'extension' requires at least 1 input video
+            if (finalTaskType === 'extension' && finalVideoCount === 0) {
+                console.warn(`[OMNI-I2V] Task 'extension' requested but finalVideoCount is 0. Falling back to reference_to_video or text_to_video.`);
+                finalTaskType = finalImageCount > 0 ? 'reference_to_video' : 'text_to_video';
+            }
+
+            let modelName = 'gemini-omni-1.1-flash-preview';
+            if (modelLower.includes('omni-flash-1.0') || modelLower === 'omni-flash' || modelLower === 'gemini-omni-flash-preview') {
+                modelName = 'gemini-omni-flash-preview';
+            } else if (modelLower.includes('omni-preview') || (modelLower.includes('omni') && !modelLower.includes('flash') && !modelLower.includes('1.1'))) {
+                modelName = 'gemini-omni-preview';
+            } else {
+                modelName = 'gemini-omni-1.1-flash-preview';
+            }
 
             const responseFormat = {
                 type: "video",
                 delivery: token ? "inline" : "uri"
             };
 
-            if (finalTaskType !== 'edit') {
+            if (finalTaskType !== 'edit' && finalTaskType !== 'extension') {
                 responseFormat.aspect_ratio = validAspectRatio;
             }
 

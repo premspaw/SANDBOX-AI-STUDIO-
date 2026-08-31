@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Sparkles, Film, Image as ImageIcon, Video, Layers, BookOpen, Clapperboard,
-  Upload, Trash2, Check, Zap, Cpu, Code, HelpCircle, RefreshCw, Sliders, Play, Loader2, ChevronDown, Users, Tag
+  Upload, Trash2, Check, Zap, Cpu, Code, HelpCircle, RefreshCw, Sliders, Play, Loader2, ChevronDown, Users, Tag, Aperture, FastForward
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getApiUrl } from '../../config/apiConfig';
@@ -80,6 +80,7 @@ const GlassSelect = React.memo(({ value, onChange, options, label, icon: Icon, a
 export const SidePanel = React.memo(({
   isOpen,
   onClose,
+  inlineMode = false,
   activeEngine,
   setActiveEngine,
   activeTab,
@@ -165,7 +166,7 @@ export const SidePanel = React.memo(({
   }, [promptText]);
 
   const isVeoEngine = activeEngine.startsWith('veo-3.1') || activeEngine === 'veo3';
-  const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash';
+  const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview';
 
   const triggerGenerateVeo = () => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -183,12 +184,21 @@ export const SidePanel = React.memo(({
 
   const triggerGenerateOmni = () => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    const engineToUse = isOmniEngine ? activeEngine : 'omni-flash';
+    const engineToUse = isOmniEngine ? activeEngine : 'omni-flash-1.1';
     setPromptText(localPrompt);
     setActiveTab('video');
     if (!isOmniEngine) {
       setActiveEngine(engineToUse);
     }
+    queueMicrotask(() => handleGenerate(localPrompt, engineToUse));
+  };
+
+  const triggerGenerateMotion = () => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    const engineToUse = activeEngine.includes('motion') ? activeEngine : 'kling-motion';
+    setPromptText(localPrompt);
+    setActiveTab('video');
+    setActiveEngine(engineToUse);
     queueMicrotask(() => handleGenerate(localPrompt, engineToUse));
   };
 
@@ -317,6 +327,464 @@ export const SidePanel = React.memo(({
     return (localPrompt || '').match(/@[\w_]+/g) || [];
   }, [localPrompt]);
 
+  // Inline Full-Page Mode rendering
+  if (inlineMode) {
+    return (
+      <div className="w-full h-full flex flex-col bg-[#0a0a12] border-r border-white/15 overflow-hidden text-white relative z-10 font-sans">
+        {/* Hidden Dedicated Video File Input */}
+        <input
+          ref={videoInputRef}
+          type="file"
+          accept="video/*"
+          className="hidden"
+          onChange={handleVideoSelect}
+        />
+
+        {/* Solid Header with ZeroLens Branding */}
+        <div className="px-5 py-3 border-b border-white/15 bg-[#12121e] flex items-center justify-between relative z-10 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-1 rounded-xl bg-gradient-to-tr from-violet-500 via-fuchsia-500 to-cyan-400 shadow-md shadow-fuchsia-500/20">
+              <div className="w-7 h-7 rounded-[10px] bg-[#0d0d15] flex items-center justify-center">
+                <Clapperboard className="w-4 h-4 text-fuchsia-400" />
+              </div>
+            </div>
+            <div>
+              <h2 className="text-xs font-black tracking-[0.2em] uppercase bg-gradient-to-r from-white via-violet-200 to-fuchsia-200 bg-clip-text text-transparent leading-none">
+                ZeroLens Studio
+              </h2>
+              <p className="text-[8px] font-bold uppercase tracking-widest text-fuchsia-400/70 leading-none mt-1">
+                Engine & Parameter Controls
+              </p>
+            </div>
+          </div>
+          <span className="text-[9px] font-mono bg-fuchsia-500/20 text-fuchsia-300 px-2.5 py-1 rounded-lg border border-fuchsia-500/30 font-bold uppercase tracking-widest">
+            Studio Page
+          </span>
+        </div>
+
+        {/* Navigation Tabs Bar */}
+        <div className="px-5 pt-3.5 pb-2.5 bg-[#0c0c16] border-b border-white/15 flex items-center gap-2 relative z-10 shrink-0">
+          <button
+            onClick={() => {
+              setPanelTab('veo');
+              setActiveTab('video');
+              if (!isVeoEngine) setActiveEngine('veo-3.1-generate-preview');
+            }}
+            className={cn(
+              "flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all border shadow-lg backdrop-blur-xl cursor-pointer select-none",
+              panelTab === 'veo'
+                ? "bg-gradient-to-r from-violet-600/30 via-violet-500/20 to-fuchsia-500/20 text-white border-violet-400/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]"
+                : "bg-white/[0.03] text-gray-400 border-white/10 hover:bg-white/[0.08] hover:text-white"
+            )}
+          >
+            <Film className="w-3.5 h-3.5 text-violet-400" />
+            <span>Veo 3.1 Workspace</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setPanelTab('omni');
+              setActiveTab('video');
+              if (!isOmniEngine) setActiveEngine('omni-flash-1.1');
+            }}
+            className={cn(
+              "flex-1 py-2.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all border shadow-lg backdrop-blur-xl cursor-pointer select-none",
+              panelTab === 'omni'
+                ? "bg-gradient-to-r from-fuchsia-600/30 via-pink-500/20 to-violet-500/20 text-white border-fuchsia-400/50 shadow-[0_0_20px_rgba(217,70,239,0.3)]"
+                : "bg-white/[0.03] text-gray-400 border-white/10 hover:bg-white/[0.08] hover:text-white"
+            )}
+          >
+            <Zap className="w-3.5 h-3.5 text-fuchsia-400" />
+            <span>Omni Flash 1.1</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setPanelTab('motion');
+              setActiveTab('video');
+              setActiveEngine('kling-motion');
+            }}
+            className={cn(
+              "flex-1 py-2.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all border shadow-lg backdrop-blur-xl cursor-pointer select-none",
+              panelTab === 'motion'
+                ? "bg-gradient-to-r from-orange-600/30 via-amber-500/20 to-yellow-500/20 text-white border-orange-400/50 shadow-[0_0_20px_rgba(249,115,22,0.3)]"
+                : "bg-white/[0.03] text-gray-400 border-white/10 hover:bg-white/[0.08] hover:text-white"
+            )}
+          >
+            <Aperture className="w-3.5 h-3.5 text-orange-400" />
+            <span>Motion Control</span>
+          </button>
+        </div>
+
+        {/* Panel Content Scroll Area */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-5 space-y-6 pb-28 relative z-10 bg-[#0a0a12]">
+          {/* TAB 1: VEO 3.1 WORKSPACE */}
+          {panelTab === 'veo' && (
+            <div className="space-y-6">
+              {/* Keyframe Conditioning */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4 text-violet-400" />
+                    <span>Keyframe Conditioning</span>
+                  </h3>
+                  <span className="text-[10px] text-violet-400 font-mono font-semibold">First & Last Frame</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase text-gray-400 block">First Frame</span>
+                    {firstFramePreview ? (
+                      <div className="relative group rounded-2xl overflow-hidden border border-white/20 aspect-video bg-black/50">
+                        <img src={firstFramePreview} className="w-full h-full object-cover" alt="First Frame" />
+                        <button onClick={() => { setFirstFrameImage(''); setFirstFramePreview(''); }} className="absolute top-2 right-2 p-1.5 rounded-xl bg-black/70 text-white/80 hover:text-white hover:bg-red-500/80 transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    ) : (
+                      <button onClick={() => { setUploadTarget('first'); fileInputRef?.current?.click(); }} className="w-full aspect-video rounded-2xl border border-dashed border-white/20 hover:border-violet-400/60 bg-white/[0.02] hover:bg-white/[0.05] transition-all flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-white cursor-pointer"><Upload size={18} /><span className="text-[10px] font-bold uppercase">Upload 1st Frame</span></button>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase text-gray-400 block">Last Frame</span>
+                    {lastFramePreview ? (
+                      <div className="relative group rounded-2xl overflow-hidden border border-white/20 aspect-video bg-black/50">
+                        <img src={lastFramePreview} className="w-full h-full object-cover" alt="Last Frame" />
+                        <button onClick={() => { setLastFrameImage(''); setLastFramePreview(''); }} className="absolute top-2 right-2 p-1.5 rounded-xl bg-black/70 text-white/80 hover:text-white hover:bg-red-500/80 transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    ) : (
+                      <button onClick={() => { setUploadTarget('last'); fileInputRef?.current?.click(); }} className="w-full aspect-video rounded-2xl border border-dashed border-white/20 hover:border-violet-400/60 bg-white/[0.02] hover:bg-white/[0.05] transition-all flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-white cursor-pointer"><Upload size={18} /><span className="text-[10px] font-bold uppercase">Upload Last Frame</span></button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Text Prompt */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+                  <span>Scene Prompt</span>
+                </label>
+                <textarea
+                  value={localPrompt}
+                  onChange={(e) => { setLocalPrompt(e.target.value); setPromptText(e.target.value); }}
+                  placeholder="Describe your cinematic video scene, camera movements, lighting, and action..."
+                  className="w-full h-28 bg-[#0e0e18]/90 border border-white/15 rounded-2xl p-3.5 text-xs text-white placeholder-white/20 outline-none focus:border-violet-400 transition-all resize-none shadow-inner custom-scrollbar font-sans"
+                />
+              </div>
+
+              {/* Video Specs Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <GlassSelect label="Duration" value={duration} onChange={(val) => setDuration(Number(val))} options={[{ value: 4, label: '4 Seconds' }, { value: 6, label: '6 Seconds' }, { value: 8, label: '8 Seconds' }]} />
+                <GlassSelect label="Aspect Ratio" value={aspectRatio} onChange={setAspectRatio} options={[{ value: '16:9', label: '16:9 Widescreen' }, { value: '9:16', label: '9:16 Vertical' }, { value: '1:1', label: '1:1 Square' }]} />
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: OMNI FLASH 1.1 WORKSPACE */}
+          {panelTab === 'omni' && (
+            <div className="space-y-6">
+              {/* Model Variant Chips */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-wider text-gray-300">Model Engine</label>
+                <div className="flex gap-2">
+                  {[
+                    { id: 'gemini-omni-1.1-flash-preview', label: 'Omni 1.1 Flash ⚡', desc: 'Latest Preview' },
+                    { id: 'gemini-omni-flash-preview', label: 'Omni 1.0 Flash', desc: 'Standard Preview' }
+                  ].map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => { setActiveTab('video'); setActiveEngine(m.id); }}
+                      className={cn(
+                        "flex-1 py-2.5 px-3 rounded-xl border text-left transition-all cursor-pointer select-none",
+                        activeEngine === m.id
+                          ? "bg-fuchsia-600/30 border-fuchsia-400 text-white shadow-[0_0_15px_rgba(217,70,239,0.3)]"
+                          : "bg-white/[0.02] border-white/10 text-gray-400 hover:bg-white/[0.06] hover:text-white"
+                      )}
+                    >
+                      <div className="text-xs font-bold">{m.label}</div>
+                      <div className="text-[9px] text-gray-400 mt-0.5">{m.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Task Mode Dropdown */}
+              <GlassSelect
+                label="Omni Flash Task Mode"
+                icon={Zap}
+                value={omniTask}
+                onChange={(val) => { setOmniTask(val); localStorage.setItem('cs_omniTask', val); }}
+                align="down"
+                options={[
+                  { value: 'auto', label: 'Auto Infer', desc: 'Auto-detects task from uploaded inputs', icon: <Sparkles className="w-3.5 h-3.5 text-[#c8f135]" /> },
+                  { value: 'text_to_video', label: 'Text-to-Video', desc: 'Generate video directly from text prompt', icon: <Film className="w-3.5 h-3.5 text-violet-400" /> },
+                  { value: 'image_to_video', label: 'Image-to-Video', desc: 'Transform static images into videos', icon: <ImageIcon className="w-3.5 h-3.5 text-fuchsia-400" /> },
+                  { value: 'reference_to_video', label: 'Reference-to-Video', desc: 'Generate videos from various input media', icon: <Layers className="w-3.5 h-3.5 text-cyan-400" /> },
+                  { value: 'edit', label: 'Video Editing', desc: 'Modify an original or previously generated video', icon: <Video className="w-3.5 h-3.5 text-rose-400" /> },
+                  { value: 'extension', label: 'Video Extension', desc: 'Extend an original or previously generated video', icon: <FastForward className="w-3.5 h-3.5 text-amber-400" /> }
+                ]}
+              />
+
+              {/* Media & Reference Inputs Section */}
+              <div className="space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
+                    <Video className="w-4 h-4 text-fuchsia-400" />
+                    <span>Media & Reference Inputs</span>
+                  </h3>
+                  <span className="text-[10px] text-fuchsia-400 font-mono font-semibold">Images & Video Clips</span>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Progressive Image Reference Slots */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-fuchsia-300 flex items-center gap-1">
+                        <ImageIcon className="w-3.5 h-3.5 text-fuchsia-400" /> Reference Images
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] text-fuchsia-400/80 font-mono">Tag @IMAGE_REF_0..4</span>
+                        {Math.max(3, Math.min(5, (omniRefPreviews.filter(Boolean).length >= 4 ? 5 : omniRefPreviews.filter(Boolean).length >= 3 || omniRefPreviews[2] ? 4 : 3))) < 5 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const currentFilled = omniRefPreviews.filter(Boolean).length;
+                              const nextSlot = Math.min(4, Math.max(3, currentFilled));
+                              setUploadTarget(`omni_ref_${nextSlot}`);
+                              fileInputRef?.current?.click();
+                            }}
+                            className="flex items-center gap-0.5 text-[8px] font-black uppercase tracking-wider text-fuchsia-300 hover:text-white bg-fuchsia-500/20 hover:bg-fuchsia-500/30 px-1.5 py-0.5 rounded border border-fuchsia-500/30 transition-all cursor-pointer"
+                          >
+                            + Add Ref
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {Array.from({ length: Math.min(5, Math.max(3, omniRefPreviews.filter(Boolean).length >= 4 ? 5 : omniRefPreviews.filter(Boolean).length >= 3 || omniRefPreviews[2] ? 4 : 3)) }).map((_, idx) => {
+                        const slotPreview = omniRefPreviews[idx] || (idx === 0 ? omniFirstFramePreview : idx === 1 ? omniLastFramePreview : '');
+                        return (
+                          <div key={idx} className="p-2 rounded-xl bg-white/[0.02] backdrop-blur-md border border-white/10 hover:border-fuchsia-500/40 transition-all flex flex-col gap-1.5 relative shadow-md">
+                            <div className="flex items-center justify-between px-0.5">
+                              <span className="text-[9px] font-mono font-bold text-fuchsia-300 flex items-center gap-1">
+                                Ref {idx + 1}
+                              </span>
+                              {slotPreview && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleClearRef(idx)}
+                                  className="p-0.5 text-red-400 hover:bg-red-500/20 rounded transition-colors cursor-pointer"
+                                  title={`Remove Image Ref ${idx + 1}`}
+                                >
+                                  <Trash2 size={10} />
+                                </button>
+                              )}
+                            </div>
+
+                            {slotPreview ? (
+                              <div className="aspect-video w-full rounded-lg overflow-hidden bg-black/60 border border-white/15 relative group">
+                                <img src={slotPreview} alt={`Ref ${idx + 1}`} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setUploadTarget(idx === 0 ? 'first' : idx === 1 ? 'last' : `omni_ref_${idx}`);
+                                      fileInputRef?.current?.click();
+                                    }}
+                                    className="px-2 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-[8px] font-bold uppercase tracking-wider cursor-pointer"
+                                  >
+                                    Replace
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setUploadTarget(idx === 0 ? 'first' : idx === 1 ? 'last' : `omni_ref_${idx}`);
+                                  fileInputRef?.current?.click();
+                                }}
+                                className="aspect-video w-full rounded-lg border border-dashed border-white/20 bg-white/[0.02] hover:bg-fuchsia-500/10 hover:border-fuchsia-400/50 flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-fuchsia-300 transition-all cursor-pointer"
+                                title={`Upload Image Ref ${idx + 1}`}
+                              >
+                                <Upload size={14} className="text-fuchsia-400/70" />
+                                <span className="text-[8px] font-bold uppercase tracking-wider">Upload Ref {idx + 1}</span>
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Direct Reference Video Upload Slot */}
+                  <div className="p-2 rounded-xl bg-white/[0.02] backdrop-blur-md border border-white/10 hover:border-cyan-500/40 transition-all flex flex-col gap-1.5 relative shadow-md">
+                    <div className="flex items-center justify-between px-0.5">
+                      <span className="text-[9px] font-mono font-bold text-cyan-300 flex items-center gap-1">
+                        <Video className="w-3.5 h-3.5 text-cyan-400" /> Reference Driving Video (10s Max)
+                      </span>
+                      {videoPreview && (
+                        <button type="button" onClick={() => { setVideoPreview(null); if (setOmniRefVideoDuration) setOmniRefVideoDuration(0); }} className="p-0.5 text-red-400 hover:bg-red-500/20 rounded transition-colors cursor-pointer" title="Remove Reference Video">
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                    {isVideoUploading ? (
+                      <div className="aspect-video w-full rounded-lg border border-cyan-400/50 bg-cyan-950/40 backdrop-blur-md flex flex-col items-center justify-center gap-1 text-cyan-300 animate-pulse">
+                        <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
+                        <span className="text-[8px] font-bold uppercase tracking-wider">Uploading Video</span>
+                      </div>
+                    ) : videoPreview ? (
+                      <div className="aspect-video w-full rounded-lg overflow-hidden bg-black/60 border border-white/15 relative group">
+                        <video src={videoPreview} controls muted playsInline preload="metadata" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                          <button type="button" onClick={() => videoInputRef.current?.click()} className="px-2 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-[8px] font-bold uppercase tracking-wider cursor-pointer">Replace Video</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => videoInputRef.current?.click()} className="aspect-video w-full rounded-lg border border-dashed border-white/20 bg-white/[0.02] hover:bg-cyan-500/10 hover:border-cyan-400/50 flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-cyan-300 transition-all cursor-pointer" title="Upload Reference Video (10s max)">
+                        <Video size={16} className="text-cyan-400/70" />
+                        <span className="text-[9px] font-bold uppercase tracking-wider">Upload Driving Reference Video</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Text Prompt */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-300 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-fuchsia-300">
+                    <Sparkles className="w-3.5 h-3.5 text-fuchsia-400" /> Omni Flash Prompt
+                  </span>
+                  <span className="text-[9px] text-fuchsia-400/80 font-mono">Use @ to tag references</span>
+                </label>
+                <textarea
+                  value={localPrompt}
+                  onChange={(e) => { setLocalPrompt(e.target.value); setOmniPromptText(e.target.value); setPromptText(e.target.value); }}
+                  placeholder="Describe scene action, camera movements, style, or tag @IMAGE_REF_0..4 or @video..."
+                  className="w-full h-28 bg-[#0e0e18]/90 border border-white/15 rounded-2xl p-3.5 text-xs text-white placeholder-white/20 outline-none focus:border-fuchsia-400 transition-all resize-none shadow-inner custom-scrollbar font-sans"
+                />
+              </div>
+
+              {/* Video Specs Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <GlassSelect label="Duration" value={duration} onChange={(val) => setDuration(Number(val))} options={[{ value: 4, label: '4 Seconds' }, { value: 6, label: '6 Seconds' }, { value: 8, label: '8 Seconds' }, { value: 10, label: '10 Seconds' }]} />
+                <GlassSelect label="Aspect Ratio" value={aspectRatio} onChange={setAspectRatio} options={[{ value: '16:9', label: '16:9 Widescreen' }, { value: '9:16', label: '9:16 Vertical' }, { value: '1:1', label: '1:1 Square' }]} />
+                <GlassSelect label="Resolution" value={resolution} onChange={setResolution} options={[{ value: '720p', label: '720p HD' }, { value: '1080p', label: '1080p FHD' }, { value: '4k', label: '4K UHD' }]} />
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-300">Audio</label>
+                  <button
+                    type="button"
+                    onClick={() => setGenerateAudio(!generateAudio)}
+                    className={cn(
+                      "w-full h-[42px] rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+                      generateAudio ? "bg-fuchsia-600/25 border-fuchsia-400 text-fuchsia-200" : "bg-white/[0.02] border-white/15 text-gray-400"
+                    )}
+                  >
+                    {generateAudio ? '🔊 Audio On' : '🔇 Audio Off'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: MOTION CONTROL WORKSPACE */}
+          {panelTab === 'motion' && (
+            <div className="space-y-6">
+              {/* Motion Engine Selector */}
+              <GlassSelect
+                label="Motion Transfer Engine"
+                icon={Aperture}
+                value={activeEngine}
+                onChange={(val) => setActiveEngine(val)}
+                align="down"
+                options={[
+                  { value: 'kling-motion', label: 'Kling V3 Motion Transfer', desc: '14⚡/s High Fidelity Video Motion Transfer', icon: <Aperture className="w-3.5 h-3.5 text-orange-400" /> },
+                  { value: 'seedance-motion', label: 'Seedance 2.0 Motion Transfer', desc: '12⚡/s Character & Pose Motion Capture', icon: <Zap className="w-3.5 h-3.5 text-yellow-400" /> }
+                ]}
+              />
+
+              {/* Driving Motion Video & Character Image Upload Slots */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
+                    <Video className="w-4 h-4 text-orange-400" />
+                    <span>Motion Conditioning</span>
+                  </h3>
+                  <span className="text-[10px] text-orange-400 font-mono font-semibold">Video & Subject</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase text-gray-400 block">Driving Video</span>
+                    {videoPreview ? (
+                      <div className="relative group rounded-2xl overflow-hidden border border-white/20 aspect-video bg-black/50">
+                        <video src={videoPreview} className="w-full h-full object-cover" />
+                        <button onClick={() => setVideoPreview(null)} className="absolute top-2 right-2 p-1.5 rounded-xl bg-black/70 text-white/80 hover:text-white hover:bg-red-500/80 transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    ) : (
+                      <button onClick={() => videoInputRef?.current?.click()} className="w-full aspect-video rounded-2xl border border-dashed border-white/20 hover:border-orange-400/60 bg-white/[0.02] hover:bg-white/[0.05] transition-all flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-white cursor-pointer"><Upload size={18} /><span className="text-[10px] font-bold uppercase">Upload Driving Video</span></button>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase text-gray-400 block">Target Character</span>
+                    {firstFramePreview ? (
+                      <div className="relative group rounded-2xl overflow-hidden border border-white/20 aspect-video bg-black/50">
+                        <img src={firstFramePreview} className="w-full h-full object-cover" alt="Character" />
+                        <button onClick={() => { setFirstFrameImage(''); setFirstFramePreview(''); }} className="absolute top-2 right-2 p-1.5 rounded-xl bg-black/70 text-white/80 hover:text-white hover:bg-red-500/80 transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    ) : (
+                      <button onClick={() => { setUploadTarget('first'); fileInputRef?.current?.click(); }} className="w-full aspect-video rounded-2xl border border-dashed border-white/20 hover:border-orange-400/60 bg-white/[0.02] hover:bg-white/[0.05] transition-all flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-white cursor-pointer"><Upload size={18} /><span className="text-[10px] font-bold uppercase">Upload Character</span></button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Text Prompt */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-orange-400" />
+                  <span>Motion Scene Prompt</span>
+                </label>
+                <textarea
+                  value={localPrompt}
+                  onChange={(e) => { setLocalPrompt(e.target.value); setPromptText(e.target.value); }}
+                  placeholder="Describe character motion, camera tracking, and aesthetic style..."
+                  className="w-full h-24 bg-[#0e0e18]/90 border border-white/15 rounded-2xl p-3.5 text-xs text-white placeholder-white/20 outline-none focus:border-orange-400 transition-all resize-none shadow-inner custom-scrollbar font-sans"
+                />
+              </div>
+
+              {/* Video Specs Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <GlassSelect label="Duration" value={duration} onChange={(val) => setDuration(Number(val))} options={[{ value: 3, label: '3 Seconds' }, { value: 5, label: '5 Seconds' }, { value: 8, label: '8 Seconds' }, { value: 10, label: '10 Seconds' }]} />
+                <GlassSelect label="Aspect Ratio" value={aspectRatio} onChange={setAspectRatio} options={[{ value: '16:9', label: '16:9 Widescreen' }, { value: '9:16', label: '9:16 Vertical' }, { value: '1:1', label: '1:1 Square' }]} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sticky Bottom Generate Bar */}
+        <div className="p-4 bg-[#080810] border-t border-white/20 flex items-center justify-between gap-4 z-20 shrink-0">
+          <div className="flex flex-col min-w-0">
+            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Required</span>
+            <span className="text-sm font-black text-[#c8f135]">{requiredCredits} Shorts</span>
+          </div>
+          <button
+            type="button"
+            onClick={panelTab === 'motion' ? triggerGenerateMotion : (panelTab === 'omni' ? triggerGenerateOmni : triggerGenerateVeo)}
+            disabled={isBusy || !canGenerate}
+            className={cn(
+              "h-12 py-3 px-6 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(200,241,53,0.3)] border border-[#d4ff00]/40 shrink-0 active:scale-95 cursor-pointer",
+              canGenerate ? "bg-[#c8f135] text-black hover:bg-[#bce628]" : "bg-white/5 text-gray-500 border-white/5 cursor-not-allowed"
+            )}
+          >
+            {isBusy ? (<><Loader2 className="w-4 h-4 animate-spin" /><span>Generating...</span></>) : (<><Sparkles className="w-4 h-4 fill-current" /><span>Generate Video</span></>)}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -358,7 +826,7 @@ export const SidePanel = React.memo(({
                 </div>
                 <div>
                   <h3 className="text-xs font-black uppercase tracking-wider text-white">Studio Panel</h3>
-                  <p className="text-[10px] text-cyan-400 font-mono">Gemini Omni Flash Engine</p>
+                  <p className="text-[10px] text-cyan-400 font-mono">Gemini Omni Flash 1.1 Engine</p>
                 </div>
               </div>
               <button
@@ -373,7 +841,7 @@ export const SidePanel = React.memo(({
             <div className="px-3 pt-2.5 pb-2 border-b border-white/15 bg-[#0c0c16] flex items-center gap-2 shrink-0">
               {[
                 ['veo','veo-3.1-generate-preview','video',<Film key="f" className="w-3.5 h-3.5" />,'Veo 3.1'],
-                ['omni','omni-flash','video',<Zap key="z" className="w-3.5 h-3.5" />,'Omni Flash']
+                ['omni','omni-flash-1.1','video',<Zap key="z" className="w-3.5 h-3.5" />,'Omni Flash 1.1']
               ].map(([tab, engine, aTab, icon, label]) => (
                 <button
                   key={tab}
@@ -518,10 +986,11 @@ export const SidePanel = React.memo(({
                 <div className="space-y-5">
                   <GlassSelect label="Omni Task Mode" icon={Zap} value={omniTask} onChange={v => { setOmniTask(v); localStorage.setItem('cs_omniTask', v); }} align="down" options={[
                     {value:'auto',label:'Auto Infer',desc:'Auto-detects from inputs'},
-                    {value:'text_to_video',label:'Text → Video',desc:'Generate from prompt'},
-                    {value:'image_to_video',label:'Image → Video',desc:'Animate keyframe'},
-                    {value:'reference_to_video',label:'Reference → Video',desc:'Multi-asset guidance'},
-                    {value:'edit',label:'Video Edit',desc:'Edit with instructions'}
+                    {value:'text_to_video',label:'Text → Video',desc:'Generate dynamic sequences from text'},
+                    {value:'image_to_video',label:'Image → Video',desc:'Transform static images into video'},
+                    {value:'reference_to_video',label:'Reference → Video',desc:'Multi-asset reference guidance'},
+                    {value:'edit',label:'Video Editing',desc:'Modify original or generated clip'},
+                    {value:'extension',label:'Video Extension',desc:'Extend original or generated video'}
                   ]} />
 
                   {/* Reference inputs compact */}
@@ -678,7 +1147,7 @@ export const SidePanel = React.memo(({
               onClick={() => {
                 setPanelTab('omni');
                 setActiveTab('video');
-                if (!isOmniEngine) setActiveEngine('omni-flash');
+                if (!isOmniEngine) setActiveEngine('omni-flash-1.1');
               }}
               className={cn(
                 "flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all border shadow-lg backdrop-blur-xl cursor-pointer select-none",
@@ -688,7 +1157,7 @@ export const SidePanel = React.memo(({
               )}
             >
               <Zap className="w-3.5 h-3.5 text-fuchsia-400" />
-              <span>Omni Flash</span>
+              <span>Omni Flash 1.1</span>
             </button>
           </div>
 
@@ -972,6 +1441,39 @@ export const SidePanel = React.memo(({
             {/* ────────────────────────────────────────────────────────── */}
             {panelTab === 'omni' && (
               <div className="space-y-6">
+                {/* 0. OMNI MODEL VARIANT SELECTOR */}
+                <div className="space-y-2.5">
+                  <label className="text-xs font-black uppercase tracking-wider text-gray-300">Omni Model Variant</label>
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {[
+                      { id: 'omni-flash-1.1', label: 'Omni Flash 1.1', desc: '⚡ Latest 1.1 Fast Engine (Vertex AI Global)' },
+                      { id: 'omni-flash', label: 'Omni Flash 1.0', desc: '✨ Fast 1.0 Multimodal Engine' },
+                      { id: 'omni', label: 'Gemini Omni 1.0', desc: '🎬 Standard Omni Multimodal Engine' }
+                    ].map(m => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('video');
+                          setActiveEngine(m.id);
+                        }}
+                        className={cn(
+                          "p-3 rounded-2xl border text-left flex flex-col justify-between transition-all backdrop-blur-xl shadow-md cursor-pointer select-none",
+                          activeEngine === m.id || (activeEngine === 'gemini-omni-1.1-flash-preview' && m.id === 'omni-flash-1.1')
+                            ? "bg-gradient-to-b from-fuchsia-600/30 to-pink-950/40 border-fuchsia-400 text-white shadow-[0_0_20px_rgba(217,70,239,0.25)]"
+                            : "bg-white/[0.02] border-white/10 text-gray-400 hover:bg-white/[0.06] hover:text-white"
+                        )}
+                      >
+                        <div className="text-xs font-bold flex items-center justify-between">
+                          <span>{m.label}</span>
+                          {(activeEngine === m.id || (activeEngine === 'gemini-omni-1.1-flash-preview' && m.id === 'omni-flash-1.1')) && <Check className="w-3.5 h-3.5 text-fuchsia-400" />}
+                        </div>
+                        <span className="text-[10px] text-gray-400 mt-1.5 leading-snug">{m.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* 1. TOP SECTION: Omni Flash Task Selection Custom Glass Dropdown */}
                 <GlassSelect
                   label="Omni Flash Task Mode"
@@ -983,11 +1485,12 @@ export const SidePanel = React.memo(({
                   }}
                   align="down"
                   options={[
-                    { value: 'auto', label: 'Auto Infer', desc: 'Auto-detects task from uploaded inputs', icon: <Sparkles className="w-3.5 h-3.5 text-amber-400" /> },
-                    { value: 'text_to_video', label: 'Text-to-Video', desc: 'Generate video directly from text prompt', icon: <Film className="w-3.5 h-3.5 text-violet-400" /> },
-                    { value: 'image_to_video', label: 'Image-to-Video', desc: 'Animate reference keyframe image', icon: <ImageIcon className="w-3.5 h-3.5 text-fuchsia-400" /> },
-                    { value: 'reference_to_video', label: 'Reference-to-Video', desc: 'Multi-asset image & video reference guidance', icon: <Layers className="w-3.5 h-3.5 text-cyan-400" /> },
-                    { value: 'edit', label: 'Video Edit', desc: 'Upload clip and apply natural language edit', icon: <Video className="w-3.5 h-3.5 text-rose-400" /> }
+                    { value: 'auto', label: 'Auto Infer', desc: 'Auto-detects task from uploaded inputs', icon: <Sparkles className="w-3.5 h-3.5 text-[#c8f135]" /> },
+                    { value: 'text_to_video', label: 'Text-to-Video', desc: 'Generate dynamic video sequences directly from text prompts', icon: <Film className="w-3.5 h-3.5 text-violet-400" /> },
+                    { value: 'image_to_video', label: 'Image-to-Video', desc: 'Transform static images into videos', icon: <ImageIcon className="w-3.5 h-3.5 text-fuchsia-400" /> },
+                    { value: 'reference_to_video', label: 'Reference-to-Video', desc: 'Generate videos from various input media', icon: <Layers className="w-3.5 h-3.5 text-cyan-400" /> },
+                    { value: 'edit', label: 'Video Editing', desc: 'Modify an original or previously generated video', icon: <Video className="w-3.5 h-3.5 text-rose-400" /> },
+                    { value: 'extension', label: 'Video Extension', desc: 'Extend an original or previously generated video', icon: <FastForward className="w-3.5 h-3.5 text-amber-400" /> }
                   ]}
                 />
 
@@ -1241,6 +1744,94 @@ export const SidePanel = React.memo(({
                       <span>{generateAudio ? 'Audio Enabled' : 'Muted'}</span>
                       {generateAudio && <Check className="w-3.5 h-3.5 text-fuchsia-400" />}
                     </button>
+                  </div>
+                </div>
+
+                {/* 5. FIFTH SECTION: Gemini Omni 1.1 Flash Capabilities & Use Cases Documentation Card */}
+                <div className="pt-4 border-t border-white/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-fuchsia-300 flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-fuchsia-400" />
+                      <span>Gemini Omni 1.1 Flash Capabilities & Use Cases</span>
+                    </h3>
+                    <span className="text-[9px] font-mono bg-fuchsia-500/20 text-fuchsia-300 px-2 py-0.5 rounded-md border border-fuchsia-500/30 font-bold">
+                      1.1 Docs
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-gray-400 leading-relaxed font-normal">
+                    These capabilities are available in the <strong className="text-white">Gemini Omni 1.1 Flash Preview</strong> model:
+                  </p>
+
+                  <div className="space-y-2">
+                    {[
+                      {
+                        title: "Text-to-Video",
+                        task: "text_to_video",
+                        badge: "Prompt → Video",
+                        icon: "🎬",
+                        color: "from-violet-500/20 to-indigo-500/10 border-violet-500/30 text-violet-300",
+                        desc: "Generate dynamic video sequences directly from text prompts."
+                      },
+                      {
+                        title: "Image-to-Video",
+                        task: "image_to_video",
+                        badge: "Keyframe → Video",
+                        icon: "🖼️",
+                        color: "from-fuchsia-500/20 to-pink-500/10 border-fuchsia-500/30 text-fuchsia-300",
+                        desc: "Transform static images into videos."
+                      },
+                      {
+                        title: "Reference-to-Video",
+                        task: "reference_to_video",
+                        badge: "Multimodal Inputs",
+                        icon: "🎨",
+                        color: "from-cyan-500/20 to-blue-500/10 border-cyan-500/30 text-cyan-300",
+                        desc: "Generate videos from various input media."
+                      },
+                      {
+                        title: "Video Editing",
+                        task: "edit",
+                        badge: "Natural Language Edit",
+                        icon: "✂️",
+                        color: "from-rose-500/20 to-red-500/10 border-rose-500/30 text-rose-300",
+                        desc: "Modify an original or previously generated video."
+                      },
+                      {
+                        title: "Video Extension",
+                        task: "extension",
+                        badge: "Extend Duration",
+                        icon: "⏩",
+                        color: "from-amber-500/20 to-orange-500/10 border-amber-500/30 text-amber-300",
+                        desc: "Extend an original or previously generated video."
+                      }
+                    ].map(uc => (
+                      <div
+                        key={uc.task}
+                        onClick={() => {
+                          setOmniTask(uc.task);
+                          localStorage.setItem('cs_omniTask', uc.task);
+                        }}
+                        className={cn(
+                          "p-3 rounded-xl border bg-gradient-to-r transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99] flex flex-col gap-1 shadow-sm",
+                          uc.color,
+                          omniTask === uc.task && "ring-1 ring-white/50 border-white/60"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold flex items-center gap-1.5 text-white">
+                            <span>{uc.icon}</span>
+                            <span>{uc.title}</span>
+                          </span>
+                          <span className="text-[9px] font-mono uppercase tracking-wider bg-black/40 px-2 py-0.5 rounded text-gray-300 border border-white/10">
+                            {uc.badge}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-gray-300 leading-snug font-normal">
+                          {uc.desc}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>

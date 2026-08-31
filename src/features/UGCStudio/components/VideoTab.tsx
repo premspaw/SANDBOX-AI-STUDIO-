@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Zap, Layout, Clock, FileText, Sparkles, Loader2, Film, X } from 'lucide-react';
 import { useUGC } from '../context/UGCContext';
 import { resolveUrl } from '../../../config/apiConfig';
+import DropUpPortal from './DropUpPortal';
 
 export default function VideoTab() {
   const {
@@ -38,13 +39,15 @@ export default function VideoTab() {
     setAttachedRefImages,
   } = useUGC();
 
+  const presetsBtnRef = useRef<HTMLButtonElement>(null);
+
   return (
     <div className="px-3 pt-3 pb-2">
       {/* Chat box + Generate button */}
       <div className="flex flex-col sm:flex-row gap-2 items-stretch">
 
         {/* Professional Chat Input */}
-        <div className="flex-1 flex flex-col border border-white/[0.08] focus-within:border-[#c8f135]/30 rounded-2xl transition-all duration-200 overflow-hidden bg-[#0d0d0f]">
+        <div className="flex-1 flex flex-col border border-white/[0.08] focus-within:border-[#c8f135]/30 rounded-2xl transition-all duration-200 bg-[#0d0d0f] relative z-10">
           {/* Textarea */}
           <textarea
             value={videoPrompt}
@@ -58,20 +61,22 @@ export default function VideoTab() {
               }
             }}
             rows={2}
-            className="w-full bg-transparent border-0 text-[11px] text-white/80 placeholder-white/20 focus:outline-none resize-none leading-relaxed px-3 pt-3 pb-1 min-h-[52px] font-sans"
+            className="w-full bg-transparent border-0 text-[11px] text-white/80 placeholder-white/20 focus:outline-none resize-none leading-relaxed px-3 pt-3 pb-1 min-h-[52px] font-sans rounded-t-2xl"
             placeholder={videoGenMode === 'veo_fast'
               ? 'Describe your video scene — Veo Fast generates an 8-sec clip…'
               : videoGenMode === 'veo_lite'
               ? 'Describe your video scene — Veo Lite generates a fast clip…'
+              : videoGenMode === 'omni-flash-1.1'
+              ? 'Describe your video scene — Gemini Omni Flash 1.1 generates up to a 10-sec clip…'
               : videoGenMode === 'omni-flash'
-              ? 'Describe your video scene — Gemini Omni Flash generates up to a 10-sec clip…'
+              ? 'Describe your video scene — Gemini Omni Flash 1.0 generates up to a 10-sec clip…'
               : 'Describe your video scene — Veo 3 HQ generates a premium clip…'}
           />
 
           {/* Attached Reference Images Row */}
           {(() => {
             const refs = splitScenes.length > 0
-              ? []
+              ? (splitScenes[activeSplitTab]?.refImages || [])
               : attachedRefImages;
 
             if (!refs || refs.length === 0) return null;
@@ -98,43 +103,41 @@ export default function VideoTab() {
                             })
                           );
                         } else {
-                          const updatedRefs = (attachedRefImages || []).filter((r: string) => r !== refUrl);
-                          setAttachedRefImages(updatedRefs);
-                          setAttachedRefImage(updatedRefs[0] || null);
+                          setAttachedRefImages(prev => prev.filter((_, i) => i !== idx));
                         }
                       }}
-                      className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover/att:opacity-100 transition-opacity cursor-pointer shadow-lg border border-black/20"
-                      title="Remove reference"
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500/90 text-white flex items-center justify-center opacity-0 group-hover/att:opacity-100 transition-opacity shadow-lg"
                     >
-                      <X size={8} className="text-white" />
+                      <X size={8} />
                     </button>
                   </div>
                 ))}
-                <span className="text-[7px] text-[#c8f135]/80 font-bold uppercase tracking-wider ml-auto animate-pulse">
-                  Video Reference Active
-                </span>
               </div>
             );
           })()}
 
-          {/* Pills toolbar — flush to bottom, no extra bg */}
-          <div className="flex items-center gap-1.5 flex-wrap px-2 pb-2 pt-1 border-t border-white/[0.05]">
-            {/* Mode Pill */}
+          {/* Bottom Toolbar inside Chat Box */}
+          <div className="flex items-center justify-between px-2.5 py-1.5 border-t border-white/[0.04] bg-white/[0.01] rounded-b-2xl">
+            <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Engine Pill */}
             <div className="relative flex-shrink-0">
               <select
-                value={videoGenMode === 'montage' ? 'veo_fast' : videoGenMode}
+                value={videoGenMode}
                 onChange={e => setVideoGenMode(e.target.value as any)}
                 className="appearance-none bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg pl-5 pr-4 py-0.5 text-[8px] font-bold uppercase tracking-widest text-white/50 hover:text-white/80 cursor-pointer transition-all font-sans"
               >
                 <option value="veo_lite" className="bg-[#0c0c0c] text-white">🍃 VEO LITE</option>
                 <option value="veo_fast" className="bg-[#0c0c0c] text-white">⚡ VEO FAST</option>
                 <option value="veo3" className="bg-[#0c0c0c] text-white">🎬 VEO 3 HQ</option>
-                <option value="omni-flash" className="bg-[#0c0c0c] text-white">✨ OMNI FLASH</option>
+                <option value="omni-flash-1.1" className="bg-[#0c0c0c] text-white">⚡ OMNI FLASH 1.1</option>
+                <option value="omni-flash" className="bg-[#0c0c0c] text-white">✨ OMNI FLASH 1.0</option>
               </select>
               {videoGenMode === 'veo_lite' ? (
                 <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none leading-none">🍃</span>
               ) : videoGenMode === 'veo3' ? (
                 <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none leading-none">🎬</span>
+              ) : videoGenMode === 'omni-flash-1.1' ? (
+                <Zap size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-cyan-400 pointer-events-none" />
               ) : videoGenMode === 'omni-flash' ? (
                 <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none leading-none">✨</span>
               ) : (
@@ -168,7 +171,7 @@ export default function VideoTab() {
                 <option value="4" className="bg-[#0c0c0c] text-white">4 SEC</option>
                 <option value="6" className="bg-[#0c0c0c] text-white">6 SEC</option>
                 <option value="8" className="bg-[#0c0c0c] text-white">8 SEC</option>
-                {videoGenMode === 'omni-flash' && (
+                {videoGenMode.includes('omni-flash') && (
                   <>
                     <option value="10" className="bg-[#0c0c0c] text-white">10 SEC</option>
                     <option value="20" className="bg-[#0c0c0c] text-white">20 SEC</option>
@@ -181,6 +184,7 @@ export default function VideoTab() {
               </select>
               <Clock size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
               <ChevronDown size={7} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+            </div>
             </div>
 
             {/* From Script Shortcut */}
@@ -217,9 +221,10 @@ export default function VideoTab() {
               return (
                 <div className="relative flex-shrink-0">
                   <button
+                    ref={presetsBtnRef}
                     type="button"
                     onClick={() => setShowPromptDropdown(!showPromptDropdown)}
-                    className={`px-2 py-0.5 rounded-lg border transition-all flex items-center gap-1 flex-shrink-0 text-[8px] font-bold uppercase tracking-widest ${
+                    className={`px-2 py-0.5 rounded-lg border transition-all flex items-center gap-1 flex-shrink-0 text-[8px] font-bold uppercase tracking-widest cursor-pointer ${
                       showPromptDropdown
                         ? 'border-[#c8f135]/40 bg-[#c8f135]/10 text-[#c8f135]'
                         : 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70'
@@ -229,29 +234,34 @@ export default function VideoTab() {
                     <span>Presets</span>
                     <ChevronDown size={7} className={`transition-transform duration-200 ${showPromptDropdown ? 'rotate-180' : ''}`} />
                   </button>
-                  {showPromptDropdown && (
-                    <div className="absolute bottom-full mb-2 left-0 z-50 w-56 bg-[#0e0e10] border border-[#1e1e24] rounded-2xl shadow-2xl overflow-hidden">
-                      <div className="px-3 py-2 border-b border-white/5">
-                        <span className="text-[7px] font-black text-white/30 uppercase tracking-[0.2em]">Prebuilt Prompts</span>
-                      </div>
-                      <div className="max-h-64 overflow-y-auto py-1">
-                        {PROMPT_CHIPS.map(chip => (
-                          <button
-                            key={chip.label}
-                            type="button"
-                            onClick={() => { setVideoPrompt(chip.prompt); setShowPromptDropdown(false); }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-[#c8f135]/8 hover:text-white transition-all group"
-                          >
-                            <span className="text-[12px] flex-shrink-0">{chip.emoji}</span>
-                            <div className="min-w-0">
-                              <p className="text-[9px] font-black uppercase tracking-widest text-white/70 group-hover:text-[#c8f135] transition-colors">{chip.label}</p>
-                              <p className="text-[7px] text-white/25 font-mono leading-snug truncate">{chip.prompt.substring(0, 55)}…</p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
+
+                  <DropUpPortal
+                    triggerRef={presetsBtnRef}
+                    isOpen={showPromptDropdown}
+                    onClose={() => setShowPromptDropdown(false)}
+                    width={230}
+                  >
+                    <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between">
+                      <span className="text-[7.5px] font-black text-white/40 uppercase tracking-[0.2em]">Prebuilt Prompts</span>
+                      <span className="text-[6.5px] text-[#c8f135] font-mono">Drop Up</span>
                     </div>
-                  )}
+                    <div className="max-h-64 overflow-y-auto py-1 custom-scrollbar">
+                      {PROMPT_CHIPS.map(chip => (
+                        <button
+                          key={chip.label}
+                          type="button"
+                          onClick={() => { setVideoPrompt(chip.prompt); setShowPromptDropdown(false); }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-[#c8f135]/10 hover:text-white transition-all group"
+                        >
+                          <span className="text-[12px] flex-shrink-0">{chip.emoji}</span>
+                          <div className="min-w-0">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-white/70 group-hover:text-[#c8f135] transition-colors">{chip.label}</p>
+                            <p className="text-[7.5px] text-white/30 font-mono leading-snug truncate">{chip.prompt.substring(0, 50)}…</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </DropUpPortal>
                 </div>
               );
             })()}
@@ -283,33 +293,33 @@ export default function VideoTab() {
               </button>
             )}
 
-            {/* Multi-Shot Toggle — only in single-shot mode; in split mode it lives in SplitScenesPanel */}
+            {/* Multi-Shot Toggle */}
             {splitScenes.length === 0 && (
-            <button
-              type="button"
-              onClick={() => setMultiShotPrompt(!multiShotPrompt)}
-              title={multiShotPrompt ? 'Multi-Shot Prompt: ON' : 'Multi-Shot Prompt: OFF'}
-              className={`px-2 py-0.5 rounded-lg border transition-all flex items-center gap-1 flex-shrink-0 text-[8px] font-bold uppercase tracking-widest ${
-                multiShotPrompt
-                  ? 'border-[#c8f135]/40 bg-[#c8f135]/10 text-[#c8f135]'
-                  : 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70'
-              }`}
-            >
-              <Film size={7} />
-              <span>Multi-Shot</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setMultiShotPrompt(!multiShotPrompt)}
+                title={multiShotPrompt ? 'Multi-Shot Prompt: ON' : 'Multi-Shot Prompt: OFF'}
+                className={`px-2 py-0.5 rounded-lg border transition-all flex items-center gap-1 flex-shrink-0 text-[8px] font-bold uppercase tracking-widest ${
+                  multiShotPrompt
+                    ? 'border-[#c8f135]/40 bg-[#c8f135]/10 text-[#c8f135]'
+                    : 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70'
+                }`}
+              >
+                <Film size={7} />
+                <span>Multi-Shot</span>
+              </button>
             )}
 
-            {/* Template Pill — only in single-shot mode */}
+            {/* Template Pill */}
             {splitScenes.length === 0 && (
-            <button
-              type="button"
-              onClick={() => setShowTemplates(true)}
-              className="px-2 py-0.5 rounded-lg border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70 transition-all flex items-center gap-1 flex-shrink-0 text-[8px] font-bold uppercase tracking-widest"
-            >
-              <Layout size={7} />
-              <span>Template</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setShowTemplates(true)}
+                className="px-2 py-0.5 rounded-lg border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70 transition-all flex items-center gap-1 flex-shrink-0 text-[8px] font-bold uppercase tracking-widest"
+              >
+                <Layout size={7} />
+                <span>Template</span>
+              </button>
             )}
           </div>
         </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Camera, User, X, Package, MapPin, Search, Volume2, Upload, FileText, Film, Layers, BrainCircuit, Plus, Loader2, ChevronLeft, ChevronRight, ChevronDown, Layout, Clock, Sparkles, AlertCircle, CheckCircle, ShieldCheck, Wand2, Play, Video, Image as ImageIcon } from 'lucide-react';
+import { Camera, User, X, Package, MapPin, Search, Volume2, Upload, FileText, Film, Layers, BrainCircuit, Plus, Loader2, ChevronLeft, ChevronRight, ChevronDown, Layout, Clock, Sparkles, AlertCircle, CheckCircle, ShieldCheck, Wand2, Play, Video, Image as ImageIcon, Zap } from 'lucide-react';
 import { useUGC, KnowledgeBaseEntry, SplitScene } from '../context/UGCContext';
 import { Dropdown } from './Dropdown';
 import { SCENE_STYLES } from '../constants/videoStyles';
@@ -149,6 +149,89 @@ export default function LeftSidebar() {
     lime: '#c8f135',
   };
 
+  const [sidebarTab, setSidebarTab] = useState<'creator' | 'motion-control' | 'storyboard'>('creator');
+
+  // Motion Control Local States
+  const [motionPreset, setMotionPreset] = useState<'push_in' | 'orbit' | 'macro' | 'tracking' | 'drone'>('push_in');
+  const [motionZoom, setMotionZoom] = useState<'in' | 'out' | 'none'>('in');
+  const [motionPan, setMotionPan] = useState<'left' | 'right' | 'none'>('none');
+  const [motionTilt, setMotionTilt] = useState<'up' | 'down' | 'none'>('none');
+
+  // Storyboard Local States
+  const [storyboardPreset, setStoryboardPreset] = useState<'insta_reel' | 'tiktok_ugc' | 'commercial' | 'tech_demo'>('insta_reel');
+  const [storyboardBrief, setStoryboardBrief] = useState('High-converting marketing commercial with locked face & product identity');
+  const [isGeneratingGrid, setIsGeneratingGrid] = useState(false);
+
+  // Apply Motion Parameters to Active Scene Prompt
+  const handleApplyMotionToScene = () => {
+    let motionText = `Camera Motion: ${motionPreset.replace('_', ' ').toUpperCase()}`;
+    if (motionZoom !== 'none') motionText += `, Zoom ${motionZoom}`;
+    if (motionPan !== 'none') motionText += `, Pan ${motionPan}`;
+    if (motionTilt !== 'none') motionText += `, Tilt ${motionTilt}`;
+
+    if (splitScenes && splitScenes.length > 0) {
+      setSplitScenes((prev: any[]) => prev.map((s, idx) => {
+        if (idx === 0) {
+          return { ...s, prompt: `${s.prompt} [${motionText}]` };
+        }
+        return s;
+      }));
+      showToast(`Applied ${motionText} to Scene 1`, 'success');
+    } else {
+      showToast(`Motion preset set: ${motionText}`, 'info');
+    }
+  };
+
+  // Generate Composite Storyboard Grid & Split Scenes
+  const handleGenerateStoryboardInSidebar = async () => {
+    setIsGeneratingGrid(true);
+    showToast('Generating AI Storyboard Grid Sheet...', 'info');
+
+    try {
+      const parts = [];
+      if (thProductImg?.url) parts.push({ text: `[PRODUCT_REF] attached.` });
+      if (thPersonImg?.url) parts.push({ text: `[CHARACTER_REF] attached.` });
+
+      parts.push({
+        text: `Generate a 4-panel marketing storyboard grid sequence for brief: "${storyboardBrief}". Return JSON array of 4 scenes with keys "label", "prompt", "dialog".`
+      });
+
+      const res = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parts, model: 'gemini-2.5-flash' })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const rawText = data.text || '';
+        const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          const parsedScenes = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(parsedScenes) && parsedScenes.length > 0) {
+            setSplitScenes(parsedScenes.map((ps: any, i: number) => ({
+              label: ps.label || `Panel ${i + 1}`,
+              dialog: ps.dialog || '',
+              prompt: ps.prompt || '',
+            })));
+            showToast('Loaded 4-panel Storyboard into Split Scenes!', 'success');
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[Sidebar Storyboard Error]', e);
+      showToast('Generated 4-panel Storyboard fallback sequence!', 'info');
+      setSplitScenes([
+        { label: 'Panel 1: Attention Hook', dialog: 'Stop doing it the old way!', prompt: 'Close up creator holding product with surprised reaction.' },
+        { label: 'Panel 2: Texture & Unboxing', dialog: 'Look at the build quality.', prompt: 'Macro shot of product unboxing with hands.' },
+        { label: 'Panel 3: Demonstration', dialog: 'It takes literally 5 seconds.', prompt: 'Creator demonstrating product in real environment.' },
+        { label: 'Panel 4: Hero Smile & CTA', dialog: 'Click below to grab yours!', prompt: 'Low angle hero shot of creator smiling with product.' }
+      ]);
+    } finally {
+      setIsGeneratingGrid(false);
+    }
+  };
+
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
 
   useEffect(() => {
@@ -174,8 +257,209 @@ export default function LeftSidebar() {
         className="h-full border-r border-[#1e1e24] bg-[#080808] flex flex-col overflow-hidden relative z-[45]"
         style={{ minWidth: 0 }}
       >
+        {/* ── UNIFIED TOP TAB BAR IN SIDEBAR ── */}
+        <div className="p-2 border-b border-[#1e1e24] bg-[#0c0c12] shrink-0 z-10">
+          <div className="grid grid-cols-3 gap-1 bg-[#14141d] p-1 rounded-xl border border-white/5 select-none">
+            <button
+              onClick={() => setSidebarTab('creator')}
+              className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                sidebarTab === 'creator'
+                  ? 'bg-[#c8f135] text-black shadow-md shadow-[#c8f135]/20'
+                  : 'text-white/40 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Sparkles size={11} />
+              <span>Studio</span>
+            </button>
+
+            <button
+              onClick={() => setSidebarTab('motion-control')}
+              className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                sidebarTab === 'motion-control'
+                  ? 'bg-amber-400 text-black shadow-md shadow-amber-400/20'
+                  : 'text-white/40 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Video size={11} />
+              <span>Motion</span>
+            </button>
+
+            <button
+              onClick={() => setSidebarTab('storyboard')}
+              className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                sidebarTab === 'storyboard'
+                  ? 'bg-orange-500 text-black shadow-md shadow-orange-500/20'
+                  : 'text-white/40 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Layers size={11} />
+              <span>Board</span>
+            </button>
+          </div>
+        </div>
+
         <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-5">
-          {activeTab === 'edit' ? (
+          {/* ── MOTION CONTROL SUB-PANEL ── */}
+          {sidebarTab === 'motion-control' ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                <h2 className="text-[10px] font-black text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Video size={13} /> Camera Motion Control
+                </h2>
+                <span className="text-[8px] bg-amber-400/10 text-amber-400 border border-amber-400/20 px-1.5 py-0.5 rounded font-mono uppercase">Cinematic</span>
+              </div>
+
+              {/* 1. Camera Angle Presets */}
+              <div className="space-y-1.5">
+                <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block">1. Shot Framing &amp; Motion Angle</label>
+                <div className="grid grid-cols-1 gap-1">
+                  {[
+                    { id: 'push_in', label: '🎬 Slow Push-In Hook', desc: 'Dramatic zoom push into face/product' },
+                    { id: 'orbit', label: '🔄 360° Orbit Sweep', desc: 'Smooth rotational camera sweep' },
+                    { id: 'macro', label: '🔍 Macro Close-Up Reveal', desc: 'Extreme detail focus on product texture' },
+                    { id: 'tracking', label: '🚶 Handheld Follow Vlog', desc: 'Natural organic movement with creator' },
+                    { id: 'drone', label: '🚁 Drone High Wide Angle', desc: 'Expansive overhead wide framing' }
+                  ].map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => setMotionPreset(p.id as any)}
+                      className={`p-2 rounded-xl border text-left transition-all ${
+                        motionPreset === p.id
+                          ? 'bg-amber-400/15 border-amber-400 text-amber-300'
+                          : 'bg-[#12121c] border-white/5 text-white/60 hover:border-white/20'
+                      }`}
+                    >
+                      <p className="text-[9px] font-black uppercase tracking-wider">{p.label}</p>
+                      <p className="text-[8px] text-white/30 font-medium truncate">{p.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 2. Manual Trajectory Control */}
+              <div className="p-3 rounded-xl bg-[#12121c] border border-white/5 space-y-2">
+                <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block">2. Pan / Tilt / Zoom Dynamics</label>
+                
+                <div className="grid grid-cols-3 gap-1">
+                  <div>
+                    <span className="text-[7px] text-white/30 font-bold block mb-0.5">Zoom</span>
+                    <select value={motionZoom} onChange={e => setMotionZoom(e.target.value as any)} className="w-full bg-[#181824] text-white text-[8px] font-bold p-1 rounded border border-white/10">
+                      <option value="in">Zoom In</option>
+                      <option value="out">Zoom Out</option>
+                      <option value="none">Static</option>
+                    </select>
+                  </div>
+                  <div>
+                    <span className="text-[7px] text-white/30 font-bold block mb-0.5">Pan</span>
+                    <select value={motionPan} onChange={e => setMotionPan(e.target.value as any)} className="w-full bg-[#181824] text-white text-[8px] font-bold p-1 rounded border border-white/10">
+                      <option value="none">Off</option>
+                      <option value="left">Pan Left</option>
+                      <option value="right">Pan Right</option>
+                    </select>
+                  </div>
+                  <div>
+                    <span className="text-[7px] text-white/30 font-bold block mb-0.5">Tilt</span>
+                    <select value={motionTilt} onChange={e => setMotionTilt(e.target.value as any)} className="w-full bg-[#181824] text-white text-[8px] font-bold p-1 rounded border border-white/10">
+                      <option value="none">Off</option>
+                      <option value="up">Tilt Up</option>
+                      <option value="down">Tilt Down</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Motion Reference Video Upload */}
+              <div className="space-y-1.5">
+                <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block">3. Motion Video Reference</label>
+                <div className="relative group p-3 rounded-xl bg-[#12121c] border border-dashed border-white/10 hover:border-amber-400/50 transition-all flex flex-col items-center justify-center text-center cursor-pointer">
+                  <input type="file" accept="video/*" onChange={handleVideoUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                  {refVideoFile ? (
+                    <div className="flex items-center gap-2 text-amber-400 text-[9px] font-bold">
+                      <CheckCircle size={14} />
+                      <span className="truncate max-w-[180px]">{refVideoFile.name}</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1 text-white/30 group-hover:text-amber-400">
+                      <Upload size={16} />
+                      <span className="text-[8px] font-black uppercase">Upload Motion Reference</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 4. Apply Action */}
+              <button
+                onClick={handleApplyMotionToScene}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-400 to-orange-400 text-black font-black text-[9px] uppercase tracking-widest shadow-lg shadow-amber-400/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Zap size={12} />
+                <span>Apply Camera Motion to Scene</span>
+              </button>
+            </div>
+          ) : sidebarTab === 'storyboard' ? (
+            /* ── STORYBOARD SUB-PANEL ── */
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                <h2 className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Layers size={13} /> AI Storyboard Sheet Engine
+                </h2>
+                <span className="text-[8px] bg-orange-500/10 text-orange-400 border border-orange-500/20 px-1.5 py-0.5 rounded font-mono uppercase">Multimodal Grid</span>
+              </div>
+
+              {/* Storyboard Presets */}
+              <div className="space-y-1.5">
+                <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block">Storyboard Campaign Arc</label>
+                <div className="grid grid-cols-1 gap-1">
+                  {[
+                    { id: 'insta_reel', label: '📸 Instagram Reel Ad (2x2 Grid)', desc: 'Hook → Unboxing → Benefit → Hero CTA' },
+                    { id: 'tiktok_ugc', label: '🎵 TikTok Viral UGC (3x2 Grid)', desc: 'Shock reaction → Problem → Demo → Offer' },
+                    { id: 'commercial', label: '🎬 Luxury Commercial (2x2 Grid)', desc: 'Atmospheric → Macro reveal → Lifestyle → Logo' },
+                    { id: 'tech_demo', label: '💻 Tech Showcase (2x2 Grid)', desc: 'Hero shot → Feature callout → Use case → Package' }
+                  ].map(sb => (
+                    <button
+                      key={sb.id}
+                      onClick={() => setStoryboardPreset(sb.id as any)}
+                      className={`p-2 rounded-xl border text-left transition-all ${
+                        storyboardPreset === sb.id
+                          ? 'bg-orange-500/15 border-orange-500 text-orange-300'
+                          : 'bg-[#12121c] border-white/5 text-white/60 hover:border-white/20'
+                      }`}
+                    >
+                      <p className="text-[9px] font-black uppercase tracking-wider">{sb.label}</p>
+                      <p className="text-[8px] text-white/30 font-medium truncate">{sb.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Concept Brief Input */}
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-white/40 uppercase tracking-widest block">Concept Brief</label>
+                <textarea
+                  value={storyboardBrief}
+                  onChange={e => setStoryboardBrief(e.target.value)}
+                  rows={3}
+                  className="w-full bg-[#12121c] border border-white/10 rounded-xl p-2 text-[9px] text-white placeholder:text-white/20 focus:outline-none focus:border-orange-400 resize-none font-sans"
+                />
+              </div>
+
+              {/* Generate Storyboard Button */}
+              <button
+                onClick={handleGenerateStoryboardInSidebar}
+                disabled={isGeneratingGrid}
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400 text-black font-black text-[9px] uppercase tracking-widest shadow-lg shadow-orange-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {isGeneratingGrid ? (
+                  <><Loader2 size={13} className="animate-spin text-black" /> Generating Storyboard...</>
+                ) : (
+                  <><Wand2 size={13} /> Generate Storyboard Grid Sheet</>
+                )}
+              </button>
+            </div>
+          ) : (
+            /* ── CREATOR STUDIO SUB-PANEL (DEFAULT) ── */
+            activeTab === 'edit' ? (
+
             <div className="space-y-4">
               <div className="flex items-center justify-between w-full">
                 <h2 className="text-[10px] font-black text-[#3a3a4a] uppercase tracking-[0.2em] flex items-center gap-2">
@@ -320,41 +604,37 @@ export default function LeftSidebar() {
                     onChange={e => setThSpokespersonAge(e.target.value as any)}
                     className="bg-[#16161f] border border-white/5 rounded-lg px-2 py-1 text-[8px] font-bold text-white uppercase focus:outline-none cursor-pointer"
                   >
-                    <option value="20-25" className="bg-[#16161f]">Age 20-25</option>
-                    <option value="25-35" className="bg-[#16161f]">Age 25-35</option>
-                    <option value="35-45" className="bg-[#16161f]">Age 35-45</option>
+                    <option value="baby" className="bg-[#16161f]">Baby 👶 (0-3 yrs)</option>
+                    <option value="child" className="bg-[#16161f]">Child 🧒 (4-12 yrs)</option>
+                    <option value="teen" className="bg-[#16161f]">Teenager 👧 (13-19 yrs)</option>
+                    <option value="20-25" className="bg-[#16161f]">Age 20-25 👩</option>
+                    <option value="25-35" className="bg-[#16161f]">Age 25-35 💼</option>
+                    <option value="35-45" className="bg-[#16161f]">Age 35-45 👔</option>
+                    <option value="45-55" className="bg-[#16161f]">Age 45-55 🕶️</option>
+                    <option value="55-65" className="bg-[#16161f]">Age 55-65 👵</option>
+                    <option value="elderly" className="bg-[#16161f]">Elderly / Old Woman 👵 (65+)</option>
                   </select>
                 </div>
 
-                {/* Region / Ethnicity Grid — 9 global options */}
+                {/* Region / Ethnicity Dropdown */}
                 <div className="space-y-1">
                   <label className="text-[7.5px] font-bold uppercase tracking-wider text-white/40">Region / Ethnicity</label>
-                  <div className="grid grid-cols-3 gap-1">
-                    {[
-                      { id: 'south-indian', label: 'South 🇮🇳' },
-                      { id: 'north-indian', label: 'North 🇮🇳' },
-                      { id: 'pan-indian', label: 'Pan-IN 🇮🇳' },
-                      { id: 'english-british', label: 'British 🇬🇧' },
-                      { id: 'american-global', label: 'American 🇺🇸' },
-                      { id: 'french-european', label: 'European 🇫🇷' },
-                      { id: 'east-asian', label: 'East Asia 🏮' },
-                      { id: 'middle-eastern', label: 'Mid East 🌙' },
-                      { id: 'latino', label: 'Latino 🌎' },
-                    ].map(r => (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => setThSpokespersonRegion(r.id as any)}
-                        className={`py-1 px-1.5 rounded-lg text-[7px] font-bold tracking-wide border transition-all text-center leading-tight ${
-                          thSpokespersonRegion === r.id
-                            ? 'bg-[#c8f135]/15 border-[#c8f135]/40 text-[#c8f135]'
-                            : 'bg-[#16161f] border-white/5 text-white/40 hover:text-white'
-                        }`}
-                      >
-                        {r.label}
-                      </button>
-                    ))}
-                  </div>
+                  <select
+                    value={thSpokespersonRegion}
+                    onChange={e => setThSpokespersonRegion(e.target.value as any)}
+                    className="w-full bg-[#16161f] border border-white/5 rounded-lg px-2.5 py-1.5 text-[8px] font-bold text-white uppercase focus:outline-none cursor-pointer"
+                  >
+                    <option value="south-indian" className="bg-[#16161f]">South Indian 🇮🇳</option>
+                    <option value="north-indian" className="bg-[#16161f]">North Indian 🇮🇳</option>
+                    <option value="pan-indian" className="bg-[#16161f]">Pan-Indian 🇮🇳</option>
+                    <option value="english-british" className="bg-[#16161f]">British / English 🇬🇧</option>
+                    <option value="american-global" className="bg-[#16161f]">American / Global 🇺🇸</option>
+                    <option value="french-european" className="bg-[#16161f]">European / French 🇫🇷</option>
+                    <option value="east-asian" className="bg-[#16161f]">East Asian 🏮</option>
+                    <option value="middle-eastern" className="bg-[#16161f]">Middle Eastern 🌙</option>
+                    <option value="latino" className="bg-[#16161f]">Latino / Hispanic 🌎</option>
+                    <option value="african" className="bg-[#16161f]">African 🌍</option>
+                  </select>
                 </div>
 
                 {/* Format */}
@@ -893,11 +1173,16 @@ export default function LeftSidebar() {
 
               {/* ── Reference Video (Motion Placeholder) ───────────────────────── */}
               <section className="space-y-2 border-t border-[#1e1e24] pt-4">
-                <h2 className="text-[10px] font-black text-[#3a3a4a] uppercase tracking-[0.2em] flex items-center gap-1.5">
-                  <Film size={10} className="text-[#c8f135]" /> Motion Reference
-                </h2>
-                <p className="text-[7px] font-mono text-white/20 uppercase tracking-widest leading-relaxed">
-                  Upload a placeholder video · Omni Flash matches its motion &amp; swaps in your character, product &amp; location.
+                <div className="flex items-center justify-between">
+                  <h2 className="text-[10px] font-black text-[#3a3a4a] uppercase tracking-[0.2em] flex items-center gap-1.5">
+                    <Film size={10} className="text-[#c8f135]" /> Motion Reference
+                  </h2>
+                  <span className="text-[7.5px] font-mono font-bold text-[#c8f135]/80 bg-[#c8f135]/10 px-1.5 py-0.5 rounded border border-[#c8f135]/20 uppercase tracking-wider">
+                    Max 30s – 1 min
+                  </span>
+                </div>
+                <p className="text-[7px] font-mono text-white/40 uppercase tracking-widest leading-relaxed">
+                  Upload a placeholder video (up to 30s / max 60s) · Omni Flash matches its motion &amp; swaps in your assets.
                 </p>
                 <label className={`relative flex flex-col items-center justify-center gap-2 px-3 py-4 rounded-xl border cursor-pointer transition-all ${
                   refVideoFile ? 'border-[#c8f135]/40 bg-[#c8f135]/5' : 'border-dashed border-white/10 bg-[#111113] hover:border-[#c8f135]/30'
@@ -909,14 +1194,26 @@ export default function LeftSidebar() {
                     onChange={e => {
                       const f = e.target.files?.[0];
                       if (!f) return;
-                      setRefVideoFile(f);
-                      setRefVideoUrl(URL.createObjectURL(f));
+                      const inputTarget = e.target;
                       
                       const video = document.createElement('video');
                       video.preload = 'metadata';
                       video.onloadedmetadata = () => {
+                        window.URL.revokeObjectURL(video.src);
                         const dur = Math.round(video.duration);
                         console.log("Ref video duration measured:", dur);
+                        if (dur > 60) {
+                          showToast("Motion reference video exceeds 60s limit (up to 30s recommended). Please select a shorter video clip.", "error");
+                          inputTarget.value = '';
+                          return;
+                        }
+                        if (dur < 3) {
+                          showToast("Motion reference video must be at least 3 seconds long.", "error");
+                          inputTarget.value = '';
+                          return;
+                        }
+                        setRefVideoFile(f);
+                        setRefVideoUrl(URL.createObjectURL(f));
                         setRefVideoDuration(dur);
                       };
                       video.src = URL.createObjectURL(f);
@@ -941,8 +1238,8 @@ export default function LeftSidebar() {
                   ) : (
                     <>
                       <Film size={16} className="text-white/20" />
-                      <span className="text-[8px] font-mono text-white/30 uppercase tracking-widest">Drop .mp4 / .mov</span>
-                      <span className="text-[6px] font-mono text-white/15 uppercase tracking-widest">min 4 seconds</span>
+                      <span className="text-[8px] font-mono text-white/40 uppercase tracking-widest">Drop .mp4 / .mov</span>
+                      <span className="text-[7px] font-mono text-[#c8f135]/70 uppercase tracking-widest font-semibold">Max 30s to 1 min video clip</span>
                     </>
                   )}
                 </label>
@@ -1171,7 +1468,7 @@ export default function LeftSidebar() {
                 </section>
               )}
             </>
-          )}
+          ))}
         </div>
 
         {/* ── Bottom Controls Bar (Fixed at bottom for ALL tabs) ── */}
@@ -1228,50 +1525,68 @@ export default function LeftSidebar() {
             {activeTab !== 'podcast' && (
               <div>
                 <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.15em] mb-1 flex items-center gap-1">
-                  <Film size={7} className="text-[#c8f135]" /> Scene Style
+                  <Film size={7} className="text-[#c8f135]" /> {activeTab === 'ai-avatar' ? 'Talking Head Scenario Template' : 'Scene Style'}
                   <span className="text-white/10 font-normal normal-case tracking-normal"> · applies to image &amp; video</span>
                 </span>
-                <select
-                  value={selectedSceneStyle}
-                  onChange={e => setSelectedSceneStyle(e.target.value)}
-                  className="w-full bg-[#111113] border border-[#1e1e24] hover:border-[#c8f135]/30 rounded-lg px-2.5 py-1.5 text-[8px] font-black uppercase tracking-widest text-white/70 hover:text-white cursor-pointer transition-all outline-none appearance-none"
-                >
-                  <optgroup label="── Talking" className="bg-[#0c0c0c] text-white/90">
-                    <option value="normal_talking">🎙️ Normal Talking</option>
-                    <option value="walk_talk">🚶 Walk &amp; Talk</option>
-                    <option value="street_interview">🎤 Street Interview</option>
-                    <option value="reaction_shot">😲 Reaction Shot</option>
-                    <option value="mirror_selfie">🪞 Mirror Selfie</option>
-                    <option value="car_vlog">🚗 Car Vlog</option>
-                    <option value="grwm_talk">💄 GRWM Talking</option>
-                  </optgroup>
-                  <optgroup label="── Camera Cuts" className="bg-[#0c0c0c] text-white/90">
-                    <option value="fast_cut">✂️ Fast Cut</option>
-                    <option value="dramatic_zoom">🔍 Dramatic Zoom</option>
-                    <option value="pov_shot">👆 POV Shot</option>
-                    <option value="whip_pan">🌀 Whip Pan</option>
-                    <option value="360_orbit">🔄 360° Orbit</option>
-                  </optgroup>
-                  <optgroup label="── Product Focus" className="bg-[#0c0c0c] text-white/90">
-                    <option value="cinematic_b_roll">🎥 Cinematic B-Roll</option>
-                    <option value="close_up_detail">🔬 Close-Up Detail</option>
-                    <option value="unboxing">📦 Unboxing</option>
-                    <option value="before_after">🔄 Before &amp; After</option>
-                    <option value="hands_in_frame">🤲 Hands-on Demo</option>
-                    <option value="floating_hero">✨ Floating Hero</option>
-                  </optgroup>
-                  <optgroup label="── Fashion &amp; Styling" className="bg-[#0c0c0c] text-white/90">
-                    <option value="runway_walk">👠 Runway / OOTD Walk</option>
-                    <option value="outfit_change_transition">✨ Snap Outfit Change</option>
-                    <option value="fabric_macro">🧶 Fabric Detail Macro</option>
-                    <option value="mirror_outfit_check">🪞 Mirror Fit Check</option>
-                    <option value="editorial_pose">📸 Editorial Lookbook</option>
-                  </optgroup>
-                  <optgroup label="── Educational" className="bg-[#0c0c0c] text-white/90">
-                    <option value="tutorial_step">🎓 Tutorial Step</option>
-                    <option value="dynamic_action">⚡ Dynamic Action</option>
-                  </optgroup>
-                </select>
+                {activeTab === 'ai-avatar' ? (
+                  <select
+                    value={selectedSceneStyle || 'fast_pace'}
+                    onChange={e => setSelectedSceneStyle(e.target.value)}
+                    className="w-full bg-[#111113] border border-[#c8f135]/30 rounded-lg px-2.5 py-1.5 text-[8px] font-black uppercase tracking-widest text-[#c8f135] cursor-pointer transition-all outline-none appearance-none"
+                  >
+                    <optgroup label="── Creator Scenarios (Talking Head Only)" className="bg-[#0c0c0c] text-white/90">
+                      <option value="fast_pace">⚡ Multi-Shot Fast Pace</option>
+                      <option value="slow_pace">☕ Slow Pace / Casual</option>
+                      <option value="walk_talk">🚶 Walk &amp; Talk Vlog</option>
+                      <option value="desk_work">💻 Desk Work &amp; Talking</option>
+                      <option value="grwm_makeup">💄 GRWM / Makeup &amp; Styling</option>
+                      <option value="daily_activity">🍳 Daily Activity &amp; Chat</option>
+                      <option value="explainer">💬 Informational / Explainer</option>
+                    </optgroup>
+                  </select>
+                ) : (
+                  <select
+                    value={selectedSceneStyle}
+                    onChange={e => setSelectedSceneStyle(e.target.value)}
+                    className="w-full bg-[#111113] border border-[#1e1e24] hover:border-[#c8f135]/30 rounded-lg px-2.5 py-1.5 text-[8px] font-black uppercase tracking-widest text-white/70 hover:text-white cursor-pointer transition-all outline-none appearance-none"
+                  >
+                    <optgroup label="── Talking" className="bg-[#0c0c0c] text-white/90">
+                      <option value="normal_talking">🎙️ Normal Talking</option>
+                      <option value="walk_talk">🚶 Walk &amp; Talk</option>
+                      <option value="street_interview">🎤 Street Interview</option>
+                      <option value="reaction_shot">😲 Reaction Shot</option>
+                      <option value="mirror_selfie">🪞 Mirror Selfie</option>
+                      <option value="car_vlog">🚗 Car Vlog</option>
+                      <option value="grwm_talk">💄 GRWM Talking</option>
+                    </optgroup>
+                    <optgroup label="── Camera Cuts" className="bg-[#0c0c0c] text-white/90">
+                      <option value="fast_cut">✂️ Fast Cut</option>
+                      <option value="dramatic_zoom">🔍 Dramatic Zoom</option>
+                      <option value="pov_shot">👆 POV Shot</option>
+                      <option value="whip_pan">🌀 Whip Pan</option>
+                      <option value="360_orbit">🔄 360° Orbit</option>
+                    </optgroup>
+                    <optgroup label="── Product Focus" className="bg-[#0c0c0c] text-white/90">
+                      <option value="cinematic_b_roll">🎥 Cinematic B-Roll</option>
+                      <option value="close_up_detail">🔬 Close-Up Detail</option>
+                      <option value="unboxing">📦 Unboxing</option>
+                      <option value="before_after">🔄 Before &amp; After</option>
+                      <option value="hands_in_frame">🤲 Hands-on Demo</option>
+                      <option value="floating_hero">✨ Floating Hero</option>
+                    </optgroup>
+                    <optgroup label="── Fashion &amp; Styling" className="bg-[#0c0c0c] text-white/90">
+                      <option value="runway_walk">👠 Runway / OOTD Walk</option>
+                      <option value="outfit_change_transition">✨ Snap Outfit Change</option>
+                      <option value="fabric_macro">🧶 Fabric Detail Macro</option>
+                      <option value="mirror_outfit_check">🪞 Mirror Fit Check</option>
+                      <option value="editorial_pose">📸 Editorial Lookbook</option>
+                    </optgroup>
+                    <optgroup label="── Educational" className="bg-[#0c0c0c] text-white/90">
+                      <option value="tutorial_step">🎓 Tutorial Step</option>
+                      <option value="dynamic_action">⚡ Dynamic Action</option>
+                    </optgroup>
+                  </select>
+                )}
                 {selectedSceneStyle && SCENE_STYLES[selectedSceneStyle] && (
                   <p className="text-[7px] text-white/25 font-mono mt-0.5 leading-relaxed">
                     {SCENE_STYLES[selectedSceneStyle].description}
@@ -1373,7 +1688,7 @@ export default function LeftSidebar() {
       {/* Drawer toggle button — sits on the right edge of the sidebar wrapper */}
       <button
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className={`absolute ${isSidebarOpen ? '-right-5 md:-right-3 top-1/2 -translate-y-1/2' : '-right-9 top-16 md:-right-3 md:top-1/2 md:-translate-y-1/2'} z-[60] w-9 h-12 md:w-6 md:h-12 flex items-center justify-center rounded-r-xl transition-all shadow-2xl
+        className={`absolute top-1/2 -translate-y-1/2 ${isSidebarOpen ? '-right-5 md:-right-3' : '-right-9 md:-right-3'} z-[60] w-9 h-12 md:w-6 md:h-12 flex items-center justify-center rounded-r-xl transition-all shadow-2xl
           ${isSidebarOpen
             ? 'bg-[#111113] border border-[#c8f135]/20 text-[#c8f135]/60 hover:text-[#c8f135] hover:border-[#c8f135]/60 hover:bg-[#c8f135]/5 shadow-[0_0_8px_rgba(200,241,53,0.1)] hover:shadow-[0_0_12px_rgba(200,241,53,0.35)]'
             : 'bg-[#c8f135] border border-[#c8f135] text-black hover:bg-[#d4f545] shadow-[0_0_15px_rgba(200,241,53,0.7)]'

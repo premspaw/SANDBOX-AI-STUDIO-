@@ -453,3 +453,97 @@ Generate a single detailed visual prompt (max 80 words) for this specific scene.
 
 Return ONLY the visual prompt text. No preamble, no extra text.`;
 };
+
+/**
+ * Builds non-product Talking Head script prompt based on creator templates,
+ * multi-shot camera angles, and speech pacing.
+ */
+export const buildTalkingHeadScriptPrompt = (params: {
+  topic: string;
+  templateTitle?: string;
+  templateCategory?: string;
+  language: string;
+  duration: string;
+  tone: string;
+  isMultiShot: boolean;
+}) => {
+  const durSec = parseInt(params.duration) || 20;
+  const wordRange = getWordRange(params.language, true, Math.ceil(durSec / 10), params.isMultiShot);
+
+  return `You are a viral Talking Head scriptwriter and video director.
+Create an engaging, authentic creator script where an individual is speaking directly to camera on the given topic.
+
+CRITICAL REQUIREMENT:
+- NO PRODUCT IS BEING SOLD OR DEMONSTRATED.
+- This is 100% about the creator, their story, opinion, storytime, educational breakdown, or personal advice.
+- Template Category: ${params.templateCategory || 'General Talking Head'} (${params.templateTitle || 'Casual Conversation'})
+- Topic / Direction: "${params.topic}"
+- Spoken Language: ${params.language}
+- Target Duration: ${durSec} seconds
+- Script Tone: ${params.tone}
+- Multi-Shot Camera Framing: ${params.isMultiShot ? 'Yes - structure script into 2-3 visual multi-shot beats with cuts.' : 'Single focus.'}
+
+${VOICE_RULES_BLOCK}
+
+WORD COUNT REQUIREMENT:
+- ${wordRange}
+
+OUTPUT FORMAT:
+Return ONLY the raw script dialogue. If multi-shot is enabled, include optional scene markers like [Scene 1 - Eye Level], [Scene 2 - Side Angle Cut] before spoken text.
+No extra conversational preamble.`;
+};
+
+/**
+ * Analyzes script text to derive optimal camera motion and character animation parameters.
+ */
+export interface ScriptMotionAnalysis {
+  cameraMotion: string;
+  characterAnimation: string;
+  cameraCutStyle: string;
+  pacingEnergy: string;
+}
+
+export function analyzeTalkingHeadMotion(script: string, templateCategory?: string): ScriptMotionAnalysis {
+  const text = script.toLowerCase();
+  const cat = (templateCategory || '').toLowerCase();
+
+  let energy = 'Medium Casual';
+  let motion = 'Slow Tracking Drift';
+  let anim = 'Natural head tilts, organic eye contact, subtle hand gestures';
+  let cuts = 'Medium Close-Up Jump Cuts';
+
+  if (cat.includes('fast') || /crazy|insane|huge|omg|stop|unbelievable|shocking|wait/.test(text)) {
+    energy = 'High Energy (Fast)';
+    motion = 'Dynamic Whip-Pan & Push-In';
+    anim = 'Expressive hand gestures, frequent authentic eyebrow arches, animated smile';
+    cuts = 'Rapid Multi-Shot Angle Cuts (Every 2-3s)';
+  } else if (cat.includes('walk') || /outside|street|walking|vlog|park/.test(text)) {
+    energy = 'Dynamic Outdoor';
+    motion = 'Handheld Walking Stabilizer Sway';
+    anim = 'Rhythmic walking body movement, relaxed selfie posture, spontaneous turns';
+    cuts = 'Selfie Wide to Over-The-Shoulder Transition';
+  } else if (cat.includes('slow') || cat.includes('casual') || /calm|cozy|night|storytime|honest/.test(text)) {
+    energy = 'Calm & Intimate';
+    motion = 'Subtle Static Drift';
+    anim = 'Soft micro-smiles, relaxed shoulders, slow steady blinking';
+    cuts = 'Slow Fade / Steady Eye-Level Shot';
+  } else if (cat.includes('desk') || cat.includes('explainer') || /work|learn|tech|tip|how to|guide/.test(text)) {
+    energy = 'Focused Informational';
+    motion = 'Smooth Motorized Slider Track';
+    anim = 'Deliberate counting hand gestures, clear head nods, authoritative posture';
+    cuts = 'Alternating Desk Close-Up & Medium Angle Cuts';
+  } else if (cat.includes('grwm') || cat.includes('makeup')) {
+    energy = 'Interactive Lifestyle';
+    motion = 'Vertical Tilt & Close-Up Zoom';
+    anim = 'Looking between vanity mirror reflection and direct camera lens, tactile hands';
+    cuts = 'Vanity Angle to Face Cut';
+  }
+
+  return {
+    cameraMotion: motion,
+    characterAnimation: anim,
+    cameraCutStyle: cuts,
+    pacingEnergy: energy,
+  };
+}
+

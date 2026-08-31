@@ -23,8 +23,10 @@ const AgentPage = lazy(() => import('./components/pages/AgentPage'));
 const AvatarStudio = lazy(() => import('./components/pages/AvatarStudio'));
 const LivingAvatar = lazy(() => import('./components/pages/LivingAvatar'));
 const CinematicStudio = lazy(() => import('./components/cinemaStudio/CinematicStudio'));
+const StudioPage = lazy(() => import('./components/pages/StudioPage'));
 const YourVoice = lazy(() => import('./components/pages/YourVoice'));
 const McpConnectionPage = lazy(() => import('./components/pages/McpConnectionPage'));
+const StoryboardStudio = lazy(() => import('./components/pages/StoryboardStudio'));
 
 
 // Beautiful, futuristic stand-by placeholder for the new Avatar Studio
@@ -104,8 +106,10 @@ const FULL_HEIGHT_TABS = new Set([
   'brand-voice',
   'agent',
   'cinematic-studio',
+  'studio',
   'yourvoice',
   'mcp-connection',
+  'storyboard',
   'design',
 ])
 
@@ -286,10 +290,14 @@ function App() {
         return <AgentPage />;
       case 'cinematic-studio':
         return <CinematicStudio />;
+      case 'studio':
+        return <StudioPage />;
       case 'yourvoice':
         return <YourVoice />;
       case 'mcp-connection':
         return <McpConnectionPage />;
+      case 'storyboard':
+        return <StoryboardStudio />;
       case 'design':
         return null;
       default:

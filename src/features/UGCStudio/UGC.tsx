@@ -32,7 +32,8 @@ import { buildNicheHookContext } from './constants/hookLibrary';
 import { SCRIPT_TONES } from './constants/scriptTones';
 import { VIDEO_STYLES, SCENE_STYLES, MULTI_SHOT_PRESETS } from './constants/videoStyles';
 import { detectUgcCategory, buildScenePrompt, validateScenePrompt, buildVideoRefPrompt } from './constants/ugcPromptTemplates';
-import { LANGUAGES, VOICES, SCENE_TEMPLATES } from './constants/sceneTemplates';
+import { LANGUAGES, VOICES, SCENE_TEMPLATES, TALKING_HEAD_TEMPLATES } from './constants/sceneTemplates';
+import { analyzeTalkingHeadMotion } from './constants/prompts';
 import {
   uint8ArrayToBase64,
   ensureDataUri,
@@ -345,7 +346,7 @@ export default function UGC() {
   const [thGeneratedImg, setThGeneratedImg] = useState<string>('');
   const [thGeneratedVideo, setThGeneratedVideo] = useState<string>('');
   const [thScript, setThScript] = useState<string>('');
-  const [thEngine, setThEngine] = useState<'veo3' | 'veo_fast' | 'veo_lite' | 'omni-flash'>('veo_fast');
+  const [thEngine, setThEngine] = useState<'veo3' | 'veo_fast' | 'veo_lite' | 'omni-flash' | 'omni-flash-1.1'>('veo_fast');
   const [thAnimation, setThAnimation] = useState<string>('none');
   const [thIsGeneratingImg, setThIsGeneratingImg] = useState(false);
   const [thIsGeneratingVideo, setThIsGeneratingVideo] = useState(false);
@@ -615,7 +616,7 @@ export default function UGC() {
   const [selectedMultiShotPreset, setSelectedMultiShotPreset] = useState('food_beverage_review');
   const [chatTab, setChatTab] = useState<'script' | 'video'>('script');
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
-  const [videoGenMode, setVideoGenMode] = useState<'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash'>('omni-flash');
+  const [videoGenMode, setVideoGenMode] = useState<'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash' | 'omni-flash-1.1'>('omni-flash-1.1');
   const [showVideoMontageOptions, setShowVideoMontageOptions] = useState(true);
   const [showLiveGuide, setShowLiveGuide] = useState(false);
   const [showPromptDropdown, setShowPromptDropdown] = useState(false);
@@ -1014,6 +1015,7 @@ export default function UGC() {
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const inputTarget = e.target;
 
     // Check duration
     const video = document.createElement('video');
@@ -1021,7 +1023,8 @@ export default function UGC() {
     video.onloadedmetadata = () => {
       window.URL.revokeObjectURL(video.src);
       if (video.duration > 30) {
-        handleApiError(new Error("Reference video must be 30 seconds or less for analysis."), "Video Upload");
+        showToast("Reference video must be 30 seconds or less. Please select a shorter video clip.", "error");
+        inputTarget.value = '';
         return;
       }
       const url = URL.createObjectURL(file);
@@ -2176,6 +2179,37 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
     if (!sc) return;
     setIsGeneratingSplitPrompt(true);
     try {
+      const isTalkingHead = activeTab === 'ai-avatar' || activeTab === 'talking-head';
+      if (isTalkingHead) {
+        const tpl = TALKING_HEAD_TEMPLATES.find(t => t.id === selectedSceneStyle) || TALKING_HEAD_TEMPLATES[0];
+        const charRefTag = (characterImg?.url || thGeneratedImg) ? '<IMAGE_REF_0>' : '';
+        const presenterDesc = [
+          thSpokespersonAge,
+          thSpokespersonRegion,
+          thSpokespersonGender,
+          thSpokespersonOutfit ? `wearing ${thSpokespersonOutfit}` : '',
+          thSpokespersonPose ? `in ${thSpokespersonPose} pose` : ''
+        ].filter(Boolean).join(' ');
+
+        const sceneMotion = analyzeTalkingHeadMotion(sc.dialog || '', selectedSceneStyle);
+
+        const newPrompt = [
+          tpl.prompt,
+          presenterDesc ? `Presenter: ${presenterDesc}.` : '',
+          charRefTag ? `Maintain character facial features from ${charRefTag}.` : '',
+          `Camera Movement: ${sceneMotion.cameraMotion}. Character Action: ${sceneMotion.characterAnimation}. Cut Style: ${sceneMotion.cameraCutStyle}.`,
+          `Spoken Dialogue for Scene ${tabIdx + 1} of ${splitScenes.length}: "${sc.dialog || ''}"`
+        ].filter(Boolean).join(' ');
+
+        setSplitScenes(prev => prev.map((s, i) => i === tabIdx ? { ...s, prompt: newPrompt } : s));
+        if (activeSplitTab === tabIdx) {
+          setVideoPrompt(newPrompt);
+        }
+        showToast('🎯 Talking Head scene prompt generated!', 'success');
+        setIsGeneratingSplitPrompt(false);
+        return;
+      }
+
       const { parts, instructions, refMappings } = await getMultimodalParts(sc.refImage);
 
       const aiPrompt = buildMultiReferencePrompt({
@@ -4995,6 +5029,32 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                       if (!script) return;
                       setSpokenDialog(script);
 
+                      const isTalkingHead = activeTab === 'ai-avatar' || activeTab === 'talking-head';
+                      const thTpl = TALKING_HEAD_TEMPLATES.find(t => t.id === selectedSceneStyle) || TALKING_HEAD_TEMPLATES[0];
+
+                      const getInitialPrompt = (dialogText: string, sceneIndex: number) => {
+                        if (isTalkingHead) {
+                          const sceneMotion = analyzeTalkingHeadMotion(dialogText, selectedSceneStyle);
+                          const presenterDesc = [
+                            thSpokespersonAge,
+                            thSpokespersonRegion,
+                            thSpokespersonGender,
+                            thSpokespersonOutfit ? `wearing ${thSpokespersonOutfit}` : '',
+                            thSpokespersonPose ? `in ${thSpokespersonPose} pose` : ''
+                          ].filter(Boolean).join(' ');
+
+                          return [
+                            thTpl.prompt,
+                            presenterDesc ? `Presenter: ${presenterDesc}.` : '',
+                            (characterImg?.url || thGeneratedImg) ? '<IMAGE_REF_0>' : '',
+                            `Camera Movement: ${sceneMotion.cameraMotion}. Character Action: ${sceneMotion.characterAnimation}. Cut Style: ${sceneMotion.cameraCutStyle}.`,
+                            `Spoken Dialogue: "${dialogText}"`
+                          ].filter(Boolean).join(' ');
+                        }
+                        const matchingScene = scenes[sceneIndex];
+                        return matchingScene?.prompt || matchingScene?.visualCue || videoPrompt || '';
+                      };
+
                       const parsed: {label: string; dialog: string; prompt: string; refImage?: string | null}[] = [];
 
                       // Split by timestamps
@@ -5005,8 +5065,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                           let segmentText = parts[i + 1]?.trim() || '';
                           if (segmentText) {
                             segmentText = segmentText.replace(/^(HOOK|PAYOFF|CTA|SCENE\s*\d*|INTRO|OUTRO|BODY|SCENE)\b\s*[:\-\–\s\,]*\s*/i, '').trim();
-                            const matchingScene = scenes[parsed.length];
-                            const defaultPrompt = matchingScene?.prompt || matchingScene?.visualCue || videoPrompt || '';
+                            const defaultPrompt = getInitialPrompt(segmentText, parsed.length);
                             parsed.push({ label: `Scene ${parsed.length + 1} [${timeRange}]`, dialog: segmentText, prompt: defaultPrompt });
                           }
                         }
@@ -5038,8 +5097,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                             const chunkEnd = chunkStart + perSceneDur;
                             const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
                             const label = `Scene ${sceneNum} [${fmt(chunkStart)} - ${fmt(chunkEnd)}]`;
-                            const matchingScene = scenes[sceneNum - 1];
-                            const defaultPrompt = matchingScene?.prompt || matchingScene?.visualCue || videoPrompt || '';
+                            const defaultPrompt = getInitialPrompt(dialog, sceneNum - 1);
                             parsed.push({ label, dialog, prompt: defaultPrompt });
                             chunkStart = chunkEnd;
                             sceneNum++;

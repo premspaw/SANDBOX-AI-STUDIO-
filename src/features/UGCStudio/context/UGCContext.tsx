@@ -148,8 +148,8 @@ export interface UGCContextType {
   // ── Video generation ──────────────────────────────────────────────────────
   videoPrompt: string;
   setVideoPrompt: (v: string) => void;
-  videoGenMode: 'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash';
-  setVideoGenMode: (v: 'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash') => void;
+  videoGenMode: 'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash' | 'omni-flash-1.1';
+  setVideoGenMode: (v: 'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash' | 'omni-flash-1.1') => void;
   thAnimation: string;
   setThAnimation: (v: string) => void;
   isGeneratingVideo: boolean;
@@ -270,8 +270,8 @@ export interface UGCContextType {
   // ── Talking Head Tab States ───────────────────────────────────────────────
   thScript: string;
   setThScript: (v: string) => void;
-  thEngine: 'veo_lite' | 'veo_fast' | 'veo3' | 'omni-flash';
-  setThEngine: (v: 'veo_lite' | 'veo_fast' | 'veo3' | 'omni-flash') => void;
+  thEngine: 'veo_lite' | 'veo_fast' | 'veo3' | 'omni-flash' | 'omni-flash-1.1';
+  setThEngine: (v: 'veo_lite' | 'veo_fast' | 'veo3' | 'omni-flash' | 'omni-flash-1.1') => void;
   thAspectRatio: '9:16' | '16:9';
   setThAspectRatio: (v: '9:16' | '16:9') => void;
   thDuration: '4' | '6' | '8' | '10' | '20' | '30' | '40' | '50' | '60';

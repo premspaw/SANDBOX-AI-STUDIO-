@@ -1,7 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { X, ChevronDown, Sparkles, Camera, Check, Loader2, Film, Clock, Image as ImageIcon } from 'lucide-react';
+import { X, ChevronDown, Sparkles, Camera, Check, Loader2, Film, Clock, Image as ImageIcon, Activity } from 'lucide-react';
 import { useUGC, SplitScene } from '../context/UGCContext';
 import { SCENE_STYLES, MULTI_SHOT_PRESETS, BROLL_PRESETS } from '../constants/videoStyles';
+import { TALKING_HEAD_TEMPLATES } from '../constants/sceneTemplates';
+import { analyzeTalkingHeadMotion } from '../constants/prompts';
+import DropUpPortal, { DropUpPortalProps } from './DropUpPortal';
 import { buildScenePrompt, validateScenePrompt, detectUgcCategory } from '../constants/ugcPromptTemplates';
 import { getApiUrl, resolveUrl } from '../../../config/apiConfig';
 import { fileToBase64 } from '../utils/imageUtils';
@@ -18,6 +21,10 @@ const SPEECH_TAGS = [
 
 export default function SplitScenesPanel() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const motionBtnRef = useRef<HTMLButtonElement>(null);
+  const tplBtnRef = useRef<HTMLButtonElement>(null);
+  const [showMotionPopover, setShowMotionPopover] = useState(false);
+  const [showTplPopover, setShowTplPopover] = useState(false);
   const [selectedBRollPreset, setSelectedBRollPreset] = useState('broll_auto');
   const [isHookModalOpen, setIsHookModalOpen] = useState(false);
   const [isGalleryPickerOpen, setIsGalleryPickerOpen] = useState(false);
@@ -64,11 +71,30 @@ export default function SplitScenesPanel() {
     isGeneratingMotionRef,
     refVideoFile,
     gallery,
+    thSpokespersonGender,
+    thSpokespersonRegion,
+    thSpokespersonAge,
+    thSpokespersonOutfit,
+    thSpokespersonPose,
   } = useUGC();
+
+  React.useEffect(() => {
+    const handleLoadStoryboard = (e: CustomEvent) => {
+      if (e.detail?.splitScenes && Array.isArray(e.detail.splitScenes)) {
+        setSplitScenes(e.detail.splitScenes);
+        setActiveSplitTab(0);
+      }
+    };
+    window.addEventListener('load_storyboard_scenes', handleLoadStoryboard as EventListener);
+    return () => window.removeEventListener('load_storyboard_scenes', handleLoadStoryboard as EventListener);
+  }, [setSplitScenes, setActiveSplitTab]);
 
   if (splitScenes.length === 0) return null;
 
+  const isTalkingHead = activeTab === 'ai-avatar' || activeTab === 'talking-head';
   const sc = splitScenes[activeSplitTab];
+  const activeTpl = TALKING_HEAD_TEMPLATES.find(t => t.id === selectedSceneStyle) || TALKING_HEAD_TEMPLATES[0];
+  const motionAnalysis = analyzeTalkingHeadMotion(sc?.dialog || sc?.prompt || videoPrompt || '', selectedSceneStyle);
 
   const injectSpeechTag = (tag: string) => {
     const textarea = textareaRef.current;
@@ -434,8 +460,60 @@ export default function SplitScenesPanel() {
               <Sparkles size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
               <ChevronDown size={7} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[#c8f135]/60 pointer-events-none" />
             </div>
+          ) : isTalkingHead ? (
+            /* Creator Scenarios DropUp Popover for Talking Head Mode */
+            <div className="relative shrink-0">
+              <button
+                ref={tplBtnRef}
+                type="button"
+                onClick={() => setShowTplPopover(!showTplPopover)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[7.5px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  showTplPopover
+                    ? 'border-[#c8f135]/60 bg-[#c8f135]/20 text-[#c8f135] shadow-[0_0_8px_rgba(200,241,53,0.15)]'
+                    : 'border-white/[0.12] bg-white/[0.05] hover:bg-white/[0.1] text-white/80 hover:text-white'
+                }`}
+              >
+                <Camera size={7} className="text-[#c8f135]" />
+                <span className="truncate max-w-[130px]">{activeTpl.title}</span>
+                <ChevronDown size={7} className={`transition-transform duration-200 ${showTplPopover ? 'rotate-180' : ''}`} />
+              </button>
+
+              <DropUpPortal
+                triggerRef={tplBtnRef}
+                isOpen={showTplPopover}
+                onClose={() => setShowTplPopover(false)}
+                width={280}
+              >
+                <div className="p-3 space-y-2">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+                    <span className="text-[7.5px] font-black text-white/40 uppercase tracking-wider">Creator Scenarios</span>
+                    <span className="text-[6.5px] text-[#c8f135] font-mono">Drop Up</span>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto py-1 custom-scrollbar space-y-1">
+                    {TALKING_HEAD_TEMPLATES.map(tpl => (
+                      <button
+                        key={tpl.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSceneStyle(tpl.id);
+                          setShowTplPopover(false);
+                        }}
+                        className={`w-full flex items-start gap-2 p-2 rounded-lg text-left hover:bg-[#c8f135]/10 transition-colors group ${
+                          tpl.id === selectedSceneStyle ? 'bg-[#c8f135]/10 border border-[#c8f135]/30 text-[#c8f135]' : 'bg-black/30 border border-white/5 text-white/70'
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[8.5px] font-black uppercase tracking-wider group-hover:text-[#c8f135] transition-colors">{tpl.title}</p>
+                          <p className="text-[7.5px] text-white/40 font-sans leading-tight mt-0.5">{tpl.description}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </DropUpPortal>
+            </div>
           ) : (
-            /* Scene Style Dropdown — shown when in single-scene / standard mode */
+            /* Scene Style Dropdown — shown in UGC product mode */
             <div className="relative w-36 shrink-0">
               <select
                 value={selectedSceneStyle}
@@ -541,39 +619,89 @@ export default function SplitScenesPanel() {
             </button>
           )}
 
-          {/* B-Roll Template Dropdown */}
-          <div className="relative shrink-0">
-            <select
-              value={selectedBRollPreset}
-              onChange={e => setSelectedBRollPreset(e.target.value)}
-              className="appearance-none bg-blue-500/5 border border-blue-500/20 hover:border-blue-500/40 rounded-lg pl-5 pr-5 py-1 text-[7.5px] font-mono text-blue-300 uppercase tracking-wider cursor-pointer transition-all focus:outline-none"
-            >
-              {BROLL_PRESETS.map(p => (
-                <option key={p.id} value={p.id} className="bg-[#0c0c0c] text-white/90">{p.emoji} {p.label}</option>
-              ))}
-            </select>
-            <Film size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" />
-            <ChevronDown size={7} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
-          </div>
+          {/* In Talking Head mode, show Motion Analysis. In UGC product mode, show Auto-Detect Action & B-Roll */}
+          {isTalkingHead ? (
+            <div className="relative shrink-0">
+              <button
+                ref={motionBtnRef}
+                type="button"
+                onClick={() => setShowMotionPopover(!showMotionPopover)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[7.5px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  showMotionPopover
+                    ? 'border-[#c8f135]/60 bg-[#c8f135]/20 text-[#c8f135] shadow-[0_0_8px_rgba(200,241,53,0.15)]'
+                    : 'border-white/[0.12] bg-white/[0.05] hover:bg-white/[0.1] text-white/80 hover:text-white'
+                }`}
+              >
+                <Activity size={7} className="text-[#c8f135]" />
+                <span>Motion Analysis</span>
+                <ChevronDown size={7} className={`transition-transform duration-200 ${showMotionPopover ? 'rotate-180' : ''}`} />
+              </button>
 
-          {/* B-Roll / Montage button */}
-          <button
-            type="button"
-            title="Generate a dynamic B-roll montage for all scenes"
-            onClick={() => handleGenerateAllScenePrompts(true)}
-            disabled={isGeneratingSplitPrompt}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[7.5px] font-black uppercase tracking-wider transition-all shrink-0 cursor-pointer ${
-              isGeneratingSplitPrompt
-                ? 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
-                : 'bg-blue-500/10 border-blue-500/40 text-blue-300 hover:bg-blue-500/20 hover:border-blue-500/70'
-            }`}
-          >
-            {isGeneratingSplitPrompt ? (
-              <><Loader2 size={7} className="animate-spin" /><span>Gen…</span></>
-            ) : (
-              <><Film size={7} /><span>B-Roll</span></>
-            )}
-          </button>
+              <DropUpPortal
+                triggerRef={motionBtnRef}
+                isOpen={showMotionPopover}
+                onClose={() => setShowMotionPopover(false)}
+                width={280}
+              >
+                <div className="p-3 space-y-2">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+                    <span className="text-[7.5px] font-black text-white/40 uppercase tracking-wider">Script Motion Directives</span>
+                    <button onClick={() => setShowMotionPopover(false)} className="text-white/30 hover:text-white"><X size={10} /></button>
+                  </div>
+                  <div className="space-y-1.5 text-[8.5px]">
+                    <div className="bg-black/40 p-1.5 rounded-lg border border-white/5">
+                      <span className="text-[#c8f135] font-black uppercase text-[7px]">🎥 Camera Movement:</span>
+                      <p className="text-white/80 font-mono text-[8px] mt-0.5">{motionAnalysis.cameraMotion}</p>
+                    </div>
+                    <div className="bg-black/40 p-1.5 rounded-lg border border-white/5">
+                      <span className="text-[#c8f135] font-black uppercase text-[7px]">🎭 Character Animation:</span>
+                      <p className="text-white/80 font-mono text-[8px] mt-0.5">{motionAnalysis.characterAnimation}</p>
+                    </div>
+                    <div className="bg-black/40 p-1.5 rounded-lg border border-white/5">
+                      <span className="text-[#c8f135] font-black uppercase text-[7px]">🎬 Angle Cut Style:</span>
+                      <p className="text-white/80 font-mono text-[8px] mt-0.5">{motionAnalysis.cameraCutStyle}</p>
+                    </div>
+                  </div>
+                </div>
+              </DropUpPortal>
+            </div>
+          ) : (
+            <>
+              {/* B-Roll Template Dropdown */}
+              <div className="relative shrink-0">
+                <select
+                  value={selectedBRollPreset}
+                  onChange={e => setSelectedBRollPreset(e.target.value)}
+                  className="appearance-none bg-blue-500/5 border border-blue-500/20 hover:border-blue-500/40 rounded-lg pl-5 pr-5 py-1 text-[7.5px] font-mono text-blue-300 uppercase tracking-wider cursor-pointer transition-all focus:outline-none"
+                >
+                  {BROLL_PRESETS.map(p => (
+                    <option key={p.id} value={p.id} className="bg-[#0c0c0c] text-white/90">{p.emoji} {p.label}</option>
+                  ))}
+                </select>
+                <Film size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" />
+                <ChevronDown size={7} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+              </div>
+
+              {/* B-Roll / Montage button */}
+              <button
+                type="button"
+                title="Generate a dynamic B-roll montage for all scenes"
+                onClick={() => handleGenerateAllScenePrompts(true)}
+                disabled={isGeneratingSplitPrompt}
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[7.5px] font-black uppercase tracking-wider transition-all shrink-0 cursor-pointer ${
+                  isGeneratingSplitPrompt
+                    ? 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
+                    : 'bg-blue-500/10 border-blue-500/40 text-blue-300 hover:bg-blue-500/20 hover:border-blue-500/70'
+                }`}
+              >
+                {isGeneratingSplitPrompt ? (
+                  <><Loader2 size={7} className="animate-spin" /><span>Gen…</span></>
+                ) : (
+                  <><Film size={7} /><span>B-Roll</span></>
+                )}
+              </button>
+            </>
+          )}
 
           {/* 🎬 Motion Match button — only shown when a ref video is uploaded */}
           {refVideoFile && (

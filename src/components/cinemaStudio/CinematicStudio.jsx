@@ -3073,8 +3073,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             {/* Horizontal Flex Wrapper for Mode Switcher & Input Box */}
             <div className="flex flex-col sm:flex-row items-stretch gap-1.5 sm:gap-2.5 w-full">
               
-              {/* Mode Switcher Tab (Equal 50-50 split vertical dual-toggle) */}
-              <div className="bg-[#08080c]/95 border border-white/15 rounded-2xl p-1.5 flex flex-row sm:flex-col gap-1.5 shadow-xl shrink-0 select-none backdrop-blur-3xl self-stretch justify-between sm:w-14">
+              {/* Mode Switcher Tab (Compact dual-toggle on mobile) */}
+              <div className="bg-[#08080c]/95 border border-white/15 rounded-xl sm:rounded-2xl p-1 sm:p-1.5 flex flex-row sm:flex-col gap-1 sm:gap-1.5 shadow-xl shrink-0 select-none backdrop-blur-3xl self-stretch justify-between sm:w-14">
                 <button
                   type="button"
                   onClick={() => {
@@ -3083,14 +3083,14 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                     setActiveEngine(lastImg);
                   }}
                   className={cn(
-                    "flex-1 flex flex-col items-center justify-center gap-1 rounded-xl text-[8px] font-black uppercase tracking-wider transition-all py-2 sm:py-0",
+                    "flex-1 flex flex-row sm:flex-col items-center justify-center gap-1 rounded-lg sm:rounded-xl text-[7.5px] sm:text-[8px] font-black uppercase tracking-wider transition-all px-2 py-1 sm:py-0",
                     activeTab === 'image'
                       ? "bg-[#c8f135] text-black shadow-md shadow-[#c8f135]/25"
                       : "text-gray-400 hover:bg-white/[0.05] hover:text-white"
                   )}
                   title="Switch to Image Generation"
                 >
-                  <ImageIcon size={15} className="shrink-0" />
+                  <ImageIcon size={13} className="shrink-0 sm:w-[15px] sm:h-[15px]" />
                   <span className="font-extrabold leading-none">Image</span>
                 </button>
                 <button
@@ -3101,20 +3101,20 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                     setActiveEngine(lastVid);
                   }}
                   className={cn(
-                    "flex-1 flex flex-col items-center justify-center gap-1 rounded-xl text-[8px] font-black uppercase tracking-wider transition-all py-2 sm:py-0",
+                    "flex-1 flex flex-row sm:flex-col items-center justify-center gap-1 rounded-lg sm:rounded-xl text-[7.5px] sm:text-[8px] font-black uppercase tracking-wider transition-all px-2 py-1 sm:py-0",
                     activeTab === 'video'
                       ? "bg-fuchsia-500 text-white shadow-md shadow-fuchsia-500/25"
                       : "text-gray-400 hover:bg-white/[0.05] hover:text-white"
                   )}
                   title="Switch to Video Generation"
                 >
-                  <Video size={15} className="shrink-0" />
+                  <Video size={13} className="shrink-0 sm:w-[15px] sm:h-[15px]" />
                   <span className="font-extrabold leading-none">Video</span>
                 </button>
               </div>
 
               {/* ── Main Floating Input Bar (Vertical premium studio layout) ── */}
-              <div className="relative rounded-2xl border border-white/15 bg-[#08080c]/95 backdrop-blur-3xl shadow-[0_25px_70px_rgba(0,0,0,0.85)] flex flex-col p-2.5 sm:p-3 gap-2 sm:gap-2 flex-1 min-w-0 hover:border-white/20 transition-all duration-300">
+              <div className="relative rounded-xl sm:rounded-2xl border border-white/15 bg-[#08080c]/95 backdrop-blur-3xl shadow-[0_25px_70px_rgba(0,0,0,0.85)] flex flex-col p-2 sm:p-3 gap-1.5 sm:gap-2 flex-1 min-w-0 hover:border-white/20 transition-all duration-300">
                 
                 {/* ── TOP ATTACHED CONTROL BAR (Refs, Camera Movement, Angle, Lens, Style) ── */}
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar select-none w-full pb-1 mb-0.5 border-b border-white/[0.06]" style={{ scrollbarWidth: 'none' }}>
@@ -4322,8 +4322,6 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         setOmniPromptText={setOmniPromptText}
         handleGenerate={handleGenerate}
         isBusy={isBusy}
-        userCredits={userCredits}
-        requiredCredits={requiredCredits}
         canGenerate={canGenerate}
         allRefItems={allRefItems}
       />
