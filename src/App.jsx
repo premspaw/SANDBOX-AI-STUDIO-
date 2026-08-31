@@ -6,27 +6,51 @@ import { initFaviconAnimation } from './utils/favicon';
 import { Toast } from './components/common/Toast';
 import { useAppStore } from './store';
 
-// Lazy imports — LandingPage is first so it gets its own chunk for instant splitting
-const LandingPage = lazy(() => import('./components/pages/LandingPage'));
-const AuthPage = lazy(() => import('./components/pages/AuthPage'));
-const AssetsLibrary = lazy(() => import('./components/panels/AssetsLibrary').then(m => ({ default: m.AssetsLibrary })));
-const UGC = lazy(() => import('./features/UGCStudio/UGC'));
-const MotionControl = lazy(() => import('./features/MotionControl/MotionControl'));
-const PlaygroundCanvas = lazy(() => import('./components/canvas/PlaygroundCanvas').then(m => ({ default: m.PlaygroundCanvas })));
-const AssetManager = lazy(() => import('./components/panels/AssetManager').then(m => ({ default: m.AssetManager })));
-const MarketingStudio = lazy(() => import('./components/pages/MarketingStudio'));
-const CarouselStudio = lazy(() => import('./components/pages/CarouselStudio'));
-const SettingsPage = lazy(() => import('./components/pages/SettingsPage'));
-const PricingPage = lazy(() => import('./components/pages/PricingPage'));
-const BrandVoicePage = lazy(() => import('./components/pages/BrandVoicePage'));
-const AgentPage = lazy(() => import('./components/pages/AgentPage'));
-const AvatarStudio = lazy(() => import('./components/pages/AvatarStudio'));
-const LivingAvatar = lazy(() => import('./components/pages/LivingAvatar'));
-const CinematicStudio = lazy(() => import('./components/cinemaStudio/CinematicStudio'));
-const StudioPage = lazy(() => import('./components/pages/StudioPage'));
-const YourVoice = lazy(() => import('./components/pages/YourVoice'));
-const McpConnectionPage = lazy(() => import('./components/pages/McpConnectionPage'));
-const StoryboardStudio = lazy(() => import('./components/pages/StoryboardStudio'));
+// Helper for lazy imports that automatically retries/reloads on deployment chunk mismatches
+function lazyWithRetry(componentImport) {
+  return lazy(() =>
+    componentImport().catch((error) => {
+      const isChunkError =
+        error?.name === 'ChunkLoadError' ||
+        error?.message?.includes('Failed to fetch dynamically imported module') ||
+        error?.message?.includes('Expected a JavaScript-or-Wasm module script') ||
+        error?.message?.includes('Importing a module script failed');
+
+      if (isChunkError) {
+        const pageHasAlreadyBeenReloaded = sessionStorage.getItem('chunk_reload_count');
+        if (!pageHasAlreadyBeenReloaded) {
+          sessionStorage.setItem('chunk_reload_count', '1');
+          console.warn('[Vite Chunk Reload] Stale chunk detected after new deployment. Auto-reloading page...');
+          window.location.reload();
+          return new Promise(() => {});
+        }
+      }
+      throw error;
+    })
+  );
+}
+
+// Lazy imports with automatic retry on new deployments
+const LandingPage = lazyWithRetry(() => import('./components/pages/LandingPage'));
+const AuthPage = lazyWithRetry(() => import('./components/pages/AuthPage'));
+const AssetsLibrary = lazyWithRetry(() => import('./components/panels/AssetsLibrary').then(m => ({ default: m.AssetsLibrary })));
+const UGC = lazyWithRetry(() => import('./features/UGCStudio/UGC'));
+const MotionControl = lazyWithRetry(() => import('./features/MotionControl/MotionControl'));
+const PlaygroundCanvas = lazyWithRetry(() => import('./components/canvas/PlaygroundCanvas').then(m => ({ default: m.PlaygroundCanvas })));
+const AssetManager = lazyWithRetry(() => import('./components/panels/AssetManager').then(m => ({ default: m.AssetManager })));
+const MarketingStudio = lazyWithRetry(() => import('./components/pages/MarketingStudio'));
+const CarouselStudio = lazyWithRetry(() => import('./components/pages/CarouselStudio'));
+const SettingsPage = lazyWithRetry(() => import('./components/pages/SettingsPage'));
+const PricingPage = lazyWithRetry(() => import('./components/pages/PricingPage'));
+const BrandVoicePage = lazyWithRetry(() => import('./components/pages/BrandVoicePage'));
+const AgentPage = lazyWithRetry(() => import('./components/pages/AgentPage'));
+const AvatarStudio = lazyWithRetry(() => import('./components/pages/AvatarStudio'));
+const LivingAvatar = lazyWithRetry(() => import('./components/pages/LivingAvatar'));
+const CinematicStudio = lazyWithRetry(() => import('./components/cinemaStudio/CinematicStudio'));
+const StudioPage = lazyWithRetry(() => import('./components/pages/StudioPage'));
+const YourVoice = lazyWithRetry(() => import('./components/pages/YourVoice'));
+const McpConnectionPage = lazyWithRetry(() => import('./components/pages/McpConnectionPage'));
+const StoryboardStudio = lazyWithRetry(() => import('./components/pages/StoryboardStudio'));
 
 
 // Beautiful, futuristic stand-by placeholder for the new Avatar Studio
@@ -187,8 +211,35 @@ function App() {
 
   // Check for existing session on mount
   useEffect(() => {
-    initFaviconAnimation()
-  }, [])
+    initFaviconAnimation();
+
+    // Clear reload count on successful app initialization
+    sessionStorage.removeItem('chunk_reload_count');
+
+    // Global listener for stale chunk / dynamic import errors
+    const handleChunkError = (event) => {
+      const msg = event?.reason?.message || event?.message || '';
+      if (
+        msg.includes('Failed to fetch dynamically imported module') ||
+        msg.includes('Expected a JavaScript-or-Wasm module script') ||
+        msg.includes('Importing a module script failed')
+      ) {
+        if (!sessionStorage.getItem('chunk_reload_count')) {
+          sessionStorage.setItem('chunk_reload_count', '1');
+          console.warn('[Vite Chunk Listener] Auto-reloading due to new deployment...');
+          window.location.reload();
+        }
+      }
+    };
+
+    window.addEventListener('unhandledrejection', handleChunkError);
+    window.addEventListener('error', handleChunkError);
+
+    return () => {
+      window.removeEventListener('unhandledrejection', handleChunkError);
+      window.removeEventListener('error', handleChunkError);
+    };
+  }, []);
 
   useEffect(() => {
     const checkSession = async () => {
