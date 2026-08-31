@@ -286,17 +286,19 @@ export default function createRouter(deps) {
             const targetUserId = user ? user.id : userId;
 
             const validDuration = Number(duration) >= 3 && Number(duration) <= 10 ? Number(duration) : 8;
-            const validResolution = ['720p', '1080p'].includes(resolution) ? resolution : '720p';
+            const validResolution = ['360p', '720p', '1080p', '4k'].includes(resolution) ? resolution : '720p';
 
-            // Deduct credits: omni/omni-flash are cost-per-second, veo standard is 80, veo fast is 20
-            let requiredCredits = 10; // Default (reduced from 20)
+            // Deduct credits: omni/omni-flash are cost-per-second
+            let requiredCredits = 10; // Default
             const modelLower = (model || '').toLowerCase();
-            if (modelLower.includes('omni-flash')) {
-                let costPerSec = 6; // default 720p (halved from 12)
+            if (modelLower.includes('omni-flash') || modelLower.includes('flash')) {
+                let costPerSec = 5; // default 720p
                 if (validResolution === '4k') {
                     costPerSec = generateAudio ? 19 : 15;
                 } else if (validResolution === '1080p') {
                     costPerSec = generateAudio ? 8 : 6;
+                } else if (validResolution === '360p') {
+                    costPerSec = generateAudio ? 5 : 4;
                 } else { // 720p
                     costPerSec = generateAudio ? 6 : 5;
                 }

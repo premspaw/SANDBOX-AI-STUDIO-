@@ -542,13 +542,13 @@ export const SidePanel = React.memo(({
                         <ImageIcon className="w-3.5 h-3.5 text-fuchsia-400" /> Reference Images
                       </span>
                       <div className="flex items-center gap-2">
-                        <span className="text-[9px] text-fuchsia-400/80 font-mono">Tag @IMAGE_REF_0..4</span>
-                        {Math.max(3, Math.min(5, (omniRefPreviews.filter(Boolean).length >= 4 ? 5 : omniRefPreviews.filter(Boolean).length >= 3 || omniRefPreviews[2] ? 4 : 3))) < 5 && (
+                        <span className="text-[9px] text-fuchsia-400/80 font-mono">Tag @IMAGE_REF_0..9 (Up to 10)</span>
+                        {Math.max(3, Math.min(10, omniRefPreviews.filter(Boolean).length + 1)) < 10 && (
                           <button
                             type="button"
                             onClick={() => {
                               const currentFilled = omniRefPreviews.filter(Boolean).length;
-                              const nextSlot = Math.min(4, Math.max(3, currentFilled));
+                              const nextSlot = Math.min(9, Math.max(3, currentFilled));
                               setUploadTarget(`omni_ref_${nextSlot}`);
                               fileInputRef?.current?.click();
                             }}
@@ -561,7 +561,7 @@ export const SidePanel = React.memo(({
                     </div>
 
                     <div className="grid grid-cols-3 gap-2.5">
-                      {Array.from({ length: Math.min(5, Math.max(3, omniRefPreviews.filter(Boolean).length >= 4 ? 5 : omniRefPreviews.filter(Boolean).length >= 3 || omniRefPreviews[2] ? 4 : 3)) }).map((_, idx) => {
+                      {Array.from({ length: Math.min(10, Math.max(3, omniRefPreviews.filter(Boolean).length + 1)) }).map((_, idx) => {
                         const slotPreview = omniRefPreviews[idx] || (idx === 0 ? omniFirstFramePreview : idx === 1 ? omniLastFramePreview : '');
                         return (
                           <div key={idx} className="p-2 rounded-xl bg-white/[0.02] backdrop-blur-md border border-white/10 hover:border-fuchsia-500/40 transition-all flex flex-col gap-1.5 relative shadow-md">
@@ -662,7 +662,7 @@ export const SidePanel = React.memo(({
                 <textarea
                   value={localPrompt}
                   onChange={(e) => { setLocalPrompt(e.target.value); setOmniPromptText(e.target.value); setPromptText(e.target.value); }}
-                  placeholder="Describe scene action, camera movements, style, or tag @IMAGE_REF_0..4 or @video..."
+                  placeholder="Describe scene action, camera movements, style, or tag @IMAGE_REF_0..9 or @video..."
                   className="w-full h-28 bg-[#0e0e18]/90 border border-white/15 rounded-2xl p-3.5 text-xs text-white placeholder-white/20 outline-none focus:border-fuchsia-400 transition-all resize-none shadow-inner custom-scrollbar font-sans"
                 />
               </div>
@@ -671,7 +671,7 @@ export const SidePanel = React.memo(({
               <div className="grid grid-cols-2 gap-3">
                 <GlassSelect label="Duration" value={duration} onChange={(val) => setDuration(Number(val))} options={[{ value: 4, label: '4 Seconds' }, { value: 6, label: '6 Seconds' }, { value: 8, label: '8 Seconds' }, { value: 10, label: '10 Seconds' }]} />
                 <GlassSelect label="Aspect Ratio" value={aspectRatio} onChange={setAspectRatio} options={[{ value: '16:9', label: '16:9 Widescreen' }, { value: '9:16', label: '9:16 Vertical' }, { value: '1:1', label: '1:1 Square' }]} />
-                <GlassSelect label="Resolution" value={resolution} onChange={setResolution} options={[{ value: '720p', label: '720p HD' }, { value: '1080p', label: '1080p FHD' }, { value: '4k', label: '4K UHD' }]} />
+                <GlassSelect label="Resolution" value={resolution} onChange={setResolution} options={[{ value: '360p', label: '360p SD' }, { value: '720p', label: '720p HD' }, { value: '1080p', label: '1080p FHD' }, { value: '4k', label: '4K UHD' }]} />
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-gray-300">Audio</label>
                   <button
