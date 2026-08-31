@@ -9,12 +9,12 @@ const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.me
 // Safe environment variable retrieval
 const VITE_API_URL =
     (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) ||
-    (typeof process !== 'undefined' && process.env && process.env.VITE_API_URL) ||
+    (typeof globalThis !== 'undefined' && globalThis.process && globalThis.process.env && globalThis.process.env.VITE_API_URL) ||
     (isDev ? 'http://127.0.0.1:3002' : '');
 
 const VITE_WS_URL =
     (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_WS_URL) ||
-    (typeof process !== 'undefined' && process.env && process.env.VITE_WS_URL) ||
+    (typeof globalThis !== 'undefined' && globalThis.process && globalThis.process.env && globalThis.process.env.VITE_WS_URL) ||
     (isDev ? 'ws://127.0.0.1:3002' : '');
 
 // Ensure base URL doesn't have a trailing slash
@@ -60,24 +60,26 @@ export const resolveUrl = (url) => {
     if (!url) return '';
     if (typeof url !== 'string') return url;
     
-    // 1. Identify video for proxying
+    // 1. Cloudflare R2 public CDN URLs — load directly from Cloudflare CDN for maximum speed & 0 server overhead
+    if (url.includes('r2.dev') || url.includes('r2.cloudflarestorage.com')) {
+        // Strip legacy proxy wrapping if present
+        const proxyMatch = url.match(/proxy-image\?url=(.+?)(&|$)/);
+        if (proxyMatch && proxyMatch[1]) {
+            return decodeURIComponent(proxyMatch[1]);
+        }
+        return url;
+    }
+
+    // 2. Identify non-R2 video for proxying
     const isVideo = url.toLowerCase().split('?')[0].endsWith('.mp4') || 
                     url.toLowerCase().split('?')[0].endsWith('.webm') ||
                     url.toLowerCase().split('?')[0].endsWith('.mov');
 
-    // ✅ FIX: Route ALL external video URLs through the backend proxy.
-    // This prevents ERR_CACHE_OPERATION_NOT_SUPPORTED in Chrome for GCS/Supabase
     if (isVideo && url.startsWith('http') && !url.includes('localhost') && !url.includes('/api/proxy-image')) {
         return getApiUrl(`/api/proxy-image?url=${encodeURIComponent(url)}&cors=1`);
     }
 
-    // ✅ FIX: Route R2 image URLs through proxy to avoid CORS header issues
-    const isR2 = url.includes('r2.dev') || url.includes('r2.cloudflarestorage.com');
-    if (isR2 && !url.includes('/api/proxy-image')) {
-        return getApiUrl(`/api/proxy-image?url=${encodeURIComponent(url)}&cors=1`);
-    }
-
-    // 2. Already fully qualified or data/blob
+    // 3. Already fully qualified or data/blob
     if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:'))
         return url;
         
