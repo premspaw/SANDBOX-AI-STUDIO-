@@ -2008,9 +2008,26 @@ app.use('/api', createAvatarRouter(deps));            // legacy paths
 // ── Your Voice ───────────────────────────────────────────────────────────────
 app.use('/api', createYourVoiceRouter(deps));
 
-// Catch-all route to serve the SPA index.html for any client-side routes (avoiding ERR_CANNOT_GET on page reloads)
-// Uses native RegExp to bypass path-to-regexp parser and prevent Express 5 compatibility crashes.
+// Serve production static assets from dist directory with proper MIME types & caching
+app.use(express.static(path.join(__dirname, 'dist'), {
+    maxAge: '1d',
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) {
+            // Never cache index.html so browsers always get fresh bundle hashes on deploy
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        } else if (filePath.includes('/assets/')) {
+            // Immutable cache for hashed JS/CSS chunks
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+    }
+}));
+
+// Catch-all route to serve the SPA index.html for client-side routes
 app.get(/^\/(?!api).*/, (req, res) => {
+    // If request is for a missing static asset in /assets/, return 404 instead of index.html to prevent MIME type HTML errors
+    if (req.path.startsWith('/assets/')) {
+        return res.status(404).send('Asset not found');
+    }
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
