@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Sparkles, Film, Image as ImageIcon, Video, Layers, BookOpen, Clapperboard,
-  Upload, Trash2, Check, Zap, Cpu, Code, HelpCircle, RefreshCw, Sliders, Play, Loader2, ChevronDown, Users, Tag, Aperture, FastForward
+  Upload, Trash2, Check, Zap, Cpu, Code, HelpCircle, RefreshCw, Sliders, Play, Loader2, ChevronDown, Users, Tag, Aperture, FastForward, FileText, Volume2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getApiUrl } from '../../config/apiConfig';
@@ -139,6 +139,7 @@ export const SidePanel = React.memo(({
   allRefItems = []
 }) => {
   const [docsSection, setDocsSection] = useState('omni_flash'); // 'omni_flash' | 'veo_cookbook'
+  const [showOmniSpecs, setShowOmniSpecs] = useState(false);
 
   // Dedicated Video File Input Ref & State for Omni Flash Reference Video
   const videoInputRef = useRef(null);
@@ -505,6 +506,155 @@ export const SidePanel = React.memo(({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Gemini Omni 1.1 Technical Specs & Capabilities Card */}
+              <div className="rounded-2xl border border-fuchsia-500/25 bg-gradient-to-b from-fuchsia-950/20 via-black/40 to-black/60 overflow-hidden transition-all duration-300">
+                <button
+                  type="button"
+                  onClick={() => setShowOmniSpecs(prev => !prev)}
+                  className="w-full py-2.5 px-3.5 flex items-center justify-between bg-fuchsia-500/10 hover:bg-fuchsia-500/20 transition-colors cursor-pointer select-none"
+                >
+                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-fuchsia-300">
+                    <Cpu className="w-4 h-4 text-fuchsia-400 animate-pulse" />
+                    <span>Gemini Omni 1.1 Specs & Limits</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-fuchsia-500/20 border border-fuchsia-400/40 text-fuchsia-300">
+                      131k / 57k Tokens
+                    </span>
+                    <ChevronDown className={cn("w-4 h-4 text-fuchsia-400 transition-transform duration-300", showOmniSpecs && "rotate-180")} />
+                  </div>
+                </button>
+
+                {showOmniSpecs && (
+                  <div className="p-3.5 space-y-3.5 text-xs font-sans text-gray-300 bg-black/60 backdrop-blur-md border-t border-fuchsia-500/20 animate-fadeIn">
+                    
+                    {/* Model Overview & Quota */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2 rounded-xl bg-white/[0.03] border border-white/10 space-y-0.5">
+                        <span className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">Model ID</span>
+                        <p className="text-[10.5px] font-mono font-bold text-fuchsia-300 truncate">gemini-omni-1.1-flash-preview</p>
+                      </div>
+                      <div className="p-2 rounded-xl bg-white/[0.03] border border-white/10 space-y-0.5">
+                        <span className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">Quota Mode</span>
+                        <p className="text-[10.5px] font-mono font-bold text-emerald-400">Fixed Quota Supported</p>
+                      </div>
+                    </div>
+
+                    {/* Token Limits Grid */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2.5 rounded-xl bg-fuchsia-950/30 border border-fuchsia-500/20 flex items-center justify-between">
+                        <div>
+                          <div className="text-[9px] font-bold uppercase tracking-wider text-fuchsia-300">Max Input Tokens</div>
+                          <div className="text-xs font-black font-mono text-white mt-0.5">131,072</div>
+                        </div>
+                        <Zap className="w-4 h-4 text-fuchsia-400 opacity-60" />
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-fuchsia-950/30 border border-fuchsia-500/20 flex items-center justify-between">
+                        <div>
+                          <div className="text-[9px] font-bold uppercase tracking-wider text-fuchsia-300">Max Output Tokens</div>
+                          <div className="text-xs font-black font-mono text-white mt-0.5">57,920</div>
+                        </div>
+                        <Sparkles className="w-4 h-4 text-cyan-400 opacity-60" />
+                      </div>
+                    </div>
+
+                    {/* Modalities Table */}
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-300">Input / Output Modalities</span>
+                      <div className="rounded-xl border border-white/10 overflow-hidden bg-black/40">
+                        <div className="grid grid-cols-3 p-1.5 bg-white/[0.04] text-[9px] font-bold uppercase text-gray-400 border-b border-white/10">
+                          <div>Modality</div>
+                          <div>Direction</div>
+                          <div>Specs & File Limits</div>
+                        </div>
+                        
+                        <div className="grid grid-cols-3 p-1.5 text-[10px] border-b border-white/5 items-center">
+                          <div className="font-semibold text-white flex items-center gap-1"><FileText className="w-3 h-3 text-violet-400" /> Text</div>
+                          <div className="text-emerald-400 font-mono text-[9px]">Input & Output</div>
+                          <div className="text-gray-400 text-[9px]">Max 50MB API / 7MB Console</div>
+                        </div>
+
+                        <div className="grid grid-cols-3 p-1.5 text-[10px] border-b border-white/5 items-center">
+                          <div className="font-semibold text-white flex items-center gap-1"><ImageIcon className="w-3 h-3 text-fuchsia-400" /> Image</div>
+                          <div className="text-cyan-400 font-mono text-[9px]">Input only</div>
+                          <div className="text-gray-400 text-[9px]">Max 10 images (20MB / 30MB GCS)</div>
+                        </div>
+
+                        <div className="grid grid-cols-3 p-1.5 text-[10px] border-b border-white/5 items-center">
+                          <div className="font-semibold text-white flex items-center gap-1"><Video className="w-3 h-3 text-amber-400" /> Video</div>
+                          <div className="text-emerald-400 font-mono text-[9px]">Input & Output</div>
+                          <div className="text-gray-400 text-[9px]">Max 3 videos (10s max length)</div>
+                        </div>
+
+                        <div className="grid grid-cols-3 p-1.5 text-[10px] items-center">
+                          <div className="font-semibold text-white flex items-center gap-1"><Volume2 className="w-3 h-3 text-emerald-400" /> Audio</div>
+                          <div className="text-emerald-400 font-mono text-[9px]">Sound Gen Output</div>
+                          <div className="text-gray-400 text-[9px]">Speech, music & SFX supported</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Video Technical Specs & Formats */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-300">Technical Formats & Defaults</span>
+                      <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/10 space-y-1.5">
+                        <div className="flex flex-wrap gap-1">
+                          <span className="text-[8.5px] font-mono px-1.5 py-0.5 rounded bg-fuchsia-500/15 border border-fuchsia-500/30 text-fuchsia-300">Ratios: 16:9, 9:16</span>
+                          <span className="text-[8.5px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/15 border border-cyan-500/30 text-cyan-300">Resolutions: 360p, 720p, 1080p, 4K</span>
+                          <span className="text-[8.5px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">Max Duration: 10s</span>
+                        </div>
+                        <div className="text-[9.5px] text-gray-400 leading-normal">
+                          <strong className="text-gray-200">Image MIME:</strong> png, jpeg, webp, heic, heif<br />
+                          <strong className="text-gray-200">Video MIME:</strong> mp4, mov, webm, mpeg, mpg, avi, 3gp, wmv, flv
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Core Capabilities Matrix */}
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-gray-300">Capabilities Matrix</span>
+                      <div className="grid grid-cols-2 gap-1">
+                        {[
+                          { label: 'Generate Video from Text', supported: true },
+                          { label: 'Generate Video from Image', supported: true },
+                          { label: 'Generate Video from References', supported: true },
+                          { label: 'First & Last Frame Video', supported: true },
+                          { label: 'Sound Generation (Speech/SFX)', supported: true },
+                          { label: 'Video Editing', supported: true },
+                          { label: 'Extend Video', supported: true },
+                          { label: 'C2PA Content Credentials', supported: true },
+                          { label: 'Thinking Mode', supported: true },
+                          { label: 'Count Tokens', supported: true },
+                          { label: 'System Instructions', supported: false },
+                          { label: 'Live API', supported: false },
+                          { label: 'Structured Output', supported: false },
+                          { label: 'Context Caching', supported: false },
+                          { label: 'RAG Engine', supported: false },
+                          { label: 'Chat / Tuning / Grounding', supported: false }
+                        ].map((cap, i) => (
+                          <div key={i} className="flex items-center justify-between p-1 rounded-lg bg-white/[0.02] border border-white/5 text-[9.5px]">
+                            <span className="text-gray-300 truncate pr-1">{cap.label}</span>
+                            {cap.supported ? (
+                              <span className="px-1 py-0.2 rounded text-[8px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">YES</span>
+                            ) : (
+                              <span className="px-1 py-0.2 rounded text-[8px] font-bold bg-gray-500/20 text-gray-400 border border-gray-500/20 shrink-0">N/A</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Parameter Defaults */}
+                    <div className="p-2 rounded-xl bg-white/[0.02] border border-white/10 flex items-center justify-between text-[9.5px] font-mono text-gray-400">
+                      <div><span className="text-gray-300 font-bold">Temp:</span> 1.0 (0.0-2.0)</div>
+                      <div><span className="text-gray-300 font-bold">topP:</span> 0.95 (0.0-1.0)</div>
+                      <div><span className="text-gray-300 font-bold">Candidates:</span> 1</div>
+                    </div>
+
+                  </div>
+                )}
               </div>
 
               {/* Task Mode Dropdown */}
