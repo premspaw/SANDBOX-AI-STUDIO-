@@ -200,15 +200,18 @@ export default function StudioPage() {
             motionVideo: omniRefVideoPreview || null,
             userId
           };
-        } else if (panelTab === 'omni' || engineToUse.includes('omni')) {
+        } else if (panelTab === 'omni' || engineToUse.includes('omni') || engineToUse.includes('flash')) {
           endpoint = `${getApiUrl()}/api/omni/generate`;
           payload = {
             prompt: promptToUse,
-            task: omniTask,
+            model: engineToUse,
+            task: omniTask || 'image_to_video',
             duration,
             aspectRatio,
-            firstFrame: omniFirstFrameImage || firstFrameImage || null,
-            lastFrame: omniLastFrameImage || lastFrameImage || null,
+            resolution,
+            generateAudio,
+            firstFrame: firstFrameImage || omniFirstFrameImage || null,
+            lastFrame: lastFrameImage || omniLastFrameImage || null,
             refImages: omniRefImages.filter(Boolean),
             refVideo: omniRefVideoPreview || null,
             userId

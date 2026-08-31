@@ -418,9 +418,36 @@ export const SidePanel = React.memo(({
 
         {/* Panel Content Scroll Area */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-5 space-y-6 pb-28 relative z-10 bg-[#0a0a12]">
-          {/* TAB 1: VEO 3.1 WORKSPACE */}
+          {/* TAB 1: VEO 3.1 & OMNI FLASH WORKSPACE */}
           {panelTab === 'veo' && (
             <div className="space-y-6">
+              {/* Model Variant Chips */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-wider text-gray-300">Model Engine</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'veo-3.1', label: 'Veo 3.1 🎬', desc: 'Google Standard' },
+                    { id: 'veo-fast', label: 'Veo Fast ⚡', desc: 'Fast Generation' },
+                    { id: 'gemini-omni-1.1-flash-preview', label: 'Omni 1.1 Flash ⚡', desc: '1.1 Multi-Ref & Keyframes' }
+                  ].map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => { setActiveTab('video'); setActiveEngine(m.id); }}
+                      className={cn(
+                        "py-2 px-1.5 rounded-xl border text-left transition-all cursor-pointer select-none",
+                        activeEngine === m.id
+                          ? "bg-violet-600/30 border-violet-400 text-white shadow-[0_0_15px_rgba(139,92,246,0.3)]"
+                          : "bg-white/[0.02] border-white/10 text-gray-400 hover:bg-white/[0.06] hover:text-white"
+                      )}
+                    >
+                      <div className="text-[11px] font-bold truncate">{m.label}</div>
+                      <div className="text-[8.5px] text-gray-400 mt-0.5 truncate">{m.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Keyframe Conditioning */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -472,8 +499,26 @@ export const SidePanel = React.memo(({
 
               {/* Video Specs Grid */}
               <div className="grid grid-cols-2 gap-3">
-                <GlassSelect label="Duration" value={duration} onChange={(val) => setDuration(Number(val))} options={[{ value: 4, label: '4 Seconds' }, { value: 6, label: '6 Seconds' }, { value: 8, label: '8 Seconds' }]} />
+                <GlassSelect label="Duration" value={duration} onChange={(val) => setDuration(Number(val))} options={[{ value: 4, label: '4 Seconds' }, { value: 6, label: '6 Seconds' }, { value: 8, label: '8 Seconds' }, { value: 10, label: '10 Seconds' }]} />
                 <GlassSelect label="Aspect Ratio" value={aspectRatio} onChange={setAspectRatio} options={[{ value: '16:9', label: '16:9 Widescreen' }, { value: '9:16', label: '9:16 Vertical' }, { value: '1:1', label: '1:1 Square' }]} />
+                {activeEngine?.includes('omni') || activeEngine?.includes('flash') ? (
+                  <>
+                    <GlassSelect label="Resolution" value={resolution} onChange={setResolution} options={[{ value: '360p', label: '360p SD' }, { value: '720p', label: '720p HD' }, { value: '1080p', label: '1080p FHD' }, { value: '4k', label: '4K UHD' }]} />
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-300">Audio</label>
+                      <button
+                        type="button"
+                        onClick={() => setGenerateAudio(!generateAudio)}
+                        className={cn(
+                          "w-full h-[42px] rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+                          generateAudio ? "bg-violet-600/25 border-violet-400 text-violet-200" : "bg-white/[0.02] border-white/15 text-gray-400"
+                        )}
+                      >
+                        {generateAudio ? '🔊 Audio On' : '🔇 Audio Off'}
+                      </button>
+                    </div>
+                  </>
+                ) : null}
               </div>
             </div>
           )}
