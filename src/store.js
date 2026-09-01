@@ -239,6 +239,84 @@ export const useAppStore = create((set, get) => ({
         });
     },
 
+    addCameraNode: (position = { x: 400, y: 300 }) => {
+        const id = `camera-${Date.now()}`;
+        const newNode = {
+            id,
+            type: 'camera',
+            position,
+            data: { label: 'CAMERA_NODE', onDelete: (id) => get().deleteNode(id) }
+        };
+        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
+        return id;
+    },
+    addLightingNode: (position = { x: 500, y: 300 }) => {
+        const id = `light-${Date.now()}`;
+        const newNode = {
+            id,
+            type: 'lighting',
+            position,
+            data: { label: 'LIGHT_NODE', onDelete: (id) => get().deleteNode(id) }
+        };
+        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
+        return id;
+    },
+    addMusicNode: (position = { x: 600, y: 300 }) => {
+        const id = `music-${Date.now()}`;
+        const newNode = {
+            id,
+            type: 'music',
+            position,
+            data: { label: 'MUSIC_NODE', onDelete: (id) => get().deleteNode(id) }
+        };
+        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
+        return id;
+    },
+    addSFXNode: (position = { x: 700, y: 300 }) => {
+        const id = `sfx-${Date.now()}`;
+        const newNode = {
+            id,
+            type: 'sfx',
+            position,
+            data: { label: 'SFX_NODE', onDelete: (id) => get().deleteNode(id) }
+        };
+        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
+        return id;
+    },
+    addDialogueNode: (position = { x: 800, y: 300 }) => {
+        const id = `dialogue-${Date.now()}`;
+        const newNode = {
+            id,
+            type: 'dialogue',
+            position,
+            data: { label: 'VOICE_NODE', onDelete: (id) => get().deleteNode(id) }
+        };
+        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
+        return id;
+    },
+    addUGCPipelineNode: (position = { x: 300, y: 200 }) => {
+        const id = `ugc-${Date.now()}`;
+        const newNode = {
+            id,
+            type: 'ugc_pipeline',
+            position,
+            data: { label: 'UGC_PIPELINE', onDelete: (id) => get().deleteNode(id) }
+        };
+        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
+        return id;
+    },
+    addUGCEngineNode: (position = { x: 500, y: 300 }) => {
+        const id = `ugc-engine-${Date.now()}`;
+        const newNode = {
+            id,
+            type: 'ugc_engine',
+            position,
+            data: { label: 'UGC_ENGINE', onDelete: (id) => get().deleteNode(id) }
+        };
+        set({ nodes: [...get().nodes, newNode], activeNodeId: id });
+        return id;
+    },
+
     addNode: (image, label, isOptimistic = false, position = null) => {
         const id = `node-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
         const finalPosition = position || {
