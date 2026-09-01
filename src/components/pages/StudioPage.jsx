@@ -15,9 +15,18 @@ import { InpaintEditor } from '../common/InpaintEditor';
 import { StoryboardEditor } from '../cinemaStudio/StoryboardEditor';
 
 export default function StudioPage() {
-  const { userProfile, updateShortsBalance, checkAuthAndRun } = useAppStore();
+  const { userProfile, updateShortsBalance } = useAppStore();
+  const setShowingAuthModal = useAppStore(state => state.setShowingAuthModal);
   const userId = userProfile?.id || null;
   const userCredits = userProfile?.shorts_balance ?? 100;
+
+  const checkAuthAndRun = useCallback((fn) => {
+    if (!userId) {
+      if (setShowingAuthModal) setShowingAuthModal(true);
+      return;
+    }
+    fn();
+  }, [userId, setShowingAuthModal]);
 
   // Active Engine & Mode State
   const [activeEngine, setActiveEngine] = useState('veo-3.1-generate-preview');
