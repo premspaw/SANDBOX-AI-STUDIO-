@@ -22,9 +22,9 @@ function lazyWithRetry(componentImport) {
       if (isChunkError) {
         const lastReload = Number(sessionStorage.getItem('chunk_reload_time') || '0');
         const now = Date.now();
-        if (now - lastReload > 8000) {
+        if (now - lastReload > 3000) {
           sessionStorage.setItem('chunk_reload_time', String(now));
-          console.warn('[Vite Chunk Reload] Stale chunk detected after new deployment. Auto-reloading page...');
+          console.warn('[Vite Chunk Reload] Stale chunk detected after deployment. Auto-reloading...');
           window.location.reload();
           return new Promise(() => {});
         }
@@ -32,6 +32,22 @@ function lazyWithRetry(componentImport) {
       throw error;
     })
   );
+}
+
+// Global top-level listener for uncaught dynamic import 404 errors after new deployments
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    const errStr = String(event?.message || event?.error || '');
+    if (errStr.includes('Failed to fetch dynamically imported module') || errStr.includes('Expected a JavaScript-or-Wasm module script')) {
+      const lastReload = Number(sessionStorage.getItem('chunk_reload_time') || '0');
+      const now = Date.now();
+      if (now - lastReload > 3000) {
+        sessionStorage.setItem('chunk_reload_time', String(now));
+        console.warn('[Vite Window Reload] Stale chunk error caught globally. Auto-reloading page...');
+        window.location.reload();
+      }
+    }
+  });
 }
 
 // Lazy imports with automatic retry on new deployments

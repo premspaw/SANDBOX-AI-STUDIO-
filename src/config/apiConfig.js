@@ -7,14 +7,23 @@
 const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
 
 // Safe environment variable retrieval
+const getProcessEnv = (key) => {
+    try {
+        if (typeof globalThis !== 'undefined' && globalThis.process && globalThis.process.env) {
+            return globalThis.process.env[key];
+        }
+    } catch (_) {}
+    return undefined;
+};
+
 const VITE_API_URL =
     (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) ||
-    (typeof process !== 'undefined' && process.env && process.env.VITE_API_URL) ||
+    getProcessEnv('VITE_API_URL') ||
     (isDev ? 'http://127.0.0.1:3002' : '');
 
 const VITE_WS_URL =
     (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_WS_URL) ||
-    (typeof process !== 'undefined' && process.env && process.env.VITE_WS_URL) ||
+    getProcessEnv('VITE_WS_URL') ||
     (isDev ? 'ws://127.0.0.1:3002' : '');
 
 // Ensure base URL doesn't have a trailing slash
@@ -71,11 +80,8 @@ export const resolveUrl = (url) => {
         return getApiUrl(`/api/proxy-image?url=${encodeURIComponent(url)}&cors=1`);
     }
 
-    // ✅ FIX: Route R2 image URLs through proxy to avoid CORS header issues
-    const isR2 = url.includes('r2.dev') || url.includes('r2.cloudflarestorage.com');
-    if (isR2 && !url.includes('/api/proxy-image')) {
-        return getApiUrl(`/api/proxy-image?url=${encodeURIComponent(url)}&cors=1`);
-    }
+    // ✅ Public Cloudflare R2 images (r2.dev) load directly from CDN without backend proxy bottlenecks.
+    // Proxy is only needed for video stream range queries or cross-origin canvas manipulation.
 
     // 2. Already fully qualified or data/blob
     if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:'))
