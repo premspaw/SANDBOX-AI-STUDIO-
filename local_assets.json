@@ -1,5 +1,33 @@
 [
   {
+    "id": "local_1789040909689_t9tvm",
+    "name": "end_frame_1789040908962.png",
+    "type": "reference_upload",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/anon/generated/end_frame_1789040908962.png",
+    "user_id": "local_user",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "",
+    "engine": "",
+    "created_at": "2026-09-10T11:48:29.689Z"
+  },
+  {
+    "id": "local_1789040906185_1elv4",
+    "name": "start_frame_1789040903492.png",
+    "type": "reference_upload",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/anon/generated/start_frame_1789040903492.png",
+    "user_id": "local_user",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "",
+    "engine": "",
+    "created_at": "2026-09-10T11:48:26.185Z"
+  },
+  {
     "id": "local_1789040746108_veuc9",
     "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789040743801.mp4",
     "type": "video",
@@ -7393,34 +7421,5 @@
     "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: he fire up  all the bills cinematic shorts for fire - Extracted Angle 9 (Upscaled) - Extracted Angle 2]",
     "engine": "gemini-3.1-flash-image-preview",
     "created_at": "2026-06-28T18:38:53.198Z"
-  },
-  {
-    "id": "local_1782671909000_o3pn9",
-    "name": "crop_1782671908647.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782671908647.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "aspect": "16:9"
-    },
-    "prompt": "he fire up  all the bills cinematic shorts for fire - Extracted Angle 9 (Upscaled) - Extracted Angle 2",
-    "engine": "Nano Banana 2 (Angle 9) (2K) (Angle 2)",
-    "created_at": "2026-06-28T18:38:29.000Z"
-  },
-  {
-    "id": "local_1782671894986_tpjhb",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671894293.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671894293.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "marketing/generated",
-      "isGrid": true
-    },
-    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
-    "engine": "gemini-3.1-flash-image-preview",
-    "created_at": "2026-06-28T18:38:14.986Z"
   }
 ]

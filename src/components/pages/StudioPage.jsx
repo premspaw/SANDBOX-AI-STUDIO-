@@ -94,6 +94,25 @@ function StudioGalleryCard({
     }
   };
 
+  const rawAspect = (item.aspectRatio || item.aspect || '16:9').trim();
+  const isPortrait = rawAspect === '9:16';
+  const isSquare = rawAspect === '1:1';
+  const isLandscape = rawAspect === '16:9' || rawAspect === '21:9' || rawAspect === '4:3';
+
+  // Aspect ratio styling
+  const getAspectClass = () => {
+    if (layout === 'cinematic' || layout === 'uniform') {
+      return 'aspect-[16/9]';
+    }
+    if (rawAspect === '9:16') return 'aspect-[9/16]';
+    if (rawAspect === '1:1') return 'aspect-square';
+    if (rawAspect === '4:3') return 'aspect-[4/3]';
+    if (rawAspect === '21:9') return 'aspect-[21/9]';
+    return 'aspect-[16/9]';
+  };
+
+  const isCinematicPillarbox = (layout === 'cinematic' || layout === 'uniform') && isPortrait;
+
   if (item.status === 'generating') {
     return (
       <div
@@ -205,25 +224,6 @@ function StudioGalleryCard({
       </div>
     );
   }
-
-  const rawAspect = (item.aspectRatio || item.aspect || '16:9').trim();
-  const isPortrait = rawAspect === '9:16';
-  const isSquare = rawAspect === '1:1';
-  const isLandscape = rawAspect === '16:9' || rawAspect === '21:9' || rawAspect === '4:3';
-
-  // Aspect ratio styling
-  const getAspectClass = () => {
-    if (layout === 'cinematic' || layout === 'uniform') {
-      return 'aspect-[16/9]';
-    }
-    if (rawAspect === '9:16') return 'aspect-[9/16]';
-    if (rawAspect === '1:1') return 'aspect-square';
-    if (rawAspect === '4:3') return 'aspect-[4/3]';
-    if (rawAspect === '21:9') return 'aspect-[21/9]';
-    return 'aspect-[16/9]';
-  };
-
-  const isCinematicPillarbox = (layout === 'cinematic' || layout === 'uniform') && isPortrait;
 
   return (
     <div
