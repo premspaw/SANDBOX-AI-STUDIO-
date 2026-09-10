@@ -3567,9 +3567,38 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   </div>
                 )}
                 
-                {/* Tagged Reference Pills (Full-width row at the very top of the input container) */}
-                {taggedItems.length > 0 && (
+                {/* Tagged Reference & Attached Keyframe Pills (Full-width row at the very top of the input container) */}
+                {(taggedItems.length > 0 || firstFramePreview || lastFramePreview) && (
                   <div className="flex flex-wrap items-center gap-1.5 px-1 border-b border-white/5 pb-2">
+                    {/* First Frame Payload Pill */}
+                    {firstFramePreview && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#c8f135]/15 border border-[#c8f135]/50 rounded-lg shadow-md text-[9px] font-black uppercase text-[#D4FF00] tracking-wider shrink-0 select-none">
+                        <img src={resolveUrl(firstFramePreview)} className="w-4 h-4 rounded object-cover border border-[#c8f135]/40" alt="First Frame" />
+                        <span>@FIRST_FRAME</span>
+                        <span className="text-[7.5px] font-black px-1 rounded bg-[#c8f135] text-black">
+                          Payload
+                        </span>
+                        <button type="button" onClick={() => handleClearRef('first')} className="p-0.5 rounded hover:bg-white/10 text-white/50 hover:text-rose-400 transition-colors ml-0.5" title="Remove Start Frame">
+                          <X size={10} />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Last Frame Payload Pill (Highlighted) */}
+                    {lastFramePreview && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#c8f135]/20 border border-[#c8f135]/70 rounded-lg shadow-[0_0_12px_rgba(200,241,53,0.25)] text-[9px] font-black uppercase text-[#D4FF00] tracking-wider shrink-0 select-none">
+                        <img src={resolveUrl(lastFramePreview)} className="w-4 h-4 rounded object-cover border border-[#c8f135]/60" alt="Last Frame" />
+                        <span>@LAST_FRAME</span>
+                        <span className="text-[7.5px] font-black px-1 rounded bg-[#c8f135] text-black">
+                          Payload
+                        </span>
+                        <button type="button" onClick={() => handleClearRef('last')} className="p-0.5 rounded hover:bg-white/10 text-white/50 hover:text-rose-400 transition-colors ml-0.5" title="Remove End Frame">
+                          <X size={10} />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Tagged Refboard Items */}
                     {taggedItems.map((item) => (
                       <div key={item.id} className="flex items-center gap-1 px-2.5 py-1 bg-black/60 border border-[#c8f135]/40 rounded-lg shadow-md text-[9px] font-black uppercase text-[#D4FF00] tracking-wider shrink-0">
                         {item.category === 'ref_videos' ? (

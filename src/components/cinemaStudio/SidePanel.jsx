@@ -942,6 +942,7 @@ export const SidePanel = React.memo(({
     if (setOmniRefPreviews) {
       setOmniRefPreviews(prev => { const n = [...prev]; n[0] = blobUrl; return n; });
     }
+    autoTagIfMissing('<FIRST_FRAME>');
 
     const reader = new FileReader();
     reader.onload = async (ev) => {
@@ -991,6 +992,7 @@ export const SidePanel = React.memo(({
     if (setOmniRefPreviews) {
       setOmniRefPreviews(prev => { const n = [...prev]; n[1] = blobUrl; return n; });
     }
+    autoTagIfMissing('<LAST_FRAME>');
 
     const reader = new FileReader();
     reader.onload = async (ev) => {
@@ -1151,11 +1153,12 @@ export const SidePanel = React.memo(({
 
   // Mention items list
   const availableMentionItems = useMemo(() => {
-    const firstPreview = panelTab === 'omni' ? omniFirstFramePreview : firstFramePreview;
-    const lastPreview = panelTab === 'omni' ? omniLastFramePreview : lastFramePreview;
+    const firstPreview = (panelTab === 'omni' ? omniFirstFramePreview : firstFramePreview) || firstFrameImage || omniFirstFrameImage;
+    const lastPreview = (panelTab === 'omni' ? (omniLastFramePreview || omniRefPreviews[1]) : lastFramePreview) || lastFrameImage || omniLastFrameImage;
 
     const omniSlots = [
       { name: '<FIRST_FRAME>', category: 'First Frame', imageUrl: firstPreview, isKeyframe: true },
+      { name: '<LAST_FRAME>', category: 'Last Frame', imageUrl: lastPreview, isKeyframe: true },
       { name: '<IMAGE_REF_0>', category: 'Reference 1', imageUrl: omniRefPreviews[0] || omniFirstFramePreview },
       { name: '<IMAGE_REF_1>', category: 'Reference 2', imageUrl: omniRefPreviews[1] || omniLastFramePreview },
       { name: '<IMAGE_REF_2>', category: 'Reference 3', imageUrl: omniRefPreviews[2] },
@@ -1185,7 +1188,7 @@ export const SidePanel = React.memo(({
       ...(videoPreview ? [{ name: '<REF_VIDEO>', category: 'Reference Video', isVideo: true, imageUrl: videoPreview, url: videoPreview }] : []),
       ...(allRefItems || [])
     ];
-  }, [panelTab, firstFramePreview, lastFramePreview, omniFirstFramePreview, omniLastFramePreview, omniRefPreviews, videoPreview, omniMultiImages, omniMultiVideos, allRefItems]);
+  }, [panelTab, firstFramePreview, lastFramePreview, firstFrameImage, lastFrameImage, omniFirstFramePreview, omniLastFramePreview, omniFirstFrameImage, omniLastFrameImage, omniRefPreviews, videoPreview, omniMultiImages, omniMultiVideos, allRefItems]);
 
   const handlePromptChange = useCallback((e) => {
     const val = e.target.value;
@@ -1267,141 +1270,361 @@ export const SidePanel = React.memo(({
     ];
   }, [panelTab]);
 
-  const renderPromptStudio = (placeholderText) => (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <label className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-400 flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-[#c8f135]" />
-          <span>Creative Scene Prompt</span>
-        </label>
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <button
-            type="button"
-            onClick={handleVertexMcpEnhancePrompt}
-            disabled={isMcpEnhancing}
-            className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-[#c8f135]/20 to-emerald-500/20 hover:from-[#c8f135]/40 hover:to-emerald-500/40 border border-[#c8f135]/40 text-[#c8f135] hover:text-white text-[9px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-[0_0_10px_rgba(200,241,53,0.15)] disabled:opacity-50"
-            title="Use Google Cloud Vertex AI Gemini MCP to expand into a production-ready cinematic prompt"
-          >
-            {isMcpEnhancing ? (
-              <>
-                <Loader2 className="w-2.5 h-2.5 animate-spin text-[#c8f135]" />
-                <span>MCP Expanding...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-2.5 h-2.5 text-[#c8f135]" />
-                <span>Gemini MCP</span>
-              </>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={handleAstraWritePrompt}
-            disabled={isAstraWriting}
-            className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-violet-600/30 to-indigo-600/30 hover:from-violet-600/50 hover:to-indigo-600/50 border border-violet-500/40 text-violet-300 hover:text-white text-[9px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-[0_0_10px_rgba(139,92,246,0.2)] disabled:opacity-50"
-            title="Use Astra (ChatGPT 6) to understand your complete scenario and write a cinematic prompt"
-          >
-            {isAstraWriting ? (
-              <>
-                <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                <span>Astra Writing...</span>
-              </>
-            ) : (
-              <>
-                <Wand2 className="w-2.5 h-2.5 text-cyan-300" />
-                <span>Astra AI Write</span>
-              </>
-            )}
-          </button>
-          <span className="text-[9px] font-mono text-zinc-500 hidden sm:inline">
-            Type <code className="text-[#c8f135]">@</code> to tag
-          </span>
+  const renderPromptStudio = (placeholderText) => {
+    const promptStr = localPrompt || '';
+    const firstPreview = (panelTab === 'omni' ? omniFirstFramePreview : firstFramePreview) || firstFrameImage || omniFirstFrameImage;
+    const lastPreview = (panelTab === 'omni' ? (omniLastFramePreview || omniRefPreviews[1]) : lastFramePreview) || lastFrameImage || omniLastFrameImage;
+    const currentRefVideo = videoPreview || propOmniRefVideoPreview;
+
+    // Compile active payload attached references
+    const activePayloadRefs = [];
+    if (firstPreview) {
+      const isTagged = promptStr.includes('<FIRST_FRAME>') || promptStr.includes('@FIRST_FRAME') || promptStr.includes('@<FIRST_FRAME>');
+      activePayloadRefs.push({
+        id: 'first_frame',
+        tag: '<FIRST_FRAME>',
+        displayTag: '@FIRST_FRAME',
+        label: 'Start Frame',
+        imageUrl: firstPreview,
+        isTagged,
+        onInsert: () => insertTagAtCursor('<FIRST_FRAME>'),
+        onClear: handleClearStartFrame
+      });
+    }
+
+    if (lastPreview) {
+      const isTagged = promptStr.includes('<LAST_FRAME>') || promptStr.includes('@LAST_FRAME') || promptStr.includes('@<LAST_FRAME>');
+      activePayloadRefs.push({
+        id: 'last_frame',
+        tag: '<LAST_FRAME>',
+        displayTag: '@LAST_FRAME',
+        label: 'End Frame',
+        imageUrl: lastPreview,
+        isTagged,
+        isLastFrame: true,
+        onInsert: () => insertTagAtCursor('<LAST_FRAME>'),
+        onClear: handleClearEndFrame
+      });
+    }
+
+    if (panelTab === 'omni-multi') {
+      omniMultiImages.forEach((img, idx) => {
+        if (img) {
+          const tag = `@image${idx + 1}`;
+          activePayloadRefs.push({
+            id: `multi_img_${idx}`,
+            tag,
+            displayTag: tag,
+            label: `Image Ref ${idx + 1}`,
+            imageUrl: img,
+            isTagged: promptStr.includes(tag),
+            onInsert: () => insertTagAtCursor(tag),
+            onClear: () => handleClearMultiImage(idx)
+          });
+        }
+      });
+
+      omniMultiVideos.forEach((vid, idx) => {
+        if (vid) {
+          const tag = `@video${idx + 1}`;
+          activePayloadRefs.push({
+            id: `multi_vid_${idx}`,
+            tag,
+            displayTag: tag,
+            label: `Video Ref ${idx + 1}`,
+            isVideo: true,
+            isTagged: promptStr.includes(tag),
+            onInsert: () => insertTagAtCursor(tag),
+            onClear: () => handleClearMultiVideo(idx)
+          });
+        }
+      });
+    }
+
+    if (currentRefVideo && panelTab === 'omni') {
+      const isTagged = promptStr.includes('<REF_VIDEO>') || promptStr.includes('@REF_VIDEO') || promptStr.includes('@<REF_VIDEO>');
+      activePayloadRefs.push({
+        id: 'ref_video',
+        tag: '<REF_VIDEO>',
+        displayTag: '@REF_VIDEO',
+        label: 'Driving Video',
+        isVideo: true,
+        isTagged,
+        onInsert: () => insertTagAtCursor('<REF_VIDEO>')
+      });
+    }
+
+    // Missing attachments warnings (tags in prompt with empty slots)
+    const missingWarnings = [];
+    if ((promptStr.includes('<LAST_FRAME>') || promptStr.includes('@LAST_FRAME') || promptStr.includes('@<LAST_FRAME>')) && !lastPreview) {
+      missingWarnings.push({
+        id: 'warn_last',
+        tag: '@LAST_FRAME',
+        message: '@LAST_FRAME tagged in prompt, but End Frame image is not attached!',
+        actionLabel: '+ Attach End Frame',
+        onAction: () => endFrameInputRef.current?.click()
+      });
+    }
+    if ((promptStr.includes('<FIRST_FRAME>') || promptStr.includes('@FIRST_FRAME') || promptStr.includes('@<FIRST_FRAME>')) && !firstPreview) {
+      missingWarnings.push({
+        id: 'warn_first',
+        tag: '@FIRST_FRAME',
+        message: '@FIRST_FRAME tagged in prompt, but Start Frame image is not attached!',
+        actionLabel: '+ Attach Start Frame',
+        onAction: () => startFrameInputRef.current?.click()
+      });
+    }
+    if (panelTab === 'omni-multi') {
+      [0, 1, 2, 3].forEach(idx => {
+        const tag = `@image${idx + 1}`;
+        if (promptStr.includes(tag) && !omniMultiImages[idx]) {
+          missingWarnings.push({
+            id: `warn_img_${idx}`,
+            tag,
+            message: `${tag} tagged in prompt, but slot is empty!`,
+            actionLabel: `+ Upload Image ${idx + 1}`,
+            onAction: () => multiImageRefs[idx]?.current?.click()
+          });
+        }
+      });
+    }
+
+    return (
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <label className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-400 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-[#c8f135]" />
+            <span>Creative Scene Prompt</span>
+          </label>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              onClick={handleVertexMcpEnhancePrompt}
+              disabled={isMcpEnhancing}
+              className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-[#c8f135]/20 to-emerald-500/20 hover:from-[#c8f135]/40 hover:to-emerald-500/40 border border-[#c8f135]/40 text-[#c8f135] hover:text-white text-[9px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-[0_0_10px_rgba(200,241,53,0.15)] disabled:opacity-50"
+              title="Use Google Cloud Vertex AI Gemini MCP to expand into a production-ready cinematic prompt"
+            >
+              {isMcpEnhancing ? (
+                <>
+                  <Loader2 className="w-2.5 h-2.5 animate-spin text-[#c8f135]" />
+                  <span>MCP Expanding...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-2.5 h-2.5 text-[#c8f135]" />
+                  <span>Gemini MCP</span>
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={handleAstraWritePrompt}
+              disabled={isAstraWriting}
+              className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-violet-600/30 to-indigo-600/30 hover:from-violet-600/50 hover:to-indigo-600/50 border border-violet-500/40 text-violet-300 hover:text-white text-[9px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-[0_0_10px_rgba(139,92,246,0.2)] disabled:opacity-50"
+              title="Use Astra (ChatGPT 6) to understand your complete scenario and write a cinematic prompt"
+            >
+              {isAstraWriting ? (
+                <>
+                  <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                  <span>Astra Writing...</span>
+                </>
+              ) : (
+                <>
+                  <Wand2 className="w-2.5 h-2.5 text-cyan-300" />
+                  <span>Astra AI Write</span>
+                </>
+              )}
+            </button>
+            <span className="text-[9px] font-mono text-zinc-500 hidden sm:inline">
+              Type <code className="text-[#c8f135]">@</code> to tag
+            </span>
+          </div>
         </div>
-      </div>
 
-      {/* Autocomplete Popup */}
-      {mentionSearch !== null && (
-        <div className="bg-[#0e0e18]/98 border border-white/20 rounded-2xl p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.9)] backdrop-blur-3xl max-h-48 overflow-y-auto custom-scrollbar z-30">
-          {availableMentionItems
-            .filter(item => item.name.toLowerCase().includes((mentionSearch || '').toLowerCase()))
-            .map((item, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => selectMention(item)}
-                className="w-full px-2.5 py-1.5 rounded-lg text-left text-xs font-semibold flex items-center gap-2 hover:bg-white/[0.08] text-zinc-300 hover:text-white transition-all cursor-pointer"
-              >
-                <span className="text-[#c8f135] font-mono text-[11px]">@{item.name}</span>
-                <span className="text-[10px] text-zinc-500">({item.category})</span>
-              </button>
-            ))}
-        </div>
-      )}
-
-      <textarea
-        ref={textareaRef}
-        value={localPrompt}
-        onChange={handlePromptChange}
-        placeholder={placeholderText}
-        rows={4}
-        className="w-full bg-black/50 border border-white/15 focus:border-[#c8f135]/70 rounded-2xl p-4 text-xs text-white placeholder-zinc-500 outline-none resize-none custom-scrollbar leading-relaxed font-medium backdrop-blur-2xl shadow-inner transition-all"
-      />
-
-      {/* Tag Helper Chips */}
-      <div className="flex flex-wrap items-center gap-1.5 pt-1">
-        <span className="text-[9px] font-black uppercase tracking-wider text-zinc-500">Quick Tags:</span>
-        {panelTab === 'omni-multi' ? (
-          <>
-            {[
-              { label: '@image1', tag: '@image1', loaded: !!omniMultiImages[0] },
-              { label: '@image2', tag: '@image2', loaded: !!omniMultiImages[1] },
-              { label: '@image3', tag: '@image3', loaded: !!omniMultiImages[2] },
-              { label: '@image4', tag: '@image4', loaded: !!omniMultiImages[3] },
-              { label: '@video1', tag: '@video1', loaded: !!omniMultiVideos[0] },
-              { label: '@video2', tag: '@video2', loaded: !!omniMultiVideos[1] },
-              { label: '@video3', tag: '@video3', loaded: !!omniMultiVideos[2] },
-            ].map((chip) => (
-              <button
-                key={chip.tag}
-                type="button"
-                onClick={() => insertTagAtCursor(chip.tag)}
-                className={cn(
-                  "px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold transition-all cursor-pointer border",
-                  chip.loaded
-                    ? "bg-[#c8f135]/20 text-[#c8f135] border-[#c8f135]/40 hover:bg-[#c8f135]/30 shadow-[0_0_8px_rgba(200,241,53,0.2)]"
-                    : "bg-white/[0.04] text-zinc-400 hover:text-white hover:bg-white/[0.08] border-white/10"
-                )}
-              >
-                {chip.label}
-              </button>
-            ))}
-          </>
-        ) : (
-          <>
-            {[
-              { label: '@FIRST_FRAME', tag: '<FIRST_FRAME>' },
-              { label: '@LAST_FRAME', tag: '<LAST_FRAME>' },
-              ...(panelTab === 'omni' ? [{ label: '@REF_VIDEO', tag: '<REF_VIDEO>' }] : [])
-            ].map((chip) => (
-              <button
-                key={chip.tag}
-                type="button"
-                onClick={() => selectMention({ name: chip.tag })}
-                className="px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-[#c8f135]/20 hover:border-[#c8f135]/40 border border-white/10 transition-all cursor-pointer"
-              >
-                {chip.label}
-              </button>
-            ))}
-          </>
+        {/* Autocomplete Popup */}
+        {mentionSearch !== null && (
+          <div className="bg-[#0e0e18]/98 border border-white/20 rounded-2xl p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.9)] backdrop-blur-3xl max-h-48 overflow-y-auto custom-scrollbar z-30">
+            {availableMentionItems
+              .filter(item => item.name.toLowerCase().includes((mentionSearch || '').toLowerCase()))
+              .map((item, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => selectMention(item)}
+                  className="w-full px-2.5 py-1.5 rounded-lg text-left text-xs font-semibold flex items-center gap-2 hover:bg-white/[0.08] text-zinc-300 hover:text-white transition-all cursor-pointer"
+                >
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} className="w-4 h-4 rounded object-cover border border-white/20" alt={item.name} />
+                  ) : item.isVideo ? (
+                    <Video className="w-3.5 h-3.5 text-cyan-400" />
+                  ) : null}
+                  <span className="text-[#c8f135] font-mono text-[11px]">@{item.name}</span>
+                  <span className="text-[10px] text-zinc-500">({item.category})</span>
+                </button>
+              ))}
+          </div>
         )}
-        {detectedMentions.map((tag, i) => (
-          <span key={i} className="px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold bg-[#c8f135]/15 text-[#c8f135] border border-[#c8f135]/30">
-            {tag}
-          </span>
+
+        <textarea
+          ref={textareaRef}
+          value={localPrompt}
+          onChange={handlePromptChange}
+          placeholder={placeholderText}
+          rows={4}
+          className="w-full bg-black/50 border border-white/15 focus:border-[#c8f135]/70 rounded-2xl p-4 text-xs text-white placeholder-zinc-500 outline-none resize-none custom-scrollbar leading-relaxed font-medium backdrop-blur-2xl shadow-inner transition-all"
+        />
+
+        {/* ── ACTIVE ATTACHED PAYLOAD REFERENCES (HIGHLIGHTED) ── */}
+        {activePayloadRefs.length > 0 && (
+          <div className="space-y-1.5 p-2 rounded-xl bg-[#0d0e15] border border-white/10 shadow-inner">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[8.5px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#c8f135] animate-pulse" />
+                <span>Attached in Generation Payload:</span>
+              </span>
+              <span className="text-[8px] font-mono text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded-full">
+                ✓ Ready for Render
+              </span>
+            </div>
+            
+            <div className="flex flex-wrap gap-1.5">
+              {activePayloadRefs.map((item) => (
+                <div
+                  key={item.id}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2 py-1 rounded-lg border transition-all shadow-sm select-none",
+                    item.isLastFrame
+                      ? "bg-[#c8f135]/15 border-[#c8f135]/70 shadow-[0_0_14px_rgba(200,241,53,0.22)]"
+                      : "bg-white/[0.04] border-white/15 hover:border-[#c8f135]/40"
+                  )}
+                >
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} className="w-5 h-5 rounded object-cover border border-[#c8f135]/50 shadow-sm shrink-0" alt={item.displayTag} />
+                  ) : item.isVideo ? (
+                    <div className="w-5 h-5 rounded bg-black/60 border border-cyan-500/40 flex items-center justify-center shrink-0">
+                      <Video className="w-3 h-3 text-cyan-400" />
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9.5px] font-mono font-black text-[#c8f135]">{item.displayTag}</span>
+                      <span className="text-[7.5px] font-black uppercase tracking-widest px-1 rounded bg-[#c8f135] text-black">
+                        Payload
+                      </span>
+                    </div>
+                    <span className="text-[7.5px] text-zinc-400 font-medium">
+                      {item.isTagged ? '✓ Connected in prompt' : 'Attached'}
+                    </span>
+                  </div>
+
+                  {!item.isTagged && (
+                    <button
+                      type="button"
+                      onClick={item.onInsert}
+                      className="px-1.5 py-0.5 rounded bg-[#c8f135]/20 hover:bg-[#c8f135] text-[#c8f135] hover:text-black text-[7.5px] font-black uppercase tracking-wider transition-all cursor-pointer border border-[#c8f135]/40 ml-1"
+                      title="Insert tag into prompt"
+                    >
+                      + Tag
+                    </button>
+                  )}
+
+                  {item.onClear && (
+                    <button
+                      type="button"
+                      onClick={item.onClear}
+                      className="p-0.5 rounded text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer ml-0.5"
+                      title="Remove from payload"
+                    >
+                      <Trash2 size={9} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── MISSING ATTACHMENT WARNINGS ── */}
+        {missingWarnings.map((warn) => (
+          <div key={warn.id} className="flex items-center justify-between gap-2 p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 shadow-sm">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <AlertCircle size={13} className="text-amber-400 shrink-0" />
+              <span className="text-[9px] font-bold leading-tight truncate">{warn.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={warn.onAction}
+              className="px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer shrink-0 shadow-sm"
+            >
+              {warn.actionLabel}
+            </button>
+          </div>
         ))}
+
+        {/* Tag Helper Chips */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+          <span className="text-[9px] font-black uppercase tracking-wider text-zinc-500">Quick Tags:</span>
+          {panelTab === 'omni-multi' ? (
+            <>
+              {[
+                { label: '@image1', tag: '@image1', loaded: !!omniMultiImages[0] },
+                { label: '@image2', tag: '@image2', loaded: !!omniMultiImages[1] },
+                { label: '@image3', tag: '@image3', loaded: !!omniMultiImages[2] },
+                { label: '@image4', tag: '@image4', loaded: !!omniMultiImages[3] },
+                { label: '@video1', tag: '@video1', loaded: !!omniMultiVideos[0] },
+                { label: '@video2', tag: '@video2', loaded: !!omniMultiVideos[1] },
+                { label: '@video3', tag: '@video3', loaded: !!omniMultiVideos[2] },
+              ].map((chip) => (
+                <button
+                  key={chip.tag}
+                  type="button"
+                  onClick={() => insertTagAtCursor(chip.tag)}
+                  className={cn(
+                    "px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold transition-all cursor-pointer border flex items-center gap-1",
+                    chip.loaded
+                      ? "bg-[#c8f135]/20 text-[#c8f135] border-[#c8f135]/50 hover:bg-[#c8f135]/30 shadow-[0_0_8px_rgba(200,241,53,0.2)]"
+                      : "bg-white/[0.04] text-zinc-400 hover:text-white hover:bg-white/[0.08] border-white/10"
+                  )}
+                >
+                  {chip.loaded && <span className="w-1.5 h-1.5 rounded-full bg-[#c8f135] animate-pulse" />}
+                  <span>{chip.label}</span>
+                </button>
+              ))}
+            </>
+          ) : (
+            <>
+              {[
+                { label: '@FIRST_FRAME', tag: '<FIRST_FRAME>', loaded: !!firstPreview },
+                { label: '@LAST_FRAME', tag: '<LAST_FRAME>', loaded: !!lastPreview },
+                ...(panelTab === 'omni' ? [{ label: '@REF_VIDEO', tag: '<REF_VIDEO>', loaded: !!currentRefVideo }] : [])
+              ].map((chip) => (
+                <button
+                  key={chip.tag}
+                  type="button"
+                  onClick={() => selectMention({ name: chip.tag })}
+                  className={cn(
+                    "px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold transition-all cursor-pointer border flex items-center gap-1",
+                    chip.loaded
+                      ? "bg-[#c8f135]/20 text-[#c8f135] border-[#c8f135]/60 hover:bg-[#c8f135]/30 shadow-[0_0_10px_rgba(200,241,53,0.25)] font-black"
+                      : "bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-white/[0.08] border-white/10"
+                  )}
+                >
+                  {chip.loaded && <span className="w-1.5 h-1.5 rounded-full bg-[#c8f135] animate-pulse" />}
+                  <span>{chip.label}</span>
+                </button>
+              ))}
+            </>
+          )}
+          {detectedMentions.map((tag, i) => (
+            <span key={i} className="px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold bg-[#c8f135]/15 text-[#c8f135] border border-[#c8f135]/30">
+              {tag}
+            </span>
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const panelContent = (
     <div className={cn(
