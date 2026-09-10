@@ -4,7 +4,7 @@ import {
   X, Sparkles, Film, Image as ImageIcon, Video, Layers, Upload, Trash2,
   Check, Zap, Cpu, Sliders, Play, Loader2, ChevronDown, ChevronUp,
   Tag, Aperture, FastForward, Volume2, VolumeX, Maximize2, Info,
-  Clock, ImagePlus, Wand2
+  Clock, ImagePlus, Wand2, AlertCircle
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getApiUrl } from '../../config/apiConfig';
