@@ -1658,7 +1658,17 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     return (ENGINES.find(e => e.id === engineId)?.cost || 2) * duration;
   };
 
-  const isBusy = isSubmitting;
+  const activeJobsCount = useMemo(() => gallery.filter(i => i && (i.status === 'generating' || i.status === 'loading')).length, [gallery]);
+  const maxConcurrent = useMemo(() => {
+    const tier = (userProfile?.tier || 'CREATOR').toUpperCase();
+    if (tier === 'ENTERPRISE') return 16;
+    if (tier === 'STUDIO') return 8;
+    if (tier === 'PRO' || tier === 'CREATOR') return 4;
+    return 2;
+  }, [userProfile?.tier]);
+
+  const isMaxConcurrentReached = activeJobsCount >= maxConcurrent;
+  const isBusy = isSubmitting || isMaxConcurrentReached;
   const requiredCredits = getRequiredCredits(activeEngine) * variationCount;
 
   // Evaluate active prompt and inputs across all video engines (Seedance 2.0, Seedance Fast, Veo 3.1, Omni)
@@ -1677,7 +1687,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   );
 
   const hasInput = Boolean(activePromptText || activeFirstFramePreview || taggedItemsCount > 0 || hasRefBoardMedia);
-  const canGenerate = hasInput && userCredits >= requiredCredits && !isBusy;
+  const canGenerate = hasInput && userCredits >= requiredCredits && !isMaxConcurrentReached;
 
   const triggerRefund = async (reason) => {
     try {
@@ -2262,9 +2272,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   /* ─── GENERATE ───────────────────────────────────────────── */
   const handleGenerate = async (overridePrompt, overrideEngine, overrideOptions = {}) => {
-    if (isBusy) return;
+    if (isMaxConcurrentReached) {
+      const showToast = useAppStore.getState().showToast;
+      const msg = `Maximum concurrent job limit reached (${maxConcurrent} active). Please wait for a video to complete.`;
+      if (showToast) showToast(msg, "warning");
+      else alert(msg);
+      return;
+    }
     setIsSubmitting(true);
-    setTimeout(() => setIsSubmitting(false), 5000);
+    setTimeout(() => setIsSubmitting(false), 800);
 
     // Use override engine if provided (avoids React batching race from SidePanel)
     const resolvedEngine = overrideEngine || activeEngine;

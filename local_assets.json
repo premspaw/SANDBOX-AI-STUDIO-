@@ -1,5 +1,245 @@
 [
   {
+    "id": "local_1789040746108_veuc9",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789040743801.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789040743801.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "[Start Frame: initial starting image at 0s] [End Frame: final ending image at 10s]. The video MUST begin directly at the first frame at 0s, animate smoothly through: @<FIRST_FRAME> FIRST FRAME = UPLOADED AERIAL IMAGE. @<LAST_FRAME> = UPLOADED GANESHA IMAGE. BOTH ARE ABSOLUTE REFERENCE FRAMES.\n\nCreate one continuous, photorealistic cinematic shot connecting these two exact images.\n\nDo not redesign, reinterpret, regenerate or alter the final Ganesha. The last frame must match the uploaded Ganesha image exactly.\n\n0–2 sec — AERIAL\nBegin from the exact uploaded aerial frame. High-altitude drone view over the dense Indian city. Preserve the visible lakes, greenery, buildings, roads and overall geographic arrangement. The camera begins a smooth, realistic forward-and-downward descent through natural atmospheric haze.\n\n2–4 sec — THROUGH THE CLOUDS\nThe drone continues descending toward the city. A layer of realistic natural clouds passes between the camera and the city. The camera briefly enters the cloud, with realistic soft cloud density and light scattering, then emerges below the cloud layer.\n\n4–6 sec — FIND THE ROAD\nContinue the same uninterrupted forward descent. The camera becomes much lower and begins following a real Indian urban road. Gradually transition from aerial perspective to a low drone perspective above the road. Show realistic Indian roadside buildings, utility poles, trees, parked vehicles and road surfaces. Keep the street believable and naturally populated, but avoid making people the focus.\n\n6–7.5 sec — APPROACH THE GANESH CHATURTHI LOCATION\nThe camera travels forward along the road and approaches a Ganesh Chaturthi pandal/temporary festival structure. The environment should feel like a real Indian neighborhood during Ganesh Chaturthi: temporary fabric structures, decorated entrance, warm practical lighting, stage area and realistic surroundings.\n\n7.5–8.5 sec — ENTER\nThe camera moves directly toward and into the decorated pandal. Transition naturally from outdoor road atmosphere into the interior of the festival structure. Maintain realistic exposure adaptation as the camera moves indoors.\n\n8.5–10 sec — EXACT FINAL FRAME\nThe camera settles directly in front of the Ganesha installation and resolves into the exact uploaded final image.\n\nThe final composition must reproduce the reference precisely: same Ganesha face, same four arms, same hand positions, same white conch in the upper-right hand, same object in the upper-left hand, same open blessing palm, same lower hand, same gold crown and halo, same facial markings, same long trunk, same layered jewelry, same garlands, same yellow dhoti, same dark green/black drape, same ornate golden throne, same lion figures, same blue figures behind him, same roof and stage decoration, same red carpet and same vertical framing.\n\nThe final 1 second should become extremely stable and nearly identical to the supplied reference image.\n\nTRANSITION STYLE: realistic drone cinematography, physically believable camera movement, natural motion blur, realistic atmospheric perspective, realistic cloud interaction, seamless altitude change, no artificial portal transition, no fantasy teleportation.\n\nIMPORTANT: The Ganesha image is a locked final frame, not a design suggestion. Do not create a new Ganesha based on general knowledge. The model must reproduce the supplied final reference itself.\n\nNO: random Ganesha design, face alteration, different clothing, different crown, different jewelry, additional objects, missing objects, extra arms, missing arms, morphing anatomy, glowing body, giant magical effects, petals, floating particles, excessive light beams, fantasy portal, cartoon CGI.\n\nAUDIO: no music whatsoever. Sound effects only: distant city ambience, faint road sound, wind rushing around the drone, soft cloud/wind sound during cloud passage, subtle transition into the pandal, realistic indoor ambience. No devotional song or background score., and conclude seamlessly matching the last frame at 10s. Single continuous shot.",
+    "engine": "Omni",
+    "created_at": "2026-09-10T11:45:46.108Z"
+  },
+  {
+    "id": "local_1789040670488_d1bvi",
+    "name": "start_frame_1789040669173.png",
+    "type": "reference_upload",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/anon/generated/start_frame_1789040669173.png",
+    "user_id": "local_user",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "",
+    "engine": "",
+    "created_at": "2026-09-10T11:44:30.488Z"
+  },
+  {
+    "id": "local_1789040667149_zutjz",
+    "name": "end_frame_1789040666478.png",
+    "type": "reference_upload",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/anon/generated/end_frame_1789040666478.png",
+    "user_id": "local_user",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "",
+    "engine": "",
+    "created_at": "2026-09-10T11:44:27.149Z"
+  },
+  {
+    "id": "local_1789040332922_rscxg",
+    "name": "end_frame_1789040332141.png",
+    "type": "reference_upload",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/anon/generated/end_frame_1789040332141.png",
+    "user_id": "local_user",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "",
+    "engine": "",
+    "created_at": "2026-09-10T11:38:52.922Z"
+  },
+  {
+    "id": "local_1789040226471_iq59d",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789040224197.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789040224197.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "[Start Frame: initial starting image at 0s] [End Frame: final ending image at 10s]. The video MUST begin directly at the first frame at 0s, animate smoothly through: FIRST FRAME@<FIRST_FRAME>  = UPLOADED AERIAL IMAGE. LAST FRAME @<LAST_FRAME> = UPLOADED GANESHA IMAGE. BOTH ARE ABSOLUTE REFERENCE FRAMES.\n\nCreate one continuous, photorealistic cinematic shot connecting these two exact images.\n\nDo not redesign, reinterpret, regenerate or alter the final Ganesha. The last frame must match the uploaded Ganesha image exactly.\n\n0–2 sec — AERIAL\nBegin from the exact uploaded aerial frame. High-altitude drone view over the dense Indian city. Preserve the visible lakes, greenery, buildings, roads and overall geographic arrangement. The camera begins a smooth, realistic forward-and-downward descent through natural atmospheric haze.\n\n2–4 sec — THROUGH THE CLOUDS\nThe drone continues descending toward the city. A layer of realistic natural clouds passes between the camera and the city. The camera briefly enters the cloud, with realistic soft cloud density and light scattering, then emerges below the cloud layer.\n\n4–6 sec — FIND THE ROAD\nContinue the same uninterrupted forward descent. The camera becomes much lower and begins following a real Indian urban road. Gradually transition from aerial perspective to a low drone perspective above the road. Show realistic Indian roadside buildings, utility poles, trees, parked vehicles and road surfaces. Keep the street believable and naturally populated, but avoid making people the focus.\n\n6–7.5 sec — APPROACH THE GANESH CHATURTHI LOCATION\nThe camera travels forward along the road and approaches a Ganesh Chaturthi pandal/temporary festival structure. The environment should feel like a real Indian neighborhood during Ganesh Chaturthi: temporary fabric structures, decorated entrance, warm practical lighting, stage area and realistic surroundings.\n\n7.5–8.5 sec — ENTER\nThe camera moves directly toward and into the decorated pandal. Transition naturally from outdoor road atmosphere into the interior of the festival structure. Maintain realistic exposure adaptation as the camera moves indoors.\n\n8.5–10 sec — EXACT FINAL FRAME\nThe camera settles directly in front of the Ganesha installation and resolves into the exact uploaded final image.\n\nThe final composition must reproduce the reference precisely: same Ganesha face, same four arms, same hand positions, same white conch in the upper-right hand, same object in the upper-left hand, same open blessing palm, same lower hand, same gold crown and halo, same facial markings, same long trunk, same layered jewelry, same garlands, same yellow dhoti, same dark green/black drape, same ornate golden throne, same lion figures, same blue figures behind him, same roof and stage decoration, same red carpet and same vertical framing.\n\nThe final 1 second should become extremely stable and nearly identical to the supplied reference image.\n\nTRANSITION STYLE: realistic drone cinematography, physically believable camera movement, natural motion blur, realistic atmospheric perspective, realistic cloud interaction, seamless altitude change, no artificial portal transition, no fantasy teleportation.\n\nIMPORTANT: The Ganesha image is a locked final frame, not a design suggestion. Do not create a new Ganesha based on general knowledge. The model must reproduce the supplied final reference itself.\n\nNO: random Ganesha design, face alteration, different clothing, different crown, different jewelry, additional objects, missing objects, extra arms, missing arms, morphing anatomy, glowing body, giant magical effects, petals, floating particles, excessive light beams, fantasy portal, cartoon CGI.\n\nAUDIO: no music whatsoever. Sound effects only: distant city ambience, faint road sound, wind rushing around the drone, soft cloud/wind sound during cloud passage, subtle transition into the pandal, realistic indoor ambience. No devotional song or background score., and conclude seamlessly matching the last frame at 10s. Single continuous shot.",
+    "engine": "Omni",
+    "created_at": "2026-09-10T11:37:06.471Z"
+  },
+  {
+    "id": "local_1789039889179_00mep",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789039886950.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789039886950.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "[Start Frame: initial starting image at 0s] [End Frame: final ending image at 10s]. The video MUST begin directly at the first frame at 0s, animate smoothly through: FIRST FRAME = UPLOADED AERIAL IMAGE. LAST FRAME = UPLOADED GANESHA IMAGE. BOTH ARE ABSOLUTE REFERENCE FRAMES.\n\nCreate one continuous, photorealistic cinematic shot connecting these two exact images.\n\nDo not redesign, reinterpret, regenerate or alter the final Ganesha. The last frame must match the uploaded Ganesha image exactly.\n\n0–2 sec — AERIAL\nBegin from the exact uploaded aerial frame. High-altitude drone view over the dense Indian city. Preserve the visible lakes, greenery, buildings, roads and overall geographic arrangement. The camera begins a smooth, realistic forward-and-downward descent through natural atmospheric haze.\n\n2–4 sec — THROUGH THE CLOUDS\nThe drone continues descending toward the city. A layer of realistic natural clouds passes between the camera and the city. The camera briefly enters the cloud, with realistic soft cloud density and light scattering, then emerges below the cloud layer.\n\n4–6 sec — FIND THE ROAD\nContinue the same uninterrupted forward descent. The camera becomes much lower and begins following a real Indian urban road. Gradually transition from aerial perspective to a low drone perspective above the road. Show realistic Indian roadside buildings, utility poles, trees, parked vehicles and road surfaces. Keep the street believable and naturally populated, but avoid making people the focus.\n\n6–7.5 sec — APPROACH THE GANESH CHATURTHI LOCATION\nThe camera travels forward along the road and approaches a Ganesh Chaturthi pandal/temporary festival structure. The environment should feel like a real Indian neighborhood during Ganesh Chaturthi: temporary fabric structures, decorated entrance, warm practical lighting, stage area and realistic surroundings.\n\n7.5–8.5 sec — ENTER\nThe camera moves directly toward and into the decorated pandal. Transition naturally from outdoor road atmosphere into the interior of the festival structure. Maintain realistic exposure adaptation as the camera moves indoors.\n\n8.5–10 sec — EXACT FINAL FRAME\nThe camera settles directly in front of the Ganesha installation and resolves into the exact uploaded final image.\n\nThe final composition must reproduce the reference precisely: same Ganesha face, same four arms, same hand positions, same white conch in the upper-right hand, same object in the upper-left hand, same open blessing palm, same lower hand, same gold crown and halo, same facial markings, same long trunk, same layered jewelry, same garlands, same yellow dhoti, same dark green/black drape, same ornate golden throne, same lion figures, same blue figures behind him, same roof and stage decoration, same red carpet and same vertical framing.\n\nThe final 1 second should become extremely stable and nearly identical to the supplied reference image.\n\nTRANSITION STYLE: realistic drone cinematography, physically believable camera movement, natural motion blur, realistic atmospheric perspective, realistic cloud interaction, seamless altitude change, no artificial portal transition, no fantasy teleportation.\n\nIMPORTANT: The Ganesha image is a locked final frame, not a design suggestion. Do not create a new Ganesha based on general knowledge. The model must reproduce the supplied final reference itself.\n\nNO: random Ganesha design, face alteration, different clothing, different crown, different jewelry, additional objects, missing objects, extra arms, missing arms, morphing anatomy, glowing body, giant magical effects, petals, floating particles, excessive light beams, fantasy portal, cartoon CGI.\n\nAUDIO: no music whatsoever. Sound effects only: distant city ambience, faint road sound, wind rushing around the drone, soft cloud/wind sound during cloud passage, subtle transition into the pandal, realistic indoor ambience. No devotional song or background score., and conclude seamlessly matching the last frame at 10s. Single continuous shot.",
+    "engine": "Omni",
+    "created_at": "2026-09-10T11:31:29.179Z"
+  },
+  {
+    "id": "local_1789039776676_8rau9",
+    "name": "end_frame_1789039776036.png",
+    "type": "reference_upload",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/anon/generated/end_frame_1789039776036.png",
+    "user_id": "local_user",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "",
+    "engine": "",
+    "created_at": "2026-09-10T11:29:36.676Z"
+  },
+  {
+    "id": "local_1789039770937_wb67j",
+    "name": "start_frame_1789039769846.png",
+    "type": "reference_upload",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/anon/generated/start_frame_1789039769846.png",
+    "user_id": "local_user",
+    "aspect": "16:9",
+    "metadata": {
+      "aspect": "16:9"
+    },
+    "prompt": "",
+    "engine": "",
+    "created_at": "2026-09-10T11:29:30.937Z"
+  },
+  {
+    "id": "local_1789039412641_1409y",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789039410414.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789039410414.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "[Start Frame: initial starting image at 0s]. The video MUST begin directly at this first frame at 0s and animate smoothly through: USE THE ATTACHED IMAGE AS THE ABSOLUTE MASTER REFERENCE.@image1 \n\nRecreate the exact Lord Ganesha visible in the attached reference image. The reference image determines every visual detail. Do not reinterpret, redesign, substitute or invent any part of Ganesha.\n\nThe goal is to show the same exact Ganesha gradually manifesting from an initially incomplete form, with his existing attributes appearing one by one. Every object that appears must correspond exactly to an object already visible in the reference image.\n\nCHARACTER LOCK: exact elephant face, exact eyes, exact ears, exact trunk shape, exact facial markings, exact body proportions, exact four-arm arrangement, exact hand positions, exact gold crown, exact pink dhoti, exact blue-green drape, exact necklaces, exact pendant, exact flower garlands, exact arm ornaments, exact colors and exact seated posture.\n\nOBJECT LOCK: only the objects clearly visible in the reference may appear.\nUpper-left hand: reproduce the exact small flower/object visible there.\nUpper-right hand: reproduce the exact large white-and-blue shankh/conch visible there.\nLower-left hand: reproduce the exact open blessing palm and its red sacred marking.\nLower-right hand: keep it as the same open hand seen in the reference; do not add a modak, weapon, flower or any other object.\n\n0–1.5 sec: Start with a dark, realistic, nearly empty version of the same physical setting. The silhouette of Ganesha is present, but his defining details are not yet fully manifested. No random objects.\n\n1.5–2.5 sec — FACE MANIFESTATION: Hard cut to a close-up. Ganesha's exact elephant face, trunk, ears and facial markings gradually become physically visible, as though the statue is crystallizing/solidifying into the precise face from the reference. No change in anatomy or expression.\n\n2.5–3.5 sec — CROWN: Hard cut to the top of the head. The exact same gold crown from the reference forms piece by piece into its precise existing shape and decoration. No alternate crown design.\n\n3.5–4.5 sec — FOUR ARMS: Hard cut wider. The exact four arms and exact hand poses progressively become visible. Preserve the precise arm angles from the reference.\n\n4.5–5.5 sec — SHANKH: Hard cut to the upper-right hand. First the exact hand becomes defined; then the same white-and-blue conch from the reference materializes directly into that hand, matching its exact shape, orientation and colors. No weapon substitution.\n\n5.5–6.2 sec — UPPER-LEFT OBJECT: Hard cut to the upper-left hand. The exact small flower/object shown in the reference manifests into the hand. Do not replace it with a lotus, modak or weapon unless that exact object is clearly present in the reference.\n\n6.2–7.0 sec — JEWELRY: Hard cut to chest. The exact necklaces, central pendant, garlands and visible ornaments from the reference appear progressively in their original positions and proportions. Do not invent additional jewelry.\n\n7.0–7.7 sec — CLOTHING: Hard cut to the lower body. The exact pink dhoti and blue-green/gold-bordered drape from the reference physically form into place, matching the reference precisely.\n\n7.7–8.5 sec — THRONE/BACKDROP: Hard cut wider. The elaborate black-and-gold carved throne and circular red-and-gold backdrop materialize behind Ganesha, matching the reference design and composition.\n\n8.5–10 sec — FINAL LOCK: Camera slowly pulls back. All manifested elements are now completely assembled into the exact Ganesha from the attached reference image. He becomes perfectly still, like a finished physical idol. End on a clean hero shot matching the reference as closely as possible.\n\nREALISM: photorealistic physical statue material, realistic gold reflections, realistic fabric, realistic carved wood, physically believable object formation, subtle supernatural feeling, restrained cinematic VFX.\n\nDO NOT USE: random jewelry, random flowers, random weapons, random clothing, random crown, random accessories, petals, floating particles, smoke, giant energy beams, portals, excessive glowing light, fantasy aura, cartoon VFX, body morphing, anatomy changes, extra arms, missing arms, altered face, altered hands, altered pose.\n\nAUDIO: absolutely no music. Sound effects only: subtle material-forming sounds, delicate metallic sounds as jewelry appears, a very soft resonant conch sound when the shankh manifests, quiet cloth movement and restrained cinematic environmental sound..",
+    "engine": "Omni",
+    "created_at": "2026-09-10T11:23:32.641Z"
+  },
+  {
+    "id": "local_1789039059898_6l9te",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789039057276.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789039057276.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "[Start Frame: initial starting image at 0s]. The video MUST begin directly at this first frame at 0s and animate smoothly through: @image1 > Use the attached Ganesha reference image as the **strict, immutable master reference**. The Ganesha must remain exactly the same throughout the entire video.\n>\n> Preserve the exact face, elephant head, eyes, ears, trunk, crown, four arms, hand positions, conch, pink dhoti, blue-green drape, gold jewelry, necklaces, garlands, ornaments, throne, circular backdrop, colors, proportions and seated pose exactly as shown in the reference.\n>\n> **Do not redesign Ganesha. Do not generate a different Ganesha. Do not alter his clothing, crown, jewelry, body, face, hands, arms or pose.**\n>\n> **0–2 sec:** Cinematic close-up of the exact Ganesha from the reference. He is already completely dressed and fully ornamented exactly as shown. Very slow camera movement toward him. Natural realistic lighting and shadows. Ganesha remains almost completely still.\n>\n> **2–3 sec — CUT:** Close-up of the raised hand and the exact white **shankh/conch** from the reference. A very subtle magical shimmer appears around the existing conch, with a tiny amount of realistic energy movement. The conch itself does not change shape or color.\n>\n> **3–4 sec — CUT:** Close-up of the crown. Very subtle light reflection travels naturally across the gold surface, making the craftsmanship visible. The crown remains exactly identical to the reference.\n>\n> **4–5 sec — CUT:** Close-up of the necklaces, pendant and chest ornaments. Subtle realistic metallic reflections and a gentle movement of the existing garlands. No new jewelry appears.\n>\n> **5–6 sec — CUT:** Close-up of the pink dhoti and blue-green drape. Very subtle natural fabric movement, as though from a gentle indoor breeze. Exact same design, colors, embroidery and borders as the reference.\n>\n> **6–7 sec — CUT:** Close-up of Ganesha's face and trunk. Extremely subtle divine presence — a barely perceptible movement of the eyes and trunk, while maintaining the exact facial design and peaceful expression from the reference.\n>\n> **7–8.5 sec:** Rapid cinematic cuts between the exact face, crown, conch, jewelry and clothing. Every shot uses the same unchanged Ganesha reference. No morphing or redesign.\n>\n> **8.5–10 sec:** Camera smoothly pulls back to reveal the entire exact Ganesha idol, matching the uploaded reference composition. Ganesha gradually becomes completely still and statue-like, ending as the **exact physical idol shown in the reference image**.\n>\n> **VFX STYLE:** extremely subtle, realistic supernatural effects only. Natural metallic reflections, gentle fabric movement and restrained divine shimmer. No flashy effects.\n>\n> **ABSOLUTELY NO:** petals, flower particles, floating particles, dust effects, glowing particles, energy beams, portals, smoke, excessive light, golden aura, lens flares, fantasy CGI, random ornaments, random clothing, random flowers, costume changes, face changes, body morphing or additional elements.\n>\n> **AUDIO:** **NO MUSIC. NO BACKGROUND MUSIC. NO MELODY. NO SONG.** Use **sound effects only**: subtle cloth movement, gentle jewelry/metallic sounds, very soft conch resonance, faint environmental room tone, subtle cinematic transition sounds and a low, restrained divine ambience. Keep the audio realistic and understated.\n\nThis version gives the model **almost nothing to invent**. The magic is in the **cinematic cuts, tiny movement, reflections and sound design**, while the Ganesha itself stays locked to your reference.\n.",
+    "engine": "Omni",
+    "created_at": "2026-09-10T11:17:39.898Z"
+  },
+  {
+    "id": "local_1789038728770_gexp4",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789038727928.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789038727928.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "[Start Frame: initial starting image at 0s]. The video MUST begin directly at this first frame at 0s and animate smoothly through: @image1STRICT CHARACTER LOCK: Do not redesign, regenerate, reinterpret, morph, replace or modify Lord Ganesha. Preserve the exact same elephant face, eyes, ears, trunk, facial expression, crown, four arms, hand gestures, body proportions, pink dhoti, blue-green drape, gold jewelry, garlands, ornaments, throne, decorative circular backdrop and every visible design detail exactly as shown in the reference.\n\nDo not invent any new clothing. Do not add jewelry. Do not remove jewelry. Do not change the crown. Do not change the hands. Do not change the number of arms. Do not change the pose. Do not change the colors. Do not change the facial appearance.\n\nThe reference image is the final truth for Ganesha's appearance.\n\n0–2 seconds: Start with a medium cinematic shot of the exact Ganesha from the reference. He is already wearing the complete costume and complete ornaments exactly as shown. Very subtle movement only: flower petals drifting through the air, slight movement in the fabric tassels, tiny dust particles floating in realistic air. Slow cinematic camera movement toward him.\n\n2–3 seconds — CUT: Close-up of the raised hand holding the same conch/shankh visible in the reference. The hand, fingers, conch and arm remain completely unchanged. Only tiny atmospheric particles move around them. Very subtle supernatural shimmer around the conch, almost invisible and physically realistic.\n\n3–4 seconds — CUT: Close-up of the face and crown. The exact same face and exact same crown from the reference. Extremely subtle divine atmosphere: a few flower petals pass in front of camera, soft natural reflections on the ornaments, tiny floating particles. No facial transformation.\n\n4–5 seconds — CUT: Close-up of the pink dhoti, blue-green fabric and gold ornaments. Everything remains exactly as the reference. Very subtle realistic cloth movement from a gentle breeze. No new clothing appears and nothing develops.\n\n5–6.5 seconds — RAPID CUTS: Three extremely short cinematic shots of the exact same Ganesha: face → hand with conch → jewelry and garlands. Use realistic camera movement and shallow depth of field. The deity itself remains completely unchanged.\n\n6.5–8 seconds: Camera begins pulling backward, gradually revealing the full exact reference composition: same seated Ganesha, same throne, same circular ornate backdrop, same costume and same ornaments.\n\n8–10 seconds — MATCH CUT: The image transitions with a very subtle cinematic dissolve/match cut into the exact attached reference image. The final frame must look like the uploaded image, with no visual redesign whatsoever.\n\nVisual style: ultra-photorealistic, realistic Indian Ganesh Chaturthi pandal, real-world materials, natural lighting, realistic shadows, authentic photographic depth of field, subtle magical atmosphere, restrained VFX.\n\nVFX must be extremely subtle. No giant light beams, no portals, no glowing body, no excessive golden light, no fantasy aura, no CGI look.\n\nNEGATIVE INSTRUCTIONS: no redesigned Ganesha, no different Ganesha, no altered face, no different crown, no different clothes, no different jewelry, no additional ornaments, no missing ornaments, no extra arms, no changed hand positions, no changed pose, no morphing anatomy, no random flowers, no random accessories, no random colors, no body transformation..",
+    "engine": "Omni",
+    "created_at": "2026-09-10T11:12:08.770Z"
+  },
+  {
+    "id": "local_1789038622429_1iat9",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789038621234.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789038621234.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "16:9",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "[Start Frame: initial starting image at 0s]. The video MUST begin directly at this first frame at 0s and animate smoothly through: @image1STRICT CHARACTER LOCK: Do not redesign, regenerate, reinterpret, morph, replace or modify Lord Ganesha. Preserve the exact same elephant face, eyes, ears, trunk, facial expression, crown, four arms, hand gestures, body proportions, pink dhoti, blue-green drape, gold jewelry, garlands, ornaments, throne, decorative circular backdrop and every visible design detail exactly as shown in the reference.\n\nDo not invent any new clothing. Do not add jewelry. Do not remove jewelry. Do not change the crown. Do not change the hands. Do not change the number of arms. Do not change the pose. Do not change the colors. Do not change the facial appearance.\n\nThe reference image is the final truth for Ganesha's appearance.\n\n0–2 seconds: Start with a medium cinematic shot of the exact Ganesha from the reference. He is already wearing the complete costume and complete ornaments exactly as shown. Very subtle movement only: flower petals drifting through the air, slight movement in the fabric tassels, tiny dust particles floating in realistic air. Slow cinematic camera movement toward him.\n\n2–3 seconds — CUT: Close-up of the raised hand holding the same conch/shankh visible in the reference. The hand, fingers, conch and arm remain completely unchanged. Only tiny atmospheric particles move around them. Very subtle supernatural shimmer around the conch, almost invisible and physically realistic.\n\n3–4 seconds — CUT: Close-up of the face and crown. The exact same face and exact same crown from the reference. Extremely subtle divine atmosphere: a few flower petals pass in front of camera, soft natural reflections on the ornaments, tiny floating particles. No facial transformation.\n\n4–5 seconds — CUT: Close-up of the pink dhoti, blue-green fabric and gold ornaments. Everything remains exactly as the reference. Very subtle realistic cloth movement from a gentle breeze. No new clothing appears and nothing develops.\n\n5–6.5 seconds — RAPID CUTS: Three extremely short cinematic shots of the exact same Ganesha: face → hand with conch → jewelry and garlands. Use realistic camera movement and shallow depth of field. The deity itself remains completely unchanged.\n\n6.5–8 seconds: Camera begins pulling backward, gradually revealing the full exact reference composition: same seated Ganesha, same throne, same circular ornate backdrop, same costume and same ornaments.\n\n8–10 seconds — MATCH CUT: The image transitions with a very subtle cinematic dissolve/match cut into the exact attached reference image. The final frame must look like the uploaded image, with no visual redesign whatsoever.\n\nVisual style: ultra-photorealistic, realistic Indian Ganesh Chaturthi pandal, real-world materials, natural lighting, realistic shadows, authentic photographic depth of field, subtle magical atmosphere, restrained VFX.\n\nVFX must be extremely subtle. No giant light beams, no portals, no glowing body, no excessive golden light, no fantasy aura, no CGI look.\n\nNEGATIVE INSTRUCTIONS: no redesigned Ganesha, no different Ganesha, no altered face, no different crown, no different clothes, no different jewelry, no additional ornaments, no missing ornaments, no extra arms, no changed hand positions, no changed pose, no morphing anatomy, no random flowers, no random accessories, no random colors, no body transformation..",
+    "engine": "Omni",
+    "created_at": "2026-09-10T11:10:22.429Z"
+  },
+  {
+    "id": "local_1789038115536_umged",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789038114288.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789038114288.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "[Start Frame: initial starting image at 0s]. The video MUST begin directly at this first frame at 0s and animate smoothly through: \n\n@image1 > Use the attached reference image as the **strict visual reference for Lord Ganesha**. Preserve the exact same facial appearance, elephant head, trunk, crown, jewelry, garlands, pink dhoti, blue-green patterned shawl/drape, arm count and positions, hand gestures, ornaments, seated posture, throne, circular ornamental backdrop and overall color palette. Do not redesign or simplify the idol.\n>\n> Create a **high-end photorealistic cinematic scene** of a divine Ganesha manifestation inside a richly decorated Ganesh Chaturthi pandal. The environment should feel physically real: detailed fabric, carved wood, metal ornaments, realistic flower garlands, natural shadows, slight atmospheric dust and believable depth.\n>\n> **Important visual direction:** the magic is subtle and realistic. **No huge energy beams, no glowing portal, no excessive golden light, no cartoon VFX.** Use tiny floating flower petals, dust particles, faint shimmering particles and realistic object movement.\n>\n> **0–1.5 sec — OPENING**\n> Start with a close cinematic shot of Ganesha's upper body. He appears almost completely still and statue-like, but the environment has subtle natural movement: flower garlands sway slightly, fabric moves gently, tiny dust particles float through the air. Slow camera push-in toward his face and hands.\n>\n> **1.5–2.5 sec — SHANKH MANIFESTATION**\n> **CUT to an extreme close-up of the raised right hand.** A few tiny particles gather in the empty space near the palm. The particles subtly condense and physically form a realistic **white conch shell (shankh)**. The conch develops naturally from the particles, rotating slightly, then gently settles perfectly into Ganesha's hand.\n>\n> **2.5–3.5 sec — FLOWER / GARLAND VFX**\n> **HARD CUT.** Close-up of another hand and the surrounding garland. Individual flower petals float upward naturally from below, rotate slowly in the air, and assemble into a fresh flower arrangement. The flowers become denser and more detailed until they match the reference exactly.\n>\n> **3.5–4.5 sec — JEWELRY FORMATION**\n> **HARD CUT.** Macro shot of the chest and necklace. Tiny metallic particles gather along the body and gradually form the intricate gold necklaces, pendant and decorative ornaments. Each piece physically locks into place with realistic metallic reflections. Very subtle supernatural effect, almost like an impossible real-world time-lapse.\n>\n> **4.5–5.5 sec — CROWN**\n> **HARD CUT.** Extreme close-up of the crown. Small decorative details appear one after another, as though the crown is finishing itself. Gold engraving, gemstones and ornamental details become fully formed. No flashy light.\n>\n> **5.5–6.5 sec — CLOTHING**\n> **HARD CUT.** Close-up of the pink dhoti and blue-green drape. The fabric visibly develops from simple material into the highly detailed embroidered costume from the reference. Folds, borders, tassels and gold detailing settle naturally into place.\n>\n> **6.5–7.5 sec — FACE**\n> **HARD CUT to Ganesha's face.** Extremely subtle movement: his eyes gently settle into their final position and the trunk makes an almost imperceptible natural movement. Keep the face exactly like the reference. His expression remains peaceful and divine. No human facial transformation.\n>\n> **7.5–8.5 sec — COMPLETE ASSEMBLY**\n> Rapid cinematic cuts between the conch, flowers, jewelry, crown, clothing and hands. Everything is now fully formed and perfectly matching the reference. The camera begins pulling backward.\n>\n> **8.5–10 sec — FINAL IDOL REVEAL**\n> The camera smoothly pulls out into a beautiful symmetrical hero shot. Ganesha is now **completely transformed into the exact finished statue from the reference image**, seated majestically on the ornate throne with the large circular backdrop behind him. Everything becomes perfectly still like a real physical idol. Only very subtle environmental movement remains in the flower garlands and fabric.\n>\n> End on a **photorealistic final frame matching the reference image as closely as possible**, as though the entire supernatural manifestation has resulted in the actual Ganesh Chaturthi idol.\n>\n> **Style:** photorealistic live-action VFX, realistic Indian festival environment, cinematic camera, physically accurate materials, realistic skin/clay/statuary texture, detailed gold, believable fabric physics, natural\n.",
+    "engine": "Omni",
+    "created_at": "2026-09-10T11:01:55.536Z"
+  },
+  {
+    "id": "local_1789037748479_7wlq9",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789037747015.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789037747015.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "[Start Frame: initial starting image at 0s]. The video MUST begin directly at this first frame at 0s and animate smoothly through: @image1 Yes — **that concept is absolutely possible**, and actually it will look much more cinematic than the previous idea.\n\nThe sequence should feel like **Lord Ganesha is physically arriving into an empty Ganesh Chaturthi street pandal**, with his **mouse companion**, then transforming into the exact idol shown in your reference. The important part is that he should **not simply teleport** or suddenly turn into a statue.\n\nFor a **10-second clip**, I would structure it like this:\n\n### 10-SECOND VIDEO PROMPT\n\n> Use the uploaded Ganesha reference image as the exact design reference. Preserve his recognizable face, elephant head, trunk, ears, four arms, pink-and-white traditional clothing, floral crown, jewelry, lotus flowers and modak. Do not redesign the deity.\n>\n> Create an ultra-realistic cinematic **Ganesh Chaturthi street scene in India**. The road is completely empty of people. A beautifully decorated Ganesh Chaturthi installation/pandal is set up on one side of the street, with a raised decorated platform, colorful fabric canopy, flowers, subtle festival lights and realistic Indian roadside surroundings. The environment should look like a real Indian residential/commercial street prepared for Ganesh Chaturthi.\n>\n> **0–2 sec:** Wide establishing shot. Empty Indian street at early evening, realistic buildings, electrical wires, roadside details and subtle festival decorations. In the distance, Lord Ganesha is approaching along the road, accompanied by a small realistic mouse walking beside him.\n>\n> **2–4 sec:** Camera moves backward smoothly as Ganesha comes closer. Ganesha walks slowly and majestically toward the decorated pandal, with the mouse naturally following beside his feet. His flowers, clothing and jewelry move subtly with each step. Keep his appearance exactly consistent with the reference.\n>\n> **4–6 sec:** Side tracking shot. Ganesha reaches the decorated platform. He gently climbs the steps and approaches the center of the Ganesh Chaturthi setup. The mouse follows and stops near the base.\n>\n> **6–8 sec:** Ganesha sits down into the exact seated pose from the reference image. As he settles onto the pedestal, a subtle magical transformation begins: his body gradually becomes completely still and statue-like, while the realistic textures of the flowers, clothing, jewelry and sculpted body remain visible.\n>\n> **8–10 sec:** Cinematic transformation finish. The camera slowly pushes toward him as he becomes **the exact Ganesha idol from the uploaded reference image**. Final frame should closely match the reference composition: seated Ganesha on the decorated platform, lotus flowers in his hands, modak in one hand, flower crown, pink clothing, white fabric and jewelry, with the small mouse positioned near the pedestal. The surrounding Ganesh Chaturthi street installation remains realistic.\n>\n> Photorealistic Indian environment, realistic human-scale proportions, natural evening lighting, physically accurate cloth and flower movement, realistic shadows, cinematic depth of field, subtle atmospheric haze, premium live-action VFX.\n>\n> **Very important:** no crowd, no people appearing suddenly, no extra limbs, no changing face, no changing costume, no distorted trunk, no cartoon appearance, no fantasy CGI look. Ganesha must remain respectful, majestic and visually identical to the reference throughout the transformation.\n\nThe **best visual trick** here is the ending: **Ganesha walks like a living divine figure → reaches the pandal → sits → freezes into the exact idol.** That gives you a very satisfying **“How did this idol appear?”** feeling.\n\n.",
+    "engine": "Omni",
+    "created_at": "2026-09-10T10:55:48.479Z"
+  },
+  {
+    "id": "local_1789037573647_4i83s",
+    "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789037572956.mp4",
+    "type": "video",
+    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1789037572956.mp4",
+    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
+    "project_id": "default",
+    "aspect": "9:16",
+    "metadata": {
+      "folder": "generated",
+      "projectId": "default",
+      "project_id": "default"
+    },
+    "prompt": "[Start Frame: initial starting image at 0s]. The video MUST begin directly at this first frame at 0s and animate smoothly through: @image1Use the uploaded reference image as the exact visual reference for Lord Ganesha. Preserve the same Ganesha design, face, elephant features, ears, trunk shape, four arms, pink-and-white clothing, jewelry, flower crown, lotus flowers, golden modak and overall proportions. Do not redesign or change the deity.\n\nCreate an ultra-realistic cinematic video in a real Indian urban street environment, matching the realistic depth of field and natural daylight of the reference.\n\n0–2 sec: Start with a tight cinematic shot of the unfinished-looking Ganesha statue, completely still. Camera slowly pushes toward the face. Natural city background, realistic traffic movement and atmospheric depth.\n\n2–3 sec — HARD CUT: Close-up of one hand holding the lotus. The lotus suddenly begins developing naturally, petals growing outward one by one in a beautiful time-lapse-like biological motion.\n\n3–4 sec — HARD CUT: Close-up of the second lotus. Its petals rapidly unfold and become fully formed, detailed and realistic.\n\n4–5 sec — HARD CUT: Extreme close-up of the flower crown. Fresh white and pink flowers visibly grow, bloom and expand from the crown, petal by petal.\n\n5–6 sec — HARD CUT: Close-up of Ganesha's jewelry. Gold ornaments gradually develop and become more intricate, appearing as if they are naturally forming onto the statue.\n\n6–7 sec — HARD CUT: Close-up of the pink dhoti and white fabric. The fabric rapidly develops its embroidery, lace, folds and detailed texture.\n\n7–8 sec — HARD CUT: Close-up of Ganesha's face. The eyes become beautifully alive with subtle natural movement while the trunk and facial details remain exactly consistent with the reference. No human-like face transformation.\n\n8–10 sec: Rapid cinematic cuts between the hands, flowers, jewelry, clothing and face as everything finishes developing. End with a smooth pull-back revealing the almost-complete Ganesha sitting exactly like the reference.\n\nExtremely realistic materials, physically accurate lighting, realistic skin/clay texture, natural shadows, shallow depth of field, subtle handheld cinematic camera movement, real Indian street atmosphere, premium photorealistic VFX. No cartoon look, no fantasy CGI appearance, no morphing distortion, no extra limbs, no changing face, no changing costume design..",
+    "engine": "Omni",
+    "created_at": "2026-09-10T10:52:53.647Z"
+  },
+  {
     "id": "local_1788943311876_abmn9",
     "name": "veo_cec79985-ce59-4d23-82a2-3ae6f69994ed_1788943310546.mp4",
     "type": "video",
@@ -7182,218 +7422,5 @@
     "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
     "engine": "gemini-3.1-flash-image-preview",
     "created_at": "2026-06-28T18:38:14.986Z"
-  },
-  {
-    "id": "local_1782671366407_1r754",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671365940.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671365940.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "marketing/generated"
-    },
-    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: he fire up  all the bills cinematic shorts for fire - Extracted Angle 9]",
-    "engine": "gemini-3.1-flash-image-preview",
-    "created_at": "2026-06-28T18:29:26.408Z"
-  },
-  {
-    "id": "local_1782671341681_duzkq",
-    "name": "crop_1782671341352.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782671341352.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "aspect": "16:9"
-    },
-    "prompt": "he fire up  all the bills cinematic shorts for fire - Extracted Angle 9",
-    "engine": "Nano Banana 2 (Angle 9)",
-    "created_at": "2026-06-28T18:29:01.681Z"
-  },
-  {
-    "id": "local_1782671273251_ukmbw",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671272630.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671272630.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "marketing/generated"
-    },
-    "prompt": "You are generating a SINGLE vertical poster image that functions as a professional Netflix-style multi-panel storyboard. All panels must be seamlessly merged into one cohesive vertical composition.\n\nCRITICAL — CHARACTER CONSISTENCY: Preserve the exact face structure, facial features, skin tone, hair color, hairstyle, eye shape, outfit, and body proportions from the reference image across ALL panels. Do not alter or reinterpret the character in any frame.\n\nPANEL LAYOUT: Arrange 6–8 cinematic frames divided by thin matte-black film strip borders into a single vertical poster. Each panel must have a distinct camera angle:\nPanel 1 — Wide establishing shot of environment, character entering frame\nPanel 2 — Medium waist-up shot, character aware, scanning surroundings\nPanel 3 — Close-up of face, micro-expression of tension or curiosity\nPanel 4 — Action beat — movement, dynamic angle, motion blur on edges\nPanel 5 — Over-the-shoulder shot revealing what the character sees\nPanel 6 — Low-angle hero shot, character standing resolute\nPanel 7 — Emotional peak — extreme close-up of eyes, depth of field bokeh\nPanel 8 — Wide cinematic outro, character small against grand environment\n\nVISUAL STYLE: Netflix cinematic color grading, teal-orange LUT, volumetric lighting, 35mm film grain, anamorphic lens flares, shallow depth of field, photorealistic skin detail, 8K resolution quality, masterpiece composition. All panels must share identical lighting logic and color palette.\n\nOUTPUT: One single seamless vertical image. No white space. No text. No watermarks.\n\n[USER STORY SCENARIO BRIEF: Describe the specific actions or narrative detail to embed within the storyboard frames: \"he fire up  all the bills cinematic shorts for fire\"]",
-    "engine": "gemini-3.1-flash-image-preview",
-    "created_at": "2026-06-28T18:27:53.252Z"
-  },
-  {
-    "id": "local_1782671167374_1h43v",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671166408.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671166408.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "metadata": {
-      "folder": "marketing/generated"
-    },
-    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: Subject - Extracted Angle 7]",
-    "engine": "gemini-3.1-flash-image-preview",
-    "created_at": "2026-06-28T18:26:07.374Z"
-  },
-  {
-    "id": "local_1782671166201_cchfc",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671165456.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671165456.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "metadata": {
-      "folder": "marketing/generated"
-    },
-    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: Subject - Extracted Angle 9]",
-    "engine": "gemini-3.1-flash-image-preview",
-    "created_at": "2026-06-28T18:26:06.201Z"
-  },
-  {
-    "id": "local_1782671141974_doy7y",
-    "name": "crop_1782671141491.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782671141491.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "metadata": {
-      "aspect": "9:16"
-    },
-    "prompt": "Subject - Extracted Angle 7",
-    "engine": "Nano Banana 2 (Angle 7)",
-    "created_at": "2026-06-28T18:25:41.974Z"
-  },
-  {
-    "id": "local_1782671139031_3hxka",
-    "name": "crop_1782671138559.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782671138559.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "metadata": {
-      "aspect": "9:16"
-    },
-    "prompt": "Subject - Extracted Angle 9",
-    "engine": "Nano Banana 2 (Angle 9)",
-    "created_at": "2026-06-28T18:25:39.031Z"
-  },
-  {
-    "id": "local_1782671118910_ikavq",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671118165.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671118165.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "9:16",
-    "metadata": {
-      "folder": "marketing/generated",
-      "isGrid": true
-    },
-    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
-    "engine": "gemini-3.1-flash-image-preview",
-    "created_at": "2026-06-28T18:25:18.910Z"
-  },
-  {
-    "id": "local_1782671063104_kc7rk",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671062361.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782671062361.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "marketing/generated",
-      "isGrid": true
-    },
-    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
-    "engine": "gemini-3.1-flash-image-preview",
-    "created_at": "2026-06-28T18:24:23.104Z"
-  },
-  {
-    "id": "local_1782667980395_cc83f",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667978580.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667978580.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "marketing/generated"
-    },
-    "prompt": "close up. Perspective: Medium Shot framing.. Captured on ARRI Alexa 35, equipped with ARRI Signature Prime glass optics (modern, clean, ultra-premium cinematic blockbuster look with natural highlights) using a 35mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 146661]",
-    "engine": "nano-banana-2",
-    "created_at": "2026-06-28T17:33:00.395Z"
-  },
-  {
-    "id": "local_1782667603770_llw03",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667602572.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667602572.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "marketing/generated"
-    },
-    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context:  (Brush Edited) (Brush Edited)]",
-    "engine": "gemini-3.1-flash-image-preview",
-    "created_at": "2026-06-28T17:26:43.771Z"
-  },
-  {
-    "id": "local_1782667591463_qbijj",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667589715.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667589715.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "marketing/generated"
-    },
-    "prompt": "close up. Perspective: Wide Shot framing.. Captured on ARRI Alexa 35, equipped with ARRI Signature Prime glass optics (modern, clean, ultra-premium cinematic blockbuster look with natural highlights) using a 21mm focal length for maximum photographic fidelity.. Style: Cinematic (Dramatic lighting, anamorphic flair). [seed: 205882]",
-    "engine": "nano-banana-2",
-    "created_at": "2026-06-28T17:26:31.463Z"
-  },
-  {
-    "id": "local_1782667316222_2plwv",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667315065.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667315065.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "marketing/generated"
-    },
-    "prompt": "REFINE TO 2K: Upscale this image to high resolution. \nSTRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. \nDO NOT add new objects or change the scene. Enhance only.\n[Semantic Context: mak all bills in this pic as  indian bills - Extracted Angle 3]",
-    "engine": "gemini-3.1-flash-image-preview",
-    "created_at": "2026-06-28T17:21:56.222Z"
-  },
-  {
-    "id": "local_1782667289765_yj84y",
-    "name": "crop_1782667289510.png",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/generated/crop_1782667289510.png",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "aspect": "16:9"
-    },
-    "prompt": "mak all bills in this pic as  indian bills - Extracted Angle 3",
-    "engine": "nano-banana-2 (Angle 3)",
-    "created_at": "2026-06-28T17:21:29.765Z"
-  },
-  {
-    "id": "local_1782667275006_uu2ns",
-    "name": "gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667271897.jpeg",
-    "type": "image",
-    "url": "https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev/users/cec79985-ce59-4d23-82a2-3ae6f69994ed/marketing/generated/gen_cec79985-ce59-4d23-82a2-3ae6f69994ed_1782667271897.jpeg",
-    "user_id": "cec79985-ce59-4d23-82a2-3ae6f69994ed",
-    "aspect": "16:9",
-    "metadata": {
-      "folder": "marketing/generated",
-      "isGrid": true
-    },
-    "prompt": "### 9-FRAME CINEMATIC GRID DIRECTIVE\nCreate a tight 3x3 contact sheet containing 9 high-end cinematic photographs. \nSTRICT RULE: The grid must be a single composite image with no margins, borders, lines, overlays, watermark, text, or labels. Do not print any text, numbers, or labels (such as \"PORTRAIT\", \"WIDE\", \"FRAME\", etc.) on any of the images.\n\n### SUBJECT & ENVIRONMENT CONSISTENCY:\n- CHARACTER IDENTITY: The exact same character (same face, features, expression style, and clothing/wardrobe) must be featured in all frames where the character is visible.\n- LOCATION & LIGHTING: All 9 frames must represent the exact same location and environmental scene setup, with consistent ambient color grading and lighting matching the provided reference image.\n\n### THE 9 UNIQUE CAMERA SETUPS (VARIED PERSPECTIVES IN THE SAME SCENE):\n- Frame 1: A close-up portrait focusing on the subject's face. Macro lens with soft background bokeh.\n- Frame 2: A wide-angle shot showing the subject within the full scale of the environment.\n- Frame 3: A macro details shot focusing on a texture or fabric of the outfit (no face visible).\n- Frame 4: A low-angle dramatic shot looking slightly up at the subject.\n- Frame 5: An overhead high-angle drone-style shot looking down at the subject.\n- Frame 6: A medium shot from the waist up with natural lighting.\n- Frame 7: A dramatic rim-lit near-silhouette shot highlighting the subject's edge profile.\n- Frame 8: A first-person POV shot where the subject's hands or perspective is visible.\n- Frame 9: A full-body shot showing the subject from head to toe.\n\n### STYLING & NEGATIVE INSTRUCTIONS:\nSTRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermark overlays on the generated image. All 9 panels must merge seamlessly into a single clean borderless grid composite.",
-    "engine": "gemini-3.1-flash-image-preview",
-    "created_at": "2026-06-28T17:21:15.006Z"
   }
 ]

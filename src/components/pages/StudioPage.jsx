@@ -95,7 +95,61 @@ function StudioGalleryCard({
   };
 
   if (item.status === 'generating') {
-    return null;
+    return (
+      <div
+        className={cn(
+          "w-full rounded-2xl border border-[#c8f135]/40 bg-[#0c0c14] relative overflow-hidden shadow-[0_0_30px_rgba(200,241,53,0.2)] flex flex-col justify-between p-4.5 text-center group min-h-[220px]",
+          getAspectClass()
+        )}
+      >
+        <div
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-[#c8f135]/15 to-transparent pointer-events-none"
+          style={{ animation: 'shimmer 1.8s infinite', transform: 'translateX(-100%)' }}
+        />
+        
+        {/* Top Badges */}
+        <div className="w-full flex items-center justify-between z-10">
+          <span className="px-2 py-0.5 rounded-full bg-[#c8f135]/15 text-[#c8f135] border border-[#c8f135]/30 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#c8f135] animate-ping" />
+            <span>{item.engine || 'Rendering Video'}</span>
+          </span>
+          <span className="text-[9px] font-mono text-zinc-400 font-bold px-1.5 py-0.5 rounded bg-white/5 border border-white/10">
+            {rawAspect} · {item.duration || 5}s
+          </span>
+        </div>
+
+        {/* Center Spinner */}
+        <div className="relative z-10 flex flex-col items-center gap-2.5 my-auto py-2">
+          <div className="relative w-12 h-12">
+            <div className="absolute inset-0 rounded-full border-2 border-[#c8f135]/20 animate-ping" />
+            <div className="absolute inset-0 rounded-full border-2 border-t-[#c8f135] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+            <Film className="absolute inset-0 m-auto w-5 h-5 text-[#c8f135]" />
+          </div>
+          <div className="space-y-1 max-w-xs px-2">
+            <p className="text-xs font-bold text-white tracking-wide">
+              Rendering Video Clip...
+            </p>
+            <p className="text-[10px] text-zinc-400 font-mono line-clamp-2">
+              "{cleanPromptText}"
+            </p>
+          </div>
+        </div>
+
+        {/* Bottom Status & Cancel */}
+        <div className="w-full flex items-center justify-between pt-2 border-t border-white/5 z-10">
+          <span className="text-[9px] font-mono text-[#c8f135]/80 animate-pulse">
+            Processing job in background...
+          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDeleteItem(item.id, e); }}
+            className="text-[9px] text-zinc-500 hover:text-white transition-colors cursor-pointer px-1.5 py-0.5 rounded hover:bg-white/10"
+            title="Cancel / Dismiss"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (item.status === 'failed') {
@@ -487,7 +541,19 @@ export default function StudioPage() {
   }, [userId]);
 
   const [gallery, setGallery] = useState(loadMergedGallery);
-  const [isBusy, setIsBusy] = useState(false);
+  const activeJobs = useMemo(() => gallery.filter(i => i && i.status === 'generating'), [gallery]);
+  const activeJobsCount = activeJobs.length;
+
+  const maxConcurrent = useMemo(() => {
+    const tier = (userProfile?.tier || 'CREATOR').toUpperCase();
+    if (tier === 'ENTERPRISE') return 16;
+    if (tier === 'STUDIO') return 8;
+    if (tier === 'PRO' || tier === 'CREATOR') return 4;
+    return 2;
+  }, [userProfile?.tier]);
+
+  const isMaxConcurrentReached = activeJobsCount >= maxConcurrent;
+  const isBusy = isMaxConcurrentReached;
   const [lightboxItem, setLightboxItem] = useState(null);
   const [showInpaint, setShowInpaint] = useState(false);
   const [showStoryboard, setShowStoryboard] = useState(false);
@@ -562,14 +628,7 @@ export default function StudioPage() {
     const cols = Array.from({ length: count }, () => []);
     const heights = Array.from({ length: count }, () => 0);
 
-    // If video generation is in progress, Column 0 receives the loading tile at the top
-    if (isBusy) {
-      const activeMult = (aspectRatio === '9:16') ? 1.7778 : (aspectRatio === '1:1' ? 1.0 : (aspectRatio === '4:3' ? 0.75 : 0.5625));
-      heights[0] += activeMult;
-    }
-
     filteredGallery.forEach((item) => {
-      if (item.status === 'generating') return;
       let minCol = 0;
       for (let c = 1; c < count; c++) {
         if (heights[c] < heights[minCol]) {
@@ -583,7 +642,7 @@ export default function StudioPage() {
     });
 
     return cols;
-  }, [filteredGallery, isMobile, windowWidth, galleryDensity, isBusy, aspectRatio]);
+  }, [filteredGallery, isMobile, windowWidth, galleryDensity]);
 
   // Safe gallery persistence with payload sanitization and quota protection
   useEffect(() => {
@@ -801,8 +860,14 @@ export default function StudioPage() {
       if (!promptToUse.trim()) return;
     }
 
+    if (isMaxConcurrentReached) {
+      const msg = `Maximum concurrent generation limit reached (${maxConcurrent} jobs). Please wait for an active job to complete.`;
+      if (showToast) showToast(msg, "warning");
+      else alert(msg);
+      return;
+    }
+
     checkAuthAndRun(async () => {
-      setIsBusy(true);
       if (typeof window !== 'undefined' && window.innerWidth < 768) {
         setMobileTab('gallery');
       }
@@ -1047,8 +1112,6 @@ export default function StudioPage() {
           status: 'failed',
           error: err.message
         } : item));
-      } finally {
-        setIsBusy(false);
       }
     });
   };
@@ -1503,6 +1566,8 @@ export default function StudioPage() {
             setOmniPromptText={setOmniPromptText}
             handleGenerate={handleGenerate}
             isBusy={isBusy}
+            activeJobsCount={activeJobsCount}
+            maxConcurrent={maxConcurrent}
             userCredits={userCredits}
             requiredCredits={requiredCredits}
             canGenerate={canGenerate}
@@ -1635,45 +1700,6 @@ export default function StudioPage() {
             <div className="flex gap-1.5 sm:gap-2 items-start w-full">
               {masonryColumns.map((colItems, colIdx) => (
                 <div key={colIdx} className="flex-1 flex flex-col gap-1.5 sm:gap-2 min-w-0">
-                  {/* Generating Tile on Col 0 Top */}
-                  {colIdx === 0 && isBusy && (
-                    <div
-                      className={cn(
-                        "rounded-2xl border border-[#c8f135]/40 bg-[#0c0c14] relative overflow-hidden shadow-[0_0_30px_rgba(200,241,53,0.2)] flex flex-col items-center justify-center p-6 text-center group w-full",
-                        getAspectClass(aspectRatio)
-                      )}
-                    >
-                      <div
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-[#c8f135]/15 to-transparent pointer-events-none"
-                        style={{ animation: 'shimmer 1.8s infinite', transform: 'translateX(-100%)' }}
-                      />
-                      <div className="relative z-10 flex flex-col items-center gap-3">
-                        <div className="relative w-14 h-14">
-                          <div className="absolute inset-0 rounded-full border-2 border-[#c8f135]/20 animate-ping" />
-                          <div className="absolute inset-0 rounded-full border-2 border-t-[#c8f135] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
-                          <Film className="absolute inset-0 m-auto w-6 h-6 text-[#c8f135]" />
-                        </div>
-                        <div className="space-y-1 max-w-xs">
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#c8f135]/10 border border-[#c8f135]/30">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#c8f135] animate-pulse" />
-                            <span className="text-[9px] font-black uppercase tracking-wider text-[#c8f135]">
-                              Generating Video
-                            </span>
-                          </div>
-                          <p className="text-xs font-bold text-white tracking-wide">
-                            Your video is getting ready...
-                          </p>
-                          <p className="text-[10px] text-zinc-400 font-mono line-clamp-2 px-2">
-                            "{panelTab === 'omni' ? omniPromptText : promptText}"
-                          </p>
-                        </div>
-                        <span className="text-[9px] font-mono text-[#c8f135]/80 animate-pulse">
-                          Please wait a moment while your video is being generated...
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
                   {colItems.map((item) => (
                     <StudioGalleryCard
                       key={item.id}
