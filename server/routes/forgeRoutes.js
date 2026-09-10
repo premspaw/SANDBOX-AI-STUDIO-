@@ -10,7 +10,8 @@ export default function createRouter(deps) {
         handleGoogle,
         supabase,
         requireAuth,
-        resolveGoogleApiKey
+        resolveGoogleApiKey,
+        openaiChat
     } = deps;
 
     // Forge Health
@@ -45,68 +46,448 @@ export default function createRouter(deps) {
         }
     });
 
-    // Refine Prompt Narrative
+    // Refine Prompt Narrative & Storyboard Breakdown (Powered by Astra ChatGPT 6)
+    // Helper: Execute Gemini Content Generation with Model Cascade Fallback
+    const callGeminiWithCascade = async (preferredModel, promptText, apiKey, isJson = false) => {
+        if (!apiKey || typeof apiKey !== 'string') return null;
+        
+        // Models cascade list
+        const candidateModels = [];
+        if (preferredModel && preferredModel.startsWith('gemini')) {
+            candidateModels.push(preferredModel);
+        }
+        if (!candidateModels.includes('gemini-2.5-flash')) candidateModels.push('gemini-2.5-flash');
+        if (!candidateModels.includes('gemini-2.0-flash')) candidateModels.push('gemini-2.0-flash');
+        if (!candidateModels.includes('gemini-1.5-flash')) candidateModels.push('gemini-1.5-flash');
+
+        for (const model of candidateModels) {
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Referer': `${APP_ORIGIN}/`,
+                        'Origin': APP_ORIGIN
+                    },
+                    body: JSON.stringify({ 
+                        contents: [{ 
+                            parts: [{ text: isJson ? `${promptText}\n\nReturn strict valid JSON only without markdown fences.` : promptText }] 
+                        }]
+                    })
+                });
+
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text && text.trim()) {
+                        return { text: text.trim(), model };
+                    }
+                }
+            } catch (e) {
+                console.warn(`[GeminiCascade] Failed on model ${model}:`, e.message);
+            }
+        }
+        return null;
+    };
+
+    // Refine Prompt Narrative & Storyboard Breakdown (Powered by Selected AI Model & Astra)
     router.post('/refine-narrative', async (req, res) => {
         try {
-            const { text, type = "general" } = req.body;
+            const { text, type = "general", scenario = "", format = "video", aiModel = "gemini-2.5-flash" } = req.body;
             if (!text) return res.status(400).json({ error: "Text is required" });
-            let user;
-            try {
-                user = await requireAuth(req);
-            } catch (_) {}
-            const targetUserId = user ? user.id : req.body.userId;
-            const rawApiKey = await resolveGoogleApiKey(req, targetUserId);
-            const apiKey = (rawApiKey && rawApiKey !== 'VERTEX_AI_CLIENT') ? rawApiKey : (process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
 
-            const prompt = `You are an elite cinematic prompt engineer. Your task is to take a raw description and transform it into a high-fidelity, visually rich narrative prompt.
-            
-            INPUT DESCRIPTION: "${text}"
-            CATEGORY: ${type}
-            
-            Guidelines:
-            - Enhance textures, lighting, and environmental details.
-            - Maintain the core intent of the user.
-            - Keep it descriptive but concise (max 50 words).
-            - Use evocative language suitable for high-end AI video/image models like Veo or Imagen.
-            - Do NOT add camera/lens settings (those are handled elsewhere).
-            
-            Return ONLY the refined text string.`;
-            const safetySettings = [
-                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-            ];
+            let refinedText = text;
+            const isStoryboard = type === 'director_storyboard';
 
-            const headers = { 
-                'Content-Type': 'application/json',
-                'Referer': `${APP_ORIGIN}/`,
-                'Origin': APP_ORIGIN
-            };
+            const antiMorphingRules = `
+CRITICAL CINEMATIC QUALITY & ANTI-MORPHING RULES:
+1. ZERO MORPHING: Human faces, bodies, limbs, clothing, architecture, and props must NEVER melt, morph, deform, stretch, or blend between objects or poses.
+2. CLEAN CINEMATIC CUTS: If perspective, angle, or focus changes, use sharp cinematic cut markers (e.g. "[Cut to: Tight Close-Up]", "[Cut to: Wide Tracking]") — strictly prohibit soft warping or morphing transitions.
+3. ZERO AI SLOP: Ban plastic/waxy skin, rubbery motion, extra fingers/limbs, distorted anatomy, jittery backgrounds, blurry soup, cheap CGI halo/glow, and floating text.
+4. PHYSICAL REALISM: Enforce authentic 24fps shutter speed, natural motion blur, realistic eye contact, subtle human micro-movements, and consistent directional lighting.`;
 
-            console.log(`[BACKEND] Refining narrative for ${type} using AI Studio (Gemini 2.5)...`);
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
-            
-            const resp = await fetch(url, {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({ 
-                    contents: [{ parts: [{ text: prompt }] }],
-                    safetySettings
-                })
-            });
+            // If user selected a Gemini model or if Gemini is requested
+            if (aiModel.startsWith('gemini') || !process.env.EXPLABS_API_KEY) {
+                let user;
+                try { user = await requireAuth(req); } catch (_) {}
+                const targetUserId = user ? user.id : req.body.userId;
+                const rawApiKey = await resolveGoogleApiKey(req, targetUserId);
+                const apiKey = (rawApiKey && rawApiKey !== 'VERTEX_AI_CLIENT') ? rawApiKey : (process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
 
-            const data = await resp.json();
-            if (!resp.ok) {
-                console.error("[BACKEND-AI-ERR]", JSON.stringify(data, null, 2));
-                throw new Error(`AI Gateway Error: ${data.error?.message || resp.status}`);
+                if (apiKey) {
+                    console.log(`[BACKEND] Refining narrative/prompts with Gemini (${aiModel})...`);
+                    const geminiSystem = isStoryboard
+                        ? `You are the Lead Storyboard Director of ZeroLens AI Studio. Analyze the given script, dialogues, and settings. Output ONLY a valid JSON array of sequential 10-second shot objects strictly representing the script. ${antiMorphingRules}\nDo NOT wrap in markdown code blocks.`
+                        : `You are an elite cinematic prompt engineer for AI video and image models. Enhance the given text into production-ready prompts. ${antiMorphingRules}`;
+
+                    const promptPayload = `${geminiSystem}\n\n${scenario ? `SCENARIO CONTEXT:\n${scenario}\n\n` : ''}${text}`;
+                    const geminiResult = await callGeminiWithCascade(aiModel, promptPayload, apiKey, isStoryboard);
+                    
+                    if (geminiResult && geminiResult.text) {
+                        if (isStoryboard) {
+                            const jsonMatch = geminiResult.text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+                            refinedText = jsonMatch ? jsonMatch[0] : geminiResult.text.replace(/```json/g, '').replace(/```/g, '').trim();
+                        } else {
+                            refinedText = geminiResult.text;
+                        }
+                        return res.json({ 
+                            refined: isStoryboard ? refinedText : refinedText.replace(/^"|"$/g, ''),
+                            narrative: refinedText,
+                            model: geminiResult.model
+                        });
+                    }
+                }
             }
-            
-            const refinedText = data.candidates?.[0]?.content?.parts?.[0]?.text || text;
-            res.json({ refined: refinedText.trim().replace(/^"|"$/g, '') });
+
+            // Astra (gpt-6-astra) / OpenAI Engine
+            if (process.env.EXPLABS_API_KEY && openaiChat) {
+                console.log(`[BACKEND] Refining narrative/prompts for ${type} using Astra (${aiModel})...`);
+                try {
+                    const systemPrompt = isStoryboard
+                        ? `You are Astra (ChatGPT 6), the Lead Director & Storyboard Architect of ZeroLens AI Studio. You deeply analyze scripts, screenplays, spoken dialogue lines, character arcs, and multi-shot continuity. When provided a project setup, script, and dialogues, deconstruct it strictly into sequential 10-second cinematic shots matching the exact script and dialogue flow. ${antiMorphingRules}\nReturn ONLY a valid JSON array of shot objects without markdown fences, preamble, or commentary.`
+                        : `You are Astra (ChatGPT 6), the elite prompt engineer and cinematic director of ZeroLens AI Studio.
+Your mission is to understand the complete scenario, narrative, story, and script, and write high-fidelity, visually rich prompts for AI ${format === 'image' ? 'image' : 'video'} models (like Veo, Seedance, Imagen 3, Omni Flash).
+Guidelines:
+- Comprehend the full narrative arc and emotional atmosphere.
+- Enhance textures, lighting, volumetric atmosphere, camera physics, and environmental details.
+- Preserve character and location anchors (@character, @location, <FIRST_FRAME>, <LAST_FRAME>).
+- If writing a video prompt, describe camera dynamics, temporal action beats, and lighting evolution.
+${antiMorphingRules}
+- Return ONLY the final camera-ready prompt text without quotes or preamble.`;
+
+                    const astraResponse = await openaiChat([
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: scenario ? `SCENARIO CONTEXT:\n${scenario}\n\nRAW PROMPT / SCRIPT:\n${text}` : text }
+                    ], aiModel === 'gpt-4o' ? 'gpt-4o' : 'gpt-6-astra', isStoryboard);
+
+                    if (astraResponse && typeof astraResponse === 'string' && astraResponse.trim()) {
+                        refinedText = astraResponse.trim();
+                        if (isStoryboard) {
+                            const jsonMatch = refinedText.match(/\[\s*\{[\s\S]*\}\s*\]/);
+                            if (jsonMatch) {
+                                refinedText = jsonMatch[0];
+                            }
+                        }
+                        return res.json({ 
+                            refined: isStoryboard ? refinedText : refinedText.replace(/^"|"$/g, ''),
+                            narrative: refinedText,
+                            model: aiModel || 'gpt-6-astra'
+                        });
+                    }
+                } catch (astraErr) {
+                    console.warn('[BACKEND] Astra prompt writing failed, falling back to Gemini:', astraErr.message);
+                }
+            }
+
+            res.json({ refined: (refinedText || text).trim().replace(/^"|"$/g, ''), narrative: refinedText });
         } catch (error) {
             console.error('BACKEND REFINE ERROR:', error);
-            res.status(500).json({ error: error.message, originalText: req.body.text });
+            res.json({ refined: (req.body?.text || '').trim(), error: error.message });
+        }
+    });
+
+    // Dedicated Prompt & Scenario Writer
+    router.post('/write-prompt', async (req, res) => {
+        try {
+            const { prompt, scenario = "", type = "video", style = "", character = "", location = "", aiModel = "gemini-2.5-flash" } = req.body;
+            if (!prompt && !scenario) return res.status(400).json({ error: "Prompt or scenario is required" });
+
+            const systemPrompt = `You are the Lead AI Director and Cinematic Prompt Architect of ZeroLens AI Studio.
+Your specialty is taking a user's rough idea, story beat, or scenario, and expanding it into a world-class, production-grade ${type === 'image' ? 'Image' : 'Video'} generation prompt.
+
+Key Directives:
+1. Scenario Comprehension: Character identities, location geography, dramatic tension, and emotional tone.
+2. Prompt Precision: Concrete visual cues (e.g. "anamorphic 50mm T1.5 lens, shallow depth-of-field, volumetric golden-hour backlight raking across rain-soaked asphalt, subtle 24fps push-in tracking shot").
+3. Tag Integration: Seamlessly place anchors like @character, @location, <FIRST_FRAME>, <LAST_FRAME> where appropriate.
+4. ANTI-MORPHING & ANTI-SLOP: Prohibit morphing, liquid transitions, melting faces, extra fingers, or rubbery artifacts. Specify clean cinematic cuts between angles.
+
+Format your response as a JSON object:
+{
+  "refinedPrompt": "The complete, camera-ready prompt text with zero morphing and 24fps physical realism",
+  "cameraMotion": "Specific camera movement description (e.g. Slow push-in dolly at 24fps)",
+  "lighting": "Specific lighting setup (e.g. Chiaroscuro high-contrast neon with soft amber fill)",
+  "audioCue": "Atmospheric sound and foley cue for video generation"
+}`;
+
+            const userContent = `REQUEST TYPE: ${type.toUpperCase()} PROMPT
+USER PROMPT / IDEA: "${prompt || ''}"
+SCENARIO / STORY CONTEXT: "${scenario || 'None provided'}"
+STYLE PREFERENCE: "${style || 'Cinematic Film'}"
+CHARACTER ANCHOR: "${character || 'None'}"
+LOCATION ANCHOR: "${location || 'None'}"
+
+Write the ultimate, high-fidelity prompt for this scenario.`;
+
+            let result = null;
+
+            // Try Gemini if selected or default
+            if (aiModel.startsWith('gemini') || !process.env.EXPLABS_API_KEY) {
+                let user;
+                try { user = await requireAuth(req); } catch (_) {}
+                const targetUserId = user ? user.id : req.body.userId;
+                const rawApiKey = await resolveGoogleApiKey(req, targetUserId);
+                const apiKey = (rawApiKey && rawApiKey !== 'VERTEX_AI_CLIENT') ? rawApiKey : (process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
+
+                if (apiKey) {
+                    const geminiRes = await callGeminiWithCascade(aiModel, `${systemPrompt}\n\n${userContent}`, apiKey, true);
+                    if (geminiRes && geminiRes.text) {
+                        try {
+                            const match = geminiRes.text.match(/\{[\s\S]*\}/);
+                            result = JSON.parse(match ? match[0] : geminiRes.text);
+                        } catch (_) {
+                            result = { refinedPrompt: geminiRes.text };
+                        }
+                    }
+                }
+            }
+
+            if (!result && process.env.EXPLABS_API_KEY && openaiChat) {
+                const response = await openaiChat([
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userContent }
+                ], aiModel === 'gpt-4o' ? 'gpt-4o' : 'gpt-6-astra', true);
+
+                try {
+                    result = JSON.parse(response);
+                } catch (_) {
+                    result = { refinedPrompt: response };
+                }
+            }
+
+            if (!result) {
+                result = { refinedPrompt: prompt || scenario };
+            }
+
+            res.json({
+                success: true,
+                model: aiModel || 'gemini-2.5-flash',
+                ...result
+            });
+        } catch (err) {
+            console.error('[WRITE-PROMPT-ERROR]', err);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // 🎬 Interactive Director: Generate Complete Script from Concept/Idea
+    router.post('/director/generate-script', async (req, res) => {
+        try {
+            const { idea, duration = '60 sec', genre = 'Commercial', directorStyle = 'Christopher Nolan', character = '', location = '', aiModel = 'gemini-2.5-flash' } = req.body;
+            if (!idea) return res.status(400).json({ error: "Idea or logline is required" });
+
+            const systemPrompt = `You are the Lead Screenwriter & Cinematic Director of ZeroLens AI Cinema Studio.
+When given a film idea or pitch, write a formatted, industry-standard cinematic shooting script optimized for AI video generation (like Gemini Omni Flash 1.1 and Seedance 2.0).
+
+Format rules:
+1. Title and Logline at top.
+2. Character and Location brief.
+3. Sequential Scene Beats with visual framing, lighting, camera motion, action, and sound cues.
+4. Explicitly design for clean cinematic shot cuts without morphing or rubbery visual artifacts.
+5. Keep the script tightly paced for a ${duration} total runtime.
+6. Return the clean text of the script ready to be loaded directly into a production deck.`;
+
+            const userContent = `IDEA / PITCH: "${idea}"
+TARGET DURATION: ${duration}
+GENRE / GOAL: ${genre}
+DIRECTOR STYLE: ${directorStyle}
+${character ? `CHARACTER DETAILS: ${character}` : ''}
+${location ? `LOCATION DETAILS: ${location}` : ''}
+
+Generate the complete shooting script now.`;
+
+            let script = '';
+            let usedModel = aiModel;
+
+            // Route to Gemini
+            if (aiModel.startsWith('gemini') || !process.env.EXPLABS_API_KEY) {
+                let user;
+                try { user = await requireAuth(req); } catch (_) {}
+                const targetUserId = user ? user.id : req.body.userId;
+                const rawApiKey = await resolveGoogleApiKey(req, targetUserId);
+                const apiKey = (rawApiKey && rawApiKey !== 'VERTEX_AI_CLIENT') ? rawApiKey : (process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
+
+                if (apiKey) {
+                    const geminiRes = await callGeminiWithCascade(aiModel, `${systemPrompt}\n\n${userContent}`, apiKey, false);
+                    if (geminiRes && geminiRes.text) {
+                        script = geminiRes.text;
+                        usedModel = geminiRes.model;
+                    }
+                }
+            }
+
+            // Fallback / Route to Astra / OpenAI
+            if (!script && process.env.EXPLABS_API_KEY && openaiChat) {
+                try {
+                    const response = await openaiChat([
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userContent }
+                    ], aiModel === 'gpt-4o' ? 'gpt-4o' : 'gpt-6-astra', false);
+                    script = response?.trim() || '';
+                    usedModel = 'gpt-6-astra';
+                } catch (e) {
+                    console.warn('[DIRECTOR-GENERATE-SCRIPT] Astra call failed:', e.message);
+                }
+            }
+
+            if (!script) {
+                script = `TITLE: ${idea.slice(0, 40)}...\n\nLOGLINE: ${idea}\n\nSCENE 1 - INT/EXT - ESTABLISHING\nA sweeping cinematic wide shot captures the atmospheric environment. Soft directional lighting highlights subtle dust particles in the air.\n\nSCENE 2 - CLOSE-UP - THE REVEAL\nThe camera pushes in smoothly toward the subject, revealing intricate textures and dynamic reflections.\n\nSCENE 3 - CLIMAX & BRAND REVEAL\nAn orbit camera move captures the final hero composition with dramatic contrast and cinematic lens flare.`;
+            }
+
+            res.json({ success: true, script, model: usedModel });
+        } catch (err) {
+            console.error('[DIRECTOR-GENERATE-SCRIPT]', err);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // 🎬 Interactive "Vibe Directing" Co-Pilot Chat (Live Natural Language Storyboard & Settings Tweaks)
+    router.post('/director/chat', async (req, res) => {
+        try {
+            const { message, currentShots = [], currentSettings = {}, scriptText = '', activeScene = null, activeShot = null, activeShotIndex = null, aiModel = 'gemini-2.5-flash' } = req.body;
+            if (!message) return res.status(400).json({ error: "Message is required" });
+
+            const systemPrompt = `You are the Lead AI Co-Director & Storyboard Architect in ZeroLens AI Cinema Studio.
+You work side-by-side with human directors to refine scripts, storyboard shots, camera moves, lighting, aspect ratios, and resolutions in real time.
+
+When the user asks for changes, you MUST:
+1. Actively interpret their directorial command.
+2. If the user refers to "this shot", "current shot", or "here", apply modifications primarily to the active shot (or active scene).
+3. If they request aspect ratio (e.g. 16:9, 9:16, 1:1, 2.39:1, 4:3), resolution (e.g. 720p, 1080p, 4K), or duration, update the settings object accordingly.
+4. If they request changes to specific shots (lighting, camera movement, actions, mood, or new shots), update the shots array with refined prompts, cameraMotion, and titles.
+5. Strict Quality Rules: All shot prompts must enforce ZERO MORPHING, clean cinematic cut transitions, and photorealistic 24fps physical motion.
+6. Keep continuity tags like @char_..., @wardrobe_..., @prop_..., and @loc_... intact.
+7. Provide an insightful, punchy directorial reply explaining what was changed and why it enhances the cinematic vision.
+
+OUTPUT FORMAT REQUIREMENTS:
+Return STRICTLY valid JSON with no markdown formatting or fences:
+{
+  "reply": "Conversational explanation of the changes made as the AI Co-Director.",
+  "updatedSettings": {
+    "aspectRatio": "current or updated (16:9 | 9:16 | 1:1 | 2.39:1 | 4:3)",
+    "resolution": "current or updated (720p | 1080p | 4K)",
+    "videoDuration": "current or updated duration string"
+  },
+  "updatedShots": [
+    /* Complete array of updated shot objects */
+  ],
+  "suggestedNextSteps": [
+    "Quick 1-click suggestion 1",
+    "Quick 1-click suggestion 2"
+  ]
+}`;
+
+            const userContent = `USER DIRECTORIAL COMMAND:
+"${message}"
+
+TARGET CONTEXT:
+Active Scene: ${activeScene || 'All'}
+Active Shot Index: ${activeShotIndex !== null ? activeShotIndex + 1 : 'None specified'}
+Active Shot: ${activeShot ? JSON.stringify({ id: activeShot.id, title: activeShot.title, shotType: activeShot.shotType, cameraMotion: activeShot.cameraMotion, omniPrompt: activeShot.omniPrompt }) : 'None selected'}
+
+CURRENT PROJECT SETTINGS:
+${JSON.stringify(currentSettings, null, 2)}
+
+CURRENT SCRIPT CONTEXT:
+${scriptText || 'None'}
+
+CURRENT SHOTS ARRAY (${currentShots.length} shots):
+${JSON.stringify(currentShots.map(s => ({
+    id: s.id,
+    sceneNumber: s.sceneNumber,
+    shotNumber: s.shotNumber,
+    title: s.title,
+    shotType: s.shotType,
+    cameraMotion: s.cameraMotion,
+    duration: s.duration,
+    mode: s.mode,
+    characterTag: s.characterTag,
+    locationTag: s.locationTag,
+    wardrobeTag: s.wardrobeTag,
+    propTag: s.propTag,
+    omniPrompt: s.omniPrompt,
+    audioBeat: s.audioBeat
+})), null, 2)}
+
+Modify the storyboard, settings, or shots according to the user's command and return the JSON.`;
+
+            let result = null;
+
+            // Route to Gemini
+            if (aiModel.startsWith('gemini') || !process.env.EXPLABS_API_KEY) {
+                let user;
+                try { user = await requireAuth(req); } catch (_) {}
+                const targetUserId = user ? user.id : req.body.userId;
+                const rawApiKey = await resolveGoogleApiKey(req, targetUserId);
+                const apiKey = (rawApiKey && rawApiKey !== 'VERTEX_AI_CLIENT') ? rawApiKey : (process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
+
+                if (apiKey) {
+                    const geminiRes = await callGeminiWithCascade(aiModel, `${systemPrompt}\n\n${userContent}`, apiKey, true);
+                    if (geminiRes && geminiRes.text) {
+                        const jsonMatch = geminiRes.text.match(/\{[\s\S]*\}/);
+                        if (jsonMatch) {
+                            try {
+                                result = JSON.parse(jsonMatch[0]);
+                            } catch (_) {}
+                        }
+                    }
+                }
+            }
+
+            if (!result && process.env.EXPLABS_API_KEY && openaiChat) {
+                try {
+                    const rawResp = await openaiChat([
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userContent }
+                    ], aiModel === 'gpt-4o' ? 'gpt-4o' : 'gpt-6-astra', true);
+
+                    const jsonMatch = rawResp.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        result = JSON.parse(jsonMatch[0]);
+                    }
+                } catch (pe) {
+                    console.warn('[DIRECTOR-CHAT] Astra call/parse warning:', pe.message);
+                }
+            }
+
+            if (!result || !result.reply) {
+                result = {
+                    reply: `Understood! I've analyzed your direction: "${message}". Let's refine the shots to match your creative vision.`,
+                    updatedSettings: currentSettings,
+                    updatedShots: currentShots,
+                    suggestedNextSteps: ["Enhance volumetric lighting", "Add close-up hero shot"]
+                };
+            }
+
+            // Merge back runtime properties into updatedShots if preserved
+            if (Array.isArray(result.updatedShots) && result.updatedShots.length > 0) {
+                result.updatedShots = result.updatedShots.map((updatedShot, idx) => {
+                    const original = currentShots.find(s => s.id === updatedShot.id) || currentShots[idx] || {};
+                    return {
+                        ...original,
+                        ...updatedShot,
+                        id: updatedShot.id || original.id || `shot_${Date.now()}_${idx}`,
+                        status: original.status || 'idle',
+                        videoUrl: original.videoUrl || null,
+                        startFrame: original.startFrame || null,
+                        endFrame: original.endFrame || null
+                    };
+                });
+            } else {
+                result.updatedShots = currentShots;
+            }
+
+            res.json({
+                success: true,
+                model: 'gpt-6-astra',
+                reply: result.reply,
+                updatedSettings: result.updatedSettings || currentSettings,
+                updatedShots: result.updatedShots,
+                suggestedNextSteps: result.suggestedNextSteps || []
+            });
+        } catch (err) {
+            console.error('[DIRECTOR-CHAT-ERROR]', err);
+            res.status(500).json({ error: err.message });
         }
     });
 
@@ -122,8 +503,8 @@ export default function createRouter(deps) {
             } catch (_) {}
             const targetUserId = user ? user.id : req.body.userId;
             const rawApiKey = await resolveGoogleApiKey(req, targetUserId);
-            const apiKey = (rawApiKey && rawApiKey !== 'VERTEX_AI_CLIENT') ? rawApiKey : (process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
-            const projectId = process.env.GOOGLE_PROJECT_ID;
+            const apiKey = (rawApiKey && rawApiKey !== 'VERTEX_AI_CLIENT') ? rawApiKey : (process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
+            const projectId = process.env.NEW_GOOGLE_PROJECT_ID || process.env.GOOGLE_PROJECT_ID;
             const location = process.env.GOOGLE_LOCATION || 'us-central1';
 
             const prompt = `You are an expert scriptwriter and dialogue polisher. 
@@ -155,7 +536,7 @@ export default function createRouter(deps) {
 
             if (apiKey && apiKey.startsWith('AIza')) {
                 console.log(`[BACKEND] Suggesting dialogue via AI Studio REST (Gemini 2.5)...`);
-                const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
                 const resp = await fetch(url, {
                     method: 'POST',
                     headers: headers,
@@ -170,7 +551,7 @@ export default function createRouter(deps) {
                 textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
             } else {
                 console.log(`[BACKEND] Suggesting dialogue via Vertex AI Bearer...`);
-                const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/gemini-1.5-flash-latest:generateContent`;
+                const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/gemini-2.5-flash:generateContent`;
                 const resp = await fetch(url, {
                     method: 'POST',
                     headers: {
@@ -390,14 +771,28 @@ B. When generating a full Instagram carousel brief:
 
 Keep responses highly engaging, creative, proactive, and actionable. Output only the raw JSON.`;
 
-            const openaiResp = await fetch('https://api.openai.com/v1/chat/completions', {
+            const reqModel = req.body.model;
+            let apiUrl = 'https://api.openai.com/v1/chat/completions';
+            let apiKey = process.env.OPENAI_API_KEY;
+            let modelToUse = 'gpt-4o';
+
+            if (reqModel === 'gpt-6-astra') {
+                if (!process.env.EXPLABS_API_KEY) {
+                    return res.status(401).json({ error: 'EXPLABS_API_KEY is not set. Please create one under Settings -> API Keys and export it.' });
+                }
+                apiUrl = 'https://api.experientiallabs.ai/v1/chat/completions';
+                apiKey = process.env.EXPLABS_API_KEY;
+                modelToUse = 'gpt-6-astra';
+            }
+
+            const openaiResp = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+                    'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: 'gpt-4o',
+                    model: modelToUse,
                     messages: [
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: message }

@@ -1,5 +1,5 @@
 import express from 'express';
-import { fetchAllowedProxyResource, validateProxyUrl } from '../utils/safeProxy.js';
+
 
 export default function createRouter(deps) {
     const router = express.Router();
@@ -19,7 +19,7 @@ export default function createRouter(deps) {
 
     router.get('/test-key-image', async (req, res) => {
         try {
-            const apiKey = resolveGoogleApiKey(req) || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+            const apiKey = resolveGoogleApiKey(req) || process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
             
             // Test 1: Generate small text to see if API key is active
             const testTextUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
@@ -112,109 +112,7 @@ export default function createRouter(deps) {
         }
     });
 
-    // Proxy Remote Image/Video — bypasses CORS + fixes ERR_CACHE_OPERATION_NOT_SUPPORTED
-    // Supports HTTP Range requests so Chrome can seek/cache video streams properly.
-    router.get('/proxy-image', async (req, res) => {
-        try {
-            const { url } = req.query;
-            if (!url) {
-                return res.status(400).json({ error: 'url parameter is required' });
-            }
 
-            // Secure validation to prevent SSRF
-            const parsedUrl = await validateProxyUrl(url);
-            const finalUrl = parsedUrl.toString();
-
-            // Detect video by extension (needs Range + streaming support)
-            const isVideo = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(finalUrl);
-            const rangeHeader = req.headers['range'];
-
-            // Forward Range header to upstream if present
-            const upstreamHeaders = { 'User-Agent': 'ZerolensProxy/1.0' };
-            if (rangeHeader) upstreamHeaders['Range'] = rangeHeader;
-
-            let upstream;
-            let lastErr;
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    upstream = await fetch(finalUrl, {
-                        headers: upstreamHeaders,
-                        redirect: 'follow',
-                        timeout: 6000
-                    });
-                    if (upstream.ok || upstream.status === 206) {
-                        break;
-                    }
-                    if (attempt < 3) await new Promise(r => setTimeout(r, 600));
-                } catch (err) {
-                    lastErr = err;
-                    if (attempt < 3) await new Promise(r => setTimeout(r, 600));
-                }
-            }
-
-            if (!upstream || (!upstream.ok && upstream.status !== 206)) {
-                const status = upstream ? upstream.status : 500;
-                const statusText = upstream ? upstream.statusText : (lastErr ? lastErr.message : 'Unknown proxy fetch error');
-                console.error(`[Proxy Error]: Failed to fetch ${finalUrl} after 3 attempts. Status: ${status}, Error: ${statusText}`);
-                return res.status(status).json({ error: `Upstream error: ${statusText}` });
-            }
-
-            // CORS headers — always required
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-
-            const ct = upstream.headers.get('content-type') || (isVideo ? 'video/mp4' : 'application/octet-stream');
-            res.setHeader('Content-Type', ct);
-
-            // Force download if requested via query parameter
-            const downloadFilename = req.query.download;
-            if (downloadFilename) {
-                const encodedFilename = encodeURIComponent(downloadFilename);
-                res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`);
-            }
-
-            if (isVideo || rangeHeader) {
-                // ✅ Video streaming: Chrome requires Accept-Ranges + Content-Length to cache & seek
-                res.setHeader('Accept-Ranges', 'bytes');
-                const cl = upstream.headers.get('content-length');
-                if (cl) res.setHeader('Content-Length', cl);
-                const cr = upstream.headers.get('content-range');
-                if (cr) res.setHeader('Content-Range', cr);
-                res.setHeader('Cache-Control', 'public, max-age=3600');
-                res.status(upstream.status === 206 ? 206 : 200);
-
-                // Stream directly — handle both Node.js streams and Web ReadableStreams
-                if (upstream.body) {
-                    const stream = typeof upstream.body.pipe === 'function'
-                        ? upstream.body
-                        : (await import('stream')).Readable.fromWeb(upstream.body);
-                    stream.on('error', () => res.end());
-                    stream.pipe(res);
-                } else {
-                    res.end();
-                }
-            } else {
-                // Images / small assets — buffer and send
-                let buffer;
-                if (upstream.body && typeof upstream.body.pipe === 'function') {
-                    const chunks = [];
-                    for await (const chunk of upstream.body) {
-                        chunks.push(chunk);
-                    }
-                    buffer = Buffer.concat(chunks);
-                } else {
-                    buffer = Buffer.from(await upstream.arrayBuffer());
-                }
-                res.setHeader('Cache-Control', 'public, max-age=86400');
-                res.send(buffer);
-            }
-        } catch (err) {
-            console.error('[Proxy Error]:', err.message);
-            if (!res.headersSent) {
-                res.status(err.status || 500).json({ error: err.message });
-            }
-        }
-    });
 
     // Edit Image (Inpainting/Outpainting)
     router.post('/edit-image', async (req, res) => {

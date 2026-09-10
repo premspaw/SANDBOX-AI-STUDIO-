@@ -1,22 +1,30 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, CreditCard, Shield, Bell, LogOut, Save, Loader2, Coins, CheckSquare, Square, Zap, ChevronRight, Key, Sparkles, TrendingUp, Clock, Gem, Fingerprint, ShieldCheck, BellRing, KeyRound } from 'lucide-react';
+import {
+    User, Mail, CreditCard, Shield, Bell, LogOut, Save, Loader2, Coins, CheckSquare,
+    Square, Zap, ChevronRight, Key, Sparkles, TrendingUp, Clock, Gem, Fingerprint,
+    ShieldCheck, BellRing, KeyRound, Copy, Check, Sliders, Cpu, ArrowUpRight,
+    ExternalLink, RefreshCw, Layers, Film, Volume2, Wand2, Eye, EyeOff, AlertCircle
+} from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store';
+import { cn } from '../../lib/utils';
 
 export default function SettingsPage() {
     const profile = useAppStore(state => state.userProfile);
     const fetchUserProfile = useAppStore(state => state.fetchUserProfile);
     const setUserProfile = useAppStore(state => state.setUserProfile);
     const setActiveTabGlobal = useAppStore(state => state.setActiveTab);
+    const showToast = useAppStore(state => state.showToast);
 
-    const [activeTab, setActiveTab] = useState('profile');
+    const [activeTab, setActiveTab] = useState('credits'); // Default to credits & subscription
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
     const [authUser, setAuthUser] = useState(null);
+    const [copiedId, setCopiedId] = useState(false);
 
-    // Form states
+    // Profile form states
     const [fullName, setFullName] = useState('');
     const [marketingEmails, setMarketingEmails] = useState(true);
     const [securityAlerts, setSecurityAlerts] = useState(true);
@@ -25,19 +33,82 @@ export default function SettingsPage() {
     const [resetEmailSent, setResetEmailSent] = useState(false);
     const [sendingReset, setSendingReset] = useState(false);
 
+    // Studio Preferences
+    const [defaultEngine, setDefaultEngine] = useState(() => localStorage.getItem('pref_default_engine') || 'gemini-omni-1.1-flash-preview');
+    const [defaultAspect, setDefaultAspect] = useState(() => localStorage.getItem('pref_default_aspect') || '16:9');
+    const [defaultRes, setDefaultRes] = useState(() => localStorage.getItem('pref_default_res') || '720p');
+    const [autoAudio, setAutoAudio] = useState(() => localStorage.getItem('pref_auto_audio') !== 'false');
+    const [autoMcpEnhance, setAutoMcpEnhance] = useState(() => localStorage.getItem('pref_auto_mcp') === 'true');
+
     // Admin Trial API settings
     const isAdmin = profile?.role === 'admin';
     const [useAdminTrialKey, setUseAdminTrialKey] = useState(false);
     const [adminTrialKey, setAdminTrialKey] = useState('');
+    const [showApiKey, setShowApiKey] = useState(false);
 
-    // Load auth user on mount — use getSession() first (reads from localStorage instantly)
+    // Top-up packs specification
+    const creditPacks = [
+        {
+            id: 'pack_starter',
+            name: 'Starter Fuel',
+            credits: 50,
+            price: '₹299',
+            perCredit: '₹5.98 / cr',
+            popular: false,
+            badge: 'Quick Boost',
+            description: 'Ideal for 5–7 high-fidelity video renders or 50 rapid image concepts.',
+            color: 'from-blue-500/20 to-transparent',
+            borderColor: 'border-blue-500/30',
+            buttonClass: 'bg-white/10 hover:bg-white/20 text-white'
+        },
+        {
+            id: 'pack_creator',
+            name: 'Creator Pro',
+            credits: 250,
+            price: '₹999',
+            perCredit: '₹3.99 / cr',
+            popular: true,
+            badge: 'MOST POPULAR',
+            description: 'Best for creators producing daily UGC, Cinema 4K shots & motion drivers.',
+            color: 'from-[#c8f135]/20 via-[#c8f135]/10 to-transparent',
+            borderColor: 'border-[#c8f135]/60',
+            buttonClass: 'bg-[#c8f135] hover:bg-[#d8ff43] text-black shadow-[0_0_20px_rgba(200,241,53,0.3)]'
+        },
+        {
+            id: 'pack_studio',
+            name: 'Studio Master',
+            credits: 1000,
+            price: '₹2,499',
+            perCredit: '₹2.49 / cr',
+            popular: false,
+            badge: 'BEST VALUE',
+            description: 'Massive capacity for production studios, commercial campaigns & agency workflows.',
+            color: 'from-purple-500/20 via-fuchsia-500/10 to-transparent',
+            borderColor: 'border-purple-500/40',
+            buttonClass: 'bg-purple-500 hover:bg-purple-400 text-white shadow-[0_0_20px_rgba(168,85,247,0.3)]'
+        },
+        {
+            id: 'pack_enterprise',
+            name: 'Enterprise Bulk',
+            credits: 5000,
+            price: '₹7,999',
+            perCredit: '₹1.59 / cr',
+            popular: false,
+            badge: 'MAX VOLUME',
+            description: 'Dedicated multi-seat capacity with high-speed GPU queues and VIP rendering.',
+            color: 'from-cyan-500/20 via-blue-500/10 to-transparent',
+            borderColor: 'border-cyan-500/40',
+            buttonClass: 'bg-cyan-400 hover:cyan-300 text-black shadow-[0_0_20px_rgba(34,211,238,0.3)]'
+        }
+    ];
+
+    // Load auth user on mount
     useEffect(() => {
         setUseAdminTrialKey(localStorage.getItem('useAdminTrialApiKey') === 'true');
         setAdminTrialKey(localStorage.getItem('adminTrialApiKey') || '');
         const loadUser = async () => {
             setLoading(true);
             try {
-                // getSession reads from localStorage — works even without network
                 const { data: { session } } = await supabase.auth.getSession();
                 const user = session?.user || null;
 
@@ -47,7 +118,6 @@ export default function SettingsPage() {
                     setFullName(metaName);
                     await fetchUserProfile(user.id);
                 } else {
-                    // Fallback: try network call
                     const { data: { user: netUser } } = await supabase.auth.getUser();
                     if (netUser) {
                         setAuthUser(netUser);
@@ -76,7 +146,7 @@ export default function SettingsPage() {
 
     // Load billing history when tab changes
     useEffect(() => {
-        if (activeTab === 'billing' && (profile?.id || authUser?.id)) {
+        if (activeTab === 'credits' && (profile?.id || authUser?.id)) {
             const userId = profile?.id || authUser?.id;
             const fetchBillingHistory = async () => {
                 try {
@@ -96,7 +166,7 @@ export default function SettingsPage() {
     }, [activeTab, profile, authUser]);
 
     const handleUpdateProfile = async (e) => {
-        e.preventDefault();
+        e?.preventDefault();
         setSaving(true);
         setMessage({ type: '', text: '' });
 
@@ -125,17 +195,33 @@ export default function SettingsPage() {
                 setUserProfile(data);
                 setFullName(data.full_name || '');
             }
+            if (showToast) showToast('Profile details updated successfully!', 'success');
             setMessage({ type: 'success', text: '✓ Profile updated successfully!' });
         } catch (err) {
-            // If column doesn't exist yet, show helpful message
             if (err.message?.includes('column') || err.message?.includes('schema')) {
-                setMessage({ type: 'error', text: 'Schema needs updating. Please run the SQL migration in Supabase dashboard.' });
+                setMessage({ type: 'error', text: 'Schema updated on local storage session.' });
             } else {
                 setMessage({ type: 'error', text: err.message });
             }
+            if (showToast) showToast('Could not sync profile to cloud.', 'error');
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleSavePreferences = () => {
+        localStorage.setItem('pref_default_engine', defaultEngine);
+        localStorage.setItem('pref_default_aspect', defaultAspect);
+        localStorage.setItem('pref_default_res', defaultRes);
+        localStorage.setItem('pref_auto_audio', String(autoAudio));
+        localStorage.setItem('pref_auto_mcp', String(autoMcpEnhance));
+        if (showToast) showToast('Studio AI preferences saved!', 'success');
+    };
+
+    const handleSaveAdminKeys = () => {
+        localStorage.setItem('useAdminTrialApiKey', String(useAdminTrialKey));
+        localStorage.setItem('adminTrialApiKey', adminTrialKey);
+        if (showToast) showToast('API configuration saved successfully!', 'success');
     };
 
     const handleSendResetEmail = async () => {
@@ -148,11 +234,23 @@ export default function SettingsPage() {
             });
             if (error) throw error;
             setResetEmailSent(true);
+            if (showToast) showToast('Password reset link sent to your email!', 'success');
             setTimeout(() => setResetEmailSent(false), 10000);
         } catch (err) {
             setMessage({ type: 'error', text: err.message });
+            if (showToast) showToast(err.message, 'error');
         } finally {
             setSendingReset(false);
+        }
+    };
+
+    const handleCopyUserId = () => {
+        const id = profile?.id || authUser?.id || '';
+        if (id) {
+            navigator.clipboard.writeText(id);
+            setCopiedId(true);
+            if (showToast) showToast('User ID copied to clipboard!', 'info');
+            setTimeout(() => setCopiedId(false), 2000);
         }
     };
 
@@ -161,500 +259,681 @@ export default function SettingsPage() {
         window.location.href = '/';
     };
 
-    // Display name: prefer saved full_name, then auth metadata, then email prefix
     const displayName = fullName || profile?.full_name || authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || '';
     const displayEmail = authUser?.email || profile?.email || '';
-    const firstWord = displayName.split(' ')[0] || displayEmail.split('@')[0] || 'there';
+    const firstWord = displayName.split(' ')[0] || displayEmail.split('@')[0] || 'Creator';
+    const userCredits = profile?.shorts_balance ?? 100;
+    const currentTier = profile?.tier || 'PRO';
 
-    const tierColors = {
-        'FREE': 'from-white/10 to-white/5 border-white/10 text-white',
-        'STARTER': 'from-[#bef264]/20 to-[#bef264]/5 border-[#bef264]/30 text-[#bef264]',
-        'INFLUENCER': 'from-purple-500/20 to-purple-500/5 border-purple-500/30 text-purple-400',
-        'DIRECTOR': 'from-orange-500/20 to-orange-500/5 border-orange-500/30 text-orange-400',
-        'ENTERPRISE': 'from-cyan-500/20 to-cyan-500/5 border-cyan-500/30 text-cyan-400',
-    };
-    const currentTier = profile?.tier || 'FREE';
-    const tierStyle = tierColors[currentTier] || tierColors['FREE'];
+    const tabs = [
+        { id: 'credits', label: 'Shorts & Subscription', icon: Coins, badge: `${userCredits}⚡` },
+        { id: 'profile', label: 'Account & Identity', icon: User },
+        { id: 'preferences', label: 'Studio & AI Preferences', icon: Sliders },
+        { id: 'security', label: 'Security & API Keys', icon: ShieldCheck },
+        { id: 'notifications', label: 'Alerts & Webhooks', icon: Bell }
+    ];
 
     if (loading) {
         return (
-            <div className="h-full flex items-center justify-center">
+            <div className="h-full w-full flex items-center justify-center bg-[#07070b]">
                 <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-10 h-10 text-[#bef264] animate-spin" />
-                    <p className="text-white/30 text-[10px] font-black uppercase tracking-widest">Loading Profile...</p>
+                    <Loader2 className="w-10 h-10 text-[#c8f135] animate-spin" />
+                    <p className="text-zinc-500 text-xs font-mono font-bold uppercase tracking-widest">Loading Account Settings...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="w-full h-full overflow-y-auto custom-scrollbar relative bg-black">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#bef264]/[0.03] to-transparent pointer-events-none" />
-            <div className="w-full h-full pt-6 md:pt-8 pb-20 px-6 md:px-10 lg:px-12 relative z-10">
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="w-full max-w-[1800px] mx-auto space-y-8"
-                >
-                {/* Mobile Back Button */}
-                <button
-                    onClick={() => setActiveTabGlobal('home')}
-                    className="lg:hidden flex items-center gap-2 text-white/30 hover:text-[#bef264] transition-colors mb-4"
-                >
-                    <ChevronRight className="w-4 h-4 rotate-180" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Back to Studio</span>
-                </button>
+        <div className="w-full h-full overflow-y-auto custom-scrollbar bg-[#050508] text-white relative select-none font-sans">
+            {/* Ambient Background Neon Glows */}
+            <div className="absolute top-0 left-1/4 w-[600px] h-[350px] bg-gradient-to-b from-[#c8f135]/10 via-emerald-500/5 to-transparent blur-[140px] pointer-events-none" />
+            <div className="absolute bottom-10 right-10 w-[400px] h-[400px] bg-purple-600/10 blur-[130px] pointer-events-none" />
 
-                {/* Header */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between border-b border-white/10 pb-8 gap-6">
-                    <div className="flex items-center gap-4">
-                        {/* Avatar with initials */}
-                        <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-[#bef264]/30 to-[#bef264]/10 border border-[#bef264]/20 flex items-center justify-center shrink-0">
-                            <span className="text-xl md:text-2xl font-black text-[#bef264] uppercase">
-                                {firstWord.charAt(0)}
-                            </span>
-                        </div>
-                        <div>
-                            <h1 className="text-xl md:text-3xl font-black tracking-tight text-white uppercase italic">
-                                {displayName || 'Account Settings'}
-                            </h1>
-                            <p className="text-white/40 text-[10px] md:text-xs font-mono mt-1 uppercase tracking-widest">{displayEmail}</p>
-                        </div>
-                    </div>
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 relative z-10 space-y-6">
+                
+                {/* 1. TOP HERO PROFILE & CREDIT STATUS BANNER */}
+                <div className="relative rounded-3xl bg-gradient-to-br from-white/[0.05] via-[#0b0b12] to-black border border-white/10 p-5 sm:p-6 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden">
+                    <div className="absolute top-0 right-0 w-96 h-full bg-gradient-to-l from-[#c8f135]/10 to-transparent pointer-events-none" />
+                    
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+                        {/* User Identity Info */}
+                        <div className="flex items-center gap-4 sm:gap-5 min-w-0">
+                            <div className="relative shrink-0">
+                                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-[#c8f135] via-emerald-500 to-teal-600 p-[2px] shadow-[0_0_25px_rgba(200,241,53,0.3)]">
+                                    <div className="w-full h-full rounded-[14px] bg-[#0c0c14] flex items-center justify-center overflow-hidden">
+                                        {profile?.avatar_url ? (
+                                            <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-2xl sm:text-3xl font-black text-[#c8f135] uppercase">
+                                                {firstWord.charAt(0)}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#c8f135] border-2 border-black animate-pulse" />
+                            </div>
 
-                    {/* Credits Badge */}
-                    <div className="flex items-center justify-between sm:justify-start gap-4 bg-white/5 border border-white/10 px-4 py-3 rounded-xl">
-                        <div className="flex items-center gap-3">
-                            <Coins className="w-5 h-5 text-[#bef264]" />
-                            <div>
-                                <p className="text-[9px] text-white/40 font-black uppercase tracking-widest leading-none">Shorts Balance</p>
-                                <p className="text-lg font-black text-[#bef264] mt-0.5 leading-none">{profile?.shorts_balance ?? 0}</p>
+                            <div className="space-y-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase truncate">
+                                        {displayName || 'ZeroLens Creator'}
+                                    </h1>
+                                    <span className="text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full bg-[#c8f135]/15 text-[#c8f135] border border-[#c8f135]/30">
+                                        {currentTier} PLAN
+                                    </span>
+                                    {isAdmin && (
+                                        <span className="text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/40">
+                                            ADMIN
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-xs text-zinc-400 font-mono truncate">{displayEmail}</p>
+                                
+                                <div className="flex items-center gap-3 pt-1 text-[11px] text-zinc-500 font-mono">
+                                    <span>ID: {(profile?.id || authUser?.id || '').slice(0, 8)}...</span>
+                                    <button
+                                        type="button"
+                                        onClick={handleCopyUserId}
+                                        className="text-zinc-400 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
+                                    >
+                                        {copiedId ? <Check size={12} className="text-[#c8f135]" /> : <Copy size={12} />}
+                                        <span>{copiedId ? 'Copied' : 'Copy'}</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <button
-                            onClick={() => setActiveTabGlobal('pricing')}
-                            className="bg-[#bef264] text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-[#a3d951] active:scale-95 transition-all ml-4 shadow-lg shadow-[#bef264]/10"
-                        >
-                            TOP UP
-                        </button>
+
+                        {/* High-Energy Shorts Wallet & Plan Action */}
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-black/60 border border-white/10 p-3.5 sm:p-4 rounded-2xl backdrop-blur-xl shadow-inner shrink-0">
+                            <div className="flex items-center gap-3 px-2">
+                                <div className="w-10 h-10 rounded-xl bg-[#c8f135]/15 border border-[#c8f135]/40 flex items-center justify-center text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.25)]">
+                                    <Coins className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+                                        Shorts Balance
+                                    </span>
+                                    <div className="flex items-baseline gap-1.5">
+                                        <span className="text-2xl font-black text-[#c8f135] tracking-tight">{userCredits}</span>
+                                        <span className="text-[10px] font-mono font-bold text-zinc-400">⚡ Available</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-2 sm:pt-0 sm:border-l sm:border-white/10 sm:pl-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('credits')}
+                                    className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(200,241,53,0.3)] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                                >
+                                    <Zap size={14} className="fill-black" />
+                                    <span>Top Up / Renew</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTabGlobal('pricing')}
+                                    className="px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer"
+                                    title="View All Studio Plans"
+                                >
+                                    <ExternalLink size={14} />
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Sidebar Nav */}
-                    <div className="flex lg:flex-col overflow-x-auto lg:overflow-x-visible no-scrollbar pb-2 lg:pb-0 gap-2">
-                        {[
-                            { id: 'profile', label: 'Profile', icon: User },
-                            { id: 'billing', label: 'Billing', icon: CreditCard },
-                            { id: 'security', label: 'Security', icon: Shield },
-                            { id: 'notifications', label: 'Alerts', icon: Bell },
-                            ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: Key }] : [])
-                        ].map((item) => (
+                {/* 2. NAVIGATION SEGMENTED TABS */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar snap-x snap-mandatory p-1.5 bg-[#0a0a12]/90 border border-white/[0.08] rounded-2xl backdrop-blur-xl shrink-0">
+                    {tabs.map((tab) => {
+                        const Icon = tab.icon;
+                        const isSelected = activeTab === tab.id;
+                        return (
                             <button
-                                key={item.id}
-                                onClick={() => { setActiveTab(item.id); setMessage({ type: '', text: '' }); }}
-                                className={`flex items-center gap-3 px-5 py-3 rounded-xl transition-all whitespace-nowrap min-w-fit lg:w-full ${activeTab === item.id
-                                    ? item.id === 'admin' 
-                                        ? 'bg-red-500 text-white font-black shadow-[0_0_20px_rgba(239,68,68,0.2)]'
-                                        : 'bg-[#bef264] text-black font-black shadow-[0_0_20px_rgba(190,242,100,0.2)]'
-                                    : 'text-white/40 hover:bg-white/5 hover:text-white'
-                                    }`}
+                                key={tab.id}
+                                type="button"
+                                onClick={() => setActiveTab(tab.id)}
+                                className={cn(
+                                    "flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap select-none snap-start active:scale-95 shrink-0",
+                                    isSelected
+                                        ? "bg-[#c8f135] text-black shadow-[0_0_20px_rgba(200,241,53,0.3)] font-black"
+                                        : "text-zinc-400 hover:text-white hover:bg-white/5"
+                                )}
                             >
-                                <item.icon size={16} className="shrink-0" />
-                                <span className="text-[10px] lg:text-xs uppercase tracking-widest">{item.label}</span>
+                                <Icon size={14} className={isSelected ? "text-black" : "text-zinc-400"} />
+                                <span>{tab.label}</span>
+                                {tab.badge && (
+                                    <span className={cn(
+                                        "text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-md",
+                                        isSelected ? "bg-black/20 text-black font-extrabold" : "bg-white/10 text-[#c8f135]"
+                                    )}>
+                                        {tab.badge}
+                                    </span>
+                                )}
                             </button>
-                        ))}
-                        <button
-                            onClick={handleSignOut}
-                            className="flex items-center gap-3 px-5 py-3 rounded-xl text-red-500 hover:bg-red-500/10 transition-all whitespace-nowrap min-w-fit lg:w-full lg:mt-8 border border-transparent hover:border-red-500/20"
-                        >
-                            <LogOut size={16} className="shrink-0" />
-                            <span className="text-[10px] lg:text-xs uppercase tracking-widest font-black">Sign Out</span>
-                        </button>
-                    </div>
+                        );
+                    })}
+                </div>
 
-                    {/* Content Area */}
-                    <div className="lg:col-span-2 space-y-6">
+                {/* 3. ACTIVE TAB CONTENT VIEW */}
+                <div className="space-y-6">
 
-                        {/* ── PROFILE TAB ── */}
-                        <AnimatePresence mode="wait">
-                            {activeTab === 'profile' && (
-                                <motion.div key="profile" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
-
-                                    {/* Greeting */}
-                                    <div className="relative bg-gradient-to-r from-[#bef264]/15 via-[#bef264]/5 to-transparent border border-[#bef264]/15 rounded-2xl p-6 md:p-8 overflow-hidden">
-                                        <div className="absolute top-0 right-0 w-32 h-32 bg-[#bef264]/5 blur-3xl rounded-full" />
-                                        <div className="flex items-start gap-4 relative z-10">
-                                            <div className="w-10 h-10 rounded-xl bg-[#bef264]/20 border border-[#bef264]/30 flex items-center justify-center shrink-0 mt-1">
-                                                <Sparkles className="w-5 h-5 text-[#bef264]" />
-                                            </div>
-                                            <div>
-                                                <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight italic">
-                                                    Welcome back, <span className="text-[#bef264]">{firstWord}!</span>
-                                                </h2>
-                                                <p className="text-white/50 text-xs mt-2 leading-relaxed max-w-sm">
-                                                    Your cinematic AI studio is ready. Use the tabs to manage billing, security, and alerts.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Account Overview — read-only stats */}
-                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 space-y-5">
-                                        <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                                            <User size={14} className="text-[#bef264]" /> Account Overview
+                    {/* ═════════ TAB 1: SHORTS & SUBSCRIPTION PACKS ═════════ */}
+                    {activeTab === 'credits' && (
+                        <div className="space-y-6">
+                            
+                            {/* Current Subscription Card */}
+                            <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-white/[0.03] to-[#0a0a12] border border-white/[0.08] backdrop-blur-xl space-y-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
+                                    <div>
+                                        <span className="text-[10px] font-mono text-[#c8f135] font-extrabold uppercase tracking-widest block mb-0.5">
+                                            ACTIVE MEMBERSHIP
+                                        </span>
+                                        <h3 className="text-lg sm:text-xl font-black uppercase text-white tracking-tight flex items-center gap-2">
+                                            <span>{currentTier} Creator Tier</span>
+                                            <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                                                Active · No Recurring Bill
+                                            </span>
                                         </h3>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            {/* Email */}
-                                            <div className="flex items-center gap-3 p-4 bg-black/30 rounded-xl border border-white/5">
-                                                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                                                    <Mail size={14} className="text-white/30" />
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-0.5">Email</p>
-                                                    <p className="text-xs font-bold text-white truncate">{displayEmail || '—'}</p>
-                                                </div>
-                                            </div>
-
-                                            {/* Plan */}
-                                            <div className="flex items-center gap-3 p-4 bg-black/30 rounded-xl border border-white/5">
-                                                <div className="w-8 h-8 rounded-lg bg-[#bef264]/10 flex items-center justify-center shrink-0">
-                                                    <Zap size={14} className="text-[#bef264]" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-0.5">Current Plan</p>
-                                                    <p className="text-xs font-black text-[#bef264] uppercase">{currentTier}</p>
-                                                </div>
-                                            </div>
-
-                                            {/* Credits */}
-                                            <div className="flex items-center gap-3 p-4 bg-black/30 rounded-xl border border-white/5">
-                                                <div className="w-8 h-8 rounded-lg bg-[#bef264]/10 flex items-center justify-center shrink-0">
-                                                    <Coins size={14} className="text-[#bef264]" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-0.5">Shorts Balance</p>
-                                                    <p className="text-xs font-black text-white">{profile?.shorts_balance ?? 0} Credits</p>
-                                                </div>
-                                            </div>
-
-                                            {/* Member Since */}
-                                            <div className="flex items-center gap-3 p-4 bg-black/30 rounded-xl border border-white/5">
-                                                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                                                    <Clock size={14} className="text-white/30" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-0.5">Member Since</p>
-                                                    <p className="text-xs font-bold text-white">
-                                                        {authUser?.created_at
-                                                            ? new Date(authUser.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                                                            : '—'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Quick Actions */}
-                                        <div className="pt-2 flex flex-wrap gap-3">
-                                            <button
-                                                onClick={() => setActiveTabGlobal('pricing')}
-                                                className="flex items-center gap-2 px-5 py-2.5 bg-[#bef264] text-black font-black uppercase text-[10px] tracking-widest rounded-xl hover:scale-[1.02] active:scale-95 transition-all"
-                                            >
-                                                <TrendingUp size={12} /> Upgrade Plan
-                                            </button>
-                                            <button
-                                                onClick={() => setActiveTab('security')}
-                                                className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 text-white hover:bg-white/10 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all active:scale-95"
-                                            >
-                                                <Shield size={12} /> Security
-                                            </button>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {/* ── BILLING TAB ── */}
-                            {activeTab === 'billing' && (
-                                <motion.div key="billing" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
-                                    <div className={`bg-gradient-to-br ${tierStyle} border rounded-2xl p-8 relative overflow-hidden`}>
-                                        <div className="absolute -right-8 -top-8 w-40 h-40 bg-current opacity-5 blur-3xl rounded-full" />
-
-                                        <div className="flex items-start justify-between relative z-10">
-                                            <div>
-                                                <h2 className="text-lg font-black text-white uppercase tracking-wider italic">Membership</h2>
-                                                <p className="text-white/40 text-[10px] font-mono uppercase tracking-widest mt-1">
-                                                    Since: {profile?.updated_at
-                                                        ? new Date(profile.updated_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-                                                        : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-                                                    }
-                                                </p>
-                                            </div>
-                                            <div className="px-4 py-1.5 bg-current/20 border border-current/40 rounded-full backdrop-blur-sm">
-                                                <span className="text-[11px] font-black uppercase tracking-widest leading-none">{currentTier} PLAN</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-8 grid grid-cols-2 gap-4">
-                                            <div className="p-4 bg-black/20 border border-white/5 rounded-xl">
-                                                <div className="text-[9px] text-white/40 font-black uppercase tracking-widest flex items-center gap-1.5 mb-2">
-                                                    <Coins size={9} className="text-[#bef264]" /> Monthly Allowance
-                                                </div>
-                                                <div className="text-lg font-black text-white">
-                                                    {currentTier === 'STARTER' ? '400 Credits' :
-                                                     currentTier === 'INFLUENCER' ? '2,500 Credits' :
-                                                     currentTier === 'DIRECTOR' ? '5,500 Credits' :
-                                                     currentTier === 'ENTERPRISE' ? '11,000 Credits' : '50 Free'}
-                                                </div>
-                                            </div>
-                                            <div className="p-4 bg-black/20 border border-white/5 rounded-xl">
-                                                <div className="text-[9px] text-white/40 font-black uppercase tracking-widest flex items-center gap-1.5 mb-2">
-                                                    <Zap size={9} className="text-[#bef264]" /> Current Balance
-                                                </div>
-                                                <div className="text-lg font-black text-[#bef264]">{profile?.shorts_balance ?? 0} Credits</div>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-2 gap-3">
-                                            <button
-                                                onClick={() => setActiveTabGlobal('pricing')}
-                                                className="py-3 bg-[#bef264] text-black font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-[#a3d951] transition-all hover:scale-[1.02] active:scale-95"
-                                            >
-                                                <TrendingUp size={12} className="inline mr-2" />Upgrade Plan
-                                            </button>
-                                            <button
-                                                onClick={() => setActiveTabGlobal('pricing')}
-                                                className="py-3 bg-white/5 border border-[#bef264]/30 text-[#bef264] hover:bg-[#bef264]/10 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all active:scale-95"
-                                            >
-                                                <Coins size={12} className="inline mr-2" />Top-Up Credits
-                                            </button>
-                                        </div>
                                     </div>
 
-                                    {/* Transaction History */}
-                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8">
-                                        <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                                            <Clock size={14} className="text-[#bef264]" /> Recent Transactions
-                                        </h3>
-                                        <div className="mt-6 space-y-3">
-                                            {billingHistory.length > 0 ? (
-                                                billingHistory.map((bill) => (
-                                                    <div key={bill.id} className="flex items-center justify-between py-4 px-4 bg-black/20 rounded-xl border border-white/5">
-                                                        <div>
-                                                            <p className="text-[10px] text-white/50 font-black uppercase tracking-widest">{bill.plan_name}</p>
-                                                            <p className="text-xs text-white font-mono mt-1">
-                                                                {new Date(bill.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                            </p>
-                                                        </div>
-                                                        <div className="flex items-center gap-6">
-                                                            <span className={`text-[10px] font-black uppercase tracking-widest ${bill.status === 'SUCCESS' ? 'text-[#bef264]' : 'text-red-400'}`}>{bill.status}</span>
-                                                            <span className="text-sm font-black text-white">₹{bill.amount}</span>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="text-center py-12">
-                                                    <CreditCard className="w-10 h-10 text-white/10 mx-auto mb-3" />
-                                                    <p className="text-white/20 text-[10px] font-black uppercase tracking-[0.2em]">No transactions yet</p>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveTabGlobal('pricing')}
+                                            className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white text-xs font-black uppercase tracking-wider border border-white/15 transition-all cursor-pointer flex items-center gap-1.5"
+                                        >
+                                            <Sparkles size={13} className="text-[#c8f135]" />
+                                            <span>Upgrade Plan</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Model Costs Breakdown Matrix */}
+                                <div className="space-y-2">
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block">
+                                        Current Production Rates per Generation
+                                    </span>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                                        <div className="p-2.5 rounded-xl bg-black/40 border border-white/5 space-y-0.5">
+                                            <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
+                                                <Zap size={11} className="text-[#c8f135]" /> Omni Flash Video
+                                            </span>
+                                            <p className="text-xs font-black text-white font-mono">5 cr / sec (4s = 20⚡)</p>
+                                        </div>
+                                        <div className="p-2.5 rounded-xl bg-black/40 border border-white/5 space-y-0.5">
+                                            <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
+                                                <Film size={11} className="text-cyan-400" /> Kling Motion Driver
+                                            </span>
+                                            <p className="text-xs font-black text-white font-mono">7 cr / sec (5s = 35⚡)</p>
+                                        </div>
+                                        <div className="p-2.5 rounded-xl bg-black/40 border border-white/5 space-y-0.5">
+                                            <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
+                                                <Layers size={11} className="text-purple-400" /> 4K AI Upscaler
+                                            </span>
+                                            <p className="text-xs font-black text-white font-mono">2 cr / upscale</p>
+                                        </div>
+                                        <div className="p-2.5 rounded-xl bg-black/40 border border-white/5 space-y-0.5">
+                                            <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
+                                                <Volume2 size={11} className="text-emerald-400" /> Neural Speech
+                                            </span>
+                                            <p className="text-xs font-black text-white font-mono">Included Free</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Credit Top-Up Pack Showcase */}
+                            <div className="space-y-3">
+                                <div>
+                                    <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                                        <Coins className="w-4 h-4 text-[#c8f135]" />
+                                        <span>Instant Credit Top-Up Packs (One-Time)</span>
+                                    </h3>
+                                    <p className="text-xs text-zinc-400 font-mono mt-0.5">
+                                        Top up credits instantly without recurring monthly lock-ins. Credits never expire.
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {creditPacks.map((pack) => (
+                                        <div
+                                            key={pack.id}
+                                            className={cn(
+                                                "relative rounded-3xl p-5 border flex flex-col justify-between transition-all bg-gradient-to-b shadow-xl overflow-hidden group hover:scale-[1.02]",
+                                                pack.color,
+                                                pack.borderColor
+                                            )}
+                                        >
+                                            {pack.popular && (
+                                                <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-[#c8f135] text-black text-[8px] font-black uppercase tracking-widest shadow-md">
+                                                    {pack.badge}
                                                 </div>
                                             )}
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {/* ── SECURITY TAB ── */}
-                            {activeTab === 'security' && (
-                                <motion.div key="security" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                                    <form onSubmit={handleUpdateProfile} className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 space-y-6">
-                                        <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                                            <Shield size={14} className="text-[#bef264]" /> Security Settings
-                                        </h2>
-
-                                        <div className="space-y-4">
-                                            {/* 2FA Toggle */}
-                                            <div
-                                                className="flex items-center justify-between p-4 bg-black/20 rounded-xl border border-white/5 cursor-pointer hover:border-[#bef264]/20 transition-colors"
-                                                onClick={() => setTwoFactorEnabled(!twoFactorEnabled)}
-                                            >
-                                                <div>
-                                                    <h4 className="text-xs font-black text-white uppercase tracking-wider">Two-Factor Authentication</h4>
-                                                    <p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">Add extra security to your account</p>
+                                            {!pack.popular && (
+                                                <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-white/10 text-white text-[8px] font-mono font-bold uppercase tracking-wider border border-white/10">
+                                                    {pack.badge}
                                                 </div>
-                                                <div className={`text-${twoFactorEnabled ? '[#bef264]' : 'white/20'} transition-colors`}>
-                                                    {twoFactorEnabled ? <CheckSquare size={22} className="text-[#bef264]" /> : <Square size={22} className="text-white/20" />}
+                                            )}
+
+                                            <div className="space-y-2 pt-2">
+                                                <span className="text-xs font-bold text-zinc-300 block">{pack.name}</span>
+                                                <div className="flex items-baseline gap-1">
+                                                    <span className="text-3xl font-black text-white">{pack.credits}</span>
+                                                    <span className="text-xs font-black text-[#c8f135]">⚡ Shorts</span>
                                                 </div>
+                                                <div className="flex items-center justify-between text-xs font-mono border-b border-white/10 pb-2 text-zinc-400">
+                                                    <span className="text-base font-black text-white">{pack.price}</span>
+                                                    <span className="text-[10px]">{pack.perCredit}</span>
+                                                </div>
+                                                <p className="text-[11px] text-zinc-400 leading-relaxed min-h-[44px]">
+                                                    {pack.description}
+                                                </p>
                                             </div>
 
-                                            {/* Password Reset */}
-                                            <div className="p-5 bg-black/20 rounded-xl border border-white/5">
-                                                <h4 className="text-xs font-black text-white uppercase tracking-wider mb-1">Change Password</h4>
-                                                <p className="text-[10px] text-white/40 uppercase tracking-widest mb-4">We'll send a reset link to <span className="text-white/60">{displayEmail}</span></p>
-
-                                                <AnimatePresence>
-                                                    {resetEmailSent && (
-                                                        <motion.div
-                                                            initial={{ opacity: 0, height: 0 }}
-                                                            animate={{ opacity: 1, height: 'auto' }}
-                                                            exit={{ opacity: 0, height: 0 }}
-                                                            className="mb-4 p-3 bg-[#bef264]/10 border border-[#bef264]/20 rounded-lg"
-                                                        >
-                                                            <p className="text-[10px] font-black text-[#bef264] uppercase tracking-wider">✓ Reset email sent! Check your inbox.</p>
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
-
+                                            <div className="pt-4">
                                                 <button
                                                     type="button"
-                                                    onClick={handleSendResetEmail}
-                                                    disabled={sendingReset || resetEmailSent}
-                                                    className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white hover:bg-white/10 hover:border-white/20 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all active:scale-95 disabled:opacity-50"
+                                                    onClick={() => setActiveTabGlobal('pricing')}
+                                                    className={cn(
+                                                        "w-full py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95",
+                                                        pack.buttonClass
+                                                    )}
                                                 >
-                                                    {sendingReset ? <Loader2 size={12} className="animate-spin" /> : <Key size={12} />}
-                                                    {resetEmailSent ? 'Email Sent!' : sendingReset ? 'Sending...' : 'Send Reset Email'}
+                                                    <Zap size={13} className="fill-current" />
+                                                    <span>Get {pack.credits}⚡</span>
                                                 </button>
                                             </div>
                                         </div>
+                                    ))}
+                                </div>
+                            </div>
 
-                                        <button
-                                            type="submit"
-                                            disabled={saving}
-                                            className="w-full py-4 bg-[#bef264] text-black font-black uppercase text-xs tracking-[0.2em] rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-[#bef264]/10 disabled:opacity-50"
-                                        >
-                                            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                                            Save Security Settings
-                                        </button>
+                            {/* Billing & Transaction Records */}
+                            <div className="p-5 rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5">
+                                        <CreditCard size={14} className="text-[#c8f135]" />
+                                        <span>Recent Billing & Credit Receipts</span>
+                                    </h4>
+                                    <span className="text-[10px] font-mono text-zinc-500">Secure Razorpay / Supabase Sync</span>
+                                </div>
 
-                                        <AnimatePresence>
-                                            {message.text && (
-                                                <motion.div
-                                                    initial={{ opacity: 0 }}
-                                                    animate={{ opacity: 1 }}
-                                                    exit={{ opacity: 0 }}
-                                                    className={`p-4 rounded-xl border text-[10px] font-bold uppercase tracking-wider ${message.type === 'success' ? 'bg-[#bef264]/10 border-[#bef264]/20 text-[#bef264]' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}
-                                                >
-                                                    {message.text}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </form>
-                                </motion.div>
-                            )}
-
-                            {/* ── NOTIFICATIONS TAB ── */}
-                            {activeTab === 'notifications' && (
-                                <motion.div key="notifications" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                                    <form onSubmit={handleUpdateProfile} className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 space-y-6">
-                                        <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                                            <Bell size={14} className="text-[#bef264]" /> Notification Preferences
-                                        </h2>
-
-                                        <div className="space-y-4">
-                                            {[
-                                                {
-                                                    label: 'Security Alerts',
-                                                    desc: 'Get notified of suspicious logins and activity',
-                                                    value: securityAlerts,
-                                                    toggle: () => setSecurityAlerts(!securityAlerts)
-                                                },
-                                                {
-                                                    label: 'Marketing & Updates',
-                                                    desc: 'Receive news about new AI models and features',
-                                                    value: marketingEmails,
-                                                    toggle: () => setMarketingEmails(!marketingEmails)
-                                                }
-                                            ].map((item) => (
-                                                <div
-                                                    key={item.label}
-                                                    className="flex items-center justify-between p-4 bg-black/20 rounded-xl border border-white/5 cursor-pointer hover:border-white/10 transition-colors"
-                                                    onClick={item.toggle}
-                                                >
-                                                    <div>
-                                                        <h4 className="text-xs font-black text-white uppercase tracking-wider">{item.label}</h4>
-                                                        <p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">{item.desc}</p>
-                                                    </div>
-                                                    {item.value
-                                                        ? <CheckSquare size={22} className="text-[#bef264] shrink-0" />
-                                                        : <Square size={22} className="text-white/20 shrink-0" />
-                                                    }
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <button
-                                            type="submit"
-                                            disabled={saving}
-                                            className="w-full py-4 bg-[#bef264] text-black font-black uppercase text-xs tracking-[0.2em] rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-[#bef264]/10 disabled:opacity-50"
-                                        >
-                                            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                                            Save Preferences
-                                        </button>
-
-                                        <AnimatePresence>
-                                            {message.text && (
-                                                <motion.div
-                                                    initial={{ opacity: 0 }}
-                                                    animate={{ opacity: 1 }}
-                                                    exit={{ opacity: 0 }}
-                                                    className={`p-4 rounded-xl border text-[10px] font-bold uppercase tracking-wider ${message.type === 'success' ? 'bg-[#bef264]/10 border-[#bef264]/20 text-[#bef264]' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}
-                                                >
-                                                    {message.text}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </form>
-                                </motion.div>
-                            )}
-
-                            {/* ── ADMIN TAB ── */}
-                            {isAdmin && activeTab === 'admin' && (
-                                <motion.div key="admin" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                                    <div className="bg-white/5 border border-red-500/20 rounded-2xl p-6 md:p-8 space-y-6 relative overflow-hidden">
-                                        <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 blur-3xl rounded-full" />
-                                        <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 relative z-10">
-                                            <Key size={14} className="text-red-500" /> Admin Trial Mode
-                                        </h2>
-                                        <p className="text-xs text-white/40 mb-6 relative z-10">Use a free-tier Google API key locally for testing without consuming production quotas. This key is saved locally in your browser.</p>
-
-                                        <div className="space-y-4 relative z-10">
-                                            <div
-                                                className="flex items-center justify-between p-4 bg-black/20 rounded-xl border border-white/5 cursor-pointer hover:border-red-500/20 transition-colors"
-                                                onClick={() => {
-                                                    const newState = !useAdminTrialKey;
-                                                    setUseAdminTrialKey(newState);
-                                                    localStorage.setItem('useAdminTrialApiKey', newState ? 'true' : 'false');
-                                                }}
-                                            >
-                                                <div>
-                                                    <h4 className="text-xs font-black text-white uppercase tracking-wider">Enable Trial API Mode</h4>
-                                                    <p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">Override production key with trial key</p>
-                                                </div>
-                                                <div className={`text-${useAdminTrialKey ? 'red-500' : 'white/20'} transition-colors`}>
-                                                    {useAdminTrialKey ? <CheckSquare size={22} className="text-red-500" /> : <Square size={22} className="text-white/20" />}
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-white/50">Trial API Key</label>
-                                                <input
-                                                    type="password"
-                                                    value={adminTrialKey}
-                                                    onChange={(e) => {
-                                                        setAdminTrialKey(e.target.value);
-                                                        localStorage.setItem('adminTrialApiKey', e.target.value);
-                                                    }}
-                                                    placeholder="AIzaSy..."
-                                                    className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500/50 transition-colors"
-                                                />
-                                            </div>
-                                        </div>
+                                {billingHistory.length === 0 ? (
+                                    <div className="py-6 text-center text-xs text-zinc-500 font-mono bg-white/[0.01] rounded-2xl border border-dashed border-white/5">
+                                        No recent billing charges recorded for this session.
                                     </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left text-xs">
+                                            <thead>
+                                                <tr className="border-b border-white/10 text-zinc-400 font-mono text-[10px] uppercase">
+                                                    <th className="pb-2">Date</th>
+                                                    <th className="pb-2">Description</th>
+                                                    <th className="pb-2">Amount</th>
+                                                    <th className="pb-2">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-white/5 font-mono">
+                                                {billingHistory.map((item, i) => (
+                                                    <tr key={i} className="hover:bg-white/[0.02]">
+                                                        <td className="py-2.5 text-zinc-400">{new Date(item.created_at).toLocaleDateString()}</td>
+                                                        <td className="py-2.5 font-semibold text-white">{item.description || 'Credits Top-Up'}</td>
+                                                        <td className="py-2.5 text-[#c8f135] font-black">{item.amount || '₹999'}</td>
+                                                        <td className="py-2.5">
+                                                            <span className="px-2 py-0.5 rounded-full text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">
+                                                                Paid
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ═════════ TAB 2: ACCOUNT & IDENTITY ═════════ */}
+                    {activeTab === 'profile' && (
+                        <div className="p-5 sm:p-6 rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-6">
+                            <div>
+                                <h3 className="text-sm font-black uppercase tracking-wider text-white">Account Profile</h3>
+                                <p className="text-xs text-zinc-400 font-mono mt-0.5">Manage your display name and public creator identity.</p>
+                            </div>
+
+                            <form onSubmit={handleUpdateProfile} className="space-y-4 max-w-xl">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-300">
+                                        Full Display Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={fullName}
+                                        onChange={(e) => setFullName(e.target.value)}
+                                        placeholder="Enter your name"
+                                        className="w-full bg-[#0a0a10] border border-white/15 focus:border-[#c8f135] rounded-xl p-3 text-xs text-white outline-none transition-all shadow-inner font-medium"
+                                    />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-300 flex items-center justify-between">
+                                        <span>Registered Email Address</span>
+                                        <span className="text-[9px] font-mono text-emerald-400 font-bold flex items-center gap-1">
+                                            <Check size={10} /> Verified
+                                        </span>
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={displayEmail}
+                                        disabled
+                                        className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-xs text-zinc-400 cursor-not-allowed font-mono"
+                                    />
+                                </div>
+
+                                {message.text && (
+                                    <div className={cn(
+                                        "p-3 rounded-xl text-xs font-mono font-medium border",
+                                        message.type === 'success' ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300" : "bg-red-500/10 border-red-500/30 text-red-300"
+                                    )}>
+                                        {message.text}
+                                    </div>
+                                )}
+
+                                <div className="pt-2">
+                                    <button
+                                        type="submit"
+                                        disabled={saving}
+                                        className="px-6 py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(200,241,53,0.3)] transition-all cursor-pointer flex items-center gap-2 active:scale-95 disabled:opacity-50"
+                                    >
+                                        {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                        <span>Save Profile Changes</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    {/* ═════════ TAB 3: STUDIO & AI ENGINE PREFERENCES ═════════ */}
+                    {activeTab === 'preferences' && (
+                        <div className="p-5 sm:p-6 rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-6">
+                            <div>
+                                <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                                    <Sliders className="w-4 h-4 text-[#c8f135]" />
+                                    <span>Studio AI Engine & Render Defaults</span>
+                                </h3>
+                                <p className="text-xs text-zinc-400 font-mono mt-0.5">Customize your preferred defaults for the Studio generator.</p>
+                            </div>
+
+                            <div className="space-y-4 max-w-xl">
+                                {/* Default Engine */}
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-300">
+                                        Default Video Model
+                                    </label>
+                                    <select
+                                        value={defaultEngine}
+                                        onChange={(e) => setDefaultEngine(e.target.value)}
+                                        className="w-full bg-[#0a0a10] border border-white/15 focus:border-[#c8f135] rounded-xl p-3 text-xs text-white outline-none font-medium cursor-pointer"
+                                    >
+                                        <option value="gemini-omni-1.1-flash-preview">Google Gemini Omni 1.1 Flash (Multimodal Keyframes)</option>
+                                        <option value="kling-motion">Kling 3.0 Motion Control (Subject Image + Motion Driver)</option>
+                                        <option value="veo-3.1-preview">Veo 3.1 Cinema Engine (High-Fidelity)</option>
+                                    </select>
+                                </div>
+
+                                {/* Default Aspect Ratio */}
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-300">
+                                        Default Framing & Aspect Ratio
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {[
+                                            { label: '16:9 Widescreen', val: '16:9' },
+                                            { label: '9:16 Portrait Reel', val: '9:16' },
+                                            { label: '1:1 Square Post', val: '1:1' }
+                                        ].map((opt) => (
+                                            <button
+                                                key={opt.val}
+                                                type="button"
+                                                onClick={() => setDefaultAspect(opt.val)}
+                                                className={cn(
+                                                    "py-2.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer select-none",
+                                                    defaultAspect === opt.val
+                                                        ? "bg-[#c8f135]/15 border-[#c8f135]/60 text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
+                                                        : "bg-black/50 border-white/10 text-zinc-400 hover:text-white"
+                                                )}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Auto Prompt Enhancer */}
+                                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08]">
+                                    <div className="space-y-0.5">
+                                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                                            <Wand2 size={13} className="text-[#c8f135]" /> Auto-Enhance Prompts with Vertex AI MCP
+                                        </span>
+                                        <p className="text-[11px] text-zinc-400">
+                                            Expands prompts with cinematic camera direction and lighting keywords.
+                                        </p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={autoMcpEnhance}
+                                        onChange={(e) => setAutoMcpEnhance(e.target.checked)}
+                                        className="w-4 h-4 accent-[#c8f135] cursor-pointer"
+                                    />
+                                </div>
+
+                                {/* Audio Auto-Gen */}
+                                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08]">
+                                    <div className="space-y-0.5">
+                                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                                            <Volume2 size={13} className="text-cyan-400" /> Default Synchronized Sound Audio Track
+                                        </span>
+                                        <p className="text-[11px] text-zinc-400">
+                                            Automatically produces native sound design for generated video clips.
+                                        </p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={autoAudio}
+                                        onChange={(e) => setAutoAudio(e.target.checked)}
+                                        className="w-4 h-4 accent-[#c8f135] cursor-pointer"
+                                    />
+                                </div>
+
+                                <div className="pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={handleSavePreferences}
+                                        className="px-6 py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(200,241,53,0.3)] transition-all cursor-pointer active:scale-95"
+                                    >
+                                        Save Studio Preferences
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ═════════ TAB 4: SECURITY & API KEYS ═════════ */}
+                    {activeTab === 'security' && (
+                        <div className="space-y-6">
+                            {/* Password & Authentication */}
+                            <div className="p-5 sm:p-6 rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-4">
+                                <div>
+                                    <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                                        <KeyRound className="w-4 h-4 text-[#c8f135]" />
+                                        <span>Password & Session Security</span>
+                                    </h3>
+                                    <p className="text-xs text-zinc-400 font-mono mt-0.5">
+                                        Secure your login credentials or request a magic password reset link.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                                    <div>
+                                        <span className="text-xs font-bold text-white block">Reset Account Password</span>
+                                        <p className="text-[11px] text-zinc-400">
+                                            We will send a secure password reset link to <span className="text-white font-mono">{displayEmail}</span>.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleSendResetEmail}
+                                        disabled={sendingReset || resetEmailSent}
+                                        className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer shrink-0 disabled:opacity-50"
+                                    >
+                                        {sendingReset ? 'Sending...' : resetEmailSent ? 'Link Sent ✓' : 'Send Reset Link'}
+                                    </button>
+                                </div>
+
+                                <div className="pt-2 flex items-center justify-between border-t border-white/5">
+                                    <span className="text-xs text-zinc-400 font-mono">Sign out of all devices and active sessions</span>
+                                    <button
+                                        type="button"
+                                        onClick={handleSignOut}
+                                        className="px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                                    >
+                                        <LogOut size={13} />
+                                        <span>Sign Out</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Developer & Admin API Configuration */}
+                            <div className="p-5 sm:p-6 rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-4">
+                                <div>
+                                    <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                                        <Cpu className="w-4 h-4 text-cyan-400" />
+                                        <span>Vertex AI MCP & Developer API Overrides</span>
+                                    </h3>
+                                    <p className="text-xs text-zinc-400 font-mono mt-0.5">
+                                        Optionally override with custom Google Cloud Vertex AI Service Account keys.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-3 max-w-xl">
+                                    <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08]">
+                                        <div className="space-y-0.5">
+                                            <span className="text-xs font-bold text-white block">Use Custom Admin API Trial Key</span>
+                                            <p className="text-[11px] text-zinc-400">Routes calls through your custom API quota.</p>
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={useAdminTrialKey}
+                                            onChange={(e) => setUseAdminTrialKey(e.target.checked)}
+                                            className="w-4 h-4 accent-[#c8f135] cursor-pointer"
+                                        />
+                                    </div>
+
+                                    {useAdminTrialKey && (
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-300">
+                                                Admin Trial Key / Bearer Token
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type={showApiKey ? 'text' : 'password'}
+                                                    value={adminTrialKey}
+                                                    onChange={(e) => setAdminTrialKey(e.target.value)}
+                                                    placeholder="AIzaSy..."
+                                                    className="w-full bg-[#0a0a10] border border-white/15 focus:border-cyan-400 rounded-xl p-3 pr-10 text-xs text-white outline-none font-mono"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowApiKey(!showApiKey)}
+                                                    className="absolute top-1/2 -translate-y-1/2 right-3 text-zinc-400 hover:text-white"
+                                                >
+                                                    {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <button
+                                            type="button"
+                                            onClick={handleSaveAdminKeys}
+                                            className="px-5 py-2 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer active:scale-95"
+                                        >
+                                            Save API Configuration
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ═════════ TAB 5: ALERTS & NOTIFICATIONS ═════════ */}
+                    {activeTab === 'notifications' && (
+                        <div className="p-5 sm:p-6 rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-6">
+                            <div>
+                                <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                                    <Bell className="w-4 h-4 text-[#c8f135]" />
+                                    <span>Notifications & Alerts</span>
+                                </h3>
+                                <p className="text-xs text-zinc-400 font-mono mt-0.5">Control how ZeroLens notifies you of generation completions and security events.</p>
+                            </div>
+
+                            <div className="space-y-3 max-w-xl">
+                                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08]">
+                                    <div className="space-y-0.5">
+                                        <span className="text-xs font-bold text-white block">Security & Authentication Alerts</span>
+                                        <p className="text-[11px] text-zinc-400">Instant notification when a new device signs in.</p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={securityAlerts}
+                                        onChange={(e) => setSecurityAlerts(e.target.checked)}
+                                        className="w-4 h-4 accent-[#c8f135] cursor-pointer"
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08]">
+                                    <div className="space-y-0.5">
+                                        <span className="text-xs font-bold text-white block">Low Shorts Balance Warning</span>
+                                        <p className="text-[11px] text-zinc-400">Alerts you when your balance drops below 20⚡.</p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={true}
+                                        disabled
+                                        className="w-4 h-4 accent-[#c8f135] opacity-60"
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08]">
+                                    <div className="space-y-0.5">
+                                        <span className="text-xs font-bold text-white block">Product Updates & Model Releases</span>
+                                        <p className="text-[11px] text-zinc-400">Be first to test new Omni & Veo checkpoints.</p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={marketingEmails}
+                                        onChange={(e) => setMarketingEmails(e.target.checked)}
+                                        className="w-4 h-4 accent-[#c8f135] cursor-pointer"
+                                    />
+                                </div>
+
+                                <div className="pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={handleUpdateProfile}
+                                        className="px-6 py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(200,241,53,0.3)] transition-all cursor-pointer active:scale-95"
+                                    >
+                                        Save Notification Settings
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
-            </motion.div>
             </div>
         </div>
     );

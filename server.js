@@ -31,7 +31,7 @@ const normalizeOrigin = (value) => {
     return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 };
 
-const APP_ORIGIN = normalizeOrigin(process.env.APP_ORIGIN || process.env.PUBLIC_APP_URL || process.env.RAILWAY_PUBLIC_DOMAIN)
+const APP_ORIGIN = normalizeOrigin(process.env.APP_ORIGIN || process.env.PUBLIC_APP_URL || process.env.APP_BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN)
     || (process.env.NODE_ENV === 'production' ? 'https://zerolens.in' : 'http://localhost:5173');
 
 const getAllowedCorsOrigins = () => {
@@ -175,15 +175,14 @@ function getCredentials(fileName, envKey) {
     return null;
 }
 
-const GCS_KEY = getCredentials('new-zerolens-api-073f27e79f0c.json', 'GCS_CREDENTIALS_JSON') || getCredentials('freeeapi-499012-fd14302639c7.json', 'GCS_CREDENTIALS_JSON');
+const GCS_KEY = getCredentials('project-c0b5ea74-5ba2-4e68-8ab.json', 'GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('project-c0b5ea74-5ba2-4e68-8ab.json', 'GCS_CREDENTIALS_JSON') || getCredentials('new-zerolens-api-073f27e79f0c.json', 'GCS_CREDENTIALS_JSON') || getCredentials('freeeapi-499012-fd14302639c7.json', 'GCS_CREDENTIALS_JSON');
 const storage = new Storage({ 
     ...(typeof GCS_KEY === 'string' ? { keyFilename: GCS_KEY } : { credentials: GCS_KEY })
 });
 
 const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'zerolensbucket_1';
 
-// ✅ Switched to new-zerolens-api (99582442891) — Veo 3.1 confirmed working 2026-05-31
-const VERTEX_KEY = getCredentials('new-zerolens-api-073f27e79f0c.json', 'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('freeeapi-499012-fd14302639c7.json', 'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON');
+const VERTEX_KEY = getCredentials('project-c0b5ea74-5ba2-4e68-8ab.json', 'GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('project-c0b5ea74-5ba2-4e68-8ab.json', 'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('new-zerolens-api-073f27e79f0c.json', 'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('freeeapi-499012-fd14302639c7.json', 'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON');
 
 let resolvedProjectId = '';
 if (VERTEX_KEY) {
@@ -196,7 +195,7 @@ if (VERTEX_KEY) {
         resolvedProjectId = VERTEX_KEY.project_id;
     }
 }
-const VERTEX_PROJECT_ID = resolvedProjectId || process.env.GOOGLE_PROJECT_ID || 'new-zerolens-api';
+const VERTEX_PROJECT_ID = resolvedProjectId || process.env.NEW_GOOGLE_PROJECT_ID || process.env.GOOGLE_PROJECT_ID || 'project-c0b5ea74-5ba2-4e68-8ab';
 const VERTEX_LOCATION = process.env.GOOGLE_LOCATION || 'us-central1';
 
 let _vertexAuth = null;
@@ -247,11 +246,36 @@ const getVertexToken = async () => {
 // Initial Token Check
 getVertexToken().catch(() => {});
 
-// ── OpenAI/OpenRouter SDK + Raw Helper ───────────────────────────────────────
+// ── OpenAI/Experiential/OpenRouter SDK + Raw Helper ──────────────────────────
+const EXPERIENTIAL_BASE_URL = 'https://api.experientiallabs.ai/v1';
 const _LLM_API_KEY = () => process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
 const OPENAI_API_KEY = () => process.env.OPENAI_API_KEY;
 const _IS_OPENROUTER = () => !!process.env.OPENROUTER_API_KEY;
-const getOpenAIClient = (forceOfficial = false) => {
+
+const getOpenAIClient = (forceOfficialOrOptions = false, model = null) => {
+    let resolvedModel = model;
+    let forceOfficial = false;
+
+    if (typeof forceOfficialOrOptions === 'string') {
+        resolvedModel = forceOfficialOrOptions;
+    } else if (typeof forceOfficialOrOptions === 'object' && forceOfficialOrOptions !== null) {
+        resolvedModel = forceOfficialOrOptions.model || resolvedModel;
+        forceOfficial = !!forceOfficialOrOptions.forceOfficial;
+    } else {
+        forceOfficial = !!forceOfficialOrOptions;
+    }
+
+    if (resolvedModel === 'gpt-6-astra') {
+        const apiKey = process.env.EXPLABS_API_KEY;
+        if (!apiKey) {
+            throw new Error('EXPLABS_API_KEY is not set. Please create one under Settings -> API Keys and export it.');
+        }
+        return new OpenAI({
+            apiKey,
+            baseURL: EXPERIENTIAL_BASE_URL
+        });
+    }
+
     if (!forceOfficial && _IS_OPENROUTER()) {
         return new OpenAI({ apiKey: _LLM_API_KEY(), baseURL: 'https://openrouter.ai/api/v1' });
     }
@@ -261,7 +285,31 @@ const getOpenAIClient = (forceOfficial = false) => {
     }
     return new OpenAI({ apiKey });
 };
-const openaiChat = async (messages, model = 'gpt-4o', jsonMode = false) => {
+
+const openaiChat = async (messages, model = 'gpt-4o', jsonMode = false, options = {}) => {
+    if (model === 'gpt-6-astra') {
+        const apiKey = process.env.EXPLABS_API_KEY;
+        if (!apiKey) {
+            throw new Error('EXPLABS_API_KEY is not set. Please create one under Settings -> API Keys and export it.');
+        }
+        const resp = await fetch(`${EXPERIENTIAL_BASE_URL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-6-astra',
+                messages,
+                ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+                ...options
+            })
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error?.message || 'Experiential LLM chat error');
+        return data.choices?.[0]?.message?.content;
+    }
+
     const apiKey = _LLM_API_KEY();
     if (!apiKey) throw new Error('OPENROUTER_API_KEY not configured');
     const isOR = _IS_OPENROUTER();
@@ -274,7 +322,7 @@ const openaiChat = async (messages, model = 'gpt-4o', jsonMode = false) => {
             'Authorization': `Bearer ${apiKey}`,
             ...(isOR && { 'HTTP-Referer': 'http://localhost:5173', 'X-Title': 'ZeroLens AI Studio' }),
         },
-        body: JSON.stringify({ model: actualModel, messages, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}) })
+        body: JSON.stringify({ model: actualModel, messages, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}), ...options })
     });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error?.message || 'LLM chat error');
@@ -283,22 +331,16 @@ const openaiChat = async (messages, model = 'gpt-4o', jsonMode = false) => {
 
 let _geminiClient = null;
 const getGeminiClient = (apiKey) => {
-    const activeKey = apiKey || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
-    if (!activeKey) {
-        throw new Error('GOOGLE_API_KEY environment variable is not set.');
-    }
+    const isExplicitStudioKey = typeof apiKey === 'string' && (apiKey.startsWith('AIza') || apiKey.startsWith('AQ.'));
+    const shouldUseVertex = !isExplicitStudioKey && (Boolean(VERTEX_KEY) || apiKey === 'VERTEX_AI_CLIENT' || (typeof apiKey === 'string' && apiKey.startsWith('ya29.')));
 
-    const isVertex = activeKey === 'VERTEX_AI_CLIENT' || (typeof activeKey === 'string' && activeKey.startsWith('ya29.'));
-
-    if (isVertex) {
-        console.log(`[GEMINI-CLIENT] Initializing Vertex AI Gemini Client: project=${VERTEX_PROJECT_ID}, location=${VERTEX_LOCATION}`);
+    if (shouldUseVertex && VERTEX_KEY) {
+        console.log(`[GEMINI-CLIENT] Initializing Vertex AI Gemini Client as PRIMARY: project=${VERTEX_PROJECT_ID}, location=${VERTEX_LOCATION}`);
         const authOptions = {};
-        if (VERTEX_KEY) {
-            if (typeof VERTEX_KEY === 'string') {
-                authOptions.keyFilename = VERTEX_KEY;
-            } else {
-                authOptions.credentials = VERTEX_KEY;
-            }
+        if (typeof VERTEX_KEY === 'string') {
+            authOptions.keyFilename = VERTEX_KEY;
+        } else {
+            authOptions.credentials = VERTEX_KEY;
         }
         return new GoogleGenAI({
             vertexai: true,
@@ -324,17 +366,17 @@ const getGeminiClient = (apiKey) => {
         });
     }
 
-    if (apiKey) {
-        // Return a fresh instance with the custom key (don't cache it, as it is key-specific)
-        return new GoogleGenAI({
-            apiKey: activeKey
-        });
+    const activeKey = (isExplicitStudioKey ? apiKey : null) || process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+    if (!activeKey) {
+        throw new Error('GOOGLE_API_KEY environment variable is not set and Vertex AI credentials unavailable.');
+    }
+
+    if (apiKey && isExplicitStudioKey) {
+        return new GoogleGenAI({ apiKey: activeKey });
     }
 
     if (!_geminiClient) {
-        _geminiClient = new GoogleGenAI({
-            apiKey: activeKey
-        });
+        _geminiClient = new GoogleGenAI({ apiKey: activeKey });
     }
     return _geminiClient;
 };
@@ -490,7 +532,17 @@ app.use(cors({
     },
     credentials: true
 }));
-app.use(compression());
+app.use(compression({
+    filter: (req, res) => {
+        const url = req.originalUrl || req.url || '';
+        if (url.includes('/proxy-image') || url.includes('/proxy/')) return false;
+        if (req.headers['x-no-compression'] || res.getHeader('x-no-compression')) return false;
+        if (req.headers['range'] || res.getHeader('content-range')) return false;
+        const ct = res.getHeader('content-type');
+        if (ct && (ct.startsWith('video/') || ct.startsWith('audio/'))) return false;
+        return compression.filter(req, res);
+    }
+}));
 
 // SharedArrayBuffer / FFmpeg Export Headers
 app.use((req, res, next) => {
@@ -1304,17 +1356,14 @@ async function handleGoogle(req, res) {
                 }
             }
 
-            // --- Option B: Google AI Studio Imagen / Gemini API (Fallback) ---
+            // --- Option B: Vertex AI SDK as PRIMARY, Google AI Studio SDK as Secondary Fallback ---
             if (!success) {
                 try {
                     let ai;
-                    const systemKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-                    const activeApiKey = (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : systemKey;
+                    const systemKey = process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+                    const isExplicitStudioKey = typeof apiKey === 'string' && (apiKey.startsWith('AIza') || apiKey.startsWith('AQ.'));
 
-                    if (activeApiKey) {
-                        ai = new GoogleGenAI({ apiKey: activeApiKey });
-                        console.log(`[handleGoogle] [AI Studio SDK Fallback] Calling model ${activeModel} via API Key`);
-                    } else if (apiKey === 'VERTEX_AI_CLIENT' || token) {
+                    if (VERTEX_KEY || apiKey === 'VERTEX_AI_CLIENT' || token) {
                         const activeModelLower = activeModel.toLowerCase();
                         const needsGlobal = activeModelLower.includes('gemini') || activeModelLower.includes('banana') || activeModelLower.includes('omni');
                         const authOptions = {};
@@ -1331,9 +1380,13 @@ async function handleGoogle(req, res) {
                             location: needsGlobal ? 'global' : VERTEX_LOCATION,
                             googleAuthOptions: authOptions
                         });
-                        console.log(`[handleGoogle] [Vertex AI SDK] Calling model ${activeModel} (location: ${needsGlobal ? 'global' : VERTEX_LOCATION})`);
+                        console.log(`[handleGoogle] [Vertex AI SDK PRIMARY] Calling model ${activeModel} (location: ${needsGlobal ? 'global' : VERTEX_LOCATION})`);
+                    } else if (isExplicitStudioKey || systemKey) {
+                        const activeApiKey = isExplicitStudioKey ? apiKey : systemKey;
+                        ai = new GoogleGenAI({ apiKey: activeApiKey });
+                        console.log(`[handleGoogle] [AI Studio SDK Fallback] Calling model ${activeModel} via API Key`);
                     } else {
-                        ai = new GoogleGenAI({ apiKey });
+                        ai = new GoogleGenAI({ apiKey: systemKey || apiKey });
                         console.log(`[handleGoogle] [AI Studio SDK] Calling model ${activeModel} via API Key`);
                     }
 
@@ -1962,10 +2015,12 @@ import createStorageRouter from './server/routes/storageRoutes.js';
 import createAdminRouter from './server/routes/adminRoutes.js';
 import createAvatarRouter from './server/routes/avatar.js';
 import createYourVoiceRouter from './server/routes/yourVoiceRoutes.js';
-import mcpRouter from './server/routes/mcpRoutes.js';
+import createMcpRouter from './server/routes/mcpRoutes.js';
 
 // ── MCP (Model Context Protocol & ChatGPT Actions Gateway) ───────────────────
-app.use('/api/mcp', mcpRouter);
+const mcpRouterInstance = createMcpRouter(deps);
+app.use('/api/mcp', mcpRouterInstance);
+app.use('/mcp', mcpRouterInstance);
 
 // ── Credits ──────────────────────────────────────────────────────────────────
 app.use('/api', createCreditsRouter(deps));
@@ -1974,6 +2029,7 @@ app.use('/api', createCreditsRouter(deps));
 app.use('/api', createImageRouter(deps));
 
 // ── Video (Veo / Kie) ────────────────────────────────────────────────────────
+app.use('/api/veo', createVideoRouter(deps));
 app.use('/api', createVideoRouter(deps));
 
 // ── Gemini Omni / Omni Flash ────────────────────────────────────────────────
@@ -2022,6 +2078,11 @@ app.use(express.static(path.join(__dirname, 'dist'), {
         }
     }
 }));
+
+// Explicit JSON 404 handler for any unhandled /api requests so they never return HTML
+app.use('/api', (req, res) => {
+    res.status(404).json({ error: `API endpoint not found: ${req.method} ${req.originalUrl}` });
+});
 
 // Catch-all route to serve the SPA index.html for client-side routes
 app.get(/^\/(?!api).*/, (req, res) => {

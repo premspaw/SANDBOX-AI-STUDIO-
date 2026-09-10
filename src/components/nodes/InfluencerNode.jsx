@@ -5,7 +5,7 @@ import { X, ShieldCheck, Activity } from 'lucide-react';
 import { useAppStore } from '../../store';
 import MagneticHandle from '../edges/MagneticHandle';
 
-export default memo(({ id, data }) => {
+const InfluencerNode = memo(({ id, data }) => {
     const edges = useAppStore(s => s.edges);
     const identity = data?.identityProfile;
     const anchorImg = identity?.anchors?.side || data.image || '';
@@ -122,3 +122,5 @@ export default memo(({ id, data }) => {
         </div>
     );
 });
+
+export default InfluencerNode;

@@ -1,46 +1,93 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Sparkles, Film, Image as ImageIcon, Video, Layers, BookOpen, Clapperboard,
-  Upload, Trash2, Check, Zap, Cpu, Code, HelpCircle, RefreshCw, Sliders, Play, Loader2, ChevronDown, Users, Tag, Aperture, FastForward
+  X, Sparkles, Film, Image as ImageIcon, Video, Layers, Upload, Trash2,
+  Check, Zap, Cpu, Sliders, Play, Loader2, ChevronDown, ChevronUp,
+  Tag, Aperture, FastForward, Volume2, VolumeX, Maximize2, Info,
+  Clock, ImagePlus, Wand2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getApiUrl } from '../../config/apiConfig';
 import { useAppStore } from '../../store';
 
-// Premium Glassmorphic Dropdown Component
-const GlassSelect = React.memo(({ value, onChange, options, label, icon: Icon, accent = 'violet', align = 'up' }) => {
+// Modern Higgsfield-style Segmented Chip Selector
+const SegmentedControl = React.memo(({ options, value, onChange, label, icon: Icon, badge }) => (
+  <div className="space-y-1.5 w-full">
+    {label && (
+      <div className="flex items-center justify-between">
+        <label className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-400 flex items-center gap-1.5">
+          {Icon && <Icon className="w-3.5 h-3.5 text-zinc-400" />}
+          <span>{label}</span>
+        </label>
+        {badge && (
+          <span className="text-[9px] font-mono font-bold text-zinc-500 bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.06]">
+            {badge}
+          </span>
+        )}
+      </div>
+    )}
+    <div className="grid grid-flow-col auto-cols-fr gap-1 bg-black/40 p-1 rounded-xl border border-white/[0.08] backdrop-blur-xl">
+      {options.map((opt) => {
+        const isSelected = String(opt.value) === String(value);
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className={cn(
+              "py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 relative select-none cursor-pointer",
+              isSelected
+                ? "bg-white/[0.12] text-white shadow-[0_2px_12px_rgba(0,0,0,0.5)] border border-white/20 font-extrabold"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+            )}
+          >
+            {opt.icon && <span className="shrink-0">{opt.icon}</span>}
+            <span className="truncate">{opt.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  </div>
+));
+
+// Refined Glassmorphic Dropdown for denser menus
+const GlassSelect = React.memo(({ value, onChange, options = [], label, icon: Icon, align = 'up', badge }) => {
   const [open, setOpen] = useState(false);
-  const selectedOption = options.find(o => String(o.value) === String(value)) || options[0];
+  const selectedOption = (options && options.find(o => String(o.value) === String(value))) || (options && options[0]) || { label: '', value: '' };
 
   return (
     <div className="relative space-y-1.5 w-full">
       {label && (
-        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
-          {Icon && <Icon className="w-3.5 h-3.5 text-violet-400" />}
-          <span>{label}</span>
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-400 flex items-center gap-1.5">
+            {Icon && <Icon className="w-3.5 h-3.5 text-zinc-400" />}
+            <span>{label}</span>
+          </label>
+          {badge && (
+            <span className="text-[9px] font-mono text-zinc-500">{badge}</span>
+          )}
+        </div>
       )}
       <button
         type="button"
         onClick={() => setOpen(!open)}
         className={cn(
-          "w-full flex items-center justify-between bg-[#0e0e18]/90 border border-white/15 hover:border-violet-500/50 rounded-xl px-3.5 py-2.5 text-xs text-white backdrop-blur-2xl transition-all shadow-md active:scale-[0.99] cursor-pointer select-none",
-          open && "border-violet-400 shadow-[0_0_20px_rgba(139,92,246,0.35)]"
+          "w-full h-[38px] flex items-center justify-between bg-black/40 border border-white/[0.08] hover:border-white/20 rounded-xl px-3 text-xs text-white backdrop-blur-xl transition-all select-none cursor-pointer",
+          open && "border-[#c8f135]/60 shadow-[0_0_20px_rgba(200,241,53,0.15)]"
         )}
       >
         <span className="truncate font-semibold flex items-center gap-2">
-          {selectedOption.icon && <span>{selectedOption.icon}</span>}
-          <span>{selectedOption.label}</span>
+          {selectedOption.icon && <span className="shrink-0">{selectedOption.icon}</span>}
+          <span className="truncate">{selectedOption.label}</span>
         </span>
-        <ChevronDown size={14} className={cn("text-gray-400 transition-transform duration-200 shrink-0", open && "rotate-180")} />
+        <ChevronDown size={14} className={cn("text-zinc-400 transition-transform duration-200 shrink-0", open && "rotate-180")} />
       </button>
 
       {open && (
         <>
           <div className="fixed inset-0 z-[140]" onClick={() => setOpen(false)} />
           <div className={cn(
-            "absolute left-0 right-0 z-[150] bg-[#0a0a14]/98 border border-white/20 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.95)] backdrop-blur-3xl py-1.5 overflow-hidden max-h-64 overflow-y-auto custom-scrollbar",
+            "absolute left-0 right-0 z-[150] bg-[#0c0c14]/98 border border-white/15 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.95)] backdrop-blur-3xl py-1 overflow-hidden max-h-60 overflow-y-auto custom-scrollbar",
             align === 'down' ? "top-full mt-1.5" : "bottom-full mb-1.5"
           )}>
             {options.map((opt) => (
@@ -52,21 +99,21 @@ const GlassSelect = React.memo(({ value, onChange, options, label, icon: Icon, a
                   setOpen(false);
                 }}
                 className={cn(
-                  "w-full text-left px-3.5 py-2.5 text-xs font-semibold flex items-center justify-between transition-all border-b border-white/5 last:border-0 cursor-pointer select-none",
+                  "w-full text-left px-3 py-2 text-xs font-semibold flex items-center justify-between transition-all border-b border-white/[0.04] last:border-0 cursor-pointer select-none",
                   String(opt.value) === String(value)
-                    ? "bg-gradient-to-r from-violet-600/30 to-fuchsia-600/20 text-white font-bold"
-                    : "text-gray-300 hover:bg-white/[0.08] hover:text-white"
+                    ? "bg-[#c8f135]/15 text-[#c8f135] font-bold"
+                    : "text-zinc-300 hover:bg-white/[0.06] hover:text-white"
                 )}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
                   {opt.icon && <span className="text-sm shrink-0">{opt.icon}</span>}
                   <div className="flex flex-col min-w-0">
                     <span className="truncate">{opt.label}</span>
-                    {opt.desc && <span className="text-[10px] text-gray-400 font-normal truncate mt-0.5">{opt.desc}</span>}
+                    {opt.desc && <span className="text-[10px] text-zinc-500 font-normal truncate mt-0.5">{opt.desc}</span>}
                   </div>
                 </div>
                 {String(opt.value) === String(value) && (
-                  <Check size={14} className="text-violet-400 shrink-0 ml-2" />
+                  <Check size={14} className="text-[#c8f135] shrink-0 ml-2" />
                 )}
               </button>
             ))}
@@ -85,7 +132,7 @@ export const SidePanel = React.memo(({
   setActiveEngine,
   activeTab,
   setActiveTab,
-  panelTab,
+  panelTab = 'omni',
   setPanelTab,
   firstFrameImage,
   firstFramePreview,
@@ -107,6 +154,10 @@ export const SidePanel = React.memo(({
   setOmniFirstFramePreview,
   setOmniLastFrameImage,
   setOmniLastFramePreview,
+  omniMultiImages: propOmniMultiImages,
+  setOmniMultiImages: propSetOmniMultiImages,
+  omniMultiVideos: propOmniMultiVideos,
+  setOmniMultiVideos: propSetOmniMultiVideos,
   omniRefVideoPreview: propOmniRefVideoPreview,
   setOmniRefVideoPreview: propSetOmniRefVideoPreview,
   omniRefVideoDuration = 0,
@@ -115,35 +166,402 @@ export const SidePanel = React.memo(({
   setUploadTarget,
   handleClearRef,
   fileInputRef,
-  duration,
+  duration = 6,
   setDuration,
-  aspectRatio,
+  aspectRatio = '16:9',
   setAspectRatio,
-  resolution,
+  resolution = '720p',
   setResolution,
-  generateAudio,
+  generateAudio = false,
   setGenerateAudio,
-  omniTask,
+  omniTask = 'auto',
   setOmniTask,
   showRefBoard,
   setShowRefBoard,
-  promptText,
+  promptText = '',
   setPromptText,
-  omniPromptText,
+  omniPromptText = '',
   setOmniPromptText,
   handleGenerate,
-  isBusy,
-  userCredits,
-  requiredCredits,
-  canGenerate,
-  allRefItems = []
+  isBusy = false,
+  userCredits = 0,
+  requiredCredits = 10,
+  canGenerate = true,
+  allRefItems = [],
+  gallery = [],
+  // Motion Control Props (Kling 3.0 via Kie.ai)
+  motionSubjectImage: propMotionSubjectImage,
+  setMotionSubjectImage: propSetMotionSubjectImage,
+  motionSubjectPreview: propMotionSubjectPreview,
+  setMotionSubjectPreview: propSetMotionSubjectPreview,
+  motionRefVideo: propMotionRefVideo,
+  setMotionRefVideo: propSetMotionRefVideo,
+  motionRefVideoPreview: propMotionRefVideoPreview,
+  setMotionRefVideoPreview: propSetMotionRefVideoPreview,
+  motionRefVideoDuration: propMotionRefVideoDuration = 5,
+  setMotionRefVideoDuration: propSetMotionRefVideoDuration,
+  motionMode: propMotionMode = 'std',
+  setMotionMode: propSetMotionMode,
+  characterOrientation: propCharacterOrientation = 'video',
+  setCharacterOrientation: propSetCharacterOrientation,
+  backgroundSource: propBackgroundSource = 'input_video',
+  setBackgroundSource: propSetBackgroundSource
 }) => {
-  const [docsSection, setDocsSection] = useState('omni_flash'); // 'omni_flash' | 'veo_cookbook'
-
-  // Dedicated Video File Input Ref & State for Omni Flash Reference Video
+  // Video File Input Ref & State for Omni Flash Reference Video
   const videoInputRef = useRef(null);
   const [localVideoPreview, setLocalVideoPreview] = useState(null);
   const [isVideoUploading, setIsVideoUploading] = useState(false);
+  const [showDocs, setShowDocs] = useState(false);
+  const [galleryPickerSlot, setGalleryPickerSlot] = useState(null); // { type: 'image' | 'video' | 'first' | 'last' | 'motion_subject' | 'motion_video', slotIdx?: number }
+
+  // Kling 3.0 Motion Control Local States & Refs
+  const motionImageInputRef = useRef(null);
+  const motionVideoInputRef = useRef(null);
+  const [isUploadingMotionImage, setIsUploadingMotionImage] = useState(false);
+  const [isUploadingMotionVideo, setIsUploadingMotionVideo] = useState(false);
+
+  const [internalMotionSubjectImage, setInternalMotionSubjectImage] = useState('');
+  const [internalMotionSubjectPreview, setInternalMotionSubjectPreview] = useState('');
+  const [internalMotionRefVideo, setInternalMotionRefVideo] = useState('');
+  const [internalMotionRefVideoPreview, setInternalMotionRefVideoPreview] = useState('');
+  const [internalMotionRefVideoDuration, setInternalMotionRefVideoDuration] = useState(5);
+  const [internalMotionMode, setInternalMotionMode] = useState('720p');
+  const [internalCharacterOrientation, setInternalCharacterOrientation] = useState('video');
+  const [internalBackgroundSource, setInternalBackgroundSource] = useState('input_video');
+
+  const motionSubjectImage = propMotionSubjectImage !== undefined ? propMotionSubjectImage : internalMotionSubjectImage;
+  const setMotionSubjectImage = propSetMotionSubjectImage || setInternalMotionSubjectImage;
+  const motionSubjectPreview = propMotionSubjectPreview !== undefined ? propMotionSubjectPreview : internalMotionSubjectPreview;
+  const setMotionSubjectPreview = propSetMotionSubjectPreview || setInternalMotionSubjectPreview;
+  const motionRefVideo = propMotionRefVideo !== undefined ? propMotionRefVideo : internalMotionRefVideo;
+  const setMotionRefVideo = propSetMotionRefVideo || setInternalMotionRefVideo;
+  const motionRefVideoPreview = propMotionRefVideoPreview !== undefined ? propMotionRefVideoPreview : internalMotionRefVideoPreview;
+  const setMotionRefVideoPreview = propSetMotionRefVideoPreview || setInternalMotionRefVideoPreview;
+  const motionRefVideoDuration = propMotionRefVideoDuration !== undefined ? propMotionRefVideoDuration : internalMotionRefVideoDuration;
+  const setMotionRefVideoDuration = propSetMotionRefVideoDuration || setInternalMotionRefVideoDuration;
+  const motionMode = propMotionMode !== undefined ? propMotionMode : internalMotionMode;
+  const setMotionMode = propSetMotionMode || setInternalMotionMode;
+  const characterOrientation = propCharacterOrientation !== undefined ? propCharacterOrientation : internalCharacterOrientation;
+  const setCharacterOrientation = propSetCharacterOrientation || setInternalCharacterOrientation;
+  const backgroundSource = propBackgroundSource !== undefined ? propBackgroundSource : internalBackgroundSource;
+  const setBackgroundSource = propSetBackgroundSource || setInternalBackgroundSource;
+
+  // Multi-Reference States for Omni Multi-Ref Mode (4 Image Slots + 3 Video Slots)
+  const [internalMultiImages, setInternalMultiImages] = useState(['', '', '', '']);
+  const [internalMultiVideos, setInternalMultiVideos] = useState(['', '', '']);
+  const omniMultiImages = propOmniMultiImages || internalMultiImages;
+  const setOmniMultiImages = propSetOmniMultiImages || setInternalMultiImages;
+  const omniMultiVideos = propOmniMultiVideos || internalMultiVideos;
+  const setOmniMultiVideos = propSetOmniMultiVideos || setInternalMultiVideos;
+
+  const handlePickGalleryImage = (item, slotIdx) => {
+    const next = [...omniMultiImages];
+    next[slotIdx] = item.url;
+    setOmniMultiImages(next);
+    autoTagIfMissing(`@image${slotIdx + 1}`);
+    setGalleryPickerSlot(null);
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) showToast(`Added to @image${slotIdx + 1}!`, "success");
+  };
+
+  const handlePickGalleryVideo = (item, slotIdx) => {
+    const dur = Number(item.duration) || 0;
+    if (dur > 10.05) {
+      const showToast = useAppStore.getState().showToast;
+      const msg = `Video exceeds 10s limit (${Math.round(dur * 10) / 10}s). Please use a clip up to 10 seconds.`;
+      if (showToast) showToast(msg, "error");
+      else alert(msg);
+      return;
+    }
+    const next = [...omniMultiVideos];
+    next[slotIdx] = item.url;
+    setOmniMultiVideos(next);
+    autoTagIfMissing(`@video${slotIdx + 1}`);
+    setGalleryPickerSlot(null);
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) showToast(`Added to @video${slotIdx + 1}!`, "success");
+  };
+
+  const handlePickFirstFrame = (item) => {
+    if (setOmniFirstFramePreview) setOmniFirstFramePreview(item.url);
+    if (setOmniFirstFrameImage) setOmniFirstFrameImage(item.url);
+    if (setFirstFramePreview) setFirstFramePreview(item.url);
+    if (setFirstFrameImage) setFirstFrameImage(item.url);
+    if (setOmniRefPreviews) setOmniRefPreviews(prev => { const n = [...prev]; n[0] = item.url; return n; });
+    if (setOmniRefImages) setOmniRefImages(prev => { const n = [...prev]; n[0] = item.url; return n; });
+    autoTagIfMissing('<FIRST_FRAME>');
+    setGalleryPickerSlot(null);
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) showToast("Start Frame selected from Gallery!", "success");
+  };
+
+  const handlePickLastFrame = (item) => {
+    if (setOmniLastFramePreview) setOmniLastFramePreview(item.url);
+    if (setOmniLastFrameImage) setOmniLastFrameImage(item.url);
+    if (setLastFramePreview) setLastFramePreview(item.url);
+    if (setLastFrameImage) setLastFrameImage(item.url);
+    if (setOmniRefPreviews) setOmniRefPreviews(prev => { const n = [...prev]; n[1] = item.url; return n; });
+    if (setOmniRefImages) setOmniRefImages(prev => { const n = [...prev]; n[1] = item.url; return n; });
+    autoTagIfMissing('<LAST_FRAME>');
+    setGalleryPickerSlot(null);
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) showToast("End Frame selected from Gallery!", "success");
+  };
+
+  const handlePickMotionSubject = (item) => {
+    setMotionSubjectImage(item.url);
+    setMotionSubjectPreview(item.url);
+    setGalleryPickerSlot(null);
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) showToast("Subject image selected for Motion Control!", "success");
+  };
+
+  const handlePickMotionVideo = (item) => {
+    const dur = Number(item.duration) || 5;
+    if (dur > 30.5) {
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast("Video exceeds 30s limit for Motion Control.", "error");
+      return;
+    }
+    setMotionRefVideo(item.url);
+    setMotionRefVideoPreview(item.url);
+    setMotionRefVideoDuration(Math.round(dur * 10) / 10);
+    setGalleryPickerSlot(null);
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) showToast("Motion pattern video selected for Motion Control!", "success");
+  };
+
+  // Upload Handlers for Motion Control
+  const handleMotionSubjectSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const showToast = useAppStore.getState().showToast;
+
+    if (!file.type.match(/^image\/(jpeg|png|jpg|webp)/i)) {
+      if (showToast) showToast("Subject image must be JPEG, PNG, or WebP format.", "error");
+      if (motionImageInputRef.current) motionImageInputRef.current.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      if (showToast) showToast("Subject image exceeds 10MB limit (Max: 10MB).", "error");
+      if (motionImageInputRef.current) motionImageInputRef.current.value = '';
+      return;
+    }
+
+    const blobUrl = URL.createObjectURL(file);
+
+    // Probe image resolution (>340px) and aspect ratio (2:5 to 5:2)
+    const probeImage = () => new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ width: img.naturalWidth || img.width, height: img.naturalHeight || img.height });
+      img.onerror = () => resolve(null);
+      img.src = blobUrl;
+    });
+
+    const dims = await probeImage();
+    if (dims && dims.width > 0 && dims.height > 0) {
+      if (dims.width < 340 || dims.height < 340) {
+        URL.revokeObjectURL(blobUrl);
+        if (motionImageInputRef.current) motionImageInputRef.current.value = '';
+        const msg = `Subject image resolution must be greater than 340px (${dims.width}×${dims.height} detected).`;
+        if (showToast) showToast(msg, "error");
+        else alert(msg);
+        return;
+      }
+      const ratio = dims.width / dims.height;
+      if (ratio < 0.38 || ratio > 2.62) {
+        URL.revokeObjectURL(blobUrl);
+        if (motionImageInputRef.current) motionImageInputRef.current.value = '';
+        const msg = `Subject image aspect ratio must be between 2:5 and 5:2 (detected ${(Math.round(ratio * 10) / 10)}:1).`;
+        if (showToast) showToast(msg, "error");
+        else alert(msg);
+        return;
+      }
+    }
+
+    setMotionSubjectPreview(blobUrl);
+    setMotionSubjectImage(blobUrl);
+    setIsUploadingMotionImage(true);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const base64 = ev.target.result;
+        try {
+          const res = await fetch(getApiUrl('/api/upload-asset'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              data: base64,
+              type: 'image',
+              userId: useAppStore.getState().userProfile?.id || 'anon',
+              folder: 'reference'
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.url) {
+              setMotionSubjectImage(data.url);
+              setMotionSubjectPreview(data.url);
+            }
+          }
+        } catch (err) {
+          console.debug('[SidePanel] Upload subject asset fallback:', err);
+        } finally {
+          setIsUploadingMotionImage(false);
+          if (motionImageInputRef.current) motionImageInputRef.current.value = '';
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setIsUploadingMotionImage(false);
+      if (motionImageInputRef.current) motionImageInputRef.current.value = '';
+    }
+  };
+
+  const handleMotionVideoSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const showToast = useAppStore.getState().showToast;
+
+    if (!file.type.match(/^video\/(mp4|quicktime|webm)/i) && !file.name.match(/\.(mp4|mov|webm)$/i)) {
+      if (showToast) showToast("Motion video must be MP4, MOV, or WebM format.", "error");
+      if (motionVideoInputRef.current) motionVideoInputRef.current.value = '';
+      return;
+    }
+    if (file.size > 100 * 1024 * 1024) {
+      if (showToast) showToast("Motion video exceeds 100MB limit.", "error");
+      if (motionVideoInputRef.current) motionVideoInputRef.current.value = '';
+      return;
+    }
+
+    setIsUploadingMotionVideo(true);
+    const blobUrl = URL.createObjectURL(file);
+
+    const probeVideo = () => new Promise((resolve) => {
+      const v = document.createElement('video');
+      v.preload = 'metadata';
+      let done = false;
+      const finish = (d, w, h) => {
+        if (!done) {
+          done = true;
+          v.onloadedmetadata = null;
+          v.onerror = null;
+          resolve({ duration: d, width: w, height: h });
+        }
+      };
+      v.onloadedmetadata = () => finish(v.duration || 5, v.videoWidth || 0, v.videoHeight || 0);
+      v.onerror = () => finish(5, 0, 0);
+      setTimeout(() => finish(5, 0, 0), 4000);
+      v.src = blobUrl;
+      try { v.load(); } catch (_) {
+        void 0;
+      }
+    });
+
+    const meta = await probeVideo();
+    const dur = meta.duration;
+    if (dur < 3 || dur > 30.5) {
+      setIsUploadingMotionVideo(false);
+      URL.revokeObjectURL(blobUrl);
+      if (motionVideoInputRef.current) motionVideoInputRef.current.value = '';
+      const msg = `Motion video duration must be between 3 and 30 seconds (${Math.round(dur * 10) / 10}s detected).`;
+      if (showToast) showToast(msg, "error");
+      else alert(msg);
+      return;
+    }
+
+    if (meta.width > 0 && meta.height > 0) {
+      if (meta.width < 340 || meta.height < 340) {
+        setIsUploadingMotionVideo(false);
+        URL.revokeObjectURL(blobUrl);
+        if (motionVideoInputRef.current) motionVideoInputRef.current.value = '';
+        const msg = `Motion video resolution must be greater than 340px (${meta.width}×${meta.height} detected).`;
+        if (showToast) showToast(msg, "error");
+        else alert(msg);
+        return;
+      }
+      const ratio = meta.width / meta.height;
+      if (ratio < 0.38 || ratio > 2.62) {
+        setIsUploadingMotionVideo(false);
+        URL.revokeObjectURL(blobUrl);
+        if (motionVideoInputRef.current) motionVideoInputRef.current.value = '';
+        const msg = `Motion video aspect ratio must be between 2:5 and 5:2 (detected ${(Math.round(ratio * 10) / 10)}:1).`;
+        if (showToast) showToast(msg, "error");
+        else alert(msg);
+        return;
+      }
+    }
+
+    const cleanDur = Math.round(dur * 10) / 10;
+    setMotionRefVideoDuration(cleanDur);
+    setMotionRefVideoPreview(blobUrl);
+    setMotionRefVideo(blobUrl);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const base64 = ev.target.result;
+        try {
+          const res = await fetch(getApiUrl('/api/upload-asset'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              data: base64,
+              type: 'video',
+              userId: useAppStore.getState().userProfile?.id || 'anon',
+              folder: 'reference'
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.url) {
+              setMotionRefVideo(data.url);
+              setMotionRefVideoPreview(data.url);
+            }
+          }
+        } catch (err) {
+          console.debug('[SidePanel] Upload motion video fallback:', err);
+        } finally {
+          setIsUploadingMotionVideo(false);
+          if (motionVideoInputRef.current) motionVideoInputRef.current.value = '';
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setIsUploadingMotionVideo(false);
+      if (motionVideoInputRef.current) motionVideoInputRef.current.value = '';
+    }
+  };
+
+  const handleClearMotionSubject = () => {
+    setMotionSubjectImage('');
+    setMotionSubjectPreview('');
+    if (motionImageInputRef.current) motionImageInputRef.current.value = '';
+  };
+
+  const handleClearMotionVideo = () => {
+    setMotionRefVideo('');
+    setMotionRefVideoPreview('');
+    setMotionRefVideoDuration(5);
+    if (motionVideoInputRef.current) motionVideoInputRef.current.value = '';
+  };
+
+  // File Input Refs for 4 Image Slots and 3 Video Slots
+  const multiImgInput0 = useRef(null);
+  const multiImgInput1 = useRef(null);
+  const multiImgInput2 = useRef(null);
+  const multiImgInput3 = useRef(null);
+  const multiImageRefs = [multiImgInput0, multiImgInput1, multiImgInput2, multiImgInput3];
+
+  const multiVidInput0 = useRef(null);
+  const multiVidInput1 = useRef(null);
+  const multiVidInput2 = useRef(null);
+  const multiVideoRefs = [multiVidInput0, multiVidInput1, multiVidInput2];
+
+  // Dedicated refs for Start and End keyframes
+  const startFrameInputRef = useRef(null);
+  const endFrameInputRef = useRef(null);
 
   const videoPreview = propOmniRefVideoPreview !== undefined ? propOmniRefVideoPreview : localVideoPreview;
   const setVideoPreview = (val) => {
@@ -151,10 +569,8 @@ export const SidePanel = React.memo(({
     if (propSetOmniRefVideoPreview) propSetOmniRefVideoPreview(val);
   };
 
-  // Multiple driving reference videos state (up to 3 videos for Omni 1.1 Flash)
   const [refVideoList, setRefVideoList] = useState([]);
 
-  // Sync refVideoList with initial videoPreview or propOmniRefVideoPreview
   useEffect(() => {
     if (videoPreview && refVideoList.length === 0) {
       setRefVideoList([videoPreview]);
@@ -178,52 +594,456 @@ export const SidePanel = React.memo(({
     });
   };
 
-  // Textarea Ref & Local Prompt State for zero input latency
+  // Textarea Ref & Local Prompt State
   const textareaRef = useRef(null);
   const [mentionSearch, setMentionSearch] = useState(null);
   const [mentionCursorPos, setMentionCursorPos] = useState(0);
   const [localPrompt, setLocalPrompt] = useState(promptText || '');
-
-  // Debounce ref to prevent parent re-renders on every keystroke
+  const [isAstraWriting, setIsAstraWriting] = useState(false);
   const debounceTimerRef = useRef(null);
 
-  // Keep localPrompt synchronized when parent promptText changes externally
   useEffect(() => {
     setLocalPrompt(promptText || '');
   }, [promptText]);
 
+  // Astra (ChatGPT 6) Scenario & Prompt Writer
+  const handleAstraWritePrompt = useCallback(async () => {
+    if (isAstraWriting) return;
+    setIsAstraWriting(true);
+    const showToast = useAppStore.getState().showToast;
+    try {
+      const scenarioContext = [
+        firstFramePreview ? "Start Keyframe loaded" : "",
+        lastFramePreview ? "End Keyframe loaded" : "",
+        videoPreview ? "Reference Video Motion loaded" : "",
+        aspectRatio ? `Aspect: ${aspectRatio}` : "",
+        duration ? `Duration: ${duration}s` : "",
+        panelTab ? `Mode: ${panelTab}` : ""
+      ].filter(Boolean).join(" | ");
+
+      const res = await fetch(getApiUrl('/api/forge/write-prompt'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: localPrompt || '',
+          scenario: scenarioContext,
+          type: panelTab === 'image' ? 'image' : 'video',
+          style: 'Cinematic Cinema'
+        })
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.refinedPrompt) {
+        setLocalPrompt(data.refinedPrompt);
+        setPromptText(data.refinedPrompt);
+        if (showToast) showToast("Prompt crafted by Astra (ChatGPT 6)!", "success");
+      }
+    } catch (err) {
+      console.error('[Astra Prompt Error]', err);
+      if (showToast) showToast("Astra prompt generation failed", "error");
+    } finally {
+      setIsAstraWriting(false);
+    }
+  }, [isAstraWriting, firstFramePreview, lastFramePreview, videoPreview, aspectRatio, duration, panelTab, localPrompt, setPromptText]);
+
+  // Vertex AI Gemini MCP Prompt Enhancer
+  const [isMcpEnhancing, setIsMcpEnhancing] = useState(false);
+  const handleVertexMcpEnhancePrompt = useCallback(async () => {
+    if (isMcpEnhancing) return;
+    setIsMcpEnhancing(true);
+    const showToast = useAppStore.getState().showToast;
+    try {
+      const res = await fetch(getApiUrl('/api/mcp/enhance-prompt'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: localPrompt || 'Cinematic shot of subject in dramatic lighting',
+          style: 'Cinematic Cinema Masterwork',
+          engine: panelTab === 'image' ? 'imagen-3' : 'seedance',
+          aspectRatio: aspectRatio || '16:9'
+        })
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.enhancedPrompt) {
+        setLocalPrompt(data.enhancedPrompt);
+        setPromptText(data.enhancedPrompt);
+        if (showToast) showToast("Prompt enhanced with Vertex AI Gemini MCP!", "success");
+      }
+    } catch (err) {
+      console.error('[MCP Prompt Enhance Error]', err);
+      if (showToast) showToast("MCP enhancement failed: " + err.message, "error");
+    } finally {
+      setIsMcpEnhancing(false);
+    }
+  }, [isMcpEnhancing, localPrompt, panelTab, aspectRatio, setPromptText]);
+
+  // Insert @tag at current cursor position in prompt
+  const insertTagAtCursor = useCallback((tag) => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      const updated = localPrompt ? `${localPrompt} ${tag}` : tag;
+      setLocalPrompt(updated);
+      setPromptText(updated);
+      return;
+    }
+    const start = textarea.selectionStart ?? localPrompt.length;
+    const end = textarea.selectionEnd ?? localPrompt.length;
+    const textBefore = localPrompt.substring(0, start);
+    const textAfter = localPrompt.substring(end);
+    const updated = `${textBefore}${textBefore.endsWith(' ') || textBefore.length === 0 ? '' : ' '}${tag} ${textAfter}`;
+    setLocalPrompt(updated);
+    setPromptText(updated);
+    setTimeout(() => {
+      textarea.focus();
+      const newPos = start + tag.length + (textBefore.endsWith(' ') || textBefore.length === 0 ? 1 : 2);
+      textarea.setSelectionRange(newPos, newPos);
+    }, 50);
+  }, [localPrompt, setPromptText]);
+
+  // Automatically tag placeholder in prompt if not present
+  const autoTagIfMissing = useCallback((tag) => {
+    setLocalPrompt(prev => {
+      if (!prev.includes(tag)) {
+        const updated = prev.trim() ? `${prev.trim()} ${tag}` : tag;
+        setPromptText(updated);
+        return updated;
+      }
+      return prev;
+    });
+  }, [setPromptText]);
+
+  const handleMultiImageSelect = (e, slotIdx) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const blobUrl = URL.createObjectURL(file);
+    const next = [...omniMultiImages];
+    next[slotIdx] = blobUrl;
+    setOmniMultiImages(next);
+    autoTagIfMissing(`@image${slotIdx + 1}`);
+
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const dataUrl = ev.target.result;
+      setOmniMultiImages(prev => {
+        const copy = [...prev];
+        copy[slotIdx] = dataUrl;
+        return copy;
+      });
+
+      try {
+        const resp = await fetch(getApiUrl('/api/save-asset'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageData: dataUrl,
+            type: 'image',
+            fileName: `ref_image_${slotIdx + 1}_${Date.now()}.png`,
+            folder: 'reference'
+          })
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.url) {
+            setOmniMultiImages(prev => {
+              const copy = [...prev];
+              copy[slotIdx] = data.url;
+              return copy;
+            });
+          }
+        }
+      } catch (err) {
+        console.debug('Asset save fallback:', err);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleClearMultiImage = (slotIdx) => {
+    const next = [...omniMultiImages];
+    next[slotIdx] = '';
+    setOmniMultiImages(next);
+    if (multiImageRefs[slotIdx]?.current) {
+      multiImageRefs[slotIdx].current.value = '';
+    }
+  };
+
+  const handleMultiVideoSelect = (e, slotIdx) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const blobUrl = URL.createObjectURL(file);
+    const tempVideo = document.createElement('video');
+    tempVideo.preload = 'metadata';
+    tempVideo.src = blobUrl;
+    tempVideo.onloadedmetadata = () => {
+      const dur = tempVideo.duration || 0;
+      if (dur > 10.05) {
+        URL.revokeObjectURL(blobUrl);
+        if (multiVideoRefs[slotIdx]?.current) multiVideoRefs[slotIdx].current.value = '';
+        const showToast = useAppStore.getState().showToast;
+        const msg = `Video reference must be 10 seconds or shorter (${Math.round(dur * 10) / 10}s detected).`;
+        if (showToast) {
+          showToast(msg, "error");
+        } else {
+          alert(msg);
+        }
+        return;
+      }
+      const next = [...omniMultiVideos];
+      next[slotIdx] = blobUrl;
+      setOmniMultiVideos(next);
+      autoTagIfMissing(`@video${slotIdx + 1}`);
+
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const base64Data = ev.target.result;
+        setOmniMultiVideos(prev => {
+          const copy = [...prev];
+          copy[slotIdx] = base64Data;
+          return copy;
+        });
+
+        try {
+          const resp = await fetch(getApiUrl('/api/save-asset'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              imageData: base64Data,
+              type: 'video',
+              fileName: `ref_video_${slotIdx + 1}_${Date.now()}.mp4`,
+              folder: 'reference'
+            })
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data.url) {
+              setOmniMultiVideos(prev => {
+                const copy = [...prev];
+                copy[slotIdx] = data.url;
+                return copy;
+              });
+            }
+          }
+        } catch (err) {
+          console.debug('Video save fallback:', err);
+        }
+      };
+      reader.readAsDataURL(file);
+    };
+  };
+
+  const handleClearMultiVideo = (slotIdx) => {
+    const next = [...omniMultiVideos];
+    next[slotIdx] = '';
+    setOmniMultiVideos(next);
+    if (multiVideoRefs[slotIdx]?.current) {
+      multiVideoRefs[slotIdx].current.value = '';
+    }
+  };
+
   const isVeoEngine = activeEngine.startsWith('veo-3.1') || activeEngine === 'veo3';
   const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview';
+
+  // Dynamic Credits calculation aligned with Vertex AI / Omni backend and Kling Motion Control
+  const calculatedCredits = useMemo(() => {
+    if (panelTab === 'motion' || activeEngine.includes('motion')) {
+      const rate = (motionMode === 'pro' || motionMode === '1080p') ? 9 : 7;
+      const dur = motionRefVideoDuration > 0 ? Math.ceil(motionRefVideoDuration) : (duration || 5);
+      return rate * dur;
+    }
+    if (panelTab === 'omni' || panelTab === 'omni-multi' || isOmniEngine) {
+      let costPerSec = 5;
+      const resLower = (resolution || '720p').toLowerCase();
+      if (resLower === '4k') costPerSec = generateAudio ? 19 : 15;
+      else if (resLower === '1080p') costPerSec = generateAudio ? 8 : 6;
+      else if (resLower === '360p') costPerSec = generateAudio ? 5 : 4;
+      else costPerSec = generateAudio ? 6 : 5; // 720p
+      return Math.ceil(costPerSec * 1.1 * duration);
+    }
+    return Math.round(duration * 2.5 * (generateAudio ? 1.5 : 1));
+  }, [panelTab, activeEngine, motionMode, motionRefVideoDuration, isOmniEngine, resolution, generateAudio, duration]);
 
   const triggerGenerateVeo = () => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     const engineToUse = isVeoEngine ? activeEngine : 'veo-3.1-generate-preview';
     setPromptText(localPrompt);
     setActiveTab('video');
-    if (!isVeoEngine) {
-      setActiveEngine(engineToUse);
-    }
-    queueMicrotask(() => handleGenerate(localPrompt, engineToUse));
+    if (!isVeoEngine) setActiveEngine(engineToUse);
+    queueMicrotask(() => handleGenerate(localPrompt, engineToUse, {
+      firstFrame: firstFrameImage || omniFirstFrameImage,
+      lastFrame: lastFrameImage || omniLastFrameImage,
+      duration,
+      resolution,
+      aspectRatio
+    }));
   };
 
   const triggerGenerateOmni = () => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    const engineToUse = isOmniEngine ? activeEngine : 'gemini-omni-1.1-flash-preview';
+    const engineToUse = 'gemini-omni-1.1-flash-preview';
     setPromptText(localPrompt);
     setActiveTab('video');
-    if (!isOmniEngine) {
-      setActiveEngine(engineToUse);
-    }
-    queueMicrotask(() => handleGenerate(localPrompt, engineToUse));
+    if (!isOmniEngine) setActiveEngine(engineToUse);
+    queueMicrotask(() => handleGenerate(localPrompt, engineToUse, {
+      firstFrame: omniFirstFrameImage || firstFrameImage,
+      lastFrame: omniLastFrameImage || lastFrameImage,
+      duration,
+      resolution,
+      aspectRatio
+    }));
   };
 
   const triggerGenerateMotion = () => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    const engineToUse = activeEngine.includes('motion') ? activeEngine : 'kling-motion';
+    const showToast = useAppStore.getState().showToast;
+
+    if (!motionSubjectPreview && !motionSubjectImage) {
+      const msg = "Please upload a subject reference image for Motion Control.";
+      if (showToast) showToast(msg, "error");
+      else alert(msg);
+      return;
+    }
+    if (!motionRefVideoPreview && !motionRefVideo) {
+      const msg = "Please upload a motion reference video for Motion Control.";
+      if (showToast) showToast(msg, "error");
+      else alert(msg);
+      return;
+    }
+
+    const dur = motionRefVideoDuration > 0 ? Math.ceil(motionRefVideoDuration) : (duration || 5);
+    const engineToUse = 'kling-motion';
     setPromptText(localPrompt);
     setActiveTab('video');
     setActiveEngine(engineToUse);
-    queueMicrotask(() => handleGenerate(localPrompt, engineToUse));
+    queueMicrotask(() => handleGenerate(localPrompt, engineToUse, {
+      input_url: motionSubjectImage || motionSubjectPreview,
+      video_url: motionRefVideo || motionRefVideoPreview,
+      mode: motionMode,
+      character_orientation: characterOrientation,
+      background_source: backgroundSource,
+      duration: dur,
+      aspectRatio
+    }));
+  };
+
+  // Start Frame Upload Handler
+  const handleStartFrameSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const blobUrl = URL.createObjectURL(file);
+
+    // Instant UI preview in both Omni and regular state
+    if (setOmniFirstFramePreview) setOmniFirstFramePreview(blobUrl);
+    if (setFirstFramePreview) setFirstFramePreview(blobUrl);
+    if (setOmniRefPreviews) {
+      setOmniRefPreviews(prev => { const n = [...prev]; n[0] = blobUrl; return n; });
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const dataUrl = ev.target.result;
+      if (setOmniFirstFrameImage) setOmniFirstFrameImage(dataUrl);
+      if (setFirstFrameImage) setFirstFrameImage(dataUrl);
+      if (setOmniRefImages) {
+        setOmniRefImages(prev => { const n = [...prev]; n[0] = dataUrl; return n; });
+      }
+
+      try {
+        const resp = await fetch(getApiUrl('/api/save-asset'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageData: dataUrl,
+            type: 'reference_upload',
+            fileName: `start_frame_${Date.now()}.png`,
+            folder: 'reference'
+          })
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          const publicUrl = data.url || data.path || dataUrl;
+          if (setOmniFirstFrameImage) setOmniFirstFrameImage(publicUrl);
+          if (setFirstFrameImage) setFirstFrameImage(publicUrl);
+          if (setOmniRefImages) {
+            setOmniRefImages(prev => { const n = [...prev]; n[0] = publicUrl; return n; });
+          }
+        }
+      } catch (err) {
+        console.debug('[SidePanel] Start frame API save fallback:', err);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // End Frame Upload Handler
+  const handleEndFrameSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const blobUrl = URL.createObjectURL(file);
+
+    // Instant UI preview in both Omni and regular state
+    if (setOmniLastFramePreview) setOmniLastFramePreview(blobUrl);
+    if (setLastFramePreview) setLastFramePreview(blobUrl);
+    if (setOmniRefPreviews) {
+      setOmniRefPreviews(prev => { const n = [...prev]; n[1] = blobUrl; return n; });
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const dataUrl = ev.target.result;
+      if (setOmniLastFrameImage) setOmniLastFrameImage(dataUrl);
+      if (setLastFrameImage) setLastFrameImage(dataUrl);
+      if (setOmniRefImages) {
+        setOmniRefImages(prev => { const n = [...prev]; n[1] = dataUrl; return n; });
+      }
+
+      try {
+        const resp = await fetch(getApiUrl('/api/save-asset'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageData: dataUrl,
+            type: 'reference_upload',
+            fileName: `end_frame_${Date.now()}.png`,
+            folder: 'reference'
+          })
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          const publicUrl = data.url || data.path || dataUrl;
+          if (setOmniLastFrameImage) setOmniLastFrameImage(publicUrl);
+          if (setLastFrameImage) setLastFrameImage(publicUrl);
+          if (setOmniRefImages) {
+            setOmniRefImages(prev => { const n = [...prev]; n[1] = publicUrl; return n; });
+          }
+        }
+      } catch (err) {
+        console.debug('[SidePanel] End frame API save fallback:', err);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleClearStartFrame = () => {
+    if (setOmniFirstFrameImage) setOmniFirstFrameImage('');
+    if (setOmniFirstFramePreview) setOmniFirstFramePreview('');
+    if (setFirstFrameImage) setFirstFrameImage('');
+    if (setFirstFramePreview) setFirstFramePreview('');
+    if (setOmniRefImages) setOmniRefImages(prev => { const n = [...prev]; n[0] = ''; return n; });
+    if (setOmniRefPreviews) setOmniRefPreviews(prev => { const n = [...prev]; n[0] = ''; return n; });
+    if (startFrameInputRef.current) startFrameInputRef.current.value = '';
+  };
+
+  const handleClearEndFrame = () => {
+    if (setOmniLastFrameImage) setOmniLastFrameImage('');
+    if (setOmniLastFramePreview) setOmniLastFramePreview('');
+    if (setLastFrameImage) setLastFrameImage('');
+    if (setLastFramePreview) setLastFramePreview('');
+    if (setOmniRefImages) setOmniRefImages(prev => { const n = [...prev]; n[1] = ''; return n; });
+    if (setOmniRefPreviews) setOmniRefPreviews(prev => { const n = [...prev]; n[1] = ''; return n; });
+    if (endFrameInputRef.current) endFrameInputRef.current.value = '';
   };
 
   const handleVideoSelect = async (e) => {
@@ -233,110 +1053,150 @@ export const SidePanel = React.memo(({
     if (refVideoList.length >= 3) {
       const showToast = useAppStore.getState().showToast;
       if (showToast) showToast("Maximum 3 driving reference videos allowed.", "warning");
+      if (videoInputRef.current) videoInputRef.current.value = '';
       return;
     }
 
     setIsVideoUploading(true);
     const blobUrl = URL.createObjectURL(file);
 
-    // Validate reference video duration (strict 10s max limit)
-    const tempVideo = document.createElement('video');
-    tempVideo.preload = 'metadata';
-    tempVideo.src = blobUrl;
-
-    tempVideo.onloadedmetadata = async () => {
-      const dur = tempVideo.duration || 0;
-      if (dur > 10) {
-        setIsVideoUploading(false);
-        if (videoInputRef.current) videoInputRef.current.value = '';
-        URL.revokeObjectURL(blobUrl);
-
-        const showToast = useAppStore.getState().showToast;
-        if (showToast) {
-          showToast(`Reference video rejected (${Math.round(dur * 10) / 10}s). Video duration must be 10 seconds or shorter.`, "error");
+    // Robust duration checker with safety timeout & fallback
+    const checkDuration = () => new Promise((resolve) => {
+      const v = document.createElement('video');
+      v.preload = 'metadata';
+      let done = false;
+      const finish = (dur) => {
+        if (!done) {
+          done = true;
+          v.onloadedmetadata = null;
+          v.onerror = null;
+          resolve(dur);
         }
-        return;
+      };
+      v.onloadedmetadata = () => finish(v.duration || 0);
+      v.onerror = () => finish(0); // If browser cannot probe metadata, allow upload
+      setTimeout(() => finish(0), 2500); // 2.5s fallback
+      v.src = blobUrl;
+      try { v.load(); } catch (_) {
+        // Fallback if browser media loading fails
       }
+    });
 
-      if (setOmniRefVideoDuration) setOmniRefVideoDuration(dur);
-      addVideoToList(blobUrl);
+    const dur = await checkDuration();
+    if (dur > 10.05) {
+      setIsVideoUploading(false);
+      if (videoInputRef.current) videoInputRef.current.value = '';
+      URL.revokeObjectURL(blobUrl);
 
-      try {
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-          const base64Url = ev.target.result;
-          try {
-            const resp = await fetch(getApiUrl('/api/save-asset'), {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                imageData: base64Url,
-                type: 'video',
-                fileName: `ref_video_${Date.now()}.mp4`,
-                folder: 'reference'
-              })
+      const showToast = useAppStore.getState().showToast;
+      const msg = `Video reference must be 10 seconds or shorter (${Math.round(dur * 10) / 10}s detected).`;
+      if (showToast) {
+        showToast(msg, "error");
+      } else {
+        alert(msg);
+      }
+      return;
+    }
+
+    if (setOmniRefVideoDuration) setOmniRefVideoDuration(dur);
+    addVideoToList(blobUrl);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const base64Url = ev.target.result;
+        try {
+          const resp = await fetch(getApiUrl('/api/save-asset'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              imageData: base64Url,
+              type: 'video',
+              fileName: `ref_video_${Date.now()}.mp4`,
+              folder: 'reference'
+            })
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            const publicUrl = data.url || data.path || base64Url;
+            setRefVideoList(prev => {
+              const copy = [...prev];
+              const lastIdx = copy.indexOf(blobUrl);
+              if (lastIdx !== -1) copy[lastIdx] = publicUrl;
+              else if (copy.length < 3) copy.push(publicUrl);
+              setVideoPreview(copy[0] || null);
+              return copy;
             });
-            if (resp.ok) {
-              const data = await resp.json();
-              const publicUrl = data.url || data.path || base64Url;
-              setRefVideoList(prev => {
-                const copy = [...prev];
-                const lastIdx = copy.indexOf(blobUrl);
-                if (lastIdx !== -1) copy[lastIdx] = publicUrl;
-                else if (copy.length < 3) copy.push(publicUrl);
-                setVideoPreview(copy[0] || null);
-                return copy;
-              });
-            }
-          } catch (_) { /* fallback to blobUrl */ }
+            if (propSetOmniRefVideoPreview) propSetOmniRefVideoPreview(publicUrl);
+          }
+        } catch (e) {
+          console.debug('[SidePanel] Video save fallback:', e);
+        } finally {
           setIsVideoUploading(false);
           if (videoInputRef.current) videoInputRef.current.value = '';
-        };
-        reader.onerror = () => setIsVideoUploading(false);
-        reader.readAsDataURL(file);
-      } catch (err) {
+        }
+      };
+      reader.onerror = () => {
         setIsVideoUploading(false);
-      }
-    };
+        if (videoInputRef.current) videoInputRef.current.value = '';
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setIsVideoUploading(false);
+      if (videoInputRef.current) videoInputRef.current.value = '';
+    }
   };
 
-  // Build combined list of all available mention items using useMemo
+  // Mention items list
   const availableMentionItems = useMemo(() => {
     const firstPreview = panelTab === 'omni' ? omniFirstFramePreview : firstFramePreview;
     const lastPreview = panelTab === 'omni' ? omniLastFramePreview : lastFramePreview;
 
     const omniSlots = [
-      { name: '<FIRST_FRAME>', category: 'Keyframe 1', imageUrl: firstPreview, isKeyframe: true },
-      { name: '<IMAGE_REF_0>', category: 'Reference 1 (Image Ref 1)', imageUrl: omniRefPreviews[0] || omniFirstFramePreview },
-      { name: '<IMAGE_REF_1>', category: 'Reference 2 (Image Ref 2)', imageUrl: omniRefPreviews[1] || omniLastFramePreview },
-      { name: '<IMAGE_REF_2>', category: 'Reference 3 (Image Ref 3)', imageUrl: omniRefPreviews[2] },
-      { name: '<IMAGE_REF_3>', category: 'Reference 4 (Image Ref 4)', imageUrl: omniRefPreviews[3] },
-      { name: '<IMAGE_REF_4>', category: 'Reference 5 (Image Ref 5)', imageUrl: omniRefPreviews[4] }
+      { name: '<FIRST_FRAME>', category: 'First Frame', imageUrl: firstPreview, isKeyframe: true },
+      { name: '<IMAGE_REF_0>', category: 'Reference 1', imageUrl: omniRefPreviews[0] || omniFirstFramePreview },
+      { name: '<IMAGE_REF_1>', category: 'Reference 2', imageUrl: omniRefPreviews[1] || omniLastFramePreview },
+      { name: '<IMAGE_REF_2>', category: 'Reference 3', imageUrl: omniRefPreviews[2] },
+      { name: '<IMAGE_REF_3>', category: 'Reference 4', imageUrl: omniRefPreviews[3] },
+      { name: '<IMAGE_REF_4>', category: 'Reference 5', imageUrl: omniRefPreviews[4] }
     ];
+
+    const multiSlots = [
+      { name: 'image1', category: 'Image Ref 1', imageUrl: omniMultiImages[0] },
+      { name: 'image2', category: 'Image Ref 2', imageUrl: omniMultiImages[1] },
+      { name: 'image3', category: 'Image Ref 3', imageUrl: omniMultiImages[2] },
+      { name: 'image4', category: 'Image Ref 4', imageUrl: omniMultiImages[3] },
+      { name: 'video1', category: 'Video Ref 1', isVideo: true, imageUrl: omniMultiVideos[0] },
+      { name: 'video2', category: 'Video Ref 2', isVideo: true, imageUrl: omniMultiVideos[1] },
+      { name: 'video3', category: 'Video Ref 3', isVideo: true, imageUrl: omniMultiVideos[2] },
+    ];
+
+    if (panelTab === 'omni-multi') {
+      return [...multiSlots, ...(allRefItems || [])];
+    }
 
     return [
       ...(panelTab === 'omni' ? omniSlots : [
-        ...(firstPreview ? [{ name: 'FIRST_FRAME', category: 'Keyframe 1', imageUrl: firstPreview, isKeyframe: true }] : []),
-        ...(lastPreview ? [{ name: 'LAST_FRAME', category: 'Keyframe 2', imageUrl: lastPreview, isKeyframe: true }] : [])
+        ...(firstPreview ? [{ name: 'FIRST_FRAME', category: 'First Frame', imageUrl: firstPreview, isKeyframe: true }] : []),
+        ...(lastPreview ? [{ name: 'LAST_FRAME', category: 'Last Frame', imageUrl: lastPreview, isKeyframe: true }] : [])
       ]),
       ...(videoPreview ? [{ name: '<REF_VIDEO>', category: 'Reference Video', isVideo: true, imageUrl: videoPreview, url: videoPreview }] : []),
       ...(allRefItems || [])
     ];
-  }, [panelTab, firstFramePreview, lastFramePreview, omniFirstFramePreview, omniLastFramePreview, omniRefPreviews, videoPreview, allRefItems]);
+  }, [panelTab, firstFramePreview, lastFramePreview, omniFirstFramePreview, omniLastFramePreview, omniRefPreviews, videoPreview, omniMultiImages, omniMultiVideos, allRefItems]);
 
   const handlePromptChange = useCallback((e) => {
     const val = e.target.value;
     const cursorPos = e.target.selectionStart;
     setLocalPrompt(val);
 
-    // Debounced parent update — wrapped in startTransition so it's low priority
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
       React.startTransition(() => setPromptText(val));
-    }, 300);
+    }, 250);
 
     const textBeforeCursor = val.slice(0, cursorPos);
-    const match = textBeforeCursor.match(/@([\w_]*)$/);
+    const match = textBeforeCursor.match(/@([\w_<>]*)$/);
 
     if (match) {
       setMentionSearch(match[1]);
@@ -344,1685 +1204,1382 @@ export const SidePanel = React.memo(({
     } else {
       setMentionSearch(null);
     }
-  }, [setPromptText]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [setPromptText]);
 
   const selectMention = (item) => {
     const text = localPrompt || '';
-    const before = text.slice(0, mentionCursorPos).replace(/@[\w_]*$/, '');
-    const after = text.slice(mentionCursorPos);
-    const tag = item.name.replace(/\s+/g, '');
-    const newText = `${before}@${tag} ${after}`;
-    setLocalPrompt(newText);
-    setPromptText(newText);
+    const textBefore = text.slice(0, mentionCursorPos).replace(/@[\w_<>]*$/, '');
+    const textAfter = text.slice(mentionCursorPos);
+    const cleanName = item.name.startsWith('@') ? item.name.slice(1) : item.name;
+    const tagText = (cleanName.startsWith('<') || cleanName.startsWith('image') || cleanName.startsWith('video'))
+      ? `@${cleanName} `
+      : `@<${cleanName}> `;
+    const updated = `${textBefore}${tagText}${textAfter}`;
+
+    setLocalPrompt(updated);
+    setPromptText(updated);
     setMentionSearch(null);
-    if (textareaRef.current) textareaRef.current.focus();
+
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        const nextPos = textBefore.length + tagText.length;
+        textareaRef.current.setSelectionRange(nextPos, nextPos);
+      }
+    }, 50);
   };
 
-  // Extract detected @mentions in prompt text with useMemo
   const detectedMentions = useMemo(() => {
-    return (localPrompt || '').match(/@[\w_]+/g) || [];
+    const matches = (localPrompt || '').match(/@<[\w_-]+>|@[\w_-]+/g) || [];
+    return [...new Set(matches)];
   }, [localPrompt]);
 
-  // Inline Full-Page Mode rendering
-  if (inlineMode) {
-    return (
-      <div className="w-full h-full flex flex-col bg-[#0a0a12] border-r border-white/15 overflow-hidden text-white relative z-10 font-sans">
-        {/* Hidden Dedicated Video File Input */}
-        <input
-          ref={videoInputRef}
-          type="file"
-          accept="video/*"
-          className="hidden"
-          onChange={handleVideoSelect}
-        />
+  const aspectOptions = useMemo(() => [
+    { value: '16:9', label: '16:9 Landscape', desc: '1920×1080 Widescreen' },
+    { value: '9:16', label: '9:16 Vertical', desc: '1080×1920 Reels/Shorts' },
+    { value: '1:1', label: '1:1 Square', desc: '1080×1080 Feed Post' }
+  ], []);
 
-        {/* Solid Header with ZeroLens Branding */}
-        <div className="px-5 py-3 border-b border-white/15 bg-[#12121e] flex items-center justify-between relative z-10 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-1 rounded-xl bg-gradient-to-tr from-violet-500 via-fuchsia-500 to-cyan-400 shadow-md shadow-fuchsia-500/20">
-              <div className="w-7 h-7 rounded-[10px] bg-[#0d0d15] flex items-center justify-center">
-                <Clapperboard className="w-4 h-4 text-fuchsia-400" />
-              </div>
-            </div>
-            <div>
-              <h2 className="text-xs font-black tracking-[0.2em] uppercase bg-gradient-to-r from-white via-violet-200 to-fuchsia-200 bg-clip-text text-transparent leading-none">
-                ZeroLens Studio
-              </h2>
-              <p className="text-[8px] font-bold uppercase tracking-widest text-fuchsia-400/70 leading-none mt-1">
-                Engine & Parameter Controls
-              </p>
-            </div>
-          </div>
-          <span className="text-[9px] font-mono bg-fuchsia-500/20 text-fuchsia-300 px-2.5 py-1 rounded-lg border border-fuchsia-500/30 font-bold uppercase tracking-widest">
-            Studio Page
+  const durationOptions = useMemo(() => [
+    { value: 4, label: '4 Seconds', desc: 'Fast generation' },
+    { value: 5, label: '5 Seconds', desc: 'Quick burst' },
+    { value: 6, label: '6 Seconds', desc: 'Standard shot' },
+    { value: 8, label: '8 Seconds', desc: 'Extended clip' },
+    { value: 10, label: '10 Seconds', desc: 'Long sequence' },
+    { value: 12, label: '12 Seconds', desc: 'Extended scene' },
+    { value: 15, label: '15 Seconds', desc: 'Maximum length (15s)' }
+  ], []);
+
+  const resolutionOptions = useMemo(() => {
+    if (panelTab === 'omni' || panelTab === 'omni-multi') {
+      return [
+        { value: '360p', label: '360p SD', desc: 'Fast preview' },
+        { value: '720p', label: '720p HD', desc: 'Crisp render' },
+        { value: '1080p', label: '1080p FHD', desc: 'High-def master' },
+        { value: '4k', label: '4K UHD', desc: 'Cinema quality' }
+      ];
+    }
+    return [
+      { value: '720p', label: '720p HD', desc: 'Crisp render' },
+      { value: '1080p', label: '1080p FHD', desc: 'High-def master' }
+    ];
+  }, [panelTab]);
+
+  const renderPromptStudio = (placeholderText) => (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-400 flex items-center gap-1.5">
+          <Sparkles className="w-3.5 h-3.5 text-[#c8f135]" />
+          <span>Creative Scene Prompt</span>
+        </label>
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <button
+            type="button"
+            onClick={handleVertexMcpEnhancePrompt}
+            disabled={isMcpEnhancing}
+            className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-[#c8f135]/20 to-emerald-500/20 hover:from-[#c8f135]/40 hover:to-emerald-500/40 border border-[#c8f135]/40 text-[#c8f135] hover:text-white text-[9px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-[0_0_10px_rgba(200,241,53,0.15)] disabled:opacity-50"
+            title="Use Google Cloud Vertex AI Gemini MCP to expand into a production-ready cinematic prompt"
+          >
+            {isMcpEnhancing ? (
+              <>
+                <Loader2 className="w-2.5 h-2.5 animate-spin text-[#c8f135]" />
+                <span>MCP Expanding...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-2.5 h-2.5 text-[#c8f135]" />
+                <span>Gemini MCP</span>
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={handleAstraWritePrompt}
+            disabled={isAstraWriting}
+            className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-violet-600/30 to-indigo-600/30 hover:from-violet-600/50 hover:to-indigo-600/50 border border-violet-500/40 text-violet-300 hover:text-white text-[9px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-[0_0_10px_rgba(139,92,246,0.2)] disabled:opacity-50"
+            title="Use Astra (ChatGPT 6) to understand your complete scenario and write a cinematic prompt"
+          >
+            {isAstraWriting ? (
+              <>
+                <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                <span>Astra Writing...</span>
+              </>
+            ) : (
+              <>
+                <Wand2 className="w-2.5 h-2.5 text-cyan-300" />
+                <span>Astra AI Write</span>
+              </>
+            )}
+          </button>
+          <span className="text-[9px] font-mono text-zinc-500 hidden sm:inline">
+            Type <code className="text-[#c8f135]">@</code> to tag
           </span>
         </div>
+      </div>
 
-        {/* Navigation Tabs Bar */}
-        <div className="px-2 sm:px-5 pt-2.5 sm:pt-3.5 pb-2 sm:pb-2.5 bg-[#0c0c16] border-b border-white/15 flex items-center gap-1.5 sm:gap-2 relative z-10 shrink-0">
+      {/* Autocomplete Popup */}
+      {mentionSearch !== null && (
+        <div className="bg-[#0e0e18]/98 border border-white/20 rounded-2xl p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.9)] backdrop-blur-3xl max-h-48 overflow-y-auto custom-scrollbar z-30">
+          {availableMentionItems
+            .filter(item => item.name.toLowerCase().includes((mentionSearch || '').toLowerCase()))
+            .map((item, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => selectMention(item)}
+                className="w-full px-2.5 py-1.5 rounded-lg text-left text-xs font-semibold flex items-center gap-2 hover:bg-white/[0.08] text-zinc-300 hover:text-white transition-all cursor-pointer"
+              >
+                <span className="text-[#c8f135] font-mono text-[11px]">@{item.name}</span>
+                <span className="text-[10px] text-zinc-500">({item.category})</span>
+              </button>
+            ))}
+        </div>
+      )}
+
+      <textarea
+        ref={textareaRef}
+        value={localPrompt}
+        onChange={handlePromptChange}
+        placeholder={placeholderText}
+        rows={4}
+        className="w-full bg-black/50 border border-white/15 focus:border-[#c8f135]/70 rounded-2xl p-4 text-xs text-white placeholder-zinc-500 outline-none resize-none custom-scrollbar leading-relaxed font-medium backdrop-blur-2xl shadow-inner transition-all"
+      />
+
+      {/* Tag Helper Chips */}
+      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+        <span className="text-[9px] font-black uppercase tracking-wider text-zinc-500">Quick Tags:</span>
+        {panelTab === 'omni-multi' ? (
+          <>
+            {[
+              { label: '@image1', tag: '@image1', loaded: !!omniMultiImages[0] },
+              { label: '@image2', tag: '@image2', loaded: !!omniMultiImages[1] },
+              { label: '@image3', tag: '@image3', loaded: !!omniMultiImages[2] },
+              { label: '@image4', tag: '@image4', loaded: !!omniMultiImages[3] },
+              { label: '@video1', tag: '@video1', loaded: !!omniMultiVideos[0] },
+              { label: '@video2', tag: '@video2', loaded: !!omniMultiVideos[1] },
+              { label: '@video3', tag: '@video3', loaded: !!omniMultiVideos[2] },
+            ].map((chip) => (
+              <button
+                key={chip.tag}
+                type="button"
+                onClick={() => insertTagAtCursor(chip.tag)}
+                className={cn(
+                  "px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold transition-all cursor-pointer border",
+                  chip.loaded
+                    ? "bg-[#c8f135]/20 text-[#c8f135] border-[#c8f135]/40 hover:bg-[#c8f135]/30 shadow-[0_0_8px_rgba(200,241,53,0.2)]"
+                    : "bg-white/[0.04] text-zinc-400 hover:text-white hover:bg-white/[0.08] border-white/10"
+                )}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </>
+        ) : (
+          <>
+            {[
+              { label: '@FIRST_FRAME', tag: '<FIRST_FRAME>' },
+              { label: '@LAST_FRAME', tag: '<LAST_FRAME>' },
+              ...(panelTab === 'omni' ? [{ label: '@REF_VIDEO', tag: '<REF_VIDEO>' }] : [])
+            ].map((chip) => (
+              <button
+                key={chip.tag}
+                type="button"
+                onClick={() => selectMention({ name: chip.tag })}
+                className="px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-[#c8f135]/20 hover:border-[#c8f135]/40 border border-white/10 transition-all cursor-pointer"
+              >
+                {chip.label}
+              </button>
+            ))}
+          </>
+        )}
+        {detectedMentions.map((tag, i) => (
+          <span key={i} className="px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold bg-[#c8f135]/15 text-[#c8f135] border border-[#c8f135]/30">
+            {tag}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+
+  const panelContent = (
+    <div className={cn(
+      "h-full bg-[#07070b]/95 backdrop-blur-3xl flex flex-col z-10 overflow-hidden",
+      inlineMode
+        ? "w-full border-r border-white/[0.08]"
+        : "w-full md:w-[350px] lg:w-[370px] border-r border-white/[0.08] shadow-[20px_0_60px_rgba(0,0,0,0.8)]"
+    )}>
+      {/* 1. Header with ZeroLens Aesthetic */}
+      <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-b border-white/[0.08] flex items-center justify-between shrink-0 bg-white/[0.02]">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-[#c8f135]/20 to-transparent border border-[#c8f135]/30 flex items-center justify-center shadow-[0_0_15px_rgba(200,241,53,0.15)]">
+            <Sparkles className="w-3.5 h-3.5 text-[#c8f135]" />
+          </div>
+          <div>
+            <h2 className="text-xs sm:text-sm font-black text-white tracking-tight uppercase flex items-center gap-1.5">
+              Studio Generator
+              <span className="text-[8.5px] font-mono font-extrabold px-1.5 py-0.2 rounded bg-[#c8f135]/10 text-[#c8f135] border border-[#c8f135]/20">
+                PRO
+              </span>
+            </h2>
+            <p className="text-[9.5px] font-semibold text-zinc-400 uppercase tracking-wider">
+              ZeroLens Cinema Engine v2.5
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <button
-            onClick={() => {
-              setPanelTab('veo');
-              setActiveTab('video');
-              if (!isVeoEngine) setActiveEngine('veo-3.1');
-            }}
+            type="button"
+            onClick={() => setShowDocs(!showDocs)}
             className={cn(
-              "flex-1 py-2 sm:py-2.5 px-1.5 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 sm:gap-2 transition-all border shadow-lg backdrop-blur-xl cursor-pointer select-none",
-              panelTab === 'veo'
-                ? "bg-gradient-to-r from-violet-600/30 via-violet-500/20 to-fuchsia-500/20 text-white border-violet-400/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]"
-                : "bg-white/[0.03] text-gray-400 border-white/10 hover:bg-white/[0.08] hover:text-white"
+              "p-1.5 sm:p-2 rounded-xl text-zinc-400 hover:text-white transition-all border border-transparent hover:border-white/10 hover:bg-white/[0.05]",
+              showDocs && "bg-white/[0.08] text-[#c8f135] border-white/15"
             )}
+            title="Omni 1.1 Docs"
           >
-            <Film className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-            <span className="truncate">Veo 3.1</span>
+            <Info size={15} />
           </button>
-
           <button
+            type="button"
+            onClick={onClose}
+            className="md:hidden flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/[0.08] hover:bg-white/15 text-[#c8f135] text-xs font-black uppercase tracking-wider border border-white/15 cursor-pointer transition-all active:scale-95 min-h-[38px]"
+            title="View Gallery"
+          >
+            <Film size={14} />
+            <span>Gallery</span>
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="hidden md:flex p-1.5 sm:p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all border border-transparent hover:border-white/10 cursor-pointer"
+            title="Close Panel"
+          >
+            <X size={15} />
+          </button>
+        </div>
+      </div>
+
+      {/* 2. ZeroLens Mode Switcher Tabs */}
+      <div className="px-4 py-2.5 border-b border-white/[0.08] bg-black/40 shrink-0">
+        <div className="grid grid-cols-3 gap-1 p-1 bg-black/60 rounded-2xl border border-white/[0.06]">
+          <button
+            type="button"
             onClick={() => {
               setPanelTab('omni');
               setActiveTab('video');
-              if (!isOmniEngine) setActiveEngine('gemini-omni-1.1-flash-preview');
+              setActiveEngine('gemini-omni-1.1-flash-preview');
             }}
             className={cn(
-              "flex-1 py-2 sm:py-2.5 px-1.5 sm:px-2 rounded-xl text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all border shadow-lg backdrop-blur-xl cursor-pointer select-none",
+              "py-2 px-1.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 relative select-none cursor-pointer",
               panelTab === 'omni'
-                ? "bg-gradient-to-r from-fuchsia-600/30 via-pink-500/20 to-violet-500/20 text-white border-fuchsia-400/50 shadow-[0_0_20px_rgba(217,70,239,0.3)]"
-                : "bg-white/[0.03] text-gray-400 border-white/10 hover:bg-white/[0.08] hover:text-white"
+                ? "bg-gradient-to-r from-[#c8f135]/20 via-[#c8f135]/15 to-transparent text-white border border-[#c8f135]/40 shadow-[0_0_20px_rgba(200,241,53,0.2)] font-black"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
             )}
           >
-            <Zap className="w-3.5 h-3.5 text-fuchsia-400 shrink-0" />
-            <span className="truncate">Omni 1.1</span>
+            <Zap className={cn("w-3.5 h-3.5 shrink-0", panelTab === 'omni' ? "text-[#c8f135]" : "text-zinc-500")} />
+            <span className="truncate">Omni</span>
           </button>
 
           <button
+            type="button"
+            onClick={() => {
+              setPanelTab('omni-multi');
+              setActiveTab('video');
+              setActiveEngine('gemini-omni-1.1-flash-preview');
+            }}
+            className={cn(
+              "py-2 px-1.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 relative select-none cursor-pointer",
+              panelTab === 'omni-multi'
+                ? "bg-gradient-to-r from-[#c8f135]/25 via-emerald-500/20 to-transparent text-white border border-[#c8f135]/40 shadow-[0_0_20px_rgba(200,241,53,0.2)] font-black"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+            )}
+          >
+            <Layers className={cn("w-3.5 h-3.5 shrink-0", panelTab === 'omni-multi' ? "text-[#c8f135]" : "text-zinc-500")} />
+            <span className="truncate">Multi-Ref</span>
+          </button>
+
+          {/* Veo 3.1 tab hidden as per user request (old model) */}
+
+          <button
+            type="button"
             onClick={() => {
               setPanelTab('motion');
               setActiveTab('video');
               setActiveEngine('kling-motion');
             }}
             className={cn(
-              "flex-1 py-2 sm:py-2.5 px-1.5 sm:px-2 rounded-xl text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all border shadow-lg backdrop-blur-xl cursor-pointer select-none",
+              "py-2 px-1.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 relative select-none cursor-pointer",
               panelTab === 'motion'
-                ? "bg-gradient-to-r from-orange-600/30 via-amber-500/20 to-yellow-500/20 text-white border-orange-400/50 shadow-[0_0_20px_rgba(249,115,22,0.3)]"
-                : "bg-white/[0.03] text-gray-400 border-white/10 hover:bg-white/[0.08] hover:text-white"
+                ? "bg-[#c8f135]/15 text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_20px_rgba(200,241,53,0.25)] font-black"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
             )}
           >
-            <Aperture className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-            <span className="truncate">Motion Control</span>
-          </button>
-        </div>
-
-        {/* Panel Content Scroll Area */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-5 space-y-6 pb-28 relative z-10 bg-[#0a0a12]">
-          {/* TAB 1: VEO 3.1 & OMNI FLASH WORKSPACE */}
-          {panelTab === 'veo' && (
-            <div className="space-y-6">
-              {/* Keyframe Conditioning (AT TOP) */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
-                    <ImageIcon className="w-4 h-4 text-violet-400" />
-                    <span>Keyframe Conditioning</span>
-                  </h3>
-                  <span className="text-[10px] text-violet-400 font-mono font-semibold">First & Last Frame</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase text-gray-400 block">First Frame</span>
-                    {firstFramePreview ? (
-                      <div className="relative group rounded-2xl overflow-hidden border border-white/20 aspect-video bg-black/50">
-                        <img src={firstFramePreview} className="w-full h-full object-cover" alt="First Frame" />
-                        <button onClick={() => { setFirstFrameImage(''); setFirstFramePreview(''); }} className="absolute top-2 right-2 p-1.5 rounded-xl bg-black/70 text-white/80 hover:text-white hover:bg-red-500/80 transition-colors"><Trash2 size={14} /></button>
-                      </div>
-                    ) : (
-                      <button onClick={() => { setUploadTarget('first'); fileInputRef?.current?.click(); }} className="w-full aspect-video rounded-2xl border border-dashed border-white/20 hover:border-violet-400/60 bg-white/[0.02] hover:bg-white/[0.05] transition-all flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-white cursor-pointer"><Upload size={18} /><span className="text-[10px] font-bold uppercase">Upload 1st Frame</span></button>
-                    )}
-                  </div>
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase text-gray-400 block">Last Frame</span>
-                    {lastFramePreview ? (
-                      <div className="relative group rounded-2xl overflow-hidden border border-white/20 aspect-video bg-black/50">
-                        <img src={lastFramePreview} className="w-full h-full object-cover" alt="Last Frame" />
-                        <button onClick={() => { setLastFrameImage(''); setLastFramePreview(''); }} className="absolute top-2 right-2 p-1.5 rounded-xl bg-black/70 text-white/80 hover:text-white hover:bg-red-500/80 transition-colors"><Trash2 size={14} /></button>
-                      </div>
-                    ) : (
-                      <button onClick={() => { setUploadTarget('last'); fileInputRef?.current?.click(); }} className="w-full aspect-video rounded-2xl border border-dashed border-white/20 hover:border-violet-400/60 bg-white/[0.02] hover:bg-white/[0.05] transition-all flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-white cursor-pointer"><Upload size={18} /><span className="text-[10px] font-bold uppercase">Upload Last Frame</span></button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Text Prompt */}
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-                  <span>Scene Prompt</span>
-                </label>
-                <textarea
-                  value={localPrompt}
-                  onChange={(e) => { setLocalPrompt(e.target.value); setPromptText(e.target.value); }}
-                  placeholder="Describe your cinematic video scene, camera movements, lighting, and action..."
-                  className="w-full h-28 bg-[#0e0e18]/90 border border-white/15 rounded-2xl p-3.5 text-xs text-white placeholder-white/20 outline-none focus:border-violet-400 transition-all resize-none shadow-inner custom-scrollbar font-sans"
-                />
-              </div>
-
-              {/* Model Engine Selection (AT BOTTOM NEAR PARAMETERS) */}
-              <div className="space-y-2 pt-1 border-t border-white/10">
-                <label className="text-[10px] font-black uppercase tracking-wider text-gray-300 flex items-center gap-1">
-                  <Cpu className="w-3.5 h-3.5 text-violet-400" /> Model Engine Selection
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'veo-3.1', label: 'Veo 3.1 🎬', desc: 'Google Standard' },
-                    { id: 'veo-fast', label: 'Veo Fast ⚡', desc: 'Fast Generation' },
-                    { id: 'gemini-omni-1.1-flash-preview', label: 'Omni 1.1 Flash ⚡', desc: '1.1 Multi-Ref' }
-                  ].map(m => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => { setActiveTab('video'); setActiveEngine(m.id); }}
-                      className={cn(
-                        "py-2 px-1.5 rounded-xl border text-left transition-all cursor-pointer select-none",
-                        activeEngine === m.id
-                          ? "bg-violet-600/30 border-violet-400 text-white shadow-[0_0_15px_rgba(139,92,246,0.3)]"
-                          : "bg-white/[0.02] border-white/10 text-gray-400 hover:bg-white/[0.06] hover:text-white"
-                      )}
-                    >
-                      <div className="text-[11px] font-bold truncate">{m.label}</div>
-                      <div className="text-[8.5px] text-gray-400 mt-0.5 truncate">{m.desc}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Video Specs Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <GlassSelect label="Duration" value={duration} onChange={(val) => setDuration(Number(val))} options={[{ value: 4, label: '4 Seconds' }, { value: 6, label: '6 Seconds' }, { value: 8, label: '8 Seconds' }, { value: 10, label: '10 Seconds' }]} />
-                <GlassSelect label="Aspect Ratio" value={aspectRatio} onChange={setAspectRatio} options={[{ value: '16:9', label: '16:9 Widescreen' }, { value: '9:16', label: '9:16 Vertical' }, { value: '1:1', label: '1:1 Square' }]} />
-                {activeEngine?.includes('omni') || activeEngine?.includes('flash') ? (
-                  <>
-                    <GlassSelect label="Resolution" value={resolution} onChange={setResolution} options={[{ value: '360p', label: '360p SD' }, { value: '720p', label: '720p HD' }, { value: '1080p', label: '1080p FHD' }, { value: '4k', label: '4K UHD' }]} />
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-300">Audio</label>
-                      <button
-                        type="button"
-                        onClick={() => setGenerateAudio(!generateAudio)}
-                        className={cn(
-                          "w-full h-[42px] rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer",
-                          generateAudio ? "bg-violet-600/25 border-violet-400 text-violet-200" : "bg-white/[0.02] border-white/15 text-gray-400"
-                        )}
-                      >
-                        {generateAudio ? '🔊 Audio On' : '🔇 Audio Off'}
-                      </button>
-                    </div>
-                  </>
-                ) : null}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: OMNI FLASH 1.1 WORKSPACE */}
-          {panelTab === 'omni' && (
-            <div className="space-y-6">
-              {/* Task Mode Dropdown */}
-              <GlassSelect
-                label="Omni Flash Task Mode"
-                icon={Zap}
-                value={omniTask}
-                onChange={(val) => { setOmniTask(val); localStorage.setItem('cs_omniTask', val); }}
-                align="down"
-                options={[
-                  { value: 'auto', label: 'Auto Infer', desc: 'Auto-detects task from uploaded inputs', icon: <Sparkles className="w-3.5 h-3.5 text-[#c8f135]" /> },
-                  { value: 'text_to_video', label: 'Text-to-Video', desc: 'Generate video directly from text prompt', icon: <Film className="w-3.5 h-3.5 text-violet-400" /> },
-                  { value: 'image_to_video', label: 'Image-to-Video', desc: 'Transform static images into videos', icon: <ImageIcon className="w-3.5 h-3.5 text-fuchsia-400" /> },
-                  { value: 'reference_to_video', label: 'Reference-to-Video', desc: 'Generate videos from various input media', icon: <Layers className="w-3.5 h-3.5 text-cyan-400" /> },
-                  { value: 'edit', label: 'Video Editing', desc: 'Modify an original or previously generated video', icon: <Video className="w-3.5 h-3.5 text-rose-400" /> },
-                  { value: 'extension', label: 'Video Extension', desc: 'Extend an original or previously generated video', icon: <FastForward className="w-3.5 h-3.5 text-amber-400" /> }
-                ]}
-              />
-
-              {/* Media & Reference Inputs Section */}
-              <div className="space-y-3.5">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
-                    <Video className="w-4 h-4 text-fuchsia-400" />
-                    <span>Media & Reference Inputs</span>
-                  </h3>
-                  <span className="text-[10px] text-fuchsia-400 font-mono font-semibold">Images & Video Clips</span>
-                </div>
-
-                <div className="space-y-3">
-                  {/* Progressive Image Reference Slots */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-fuchsia-300 flex items-center gap-1">
-                        <ImageIcon className="w-3.5 h-3.5 text-fuchsia-400" /> Reference Images
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[9px] text-fuchsia-400/80 font-mono">Tag @IMAGE_REF_0..9 (Up to 10)</span>
-                        {Math.max(3, Math.min(10, omniRefPreviews.filter(Boolean).length + 1)) < 10 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const currentFilled = omniRefPreviews.filter(Boolean).length;
-                              const nextSlot = Math.min(9, Math.max(3, currentFilled));
-                              setUploadTarget(`omni_ref_${nextSlot}`);
-                              fileInputRef?.current?.click();
-                            }}
-                            className="flex items-center gap-0.5 text-[8px] font-black uppercase tracking-wider text-fuchsia-300 hover:text-white bg-fuchsia-500/20 hover:bg-fuchsia-500/30 px-1.5 py-0.5 rounded border border-fuchsia-500/30 transition-all cursor-pointer"
-                          >
-                            + Add Ref
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2.5">
-                      {Array.from({ length: Math.min(10, Math.max(3, omniRefPreviews.filter(Boolean).length + 1)) }).map((_, idx) => {
-                        const slotPreview = omniRefPreviews[idx] || (idx === 0 ? omniFirstFramePreview : idx === 1 ? omniLastFramePreview : '');
-                        return (
-                          <div key={idx} className="p-2 rounded-xl bg-white/[0.02] backdrop-blur-md border border-white/10 hover:border-fuchsia-500/40 transition-all flex flex-col gap-1.5 relative shadow-md">
-                            <div className="flex items-center justify-between px-0.5">
-                              <span className="text-[9px] font-mono font-bold text-fuchsia-300 flex items-center gap-1">
-                                Ref {idx + 1}
-                              </span>
-                              {slotPreview && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleClearRef(idx)}
-                                  className="p-0.5 text-red-400 hover:bg-red-500/20 rounded transition-colors cursor-pointer"
-                                  title={`Remove Image Ref ${idx + 1}`}
-                                >
-                                  <Trash2 size={10} />
-                                </button>
-                              )}
-                            </div>
-
-                            {slotPreview ? (
-                              <div className="aspect-video w-full rounded-lg overflow-hidden bg-black/60 border border-white/15 relative group">
-                                <img src={slotPreview} alt={`Ref ${idx + 1}`} className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setUploadTarget(idx === 0 ? 'first' : idx === 1 ? 'last' : `omni_ref_${idx}`);
-                                      fileInputRef?.current?.click();
-                                    }}
-                                    className="px-2 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-[8px] font-bold uppercase tracking-wider cursor-pointer"
-                                  >
-                                    Replace
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setUploadTarget(idx === 0 ? 'first' : idx === 1 ? 'last' : `omni_ref_${idx}`);
-                                  fileInputRef?.current?.click();
-                                }}
-                                className="aspect-video w-full rounded-lg border border-dashed border-white/20 bg-white/[0.02] hover:bg-fuchsia-500/10 hover:border-fuchsia-400/50 flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-fuchsia-300 transition-all cursor-pointer"
-                                title={`Upload Image Ref ${idx + 1}`}
-                              >
-                                <Upload size={14} className="text-fuchsia-400/70" />
-                                <span className="text-[8px] font-bold uppercase tracking-wider">Upload Ref {idx + 1}</span>
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Sleek Compact Progressive Driving Video References (Up to 3 Videos) */}
-                  <div className="p-2.5 rounded-xl bg-white/[0.02] backdrop-blur-md border border-white/10 hover:border-cyan-500/40 transition-all flex flex-col gap-2 relative shadow-md">
-                    <div className="flex items-center justify-between px-0.5">
-                      <span className="text-[9.5px] font-mono font-bold text-cyan-300 flex items-center gap-1.5">
-                        <Video className="w-3.5 h-3.5 text-cyan-400" /> Reference Driving Videos (10s Max)
-                      </span>
-                      <span className="text-[9px] font-mono text-cyan-400/80 bg-cyan-950/60 px-2 py-0.5 rounded-md border border-cyan-500/30 font-bold">
-                        {refVideoList.length} / 3 Videos
-                      </span>
-                    </div>
-
-                    {/* Progressive Video Cards Row */}
-                    <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-0.5">
-                      {refVideoList.map((vUrl, idx) => (
-                        <div key={idx} className="relative group w-32 h-18 rounded-xl overflow-hidden bg-black border border-cyan-400/40 shrink-0 shadow-lg">
-                          <video src={vUrl} muted playsInline preload="metadata" className="w-full h-full object-cover" />
-                          <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[8px] font-mono text-cyan-300 border border-cyan-400/40 font-bold">
-                            @video_{idx}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeVideoAt(idx)}
-                            className="absolute top-1 right-1 p-1 rounded-lg bg-black/80 hover:bg-red-500 text-white/80 hover:text-white transition-colors cursor-pointer"
-                            title="Remove Video"
-                          >
-                            <Trash2 size={11} />
-                          </button>
-                        </div>
-                      ))}
-
-                      {/* Add Video Button (if < 3 uploaded) */}
-                      {refVideoList.length < 3 && (
-                        <button
-                          type="button"
-                          onClick={() => videoInputRef.current?.click()}
-                          disabled={isVideoUploading}
-                          className={cn(
-                            "rounded-xl border border-dashed flex flex-col items-center justify-center gap-1 transition-all cursor-pointer text-gray-400 hover:text-cyan-300 shrink-0 select-none",
-                            refVideoList.length === 0
-                              ? "w-full h-10 border-cyan-400/30 bg-cyan-950/20 hover:bg-cyan-900/30 hover:border-cyan-400/60 flex-row gap-2"
-                              : "w-28 h-18 border-white/20 bg-white/[0.02] hover:bg-cyan-500/10 hover:border-cyan-400/50"
-                          )}
-                          title="Upload Reference Driving Video (10s max)"
-                        >
-                          {isVideoUploading ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin text-cyan-400 shrink-0" />
-                              <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-300">Uploading...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Video size={15} className="text-cyan-400/80 shrink-0" />
-                              <span className="text-[9px] font-bold uppercase tracking-wider">
-                                {refVideoList.length === 0 ? "Upload Driving Reference Video (10s max)" : `+ Add Video (${refVideoList.length + 1}/3)`}
-                              </span>
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Text Prompt */}
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-300 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-fuchsia-300">
-                    <Sparkles className="w-3.5 h-3.5 text-fuchsia-400" /> Omni Flash Prompt
-                  </span>
-                  <span className="text-[9px] text-fuchsia-400/80 font-mono">Use @ to tag references</span>
-                </label>
-                <textarea
-                  value={localPrompt}
-                  onChange={(e) => { setLocalPrompt(e.target.value); setOmniPromptText(e.target.value); setPromptText(e.target.value); }}
-                  placeholder="Describe scene action, camera movements, style, or tag @IMAGE_REF_0..9 or @video..."
-                  className="w-full h-28 bg-[#0e0e18]/90 border border-white/15 rounded-2xl p-3.5 text-xs text-white placeholder-white/20 outline-none focus:border-fuchsia-400 transition-all resize-none shadow-inner custom-scrollbar font-sans"
-                />
-              </div>
-
-              {/* Model Engine Selection (AT BOTTOM NEAR PARAMETERS) */}
-              <div className="space-y-2 pt-1 border-t border-white/10">
-                <label className="text-[10px] font-black uppercase tracking-wider text-gray-300 flex items-center gap-1">
-                  <Cpu className="w-3.5 h-3.5 text-fuchsia-400" /> Model Engine Selection
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { id: 'gemini-omni-1.1-flash-preview', label: 'Omni 1.1 Flash ⚡', desc: 'Latest Preview (Default)' },
-                    { id: 'gemini-omni-flash-preview', label: 'Omni 1.0 Flash', desc: 'Standard Preview' }
-                  ].map(m => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => { setActiveTab('video'); setActiveEngine(m.id); }}
-                      className={cn(
-                        "py-2 px-2 rounded-xl border text-left transition-all cursor-pointer select-none",
-                        activeEngine === m.id
-                          ? "bg-fuchsia-600/30 border-fuchsia-400 text-white shadow-[0_0_15px_rgba(217,70,239,0.3)]"
-                          : "bg-white/[0.02] border-white/10 text-gray-400 hover:bg-white/[0.06] hover:text-white"
-                      )}
-                    >
-                      <div className="text-[11px] font-bold truncate">{m.label}</div>
-                      <div className="text-[8.5px] text-gray-400 mt-0.5 truncate">{m.desc}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Video Specs Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <GlassSelect label="Duration" value={duration} onChange={(val) => setDuration(Number(val))} options={[{ value: 4, label: '4 Seconds' }, { value: 6, label: '6 Seconds' }, { value: 8, label: '8 Seconds' }, { value: 10, label: '10 Seconds' }]} />
-                <GlassSelect label="Aspect Ratio" value={aspectRatio} onChange={setAspectRatio} options={[{ value: '16:9', label: '16:9 Widescreen' }, { value: '9:16', label: '9:16 Vertical' }, { value: '1:1', label: '1:1 Square' }]} />
-                <GlassSelect label="Resolution" value={resolution} onChange={setResolution} options={[{ value: '360p', label: '360p SD' }, { value: '720p', label: '720p HD' }, { value: '1080p', label: '1080p FHD' }, { value: '4k', label: '4K UHD' }]} />
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-300">Audio</label>
-                  <button
-                    type="button"
-                    onClick={() => setGenerateAudio(!generateAudio)}
-                    className={cn(
-                      "w-full h-[42px] rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer",
-                      generateAudio ? "bg-fuchsia-600/25 border-fuchsia-400 text-fuchsia-200" : "bg-white/[0.02] border-white/15 text-gray-400"
-                    )}
-                  >
-                    {generateAudio ? '🔊 Audio On' : '🔇 Audio Off'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: MOTION CONTROL WORKSPACE */}
-          {panelTab === 'motion' && (
-            <div className="space-y-6">
-              {/* Motion Engine Selector */}
-              <GlassSelect
-                label="Motion Transfer Engine"
-                icon={Aperture}
-                value={activeEngine}
-                onChange={(val) => setActiveEngine(val)}
-                align="down"
-                options={[
-                  { value: 'kling-motion', label: 'Kling V3 Motion Transfer', desc: '14⚡/s High Fidelity Video Motion Transfer', icon: <Aperture className="w-3.5 h-3.5 text-orange-400" /> },
-                  { value: 'seedance-motion', label: 'Seedance 2.0 Motion Transfer', desc: '12⚡/s Character & Pose Motion Capture', icon: <Zap className="w-3.5 h-3.5 text-yellow-400" /> }
-                ]}
-              />
-
-              {/* Driving Motion Video & Character Image Upload Slots */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
-                    <Video className="w-4 h-4 text-orange-400" />
-                    <span>Motion Conditioning</span>
-                  </h3>
-                  <span className="text-[10px] text-orange-400 font-mono font-semibold">Video & Subject</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase text-gray-400 block">Driving Video</span>
-                    {videoPreview ? (
-                      <div className="relative group rounded-2xl overflow-hidden border border-white/20 aspect-video bg-black/50">
-                        <video src={videoPreview} className="w-full h-full object-cover" />
-                        <button onClick={() => setVideoPreview(null)} className="absolute top-2 right-2 p-1.5 rounded-xl bg-black/70 text-white/80 hover:text-white hover:bg-red-500/80 transition-colors"><Trash2 size={14} /></button>
-                      </div>
-                    ) : (
-                      <button onClick={() => videoInputRef?.current?.click()} className="w-full aspect-video rounded-2xl border border-dashed border-white/20 hover:border-orange-400/60 bg-white/[0.02] hover:bg-white/[0.05] transition-all flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-white cursor-pointer"><Upload size={18} /><span className="text-[10px] font-bold uppercase">Upload Driving Video</span></button>
-                    )}
-                  </div>
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase text-gray-400 block">Target Character</span>
-                    {firstFramePreview ? (
-                      <div className="relative group rounded-2xl overflow-hidden border border-white/20 aspect-video bg-black/50">
-                        <img src={firstFramePreview} className="w-full h-full object-cover" alt="Character" />
-                        <button onClick={() => { setFirstFrameImage(''); setFirstFramePreview(''); }} className="absolute top-2 right-2 p-1.5 rounded-xl bg-black/70 text-white/80 hover:text-white hover:bg-red-500/80 transition-colors"><Trash2 size={14} /></button>
-                      </div>
-                    ) : (
-                      <button onClick={() => { setUploadTarget('first'); fileInputRef?.current?.click(); }} className="w-full aspect-video rounded-2xl border border-dashed border-white/20 hover:border-orange-400/60 bg-white/[0.02] hover:bg-white/[0.05] transition-all flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-white cursor-pointer"><Upload size={18} /><span className="text-[10px] font-bold uppercase">Upload Character</span></button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Text Prompt */}
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-orange-400" />
-                  <span>Motion Scene Prompt</span>
-                </label>
-                <textarea
-                  value={localPrompt}
-                  onChange={(e) => { setLocalPrompt(e.target.value); setPromptText(e.target.value); }}
-                  placeholder="Describe character motion, camera tracking, and aesthetic style..."
-                  className="w-full h-24 bg-[#0e0e18]/90 border border-white/15 rounded-2xl p-3.5 text-xs text-white placeholder-white/20 outline-none focus:border-orange-400 transition-all resize-none shadow-inner custom-scrollbar font-sans"
-                />
-              </div>
-
-              {/* Video Specs Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <GlassSelect label="Duration" value={duration} onChange={(val) => setDuration(Number(val))} options={[{ value: 3, label: '3 Seconds' }, { value: 5, label: '5 Seconds' }, { value: 8, label: '8 Seconds' }, { value: 10, label: '10 Seconds' }]} />
-                <GlassSelect label="Aspect Ratio" value={aspectRatio} onChange={setAspectRatio} options={[{ value: '16:9', label: '16:9 Widescreen' }, { value: '9:16', label: '9:16 Vertical' }, { value: '1:1', label: '1:1 Square' }]} />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Sticky Bottom Generate Bar */}
-        <div className="p-4 bg-[#080810] border-t border-white/20 flex items-center justify-between gap-4 z-20 shrink-0">
-          <div className="flex flex-col min-w-0">
-            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Required</span>
-            <span className="text-sm font-black text-[#c8f135]">{requiredCredits} Shorts</span>
-          </div>
-          <button
-            type="button"
-            onClick={panelTab === 'motion' ? triggerGenerateMotion : (panelTab === 'omni' ? triggerGenerateOmni : triggerGenerateVeo)}
-            disabled={isBusy || !canGenerate}
-            className={cn(
-              "h-12 py-3 px-6 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(200,241,53,0.3)] border border-[#d4ff00]/40 shrink-0 active:scale-95 cursor-pointer",
-              canGenerate ? "bg-[#c8f135] text-black hover:bg-[#bce628]" : "bg-white/5 text-gray-500 border-white/5 cursor-not-allowed"
-            )}
-          >
-            {isBusy ? (<><Loader2 className="w-4 h-4 animate-spin" /><span>Generating...</span></>) : (<><Sparkles className="w-4 h-4 fill-current" /><span>Generate Video</span></>)}
+            <Aperture className={cn("w-3.5 h-3.5 shrink-0", panelTab === 'motion' ? "text-[#c8f135]" : "text-zinc-500")} />
+            <span className="truncate">Motion</span>
           </button>
         </div>
       </div>
-    );
-  }
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[120] flex items-end sm:items-stretch sm:justify-end">
-          {/* Hidden Dedicated Video File Input */}
-          <input
-            ref={videoInputRef}
-            type="file"
-            accept="video/*"
-            className="hidden"
-            onChange={handleVideoSelect}
-          />
+            {/* Hidden Inputs for Start & End Keyframes & Reference Video & Motion Control */}
+            <input
+              type="file"
+              ref={startFrameInputRef}
+              accept="image/*"
+              className="hidden"
+              onChange={handleStartFrameSelect}
+            />
+            <input
+              type="file"
+              ref={endFrameInputRef}
+              accept="image/*"
+              className="hidden"
+              onChange={handleEndFrameSelect}
+            />
+            <input
+              type="file"
+              ref={videoInputRef}
+              accept="video/mp4,video/webm,video/quicktime"
+              className="hidden"
+              onChange={handleVideoSelect}
+            />
+            <input
+              type="file"
+              ref={motionImageInputRef}
+              accept="image/jpeg,image/png,image/jpg,image/webp"
+              className="hidden"
+              onChange={handleMotionSubjectSelect}
+            />
+            <input
+              type="file"
+              ref={motionVideoInputRef}
+              accept="video/mp4,video/quicktime,video/webm"
+              className="hidden"
+              onChange={handleMotionVideoSelect}
+            />
 
-          {/* Backdrop — full on mobile, transparent on desktop */}
-          <div
-            className="absolute inset-0 bg-black/60 sm:bg-transparent"
-            onClick={onClose}
-          />
-
-          {/* Panel — bottom-sheet on mobile, slide-from-right on desktop */}
-          <motion.div
-            initial={{ y: '100%', x: 0 }}
-            animate={{ y: 0, x: 0 }}
-            exit={{ y: '100%', x: 0 }}
-            transition={{ type: 'spring', damping: 30, stiffness: 280 }}
-            className="relative w-full sm:hidden bg-[#0a0a12] border-t border-white/20 shadow-[0_-20px_80px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden text-white z-10"
-            style={{ height: '88dvh', borderRadius: '24px 24px 0 0' }}
-          >
-            {/* Mobile Drag Handle */}
-            <div className="flex justify-center pt-3 pb-1 shrink-0">
-              <div className="w-10 h-1 rounded-full bg-white/20" />
-            </div>
-
-            {/* Mobile Header */}
-            <div className="px-4 py-2.5 border-b border-white/15 bg-[#12121e] flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                  <Zap size={14} />
-                </div>
-                <div>
-                  <h3 className="text-xs font-black uppercase tracking-wider text-white">Studio Panel</h3>
-                  <p className="text-[10px] text-cyan-400 font-mono">Gemini Omni Flash 1.1 Engine</p>
-                </div>
-              </div>
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Mobile Tabs */}
-            <div className="px-2 pt-2 pb-2 border-b border-white/15 bg-[#0c0c16] flex items-center gap-1.5 shrink-0">
-              {[
-                ['veo','veo-3.1','video',<Film key="f" className="w-3.5 h-3.5 shrink-0" />,'Veo 3.1'],
-                ['omni','gemini-omni-1.1-flash-preview','video',<Zap key="z" className="w-3.5 h-3.5 shrink-0" />,'Omni 1.1'],
-                ['motion','kling-motion','video',<Aperture key="m" className="w-3.5 h-3.5 text-orange-400 shrink-0" />,'Motion']
-              ].map(([tab, engine, aTab, icon, label]) => (
-                <button
-                  key={tab}
-                  onClick={() => {
-                    setPanelTab(tab);
-                    if (aTab) setActiveTab(aTab);
-                    if (engine) setActiveEngine(engine);
-                  }}
-                  className={cn(
-                    "flex-1 py-2 px-1.5 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 transition-all border truncate",
-                    panelTab === tab
-                      ? tab === 'omni'
-                        ? "bg-fuchsia-600/25 text-white border-fuchsia-400/50"
-                        : tab === 'motion'
-                          ? "bg-orange-600/25 text-white border-orange-400/50"
-                          : "bg-violet-600/25 text-white border-violet-400/50"
-                      : "bg-white/[0.03] text-gray-400 border-white/10"
-                  )}
+            {/* 3. Main Scrollable Controls Area */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5 sm:p-4 space-y-3.5 pb-28 sm:pb-32">
+              
+              {/* Optional Collapsible Docs Card */}
+              {showDocs && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="p-3 sm:p-3.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl space-y-1.5 text-xs text-zinc-300"
                 >
-                  {icon}<span className="truncate">{label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Mobile Scroll Content */}
-            <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 pb-36 bg-[#0a0a12]">
-              {/* ── VEO TAB (mobile) ── */}
-              {panelTab === 'veo' && (
-                <div className="space-y-5">
-                  {/* Keyframe Slots — stacked on mobile */}
-                  <div className="space-y-2.5">
-                    <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
-                      <ImageIcon className="w-3.5 h-3.5 text-violet-400" /> Keyframe Conditioning
-                    </h3>
-                    <div className="grid grid-cols-2 gap-2.5">
-                      {/* First Frame */}
-                      <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/10 flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-violet-300">First Frame</span>
-                          {firstFramePreview && (
-                            <button onClick={() => handleClearRef('first')} className="p-0.5 text-red-400"><Trash2 size={10} /></button>
-                          )}
-                        </div>
-                        {firstFramePreview ? (
-                          <div className="aspect-video w-full rounded-lg overflow-hidden bg-black/60 border border-white/10">
-                            <img src={firstFramePreview} alt="First Frame" className="w-full h-full object-cover" />
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => { setUploadTarget('first'); fileInputRef?.current?.click(); }}
-                            className="aspect-video w-full rounded-lg border border-dashed border-white/20 bg-white/[0.02] flex flex-col items-center justify-center gap-1 text-gray-500"
-                          >
-                            <Upload size={14} className="text-violet-400/70" />
-                            <span className="text-[9px] uppercase tracking-wider">Upload</span>
-                          </button>
-                        )}
-                      </div>
-                      {/* Last Frame */}
-                      <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/10 flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-cyan-300">Last Frame</span>
-                          {lastFramePreview && (
-                            <button onClick={() => handleClearRef('last')} className="p-0.5 text-red-400"><Trash2 size={10} /></button>
-                          )}
-                        </div>
-                        {lastFramePreview ? (
-                          <div className="aspect-video w-full rounded-lg overflow-hidden bg-black/60 border border-white/10">
-                            <img src={lastFramePreview} alt="Last Frame" className="w-full h-full object-cover" />
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => { setUploadTarget('last'); fileInputRef?.current?.click(); }}
-                            className="aspect-video w-full rounded-lg border border-dashed border-white/20 bg-white/[0.02] flex flex-col items-center justify-center gap-1 text-gray-500"
-                          >
-                            <Upload size={14} className="text-cyan-400/70" />
-                            <span className="text-[9px] uppercase tracking-wider">Upload</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Prompt Textarea */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-violet-300">Veo 3.1 Prompt</label>
-                    <textarea
-                      value={localPrompt}
-                      onChange={handlePromptChange}
-                      placeholder="Describe your cinematic scene..."
-                      rows={3}
-                      className="w-full bg-black/50 border border-white/15 focus:border-violet-400/70 rounded-xl p-3 text-xs text-white placeholder-gray-500 outline-none resize-none leading-relaxed"
-                    />
-                  </div>
-
-                  {/* Model Variant — horizontal chips on mobile */}
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-gray-300">Model Engine</label>
-                    <div className="flex gap-1.5">
-                      {[
-                        { id: 'veo-3.1', label: 'Veo 3.1 🎬' },
-                        { id: 'veo-fast', label: 'Veo Fast ⚡' },
-                        { id: 'gemini-omni-1.1-flash-preview', label: 'Omni 1.1 ⚡' }
-                      ].map(m => (
-                        <button
-                          key={m.id}
-                          onClick={() => { setActiveTab('video'); setActiveEngine(m.id); }}
-                          className={cn(
-                            "flex-1 py-2 rounded-xl border text-[10px] font-bold transition-all truncate",
-                            activeEngine === m.id
-                              ? "bg-violet-600/30 border-violet-400 text-white"
-                              : "bg-white/[0.02] border-white/10 text-gray-400"
-                          )}
-                        >{m.label}</button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Params — 2-col grid */}
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <GlassSelect label="Resolution" value={resolution} onChange={setResolution} options={[
-                      {value:'360p',label:'360p SD'},{value:'720p',label:'720p HD'},{value:'1080p',label:'1080p FHD'},{value:'4k',label:'4K UHD'}
-                    ]} />
-                    <GlassSelect label="Duration" value={duration} onChange={v => setDuration(Number(v))} options={[
-                      {value:4,label:'4s'},{value:6,label:'6s'},{value:8,label:'8s'},{value:10,label:'10s'}
-                    ]} />
-                    <GlassSelect label="Aspect" value={aspectRatio} onChange={setAspectRatio} options={[
-                      {value:'16:9',label:'16:9'},{value:'9:16',label:'9:16'},{value:'1:1',label:'1:1'}
-                    ]} />
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-300">Audio</label>
-                      <button
-                        onClick={() => setGenerateAudio(!generateAudio)}
-                        className={cn(
-                          "w-full h-[42px] rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all",
-                          generateAudio ? "bg-violet-600/25 border-violet-400 text-violet-200" : "bg-white/[0.02] border-white/15 text-gray-400"
-                        )}
-                      >{generateAudio ? '🔊 On' : '🔇 Off'}</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ── OMNI TAB (mobile) ── */}
-              {panelTab === 'omni' && (
-                <div className="space-y-5">
-                  <GlassSelect label="Omni Task Mode" icon={Zap} value={omniTask} onChange={v => { setOmniTask(v); localStorage.setItem('cs_omniTask', v); }} align="down" options={[
-                    {value:'auto',label:'Auto Infer',desc:'Auto-detects from inputs'},
-                    {value:'text_to_video',label:'Text → Video',desc:'Generate dynamic sequences from text'},
-                    {value:'image_to_video',label:'Image → Video',desc:'Transform static images into video'},
-                    {value:'reference_to_video',label:'Reference → Video',desc:'Multi-asset reference guidance'},
-                    {value:'edit',label:'Video Editing',desc:'Modify original or generated clip'},
-                    {value:'extension',label:'Video Extension',desc:'Extend original or generated video'}
-                  ]} />
-
-                  {/* Reference inputs compact */}
-                  <div className="space-y-2.5">
-                    <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-300">Media Inputs</h3>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[{img: omniFirstFramePreview, label: '1st Frame', target: 'first', clearFn: () => { setOmniFirstFrameImage(''); setOmniFirstFramePreview(''); }},
-                        {img: omniLastFramePreview,  label: 'Last Frame', target: 'last',  clearFn: () => { setOmniLastFrameImage(''); setOmniLastFramePreview(''); }},
-                        {img: videoPreview,          label: 'Ref Video',  target: 'video', clearFn: () => setVideoPreview(null)}
-                      ].map(({img, label, target, clearFn}) => (
-                        <div key={label} className="flex flex-col gap-1">
-                          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{label}</span>
-                          {img ? (
-                            <div className="aspect-square relative rounded-lg overflow-hidden border border-white/15">
-                              {target === 'video'
-                                ? <video src={img} className="w-full h-full object-cover" muted playsInline />
-                                : <img src={img} className="w-full h-full object-cover" alt={label} />}
-                              <button onClick={clearFn} className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-red-500/90 flex items-center justify-center">
-                                <X size={8} className="text-white" />
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                if (target === 'video') { videoInputRef.current?.click(); }
-                                else { setUploadTarget(target); fileInputRef?.current?.click(); }
-                              }}
-                              className="aspect-square w-full rounded-lg border border-dashed border-white/20 bg-white/[0.02] flex items-center justify-center text-gray-500"
-                            >
-                              <Upload size={14} className="text-fuchsia-400/70" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-fuchsia-300">Omni Prompt</label>
-                    <textarea
-                      value={localPrompt}
-                      onChange={handlePromptChange}
-                      placeholder="Describe your video..."
-                      rows={3}
-                      className="w-full bg-black/50 border border-white/15 focus:border-fuchsia-400/70 rounded-xl p-3 text-xs text-white placeholder-gray-500 outline-none resize-none leading-relaxed"
-                    />
-                  </div>
-
-                  {/* Model Engine — horizontal chips on mobile */}
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-gray-300">Model Engine</label>
-                    <div className="flex gap-2">
-                      {[
-                        { id: 'gemini-omni-1.1-flash-preview', label: 'Omni 1.1 Flash ⚡' },
-                        { id: 'gemini-omni-flash-preview', label: 'Omni 1.0 Flash' }
-                      ].map(m => (
-                        <button
-                          key={m.id}
-                          onClick={() => { setActiveTab('video'); setActiveEngine(m.id); }}
-                          className={cn(
-                            "flex-1 py-2 rounded-xl border text-[10px] font-bold transition-all truncate",
-                            activeEngine === m.id
-                              ? "bg-fuchsia-600/30 border-fuchsia-400 text-white"
-                              : "bg-white/[0.02] border-white/10 text-gray-400"
-                          )}
-                        >{m.label}</button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <GlassSelect label="Resolution" value={resolution} onChange={setResolution} options={[
-                      {value:'360p',label:'360p SD'},{value:'720p',label:'720p HD'},{value:'1080p',label:'1080p FHD'},{value:'4k',label:'4K UHD'}
-                    ]} />
-                    <GlassSelect label="Duration" value={duration} onChange={v => setDuration(Number(v))} options={[
-                      {value:4,label:'4s'},{value:6,label:'6s'},{value:8,label:'8s'},{value:10,label:'10s'}
-                    ]} />
-                    <GlassSelect label="Aspect" value={aspectRatio} onChange={setAspectRatio} options={[
-                      {value:'16:9',label:'16:9'},{value:'9:16',label:'9:16'},{value:'1:1',label:'1:1'}
-                    ]} />
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-300">Audio</label>
-                      <button
-                        onClick={() => setGenerateAudio(!generateAudio)}
-                        className={cn(
-                          "w-full h-[42px] rounded-xl border text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all",
-                          generateAudio ? "bg-fuchsia-600/25 border-fuchsia-400 text-fuchsia-200" : "bg-white/[0.02] border-white/15 text-gray-400"
-                        )}
-                      >{generateAudio ? '🔊 On' : '🔇 Off'}</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-
-            </div>
-
-            {/* Mobile Footer Generate Button */}
-            <div className="shrink-0 px-4 py-3 bg-[#080810] border-t border-white/15 flex flex-col gap-2" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}>
-              <div className="flex items-center justify-between text-[10px]">
-                <span className="text-gray-400">{panelTab === 'veo' ? 'Veo 3.1' : 'Omni Flash'}</span>
-                <span className="text-[#c8f135] font-black">{requiredCredits}⚡ <span className="text-gray-500 font-normal">/ {userCredits}⚡ left</span></span>
-              </div>
-              <button
-                onClick={panelTab === 'omni' ? triggerGenerateOmni : triggerGenerateVeo}
-                disabled={isBusy || !canGenerate}
-                className={cn(
-                  "w-full py-4 rounded-2xl text-sm font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-[0.98]",
-                  canGenerate
-                    ? "bg-[#c8f135] text-black"
-                    : "bg-white/5 text-gray-500 border border-white/5"
-                )}
-              >
-                {isBusy ? (<><Loader2 className="w-4 h-4 animate-spin" /><span>Generating...</span></>) : (<><Sparkles className="w-4 h-4 fill-current" /><span>Generate Video</span></>)}
-              </button>
-            </div>
-          </motion.div>
-
-          {/* Desktop slide-from-right panel (sm and above) */}
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-            className="hidden sm:flex relative w-full sm:max-w-xl bg-[#0a0a12] border-l border-white/20 shadow-[-20px_0_60px_rgba(0,0,0,0.95)] flex-col h-full overflow-hidden text-white z-10"
-          >
-
-            {/* Solid Header with ZeroLens Branding */}
-            <div className="px-5 py-3 border-b border-white/15 bg-[#12121e] flex items-center justify-between relative z-10">
-              <div className="flex items-center gap-3">
-                <div className="p-1 rounded-xl bg-gradient-to-tr from-violet-500 via-fuchsia-500 to-cyan-400 shadow-md shadow-fuchsia-500/20">
-                  <div className="w-7 h-7 rounded-[10px] bg-[#0d0d15] flex items-center justify-center">
-                    <Clapperboard className="w-4 h-4 text-fuchsia-400" />
-                  </div>
-                </div>
-                <div>
-                  <h2 className="text-xs font-black tracking-[0.2em] uppercase bg-gradient-to-r from-white via-violet-200 to-fuchsia-200 bg-clip-text text-transparent leading-none">
-                    ZeroLens
-                  </h2>
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-fuchsia-400/70 leading-none mt-1">
-                    Cinematic Studio
-                  </p>
-                </div>
-              </div>
-
-              {/* Prominent Enlarged Close Button */}
-              <button
-                onClick={onClose}
-                className="w-11 h-11 rounded-2xl bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/40 text-gray-300 hover:text-white transition-all active:scale-95 cursor-pointer flex items-center justify-center shrink-0 shadow-lg group"
-                title="Close Studio Panel"
-              >
-                <X size={24} className="stroke-[2.5] transition-transform group-hover:scale-110" />
-              </button>
-            </div>
-
-          {/* Navigation Tabs Bar */}
-          <div className="px-5 pt-3.5 pb-2.5 bg-[#0c0c16] border-b border-white/15 flex items-center gap-2 relative z-10">
-            <button
-              onClick={() => {
-                setPanelTab('veo');
-                setActiveTab('video');
-                if (!isVeoEngine) setActiveEngine('veo-3.1-generate-preview');
-              }}
-              className={cn(
-                "flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all border shadow-lg backdrop-blur-xl cursor-pointer select-none",
-                panelTab === 'veo'
-                  ? "bg-gradient-to-r from-violet-600/30 via-violet-500/20 to-fuchsia-500/20 text-white border-violet-400/50 shadow-[0_0_20px_rgba(139,92,246,0.3)]"
-                  : "bg-white/[0.03] text-gray-400 border-white/10 hover:bg-white/[0.08] hover:text-white"
-              )}
-            >
-              <Film className="w-3.5 h-3.5 text-violet-400" />
-              <span>Veo 3.1 Workspace</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setPanelTab('omni');
-                setActiveTab('video');
-                if (!isOmniEngine) setActiveEngine('omni-flash-1.1');
-              }}
-              className={cn(
-                "flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all border shadow-lg backdrop-blur-xl cursor-pointer select-none",
-                panelTab === 'omni'
-                  ? "bg-gradient-to-r from-fuchsia-600/30 via-pink-500/20 to-violet-500/20 text-white border-fuchsia-400/50 shadow-[0_0_20px_rgba(217,70,239,0.3)]"
-                  : "bg-white/[0.03] text-gray-400 border-white/10 hover:bg-white/[0.08] hover:text-white"
-              )}
-            >
-              <Zap className="w-3.5 h-3.5 text-fuchsia-400" />
-              <span>Omni Flash 1.1</span>
-            </button>
-          </div>
-
-          {/* Panel Content Scroll Area */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 space-y-6 pb-28 relative z-10 bg-[#0a0a12]">
-            {/* ────────────────────────────────────────────────────────── */}
-            {/* TAB 1: VEO 3.1 VERTEX AI WORKSPACE */}
-            {/* ────────────────────────────────────────────────────────── */}
-            {panelTab === 'veo' && (
-              <div className="space-y-6">
-                {/* 1. TOP SECTION: Keyframe Conditioning Upload Slots */}
-                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
-                      <ImageIcon className="w-4 h-4 text-violet-400" />
-                      <span>Keyframe Conditioning</span>
-                    </h3>
-                    <span className="text-[10px] text-violet-400 font-mono font-semibold">First & Last Frame</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3.5">
-                    {/* First Frame Slot */}
-                    <div className="p-3.5 rounded-2xl bg-white/[0.02] backdrop-blur-xl border border-white/10 hover:border-violet-500/40 transition-all flex flex-col gap-2.5 relative shadow-lg">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-violet-300 flex items-center gap-1">
-                          <ImageIcon className="w-3 h-3" /> First Frame
-                        </span>
-                        {firstFramePreview && (
-                          <button
-                            onClick={() => handleClearRef('first')}
-                            className="p-1 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors border border-transparent hover:border-red-500/30 cursor-pointer"
-                            title="Remove First Frame"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        )}
-                      </div>
-
-                      {firstFramePreview ? (
-                        <div className="aspect-video w-full rounded-xl overflow-hidden bg-black/60 border border-white/15 relative group shadow-inner">
-                          <img src={firstFramePreview} alt="First Frame" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all backdrop-blur-xs gap-2">
-                            <button
-                              onClick={() => {
-                                setUploadTarget('first');
-                                fileInputRef?.current?.click();
-                              }}
-                              className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider border border-white/20 shadow-md backdrop-blur-md cursor-pointer"
-                            >
-                              Replace
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            setUploadTarget('first');
-                            fileInputRef?.current?.click();
-                          }}
-                          className="aspect-video w-full rounded-xl border border-dashed border-white/20 bg-white/[0.02] hover:bg-violet-500/10 hover:border-violet-400/50 flex flex-col items-center justify-center transition-all gap-1.5 text-gray-400 hover:text-violet-300 backdrop-blur-md cursor-pointer"
-                        >
-                          <Upload size={18} className="text-violet-400/70" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider">Upload Keyframe 1</span>
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Last Frame Slot */}
-                    <div className="p-3.5 rounded-2xl bg-white/[0.02] backdrop-blur-xl border border-white/10 hover:border-cyan-500/40 transition-all flex flex-col gap-2.5 relative shadow-lg">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-cyan-300 flex items-center gap-1">
-                          <ImageIcon className="w-3 h-3" /> Last Frame
-                        </span>
-                        {lastFramePreview && (
-                          <button
-                            onClick={() => handleClearRef('last')}
-                            className="p-1 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors border border-transparent hover:border-red-500/30 cursor-pointer"
-                            title="Remove Last Frame"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        )}
-                      </div>
-
-                      {lastFramePreview ? (
-                        <div className="aspect-video w-full rounded-xl overflow-hidden bg-black/60 border border-white/15 relative group shadow-inner">
-                          <img src={lastFramePreview} alt="Last Frame" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all backdrop-blur-xs gap-2">
-                            <button
-                              onClick={() => {
-                                setUploadTarget('last');
-                                fileInputRef?.current?.click();
-                              }}
-                              className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider border border-white/20 shadow-md backdrop-blur-md cursor-pointer"
-                            >
-                              Replace
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            setUploadTarget('last');
-                            fileInputRef?.current?.click();
-                          }}
-                          className="aspect-video w-full rounded-xl border border-dashed border-white/20 bg-white/[0.02] hover:bg-cyan-500/10 hover:border-cyan-400/50 flex flex-col items-center justify-center transition-all gap-1.5 text-gray-400 hover:text-cyan-300 backdrop-blur-md cursor-pointer"
-                        >
-                          <Upload size={18} className="text-cyan-400/70" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider">Upload Keyframe 2</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2. SECOND SECTION: Glass Prompt Textarea for Veo 3.1 with @Mention Autocomplete */}
-                <div className="space-y-2 relative">
-                  <label className="text-xs font-black uppercase tracking-wider text-gray-300 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-violet-300">
-                      <Film className="w-3.5 h-3.5" /> Veo 3.1 Motion Prompt
+                    <span className="font-black text-white uppercase tracking-wider text-[10.5px] flex items-center gap-1.5">
+                      <Sparkles className="w-3 h-3 text-[#c8f135]" /> Multimodal Video Modes
                     </span>
-                    <span className="text-[10px] text-violet-400/80 font-mono">Type @ to tag references</span>
-                  </label>
-
-                  {/* Glass Autocomplete Mention Popover */}
-                  {mentionSearch !== null && (
-                    <div className="absolute bottom-full mb-2 left-0 right-0 z-[200] bg-[#0a0a14]/98 border border-violet-500/40 rounded-2xl shadow-[0_15px_50px_rgba(0,0,0,0.9)] backdrop-blur-3xl overflow-hidden flex flex-col max-h-56">
-                      <div className="px-3 py-2 border-b border-white/10 bg-violet-950/40 flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-violet-300 uppercase tracking-wider flex items-center gap-1.5">
-                          <Tag className="w-3 h-3" /> Tag Uploaded Media or Asset
-                        </span>
-                        <button onClick={() => setMentionSearch(null)} className="text-gray-400 hover:text-white p-1">
-                          <X size={12} />
-                        </button>
-                      </div>
-                      <div className="overflow-y-auto custom-scrollbar p-1 divide-y divide-white/5">
-                        {availableMentionItems.filter(i => i.name.toLowerCase().includes((mentionSearch || '').toLowerCase())).length > 0 ? (
-                          availableMentionItems
-                            .filter(i => i.name.toLowerCase().includes((mentionSearch || '').toLowerCase()))
-                            .map((item, idx) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => selectMention(item)}
-                                className="w-full px-3 py-2 flex items-center gap-2.5 hover:bg-violet-600/20 transition-all rounded-xl text-left cursor-pointer"
-                              >
-                                <div className="w-7 h-7 rounded-lg bg-black/50 border border-white/15 overflow-hidden shrink-0 flex items-center justify-center">
-                                  {item.isVideo ? (
-                                    <Video className="w-3.5 h-3.5 text-cyan-400" />
-                                  ) : item.imageUrl ? (
-                                    <img src={item.imageUrl} className="w-full h-full object-cover" alt={item.name} />
-                                  ) : (
-                                    <ImageIcon className="w-3.5 h-3.5 text-fuchsia-400" />
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-xs font-bold text-white truncate">@{item.name}</p>
-                                  <p className="text-[9px] text-gray-400 truncate">{item.category}</p>
-                                </div>
-                              </button>
-                            ))
-                        ) : (
-                          <div className="p-4 text-center text-xs text-gray-400">No matching references found.</div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  <textarea
-                    ref={textareaRef}
-                    value={localPrompt}
-                    onChange={handlePromptChange}
-                    placeholder="Describe your cinematic Veo 3.1 scenario... Type @ to tag uploaded keyframes or references."
-                    rows={4}
-                    className="w-full bg-black/50 border border-white/15 focus:border-violet-400/70 rounded-2xl p-4 text-xs text-white placeholder-gray-500 outline-none resize-none custom-scrollbar leading-relaxed font-medium backdrop-blur-2xl shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] transition-all"
-                  />
-
-                  {/* Detected Tagged Reference Pills */}
-                  {detectedMentions.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Payload Tags:</span>
-                      {detectedMentions.map((tag, idx) => (
-                        <span key={idx} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-violet-500/20 text-violet-200 border border-violet-400/40 flex items-center gap-1 backdrop-blur-md">
-                          <Tag size={10} className="text-violet-400" /> {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* 3. THIRD SECTION: Veo 3.1 Model Variant Grid */}
-                <div className="space-y-2.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-gray-300">Veo Model Variant</label>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {[
-                      { id: 'veo-3.1-lite-generate-preview', label: 'Veo 3.1 Lite', desc: 'Fastest draft previews' },
-                      { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3.1 Fast', desc: 'Balanced speed & fidelity' },
-                      { id: 'veo-3.1-generate-preview', label: 'Veo 3.1 High', desc: 'Highest photorealism & dynamics' }
-                    ].map(m => (
-                      <button
-                        key={m.id}
-                        onClick={() => {
-                          setActiveTab('video');
-                          setActiveEngine(m.id);
-                        }}
-                        className={cn(
-                          "p-3 rounded-2xl border text-left flex flex-col justify-between transition-all backdrop-blur-xl shadow-md cursor-pointer select-none",
-                          activeEngine === m.id
-                            ? "bg-gradient-to-b from-violet-600/30 to-violet-950/40 border-violet-400 text-white shadow-[0_0_20px_rgba(139,92,246,0.25)]"
-                            : "bg-white/[0.02] border-white/10 text-gray-400 hover:bg-white/[0.06] hover:text-white"
-                        )}
-                      >
-                        <div className="text-xs font-bold flex items-center justify-between">
-                          <span>{m.label}</span>
-                          {activeEngine === m.id && <Check className="w-3.5 h-3.5 text-violet-400" />}
-                        </div>
-                        <span className="text-[10px] text-gray-400 mt-1.5 leading-snug">{m.desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 4. FOURTH SECTION: Video Generation Parameters with Custom Glass Dropdowns */}
-                <div className="grid grid-cols-2 gap-3.5">
-                  <GlassSelect
-                    label="Resolution"
-                    value={resolution}
-                    onChange={setResolution}
-                    options={[
-                      { value: '720p', label: '720p HD', desc: 'Standard High Definition' },
-                      { value: '1080p', label: '1080p Full HD', desc: 'Full HD Quality' },
-                      { value: '4k', label: '4K Ultra HD', desc: 'Maximum Resolution' }
-                    ]}
-                  />
-
-                  <GlassSelect
-                    label="Duration"
-                    value={duration}
-                    onChange={(val) => setDuration(Number(val))}
-                    options={[
-                      { value: 4, label: '4 Seconds', desc: 'Short dynamic clip' },
-                      { value: 6, label: '6 Seconds', desc: 'Standard video clip' },
-                      { value: 8, label: '8 Seconds', desc: 'Extended camera shot' },
-                      { value: 10, label: '10 Seconds', desc: 'Maximum video clip' }
-                    ]}
-                  />
-
-                  <GlassSelect
-                    label="Aspect Ratio"
-                    value={aspectRatio}
-                    onChange={setAspectRatio}
-                    options={[
-                      { value: '16:9', label: '16:9 Landscape', desc: 'Widescreen cinematic' },
-                      { value: '9:16', label: '9:16 Portrait', desc: 'Mobile vertical reel' },
-                      { value: '1:1', label: '1:1 Square', desc: 'Social feed post' }
-                    ]}
-                  />
-
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-300">Audio Track</label>
-                    <button
-                      type="button"
-                      onClick={() => setGenerateAudio(!generateAudio)}
-                      className={cn(
-                        "w-full py-2.5 px-3.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all backdrop-blur-xl shadow-md cursor-pointer select-none",
-                        generateAudio
-                          ? "bg-gradient-to-r from-violet-600/30 to-fuchsia-600/30 border-violet-400 text-violet-200"
-                          : "bg-[#0e0e18]/90 border-white/15 text-gray-400 hover:text-white"
-                      )}
-                    >
-                      <span>{generateAudio ? 'Audio Enabled' : 'Muted'}</span>
-                      {generateAudio && <Check className="w-3.5 h-3.5 text-violet-400" />}
+                    <button onClick={() => setShowDocs(false)} className="text-zinc-500 hover:text-white">
+                      <X size={13} />
                     </button>
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* ────────────────────────────────────────────────────────── */}
-            {/* TAB 2: GEMINI OMNI FLASH WORKSPACE */}
-            {/* ────────────────────────────────────────────────────────── */}
-            {panelTab === 'omni' && (
-              <div className="space-y-6">
-                {/* 0. OMNI MODEL VARIANT SELECTOR */}
-                <div className="space-y-2.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-gray-300">Omni Model Variant</label>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {[
-                      { id: 'omni-flash-1.1', label: 'Omni Flash 1.1', desc: '⚡ Latest 1.1 Fast Engine (Vertex AI Global)' },
-                      { id: 'omni-flash', label: 'Omni Flash 1.0', desc: '✨ Fast 1.0 Multimodal Engine' },
-                      { id: 'omni', label: 'Gemini Omni 1.0', desc: '🎬 Standard Omni Multimodal Engine' }
-                    ].map(m => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => {
-                          setActiveTab('video');
-                          setActiveEngine(m.id);
-                        }}
-                        className={cn(
-                          "p-3 rounded-2xl border text-left flex flex-col justify-between transition-all backdrop-blur-xl shadow-md cursor-pointer select-none",
-                          activeEngine === m.id || (activeEngine === 'gemini-omni-1.1-flash-preview' && m.id === 'omni-flash-1.1')
-                            ? "bg-gradient-to-b from-fuchsia-600/30 to-pink-950/40 border-fuchsia-400 text-white shadow-[0_0_20px_rgba(217,70,239,0.25)]"
-                            : "bg-white/[0.02] border-white/10 text-gray-400 hover:bg-white/[0.06] hover:text-white"
-                        )}
-                      >
-                        <div className="text-xs font-bold flex items-center justify-between">
-                          <span>{m.label}</span>
-                          {(activeEngine === m.id || (activeEngine === 'gemini-omni-1.1-flash-preview' && m.id === 'omni-flash-1.1')) && <Check className="w-3.5 h-3.5 text-fuchsia-400" />}
-                        </div>
-                        <span className="text-[10px] text-gray-400 mt-1.5 leading-snug">{m.desc}</span>
-                      </button>
-                    ))}
+                  <p className="text-[10.5px] text-zinc-400 leading-relaxed">
+                    Trained on multimodal references. You can feed up to 3 driving reference videos, start/end frames, and 5 image references simultaneously.
+                  </p>
+                  <div className="grid grid-cols-2 gap-1 pt-0.5">
+                    <span className="bg-black/40 p-1.5 rounded-lg border border-white/5 font-mono text-[9px]">
+                      <strong>Text-to-Video:</strong> Pure prompt
+                    </span>
+                    <span className="bg-black/40 p-1.5 rounded-lg border border-white/5 font-mono text-[9px]">
+                      <strong>Image-to-Video:</strong> Animate 1st frame
+                    </span>
+                    <span className="bg-black/40 p-1.5 rounded-lg border border-white/5 font-mono text-[9px]">
+                      <strong>Reference Video:</strong> Drive motion
+                    </span>
+                    <span className="bg-black/40 p-1.5 rounded-lg border border-white/5 font-mono text-[9px]">
+                      <strong>Video Edit:</strong> Natural language
+                    </span>
                   </div>
-                </div>
+                </motion.div>
+              )}
 
-                {/* 1. TOP SECTION: Omni Flash Task Selection Custom Glass Dropdown */}
-                <GlassSelect
-                  label="Omni Flash Task Mode"
-                  icon={Zap}
-                  value={omniTask}
-                  onChange={(val) => {
-                    setOmniTask(val);
-                    localStorage.setItem('cs_omniTask', val);
-                  }}
-                  align="down"
-                  options={[
-                    { value: 'auto', label: 'Auto Infer', desc: 'Auto-detects task from uploaded inputs', icon: <Sparkles className="w-3.5 h-3.5 text-[#c8f135]" /> },
-                    { value: 'text_to_video', label: 'Text-to-Video', desc: 'Generate dynamic video sequences directly from text prompts', icon: <Film className="w-3.5 h-3.5 text-violet-400" /> },
-                    { value: 'image_to_video', label: 'Image-to-Video', desc: 'Transform static images into videos', icon: <ImageIcon className="w-3.5 h-3.5 text-fuchsia-400" /> },
-                    { value: 'reference_to_video', label: 'Reference-to-Video', desc: 'Generate videos from various input media', icon: <Layers className="w-3.5 h-3.5 text-cyan-400" /> },
-                    { value: 'edit', label: 'Video Editing', desc: 'Modify an original or previously generated video', icon: <Video className="w-3.5 h-3.5 text-rose-400" /> },
-                    { value: 'extension', label: 'Video Extension', desc: 'Extend an original or previously generated video', icon: <FastForward className="w-3.5 h-3.5 text-amber-400" /> }
-                  ]}
-                />
-
-                {/* 2. SECOND SECTION: Direct Input Upload Placeholders for Images & Videos */}
-                <div className="space-y-3.5">
+              {/* SECTION A: MEDIA CONDITIONING & SCENE DIRECTING */}
+              <div className="space-y-3">
+                {panelTab === 'omni-multi' && (
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-gray-300 flex items-center gap-1.5">
-                      <Video className="w-4 h-4 text-fuchsia-400" />
-                      <span>Media & Reference Inputs</span>
-                    </h3>
-                    <span className="text-[10px] text-fuchsia-400 font-mono font-semibold">Images & Video Clips</span>
+                    <span className="text-[9.5px] font-black uppercase tracking-[0.16em] text-zinc-400 flex items-center gap-1.5">
+                      <Layers className="w-3 h-3 text-[#c8f135]" />
+                      <span>Multi-Media Conditioning</span>
+                    </span>
+                    <span className="text-[8.5px] font-mono text-zinc-500">
+                      4 Images + 3 Videos
+                    </span>
                   </div>
+                )}
 
+                {panelTab === 'omni-multi' ? (
+                  /* DEDICATED MULTI-REFERENCE INTERFACE (4 Image Slots + 3 Video Slots) */
                   <div className="space-y-3">
-                    {/* Progressive Image Reference Slots (Default 3 in grid-cols-3, auto-unlocks 4 & 5 progressively) */}
-                    <div className="space-y-2">
+                    {/* 4 Image Reference Slots - Sleek Single-Row Cards */}
+                    <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-fuchsia-300 flex items-center gap-1">
-                          <ImageIcon className="w-3.5 h-3.5 text-fuchsia-400" /> Reference Images
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] text-fuchsia-400/80 font-mono">Tag @IMAGE_REF_0..4</span>
-                          {Math.max(3, Math.min(5, (omniRefPreviews.filter(Boolean).length >= 4 ? 5 : omniRefPreviews.filter(Boolean).length >= 3 || omniRefPreviews[2] ? 4 : 3))) < 5 && (
+                        <label className="text-[9.5px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+                          <ImageIcon className="w-3 h-3 text-[#c8f135]" />
+                          <span>Image References (4 Slots)</span>
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
                             <button
+                              type="button"
                               onClick={() => {
-                                // Force reveal next slot by selecting upload target
-                                const currentFilled = omniRefPreviews.filter(Boolean).length;
-                                const nextSlot = Math.min(4, Math.max(3, currentFilled));
-                                setUploadTarget(`omni_ref_${nextSlot}`);
-                                fileInputRef?.current?.click();
+                                const emptySlot = omniMultiImages.findIndex(img => !img);
+                                setGalleryPickerSlot({ type: 'image', slotIdx: emptySlot !== -1 ? emptySlot : 0 });
                               }}
-                              className="flex items-center gap-0.5 text-[8px] font-black uppercase tracking-wider text-fuchsia-300 hover:text-white bg-fuchsia-500/20 hover:bg-fuchsia-500/30 px-1.5 py-0.5 rounded border border-fuchsia-500/30 transition-all cursor-pointer"
-                              title="Add another reference image"
+                              className="text-[8px] font-bold text-[#c8f135] bg-[#c8f135]/10 hover:bg-[#c8f135]/20 border border-[#c8f135]/25 px-1.5 py-0.2 rounded transition-all cursor-pointer"
                             >
-                              + Add Ref
+                              + Gallery
                             </button>
                           )}
+                          <span className="text-[8.5px] font-mono text-zinc-500">Auto-tagged</span>
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-3 gap-2.5">
-                        {Array.from({ length: Math.min(5, Math.max(3, omniRefPreviews.filter(Boolean).length >= 4 ? 5 : omniRefPreviews.filter(Boolean).length >= 3 || omniRefPreviews[2] ? 4 : 3)) }).map((_, idx) => {
-                          const slotPreview = omniRefPreviews[idx] || (idx === 0 ? omniFirstFramePreview : idx === 1 ? omniLastFramePreview : '');
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {[0, 1, 2, 3].map((slotIdx) => {
+                          const imgUrl = omniMultiImages[slotIdx];
+                          const tag = `@image${slotIdx + 1}`;
                           return (
-                            <div key={idx} className="p-2 rounded-xl bg-white/[0.02] backdrop-blur-md border border-white/10 hover:border-fuchsia-500/40 transition-all flex flex-col gap-1.5 relative shadow-md">
-                              <div className="flex items-center justify-between px-0.5">
-                                <span className="text-[9px] font-mono font-bold text-fuchsia-300 flex items-center gap-1">
-                                  Ref {idx + 1}
-                                </span>
-                                {slotPreview && (
+                            <div key={slotIdx} className="space-y-0.5">
+                              {imgUrl ? (
+                                <div className="relative group rounded-xl overflow-hidden border border-[#c8f135]/50 aspect-square bg-black/60 shadow-inner flex items-center justify-center">
+                                  <img src={imgUrl} className="w-full h-full object-cover" alt={`Ref ${slotIdx + 1}`} />
                                   <button
-                                    onClick={() => handleClearRef(idx)}
-                                    className="p-0.5 text-red-400 hover:bg-red-500/20 rounded transition-colors cursor-pointer"
-                                    title={`Remove Image Ref ${idx + 1}`}
+                                    type="button"
+                                    onClick={() => handleClearMultiImage(slotIdx)}
+                                    className="absolute top-0.5 right-0.5 p-0.5 rounded-md bg-black/80 text-zinc-300 hover:text-white hover:bg-rose-600 transition-all cursor-pointer opacity-0 group-hover:opacity-100 z-10 shadow-sm"
+                                    title={`Remove ${tag}`}
                                   >
-                                    <Trash2 size={10} />
+                                    <Trash2 size={9} />
                                   </button>
-                                )}
-                              </div>
-
-                              {slotPreview ? (
-                                <div className="aspect-video w-full rounded-lg overflow-hidden bg-black/60 border border-white/15 relative group">
-                                  <img src={slotPreview} alt={`Ref ${idx + 1}`} className="w-full h-full object-cover" />
-                                  <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                                    <button
-                                      onClick={() => {
-                                        setUploadTarget(idx === 0 ? 'first' : idx === 1 ? 'last' : `omni_ref_${idx}`);
-                                        fileInputRef?.current?.click();
-                                      }}
-                                      className="px-2 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-[8px] font-bold uppercase tracking-wider cursor-pointer"
-                                    >
-                                      Replace
-                                    </button>
-                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => insertTagAtCursor(tag)}
+                                    className="absolute bottom-0.5 inset-x-0.5 py-0.2 px-0.5 rounded bg-black/85 text-[#c8f135] hover:bg-[#c8f135] hover:text-black transition-all border border-[#c8f135]/30 text-[7.5px] font-mono font-black text-center truncate cursor-pointer shadow-sm"
+                                    title={`Click to insert ${tag} into prompt`}
+                                  >
+                                    {tag}
+                                  </button>
                                 </div>
                               ) : (
-                                <button
-                                  onClick={() => {
-                                    setUploadTarget(idx === 0 ? 'first' : idx === 1 ? 'last' : `omni_ref_${idx}`);
-                                    fileInputRef?.current?.click();
-                                  }}
-                                  className="aspect-video w-full rounded-lg border border-dashed border-white/20 bg-white/[0.02] hover:bg-fuchsia-500/10 hover:border-fuchsia-400/50 flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-fuchsia-300 transition-all cursor-pointer"
-                                  title={`Upload Image Ref ${idx + 1}`}
-                                >
-                                  <Upload size={14} className="text-fuchsia-400/70" />
-                                  <span className="text-[8px] font-bold uppercase tracking-wider">Upload Ref {idx + 1}</span>
-                                </button>
+                                <div className="w-full aspect-square rounded-xl border border-dashed border-white/15 hover:border-[#c8f135]/60 bg-white/[0.02] hover:bg-[#c8f135]/[0.04] transition-all flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-white p-0.5 relative group">
+                                  <button
+                                    type="button"
+                                    onClick={() => multiImageRefs[slotIdx]?.current?.click()}
+                                    className="flex flex-col items-center justify-center gap-0.5 w-full h-full cursor-pointer"
+                                  >
+                                    <div className="w-4 h-4 rounded-md bg-white/[0.04] group-hover:bg-[#c8f135]/15 border border-white/10 group-hover:border-[#c8f135]/30 flex items-center justify-center transition-all">
+                                      <Upload size={9} className="text-zinc-400 group-hover:text-[#c8f135]" />
+                                    </div>
+                                    <span className="text-[7.5px] font-mono font-bold text-zinc-400 group-hover:text-[#c8f135] truncate">
+                                      {tag}
+                                    </span>
+                                  </button>
+                                  {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setGalleryPickerSlot({ type: 'image', slotIdx })}
+                                      className="absolute top-0.5 right-0.5 px-0.5 py-0.2 rounded bg-black/80 hover:bg-[#c8f135] text-zinc-400 hover:text-black border border-white/10 text-[6.5px] font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-sm"
+                                      title="Pick from Studio Gallery"
+                                    >
+                                      Gal
+                                    </button>
+                                  )}
+                                </div>
                               )}
+                              <input
+                                type="file"
+                                ref={multiImageRefs[slotIdx]}
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => handleMultiImageSelect(e, slotIdx)}
+                              />
                             </div>
                           );
                         })}
                       </div>
                     </div>
 
-                    {/* Direct Reference Video Upload Slot (Square Card) */}
-                    <div className="w-28 p-2 rounded-xl bg-white/[0.02] backdrop-blur-md border border-white/10 hover:border-cyan-500/40 transition-all flex flex-col gap-1.5 relative shadow-md">
-                      <div className="flex items-center justify-between px-0.5">
-                        <span className="text-[8px] font-mono font-bold text-cyan-300 flex items-center gap-1 truncate">
-                          <Video className="w-2.5 h-2.5 text-cyan-400" /> Ref Video
-                        </span>
-                        {videoPreview && (
-                          <button onClick={() => { setVideoPreview(null); if (setOmniRefVideoDuration) setOmniRefVideoDuration(0); }} className="p-0.5 text-red-400 hover:bg-red-500/20 rounded transition-colors cursor-pointer" title="Remove Reference Video">
-                            <Trash2 size={9} />
+                    {/* 3 Driving Video Reference Slots - Sleek Single-Row Cards */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[9.5px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+                          <Video className="w-3 h-3 text-[#c8f135]" />
+                          <span>Video References (3 Slots)</span>
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const emptySlot = omniMultiVideos.findIndex(v => !v);
+                                setGalleryPickerSlot({ type: 'video', slotIdx: emptySlot !== -1 ? emptySlot : 0 });
+                              }}
+                              className="text-[8px] font-bold text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/25 px-1.5 py-0.2 rounded transition-all cursor-pointer"
+                            >
+                              + Gallery
+                            </button>
+                          )}
+                          <span className="text-[8.5px] font-mono text-zinc-500">Max 10s MP4</span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[0, 1, 2].map((slotIdx) => {
+                          const vidUrl = omniMultiVideos[slotIdx];
+                          const tag = `@video${slotIdx + 1}`;
+                          return (
+                            <div key={slotIdx} className="space-y-0.5">
+                              {vidUrl ? (
+                                <div className="relative group rounded-xl overflow-hidden border border-[#c8f135]/50 aspect-[4/3] bg-black/60 shadow-inner flex items-center justify-center">
+                                  <video src={vidUrl} className="w-full h-full object-cover" muted loop playsInline />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleClearMultiVideo(slotIdx)}
+                                    className="absolute top-0.5 right-0.5 p-0.5 rounded-md bg-black/80 text-white hover:bg-rose-600 transition-all cursor-pointer opacity-0 group-hover:opacity-100 z-10 shadow-sm"
+                                    title={`Remove ${tag}`}
+                                  >
+                                    <Trash2 size={9} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => insertTagAtCursor(tag)}
+                                    className="absolute bottom-0.5 inset-x-0.5 py-0.2 px-0.5 rounded bg-black/85 text-[#c8f135] hover:bg-[#c8f135] hover:text-black transition-all border border-[#c8f135]/30 text-[7.5px] font-mono font-black text-center truncate cursor-pointer shadow-sm"
+                                    title={`Click to insert ${tag} into prompt`}
+                                  >
+                                    {tag}
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="w-full aspect-[4/3] rounded-xl border border-dashed border-white/15 hover:border-[#c8f135]/60 bg-white/[0.02] hover:bg-[#c8f135]/[0.04] transition-all flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-white p-0.5 relative group">
+                                  <button
+                                    type="button"
+                                    onClick={() => multiVideoRefs[slotIdx]?.current?.click()}
+                                    className="flex flex-col items-center justify-center gap-0.5 w-full h-full cursor-pointer"
+                                  >
+                                    <div className="w-4 h-4 rounded-md bg-white/[0.04] group-hover:bg-[#c8f135]/15 border border-white/10 group-hover:border-[#c8f135]/30 flex items-center justify-center transition-all">
+                                      <Video size={9} className="text-zinc-400 group-hover:text-[#c8f135]" />
+                                    </div>
+                                    <span className="text-[7.5px] font-mono font-bold text-zinc-400 group-hover:text-[#c8f135] truncate">
+                                      {tag}
+                                    </span>
+                                  </button>
+                                  {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setGalleryPickerSlot({ type: 'video', slotIdx })}
+                                      className="absolute top-0.5 right-0.5 px-0.5 py-0.2 rounded bg-black/80 hover:bg-cyan-400 text-zinc-400 hover:text-black border border-white/10 text-[6.5px] font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-sm"
+                                      title="Pick from Studio Gallery"
+                                    >
+                                      Gal
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                              <input
+                                type="file"
+                                ref={multiVideoRefs[slotIdx]}
+                                accept="video/mp4,video/webm,video/quicktime"
+                                className="hidden"
+                                onChange={(e) => handleMultiVideoSelect(e, slotIdx)}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Multi-Ref Prompt Studio */}
+                    {renderPromptStudio("Direct with references! E.g.: '@image1 character walks past @image2 while matching camera motion of @video1, 4k 60fps'")}
+                  </div>
+                ) : panelTab === 'motion' ? (
+                  /* ── MOTION CONTROL FLOW ── */
+                  <div className="space-y-3">
+                    {/* Side-by-side Subject Image & Motion Pattern Video */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Left: Subject Reference Image */}
+                      <div className="space-y-1 flex flex-col min-w-0">
+                        <div className="flex items-center justify-between h-4">
+                          <label className="text-[9px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1 truncate">
+                            <ImageIcon className="w-2.5 h-2.5 text-[#c8f135] shrink-0" />
+                            <span className="truncate">Subject</span>
+                          </label>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
+                              <button
+                                type="button"
+                                onClick={() => setGalleryPickerSlot({ type: 'motion_subject' })}
+                                className="text-[7.5px] font-bold text-[#c8f135] bg-[#c8f135]/10 hover:bg-[#c8f135]/20 border border-[#c8f135]/25 px-1 py-0.2 rounded transition-all cursor-pointer"
+                                title="Pick from Gallery"
+                              >
+                                Gal
+                              </button>
+                            )}
+                            {(motionSubjectPreview || motionSubjectImage) && (
+                              <button
+                                type="button"
+                                onClick={handleClearMotionSubject}
+                                className="p-0.5 hover:bg-rose-500/20 text-rose-400 rounded transition-colors cursor-pointer"
+                                title="Remove Subject Image"
+                              >
+                                <Trash2 size={10} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {(motionSubjectPreview || motionSubjectImage) ? (
+                          <div className="aspect-[4/3] w-full rounded-xl overflow-hidden bg-black/70 border border-[#c8f135]/40 relative group shadow-inner flex items-center justify-center">
+                            <img
+                              src={motionSubjectPreview || motionSubjectImage}
+                              alt="Subject Reference"
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all gap-1 backdrop-blur-[2px]">
+                              <button
+                                type="button"
+                                onClick={() => motionImageInputRef.current?.click()}
+                                className="px-1.5 py-0.5 bg-white/20 hover:bg-white/30 text-white rounded text-[8.5px] font-bold uppercase tracking-wider cursor-pointer"
+                              >
+                                Replace
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleClearMotionSubject}
+                                className="px-1.5 py-0.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded text-[8.5px] font-bold uppercase tracking-wider cursor-pointer"
+                              >
+                                Clear
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => motionImageInputRef.current?.click()}
+                            className="aspect-[4/3] w-full rounded-xl border border-dashed border-white/15 hover:border-[#c8f135]/60 bg-white/[0.01] hover:bg-[#c8f135]/[0.04] transition-all flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-[#c8f135] p-1.5 cursor-pointer select-none group"
+                          >
+                            {isUploadingMotionImage ? (
+                              <Loader2 size={14} className="text-[#c8f135] animate-spin" />
+                            ) : (
+                              <Upload size={14} className="text-zinc-400 group-hover:text-[#c8f135] transition-colors" />
+                            )}
+                            <span className="text-[9px] font-black uppercase tracking-wider text-zinc-300 group-hover:text-white">Subject Img</span>
+                            <span className="text-[7px] text-zinc-500 font-mono">Max 10MB</span>
                           </button>
                         )}
                       </div>
-                      {isVideoUploading ? (
-                        <div className="aspect-square w-full rounded-lg border border-cyan-400/50 bg-cyan-950/40 backdrop-blur-md flex flex-col items-center justify-center gap-1 text-cyan-300 animate-pulse">
-                          <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
-                          <span className="text-[7px] font-bold uppercase tracking-wider">Uploading</span>
-                        </div>
-                      ) : videoPreview ? (
-                        <div className="aspect-square w-full rounded-lg overflow-hidden bg-black/60 border border-white/15 relative group">
-                          <video src={videoPreview} controls muted playsInline preload="metadata" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                            <button onClick={() => videoInputRef.current?.click()} className="px-1.5 py-0.5 bg-white/20 hover:bg-white/30 text-white rounded text-[7px] font-bold uppercase tracking-wider cursor-pointer">Replace</button>
+
+                      {/* Right: Motion Pattern Video (Driver) */}
+                      <div className="space-y-1 flex flex-col min-w-0">
+                        <div className="flex items-center justify-between h-4">
+                          <label className="text-[9px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1 truncate">
+                            <Film className="w-2.5 h-2.5 text-[#c8f135] shrink-0" />
+                            <span className="truncate">Driver Vid</span>
+                          </label>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
+                              <button
+                                type="button"
+                                onClick={() => setGalleryPickerSlot({ type: 'motion_video' })}
+                                className="text-[7.5px] font-bold text-[#c8f135] bg-[#c8f135]/10 hover:bg-[#c8f135]/20 border border-[#c8f135]/25 px-1 py-0.2 rounded transition-all cursor-pointer"
+                                title="Pick from Gallery"
+                              >
+                                Gal
+                              </button>
+                            )}
+                            {(motionRefVideoPreview || motionRefVideo) && (
+                              <button
+                                type="button"
+                                onClick={handleClearMotionVideo}
+                                className="p-0.5 hover:bg-rose-500/20 text-rose-400 rounded transition-colors cursor-pointer"
+                                title="Remove Motion Video"
+                              >
+                                <Trash2 size={10} />
+                              </button>
+                            )}
                           </div>
                         </div>
-                      ) : (
-                        <button onClick={() => videoInputRef.current?.click()} className="aspect-square w-full rounded-lg border border-dashed border-white/20 bg-white/[0.02] hover:bg-cyan-500/10 hover:border-cyan-400/50 flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-cyan-300 transition-all cursor-pointer" title="Upload Reference Video (10s max)">
-                          <Video size={14} className="text-cyan-400/70" />
-                          <span className="text-[7px] font-bold uppercase tracking-wider text-center">Ref Video</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
 
-                {/* 3. THIRD SECTION: Glass Prompt Textarea for Omni Flash with @Mention Autocomplete */}
-                <div className="space-y-2 relative">
-                  <label className="text-xs font-black uppercase tracking-wider text-gray-300 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-fuchsia-300">
-                      <Zap className="w-3.5 h-3.5" /> Omni Flash Prompt & Instructions
-                    </span>
-                    <span className="text-[10px] text-fuchsia-400/80 font-mono">Type @ to tag references</span>
-                  </label>
-
-                  {/* Glass Autocomplete Mention Popover */}
-                  {mentionSearch !== null && (
-                    <div className="absolute bottom-full mb-2 left-0 right-0 z-[200] bg-[#0a0a14]/98 border border-fuchsia-500/40 rounded-2xl shadow-[0_15px_50px_rgba(0,0,0,0.9)] backdrop-blur-3xl overflow-hidden flex flex-col max-h-56">
-                      <div className="px-3 py-2 border-b border-white/10 bg-fuchsia-950/40 flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-fuchsia-300 uppercase tracking-wider flex items-center gap-1.5">
-                          <Tag className="w-3 h-3" /> Tag Uploaded Media or Asset
-                        </span>
-                        <button onClick={() => setMentionSearch(null)} className="text-gray-400 hover:text-white p-1">
-                          <X size={12} />
-                        </button>
-                      </div>
-                      <div className="overflow-y-auto custom-scrollbar p-1 divide-y divide-white/5">
-                        {availableMentionItems.filter(i => i.name.toLowerCase().includes((mentionSearch || '').toLowerCase())).length > 0 ? (
-                          availableMentionItems
-                            .filter(i => i.name.toLowerCase().includes((mentionSearch || '').toLowerCase()))
-                            .map((item, idx) => (
+                        {(motionRefVideoPreview || motionRefVideo) ? (
+                          <div className="aspect-[4/3] w-full rounded-xl overflow-hidden bg-black/70 border border-[#c8f135]/40 relative group shadow-inner flex items-center justify-center">
+                            <video
+                              src={motionRefVideoPreview || motionRefVideo}
+                              className="w-full h-full object-cover"
+                              controls
+                              playsInline
+                            />
+                            <div className="absolute top-1 right-1 bg-black/85 backdrop-blur-md border border-[#c8f135]/30 px-1 py-0.2 rounded text-[7.5px] font-mono text-[#c8f135] font-bold z-10 pointer-events-none shadow-md">
+                              {motionRefVideoDuration ? `${motionRefVideoDuration}s` : 'Loaded'}
+                            </div>
+                            <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all gap-1 backdrop-blur-[2px] pointer-events-none">
                               <button
-                                key={idx}
                                 type="button"
-                                onClick={() => selectMention(item)}
-                                className="w-full px-3 py-2 flex items-center gap-2.5 hover:bg-fuchsia-600/20 transition-all rounded-xl text-left cursor-pointer"
+                                onClick={() => motionVideoInputRef.current?.click()}
+                                className="px-1.5 py-0.5 bg-white/20 hover:bg-white/30 text-white rounded text-[8.5px] font-bold uppercase tracking-wider cursor-pointer pointer-events-auto"
                               >
-                                <div className="w-7 h-7 rounded-lg bg-black/50 border border-white/15 overflow-hidden shrink-0 flex items-center justify-center">
-                                  {item.isVideo ? (
-                                    <Video className="w-3.5 h-3.5 text-cyan-400" />
-                                  ) : item.imageUrl ? (
-                                    <img src={item.imageUrl} className="w-full h-full object-cover" alt={item.name} />
-                                  ) : (
-                                    <ImageIcon className="w-3.5 h-3.5 text-fuchsia-400" />
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-xs font-bold text-white truncate">@{item.name}</p>
-                                  <p className="text-[9px] text-gray-400 truncate">{item.category}</p>
-                                </div>
+                                Replace
                               </button>
-                            ))
+                              <button
+                                type="button"
+                                onClick={handleClearMotionVideo}
+                                className="px-1.5 py-0.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded text-[8.5px] font-bold uppercase tracking-wider cursor-pointer pointer-events-auto"
+                              >
+                                Clear
+                              </button>
+                            </div>
+                          </div>
                         ) : (
-                          <div className="p-4 text-center text-xs text-gray-400">No matching references found.</div>
+                          <button
+                            type="button"
+                            onClick={() => motionVideoInputRef.current?.click()}
+                            className="aspect-[4/3] w-full rounded-xl border border-dashed border-white/15 hover:border-[#c8f135]/60 bg-white/[0.01] hover:bg-[#c8f135]/[0.04] transition-all flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-[#c8f135] p-1.5 cursor-pointer select-none group"
+                          >
+                            {isUploadingMotionVideo ? (
+                              <Loader2 size={14} className="text-[#c8f135] animate-spin" />
+                            ) : (
+                              <Upload size={14} className="text-zinc-400 group-hover:text-[#c8f135] transition-colors" />
+                            )}
+                            <span className="text-[9px] font-black uppercase tracking-wider text-zinc-300 group-hover:text-white">Driver Vid</span>
+                            <span className="text-[7px] text-zinc-500 font-mono">3–30s MP4</span>
+                          </button>
                         )}
                       </div>
                     </div>
-                  )}
 
-                  <textarea
-                    ref={textareaRef}
-                    value={localPrompt}
-                    onChange={handlePromptChange}
-                    placeholder="Describe your video sequence or edit instructions... Type @ to tag uploaded references."
-                    rows={4}
-                    className="w-full bg-black/50 border border-white/15 focus:border-fuchsia-400/70 rounded-2xl p-4 text-xs text-white placeholder-gray-500 outline-none resize-none custom-scrollbar leading-relaxed font-medium backdrop-blur-2xl shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] transition-all"
-                  />
-
-                  {/* Detected Tagged Reference Pills */}
-                  {detectedMentions.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Payload Tags:</span>
-                      {detectedMentions.map((tag, idx) => (
-                        <span key={idx} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-fuchsia-500/20 text-fuchsia-200 border border-fuchsia-400/40 flex items-center gap-1 backdrop-blur-md">
-                          <Tag size={10} className="text-fuchsia-400" /> {tag}
-                        </span>
-                      ))}
+                    {/* API File Requirements Spec */}
+                    <div className="flex items-center justify-between px-2 py-1 rounded-xl bg-white/[0.02] border border-white/[0.06] text-[8px] text-zinc-400 font-medium select-none">
+                      <div className="flex items-center gap-1 truncate">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#c8f135] shrink-0" />
+                        <span className="truncate">Clear head & torso · Ratio 2:5 to 5:2</span>
+                      </div>
+                      <span className="text-zinc-500 font-mono shrink-0 pl-1 text-[7.5px]">1 Img + 1 Vid</span>
                     </div>
-                  )}
-                </div>
 
-                {/* 4. FOURTH SECTION: Omni Flash Video Parameters */}
-                <div className="grid grid-cols-2 gap-3.5 pt-3 border-t border-white/10">
-                  <GlassSelect
-                    label="Resolution"
-                    value={resolution}
-                    onChange={setResolution}
-                    options={[
-                      { value: '720p', label: '720p HD', desc: 'Standard High Definition' },
-                      { value: '1080p', label: '1080p Full HD', desc: 'Full HD Quality' }
-                    ]}
-                  />
+                    {/* Creative Text Prompt Guidance */}
+                    <div className="space-y-1">
+                      <label className="text-[9.5px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3 text-[#c8f135]" />
+                        <span>Prompt Guidance (Optional)</span>
+                      </label>
+                      <textarea
+                        value={localPrompt}
+                        onChange={handlePromptChange}
+                        placeholder="No distortion, the character's movements are consistent with the video."
+                        rows={2}
+                        className="w-full bg-black/50 border border-white/15 focus:border-[#c8f135]/60 rounded-xl p-2.5 text-xs text-white placeholder-zinc-500 outline-none resize-none custom-scrollbar leading-relaxed font-medium backdrop-blur-2xl transition-all"
+                      />
+                    </div>
 
-                  <GlassSelect
-                    label="Duration"
-                    value={duration}
-                    onChange={(val) => setDuration(Number(val))}
-                    options={[
-                      { value: 4, label: '4 Seconds', desc: 'Short dynamic clip' },
-                      { value: 6, label: '6 Seconds', desc: 'Standard video clip' },
-                      { value: 8, label: '8 Seconds', desc: 'Extended camera shot' },
-                      { value: 10, label: '10 Seconds', desc: 'Maximum Omni Flash clip' }
-                    ]}
-                  />
+                    {/* Motion Parameters */}
+                    <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.08] space-y-2.5">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+                        <span className="text-[9.5px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+                          <Sliders className="w-3 h-3 text-[#c8f135]" />
+                          <span>Motion Parameters</span>
+                        </span>
+                      </div>
 
-                  <GlassSelect
-                    label="Aspect Ratio"
-                    value={aspectRatio}
-                    onChange={setAspectRatio}
-                    options={[
-                      { value: '16:9', label: '16:9 Landscape', desc: 'Widescreen cinematic' },
-                      { value: '9:16', label: '9:16 Portrait', desc: 'Mobile vertical reel' },
-                      { value: '1:1', label: '1:1 Square', desc: 'Social feed post' }
-                    ]}
-                  />
-
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-300">Audio Track</label>
-                    <button
-                      type="button"
-                      onClick={() => setGenerateAudio(!generateAudio)}
-                      className={cn(
-                        "w-full py-2.5 px-3.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all backdrop-blur-xl shadow-md cursor-pointer select-none",
-                        generateAudio
-                          ? "bg-gradient-to-r from-fuchsia-600/30 to-violet-600/30 border-fuchsia-400 text-fuchsia-200"
-                          : "bg-[#0e0e18]/90 border-white/15 text-gray-400 hover:text-white"
-                      )}
-                    >
-                      <span>{generateAudio ? 'Audio Enabled' : 'Muted'}</span>
-                      {generateAudio && <Check className="w-3.5 h-3.5 text-fuchsia-400" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* 5. FIFTH SECTION: Gemini Omni 1.1 Flash Capabilities & Use Cases Documentation Card */}
-                <div className="pt-4 border-t border-white/10 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-fuchsia-300 flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-fuchsia-400" />
-                      <span>Gemini Omni 1.1 Flash Capabilities & Use Cases</span>
-                    </h3>
-                    <span className="text-[9px] font-mono bg-fuchsia-500/20 text-fuchsia-300 px-2 py-0.5 rounded-md border border-fuchsia-500/30 font-bold">
-                      1.1 Docs
-                    </span>
-                  </div>
-
-                  <p className="text-[11px] text-gray-400 leading-relaxed font-normal">
-                    These capabilities are available in the <strong className="text-white">Gemini Omni 1.1 Flash Preview</strong> model:
-                  </p>
-
-                  <div className="space-y-2">
-                    {[
-                      {
-                        title: "Text-to-Video",
-                        task: "text_to_video",
-                        badge: "Prompt → Video",
-                        icon: "🎬",
-                        color: "from-violet-500/20 to-indigo-500/10 border-violet-500/30 text-violet-300",
-                        desc: "Generate dynamic video sequences directly from text prompts."
-                      },
-                      {
-                        title: "Image-to-Video",
-                        task: "image_to_video",
-                        badge: "Keyframe → Video",
-                        icon: "🖼️",
-                        color: "from-fuchsia-500/20 to-pink-500/10 border-fuchsia-500/30 text-fuchsia-300",
-                        desc: "Transform static images into videos."
-                      },
-                      {
-                        title: "Reference-to-Video",
-                        task: "reference_to_video",
-                        badge: "Multimodal Inputs",
-                        icon: "🎨",
-                        color: "from-cyan-500/20 to-blue-500/10 border-cyan-500/30 text-cyan-300",
-                        desc: "Generate videos from various input media."
-                      },
-                      {
-                        title: "Video Editing",
-                        task: "edit",
-                        badge: "Natural Language Edit",
-                        icon: "✂️",
-                        color: "from-rose-500/20 to-red-500/10 border-rose-500/30 text-rose-300",
-                        desc: "Modify an original or previously generated video."
-                      },
-                      {
-                        title: "Video Extension",
-                        task: "extension",
-                        badge: "Extend Duration",
-                        icon: "⏩",
-                        color: "from-amber-500/20 to-orange-500/10 border-amber-500/30 text-amber-300",
-                        desc: "Extend an original or previously generated video."
-                      }
-                    ].map(uc => (
-                      <div
-                        key={uc.task}
-                        onClick={() => {
-                          setOmniTask(uc.task);
-                          localStorage.setItem('cs_omniTask', uc.task);
-                        }}
-                        className={cn(
-                          "p-3 rounded-xl border bg-gradient-to-r transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99] flex flex-col gap-1 shadow-sm",
-                          uc.color,
-                          omniTask === uc.task && "ring-1 ring-white/50 border-white/60"
-                        )}
-                      >
+                      {/* Quality Mode */}
+                      <div className="space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold flex items-center gap-1.5 text-white">
-                            <span>{uc.icon}</span>
-                            <span>{uc.title}</span>
-                          </span>
-                          <span className="text-[9px] font-mono uppercase tracking-wider bg-black/40 px-2 py-0.5 rounded text-gray-300 border border-white/10">
-                            {uc.badge}
+                          <label className="text-[8.5px] font-bold uppercase tracking-wider text-zinc-400">Quality Mode</label>
+                          <span className="text-[8px] font-mono text-zinc-500">
+                            {(motionMode === 'pro' || motionMode === '1080p') ? '1080p · 9 cr/s' : '720p · 7 cr/s'}
                           </span>
                         </div>
-                        <p className="text-[10px] text-gray-300 leading-snug font-normal">
-                          {uc.desc}
-                        </p>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setMotionMode('720p')}
+                            className={cn(
+                              "py-1.5 px-2 rounded-xl text-[9.5px] font-black uppercase tracking-wider border transition-all cursor-pointer flex items-center justify-center gap-1",
+                              (motionMode === 'std' || motionMode === '720p')
+                                ? "bg-[#c8f135]/15 text-[#c8f135] border-[#c8f135]/50 shadow-[0_0_12px_rgba(200,241,53,0.15)] font-extrabold"
+                                : "border-white/10 text-zinc-400 hover:text-white hover:bg-white/5"
+                            )}
+                          >
+                            Standard (720p)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setMotionMode('1080p')}
+                            className={cn(
+                              "py-1.5 px-2 rounded-xl text-[9.5px] font-black uppercase tracking-wider border transition-all cursor-pointer flex items-center justify-center gap-1",
+                              (motionMode === 'pro' || motionMode === '1080p')
+                                ? "bg-[#c8f135]/15 text-[#c8f135] border-[#c8f135]/50 shadow-[0_0_12px_rgba(200,241,53,0.15)] font-extrabold"
+                                : "border-white/10 text-zinc-400 hover:text-white hover:bg-white/5"
+                            )}
+                          >
+                            Pro (1080p)
+                          </button>
+                        </div>
                       </div>
-                    ))}
+
+                      {/* Character Orientation */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[8.5px] font-bold uppercase tracking-wider text-zinc-400">Orientation</label>
+                          <span className="text-[8px] font-mono text-zinc-500">
+                            {characterOrientation === 'video' ? 'Driver Match' : 'Image Pose'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setCharacterOrientation('video')}
+                            className={cn(
+                              "py-1.5 px-2 rounded-xl text-[9.5px] font-black uppercase tracking-wider border transition-all cursor-pointer flex items-center justify-center gap-1",
+                              characterOrientation === 'video'
+                                ? "bg-[#c8f135]/15 text-[#c8f135] border-[#c8f135]/50 shadow-[0_0_12px_rgba(200,241,53,0.15)] font-extrabold"
+                                : "border-white/10 text-zinc-400 hover:text-white hover:bg-white/5"
+                            )}
+                          >
+                            Video Match (30s)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCharacterOrientation('image')}
+                            className={cn(
+                              "py-1.5 px-2 rounded-xl text-[9.5px] font-black uppercase tracking-wider border transition-all cursor-pointer flex items-center justify-center gap-1",
+                              characterOrientation === 'image'
+                                ? "bg-[#c8f135]/15 text-[#c8f135] border-[#c8f135]/50 shadow-[0_0_12px_rgba(200,241,53,0.15)] font-extrabold"
+                                : "border-white/10 text-zinc-400 hover:text-white hover:bg-white/5"
+                            )}
+                          >
+                            Image Pose (10s)
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  /* DIRECTING FLOW: Keyframe Conditioning + Prompt Studio + Driving Video Reference */
+                  <div className="space-y-3">
+                    {/* KEYFRAME CONDITIONING (START FRAME & END FRAME) - OMNI ONLY */}
+                    {panelTab === 'omni' && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[9.5px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+                            <ImageIcon className="w-3 h-3 text-[#c8f135]" />
+                            <span>Keyframe Conditioning</span>
+                          </label>
+                          <span className="text-[8.5px] font-mono text-[#c8f135]/90 bg-[#c8f135]/10 px-1.5 py-0.2 rounded border border-[#c8f135]/20 font-bold">
+                            Start (0s) → End ({duration}s)
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          {/* First Frame (Start Frame) */}
+                          <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.08] hover:border-violet-500/40 transition-all flex flex-col gap-1.5 relative shadow-md">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-bold text-violet-300 flex items-center gap-1 truncate">
+                                <ImageIcon size={10} className="text-violet-400 shrink-0" /> Start (0s)
+                              </span>
+                              <div className="flex items-center gap-1">
+                                {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setGalleryPickerSlot({ type: 'first' })}
+                                    className="text-[7.5px] font-bold text-[#c8f135] bg-[#c8f135]/10 hover:bg-[#c8f135]/20 border border-[#c8f135]/25 px-1 py-0.2 rounded transition-all cursor-pointer"
+                                    title="Select Start Frame from Studio Gallery"
+                                  >
+                                    + Gal
+                                  </button>
+                                )}
+                                {(omniFirstFramePreview || firstFramePreview) && (
+                                  <button
+                                    type="button"
+                                    onClick={handleClearStartFrame}
+                                    className="p-0.5 hover:bg-rose-500/20 text-rose-400 rounded transition-colors cursor-pointer"
+                                    title="Remove Start Frame"
+                                  >
+                                    <Trash2 size={10} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {(omniFirstFramePreview || firstFramePreview) ? (
+                              <div className="aspect-video w-full rounded-lg overflow-hidden bg-black/60 border border-violet-500/30 relative group shadow-inner">
+                                <img
+                                  src={omniFirstFramePreview || firstFramePreview}
+                                  alt="Start Frame"
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all gap-1 backdrop-blur-[2px]">
+                                  <button
+                                    type="button"
+                                    onClick={() => startFrameInputRef.current?.click()}
+                                    className="px-1.5 py-0.5 bg-white/20 hover:bg-white/30 text-white rounded text-[8.5px] font-bold uppercase tracking-wider cursor-pointer"
+                                  >
+                                    Replace
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => insertTagAtCursor('<FIRST_FRAME>')}
+                                    className="px-1.5 py-0.5 bg-[#c8f135]/20 hover:bg-[#c8f135]/30 text-[#c8f135] rounded text-[8.5px] font-mono font-bold cursor-pointer"
+                                    title="Insert <FIRST_FRAME> into prompt"
+                                  >
+                                    Tag
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => startFrameInputRef.current?.click()}
+                                className="aspect-video w-full rounded-lg border border-dashed border-white/15 hover:border-violet-400/50 bg-white/[0.01] hover:bg-violet-500/[0.04] transition-all flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-violet-300 cursor-pointer select-none p-1"
+                              >
+                                <Upload size={12} className="text-violet-400/70" />
+                                <span className="text-[8px] font-bold uppercase tracking-wider">Start Frame</span>
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Last Frame (End Frame) */}
+                          <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.08] hover:border-cyan-500/40 transition-all flex flex-col gap-1.5 relative shadow-md">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-bold text-cyan-300 flex items-center gap-1 truncate">
+                                <ImageIcon size={10} className="text-cyan-400 shrink-0" /> End ({duration}s)
+                              </span>
+                              <div className="flex items-center gap-1">
+                                {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setGalleryPickerSlot({ type: 'last' })}
+                                    className="text-[7.5px] font-bold text-[#c8f135] bg-[#c8f135]/10 hover:bg-[#c8f135]/20 border border-[#c8f135]/25 px-1 py-0.2 rounded transition-all cursor-pointer"
+                                    title="Select End Frame from Studio Gallery"
+                                  >
+                                    + Gal
+                                  </button>
+                                )}
+                                {(omniLastFramePreview || lastFramePreview) && (
+                                  <button
+                                    type="button"
+                                    onClick={handleClearEndFrame}
+                                    className="p-0.5 hover:bg-rose-500/20 text-rose-400 rounded transition-colors cursor-pointer"
+                                    title="Remove End Frame"
+                                  >
+                                    <Trash2 size={10} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {(omniLastFramePreview || lastFramePreview) ? (
+                              <div className="aspect-video w-full rounded-lg overflow-hidden bg-black/60 border border-cyan-500/30 relative group shadow-inner">
+                                <img
+                                  src={omniLastFramePreview || lastFramePreview}
+                                  alt="End Frame"
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all gap-1 backdrop-blur-[2px]">
+                                  <button
+                                    type="button"
+                                    onClick={() => endFrameInputRef.current?.click()}
+                                    className="px-1.5 py-0.5 bg-white/20 hover:bg-white/30 text-white rounded text-[8.5px] font-bold uppercase tracking-wider cursor-pointer"
+                                  >
+                                    Replace
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => insertTagAtCursor('<LAST_FRAME>')}
+                                    className="px-1.5 py-0.5 bg-[#c8f135]/20 hover:bg-[#c8f135]/30 text-[#c8f135] rounded text-[8.5px] font-mono font-bold cursor-pointer"
+                                    title="Insert <LAST_FRAME> into prompt"
+                                  >
+                                    Tag
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => endFrameInputRef.current?.click()}
+                                className="aspect-video w-full rounded-lg border border-dashed border-white/15 hover:border-cyan-400/50 bg-white/[0.01] hover:bg-cyan-500/[0.04] transition-all flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-cyan-300 cursor-pointer select-none p-1"
+                              >
+                                <Upload size={12} className="text-cyan-400/70" />
+                                <span className="text-[8px] font-bold uppercase tracking-wider">End Frame</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 1. PROMPT STUDIO */}
+                    {renderPromptStudio(
+                      panelTab === 'omni'
+                        ? "Describe scene composition, dynamic movement, camera transitions, and lighting..."
+                        : "Describe scene action, motion intensity, and cinematic atmosphere..."
+                    )}
+
+                    {/* 4. DRIVING REFERENCE VIDEO (Omni 1.1 Only) */}
+                    {panelTab === 'omni' && (
+                      <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.08] backdrop-blur-xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9.5px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+                            <Video className="w-3 h-3 text-[#c8f135]" />
+                            <span>Driving Video Reference</span>
+                          </span>
+                          <span className="text-[8.5px] font-mono text-zinc-400 bg-white/[0.04] px-1.5 py-0.2 rounded border border-white/[0.06]">
+                            Max 10s MP4
+                          </span>
+                        </div>
+
+                        {refVideoList.length > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            {refVideoList.map((vidUrl, idx) => (
+                              <div key={idx} className="relative group w-20 h-14 rounded-xl overflow-hidden border border-white/20 bg-black/70 shrink-0">
+                                <video src={vidUrl} className="w-full h-full object-cover" muted loop playsInline />
+                                <button
+                                  type="button"
+                                  onClick={() => removeVideoAt(idx)}
+                                  className="absolute top-0.5 right-0.5 p-0.5 rounded-md bg-black/80 text-white hover:bg-rose-600 transition-all cursor-pointer"
+                                >
+                                  <Trash2 size={9} />
+                                </button>
+                                <span className="absolute bottom-0.5 left-0.5 text-[7.5px] font-mono font-bold bg-black/60 px-1 py-0.2 rounded text-zinc-300">
+                                  REF_{idx + 1}
+                                </span>
+                              </div>
+                            ))}
+                            {refVideoList.length < 3 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (videoInputRef.current) videoInputRef.current.value = '';
+                                  videoInputRef.current?.click();
+                                }}
+                                className="w-14 h-14 rounded-xl border border-dashed border-white/15 hover:border-[#c8f135]/50 bg-white/[0.02] hover:bg-white/[0.05] transition-all flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-white cursor-pointer"
+                              >
+                                <Upload size={12} />
+                                <span className="text-[7.5px] font-bold">Add</span>
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (videoInputRef.current) videoInputRef.current.value = '';
+                              videoInputRef.current?.click();
+                            }}
+                            disabled={isVideoUploading}
+                            className="w-full py-2.5 px-3 rounded-xl border border-dashed border-white/15 hover:border-[#c8f135]/50 bg-white/[0.02] hover:bg-white/[0.05] transition-all flex items-center justify-center gap-1.5 text-zinc-400 hover:text-white cursor-pointer select-none"
+                          >
+                            {isVideoUploading ? (
+                              <>
+                                <Loader2 size={13} className="animate-spin text-[#c8f135]" />
+                                <span className="text-[9.5px] font-bold uppercase tracking-wider">Uploading video...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Upload size={13} className="text-[#c8f135]" />
+                                <span className="text-[9.5px] font-bold uppercase tracking-wider">Upload Reference Driving Video</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
 
+              {/* SECTION B: ZERO-LENS CINEMA PARAMETER CONTROLS */}
+              <div className="space-y-3 pt-2.5 border-t border-white/[0.08]">
+                {panelTab === 'motion' ? (
+                  /* ONLY Aspect Ratio for Motion Tab (duration from driving video, resolution from Quality Mode, audio not applicable) */
+                  <div className="space-y-1">
+                    <GlassSelect
+                      label="Aspect Ratio"
+                      value={aspectRatio}
+                      onChange={setAspectRatio}
+                      options={aspectOptions}
+                      align="up"
+                    />
+                  </div>
+                ) : (
+                  /* Standard 4 Controls for Veo / Omni */
+                  <>
+                    {/* Aspect Ratio + Clip Duration — same row, sleek glass dropdowns */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <GlassSelect
+                        label="Aspect Ratio"
+                        value={aspectRatio}
+                        onChange={setAspectRatio}
+                        options={aspectOptions}
+                        align="up"
+                      />
 
-          </div>
+                      <GlassSelect
+                        label="Clip Duration"
+                        value={duration}
+                        onChange={(val) => setDuration(Number(val))}
+                        options={durationOptions}
+                        align="up"
+                      />
+                    </div>
 
-          {/* Spacious Sticky Bottom Solid Footer Bar */}
-          <div className="absolute bottom-0 left-0 right-0 py-3 sm:py-5 px-3 sm:px-6 bg-[#080810] border-t border-white/20 flex items-center justify-between gap-2 sm:gap-6 z-20 shadow-[0_-20px_50px_rgba(0,0,0,0.98)] pb-safe">
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                <span className="text-[9px] sm:text-[10px] font-black text-gray-300 uppercase tracking-wider sm:tracking-widest truncate">
-                  {panelTab === 'veo' ? 'Veo 3.1 Active' : panelTab === 'motion' ? 'Motion Active' : 'Omni Flash Active'}
-                </span>
+                    {/* Resolution & Compact Audio Track Controls */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <GlassSelect
+                        label="Resolution"
+                        value={resolution}
+                        onChange={setResolution}
+                        options={resolutionOptions}
+                        align="up"
+                      />
+
+                      <div className="space-y-1.5 w-full">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[9.5px] font-black uppercase tracking-[0.16em] text-zinc-400 flex items-center gap-1">
+                            <Volume2 className="w-3 h-3 text-zinc-400" />
+                            <span>Audio Track</span>
+                          </label>
+                          <span className="text-[8.5px] font-mono text-zinc-500">Native</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setGenerateAudio(!generateAudio)}
+                          className={cn(
+                            "w-full h-[38px] px-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all cursor-pointer select-none",
+                            generateAudio
+                              ? "bg-[#c8f135]/15 border-[#c8f135]/50 text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.15)] font-extrabold"
+                              : "bg-black/40 border-white/[0.08] text-zinc-400 hover:text-white hover:border-white/20"
+                          )}
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            {generateAudio ? (
+                              <Volume2 size={13} className="text-[#c8f135] shrink-0" />
+                            ) : (
+                              <VolumeX size={13} className="text-zinc-500 shrink-0" />
+                            )}
+                            <span className="text-[10.5px] font-bold truncate">{generateAudio ? 'Audio ON' : 'Muted'}</span>
+                          </div>
+                          <span className={cn(
+                            "text-[8.5px] font-mono font-bold px-1 py-0.2 rounded border shrink-0",
+                            generateAudio
+                              ? "bg-[#c8f135]/20 text-[#c8f135] border-[#c8f135]/30"
+                              : "bg-white/[0.04] text-zinc-500 border-white/[0.06]"
+                          )}>
+                            {generateAudio ? 'ON' : 'OFF'}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-              <span className="text-[11px] sm:text-xs font-black text-[#c8f135] flex items-center gap-1 mt-0.5 sm:mt-1 truncate">
-                Cost: {requiredCredits} ⚡ <span className="text-[8.5px] sm:text-[9.5px] font-medium text-gray-400">({userCredits} ⚡)</span>
-              </span>
+
             </div>
 
-            <button
-              onClick={panelTab === 'omni' ? triggerGenerateOmni : triggerGenerateVeo}
-              disabled={isBusy || !canGenerate}
-              className={cn(
-                "h-11 sm:h-13 py-2.5 sm:py-3.5 px-3.5 sm:px-8 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest flex items-center justify-center gap-1.5 sm:gap-2.5 transition-all shadow-[0_0_40px_rgba(200,241,53,0.4)] border border-[#d4ff00]/40 backdrop-blur-2xl shrink-0 active:scale-95",
-                canGenerate
-                  ? "bg-gradient-to-r from-[#c8f135] via-[#a8e025] to-[#c8f135] hover:shadow-[0_0_50px_rgba(200,241,53,0.7)] text-black cursor-pointer"
-                  : "bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed shadow-none"
+            {/* 4. Sleek Sticky Bottom Action Bar */}
+            <div className="absolute bottom-0 left-0 right-0 py-2.5 sm:py-3.5 px-3 sm:px-4 bg-[#06060a]/95 border-t border-white/[0.08] backdrop-blur-2xl flex items-center justify-between gap-2 sm:gap-3 z-20 shadow-[0_-20px_40px_rgba(0,0,0,0.9)] pb-safe">
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#c8f135] animate-pulse shrink-0" />
+                  <span className="text-[9px] sm:text-[9.5px] font-black text-zinc-300 uppercase tracking-widest truncate">
+                    {panelTab === 'omni' ? 'Omni Ready' : panelTab === 'omni-multi' ? 'Multi-Ref Ready' : 'Motion Ready'}
+                  </span>
+                </div>
+                <span className="text-[10.5px] sm:text-[11.5px] font-black text-[#c8f135] flex items-center gap-1 mt-0.5 truncate">
+                  {calculatedCredits}⚡ Shorts <span className="text-[8.5px] sm:text-[9px] font-semibold text-zinc-500">({userCredits}⚡)</span>
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={
+                  panelTab === 'omni' || panelTab === 'omni-multi'
+                    ? triggerGenerateOmni
+                    : panelTab === 'motion'
+                    ? triggerGenerateMotion
+                    : triggerGenerateVeo
+                }
+                disabled={isBusy || (panelTab === 'motion' ? (!motionSubjectPreview && !motionSubjectImage) || (!motionRefVideoPreview && !motionRefVideo) : !canGenerate)}
+                className={cn(
+                  "h-10 sm:h-11 px-3.5 sm:px-5 rounded-xl sm:rounded-2xl text-[10.5px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-[0_0_30px_rgba(200,241,53,0.3)] border shrink-0 active:scale-95 select-none",
+                  (panelTab === 'motion' ? (!!(motionSubjectPreview || motionSubjectImage) && !!(motionRefVideoPreview || motionRefVideo)) : canGenerate)
+                    ? "bg-[#c8f135] hover:bg-[#d8ff43] text-black border-[#d4ff00]/60 hover:shadow-[0_0_40px_rgba(200,241,53,0.6)] cursor-pointer"
+                    : "bg-white/5 text-zinc-500 border-white/5 cursor-not-allowed shadow-none"
+                )}
+              >
+                {isBusy ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
+                    <span>Rendering...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 fill-current text-black" />
+                    <span>Generate Video</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Studio Gallery Direct Reference Picker Modal */}
+            <AnimatePresence>
+              {galleryPickerSlot && (
+                <div className="fixed inset-0 z-[400] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="w-full max-w-lg max-h-[80vh] bg-[#0c0c14] border border-white/15 rounded-3xl p-5 shadow-2xl flex flex-col gap-4 overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                      <div>
+                        <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                          {(galleryPickerSlot.type === 'image' || galleryPickerSlot.type === 'first' || galleryPickerSlot.type === 'last' || galleryPickerSlot.type === 'motion_subject') ? (
+                            <ImageIcon className="w-4 h-4 text-[#c8f135]" />
+                          ) : (
+                            <Video className="w-4 h-4 text-cyan-400" />
+                          )}
+                          <span>
+                            {galleryPickerSlot.type === 'first'
+                              ? 'Select Start Frame (First Frame) from Gallery'
+                              : galleryPickerSlot.type === 'last'
+                              ? 'Select End Frame (Last Frame) from Gallery'
+                              : galleryPickerSlot.type === 'motion_subject'
+                              ? 'Select Subject Reference Image'
+                              : galleryPickerSlot.type === 'motion_video'
+                              ? 'Select Motion Pattern Video'
+                              : galleryPickerSlot.type === 'image'
+                              ? `Select @image${galleryPickerSlot.slotIdx + 1} from Studio Gallery`
+                              : `Select @video${galleryPickerSlot.slotIdx + 1} from Studio Gallery`}
+                          </span>
+                        </h3>
+                        <p className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                          {(galleryPickerSlot.type === 'image' || galleryPickerSlot.type === 'first' || galleryPickerSlot.type === 'last' || galleryPickerSlot.type === 'motion_subject')
+                            ? 'Pick any generated image or extracted video frame'
+                            : galleryPickerSlot.type === 'motion_video'
+                            ? 'Pick a generated driving video (3–30s duration limit)'
+                            : 'Pick a generated video (Max 10s duration limit)'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setGalleryPickerSlot(null)}
+                        className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    {/* Gallery Grid */}
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+                      {(() => {
+                        const isImg = galleryPickerSlot.type === 'image' || galleryPickerSlot.type === 'first' || galleryPickerSlot.type === 'last' || galleryPickerSlot.type === 'motion_subject';
+                        const isMotionVideo = galleryPickerSlot.type === 'motion_video';
+                        const items = (gallery || []).filter(item => isImg ? (item.type === 'image' || !item.url?.includes('.mp4')) : (item.type === 'video' || item.url?.includes('.mp4')));
+
+                        if (items.length === 0) {
+                          return (
+                            <div className="py-12 text-center text-zinc-500 text-xs">
+                              No {isImg ? 'images or screenshot frames' : 'videos'} found in your Studio Gallery yet.
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="grid grid-cols-3 gap-2.5">
+                            {items.map(item => {
+                              const dur = Number(item.duration) || 0;
+                              const isTooLong = !isImg && (isMotionVideo ? dur > 30.5 : dur > 10.05);
+
+                              return (
+                                <div
+                                  key={item.id}
+                                  onClick={() => {
+                                    if (isTooLong) {
+                                      const showToast = useAppStore.getState().showToast;
+                                      const maxLimit = isMotionVideo ? '30s' : '10s';
+                                      if (showToast) showToast(`Video exceeds ${maxLimit} limit (${dur}s).`, "error");
+                                      return;
+                                    }
+                                    if (galleryPickerSlot.type === 'first') {
+                                      handlePickFirstFrame(item);
+                                    } else if (galleryPickerSlot.type === 'last') {
+                                      handlePickLastFrame(item);
+                                    } else if (galleryPickerSlot.type === 'motion_subject') {
+                                      handlePickMotionSubject(item);
+                                    } else if (galleryPickerSlot.type === 'motion_video') {
+                                      handlePickMotionVideo(item);
+                                    } else if (galleryPickerSlot.type === 'image') {
+                                      handlePickGalleryImage(item, galleryPickerSlot.slotIdx);
+                                    } else {
+                                      handlePickGalleryVideo(item, galleryPickerSlot.slotIdx);
+                                    }
+                                  }}
+                                  className={cn(
+                                    "relative aspect-video rounded-xl overflow-hidden border transition-all cursor-pointer group bg-black/60",
+                                    isTooLong
+                                      ? "border-red-500/40 opacity-50 cursor-not-allowed"
+                                      : "border-white/10 hover:border-[#c8f135]/80 hover:scale-[1.02]"
+                                  )}
+                                >
+                                  {isImg ? (
+                                    <img src={item.url} alt="" className="w-full h-full object-cover" />
+                                  ) : (
+                                    <video src={item.url} className="w-full h-full object-cover" muted playsInline />
+                                  )}
+                                  
+                                  {/* Overlay badge */}
+                                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-1.5 flex items-center justify-between text-[8px] font-mono">
+                                    <span className="text-zinc-300 truncate max-w-[70%]">{item.prompt || 'Generated'}</span>
+                                    {item.duration && (
+                                      <span className={cn("px-1 py-0.2 rounded font-bold", isTooLong ? "bg-red-500/80 text-white" : "bg-black/80 text-[#c8f135]")}>
+                                        {item.duration}s
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </motion.div>
+                </div>
               )}
-            >
-              {isBusy ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin shrink-0" />
-                  <span className="truncate">Generating...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current shrink-0" />
-                  <span className="truncate">Generate Video</span>
-                </>
-              )}
-            </button>
+            </AnimatePresence>
           </div>
-        </motion.div>
-      </div>
-      )}
-    </AnimatePresence>
-  );
-});
+        );
+
+        if (inlineMode) {
+          return panelContent;
+        }
+
+        return (
+          <AnimatePresence>
+            {isOpen && (
+              <div className="fixed inset-0 z-50 pointer-events-none flex justify-start">
+                {/* Backdrop for mobile */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={onClose}
+                  className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto"
+                />
+
+                {/* SidePanel Drawer Container on the LEFT */}
+                <motion.aside
+                  initial={{ x: '-100%', opacity: 0.5 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: '-100%', opacity: 0 }}
+                  transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+                  className="pointer-events-auto w-full md:w-[350px] lg:w-[370px] h-full z-10"
+                >
+                  {panelContent}
+                </motion.aside>
+              </div>
+            )}
+          </AnimatePresence>
+        );
+      });
 
 export default SidePanel;

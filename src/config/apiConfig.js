@@ -12,7 +12,9 @@ const getProcessEnv = (key) => {
         if (typeof globalThis !== 'undefined' && globalThis.process && globalThis.process.env) {
             return globalThis.process.env[key];
         }
-    } catch (_) {}
+    } catch (_err) {
+        // Ignore environment access errors in restricted browser contexts
+    }
     return undefined;
 };
 
@@ -37,8 +39,9 @@ export const API_BASE = API_BASE_URL;
  * @param {string} endpoint - The API endpoint path
  * @returns {string} - The full API URL
  */
-export const getApiUrl = (endpoint) => {
-    const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+export const getApiUrl = (endpoint = '') => {
+    if (!endpoint) return API_BASE_URL;
+    const path = String(endpoint).startsWith('/') ? endpoint : `/${endpoint}`;
     return `${API_BASE_URL}${path}`;
 };
 

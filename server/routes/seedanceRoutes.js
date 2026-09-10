@@ -209,6 +209,7 @@ export default function createRouter(deps) {
                     content,
                     generate_audio: !!generateAudio,
                     ratio: aspectRatio || "16:9",
+                    resolution: (resolution || '720p').toLowerCase(),
                     duration: Number(duration) || 5,
                     watermark: false
                 };
@@ -280,6 +281,7 @@ export default function createRouter(deps) {
                         content,
                         generate_audio: !!generateAudio,
                         ratio: aspectRatio || "16:9",
+                        resolution: (resolution || '1080p').toLowerCase(),
                         duration: Number(duration) || 5,
                         watermark: false
                     };

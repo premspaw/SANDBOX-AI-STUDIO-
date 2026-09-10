@@ -63,7 +63,7 @@ export default function createRouter(deps) {
             } catch (_) {}
             const targetUserId = user ? user.id : req.query.userId;
             const rawApiKey = await resolveGoogleApiKey(req, targetUserId);
-            const apiKey = (rawApiKey && rawApiKey !== 'VERTEX_AI_CLIENT') ? rawApiKey : (process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
+            const apiKey = (rawApiKey && rawApiKey !== 'VERTEX_AI_CLIENT') ? rawApiKey : (process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
             const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:generateContent?key=${apiKey}`;
             const promptText = `Hi! I am the voice model, ${voiceName}.`;
 
@@ -168,7 +168,7 @@ export default function createRouter(deps) {
             }
 
             const rawApiKey = await resolveGoogleApiKey(req, targetUserId);
-            const apiKey = (rawApiKey && rawApiKey !== 'VERTEX_AI_CLIENT') ? rawApiKey : (process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
+            const apiKey = (rawApiKey && rawApiKey !== 'VERTEX_AI_CLIENT') ? rawApiKey : (process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
             const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
             // Build final steerable prompt based on selected style, pace, accent, and language

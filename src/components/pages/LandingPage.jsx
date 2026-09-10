@@ -268,6 +268,7 @@ function VCell({ cell, style = {}, onClick, aspectRatio = '3/4' }) {
             <video
               key={cell.src}
               autoPlay muted loop playsInline preload="metadata"
+              crossOrigin="anonymous"
               src={resolveAsset(cell.src)}
               style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 1 }}
             />
@@ -395,6 +396,7 @@ function UGCCard({ card, assets, index }) {
           <video
             key={videoSrc}
             autoPlay muted loop playsInline preload="none"
+            crossOrigin="anonymous"
             src={resolveAsset(videoSrc)}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
@@ -1309,7 +1311,7 @@ export default function LandingPage({ onEnter, onPricing }) {
             >
               <video
                 src={playingVideo?.src ? (typeof playingVideo.src === 'string' && playingVideo.src.startsWith('/')) ? playingVideo.src : ((typeof playingVideo.src === 'object' && playingVideo.src.default) ? playingVideo.src.default : playingVideo.src) : ''}
-                autoPlay controls playsInline
+                autoPlay controls playsInline crossOrigin="anonymous"
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
               <button

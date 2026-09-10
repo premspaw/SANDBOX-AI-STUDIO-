@@ -59,6 +59,22 @@ const getNormalizedPath = (url) => {
   return target;
 };
 
+const resolveBlobToBase64 = async (url) => {
+  if (!url || typeof url !== 'string' || !url.startsWith('blob:')) return url;
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (_) {
+    return null;
+  }
+};
+
 const deduplicateGallery = (items) => {
   if (!Array.isArray(items)) return [];
   const seenPaths = new Set();
@@ -180,6 +196,7 @@ const DURATION_OPTIONS = [
   { value: 5,  label: '5 Seconds',  desc: 'Quick burst — ideal for ads' },
   { value: 8,  label: '8 Seconds',  desc: 'Standard — cinematic shots' },
   { value: 10, label: '10 Seconds', desc: 'Extended — full scenes' },
+  { value: 15, label: '15 Seconds', desc: 'Extended scene — maximum duration' },
 ];
 
 const SEEDANCE_DURATION_OPTIONS = [
@@ -194,7 +211,8 @@ const SEEDANCE_DURATION_OPTIONS = [
 const OMNI_DURATION_OPTIONS = [
   { value: 4,  label: '4 Seconds',  desc: 'Quick cut — fast-paced narrative' },
   { value: 6,  label: '6 Seconds',  desc: 'Standard — balanced movement' },
-  { value: 10, label: '10 Seconds', desc: 'Maximum duration — full cinematic action' },
+  { value: 10, label: '10 Seconds', desc: 'Long sequence — extended motion' },
+  { value: 15, label: '15 Seconds', desc: 'Maximum duration — full cinematic action' },
 ];
 
 const VEO_DURATION_OPTIONS = [
@@ -689,7 +707,7 @@ export default function CinematicStudio() {
   // Adjust resolution & duration options dynamically for Seedance, Veo 3.1 & Omni engines
   useEffect(() => {
     const isSeed = activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini';
-    const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash';
+    const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview';
     const isVeo3 = activeEngine.startsWith('veo-3.1');
     
     if (isOmniEngine) {
@@ -1271,7 +1289,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   const handleTextChange = useCallback((e) => {
     const val = e.target?.value ?? '';
-    const isOmniEngine = panelTab === 'omni' || activeEngine === 'omni' || activeEngine === 'omni-flash';
+    const isOmniEngine = panelTab === 'omni' || activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview';
     if (isOmniEngine) {
       setOmniPromptText(val);
     } else {
@@ -1477,19 +1495,22 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       const ext = isVideoFile ? 'mp4' : isAudioFile ? 'mp3' : 'png';
 
       if (isVideoFile) {
-        const videoDims = await new Promise((resolve) => {
+        const videoMeta = await new Promise((resolve) => {
           const v = document.createElement('video');
           v.preload = 'metadata';
           v.onloadedmetadata = () => {
             window.URL.revokeObjectURL(v.src);
-            resolve({ width: v.videoWidth, height: v.videoHeight });
+            resolve({ width: v.videoWidth, height: v.videoHeight, duration: v.duration || 0 });
           };
           v.onerror = () => resolve(null);
           v.src = URL.createObjectURL(file);
         });
-        if (videoDims && (videoDims.width * videoDims.height < 409600)) {
-          const totalPx = videoDims.width * videoDims.height;
-          throw new Error(`Video resolution is too low (${videoDims.width}x${videoDims.height} = ${totalPx.toLocaleString()} pixels). Seedance 2.0 requires reference videos to be at least 409,600 total pixels (e.g. 640x640 or 854x480).`);
+        if (videoMeta && videoMeta.duration > 10.05) {
+          throw new Error(`Video reference exceeds 10 seconds (${Math.round(videoMeta.duration * 10) / 10}s detected). Reference videos must be 10 seconds or shorter.`);
+        }
+        if (videoMeta && (videoMeta.width * videoMeta.height < 409600)) {
+          const totalPx = videoMeta.width * videoMeta.height;
+          throw new Error(`Video resolution is too low (${videoMeta.width}x${videoMeta.height} = ${totalPx.toLocaleString()} pixels). Seedance 2.0 requires reference videos to be at least 409,600 total pixels (e.g. 640x640 or 854x480).`);
         }
       }
 
@@ -1730,6 +1751,25 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       // Create instant lightweight Object URL (0ms latency preview!)
       const instantPreview = URL.createObjectURL(file);
 
+      if (isVideo) {
+        const videoDuration = await new Promise((resolve) => {
+          const v = document.createElement('video');
+          v.preload = 'metadata';
+          v.onloadedmetadata = () => {
+            window.URL.revokeObjectURL(v.src);
+            resolve(v.duration || 0);
+          };
+          v.onerror = () => resolve(0);
+          v.src = URL.createObjectURL(file);
+        });
+        if (videoDuration > 10.05) {
+          const msg = `Video reference must be 10 seconds or shorter (${Math.round(videoDuration * 10) / 10}s detected).`;
+          const showToast = useAppStore.getState().showToast;
+          if (showToast) showToast(msg, "error");
+          throw new Error(msg);
+        }
+      }
+
       if (panelTab === 'omni' || (typeof curTarget === 'string' && curTarget.startsWith('omni_ref_'))) {
         if (typeof curTarget === 'string' && curTarget.startsWith('omni_ref_')) {
           const idx = parseInt(curTarget.split('_')[2], 10);
@@ -1738,7 +1778,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             if (idx === 0) setOmniFirstFramePreview(instantPreview);
             if (idx === 1) setOmniLastFramePreview(instantPreview);
           }
-        } else if (curTarget === 'first') {
+        } else if (curTarget === 'first' || curTarget === 'omniFirst') {
           setOmniFirstFramePreview(instantPreview);
           setOmniRefPreviews(prev => { const n = [...prev]; n[0] = instantPreview; return n; });
         } else {
@@ -1746,7 +1786,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           setOmniRefPreviews(prev => { const n = [...prev]; n[1] = instantPreview; return n; });
         }
       } else {
-        if (curTarget === 'first' || activeTab === 'image') {
+        if (curTarget === 'first' || curTarget === 'omniFirst' || (curTarget !== 'last' && curTarget !== 'omniLast' && activeTab === 'image')) {
           setFirstFramePreview(instantPreview);
         } else {
           setLastFramePreview(instantPreview);
@@ -1790,7 +1830,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             if (idx === 0) setOmniFirstFrameImage(publicUrl);
             if (idx === 1) setOmniLastFrameImage(publicUrl);
           }
-        } else if (curTarget === 'first') {
+        } else if (curTarget === 'first' || curTarget === 'omniFirst') {
           setOmniFirstFrameImage(publicUrl);
           setOmniRefImages(prev => { const n = [...prev]; n[0] = publicUrl; return n; });
         } else {
@@ -1798,7 +1838,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           setOmniRefImages(prev => { const n = [...prev]; n[1] = publicUrl; return n; });
         }
       } else {
-        if (curTarget === 'first' || activeTab === 'image') {
+        if (curTarget === 'first' || curTarget === 'omniFirst' || (curTarget !== 'last' && curTarget !== 'omniLast' && activeTab === 'image')) {
           setFirstFrameImage(publicUrl);
         } else {
           setLastFrameImage(publicUrl);
@@ -1978,7 +2018,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   };
 
   const getCompiledPrompt = () => {
-    const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash';
+    const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview';
     let basePrompt = isOmniEngine ? omniPromptText.trim() : promptText.trim();
     const firstPreview = isOmniEngine ? omniFirstFramePreview : firstFramePreview;
     
@@ -2221,7 +2261,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   };
 
   /* ─── GENERATE ───────────────────────────────────────────── */
-  const handleGenerate = async (overridePrompt, overrideEngine) => {
+  const handleGenerate = async (overridePrompt, overrideEngine, overrideOptions = {}) => {
     if (isBusy) return;
     setIsSubmitting(true);
     setTimeout(() => setIsSubmitting(false), 5000);
@@ -2258,8 +2298,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     // Use overridePrompt from SidePanel if provided to bypass stale state reads
     const basePrompt = overridePrompt
       ? overridePrompt.trim()
-      : (resolvedEngine === 'omni' || resolvedEngine === 'omni-flash') ? omniPromptText.trim() : promptText.trim();
-    const activeRatio = aspectRatio;
+      : (resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview') ? omniPromptText.trim() : promptText.trim();
+    const activeRatio = overrideOptions?.aspectRatio !== undefined ? overrideOptions.aspectRatio : aspectRatio;
 
     // Identify all active reference tags using getTaggedRefItems
     const taggedItems = getTaggedRefItems(basePrompt);
@@ -2270,7 +2310,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
     // Deduct credits for each variation separately to prevent double-charging and match backend verification
     try {
-      const singleCost = getRequiredCredits(activeEngine);
+      const singleCost = getRequiredCredits(resolvedEngine);
       const spendPromises = Array.from({ length: variationCount }).map(() =>
         spendShorts(userId, singleCost, activeTab === 'image' ? 'cinematic_image_generation' : 'cinematic_video_generation')
       );
@@ -2412,16 +2452,31 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       return;
     }
 
-    if (activeEngine !== 'seedace' && activeEngine !== 'seedance-fast' && activeEngine !== 'seedance-mini' && activeEngine !== 'kling/v3-turbo-image-to-video') {
+    if (resolvedEngine !== 'seedace' && resolvedEngine !== 'seedance-fast' && resolvedEngine !== 'seedance-mini' && resolvedEngine !== 'kling/v3-turbo-image-to-video') {
+      const isOmniEngine = resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview';
       try {
-        let targetModel = activeEngine;
-        let engineLabel = ENGINES.find(e => e.id === activeEngine)?.label || 'Veo 3.1';
+        let targetModel = resolvedEngine;
+        let engineLabel = ENGINES.find(e => e.id === resolvedEngine)?.label || (isOmniEngine ? 'Omni' : 'Veo 3.1');
         
-        if (activeEngine === 'omni') {
+        if (resolvedEngine === 'omni') {
           targetModel = 'gemini-omni-preview';
-        } else if (activeEngine === 'omni-flash') {
+          engineLabel = 'Omni';
+        } else if (resolvedEngine === 'omni-flash') {
           targetModel = 'gemini-omni-flash-preview';
+          engineLabel = 'Omni';
+        } else if (resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview') {
+          targetModel = 'gemini-omni-1.1-flash-preview';
+          engineLabel = 'Omni';
         }
+
+        const activeDuration = overrideOptions?.duration !== undefined ? overrideOptions.duration : duration;
+        const activeResolution = overrideOptions?.resolution !== undefined ? overrideOptions.resolution : resolution;
+        const currentRatio = overrideOptions?.aspectRatio !== undefined ? overrideOptions.aspectRatio : activeRatio;
+
+        const rawPrimary = overrideOptions?.firstFrame || (isOmniEngine ? (omniFirstFrameImage || firstFrameImage) : (firstFrameImage || omniFirstFrameImage));
+        const rawSecondary = overrideOptions?.lastFrame || (isOmniEngine ? (omniLastFrameImage || lastFrameImage) : (lastFrameImage || omniLastFrameImage));
+        const primaryImg = await resolveBlobToBase64(rawPrimary);
+        const secondaryImg = await resolveBlobToBase64(rawSecondary);
 
         // Pre-populate gallery with placeholder loading items
         const tempItems = Array.from({ length: variationCount }).map((_, idx) => ({
@@ -2429,7 +2484,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           type: 'video',
           loading: true,
           prompt: compiledPrompt,
-          aspect: activeRatio,
+          aspect: currentRatio,
           ts: Date.now() + (variationCount - idx),
           projectId: activeProjectId
         }));
@@ -2439,7 +2494,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           setPollMsg(`Rendering ${variationCount} video variations...`);
         }
 
-        console.log(`[CinematicStudio] Generating ${variationCount} video variations...`);
+        console.log(`[CinematicStudio] Generating ${variationCount} video variations with ${resolvedEngine}...`);
 
         // Execute generations in parallel
         const promises = Array.from({ length: variationCount }).map(async (_, idx) => {
@@ -2453,22 +2508,21 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           if (_veoAdminOn && _veoAdminKey) _veoHeaders['x-admin-trial-key'] = _veoAdminKey;
 
           try {
-            const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash';
             const endpointUrl = isOmniEngine ? '/api/omni-i2v' : '/api/veo-i2v';
-            const primaryImg = isOmniEngine ? omniFirstFrameImage : firstFrameImage;
-            const secondaryImg = isOmniEngine ? omniLastFrameImage : lastFrameImage;
             const resp = await fetch(getApiUrl(endpointUrl), {
               method: 'POST',
               headers: _veoHeaders,
               body: JSON.stringify({
                 image: primaryImg || undefined,
+                firstFrame: primaryImg || undefined,
                 firstFrameImage: primaryImg || undefined,
+                lastFrame: secondaryImg || undefined,
                 lastFrameImage: secondaryImg || undefined,
                 imageEnd: secondaryImg || undefined,
                 motionPrompt: tweakedPrompt,
-                duration,
-                aspectRatio: activeRatio,
-                resolution,
+                duration: activeDuration,
+                aspectRatio: currentRatio,
+                resolution: activeResolution,
                 model: targetModel,
                 identity_images: isOmniEngine ? [...omniRefImages.filter(Boolean), ...identity_images] : identity_images,
                 identity_gcs_uris,
@@ -2483,7 +2537,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                 ],
                 refVideo: omniRefVideoPreview || undefined,
                 ref_audios: taggedItems.filter(item => isAudio(item)).map(item => ({ url: item.imageUrl || item.url || item.data || item })),
-                task: omniTask,
+                task: (primaryImg && secondaryImg) ? 'reference_to_video' : omniTask,
                 userId,
                 projectId: activeProjectId,
                 generateAudio,
@@ -2491,8 +2545,19 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               })
             });
 
+            if (!resp.ok) {
+              const errText = await resp.text();
+              let parsedError = `Video variation ${idx + 1} failed (${resp.status})`;
+              try {
+                const parsed = JSON.parse(errText);
+                if (parsed.error) parsedError = parsed.error;
+              } catch (_) {
+                // Ignore non-JSON text body error
+              }
+              throw new Error(parsedError);
+            }
+
             const data = await resp.json();
-            if (!resp.ok) throw new Error(data.error || `Video variation ${idx + 1} failed.`);
             if (!data.videoUrl) throw new Error(`Variation ${idx + 1} returned no videoUrl.`);
 
             // Replace placeholder in gallery immediately
@@ -2501,8 +2566,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               type: 'video',
               url: data.videoUrl,
               prompt: compiledPrompt,
-              engine: engineLabel,
-              aspect: activeRatio,
+              engine: isOmniEngine ? 'Omni' : engineLabel,
+              aspect: currentRatio,
               ts: Date.now(),
               projectId: activeProjectId
             };
@@ -2523,7 +2588,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       } catch (err) {
         setStatus('error');
         setPollMsg('');
-        const label = ENGINES.find(e => e.id === activeEngine)?.label || 'Veo 3.1';
+        const label = ENGINES.find(e => e.id === resolvedEngine)?.label || (isOmniEngine ? 'Omni' : 'Veo 3.1');
         let cleanErr = err.message || `${label} engine failed.`;
         if (cleanErr.includes('Responsible AI') || cleanErr.includes('violates Google')) {
           cleanErr = "⚠️ Content Safety Filter: Google's Responsible AI policy blocked this prompt or reference media. Your credits have been automatically refunded.";
@@ -2533,7 +2598,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         if (showToast) showToast(cleanErr, "error");
         await triggerRefund('cinematic_video_generation');
       }
-    } else if (activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini') {
+    } else if (resolvedEngine === 'seedance-fast' || resolvedEngine === 'seedace' || resolvedEngine === 'seedance-mini') {
       const tempId = `temp-seedance-${Date.now()}`;
       try {
         if (variationCount > 1) {
@@ -2599,7 +2664,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         setStatus(prev => (prev === 'generating' || prev === 'polling' ? 'idle' : prev));
         setPollMsg('');
       }
-    } else if (activeEngine === 'kling/v3-turbo-image-to-video') {
+    } else if (resolvedEngine === 'kling/v3-turbo-image-to-video') {
       const tempId = `temp-kling-${Date.now()}`;
       try {
         if (variationCount > 1) {
@@ -2799,16 +2864,16 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         {/* Wrap in a stable fixed-position div so Framer Motion doesn't clobber -translate-y-1/2 centering */}
         <div
           className="fixed top-1/2 -translate-y-1/2 z-[130] hidden sm:block"
-          style={{ right: showSidePanel ? '36rem' : '0rem', transition: 'right 0.35s cubic-bezier(0.32,0.72,0,1)' }}
+          style={{ left: showSidePanel ? '31.25rem' : '0rem', transition: 'left 0.35s cubic-bezier(0.32,0.72,0,1)' }}
         >
           <motion.button
             type="button"
             onClick={() => setShowSidePanel(prev => !prev)}
-            whileHover={{ scale: 1.05, x: -3 }}
+            whileHover={{ scale: 1.05, x: 3 }}
             whileTap={{ scale: 0.95 }}
             transition={{ type: 'spring', damping: 28, stiffness: 260 }}
             className={cn(
-              "py-6 px-2 rounded-l-2xl border-l border-y shadow-2xl flex flex-col items-center gap-2 cursor-pointer transition-colors backdrop-blur-2xl",
+              "py-6 px-2 rounded-r-2xl border-r border-y shadow-2xl flex flex-col items-center gap-2 cursor-pointer transition-colors backdrop-blur-2xl",
               showSidePanel
                 ? "bg-[#c8f135] text-black border-[#c8f135] shadow-[0_0_20px_rgba(200,241,53,0.85)]"
                 : "bg-[#0b0b12]/95 border-violet-500/40 text-violet-300 hover:bg-violet-600/30 hover:text-white"
@@ -3066,7 +3131,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         {/* ── FLOATING INPUT DOCK ── */}
         <div className={cn(
           "absolute bottom-0 left-0 right-0 z-30 p-3 pb-2 pointer-events-none transition-all duration-300 ease-in-out",
-          showSidePanel ? "pr-0 lg:pr-[37rem]" : "pr-0"
+          showSidePanel ? "pl-0 lg:pl-[32rem]" : "pl-0"
         )}>
           <div className="max-w-4xl mx-auto pointer-events-auto">
             
@@ -4062,7 +4127,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                       {(close) => (
                         <div className="space-y-0.5">
                           {(() => {
-                            const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash';
+                            const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview';
                             const isVeo3 = activeEngine.startsWith('veo-3.1');
                             const isSeedance = activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini';
                             const currentDurationOptions = isOmniEngine

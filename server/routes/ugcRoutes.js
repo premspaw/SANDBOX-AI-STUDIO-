@@ -163,7 +163,7 @@ export default function createRouter(deps) {
 
             // --- Option B: Google AI Studio / Gemini API (Fallback) ---
             if (!success) {
-                const studioKey = (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : (process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
+                const studioKey = (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : (process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
                 if (studioKey || vertexToken) {
                     try {
                         let aiStudioModelName = 'veo-3.1-generate-preview';
@@ -811,20 +811,7 @@ Return ONLY valid JSON.`
         }
     });
 
-    // Proxy Image (Bypass CORS for R2 images in client)
-    router.get('/proxy-image', async (req, res) => {
-        try {
-            const url = req.query.url;
-            if (!url) return res.status(400).json({ error: 'URL is required' });
 
-            const { buffer, contentType } = await fetchAllowedProxyResource(url);
-            res.setHeader('Content-Type', contentType);
-            res.send(buffer);
-        } catch (error) {
-            console.error('[UGC API] Get Proxy Image Error:', error);
-            res.status(error.status || 500).json({ error: error.message });
-        }
-    });
 
     router.post('/proxy-image', async (req, res) => {
         try {
@@ -1063,7 +1050,7 @@ Return ONLY valid JSON.`
 
             // --- Option B: Google AI Studio / Gemini API (Fallback) ---
             if (!success) {
-                const studioKey = (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : (process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
+                const studioKey = (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : (process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
                 if (studioKey || token) {
                     try {
                         const veoModel = 'veo-3.1-generate-preview';

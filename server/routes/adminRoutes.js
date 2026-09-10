@@ -142,21 +142,35 @@ export default function createRouter(deps) {
                 ...history
             ];
 
-            // Use OpenRouter if OPENROUTER_API_KEY is set, otherwise fall back to OpenAI
+            const reqModel = req.body.model;
+            let apiUrl;
+            let apiKeyToUse;
+            let model;
             const isOpenRouter = !!process.env.OPENROUTER_API_KEY;
-            const apiUrl = isOpenRouter
-                ? 'https://openrouter.ai/api/v1/chat/completions'
-                : 'https://api.openai.com/v1/chat/completions';
-            const model = isOpenRouter
-                ? (process.env.OPENROUTER_MODEL || 'nousresearch/hermes-3-llama-3.1-405b:free')
-                : 'gpt-4.1';
+
+            if (reqModel === 'gpt-6-astra') {
+                if (!process.env.EXPLABS_API_KEY) {
+                    return res.status(401).json({ error: 'EXPLABS_API_KEY is not set. Please create one under Settings -> API Keys and export it.' });
+                }
+                apiUrl = 'https://api.experientiallabs.ai/v1/chat/completions';
+                apiKeyToUse = process.env.EXPLABS_API_KEY;
+                model = 'gpt-6-astra';
+            } else {
+                apiUrl = isOpenRouter
+                    ? 'https://openrouter.ai/api/v1/chat/completions'
+                    : 'https://api.openai.com/v1/chat/completions';
+                model = isOpenRouter
+                    ? (process.env.OPENROUTER_MODEL || 'nousresearch/hermes-3-llama-3.1-405b:free')
+                    : (reqModel || 'gpt-4.1');
+                apiKeyToUse = openaiKey;
+            }
 
             const resp = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${openaiKey}`,
-                    ...(isOpenRouter && { 'HTTP-Referer': 'http://localhost:5173', 'X-Title': 'ZeroLens AI Studio' }),
+                    'Authorization': `Bearer ${apiKeyToUse}`,
+                    ...(isOpenRouter && reqModel !== 'gpt-6-astra' && { 'HTTP-Referer': 'http://localhost:5173', 'X-Title': 'ZeroLens AI Studio' }),
                 },
                 body: JSON.stringify({
                     model,

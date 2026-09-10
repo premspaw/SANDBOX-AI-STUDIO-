@@ -18,8 +18,22 @@ export default function createRouter(deps) {
         saveLocalAsset
     } = deps;
 
-    // Image proxy — fetches R2/GCS images server-side and returns with CORS headers
+    // Image/Video proxy — fetches R2/GCS/Supabase remote assets server-side and returns with CORS + Range headers
     router.get('/proxy-image', async (req, res) => {
+        const abortController = new AbortController();
+        let nodeStream = null;
+
+        // Ensure compression middleware does not touch streaming media or partial content
+        res.setHeader('x-no-compression', '1');
+
+        // Handle client abort / disconnect (e.g. video scrub, seek, unmount)
+        res.on('close', () => {
+            abortController.abort();
+            if (nodeStream && !nodeStream.destroyed) {
+                try { nodeStream.destroy(); } catch (_) {}
+            }
+        });
+
         try {
             const { url } = req.query;
             if (!url) {
@@ -35,7 +49,10 @@ export default function createRouter(deps) {
             const rangeHeader = req.headers['range'];
 
             // Forward Range header to upstream if present
-            const upstreamHeaders = { 'User-Agent': 'ZerolensProxy/1.0' };
+            const upstreamHeaders = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZerolensProxy/1.0',
+                'Accept': '*/*'
+            };
             if (rangeHeader) upstreamHeaders['Range'] = rangeHeader;
 
             let upstream;
@@ -45,19 +62,21 @@ export default function createRouter(deps) {
                     upstream = await fetch(finalUrl, {
                         headers: upstreamHeaders,
                         redirect: 'follow',
-                        timeout: 6000
+                        signal: abortController.signal
                     });
                     if (upstream.ok || upstream.status === 206) {
                         break;
                     }
-                    if (attempt < 3) await new Promise(r => setTimeout(r, 600));
+                    if (attempt < 3) await new Promise(r => setTimeout(r, 400));
                 } catch (err) {
                     lastErr = err;
-                    if (attempt < 3) await new Promise(r => setTimeout(r, 600));
+                    if (abortController.signal.aborted) return;
+                    if (attempt < 3) await new Promise(r => setTimeout(r, 400));
                 }
             }
 
             if (!upstream || (!upstream.ok && upstream.status !== 206)) {
+                if (res.writableEnded || res.headersSent) return;
                 const status = upstream ? upstream.status : 500;
                 const statusText = upstream ? upstream.statusText : (lastErr ? lastErr.message : 'Unknown proxy fetch error');
                 console.error(`[Proxy Error]: Failed to fetch ${finalUrl} after 3 attempts. Status: ${status}, Error: ${statusText}`);
@@ -65,8 +84,10 @@ export default function createRouter(deps) {
             }
 
             // CORS headers — always required
-            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+            res.setHeader('Access-Control-Allow-Credentials', 'true');
             res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+            res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges, ETag');
 
             const ct = upstream.headers.get('content-type') || (isVideo ? 'video/mp4' : 'application/octet-stream');
             res.setHeader('Content-Type', ct);
@@ -79,23 +100,34 @@ export default function createRouter(deps) {
             }
 
             if (isVideo || rangeHeader) {
-                // ✅ Video streaming: Chrome requires Accept-Ranges + Content-Length to cache & seek
+                // ✅ Video streaming: Chrome requires Accept-Ranges + Content-Length to seek without ERR_CACHE_OPERATION_NOT_SUPPORTED
                 res.setHeader('Accept-Ranges', 'bytes');
                 const cl = upstream.headers.get('content-length');
                 if (cl) res.setHeader('Content-Length', cl);
                 const cr = upstream.headers.get('content-range');
                 if (cr) res.setHeader('Content-Range', cr);
-                res.setHeader('Cache-Control', 'public, max-age=3600');
+                const etag = upstream.headers.get('etag');
+                if (etag) res.setHeader('ETag', etag);
+                // MUST be no-store / no-cache to avoid Chrome ERR_CACHE_OPERATION_NOT_SUPPORTED on sparse media cache
+                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
                 res.status(upstream.status === 206 ? 206 : 200);
 
                 // Stream directly — handle both Node.js streams and Web ReadableStreams
                 if (upstream.body) {
                     if (typeof upstream.body.pipe === 'function') {
-                        upstream.body.pipe(res);
+                        nodeStream = upstream.body;
                     } else {
                         const { Readable } = await import('stream');
-                        Readable.fromWeb(upstream.body).pipe(res);
+                        nodeStream = Readable.fromWeb(upstream.body);
                     }
+
+                    nodeStream.on('error', () => {
+                        if (!res.writableEnded) {
+                            try { res.destroy(); } catch (_) {}
+                        }
+                    });
+
+                    nodeStream.pipe(res);
                 } else {
                     res.end();
                 }
@@ -112,11 +144,16 @@ export default function createRouter(deps) {
                     buffer = Buffer.from(await upstream.arrayBuffer());
                 }
                 res.setHeader('Cache-Control', 'public, max-age=86400');
+                res.setHeader('Content-Length', buffer.length);
+                res.status(upstream.status);
                 res.send(buffer);
             }
         } catch (err) {
+            if (abortController.signal.aborted || res.writableEnded) return;
             console.error('[PROXY-IMAGE]', err.message);
-            res.status(err.status || 500).json({ error: err.message });
+            if (!res.headersSent) {
+                res.status(err.status || 500).json({ error: err.message });
+            }
         }
     });
 

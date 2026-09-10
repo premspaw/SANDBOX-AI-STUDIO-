@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { Storage } from '@google-cloud/storage';
-import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand, DeleteObjectCommand, PutBucketCorsCommand } from '@aws-sdk/client-s3';
 import { createClient } from '@supabase/supabase-js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -50,6 +50,26 @@ if (R2_CONFIGURED) {
     console.log('[R2] ✅ Cloudflare R2 client initialised — primary storage active');
     console.log('[R2] Bucket:', R2_BUCKET);
     console.log('[R2] CDN Base:', CDN_BASE);
+
+    // Ensure R2 Bucket permits CORS for local dev and web client streaming
+    r2Client.send(new PutBucketCorsCommand({
+        Bucket: R2_BUCKET,
+        CORSConfiguration: {
+            CORSRules: [
+                {
+                    AllowedHeaders: ['*'],
+                    AllowedMethods: ['GET', 'HEAD'],
+                    AllowedOrigins: ['*'],
+                    ExposeHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length', 'ETag'],
+                    MaxAgeSeconds: 3600,
+                },
+            ],
+        },
+    })).then(() => {
+        console.log('[R2] ✅ Bucket CORS rules verified/active');
+    }).catch(corsErr => {
+        console.warn('[R2] ⚠️ Could not verify CORS rules:', corsErr.message);
+    });
 } else {
     console.log('[R2] ⚠️  R2 not configured — falling back to GCS');
 }

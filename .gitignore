@@ -49,6 +49,7 @@ src/output.css
 *-api-*.json
 new-zerolens-*.json
 freeeapi-*.json
+project-*.json
 *service-account*.json
 *credentials*.json
 
@@ -58,3 +59,4 @@ scratch/
 # Misc generated files
 google_test_rose.png
 k.toLowerCase().includes('film')
+*.timestamp-*.mjs

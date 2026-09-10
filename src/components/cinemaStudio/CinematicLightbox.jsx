@@ -1,9 +1,13 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { X, Loader2, Zap, Grid, Video, Image as ImageIcon, Pencil, Download, Trash2, Palette, Sparkles, Film, ChevronRight } from 'lucide-react';
+import {
+  X, Loader2, Zap, Grid, Video, Image as ImageIcon, Pencil, Download, Trash2,
+  Palette, Sparkles, Film, ChevronRight, Camera, Copy, Play, Maximize2, Layers
+} from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAppStore } from '../../store';
 import { resolveUrl, getApiUrl } from '../../config/apiConfig';
+import { extractVideoFrame } from '../../lib/videoUtils';
 
 export function CinematicLightbox({
   lightboxItem,
@@ -21,11 +25,33 @@ export function CinematicLightbox({
   setFirstFramePreview,
   setLastFrameImage,
   setLastFramePreview,
+  setOmniFirstFrameImage,
+  setOmniFirstFramePreview,
+  setOmniLastFrameImage,
+  setOmniLastFramePreview,
+  setOmniRefVideoPreview,
+  setOmniMultiVideos,
+  omniMultiVideos,
+  omniMultiImages,
+  setOmniMultiImages,
+  handleUseAsMultiRefImage,
+  handleUseAsMultiRefVideo,
+  handleUseAsMotionSubject,
+  handleUseAsMotionVideo,
+  omniRefImages,
+  setOmniRefImages,
+  omniRefPreviews,
+  setOmniRefPreviews,
+  setPromptText,
+  setOmniPromptText,
+  setPanelTab,
   userId
 }) {
   // 3x3 Grid Overlay & Crop Interactive States
   const gridImgRef = useRef(null);
   const gridContainerRef = useRef(null);
+  const videoElRef = useRef(null);
+  const [isExtractingFrame, setIsExtractingFrame] = useState(false);
   const [overlayStyle, setOverlayStyle] = useState({});
 
   const isGridActive = lightboxItem && (
@@ -320,6 +346,232 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
     }
   };
 
+  // Keyboard listener for Escape key to quickly close lightbox
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setLightboxItem(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setLightboxItem]);
+
+  // Frame Capture Helper from Video element (direct or CORS proxy)
+  const captureFrameFromVideo = async (atTime) => {
+    setIsExtractingFrame(true);
+    const showToast = useAppStore.getState().showToast;
+    try {
+      let dataUrl = null;
+      const videoEl = videoElRef.current;
+      if (videoEl && videoEl.videoWidth > 0) {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = videoEl.videoWidth || 1280;
+          canvas.height = videoEl.videoHeight || 720;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+          dataUrl = canvas.toDataURL('image/png');
+        } catch (canvasErr) {
+          console.warn("[Lightbox] Direct canvas capture tainted, falling back to proxy frame extraction:", canvasErr);
+        }
+      }
+
+      if (!dataUrl) {
+        const timeToSeek = atTime !== undefined ? atTime : (videoEl?.currentTime || 0);
+        dataUrl = await extractVideoFrame(lightboxItem.url, timeToSeek);
+      }
+
+      setIsExtractingFrame(false);
+      return dataUrl;
+    } catch (err) {
+      setIsExtractingFrame(false);
+      console.error("[Lightbox] Frame capture failed:", err);
+      if (showToast) showToast("Could not capture video frame screenshot.", "error");
+      return null;
+    }
+  };
+
+  // Set as Start Frame (FF)
+  const handleSetAsStartFrame = async () => {
+    const showToast = useAppStore.getState().showToast;
+    if (lightboxItem.type === 'image') {
+      if (setFirstFrameImage) setFirstFrameImage(lightboxItem.url);
+      if (setFirstFramePreview) setFirstFramePreview(lightboxItem.url);
+      if (setOmniFirstFrameImage) setOmniFirstFrameImage(lightboxItem.url);
+      if (setOmniFirstFramePreview) setOmniFirstFramePreview(lightboxItem.url);
+      if (showToast) showToast("Set as First Frame (FF)!", "success");
+      setLightboxItem(null);
+      return;
+    }
+
+    if (showToast) showToast("Extracting video frame screenshot...", "info");
+    const frame = await captureFrameFromVideo();
+    if (!frame) return;
+
+    if (setFirstFrameImage) setFirstFrameImage(frame);
+    if (setFirstFramePreview) setFirstFramePreview(frame);
+    if (setOmniFirstFrameImage) setOmniFirstFrameImage(frame);
+    if (setOmniFirstFramePreview) setOmniFirstFramePreview(frame);
+    if (showToast) showToast("Captured frame set as First Frame (FF)!", "success");
+    setLightboxItem(null);
+  };
+
+  // Set as End Frame (LF)
+  const handleSetAsEndFrame = async () => {
+    const showToast = useAppStore.getState().showToast;
+    if (lightboxItem.type === 'image') {
+      if (setLastFrameImage) setLastFrameImage(lightboxItem.url);
+      if (setLastFramePreview) setLastFramePreview(lightboxItem.url);
+      if (setOmniLastFrameImage) setOmniLastFrameImage(lightboxItem.url);
+      if (setOmniLastFramePreview) setOmniLastFramePreview(lightboxItem.url);
+      if (showToast) showToast("Set as Last Frame (LF)!", "success");
+      setLightboxItem(null);
+      return;
+    }
+
+    if (showToast) showToast("Extracting video frame screenshot...", "info");
+    const frame = await captureFrameFromVideo();
+    if (!frame) return;
+
+    if (setLastFrameImage) setLastFrameImage(frame);
+    if (setLastFramePreview) setLastFramePreview(frame);
+    if (setOmniLastFrameImage) setOmniLastFrameImage(frame);
+    if (setOmniLastFramePreview) setOmniLastFramePreview(frame);
+    if (showToast) showToast("Captured frame set as Last Frame (LF)!", "success");
+    setLightboxItem(null);
+  };
+
+  // Extract Screenshot to Gallery as a Standalone Image
+  const handleExtractScreenshotToGallery = async () => {
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) showToast("Capturing full-resolution screenshot...", "info");
+    const frame = await captureFrameFromVideo();
+    if (!frame) return;
+
+    const newId = 'frame_' + Date.now();
+    const cleanPrompt = lightboxItem.prompt ? lightboxItem.prompt.replace(/^Screenshot:\s*/i, '').trim() : 'Studio Video Screenshot';
+    const newImageItem = {
+      id: newId,
+      type: 'image',
+      url: frame,
+      prompt: cleanPrompt,
+      engine: 'Screenshot',
+      aspect: lightboxItem.aspect || '16:9',
+      ts: Date.now(),
+      timestamp: Date.now()
+    };
+
+    setGallery(prev => [newImageItem, ...prev]);
+    if (showToast) showToast("Screenshot added to your Studio Gallery!", "success");
+
+    // Persist via save-asset in background
+    try {
+      fetch(getApiUrl('/api/save-asset'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageData: frame,
+          fileName: `screenshot_${Date.now()}.png`,
+          userId: userId,
+          type: 'image',
+          aspect: lightboxItem.aspect || '16:9',
+          prompt: cleanPrompt,
+          engine: 'Screenshot'
+        })
+      }).then(r => r.json()).then(data => {
+        if (data.url || data.path) {
+          setGallery(prev => prev.map(item => item.id === newId ? { ...item, url: data.url || data.path } : item));
+        }
+      }).catch(err => console.debug("[Lightbox] Cloud save fallback:", err));
+    } catch (saveErr) {
+      console.debug("[Lightbox] Cloud save error:", saveErr);
+    }
+  };
+
+  // Resend / Inject into Omni Reference Driving Video Payload
+  const handleUseAsOmniRefVideo = () => {
+    const showToast = useAppStore.getState().showToast;
+    if (setOmniRefVideoPreview) {
+      setOmniRefVideoPreview(lightboxItem.url);
+    }
+    if (setOmniMultiVideos) {
+      setOmniMultiVideos(prev => {
+        const next = Array.isArray(prev) ? [...prev] : ['', '', ''];
+        next[0] = lightboxItem.url;
+        return next;
+      });
+    }
+    if (setPanelTab) {
+      setPanelTab('omni');
+    }
+    if (showToast) showToast("Video loaded into Omni Reference Driving Video payload!", "success");
+    setLightboxItem(null);
+  };
+
+  // Add Generation Prompt to Studio Input Textarea
+  const handleAddPromptToStudio = () => {
+    const showToast = useAppStore.getState().showToast;
+    const textToAdd = lightboxItem.prompt || '';
+    if (!textToAdd) return;
+
+    if (setPromptText) {
+      setPromptText(textToAdd);
+    }
+    if (setOmniPromptText) {
+      setOmniPromptText(textToAdd);
+    }
+    if (showToast) showToast("Prompt copied to Studio input!", "success");
+    setLightboxItem(null);
+  };
+
+  // Use as Style Reference (sets omniRefImages slot 0)
+  const handleUseAsStyleReference = async () => {
+    const showToast = useAppStore.getState().showToast;
+    if (lightboxItem.type === 'image') {
+      if (setFirstFrameImage) setFirstFrameImage(lightboxItem.url);
+      if (setFirstFramePreview) setFirstFramePreview(lightboxItem.url);
+      if (setOmniRefImages) {
+        setOmniRefImages(prev => {
+          const next = Array.isArray(prev) ? [...prev] : ['', '', '', '', ''];
+          next[0] = lightboxItem.url;
+          return next;
+        });
+      }
+      if (setOmniRefPreviews) {
+        setOmniRefPreviews(prev => {
+          const next = Array.isArray(prev) ? [...prev] : ['', '', '', '', ''];
+          next[0] = lightboxItem.url;
+          return next;
+        });
+      }
+      if (showToast) showToast("Set as Style Reference Image!", "success");
+      setLightboxItem(null);
+      return;
+    }
+
+    if (showToast) showToast("Extracting video frame...", "info");
+    const frame = await captureFrameFromVideo();
+    if (!frame) return;
+
+    if (setOmniRefImages) {
+      setOmniRefImages(prev => {
+        const next = Array.isArray(prev) ? [...prev] : ['', '', '', '', ''];
+        next[0] = frame;
+        return next;
+      });
+    }
+    if (setOmniRefPreviews) {
+      setOmniRefPreviews(prev => {
+        const next = Array.isArray(prev) ? [...prev] : ['', '', '', '', ''];
+        next[0] = frame;
+        return next;
+      });
+    }
+    if (showToast) showToast("Extracted frame set as Style Reference Image!", "success");
+    setLightboxItem(null);
+  };
+
   if (!lightboxItem) return null;
 
   return (
@@ -327,26 +579,38 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4"
+      className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-xl flex items-center justify-center p-2 sm:p-4"
       onClick={() => setLightboxItem(null)}
     >
+      {/* Desktop Viewport Close Button */}
+      <button
+        onClick={() => setLightboxItem(null)}
+        className="hidden sm:flex fixed top-4 right-5 z-[100005] items-center gap-1.5 px-3.5 py-1.5 bg-zinc-900/95 hover:bg-white text-white hover:text-black border border-white/20 hover:border-white rounded-full shadow-[0_4px_30px_rgba(0,0,0,0.9)] backdrop-blur-xl transition-all cursor-pointer font-sans select-none group"
+        title="Close Lightbox (Esc)"
+        aria-label="Close"
+      >
+        <span className="text-[11px] font-black uppercase tracking-wider">Close</span>
+        <X size={14} className="transition-transform group-hover:rotate-90 duration-200" />
+      </button>
+
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="relative max-w-5xl w-full max-h-[90vh] flex flex-col md:flex-row bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden shadow-2xl animate-glass-glow"
+        className="relative max-w-6xl w-full max-h-[96vh] md:max-h-[92vh] flex flex-col md:flex-row bg-zinc-950 border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl animate-glass-glow"
         onClick={e => e.stopPropagation()}
       >
-        {/* Close */}
+        {/* Modal Header Close Button */}
         <button
           onClick={() => setLightboxItem(null)}
-          className="absolute top-3 right-3 z-50 w-8 h-8 bg-black/60 border border-white/10 rounded-full flex items-center justify-center text-white/60 hover:text-white transition-colors"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 z-50 w-8 h-8 sm:w-9 sm:h-9 bg-zinc-900/90 hover:bg-white border border-white/20 hover:border-white rounded-full flex items-center justify-center text-white hover:text-black transition-all shadow-xl cursor-pointer"
+          title="Close (Esc)"
         >
-          <X size={14} />
+          <X size={15} />
         </button>
 
         {/* Media Content Area (Left) */}
-        <div className="flex-1 bg-black flex items-center justify-center overflow-hidden relative min-h-[320px] md:min-h-[500px]">
+        <div className="flex-1 bg-black flex items-center justify-center overflow-hidden relative min-h-[220px] sm:min-h-[340px] md:min-h-[520px]">
           {lightboxItem.type === 'image' ? (
             <div ref={gridContainerRef} className="relative w-full h-full flex items-center justify-center p-4">
               <img
@@ -355,7 +619,7 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                 ref={gridImgRef}
                 onLoad={updateOverlay}
                 className={cn(
-                  "max-h-[75vh] object-contain shadow-2xl rounded-2xl bg-black/40",
+                  "max-h-[82vh] object-contain shadow-2xl rounded-2xl bg-black/40",
                   lightboxItem.aspect === '9:16' ? 'aspect-[9/16]' : lightboxItem.aspect === '1:1' ? 'aspect-square' : 'aspect-video w-full'
                 )}
               />
@@ -384,28 +648,52 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
           ) : (
             <div className="relative w-full h-full flex items-center justify-center p-4">
               <video
+                ref={videoElRef}
                 src={resolveUrl(lightboxItem.url)}
                 controls
                 autoPlay
                 loop
                 playsInline
+                crossOrigin="anonymous"
                 className={cn(
-                  "max-h-[75vh] object-contain shadow-2xl rounded-2xl",
+                  "max-h-[82vh] object-contain shadow-2xl rounded-2xl",
                   lightboxItem.aspect === '9:16' ? 'aspect-[9/16] h-full' : lightboxItem.aspect === '1:1' ? 'aspect-square h-full' : 'aspect-video w-full'
                 )}
               />
+              {isExtractingFrame && (
+                <div className="absolute inset-0 bg-black/75 backdrop-blur-sm z-30 flex flex-col items-center justify-center space-y-2">
+                  <Loader2 size={28} className="text-[#c8f135] animate-spin" />
+                  <span className="text-xs font-black uppercase tracking-wider text-[#c8f135]">Capturing Frame Screenshot...</span>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Meta & Right-side controls panel (Right) */}
-        <div className="w-full md:w-[340px] shrink-0 p-5 border-t md:border-t-0 md:border-l border-white/5 bg-zinc-950 flex flex-col justify-between overflow-y-auto custom-scrollbar gap-5">
+        <div className="w-full md:w-[340px] shrink-0 p-4 sm:p-5 border-t md:border-t-0 md:border-l border-white/5 bg-zinc-950 flex flex-col justify-between overflow-y-auto custom-scrollbar gap-4 sm:gap-5 max-h-[45vh] md:max-h-none">
           <div className="space-y-4">
             {/* Top Tags */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest bg-fuchsia-500/10 border border-fuchsia-500/25 text-fuchsia-400">
-                {lightboxItem.engine}
-              </span>
+              {lightboxItem.engine && 
+               !lightboxItem.engine.toLowerCase().includes('preview') && 
+               !lightboxItem.engine.toLowerCase().includes('omni') && 
+               !lightboxItem.engine.toLowerCase().includes('frame extract') && 
+               lightboxItem.engine !== 'Screenshot' && (
+                <span className="px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest bg-fuchsia-500/10 border border-fuchsia-500/25 text-fuchsia-400">
+                  {lightboxItem.engine}
+                </span>
+              )}
+              {(lightboxItem.engine === 'Screenshot' || lightboxItem.engine === 'ZeroLens Frame Extract' || lightboxItem.id?.startsWith('frame_')) && (
+                <span className="px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest bg-amber-500/10 border border-amber-500/25 text-amber-300">
+                  Screenshot
+                </span>
+              )}
+              {(lightboxItem.engine?.toLowerCase().includes('sequence') || lightboxItem.type === 'sequence') && (
+                <span className="px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest bg-cyan-500/10 border border-cyan-500/25 text-cyan-300">
+                  Sequence
+                </span>
+              )}
               <span className="px-2 py-0.5 rounded-md text-[8px] font-mono bg-white/5 border border-white/5 text-white/40">
                 {lightboxItem.aspect}
               </span>
@@ -418,7 +706,7 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
             <div className="space-y-1">
               <label className="text-[8px] font-black text-gray-500 uppercase tracking-widest block">Generation Prompt</label>
               <p className="text-[10px] text-white/70 leading-relaxed font-medium bg-black/40 border border-white/5 p-3 rounded-xl select-all font-mono">
-                "{lightboxItem.prompt}"
+                "{(lightboxItem.prompt || '').replace(/^Screenshot:\s*/i, '').replace(/ZeroLens Frame Extract/i, '').replace(/ZeroLens extracted frame/i, '').trim()}"
               </p>
             </div>
 
@@ -441,59 +729,192 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
             {/* COMPACT BUTTON GRID */}
             <div className="grid grid-cols-2 gap-1.5">
               
-              {/* DIRECTOR TIMELINE SETUP */}
-              {lightboxItem.type === 'image' && (
+              {/* 1. DIRECTOR TIMELINE SETUP (WORKS FOR BOTH IMAGE & VIDEO) */}
+              <button
+                onClick={handleSetAsStartFrame}
+                className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-fuchsia-500/10 hover:border-fuchsia-500/30 text-white/70 hover:text-white transition-all group"
+                title={lightboxItem.type === 'image' ? "Set as Start Keyframe" : "Extract Current Frame and Set as Start Keyframe"}
+              >
+                <Video size={11} className="mb-0.5 text-gray-400 group-hover:text-fuchsia-400" />
+                <span className="text-[7.5px] font-black uppercase tracking-wider">Set as FF</span>
+              </button>
+
+              <button
+                onClick={handleSetAsEndFrame}
+                className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-cyan-500/10 hover:border-cyan-500/30 text-white/70 hover:text-white transition-all group"
+                title={lightboxItem.type === 'image' ? "Set as End Keyframe" : "Extract Current Frame and Set as End Keyframe"}
+              >
+                <Video size={11} className="mb-0.5 text-gray-400 group-hover:text-cyan-400" />
+                <span className="text-[7.5px] font-black uppercase tracking-wider">Set as LF</span>
+              </button>
+
+              <button
+                onClick={handleUseAsStyleReference}
+                className="col-span-2 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-[#c8f135]/10 hover:border-[#c8f135]/30 text-white/70 hover:text-white transition-all group"
+                title="Use as Style Reference Image"
+              >
+                <ImageIcon size={11} className="text-gray-400 group-hover:text-[#c8f135]" />
+                <span className="text-[7.5px] font-black uppercase tracking-wider">Use as Style Reference</span>
+              </button>
+
+              {/* 2. VIDEO-SPECIFIC WORKFLOWS (MULTI-REF VIDEO, EXTRACT SCREENSHOT, OMNI DRIVING VIDEO, ADD TO PROMPT) */}
+              {lightboxItem.type !== 'image' && (
                 <>
+                  {/* Send to Multi-Ref Video Slot (@video1..3) with 10s validation */}
+                  <div className="col-span-2 flex flex-col gap-1 p-2 rounded-lg border border-cyan-500/20 bg-cyan-500/5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[7.5px] font-black uppercase text-cyan-300 flex items-center gap-1">
+                        <Layers size={10} className="text-cyan-400" /> Send to Multi-Ref Video
+                      </span>
+                      <span className="text-[7px] font-mono text-cyan-400/60">Max 10s</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1">
+                      {[0, 1, 2].map((slot) => (
+                        <button
+                          key={slot}
+                          type="button"
+                          onClick={async () => {
+                            if (handleUseAsMultiRefVideo) await handleUseAsMultiRefVideo(lightboxItem, slot);
+                            setLightboxItem(null);
+                          }}
+                          className="py-1 px-1 rounded bg-black/60 hover:bg-cyan-400 text-cyan-300 hover:text-black border border-cyan-400/30 text-[8px] font-mono font-bold transition-all text-center cursor-pointer"
+                        >
+                          @video{slot + 1}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <button
-                    onClick={() => {
-                      setFirstFrameImage(lightboxItem.url);
-                      setFirstFramePreview(lightboxItem.url);
-                      setLightboxItem(null);
-                      const showToast = useAppStore.getState().showToast;
-                      if (showToast) showToast("Set as First Frame (FF)!", "success");
-                    }}
-                    className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-fuchsia-500/10 hover:border-fuchsia-500/30 text-white/70 hover:text-white transition-all group"
+                    onClick={handleUseAsOmniRefVideo}
+                    className="col-span-2 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 transition-all group cursor-pointer"
+                    title="Send video into Omni driving reference video payload for multi-ref motion generation"
                   >
-                    <Video size={11} className="mb-0.5 text-gray-400 group-hover:text-fuchsia-400" />
-                    <span className="text-[7.5px] font-black uppercase tracking-wider">Set as FF</span>
+                    <Film size={11} className="text-emerald-400" />
+                    <span className="text-[7.5px] font-black uppercase tracking-wider">Use as Omni Reference Video</span>
                   </button>
+
+                  {/* Motion Pattern Driving Video */}
+                  {handleUseAsMotionVideo && (
+                    <button
+                      onClick={async () => {
+                        let dur = 5;
+                        if (videoElRef.current && videoElRef.current.duration) {
+                          dur = Math.round(videoElRef.current.duration);
+                        }
+                        await handleUseAsMotionVideo(lightboxItem, dur);
+                        setLightboxItem(null);
+                      }}
+                      className="col-span-2 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-[#c8f135]/25 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 text-[#c8f135] transition-all group cursor-pointer"
+                      title="Use this video as the driving motion pattern (3s-30s)"
+                    >
+                      <Film size={11} className="text-[#c8f135]" />
+                      <span className="text-[7.5px] font-black uppercase tracking-wider">Use as Motion Video</span>
+                    </button>
+                  )}
+
                   <button
-                    onClick={() => {
-                      setLastFrameImage(lightboxItem.url);
-                      setLastFramePreview(lightboxItem.url);
-                      setLightboxItem(null);
-                      const showToast = useAppStore.getState().showToast;
-                      if (showToast) showToast("Set as Last Frame (LF)!", "success");
-                    }}
-                    className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-cyan-500/10 hover:border-cyan-500/30 text-white/70 hover:text-white transition-all group"
+                    onClick={handleExtractScreenshotToGallery}
+                    className="col-span-1 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-[#c8f135]/10 hover:border-[#c8f135]/30 text-white/70 hover:text-white transition-all group cursor-pointer"
+                    title="Extract current video frame as high-res screenshot image to gallery"
                   >
-                    <Video size={11} className="mb-0.5 text-gray-400 group-hover:text-cyan-400" />
-                    <span className="text-[7.5px] font-black uppercase tracking-wider">Set as LF</span>
+                    <Camera size={11} className="text-gray-400 group-hover:text-[#c8f135]" />
+                    <span className="text-[7.5px] font-black uppercase tracking-wider">Screenshot Frame</span>
                   </button>
+
+                  {/* Extract frame directly into Multi-Ref @image slot */}
                   <button
-                    onClick={() => {
-                      setFirstFrameImage(lightboxItem.url);
-                      setFirstFramePreview(lightboxItem.url);
-                      setLightboxItem(null);
-                      const showToast = useAppStore.getState().showToast;
-                      if (showToast) showToast("Set as Reference Style Guided Image!", "success");
+                    onClick={async () => {
+                      const frame = await captureFrameFromVideo();
+                      if (frame && handleUseAsMultiRefImage) {
+                        handleUseAsMultiRefImage({ url: frame, type: 'image' });
+                        setLightboxItem(null);
+                      }
                     }}
-                    className="col-span-2 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-[#c8f135]/10 hover:border-[#c8f135]/30 text-white/70 hover:text-white transition-all group"
+                    className="col-span-1 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-[#c8f135]/10 hover:border-[#c8f135]/30 text-white/70 hover:text-[#c8f135] transition-all group cursor-pointer"
+                    title="Extract video frame screenshot and load into next Multi-Ref @image slot"
                   >
-                    <ImageIcon size={11} className="text-gray-400 group-hover:text-[#c8f135]" />
-                    <span className="text-[7.5px] font-black uppercase tracking-wider">Use as Style Reference</span>
+                    <Layers size={11} className="text-gray-400 group-hover:text-[#c8f135]" />
+                    <span className="text-[7.5px] font-black uppercase tracking-wider">Frame → @image</span>
+                  </button>
+
+                  {/* Extract frame directly into Motion Subject */}
+                  {handleUseAsMotionSubject && (
+                    <button
+                      onClick={async () => {
+                        const frame = await captureFrameFromVideo();
+                        if (frame) {
+                          await handleUseAsMotionSubject({ url: frame, type: 'image' });
+                          setLightboxItem(null);
+                        }
+                      }}
+                      className="col-span-2 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-[#c8f135]/20 bg-[#c8f135]/5 hover:bg-[#c8f135]/15 text-[#c8f135] transition-all group cursor-pointer"
+                      title="Extract current frame and set as Motion Subject Image"
+                    >
+                      <Sparkles size={11} className="text-[#c8f135]" />
+                      <span className="text-[7.5px] font-black uppercase tracking-wider">Extract Frame → Motion Subject</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={handleAddPromptToStudio}
+                    className="col-span-2 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-blue-500/10 hover:border-blue-500/30 text-white/70 hover:text-white transition-all group cursor-pointer"
+                    title="Load this generation prompt into the Studio prompt input"
+                  >
+                    <Copy size={11} className="text-gray-400 group-hover:text-blue-400" />
+                    <span className="text-[7.5px] font-black uppercase tracking-wider">Add to Prompt</span>
                   </button>
                 </>
               )}
 
-              {/* GENERATIVE REFINEMENTS */}
+              {/* 3. GENERATIVE REFINEMENTS & MULTI-REF FOR IMAGES */}
               {lightboxItem.type === 'image' && (
                 <>
+                  {/* Send Image to Multi-Ref Image Slot (@image1..4) */}
+                  <div className="col-span-2 flex flex-col gap-1 p-2 rounded-lg border border-[#c8f135]/20 bg-[#c8f135]/5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[7.5px] font-black uppercase text-[#c8f135] flex items-center gap-1">
+                        <Layers size={10} className="text-[#c8f135]" /> Send to Multi-Ref Image
+                      </span>
+                      <span className="text-[7px] font-mono text-zinc-400">Pick slot</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1">
+                      {[0, 1, 2, 3].map((slot) => (
+                        <button
+                          key={slot}
+                          type="button"
+                          onClick={() => {
+                            if (handleUseAsMultiRefImage) handleUseAsMultiRefImage(lightboxItem, slot);
+                            setLightboxItem(null);
+                          }}
+                          className="py-1 px-1 rounded bg-black/60 hover:bg-[#c8f135] text-[#c8f135] hover:text-black border border-[#c8f135]/30 text-[8px] font-mono font-bold transition-all text-center cursor-pointer"
+                        >
+                          @image{slot + 1}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Send Image to Motion Subject */}
+                  {handleUseAsMotionSubject && (
+                    <button
+                      onClick={async () => {
+                        await handleUseAsMotionSubject(lightboxItem);
+                        setLightboxItem(null);
+                      }}
+                      className="col-span-2 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-[#c8f135]/25 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 text-[#c8f135] transition-all group cursor-pointer"
+                      title="Set this image as the Motion Subject reference"
+                    >
+                      <Sparkles size={11} className="text-[#c8f135]" />
+                      <span className="text-[7.5px] font-black uppercase tracking-wider">Use as Motion Subject</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() => handleUpscale(lightboxItem)}
                     disabled={upscalingItems[lightboxItem.id]}
                     className={cn(
-                      "col-span-1 flex items-center justify-center gap-1.5 p-2 rounded-lg text-[7.5px] font-black uppercase border transition-all",
+                      "col-span-1 flex items-center justify-center gap-1.5 p-2 rounded-lg text-[7.5px] font-black uppercase border transition-all cursor-pointer",
                       upscalingItems[lightboxItem.id]
                         ? "bg-fuchsia-500/10 border-fuchsia-500/25 text-fuchsia-400 animate-pulse"
                         : "bg-fuchsia-500/5 hover:bg-fuchsia-500/15 border-fuchsia-500/20 text-fuchsia-300 hover:text-fuchsia-200"
@@ -507,14 +928,23 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                   </button>
                   <button
                     onClick={() => handleGenerateAnglesGrid(lightboxItem)}
-                    className="col-span-1 flex items-center justify-center gap-1.5 p-2 rounded-lg text-[7.5px] font-black uppercase bg-[#c8f135]/5 hover:bg-[#c8f135]/15 border border-[#c8f135]/20 text-[#c8f135] transition-all"
+                    className="col-span-1 flex items-center justify-center gap-1.5 p-2 rounded-lg text-[7.5px] font-black uppercase bg-[#c8f135]/5 hover:bg-[#c8f135]/15 border border-[#c8f135]/20 text-[#c8f135] transition-all cursor-pointer"
                   >
                     <Grid size={10} /> 9-Angles
+                  </button>
+
+                  <button
+                    onClick={handleAddPromptToStudio}
+                    className="col-span-2 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-blue-500/10 hover:border-blue-500/30 text-white/70 hover:text-white transition-all group cursor-pointer"
+                    title="Load this generation prompt into the Studio prompt input"
+                  >
+                    <Copy size={11} className="text-gray-400 group-hover:text-blue-400" />
+                    <span className="text-[7.5px] font-black uppercase tracking-wider">Add to Prompt</span>
                   </button>
                 </>
               )}
 
-              {/* ADVANCED PRODUCTION SUITES */}
+              {/* 4. ADVANCED PRODUCTION SUITES FOR IMAGES */}
               {lightboxItem.type === 'image' && (
                 <div className="col-span-2 grid grid-cols-3 gap-1.5 mt-1 pt-1.5 border-t border-white/5">
                   <button
@@ -541,17 +971,22 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                 </div>
               )}
 
-              {/* FILE UTILITIES */}
+              {/* 5. FILE UTILITIES (DIRECT DOWNLOAD & IMMEDIATE CLEAN DELETE) */}
               <div className="col-span-2 grid grid-cols-2 gap-1.5 mt-1 pt-1.5 border-t border-white/5">
                 <button
                   onClick={() => handleDownload(resolveUrl(lightboxItem.url), lightboxItem.type, lightboxItem.id)}
-                  className="flex items-center justify-center gap-1.5 p-2 rounded-lg text-[7.5px] font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white transition-all"
+                  className="flex items-center justify-center gap-1.5 p-2 rounded-lg text-[7.5px] font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white transition-all cursor-pointer"
+                  title="Direct download to your computer or phone"
                 >
                   <Download size={10} /> Download
                 </button>
                 <button
-                  onClick={(e) => handleDeleteItem(lightboxItem.id, e)}
-                  className="flex items-center justify-center gap-1.5 p-2 rounded-lg text-[7.5px] font-black uppercase tracking-widest bg-red-500/5 hover:bg-red-500/15 border border-red-500/20 text-red-400 hover:text-red-300 transition-all"
+                  onClick={(e) => {
+                    handleDeleteItem(lightboxItem.id, e);
+                    setLightboxItem(null);
+                  }}
+                  className="flex items-center justify-center gap-1.5 p-2 rounded-lg text-[7.5px] font-black uppercase tracking-widest bg-red-500/5 hover:bg-red-500/15 border border-red-500/20 text-red-400 hover:text-red-300 transition-all cursor-pointer"
+                  title="Delete asset from gallery"
                 >
                   <Trash2 size={10} /> Delete
                 </button>

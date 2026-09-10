@@ -1688,17 +1688,17 @@ export default function LeftSidebar() {
       {/* Drawer toggle button — sits on the right edge of the sidebar wrapper */}
       <button
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className={`absolute top-1/2 -translate-y-1/2 ${isSidebarOpen ? '-right-5 md:-right-3' : '-right-9 md:-right-3'} z-[60] w-9 h-12 md:w-6 md:h-12 flex items-center justify-center rounded-r-xl transition-all shadow-2xl
+        className={`absolute top-1/2 -translate-y-1/2 ${isSidebarOpen ? '-right-11 md:-right-7' : '-right-11 md:-right-7'} z-[70] w-11 h-16 md:w-7 md:h-14 flex items-center justify-center rounded-r-2xl transition-all shadow-2xl cursor-pointer select-none
           ${isSidebarOpen
-            ? 'bg-[#111113] border border-[#c8f135]/20 text-[#c8f135]/60 hover:text-[#c8f135] hover:border-[#c8f135]/60 hover:bg-[#c8f135]/5 shadow-[0_0_8px_rgba(200,241,53,0.1)] hover:shadow-[0_0_12px_rgba(200,241,53,0.35)]'
-            : 'bg-[#c8f135] border border-[#c8f135] text-black hover:bg-[#d4f545] shadow-[0_0_15px_rgba(200,241,53,0.7)]'
+            ? 'bg-[#111113] border border-[#c8f135]/40 text-[#c8f135] hover:border-[#c8f135]/80 hover:bg-[#c8f135]/10 shadow-[0_0_12px_rgba(200,241,53,0.25)]'
+            : 'bg-[#c8f135] border-2 border-[#c8f135] text-black hover:bg-[#d8ff43] shadow-[0_0_25px_rgba(200,241,53,0.85)] scale-105 active:scale-95'
           }`}
         title={isSidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
       >
         {isSidebarOpen ? (
-          <ChevronLeft className="w-5 h-5 md:w-3 md:h-3" />
+          <ChevronLeft className="w-6 h-6 md:w-4 md:h-4 stroke-[2.5]" />
         ) : (
-          <ChevronRight className="w-5 h-5 md:w-3 md:h-3" />
+          <ChevronRight className="w-6 h-6 md:w-4 md:h-4 stroke-[2.5]" />
         )}
       </button>
     </div>

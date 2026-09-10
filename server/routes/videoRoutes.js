@@ -74,7 +74,7 @@ export default function createRouter(deps) {
     });
 
     // Veo Image-to-Video: Animate a keyframe image into a clip
-    router.post('/veo-i2v', async (req, res) => {
+    const handleVeoGenerate = async (req, res) => {
         try {
             let user;
             try {
@@ -87,7 +87,8 @@ export default function createRouter(deps) {
 
             const { image, motionPrompt, prompt, duration = 8, aspectRatio = '16:9', nodeId, userId, generateAudio, resolution = '1080p', model } = req.body;
             const modelName = model || '';
-            if (!motionPrompt && !prompt) throw new Error('No motion prompt provided');
+            const textPrompt = motionPrompt || prompt;
+            if (!textPrompt) throw new Error('No motion prompt provided');
 
             const targetUserId = user ? user.id : userId;
 
@@ -109,25 +110,30 @@ export default function createRouter(deps) {
             }
 
             const taskId = nodeId ? `veo-${nodeId}` : 'veo-default';
-            const validDuration = [4, 6, 8].includes(Number(duration)) ? Number(duration) : 8;
+            const validDuration = [4, 5, 6, 8, 10, 12, 15].includes(Number(duration)) ? Number(duration) : 8;
             const validAspectRatio = ['16:9', '9:16', '1:1'].includes(aspectRatio) ? aspectRatio : '16:9';
             const validResolution = ['720p', '1080p', '4k'].includes(resolution) ? resolution : '1080p';
 
             console.log(`[VEO-I2V] Starting | taskId: ${taskId} | duration: ${validDuration}s | ratio: ${validAspectRatio} | res: ${validResolution} | image: ${!!image}`);
 
             // Build the instance object (shared for both SDK and REST formats)
-            let instance = { prompt: motionPrompt };
+            let instance = { prompt: textPrompt };
 
             const resolveImagePayload = async (imgSrc) => {
                 if (!imgSrc) return null;
+                if (typeof imgSrc === 'object' && imgSrc.bytesBase64Encoded) return imgSrc;
                 let imageData = '';
                 let mimeType = 'image/png';
 
-                if (imgSrc.startsWith('data:')) {
+                if (typeof imgSrc === 'string' && imgSrc.startsWith('data:')) {
                     const match = imgSrc.match(/^data:([^;]+);base64,/);
                     if (match) mimeType = match[1];
                     imageData = imgSrc.split(',')[1];
-                } else if (imgSrc.startsWith('http') || imgSrc.startsWith('//')) {
+                } else if (typeof imgSrc === 'string' && (imgSrc.startsWith('http') || imgSrc.startsWith('//'))) {
+                    if (imgSrc.startsWith('blob:')) {
+                        console.warn('[VEO-I2V] Received blob URL which cannot be fetched by server:', imgSrc);
+                        return null;
+                    }
                     const fullUrl = imgSrc.startsWith('//') ? `https:${imgSrc}` : imgSrc;
                     const imgResp = await fetch(fullUrl);
                     if (!imgResp.ok) throw new Error(`Failed to fetch image: ${imgResp.statusText}`);
@@ -135,8 +141,10 @@ export default function createRouter(deps) {
                     imageData = Buffer.from(buffer).toString('base64');
                     const contentType = imgResp.headers.get('content-type');
                     if (contentType) mimeType = contentType;
-                } else {
+                } else if (typeof imgSrc === 'string') {
                     imageData = imgSrc;
+                } else {
+                    return null;
                 }
 
                 return {
@@ -145,8 +153,8 @@ export default function createRouter(deps) {
                 };
             };
 
-            const firstFrameSrc = image || req.body.firstFrameImage;
-            const lastFrameSrc = req.body.lastFrameImage || req.body.imageEnd;
+            const firstFrameSrc = image || req.body.firstFrameImage || req.body.firstFrame;
+            const lastFrameSrc = req.body.lastFrameImage || req.body.imageEnd || req.body.lastFrame;
 
             if (firstFrameSrc) {
                 const firstFrameObj = await resolveImagePayload(firstFrameSrc);
@@ -160,12 +168,24 @@ export default function createRouter(deps) {
                 if (lastFrameObj) {
                     instance.lastImage = lastFrameObj;
                     instance.lastFrame = lastFrameObj;
+                    instance.endImage = lastFrameObj;
                 }
             }
 
+            let frameDirective = '';
+            if (firstFrameSrc && lastFrameSrc) {
+                frameDirective = `[Start Frame: initial image at 0s] [End Frame: final image at ${validDuration}s]. Smooth continuous transition starting from the start frame and concluding at the end frame. `;
+            } else if (firstFrameSrc) {
+                frameDirective = `[Start Frame: initial image at 0s]. Animate smoothly starting directly from this frame. `;
+            } else if (lastFrameSrc) {
+                frameDirective = `[End Frame: final image at ${validDuration}s]. Conclude smoothly at this final frame. `;
+            }
+
+            instance.prompt = frameDirective ? `${frameDirective}${textPrompt}` : textPrompt;
+
             console.log(`[VEO-I2V] Constructed Instance Keys:`, Object.keys(instance), instance.image ? `| image.mimeType: ${instance.image.mimeType}` : '', instance.lastImage ? `| lastImage.mimeType: ${instance.lastImage.mimeType}` : '');
 
-            broadcastProgress(taskId, 1, 3, 'Veo 3.1 engine initializing...');
+            broadcastProgress(taskId, 1, 3, 'Preparing video scene...');
 
             let videoBuffer = null;
             let success = false;
@@ -193,7 +213,7 @@ export default function createRouter(deps) {
                             parameters: {
                                 sampleCount: 1,
                                 aspectRatio: validAspectRatio,
-                                durationSeconds: validDuration,
+                                durationSeconds: Math.min(validDuration, 8),
                                 resolution: validResolution
                             }
                         })
@@ -206,7 +226,7 @@ export default function createRouter(deps) {
 
                     const operationName = operationResultData.name;
                     console.log(`[VEO-I2V] [Vertex AI] Operation started: ${operationName}`);
-                    broadcastProgress(taskId, 2, 3, 'Animating scene (Vertex AI Render)...');
+                    broadcastProgress(taskId, 2, 3, 'Rendering video sequence...');
 
                     // Use fetchPredictOperation — the CORRECT polling method for Veo predictLongRunning.
                     // Standard GET /v1/{operationName} always returns 404 for publisher-scoped Veo operations.
@@ -330,7 +350,7 @@ export default function createRouter(deps) {
 
             // --- Option B: Google AI Studio / Gemini API (Fallback) ---
             if (!success) {
-                const studioKey = (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : (process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
+                const studioKey = (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : (process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
                 if (studioKey || token) {
                     try {
                         let aiStudioModel = 'veo-3.1-generate-preview';
@@ -357,7 +377,7 @@ export default function createRouter(deps) {
                             parameters: {
                                 sampleCount: 1,
                                 aspectRatio: validAspectRatio,
-                                durationSeconds: validDuration,
+                                durationSeconds: Math.min(validDuration, 8),
                                 resolution: validResolution
                             }
                         })
@@ -369,7 +389,7 @@ export default function createRouter(deps) {
                     }
 
                     console.log(`[VEO-I2V] [AI Studio] Operation started: ${operation.name}`);
-                    broadcastProgress(taskId, 2, 3, 'Animating scene (Fallback Render)...');
+                    broadcastProgress(taskId, 2, 3, 'Rendering video sequence...');
 
                     let attempts = 0;
                     const maxAttempts = 60;
@@ -461,9 +481,15 @@ export default function createRouter(deps) {
             console.error('[VEO-I2V] Error:', error);
             const taskId = req.body.nodeId ? `veo-${req.body.nodeId}` : 'veo-default';
             broadcastProgress(taskId, 0, 0, `Error: ${error.message}`);
-            res.status(500).json({ error: error.message || 'Video generation failed' });
+            return res.status(500).json({ error: error.message || 'Video generation failed' });
         }
-    });
+    };
+
+    router.post('/veo-i2v', handleVeoGenerate);
+    router.post('/veo/generate-video', handleVeoGenerate);
+    router.post('/generate-video', handleVeoGenerate);
+    router.post('/veo/generate', handleVeoGenerate);
+    router.post('/generate', handleVeoGenerate);
 
     // MusicFX Score Generation
     router.post('/music/generate', async (req, res) => {
@@ -662,18 +688,19 @@ export default function createRouter(deps) {
                 }
             }
 
-            const { prompt, input_url, video_url, mode = 'std', character_orientation = 'video', background_source = 'input_video', userId } = req.body;
+            const { prompt, input_url, video_url, mode = '720p', character_orientation = 'video', userId } = req.body;
             const apiKey = process.env.KLING_API_KEY;
 
             if (!apiKey) throw new Error("Kling API Key not configured. Please add KLING_API_KEY to your environment.");
 
             const targetUserId = user ? user.id : userId;
             const duration = req.body.duration || 5;
-            const rate = mode === 'pro' ? 9 : 7; // halved from 18 : 14
+            const resolvedMode = (mode === 'pro' || mode === '1080p') ? '1080p' : '720p';
+            const rate = resolvedMode === '1080p' ? 9 : 7;
             const requiredCredits = Math.ceil(rate * duration);
 
             if (targetUserId) {
-                const creditReason = req.body.creditReason || `kling_motion_control_${mode}`;
+                const creditReason = req.body.creditReason || `kling_motion_control_${resolvedMode}`;
                 console.log(`[KLING-MOTION] Consuming ${requiredCredits} credits for user: ${targetUserId} (reason: ${creditReason})`);
                 await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
             }
@@ -687,20 +714,29 @@ export default function createRouter(deps) {
             if (!imgUrl) throw new Error("Kling Motion Control requires a subject reference image URL.");
             if (!vidUrl) throw new Error("Kling Motion Control requires a motion reference video URL.");
 
+            const targetPrompt = (prompt && prompt.trim()) 
+                ? prompt.trim() 
+                : "No distortion, the character's movements are consistent with the video.";
+
+            const kieMode = (mode === 'pro' || mode === '1080p') ? '1080p' : '720p';
+
             const payload = {
                 model: "kling-3.0/motion-control",
                 callBackUrl: req.body.callBackUrl || "https://zerolens.app/api/callback",
                 input: {
-                    prompt: prompt || "",
+                    prompt: targetPrompt,
                     input_urls: [imgUrl],
                     video_urls: [vidUrl],
-                    mode,
-                    character_orientation,
-                    background_source
+                    character_orientation: (character_orientation === 'image') ? 'image' : 'video',
+                    mode: kieMode
                 }
             };
 
-            console.log(`[KLING-MOTION] Creating task on Kie.ai...`);
+            if (req.body.aspectRatio || req.body.aspect_ratio) {
+                payload.input.aspect_ratio = req.body.aspectRatio || req.body.aspect_ratio;
+            }
+
+            console.log(`[KLING-MOTION] Creating task on Kie.ai (mode: ${kieMode})...`);
             const createResp = await fetch("https://api.kie.ai/api/v1/jobs/createTask", {
                 method: 'POST',
                 headers: {
@@ -711,7 +747,17 @@ export default function createRouter(deps) {
             });
 
             const createData = await createResp.json();
-            if (createData.code !== 200) throw new Error(`Kling Motion Task Creation Failed: ${createData.msg || 'Unknown Error'}`);
+            if (createData.code !== 200) {
+                if (targetUserId) {
+                    try {
+                        const { refundCredits } = await import('../../services/creditService.js');
+                        if (refundCredits) await refundCredits(targetUserId, requiredCredits, `kling_motion_control_refund`);
+                    } catch (refErr) {
+                        console.error('[KLING-REFUND-ERR]', refErr);
+                    }
+                }
+                throw new Error(`Kling Motion Task Creation Failed: ${createData.msg || 'Unknown Error'}`);
+            }
 
             const taskId = createData.data.taskId;
             console.log(`[KLING-MOTION] Task Created: ${taskId}`);

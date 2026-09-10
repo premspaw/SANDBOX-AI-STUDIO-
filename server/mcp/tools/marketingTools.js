@@ -46,7 +46,7 @@ export function registerMarketingTools() {
 }
 
 export async function handleMarketingToolCall(name, args) {
-  const API_BASE = (process.env.API_BASE_URL || process.env.PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://zerolens.in' : 'http://localhost:5000')).replace(/\/+$/, '');
+  const API_BASE = (process.env.API_BASE_URL || process.env.PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://zerolens.in' : `http://localhost:${process.env.PORT || 3002}`)).replace(/\/+$/, '');
 
   if (name === 'marketing_generate_carousel') {
     const resp = await fetch(`${API_BASE}/api/carousel/generate`, {

@@ -31,6 +31,7 @@ const DURATION_OPTIONS = [
   { value: 5,  label: '5 Seconds',  desc: 'Quick burst — ideal for ads' },
   { value: 8,  label: '8 Seconds',  desc: 'Standard — cinematic shots' },
   { value: 10, label: '10 Seconds', desc: 'Extended — full scenes' },
+  { value: 15, label: '15 Seconds', desc: 'Extended scene — maximum duration' },
 ];
 
 const SEEDANCE_DURATION_OPTIONS = [
@@ -48,7 +49,8 @@ const VEO_DURATION_OPTIONS = [
 const OMNI_DURATION_OPTIONS = [
   { value: 4,  label: '4 Seconds',  desc: 'Quick cut — fast-paced narrative' },
   { value: 6,  label: '6 Seconds',  desc: 'Standard — balanced movement' },
-  { value: 10, label: '10 Seconds', desc: 'Maximum duration — full cinematic action' },
+  { value: 10, label: '10 Seconds', desc: 'Long sequence — extended motion' },
+  { value: 15, label: '15 Seconds', desc: 'Maximum duration — full cinematic action' },
 ];
 
 const SIZE_OPTIONS = [
@@ -508,7 +510,7 @@ export default function MarketingStudio() {
     };
 
     useEffect(() => {
-        const isOmni = videoEngine === 'omni' || videoEngine === 'omni-flash';
+        const isOmni = videoEngine === 'omni' || videoEngine === 'omni-flash' || videoEngine === 'omni-flash-1.1' || videoEngine === 'gemini-omni-1.1-flash-preview';
         const isSeed = videoEngine === 'seedance-fast' || videoEngine === 'seedace';
         const isVeo3 = videoEngine.startsWith('veo-3.1');
         
@@ -1148,7 +1150,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
 
         if (generateMode === 'video') {
             try {
-                const isOmni = videoEngine === 'omni' || videoEngine === 'omni-flash';
+                const isOmni = videoEngine === 'omni' || videoEngine === 'omni-flash' || videoEngine === 'omni-flash-1.1' || videoEngine === 'gemini-omni-1.1-flash-preview';
                 const isSeed = videoEngine === 'seedance-fast' || videoEngine === 'seedace';
                 
                 if (isOmni) {

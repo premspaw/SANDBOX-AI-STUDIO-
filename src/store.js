@@ -620,6 +620,10 @@ export const useAppStore = create((set, get) => ({
     },
 
     setUserShorts: (shorts) => set({ userShorts: shorts }),
+    updateShortsBalance: (balance) => set((state) => ({
+        userShorts: Number(balance) || 0,
+        userProfile: state.userProfile ? { ...state.userProfile, shorts_balance: Number(balance) || 0 } : state.userProfile
+    })),
     setUserProfile: (profile) => set({ userProfile: profile }),
 
     fetchUserProfile: async (userId) => {

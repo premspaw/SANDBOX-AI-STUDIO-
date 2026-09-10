@@ -23,7 +23,7 @@ const getAIConfig = () => {
     // Admin/server keys must stay on the backend. Browser code may only use public/user-provided keys.
         
     const isToken = apiKey.startsWith('ya29.');
-    const projectId = (typeof globalThis.process !== 'undefined' ? globalThis.process.env.GOOGLE_PROJECT_ID : null) || 'gen-lang-client-0438096272';
+    const projectId = (typeof globalThis.process !== 'undefined' ? (globalThis.process.env.NEW_GOOGLE_PROJECT_ID || globalThis.process.env.GOOGLE_PROJECT_ID) : null) || 'project-c0b5ea74-5ba2-4e68-8ab';
     const location = (typeof globalThis.process !== 'undefined' ? globalThis.process.env.GOOGLE_LOCATION : null) || 'us-central1';
     
     const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://sandbox-ai-studio.up.railway.app';
