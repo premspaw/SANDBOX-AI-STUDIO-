@@ -253,6 +253,7 @@ export const SidePanel = React.memo(({
   const setOmniMultiImages = propSetOmniMultiImages || setInternalMultiImages;
   const omniMultiVideos = propOmniMultiVideos || internalMultiVideos;
   const setOmniMultiVideos = propSetOmniMultiVideos || setInternalMultiVideos;
+  const [deckFilter, setDeckFilter] = useState('all'); // 'all' | 'images' | 'videos'
 
   const handlePickGalleryImage = (item, slotIdx) => {
     const next = [...omniMultiImages];
@@ -1611,181 +1612,319 @@ export const SidePanel = React.memo(({
                 )}
 
                 {panelTab === 'omni-multi' ? (
-                  /* DEDICATED MULTI-REFERENCE INTERFACE (4 Image Slots + 3 Video Slots) */
+                  /* ── GLASS PRISM MULTI-ASSET DECK (CAROUSEL & TAG SYSTEM) ── */
                   <div className="space-y-3">
-                    {/* 4 Image Reference Slots - Sleek Single-Row Cards */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[9.5px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
-                          <ImageIcon className="w-3 h-3 text-[#c8f135]" />
-                          <span>Image References (4 Slots)</span>
-                        </label>
-                        <div className="flex items-center gap-1.5">
-                          {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const emptySlot = omniMultiImages.findIndex(img => !img);
-                                setGalleryPickerSlot({ type: 'image', slotIdx: emptySlot !== -1 ? emptySlot : 0 });
-                              }}
-                              className="text-[8px] font-bold text-[#c8f135] bg-[#c8f135]/10 hover:bg-[#c8f135]/20 border border-[#c8f135]/25 px-1.5 py-0.2 rounded transition-all cursor-pointer"
-                            >
-                              + Gallery
-                            </button>
-                          )}
-                          <span className="text-[8.5px] font-mono text-zinc-500">Auto-tagged</span>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {[0, 1, 2, 3].map((slotIdx) => {
-                          const imgUrl = omniMultiImages[slotIdx];
-                          const tag = `@image${slotIdx + 1}`;
-                          return (
-                            <div key={slotIdx} className="space-y-0.5">
-                              {imgUrl ? (
-                                <div className="relative group rounded-xl overflow-hidden border border-[#c8f135]/50 aspect-square bg-black/60 shadow-inner flex items-center justify-center">
-                                  <img src={imgUrl} className="w-full h-full object-cover" alt={`Ref ${slotIdx + 1}`} />
-                                  <button
-                                    type="button"
-                                    onClick={() => handleClearMultiImage(slotIdx)}
-                                    className="absolute top-0.5 right-0.5 p-0.5 rounded-md bg-black/80 text-zinc-300 hover:text-white hover:bg-rose-600 transition-all cursor-pointer opacity-0 group-hover:opacity-100 z-10 shadow-sm"
-                                    title={`Remove ${tag}`}
-                                  >
-                                    <Trash2 size={9} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => insertTagAtCursor(tag)}
-                                    className="absolute bottom-0.5 inset-x-0.5 py-0.2 px-0.5 rounded bg-black/85 text-[#c8f135] hover:bg-[#c8f135] hover:text-black transition-all border border-[#c8f135]/30 text-[7.5px] font-mono font-black text-center truncate cursor-pointer shadow-sm"
-                                    title={`Click to insert ${tag} into prompt`}
-                                  >
-                                    {tag}
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="w-full aspect-square rounded-xl border border-dashed border-white/15 hover:border-[#c8f135]/60 bg-white/[0.02] hover:bg-[#c8f135]/[0.04] transition-all flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-white p-0.5 relative group">
-                                  <button
-                                    type="button"
-                                    onClick={() => multiImageRefs[slotIdx]?.current?.click()}
-                                    className="flex flex-col items-center justify-center gap-0.5 w-full h-full cursor-pointer"
-                                  >
-                                    <div className="w-4 h-4 rounded-md bg-white/[0.04] group-hover:bg-[#c8f135]/15 border border-white/10 group-hover:border-[#c8f135]/30 flex items-center justify-center transition-all">
-                                      <Upload size={9} className="text-zinc-400 group-hover:text-[#c8f135]" />
-                                    </div>
-                                    <span className="text-[7.5px] font-mono font-bold text-zinc-400 group-hover:text-[#c8f135] truncate">
-                                      {tag}
-                                    </span>
-                                  </button>
-                                  {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
-                                    <button
-                                      type="button"
-                                      onClick={() => setGalleryPickerSlot({ type: 'image', slotIdx })}
-                                      className="absolute top-0.5 right-0.5 px-0.5 py-0.2 rounded bg-black/80 hover:bg-[#c8f135] text-zinc-400 hover:text-black border border-white/10 text-[6.5px] font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-sm"
-                                      title="Pick from Studio Gallery"
-                                    >
-                                      Gal
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                              <input
-                                type="file"
-                                ref={multiImageRefs[slotIdx]}
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => handleMultiImageSelect(e, slotIdx)}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                    <div className="relative rounded-2xl bg-gradient-to-b from-white/[0.06] via-black/60 to-black/90 border border-white/10 p-3 backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.7)] space-y-2.5 overflow-hidden">
+                      {/* Ambient Neon Accent */}
+                      <div className="absolute top-0 right-0 w-36 h-36 bg-[#c8f135]/10 blur-3xl pointer-events-none" />
 
-                    {/* 3 Driving Video Reference Slots - Sleek Single-Row Cards */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[9.5px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
-                          <Video className="w-3 h-3 text-[#c8f135]" />
-                          <span>Video References (3 Slots)</span>
-                        </label>
-                        <div className="flex items-center gap-1.5">
-                          {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const emptySlot = omniMultiVideos.findIndex(v => !v);
-                                setGalleryPickerSlot({ type: 'video', slotIdx: emptySlot !== -1 ? emptySlot : 0 });
-                              }}
-                              className="text-[8px] font-bold text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/25 px-1.5 py-0.2 rounded transition-all cursor-pointer"
-                            >
-                              + Gallery
-                            </button>
-                          )}
-                          <span className="text-[8.5px] font-mono text-zinc-500">Max 10s MP4</span>
+                      {/* 1. Deck Header: Title, Active Count & Filter Controls */}
+                      <div className="flex items-center justify-between gap-2 relative z-10">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <div className="w-6 h-6 rounded-lg bg-[#c8f135]/15 border border-[#c8f135]/30 flex items-center justify-center text-[#c8f135] shadow-[0_0_10px_rgba(200,241,53,0.2)] shrink-0">
+                            <Sparkles size={12} />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-white flex items-center gap-1.5">
+                              <span>Glass Prism Deck</span>
+                              <span className="text-[8px] font-mono px-1.5 py-0.2 rounded-full bg-[#c8f135]/15 text-[#c8f135] border border-[#c8f135]/30 font-extrabold">
+                                {[...omniMultiImages, ...omniMultiVideos].filter(Boolean).length}/7 Active
+                              </span>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Deck Filter Tabs */}
+                        <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-lg border border-white/10 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setDeckFilter('all')}
+                            className={cn(
+                              "px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer",
+                              deckFilter === 'all'
+                                ? "bg-[#c8f135] text-black shadow-sm"
+                                : "text-zinc-400 hover:text-white"
+                            )}
+                          >
+                            All
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeckFilter('images')}
+                            className={cn(
+                              "px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-0.5",
+                              deckFilter === 'images'
+                                ? "bg-[#c8f135] text-black shadow-sm"
+                                : "text-zinc-400 hover:text-white"
+                            )}
+                          >
+                            <ImageIcon size={9} />
+                            <span>Imgs</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeckFilter('videos')}
+                            className={cn(
+                              "px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-0.5",
+                              deckFilter === 'videos'
+                                ? "bg-[#c8f135] text-black shadow-sm"
+                                : "text-zinc-400 hover:text-white"
+                            )}
+                          >
+                            <Video size={9} />
+                            <span>Vids</span>
+                          </button>
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {[0, 1, 2].map((slotIdx) => {
-                          const vidUrl = omniMultiVideos[slotIdx];
-                          const tag = `@video${slotIdx + 1}`;
-                          return (
-                            <div key={slotIdx} className="space-y-0.5">
-                              {vidUrl ? (
-                                <div className="relative group rounded-xl overflow-hidden border border-[#c8f135]/50 aspect-[4/3] bg-black/60 shadow-inner flex items-center justify-center">
-                                  <video src={vidUrl} className="w-full h-full object-cover" muted loop playsInline />
-                                  <button
-                                    type="button"
-                                    onClick={() => handleClearMultiVideo(slotIdx)}
-                                    className="absolute top-0.5 right-0.5 p-0.5 rounded-md bg-black/80 text-white hover:bg-rose-600 transition-all cursor-pointer opacity-0 group-hover:opacity-100 z-10 shadow-sm"
-                                    title={`Remove ${tag}`}
-                                  >
-                                    <Trash2 size={9} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => insertTagAtCursor(tag)}
-                                    className="absolute bottom-0.5 inset-x-0.5 py-0.2 px-0.5 rounded bg-black/85 text-[#c8f135] hover:bg-[#c8f135] hover:text-black transition-all border border-[#c8f135]/30 text-[7.5px] font-mono font-black text-center truncate cursor-pointer shadow-sm"
-                                    title={`Click to insert ${tag} into prompt`}
-                                  >
-                                    {tag}
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="w-full aspect-[4/3] rounded-xl border border-dashed border-white/15 hover:border-[#c8f135]/60 bg-white/[0.02] hover:bg-[#c8f135]/[0.04] transition-all flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-white p-0.5 relative group">
-                                  <button
-                                    type="button"
-                                    onClick={() => multiVideoRefs[slotIdx]?.current?.click()}
-                                    className="flex flex-col items-center justify-center gap-0.5 w-full h-full cursor-pointer"
-                                  >
-                                    <div className="w-4 h-4 rounded-md bg-white/[0.04] group-hover:bg-[#c8f135]/15 border border-white/10 group-hover:border-[#c8f135]/30 flex items-center justify-center transition-all">
-                                      <Video size={9} className="text-zinc-400 group-hover:text-[#c8f135]" />
+
+                      {/* 2. Glass Prism Horizontal Carousel Track */}
+                      <div className="relative group/carousel">
+                        <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar snap-x snap-mandatory py-1 px-0.5 scroll-smooth">
+                          {/* Image Cards (1 to 4) */}
+                          {(deckFilter === 'all' || deckFilter === 'images') &&
+                            [0, 1, 2, 3].map((slotIdx) => {
+                              const imgUrl = omniMultiImages[slotIdx];
+                              const tag = `@image${slotIdx + 1}`;
+                              return (
+                                <div key={`img-${slotIdx}`} className="snap-start shrink-0">
+                                  {imgUrl ? (
+                                    <div className="w-[114px] h-[146px] rounded-2xl overflow-hidden bg-gradient-to-b from-white/[0.08] via-black/80 to-black border border-[#c8f135]/50 hover:border-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.15)] hover:shadow-[0_0_22px_rgba(200,241,53,0.35)] relative group transition-all duration-300 flex flex-col justify-between p-1.5">
+                                      {/* Background Image Preview */}
+                                      <img
+                                        src={imgUrl}
+                                        alt={tag}
+                                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                      />
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/60 pointer-events-none" />
+
+                                      {/* Top Row: Tag Badge & Delete */}
+                                      <div className="flex items-center justify-between relative z-10">
+                                        <span className="bg-black/80 backdrop-blur-md px-1.5 py-0.5 rounded-md border border-[#c8f135]/40 text-[8.5px] font-mono font-black text-[#c8f135] shadow-sm flex items-center gap-1">
+                                          <Sparkles size={8} /> {tag}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleClearMultiImage(slotIdx)}
+                                          className="w-5 h-5 rounded-md bg-black/80 hover:bg-rose-600 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shadow-sm border border-white/10"
+                                          title={`Remove ${tag}`}
+                                        >
+                                          <Trash2 size={9} />
+                                        </button>
+                                      </div>
+
+                                      {/* Center Overlay: Quick Replace Trigger */}
+                                      <div className="relative z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                          type="button"
+                                          onClick={() => multiImageRefs[slotIdx]?.current?.click()}
+                                          className="px-2 py-1 rounded-lg bg-black/80 hover:bg-white/20 text-white text-[8px] font-bold uppercase tracking-wider border border-white/20 backdrop-blur-md cursor-pointer shadow-md"
+                                        >
+                                          Replace
+                                        </button>
+                                      </div>
+
+                                      {/* Bottom: Direct Insert Tag Action */}
+                                      <div className="relative z-10">
+                                        <button
+                                          type="button"
+                                          onClick={() => insertTagAtCursor(tag)}
+                                          className="w-full py-1 rounded-lg bg-black/90 hover:bg-[#c8f135] text-[#c8f135] hover:text-black border border-[#c8f135]/40 hover:border-[#c8f135] text-[8px] font-mono font-black uppercase tracking-wider transition-all text-center truncate cursor-pointer shadow-md active:scale-95 flex items-center justify-center gap-1"
+                                          title={`Insert ${tag} into prompt`}
+                                        >
+                                          <Plus size={9} />
+                                          <span>Insert {tag}</span>
+                                        </button>
+                                      </div>
                                     </div>
-                                    <span className="text-[7.5px] font-mono font-bold text-zinc-400 group-hover:text-[#c8f135] truncate">
-                                      {tag}
-                                    </span>
-                                  </button>
-                                  {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
-                                    <button
-                                      type="button"
-                                      onClick={() => setGalleryPickerSlot({ type: 'video', slotIdx })}
-                                      className="absolute top-0.5 right-0.5 px-0.5 py-0.2 rounded bg-black/80 hover:bg-cyan-400 text-zinc-400 hover:text-black border border-white/10 text-[6.5px] font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-sm"
-                                      title="Pick from Studio Gallery"
-                                    >
-                                      Gal
-                                    </button>
+                                  ) : (
+                                    <div className="w-[114px] h-[146px] rounded-2xl border border-dashed border-white/20 hover:border-[#c8f135]/70 bg-gradient-to-b from-white/[0.04] to-transparent hover:bg-[#c8f135]/[0.05] transition-all flex flex-col items-center justify-between p-2 relative group cursor-pointer select-none shadow-sm">
+                                      <div className="flex items-center justify-between w-full">
+                                        <span className="text-[8px] font-mono font-bold text-zinc-400 group-hover:text-[#c8f135]">
+                                          {tag}
+                                        </span>
+                                        {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setGalleryPickerSlot({ type: 'image', slotIdx });
+                                            }}
+                                            className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-[#c8f135] text-zinc-300 hover:text-black text-[7px] font-bold uppercase tracking-wider transition-all"
+                                            title="Pick from Studio Gallery"
+                                          >
+                                            Gal
+                                          </button>
+                                        )}
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => multiImageRefs[slotIdx]?.current?.click()}
+                                        className="flex flex-col items-center justify-center gap-1 w-full h-full cursor-pointer py-1"
+                                      >
+                                        <div className="w-7 h-7 rounded-xl bg-white/[0.05] group-hover:bg-[#c8f135]/20 border border-white/10 group-hover:border-[#c8f135]/40 flex items-center justify-center text-zinc-400 group-hover:text-[#c8f135] transition-all shadow-sm">
+                                          <Upload size={12} />
+                                        </div>
+                                        <span className="text-[8.5px] font-black uppercase tracking-wider text-zinc-300 group-hover:text-white">
+                                          Add Img
+                                        </span>
+                                        <span className="text-[7px] text-zinc-500 font-mono">JPG / PNG</span>
+                                      </button>
+                                    </div>
                                   )}
+                                  <input
+                                    type="file"
+                                    ref={multiImageRefs[slotIdx]}
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => handleMultiImageSelect(e, slotIdx)}
+                                  />
                                 </div>
+                              );
+                            })}
+
+                          {/* Video Cards (1 to 3) */}
+                          {(deckFilter === 'all' || deckFilter === 'videos') &&
+                            [0, 1, 2].map((slotIdx) => {
+                              const vidUrl = omniMultiVideos[slotIdx];
+                              const tag = `@video${slotIdx + 1}`;
+                              return (
+                                <div key={`vid-${slotIdx}`} className="snap-start shrink-0">
+                                  {vidUrl ? (
+                                    <div className="w-[114px] h-[146px] rounded-2xl overflow-hidden bg-gradient-to-b from-white/[0.08] via-black/80 to-black border border-cyan-400/50 hover:border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.15)] hover:shadow-[0_0_22px_rgba(34,211,238,0.35)] relative group transition-all duration-300 flex flex-col justify-between p-1.5">
+                                      {/* Video Preview */}
+                                      <video
+                                        src={vidUrl}
+                                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        muted
+                                        loop
+                                        playsInline
+                                      />
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/60 pointer-events-none" />
+
+                                      {/* Top Row: Tag Badge & Delete */}
+                                      <div className="flex items-center justify-between relative z-10">
+                                        <span className="bg-black/80 backdrop-blur-md px-1.5 py-0.5 rounded-md border border-cyan-400/40 text-[8.5px] font-mono font-black text-cyan-300 shadow-sm flex items-center gap-1">
+                                          <Video size={8} /> {tag}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleClearMultiVideo(slotIdx)}
+                                          className="w-5 h-5 rounded-md bg-black/80 hover:bg-rose-600 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shadow-sm border border-white/10"
+                                          title={`Remove ${tag}`}
+                                        >
+                                          <Trash2 size={9} />
+                                        </button>
+                                      </div>
+
+                                      {/* Center Overlay: Quick Replace Trigger */}
+                                      <div className="relative z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                          type="button"
+                                          onClick={() => multiVideoRefs[slotIdx]?.current?.click()}
+                                          className="px-2 py-1 rounded-lg bg-black/80 hover:bg-white/20 text-white text-[8px] font-bold uppercase tracking-wider border border-white/20 backdrop-blur-md cursor-pointer shadow-md"
+                                        >
+                                          Replace
+                                        </button>
+                                      </div>
+
+                                      {/* Bottom: Direct Insert Tag Action */}
+                                      <div className="relative z-10">
+                                        <button
+                                          type="button"
+                                          onClick={() => insertTagAtCursor(tag)}
+                                          className="w-full py-1 rounded-lg bg-black/90 hover:bg-cyan-400 text-cyan-300 hover:text-black border border-cyan-400/40 hover:border-cyan-400 text-[8px] font-mono font-black uppercase tracking-wider transition-all text-center truncate cursor-pointer shadow-md active:scale-95 flex items-center justify-center gap-1"
+                                          title={`Insert ${tag} into prompt`}
+                                        >
+                                          <Plus size={9} />
+                                          <span>Insert {tag}</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="w-[114px] h-[146px] rounded-2xl border border-dashed border-white/20 hover:border-cyan-400/70 bg-gradient-to-b from-white/[0.04] to-transparent hover:bg-cyan-400/[0.05] transition-all flex flex-col items-center justify-between p-2 relative group cursor-pointer select-none shadow-sm">
+                                      <div className="flex items-center justify-between w-full">
+                                        <span className="text-[8px] font-mono font-bold text-zinc-400 group-hover:text-cyan-300">
+                                          {tag}
+                                        </span>
+                                        {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setGalleryPickerSlot({ type: 'video', slotIdx });
+                                            }}
+                                            className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-cyan-400 text-zinc-300 hover:text-black text-[7px] font-bold uppercase tracking-wider transition-all"
+                                            title="Pick from Studio Gallery"
+                                          >
+                                            Gal
+                                          </button>
+                                        )}
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => multiVideoRefs[slotIdx]?.current?.click()}
+                                        className="flex flex-col items-center justify-center gap-1 w-full h-full cursor-pointer py-1"
+                                      >
+                                        <div className="w-7 h-7 rounded-xl bg-white/[0.05] group-hover:bg-cyan-400/20 border border-white/10 group-hover:border-cyan-400/40 flex items-center justify-center text-zinc-400 group-hover:text-cyan-300 transition-all shadow-sm">
+                                          <Video size={12} />
+                                        </div>
+                                        <span className="text-[8.5px] font-black uppercase tracking-wider text-zinc-300 group-hover:text-white">
+                                          Add Vid
+                                        </span>
+                                        <span className="text-[7px] text-zinc-500 font-mono">Max 10s MP4</span>
+                                      </button>
+                                    </div>
+                                  )}
+                                  <input
+                                    type="file"
+                                    ref={multiVideoRefs[slotIdx]}
+                                    accept="video/mp4,video/webm,video/quicktime"
+                                    className="hidden"
+                                    onChange={(e) => handleMultiVideoSelect(e, slotIdx)}
+                                  />
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+
+                      {/* 3. Quick Tag Pill Cloud (Click to Insert at Cursor) */}
+                      <div className="space-y-1 pt-1.5 border-t border-white/[0.08]">
+                        <div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-wider text-zinc-400">
+                          <span>Click tag to insert into prompt:</span>
+                          <span className="text-zinc-500 font-mono">Cursor Insertion</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {[
+                            { tag: '@image1', isLoaded: !!omniMultiImages[0], isVid: false },
+                            { tag: '@image2', isLoaded: !!omniMultiImages[1], isVid: false },
+                            { tag: '@image3', isLoaded: !!omniMultiImages[2], isVid: false },
+                            { tag: '@image4', isLoaded: !!omniMultiImages[3], isVid: false },
+                            { tag: '@video1', isLoaded: !!omniMultiVideos[0], isVid: true },
+                            { tag: '@video2', isLoaded: !!omniMultiVideos[1], isVid: true },
+                            { tag: '@video3', isLoaded: !!omniMultiVideos[2], isVid: true },
+                          ].map((chip) => (
+                            <button
+                              key={chip.tag}
+                              type="button"
+                              onClick={() => insertTagAtCursor(chip.tag)}
+                              className={cn(
+                                "px-2 py-0.5 rounded-lg text-[8.5px] font-mono font-bold transition-all cursor-pointer border flex items-center gap-1 active:scale-95 select-none",
+                                chip.isLoaded
+                                  ? (chip.isVid
+                                      ? "bg-cyan-400/15 text-cyan-300 border-cyan-400/40 hover:bg-cyan-400/30 shadow-[0_0_8px_rgba(34,211,238,0.2)] font-black"
+                                      : "bg-[#c8f135]/15 text-[#c8f135] border-[#c8f135]/40 hover:bg-[#c8f135]/30 shadow-[0_0_8px_rgba(200,241,53,0.2)] font-black")
+                                  : "bg-white/[0.02] text-zinc-500 border-white/5 hover:border-white/15 hover:text-zinc-300"
                               )}
-                              <input
-                                type="file"
-                                ref={multiVideoRefs[slotIdx]}
-                                accept="video/mp4,video/webm,video/quicktime"
-                                className="hidden"
-                                onChange={(e) => handleMultiVideoSelect(e, slotIdx)}
-                              />
-                            </div>
-                          );
-                        })}
+                              title={`Click to insert ${chip.tag} into your prompt`}
+                            >
+                              <span>{chip.tag}</span>
+                              {chip.isLoaded && <Check size={9} className="stroke-[3]" />}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
