@@ -56,8 +56,11 @@ export default function createRouter(deps) {
         if (preferredModel && preferredModel.startsWith('gemini')) {
             candidateModels.push(preferredModel);
         }
+        if (!candidateModels.includes('gemini-2.5-pro')) candidateModels.push('gemini-2.5-pro');
         if (!candidateModels.includes('gemini-2.5-flash')) candidateModels.push('gemini-2.5-flash');
         if (!candidateModels.includes('gemini-2.0-flash')) candidateModels.push('gemini-2.0-flash');
+        if (!candidateModels.includes('gemini-2.0-flash-exp')) candidateModels.push('gemini-2.0-flash-exp');
+        if (!candidateModels.includes('gemini-1.5-pro')) candidateModels.push('gemini-1.5-pro');
         if (!candidateModels.includes('gemini-1.5-flash')) candidateModels.push('gemini-1.5-flash');
 
         for (const model of candidateModels) {
@@ -220,9 +223,33 @@ LOCATION ANCHOR: "${location || 'None'}"
 Write the ultimate, high-fidelity prompt for this scenario.`;
 
             let result = null;
+            let usedModel = 'gpt-6-astra';
 
-            // Try Gemini if selected or default
-            if (aiModel.startsWith('gemini') || !process.env.EXPLABS_API_KEY) {
+            // 1. Primary: Try Astra (GPT-6 Astra / OpenAI) for everyone
+            if (process.env.EXPLABS_API_KEY && openaiChat) {
+                try {
+                    const response = await openaiChat([
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userContent }
+                    ], aiModel === 'gpt-4o' ? 'gpt-4o' : 'gpt-6-astra', true);
+
+                    if (response) {
+                        try {
+                            const match = response.match(/\{[\s\S]*\}/);
+                            result = JSON.parse(match ? match[0] : response);
+                            usedModel = 'gpt-6-astra';
+                        } catch (_) {
+                            result = { refinedPrompt: response };
+                            usedModel = 'gpt-6-astra';
+                        }
+                    }
+                } catch (astraErr) {
+                    console.warn('[WRITE-PROMPT] Astra call failed, falling back to Vertex AI / Gemini Latest:', astraErr.message);
+                }
+            }
+
+            // 2. Fallback: Vertex AI Gemini MCP / Latest Gemini 2.5 Models
+            if (!result || !result.refinedPrompt) {
                 let user;
                 try { user = await requireAuth(req); } catch (_) {}
                 const targetUserId = user ? user.id : req.body.userId;
@@ -230,38 +257,52 @@ Write the ultimate, high-fidelity prompt for this scenario.`;
                 const apiKey = (rawApiKey && rawApiKey !== 'VERTEX_AI_CLIENT') ? rawApiKey : (process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
 
                 if (apiKey) {
-                    const geminiRes = await callGeminiWithCascade(aiModel, `${systemPrompt}\n\n${userContent}`, apiKey, true);
+                    const geminiRes = await callGeminiWithCascade('gemini-2.5-flash', `${systemPrompt}\n\n${userContent}`, apiKey, true);
                     if (geminiRes && geminiRes.text) {
                         try {
                             const match = geminiRes.text.match(/\{[\s\S]*\}/);
                             result = JSON.parse(match ? match[0] : geminiRes.text);
+                            usedModel = `Gemini MCP (${geminiRes.model})`;
                         } catch (_) {
                             result = { refinedPrompt: geminiRes.text };
+                            usedModel = `Gemini MCP (${geminiRes.model})`;
                         }
+                    }
+                }
+
+                // If still not resolved, try Vertex AI MCP generate content directly
+                if (!result || !result.refinedPrompt) {
+                    try {
+                        const { vertexMcpGenerateContent } = await import('../services/vertexMcpService.js');
+                        const mcpText = await vertexMcpGenerateContent({
+                            prompt: userContent,
+                            systemInstruction: systemPrompt,
+                            model: 'gemini-2.5-flash',
+                            temperature: 0.7
+                        });
+                        if (mcpText) {
+                            try {
+                                const match = mcpText.match(/\{[\s\S]*\}/);
+                                result = JSON.parse(match ? match[0] : mcpText);
+                                usedModel = 'Vertex AI Gemini MCP (2.5)';
+                            } catch (_) {
+                                result = { refinedPrompt: mcpText };
+                                usedModel = 'Vertex AI Gemini MCP (2.5)';
+                            }
+                        }
+                    } catch (mcpErr) {
+                        console.warn('[WRITE-PROMPT] Vertex MCP fallback failed:', mcpErr.message);
                     }
                 }
             }
 
-            if (!result && process.env.EXPLABS_API_KEY && openaiChat) {
-                const response = await openaiChat([
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userContent }
-                ], aiModel === 'gpt-4o' ? 'gpt-4o' : 'gpt-6-astra', true);
-
-                try {
-                    result = JSON.parse(response);
-                } catch (_) {
-                    result = { refinedPrompt: response };
-                }
-            }
-
-            if (!result) {
+            if (!result || !result.refinedPrompt) {
                 result = { refinedPrompt: prompt || scenario };
             }
 
             res.json({
                 success: true,
-                model: aiModel || 'gemini-2.5-flash',
+                model: usedModel,
                 ...result
             });
         } catch (err) {
@@ -297,10 +338,27 @@ ${location ? `LOCATION DETAILS: ${location}` : ''}
 Generate the complete shooting script now.`;
 
             let script = '';
-            let usedModel = aiModel;
+            let usedModel = aiModel || 'gemini-2.5-flash';
 
-            // Route to Gemini
-            if (aiModel.startsWith('gemini') || !process.env.EXPLABS_API_KEY) {
+            // 1. Primary: Use Vertex AI MCP & Latest Gemini 2.5 Model to write the script
+            try {
+                const { vertexMcpGenerateContent } = await import('../services/vertexMcpService.js');
+                const mcpScript = await vertexMcpGenerateContent({
+                    prompt: userContent,
+                    systemInstruction: systemPrompt,
+                    model: 'gemini-2.5-flash',
+                    temperature: 0.7
+                });
+                if (mcpScript && mcpScript.trim().length > 50) {
+                    script = mcpScript.trim();
+                    usedModel = 'Vertex AI Gemini MCP (2.5)';
+                }
+            } catch (mcpErr) {
+                console.warn('[DIRECTOR-GENERATE-SCRIPT] Vertex MCP script generation fallback to Gemini Cascade:', mcpErr.message);
+            }
+
+            // 2. Fallback: Gemini Cascade (2.5 Pro / 2.5 Flash / 2.0)
+            if (!script) {
                 let user;
                 try { user = await requireAuth(req); } catch (_) {}
                 const targetUserId = user ? user.id : req.body.userId;
@@ -308,25 +366,25 @@ Generate the complete shooting script now.`;
                 const apiKey = (rawApiKey && rawApiKey !== 'VERTEX_AI_CLIENT') ? rawApiKey : (process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
 
                 if (apiKey) {
-                    const geminiRes = await callGeminiWithCascade(aiModel, `${systemPrompt}\n\n${userContent}`, apiKey, false);
+                    const geminiRes = await callGeminiWithCascade('gemini-2.5-flash', `${systemPrompt}\n\n${userContent}`, apiKey, false);
                     if (geminiRes && geminiRes.text) {
                         script = geminiRes.text;
-                        usedModel = geminiRes.model;
+                        usedModel = `Gemini (${geminiRes.model})`;
                     }
                 }
             }
 
-            // Fallback / Route to Astra / OpenAI
+            // 3. Fallback: Astra (ChatGPT 6)
             if (!script && process.env.EXPLABS_API_KEY && openaiChat) {
                 try {
                     const response = await openaiChat([
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userContent }
-                    ], aiModel === 'gpt-4o' ? 'gpt-4o' : 'gpt-6-astra', false);
+                    ], 'gpt-6-astra', false);
                     script = response?.trim() || '';
                     usedModel = 'gpt-6-astra';
                 } catch (e) {
-                    console.warn('[DIRECTOR-GENERATE-SCRIPT] Astra call failed:', e.message);
+                    console.warn('[DIRECTOR-GENERATE-SCRIPT] Astra fallback call failed:', e.message);
                 }
             }
 

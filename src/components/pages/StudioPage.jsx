@@ -829,15 +829,55 @@ export default function StudioPage() {
 
   const canGenerate = userCredits >= requiredCredits;
 
+  // Poll Seedance generation task until completed
+  const pollSeedanceTask = async (taskId, activePrompt, activeRatio, engine, tempId) => {
+    const engineLabel = engine.includes('fast') ? 'Seedance Fast' : engine.includes('mini') ? 'Seedance Mini' : engine.includes('2.5') ? 'Seedance 2.5 Pro' : 'Seedance 2.0 Pro';
+
+    for (let i = 0; i < 120; i++) {
+      await new Promise(r => setTimeout(r, 5000));
+      try {
+        const res = await fetch(getApiUrl(`/api/seedance/status/${taskId}?userId=${userId || ''}&aspectRatio=${activeRatio}&engine=${engine}&projectId=${activeProjectId}`));
+        if (!res.ok) continue;
+        const json = await res.json();
+        const st = json.status;
+
+        if (st === 'completed') {
+          const url = json.url || json.videoUrl || json.video_url || json.resultUrl || json.data?.url;
+          if (url) {
+            setGallery(prev => prev.map(item => item.id === tempId ? {
+              ...item,
+              status: 'completed',
+              url
+            } : item));
+            const showToast = useAppStore.getState().showToast;
+            if (showToast) showToast(`${engineLabel} video rendered!`, 'success');
+            return;
+          }
+        }
+
+        if (st === 'failed' || st === 'error') {
+          throw new Error(json.error || json.message || `${engineLabel} generation failed.`);
+        }
+      } catch (pollErr) {
+        if (pollErr.message && !pollErr.message.includes('fetch')) {
+          throw pollErr;
+        }
+      }
+    }
+    throw new Error(`${engineLabel} generation timed out.`);
+  };
+
   // Handle Generation
   const handleGenerate = async (customPrompt, customEngine, customOptions = {}) => {
     const engineToUse = customEngine || activeEngine;
     const isMotion = panelTab === 'motion' || engineToUse.includes('motion') || engineToUse.includes('kling');
-    const isOmni = !isMotion && (panelTab === 'omni' || panelTab === 'omni-multi' || engineToUse.includes('omni') || engineToUse.includes('flash'));
+    const isSeedance = !isMotion && (panelTab === 'seedance' || panelTab === 'seedance-2.5' || engineToUse.startsWith('seedan') || engineToUse === 'seedace');
+    const isOmni = !isMotion && !isSeedance && (panelTab === 'omni' || panelTab === 'omni-multi' || engineToUse.includes('omni') || engineToUse.includes('flash'));
     const promptToUse = customPrompt || (isMotion ? (promptText || '') : (isOmni ? omniPromptText : promptText));
     const activeDuration = customOptions?.duration !== undefined ? customOptions.duration : duration;
     const activeRatio = customOptions?.aspectRatio !== undefined ? customOptions.aspectRatio : aspectRatio;
     const activeResolution = customOptions?.resolution !== undefined ? customOptions.resolution : (resolution || '720p').toLowerCase();
+    const activeAudio = customOptions?.generateAudio !== undefined ? customOptions.generateAudio : generateAudio;
 
     // Validation
     const showToast = useAppStore.getState().showToast;
@@ -852,6 +892,15 @@ export default function StudioPage() {
       }
       if (!videoUrl) {
         const errMsg = "Please upload or select a Motion Reference Video (3s-30s) for Motion Control.";
+        if (showToast) showToast(errMsg, "error");
+        else alert(errMsg);
+        return;
+      }
+    } else if (isSeedance) {
+      // Seedance allows prompt or reference content
+      const hasContent = promptToUse?.trim() || customOptions?.seedanceContentArray?.length > 0 || customOptions?.firstFrame || firstFrameImage || customOptions?.reference_image_urls?.length > 0;
+      if (!hasContent) {
+        const errMsg = "Please enter prompt text or attach reference assets for Seedance.";
         if (showToast) showToast(errMsg, "error");
         else alert(errMsg);
         return;
@@ -872,11 +921,19 @@ export default function StudioPage() {
         setMobileTab('gallery');
       }
       const tempId = 'gen_' + Date.now();
+      const engineDisplayLabel = isMotion 
+        ? `Kling 3.0 (${motionMode === 'pro' ? 'Pro 1080p' : 'Std 720p'})`
+        : isSeedance 
+        ? (engineToUse.includes('fast') ? 'Seedance Fast' : engineToUse.includes('mini') ? 'Seedance Mini' : engineToUse.includes('2.5') ? 'Seedance 2.5 Pro' : 'Seedance 2.0')
+        : isOmni 
+        ? 'Omni' 
+        : engineToUse;
+
       const newClip = {
         id: tempId,
         type: 'video',
-        prompt: promptToUse || (isMotion ? 'Kling 3.0 Motion Control' : 'Cinematic Video'),
-        engine: isMotion ? `Kling 3.0 (${motionMode === 'pro' ? 'Pro 1080p' : 'Std 720p'})` : (isOmni ? 'Omni' : engineToUse),
+        prompt: promptToUse || (isMotion ? 'Kling 3.0 Motion Control' : isSeedance ? 'Seedance Video' : 'Cinematic Video'),
+        engine: engineDisplayLabel,
         duration: isMotion ? Math.ceil(motionRefVideoDuration || 5) : activeDuration,
         aspectRatio: activeRatio,
         resolution: isMotion ? (motionMode === 'pro' ? '1080p' : '720p') : activeResolution,
@@ -974,15 +1031,128 @@ export default function StudioPage() {
           return;
         }
 
+        if (isSeedance) {
+          const rawStart = customOptions?.firstFrame || firstFrameImage || omniFirstFrameImage;
+          const rawEnd = customOptions?.lastFrame || lastFrameImage || omniLastFrameImage;
+          const [resolvedStart, resolvedEnd] = await Promise.all([
+            rawStart ? resolveBlobToBase64(rawStart) : null,
+            rawEnd ? resolveBlobToBase64(rawEnd) : null
+          ]);
+
+          const rawRefImgs = [
+            ...(customOptions?.reference_image_urls || []),
+            ...(seedanceRefs?.ref_images || []),
+            ...(customOptions?.omniRefImages || omniRefImages || []).filter(Boolean),
+            ...(customOptions?.omniMultiImages || omniMultiImages || []).filter(Boolean)
+          ];
+          const resolvedRefImgs = Array.from(new Set((await Promise.all(rawRefImgs.map(img => resolveBlobToBase64(img)))).filter(Boolean)));
+
+          const rawRefVids = [
+            ...(customOptions?.reference_video_urls || []),
+            ...(seedanceRefs?.ref_videos || []),
+            ...(customOptions?.omniRefVideoPreview ? [customOptions.omniRefVideoPreview] : (omniRefVideoPreview ? [omniRefVideoPreview] : [])),
+            ...(customOptions?.omniMultiVideos || omniMultiVideos || []).map(v => typeof v === 'string' ? v : v?.url).filter(Boolean)
+          ];
+          const resolvedRefVids = Array.from(new Set((await Promise.all(rawRefVids.map(vid => resolveBlobToBase64(vid)))).filter(Boolean)));
+
+          const rawRefAuds = [
+            ...(customOptions?.reference_audio_urls || []),
+            ...(seedanceRefs?.ref_audios || [])
+          ];
+          const resolvedRefAuds = Array.from(new Set((await Promise.all(rawRefAuds.map(aud => resolveBlobToBase64(aud)))).filter(Boolean)));
+
+          let contentArray = customOptions?.seedanceContentArray;
+          if (!contentArray || contentArray.length === 0) {
+            contentArray = [];
+            if (promptToUse?.trim()) {
+              contentArray.push({ type: "text", text: promptToUse.trim() });
+            }
+            if (resolvedStart) {
+              contentArray.push({ type: "image_url", image_url: { url: resolvedStart }, role: "first_frame" });
+            }
+            if (resolvedEnd) {
+              contentArray.push({ type: "image_url", image_url: { url: resolvedEnd }, role: "last_frame" });
+            }
+            resolvedRefImgs.forEach((img) => {
+              contentArray.push({ type: "image_url", image_url: { url: img }, role: "reference_image" });
+            });
+            resolvedRefVids.forEach((vid) => {
+              contentArray.push({ type: "video_url", video_url: { url: vid }, role: "reference_video" });
+            });
+            resolvedRefAuds.forEach((aud) => {
+              contentArray.push({ type: "audio_url", audio_url: { url: aud }, role: "reference_audio" });
+            });
+          }
+
+          const modelParam = (engineToUse === 'seedance-2.5' || panelTab === 'seedance-2.5')
+            ? 'bytedance/seedance-2-5'
+            : engineToUse === 'seedance-fast'
+            ? 'dreamina-seedance-2-0-fast-260128'
+            : engineToUse === 'seedance-mini'
+            ? 'bytedance/seedance-2-mini'
+            : 'dreamina-seedance-2-0-260128';
+
+          const resp = await fetch(getApiUrl('/api/seedance/generate'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              engine: engineToUse,
+              model: modelParam,
+              seedanceContentArray: contentArray,
+              firstFrame: resolvedStart || undefined,
+              lastFrame: resolvedEnd || undefined,
+              reference_image_urls: resolvedRefImgs,
+              reference_video_urls: resolvedRefVids,
+              reference_audio_urls: resolvedRefAuds,
+              duration: activeDuration,
+              aspectRatio: activeRatio,
+              resolution: activeResolution,
+              userId,
+              projectId: activeProjectId,
+              generateAudio: activeAudio,
+              creditReason: 'studio_seedance_generation'
+            })
+          });
+
+          if (!resp.ok) {
+            const errText = await resp.text();
+            let parsedError = `Seedance failed (${resp.status})`;
+            try {
+              const parsed = JSON.parse(errText);
+              if (parsed.error) parsedError = parsed.error;
+            } catch (_) {
+              if (errText && errText.length < 200 && !errText.startsWith('<')) parsedError = errText;
+            }
+            throw new Error(parsedError);
+          }
+
+          const data = await resp.json();
+          const taskId = data.requestId;
+          if (!taskId) throw new Error(data.error || "No task ID returned from Seedance API");
+
+          await pollSeedanceTask(taskId, promptToUse, activeRatio, data.engine || engineToUse, tempId);
+          return;
+        }
+
         let endpoint = getApiUrl('/api/veo-i2v');
         let payload = {};
 
         if (isOmni) {
           endpoint = getApiUrl('/api/omni-i2v');
-          const rawMultiImages = (omniMultiImages || []).filter(Boolean);
-          const rawMultiVideos = (omniMultiVideos || []).filter(Boolean);
-          const resolvedMultiImages = (await Promise.all(rawMultiImages.map(img => resolveBlobToBase64(img)))).filter(Boolean);
-          const resolvedMultiVideos = (await Promise.all(rawMultiVideos.map(v => resolveBlobToBase64(v)))).filter(Boolean);
+          const rawMultiImages = [
+            ...(customOptions?.omniMultiImages || []),
+            ...(customOptions?.reference_image_urls || []),
+            ...(omniMultiImages || [])
+          ].filter(Boolean);
+          const rawMultiVideos = [
+            ...(customOptions?.omniMultiVideos || []),
+            ...(customOptions?.reference_video_urls || []),
+            ...(omniMultiVideos || [])
+          ].map(v => typeof v === 'string' ? v : (v?.url || v?.imageUrl || v?.data)).filter(Boolean);
+
+          const resolvedMultiImages = Array.from(new Set((await Promise.all(rawMultiImages.map(img => resolveBlobToBase64(img)))).filter(Boolean)));
+          const resolvedMultiVideos = Array.from(new Set((await Promise.all(rawMultiVideos.map(v => resolveBlobToBase64(v)))).filter(Boolean)));
+          
           const rawPrimary = panelTab === 'omni-multi' 
             ? (resolvedMultiImages[0] || null)
             : (customOptions?.firstFrame || firstFrameImage || omniFirstFrameImage || resolvedMultiImages[0] || null);
@@ -991,8 +1161,12 @@ export default function StudioPage() {
             : (customOptions?.lastFrame || lastFrameImage || omniLastFrameImage || null);
           const primaryImg = await resolveBlobToBase64(rawPrimary);
           const secondaryImg = await resolveBlobToBase64(rawSecondary);
-          const resolvedOmniRefImages = (await Promise.all((omniRefImages || []).filter(Boolean).map(img => resolveBlobToBase64(img)))).filter(Boolean);
-          const resolvedOmniRefVideo = omniRefVideoPreview ? await resolveBlobToBase64(omniRefVideoPreview) : null;
+          const resolvedOmniRefImages = Array.from(new Set((await Promise.all([
+            ...(customOptions?.omniRefImages || omniRefImages || []),
+            ...resolvedMultiImages
+          ].filter(Boolean).map(img => resolveBlobToBase64(img)))).filter(Boolean)));
+          const refVidRaw = customOptions?.omniRefVideoPreview || omniRefVideoPreview || resolvedMultiVideos[0] || null;
+          const resolvedOmniRefVideo = refVidRaw ? await resolveBlobToBase64(refVidRaw) : null;
 
           let directedPrompt = promptToUse;
           if (primaryImg && secondaryImg) {
@@ -1017,7 +1191,7 @@ export default function StudioPage() {
             duration: activeDuration,
             aspectRatio: activeRatio,
             resolution: activeResolution,
-            generateAudio,
+            generateAudio: activeAudio,
             image: primaryImg,
             firstFrame: primaryImg,
             firstFrameImage: primaryImg,
@@ -1055,7 +1229,7 @@ export default function StudioPage() {
             duration: activeDuration,
             aspectRatio: activeRatio,
             resolution: activeResolution,
-            generateAudio,
+            generateAudio: activeAudio,
             image: primaryImg,
             firstFrame: primaryImg,
             firstFrameImage: primaryImg,
@@ -1112,6 +1286,8 @@ export default function StudioPage() {
           status: 'failed',
           error: err.message
         } : item));
+        const showToast = useAppStore.getState().showToast;
+        if (showToast) showToast(err.message, "error");
       }
     });
   };

@@ -22,9 +22,11 @@ const ENGINES = [
 ];
 
 const IMAGE_ENGINES = [
-  { id: 'nano-banana-2',   label: 'Nano Banana 2',   icon: '🎨', desc: 'Google highest-fidelity photo gen — 1⚡ flat rate', cost: 1 },
-  { id: 'nano-banana-pro', label: 'Nano Banana Pro', icon: '💎', desc: 'Google maximum fidelity image engine — 3⚡ flat rate', cost: 3 },
-  { id: 'gpt-image-2',     label: 'GPT Image Pro',   icon: '🤖', desc: 'OpenAI layout & text design — 1⚡ to 5⚡ variable rate',        cost: 2 },
+  { id: 'gpt-image-2.5-sunburst', label: 'GPT 2.5 Sunburst', icon: '☀️', desc: 'OpenAI 2.5 — Editing precision & highest quality — 2.5⚡', cost: 2.5 },
+  { id: 'gpt-image-2.5-flare',    label: 'GPT 2.5 Flare',    icon: '✨', desc: 'OpenAI 2.5 — Ultra-fast everyday image gen — 1.5⚡',       cost: 1.5 },
+  { id: 'nano-banana-2',          label: 'Nano Banana 2',    icon: '🎨', desc: 'Google highest-fidelity photo gen — 1⚡ flat rate',          cost: 1 },
+  { id: 'nano-banana-pro',        label: 'Nano Banana Pro',  icon: '💎', desc: 'Google maximum fidelity image engine — 3⚡ flat rate',       cost: 3 },
+  { id: 'gpt-image-2',            label: 'GPT Image Pro',    icon: '🤖', desc: 'OpenAI layout & text design — 2⚡ flat rate',                 cost: 2 },
 ];
 
 const DURATION_OPTIONS = [

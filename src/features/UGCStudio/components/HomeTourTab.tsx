@@ -1300,7 +1300,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: imgEngine === 'gpt2' ? 'gpt-image-1' : imgEngine === 'nb2-lite' ? 'nano-banana-2-lite' : imgEngine === 'nb2-open' ? 'nano-banana-2-open' : 'nano-banana-2',
+          model: imgEngine === 'gpt-image-2.5-sunburst' ? 'gpt-image-2.5-sunburst' : imgEngine === 'gpt-image-2.5-flare' ? 'gpt-image-2.5-flare' : imgEngine === 'gpt2' ? 'gpt-image-2' : imgEngine === 'nb2-lite' ? 'nano-banana-2-lite' : imgEngine === 'nb2-open' ? 'nano-banana-2-open' : 'nano-banana-2',
           prompt,
           aspect_ratio: aspectRatio,
           size: '2K',
@@ -2110,10 +2110,12 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                 onChange={e => setImgEngine(e.target.value as any)}
                 className="bg-black/40 border border-[#1e1e24] px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase text-white/80 outline-none cursor-pointer hover:border-white/20 transition-colors"
               >
+                <option value="gpt-image-2.5-sunburst" className="bg-[#0a0a0c]">GPT 2.5 Sunburst (2.5 cr)</option>
+                <option value="gpt-image-2.5-flare" className="bg-[#0a0a0c]">GPT 2.5 Flare (1.5 cr)</option>
                 <option value="nb2" className="bg-[#0a0a0c]">NB2 (1 cr)</option>
                 <option value="nb2-open" className="bg-[#0a0a0c]">NB2 GA (1 cr)</option>
                 <option value="nb2-lite" className="bg-[#0a0a0c]">NB2 Lite (0.5 cr)</option>
-                <option value="gpt2" className="bg-[#0a0a0c]">GT2 (1-3 cr)</option>
+                <option value="gpt2" className="bg-[#0a0a0c]">GPT 2 (2 cr)</option>
               </select>
             </div>
           </div>

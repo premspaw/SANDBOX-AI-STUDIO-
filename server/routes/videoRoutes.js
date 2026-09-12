@@ -181,7 +181,12 @@ export default function createRouter(deps) {
                 frameDirective = `[End Frame: final image at ${validDuration}s]. Conclude smoothly at this final frame. `;
             }
 
-            instance.prompt = frameDirective ? `${frameDirective}${textPrompt}` : textPrompt;
+            let audioDirective = '';
+            if (generateAudio !== false && !textPrompt.includes('[Audio:')) {
+                audioDirective = ` [Audio: Realistic synchronized environmental sound effects, natural foley, and ambient room tones ONLY. Strictly NO background music, NO BGM, NO soundtrack, NO musical instruments, NO melody, NO singing. High-fidelity diegetic sound effects only.]`;
+            }
+
+            instance.prompt = frameDirective ? `${frameDirective}${textPrompt}${audioDirective}` : `${textPrompt}${audioDirective}`;
 
             console.log(`[VEO-I2V] Constructed Instance Keys:`, Object.keys(instance), instance.image ? `| image.mimeType: ${instance.image.mimeType}` : '', instance.lastImage ? `| lastImage.mimeType: ${instance.lastImage.mimeType}` : '');
 

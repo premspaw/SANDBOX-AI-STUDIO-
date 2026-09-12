@@ -64,8 +64,8 @@ export function registerCinemaTools() {
           },
           engine: { 
             type: 'string', 
-            enum: ['nano-banana-2', 'nano-banana-pro', 'nano-banana-2-lite', 'gpt-image-2'],
-            default: 'nano-banana-2' 
+            enum: ['gpt-image-2.5-sunburst', 'gpt-image-2.5-flare', 'nano-banana-2', 'nano-banana-pro', 'nano-banana-2-lite', 'gpt-image-2'],
+            default: 'gpt-image-2.5-sunburst' 
           },
           aspectRatio: { 
             type: 'string', 

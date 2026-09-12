@@ -548,15 +548,18 @@ export default function createRouter(deps) {
 
             // 2. Middle Prompt (Directives and scene motion instructions)
             const secFormatted = validDuration < 10 ? `0${validDuration}` : `${validDuration}`;
+            const sfxDirective = (generateAudio && !compiledPrompt.includes('[Audio:'))
+                ? ' [Audio: Realistic synchronized environmental sound effects, natural foley, and ambient room tones ONLY. Strictly NO background music, NO BGM, NO soundtrack, NO musical instruments, NO melody, NO singing. High-fidelity diegetic sound effects only.]'
+                : '';
             let middlePromptText = '';
             if (primaryImageResolved && endImageResolved) {
-                middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] The video MUST begin at timestamp 00:00 directly with the exact subject, composition, and initial pose shown in <START_FRAME>. Scene motion and action: ${compiledPrompt}. The video MUST transition smoothly and continuously throughout the ${validDuration} seconds so the action finishes seamlessly into <END_FRAME> at 00:${secFormatted}. Generate a single continuous shot with no scene cuts.\n`;
+                middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] The video MUST begin at timestamp 00:00 directly with the exact subject, composition, and initial pose shown in <START_FRAME>. Scene motion and action: ${compiledPrompt}${sfxDirective}. The video MUST transition smoothly and continuously throughout the ${validDuration} seconds so the action finishes seamlessly into <END_FRAME> at 00:${secFormatted}. Generate a single continuous shot with no scene cuts.\n`;
             } else if (primaryImageResolved) {
-                middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] The video MUST begin at timestamp 00:00 directly using the initial frame <START_FRAME>. Scene motion and action: ${compiledPrompt}. Generate a single continuous ${validDuration}-second shot starting from this frame.\n`;
+                middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] The video MUST begin at timestamp 00:00 directly using the initial frame <START_FRAME>. Scene motion and action: ${compiledPrompt}${sfxDirective}. Generate a single continuous ${validDuration}-second shot starting from this frame.\n`;
             } else if (endImageResolved) {
-                middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] Scene motion and action: ${compiledPrompt}. The video MUST conclude at timestamp 00:${secFormatted} directly matching the final composition of <END_FRAME>.\n`;
+                middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] Scene motion and action: ${compiledPrompt}${sfxDirective}. The video MUST conclude at timestamp 00:${secFormatted} directly matching the final composition of <END_FRAME>.\n`;
             } else {
-                middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] ${compiledPrompt}. Generate exactly a ${validDuration}-second continuous video shot, single continuous shot, no scene cuts.\n`;
+                middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] ${compiledPrompt}${sfxDirective}. Generate exactly a ${validDuration}-second continuous video shot, single continuous shot, no scene cuts.\n`;
             }
 
             inputParts.push({

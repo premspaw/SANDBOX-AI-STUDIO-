@@ -25,7 +25,7 @@ import { InpaintEditor } from '../common/InpaintEditor';
 import { compressImageToMax1024 } from '../../services/geminiService';
 import { CinematicLightbox } from './CinematicLightbox';
 import { StoryboardEditor } from './StoryboardEditor';
-import { buildSeedanceContentArray, isVideo, isAudio } from './SeedanceEngine';
+import { buildSeedanceContentArray, isVideo, isAudio, resolveBlobToBase64 } from './SeedanceEngine';
 import { LazyVideo } from './LazyVideo';
 
 /* ─── URL NORMALIZATION & DEDUPLICATION HELPERS ─────────────────── */
@@ -57,22 +57,6 @@ const getNormalizedPath = (url) => {
     return '/' + target;
   }
   return target;
-};
-
-const resolveBlobToBase64 = async (url) => {
-  if (!url || typeof url !== 'string' || !url.startsWith('blob:')) return url;
-  try {
-    const res = await fetch(url);
-    const blob = await res.blob();
-    return await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-  } catch (_) {
-    return null;
-  }
 };
 
 const deduplicateGallery = (items) => {
@@ -166,10 +150,12 @@ const ENGINES = [
 ];
 
 const IMAGE_ENGINES = [
-  { id: 'nano-banana-2-lite', label: 'NB2 Lite', icon: '⚡', desc: 'Google ultra-fast lite engine — 0.5⚡ flat rate', cost: 0.5 },
-  { id: 'nano-banana-2',   label: 'NB2',   icon: '🎨', desc: 'Google highest-fidelity photo gen — 1⚡ flat rate', cost: 1 },
-  { id: 'nano-banana-pro', label: 'NB2 Pro', icon: '💎', desc: 'Google maximum fidelity image engine — 3⚡ flat rate', cost: 3 },
-  { id: 'gpt-image-2',     label: 'GPT Image Pro',   icon: '🤖', desc: 'OpenAI layout & text design — 2⚡ flat rate',                 cost: 2 },
+  { id: 'gpt-image-2.5-sunburst', label: 'GPT 2.5 Sunburst', icon: '☀️', desc: 'OpenAI 2.5 — Editing precision & highest quality — 2.5⚡ flat rate', cost: 2.5 },
+  { id: 'gpt-image-2.5-flare',    label: 'GPT 2.5 Flare',    icon: '✨', desc: 'OpenAI 2.5 — Ultra-fast everyday image gen — 1.5⚡ flat rate',       cost: 1.5 },
+  { id: 'nano-banana-2-lite',     label: 'NB2 Lite',         icon: '⚡', desc: 'Google ultra-fast lite engine — 0.5⚡ flat rate',                    cost: 0.5 },
+  { id: 'nano-banana-2',          label: 'NB2',              icon: '🎨', desc: 'Google highest-fidelity photo gen — 1⚡ flat rate',                  cost: 1 },
+  { id: 'nano-banana-pro',        label: 'NB2 Pro',          icon: '💎', desc: 'Google maximum fidelity image engine — 3⚡ flat rate',               cost: 3 },
+  { id: 'gpt-image-2',            label: 'GPT Image Pro',    icon: '🤖', desc: 'OpenAI layout & text design — 2⚡ flat rate',                         cost: 2 },
 ];
 
 const STYLE_OPTIONS = [
@@ -500,84 +486,75 @@ const cleanErrorMessage = (msg) => {
   return cleaned;
 };
 
-// Fully uncontrolled FastPromptInput — zero React re-renders during typing.
-// Uses defaultValue + DOM ref for instant native browser input, debounces
-// parent state sync, and runs auto-resize via rAF to never block paint.
+// True Zero-Latency Uncontrolled Native Textarea — 0ms typing lag, 0 React re-renders on keystrokes
 const FastPromptInput = React.memo(({
   textareaRef,
   promptText,
   handleTextChange,
   canGenerate,
   handleGenerate,
-  activeTab,
-  isBusy
+  activeTab
 }) => {
-  const debounceTimerRef = React.useRef(null);
-  const lastSyncedRef = React.useRef(promptText || '');
-
-  // Auto-resize: runs off the critical paint path via rAF
-  const scheduleResize = React.useCallback(() => {
+  // Auto-resize textarea height smoothly via requestAnimationFrame to avoid synchronous layout reflow
+  const adjustHeight = React.useCallback(() => {
+    const tx = textareaRef?.current;
+    if (!tx) return;
     requestAnimationFrame(() => {
-      const tx = textareaRef?.current;
       if (!tx) return;
       tx.style.height = 'auto';
-      tx.style.height = `${Math.min(tx.scrollHeight, 180)}px`;
+      const targetHeight = Math.min(Math.max(tx.scrollHeight, 38), 180);
+      tx.style.height = `${targetHeight}px`;
     });
   }, [textareaRef]);
 
-  // Sync from parent ONLY when it genuinely changes externally
-  // (e.g. pill click, recipe insert, clear button) — never during typing
-  React.useEffect(() => {
+  // Keep DOM value in sync with external promptText updates (presets, suggestions, recipes, clear)
+  // ONLY when user is not actively typing in the textarea
+  useEffect(() => {
     const tx = textareaRef?.current;
     if (!tx) return;
-    if (promptText !== undefined && promptText !== lastSyncedRef.current) {
-      lastSyncedRef.current = promptText;
-      tx.value = promptText;  // Direct DOM write — no React re-render
-      scheduleResize();
+    if (tx.value !== (promptText || '') && document.activeElement !== tx) {
+      tx.value = promptText || '';
+      adjustHeight();
     }
-  }, [promptText, textareaRef, scheduleResize]);
+  }, [promptText, textareaRef, adjustHeight]);
 
-  const handleChange = React.useCallback((e) => {
-    const value = e.target.value;
-    const selectionStart = e.target.selectionStart;
-    lastSyncedRef.current = value;
+  // Initial height adjust on mount
+  useEffect(() => {
+    adjustHeight();
+  }, [adjustHeight]);
 
-    // Resize off the paint path
-    scheduleResize();
+  const handleInput = (e) => {
+    adjustHeight();
+    handleTextChange(e, false);
+  };
 
-    // Debounce heavy parent update (mention detection, setPromptText, etc.)
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    debounceTimerRef.current = setTimeout(() => {
-      React.startTransition(() => {
-        handleTextChange({ target: { value, selectionStart } });
-      });
-    }, 300);
-  }, [handleTextChange, scheduleResize]);
+  const handleBlur = (e) => {
+    handleTextChange(e, true);
+  };
 
-  const handleKeyDown = React.useCallback((e) => {
+  const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      const val = textareaRef?.current?.value ?? lastSyncedRef.current;
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      // Flush prompt immediately on Enter before generating
-      handleTextChange({ target: { value: val, selectionStart: val.length } });
-      if (canGenerate) handleGenerate(val);
+      const val = (textareaRef?.current?.value || '').trim();
+      if (canGenerate || val) {
+        handleGenerate(val);
+      }
     }
-  }, [handleTextChange, handleGenerate, canGenerate, textareaRef]);
+  };
 
   return (
     <textarea
       ref={textareaRef}
       defaultValue={promptText || ''}
-      onChange={handleChange}
+      onInput={handleInput}
+      onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       placeholder={activeTab === 'image'
         ? "Describe your premium image masterwork - subject, lighting, style preset... Type @ to tag reference elements."
         : "Describe your cinematic video scenario - camera movements, lighting, mood... Type @ to tag reference elements."
       }
-      rows={1}
-      disabled={isBusy}
-      className="w-full bg-transparent text-xs text-white placeholder-white/20 outline-none resize-none font-medium leading-relaxed custom-scrollbar py-2 min-h-[36px]"
+      rows={2}
+      className="w-full bg-transparent text-xs text-white placeholder-white/20 outline-none resize-none font-medium leading-relaxed custom-scrollbar py-2 min-h-[38px] max-h-[180px]"
     />
   );
 });
@@ -615,6 +592,16 @@ export default function CinematicStudio() {
   const [omniRefVideoPreview, setOmniRefVideoPreview] = useState('');
   const [omniRefVideoDuration, setOmniRefVideoDuration] = useState(0);
 
+  // Kling 3.0 Motion Control Conditioning States
+  const [motionSubjectImage, setMotionSubjectImage] = useState('');
+  const [motionSubjectPreview, setMotionSubjectPreview] = useState('');
+  const [motionRefVideo, setMotionRefVideo] = useState('');
+  const [motionRefVideoPreview, setMotionRefVideoPreview] = useState('');
+  const [motionRefVideoDuration, setMotionRefVideoDuration] = useState(5);
+  const [motionMode, setMotionMode] = useState('720p');
+  const [characterOrientation, setCharacterOrientation] = useState('video');
+  const [backgroundSource, setBackgroundSource] = useState('input_video');
+
   const [uploadTarget, setUploadTargetState] = useState('first'); // 'first' | 'last'
   const uploadTargetRef = useRef('first');
   const setUploadTarget = useCallback((t) => {
@@ -644,6 +631,7 @@ export default function CinematicStudio() {
   const isConsumerCam = ['iphone', 'gopro', 'vhs', 'disposable'].includes(camera);
   const [showAnglesModal, setShowAnglesModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
@@ -656,7 +644,7 @@ export default function CinematicStudio() {
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [panelTab, setPanelTab] = useState('veo'); // 'veo' | 'omni'
 
-  const isSeed = useMemo(() => activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini', [activeEngine]);
+  const isSeed = useMemo(() => activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini' || activeEngine === 'seedance-2.5', [activeEngine]);
   const isOmni = useMemo(() => activeEngine === 'omni' || activeEngine === 'omni-flash', [activeEngine]);
   const isExtendedRefBoard = useMemo(() => isSeed || isOmni, [isSeed, isOmni]);
 
@@ -706,7 +694,7 @@ export default function CinematicStudio() {
 
   // Adjust resolution & duration options dynamically for Seedance, Veo 3.1 & Omni engines
   useEffect(() => {
-    const isSeed = activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini';
+    const isSeed = activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini' || activeEngine === 'seedance-2.5';
     const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview';
     const isVeo3 = activeEngine.startsWith('veo-3.1');
     
@@ -727,22 +715,41 @@ export default function CinematicStudio() {
         else setDuration(8);
       }
     } else if (isSeed) {
-      if (activeEngine === 'seedace') {
+      if (activeEngine === 'seedance-2.5') {
+        if (resolution !== '480p' && resolution !== '720p' && resolution !== '1080p') {
+          setResolution('720p');
+        }
+        if (![10, 15, 20, 25, 30].includes(duration)) {
+          if (duration <= 10) setDuration(10);
+          else if (duration <= 15) setDuration(15);
+          else if (duration <= 20) setDuration(20);
+          else if (duration <= 25) setDuration(25);
+          else setDuration(30);
+        }
+      } else if (activeEngine === 'seedace') {
         if (resolution !== '720p' && resolution !== '1080p') {
           setResolution('720p');
+        }
+        if (![3, 4, 5, 6, 10, 15].includes(duration)) {
+          if (duration <= 3) setDuration(3);
+          else if (duration <= 4) setDuration(4);
+          else if (duration <= 5) setDuration(5);
+          else if (duration <= 7) setDuration(6);
+          else if (duration <= 12) setDuration(10);
+          else setDuration(15);
         }
       } else if (activeEngine === 'seedance-fast' || activeEngine === 'seedance-mini') {
         if (resolution !== '480p' && resolution !== '720p') {
           setResolution('720p');
         }
-      }
-      if (![3, 4, 5, 6, 10, 15].includes(duration)) {
-        if (duration <= 3) setDuration(3);
-        else if (duration <= 4) setDuration(4);
-        else if (duration <= 5) setDuration(5);
-        else if (duration <= 7) setDuration(6);
-        else if (duration <= 12) setDuration(10);
-        else setDuration(15);
+        if (![3, 4, 5, 6, 10, 15].includes(duration)) {
+          if (duration <= 3) setDuration(3);
+          else if (duration <= 4) setDuration(4);
+          else if (duration <= 5) setDuration(5);
+          else if (duration <= 7) setDuration(6);
+          else if (duration <= 12) setDuration(10);
+          else setDuration(15);
+        }
       }
     } else {
       if (![5, 8, 10].includes(duration)) {
@@ -1024,9 +1031,25 @@ DO NOT add new objects or change the scene. Enhance only.
     setPollMsg('Drafting 9-Angle Grid...');
     setErrorMsg('');
 
+    // Instant optimistic gallery placeholder (0ms feedback!)
+    const tempId = `temp-angles-${Date.now()}`;
+    const tempItem = {
+      id: tempId,
+      type: 'image',
+      loading: true,
+      prompt: `9-Angles Contact Sheet: ${item.prompt ? item.prompt.split('.')[0] : 'Subject'}`,
+      engine: `${item.engine || 'Nano Banana 2'} (Grid)`,
+      aspect: item.aspect || "16:9",
+      ts: Date.now(),
+      isGrid: true,
+      projectId: activeProjectId
+    };
+    setGallery(prev => [tempItem, ...prev]);
+
     try {
       const spendResult = await spendShorts(userId, 5, 'image_grid_multishot');
       if (!spendResult.success) {
+        setGallery(prev => prev.filter(i => i.id !== tempId));
         if (spendResult.reason === 'unauthenticated') {
           useAppStore.getState().setShowingAuthModal(true);
         } else if (spendResult.reason === 'insufficient_funds' || userCredits < 5) {
@@ -1039,7 +1062,7 @@ DO NOT add new objects or change the scene. Enhance only.
         return;
       }
 
-      if (showToast) showToast("Drafting 3x3 multi-angle grid using Nano Banana...", "info");
+      if (showToast) showToast("Drafting 3x3 multi-angle grid...", "info");
 
       const anglesPrompt = `### 9-FRAME CINEMATIC GRID DIRECTIVE
 Create a tight 3x3 contact sheet containing 9 high-end cinematic photographs. 
@@ -1088,14 +1111,14 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           type: 'image',
           url: data.url,
           prompt: `Multi-Angle 3x3 Grid: ${item.prompt ? item.prompt.split('.')[0] : 'Subject'}`,
-          engine: `${item.engine} (Grid)`,
+          engine: `${item.engine || 'Nano Banana 2'} (Grid)`,
           aspect: item.aspect || "16:9",
           ts: Date.now(),
           isGrid: true,
           projectId: activeProjectId
         };
 
-        setGallery(prev => [newItem, ...prev]);
+        setGallery(prev => [newItem, ...prev.filter(i => i.id !== tempId)]);
         setLightboxItem(newItem); // Open lightbox on the new grid
         if (showToast) showToast("3x3 multi-angle grid generated successfully!", "success");
       } else {
@@ -1103,6 +1126,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       }
     } catch (err) {
       console.error("[Angles Grid Error]:", err);
+      setGallery(prev => prev.filter(i => i.id !== tempId));
       if (showToast) showToast(`Angles generation failed: ${err.message}`, "error");
     } finally {
       setStatus('idle');
@@ -1201,7 +1225,32 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     setStagedRefBoard(videoRefBoard);
   }, [videoRefBoard]);
 
-  // Flat list of all refBoard items for @mention autocomplete (memoized to avoid re-running Map loops on every keystroke)
+  // Seedance-specific reference media (separate from @mention system)
+  const seedanceRefs = useMemo(() => {
+    const images = (refBoard.ref_images || []).concat(stagedRefBoard.ref_images || []);
+    const videos = (refBoard.ref_videos || []).concat(stagedRefBoard.ref_videos || []);
+    const audios = (refBoard.ref_audios || []).concat(stagedRefBoard.ref_audios || []);
+    return {
+      ref_images: images,
+      ref_videos: videos,
+      ref_audios: audios,
+    };
+  }, [refBoard, stagedRefBoard]);
+
+  // Active Reference Board items count (strictly references staged on the board, excluding autocomplete history items)
+  const refBoardItems = useMemo(() => {
+    const chars = refBoard.characters || [];
+    const locs = refBoard.locations || [];
+    const wards = refBoard.wardrobes || [];
+    const props = refBoard.props || [];
+    const moods = refBoard.moods || [];
+    const imgs = refBoard.ref_images || [];
+    const vids = refBoard.ref_videos || [];
+    const auds = refBoard.ref_audios || [];
+    return [...chars, ...locs, ...wards, ...props, ...moods, ...imgs, ...vids, ...auds];
+  }, [refBoard]);
+
+  // Flat list of all refBoard items, Seedance slots, and recent History assets for @mention autocomplete
   const allRefItems = useMemo(() => {
     const IdMap = window.Map;
     const mergedBoard = {
@@ -1214,7 +1263,33 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       ref_videos: [...new IdMap([...(refBoard.ref_videos || []), ...(stagedRefBoard.ref_videos || [])].map(i => [i.id, i])).values()],
       ref_audios: [...new IdMap([...(refBoard.ref_audios || []), ...(stagedRefBoard.ref_audios || [])].map(i => [i.id, i])).values()],
     };
+
+    const seedanceSlots = [
+      ...(firstFramePreview ? [{ id: 'slot_first_frame', name: 'first_frame', category: 'Start Frame', imageUrl: firstFramePreview, isKeyframe: true }] : []),
+      ...(lastFramePreview ? [{ id: 'slot_last_frame', name: 'last_frame', category: 'End Frame', imageUrl: lastFramePreview, isKeyframe: true }] : []),
+      ...(seedanceRefs.ref_images || []).map((img, idx) => img ? { id: `slot_img_${idx}`, name: `image${idx + 1}`, category: `Image ${idx + 1}`, imageUrl: img } : null).filter(Boolean),
+      ...(seedanceRefs.ref_videos || []).map((vid, idx) => vid ? { id: `slot_vid_${idx}`, name: `video${idx + 1}`, category: `Video ${idx + 1}`, isVideo: true, imageUrl: vid } : null).filter(Boolean),
+      ...(seedanceRefs.ref_audios || []).map((aud, idx) => aud ? { id: `slot_aud_${idx}`, name: `audio${idx + 1}`, category: `Audio ${idx + 1}`, isAudio: true, imageUrl: aud } : null).filter(Boolean),
+    ];
+
+    const historyItems = (gallery || [])
+      .filter(item => !item.loading && item.url)
+      .slice(0, 20)
+      .map((item, idx) => {
+        const cleanPrompt = item.prompt ? item.prompt.slice(0, 24).replace(/[^\w]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '') : `history_${idx + 1}`;
+        return {
+          id: item.id || `hist_${idx}`,
+          name: cleanPrompt || `history_${idx + 1}`,
+          category: item.type === 'video' ? 'History Video' : 'History Image',
+          imageUrl: item.url,
+          url: item.url,
+          isVideo: item.type === 'video',
+          isHistory: true
+        };
+      });
+
     return [
+      ...seedanceSlots,
       ...mergedBoard.characters.map(i => ({ ...i, category: 'character', prefix: 'char' })),
       ...mergedBoard.locations.map(i => ({ ...i, category: 'location', prefix: 'loc' })),
       ...mergedBoard.wardrobes.map(i => ({ ...i, category: 'wardrobe', prefix: 'ward' })),
@@ -1223,20 +1298,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       ...(mergedBoard.ref_images || []).map((i, idx) => ({ ...i, name: i.name || `img${idx + 1}`, category: 'ref_images', prefix: 'img' })),
       ...(mergedBoard.ref_videos || []).map((i, idx) => ({ ...i, name: i.name || `vid${idx + 1}`, category: 'ref_videos', prefix: 'vid' })),
       ...(mergedBoard.ref_audios || []).map((i, idx) => ({ ...i, name: i.name || `aud${idx + 1}`, category: 'ref_audios', prefix: 'aud' })),
+      ...historyItems
     ];
-  }, [refBoard, stagedRefBoard]);
-
-  // Seedance-specific reference media (separate from @mention system)
-  const seedanceRefs = useMemo(() => {
-    const images = (refBoard.ref_images || []).concat(stagedRefBoard.ref_images || []);
-    const videos = (refBoard.ref_videos || []).concat(stagedRefBoard.ref_videos || []);
-    const audios = (refBoard.ref_audios || []).concat(stagedRefBoard.ref_audios || []);
-    return {
-      ref_images: images,
-      ref_videos: videos,
-      ref_audios: audios,
-    };
-  }, [refBoard, stagedRefBoard]);
+  }, [refBoard, stagedRefBoard, firstFramePreview, lastFramePreview, seedanceRefs, gallery]);
 
   const addRefItem = (item) => {
     const categoryKey = item.category.endsWith('s') ? item.category : item.category + 's'
@@ -1277,49 +1341,116 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   }
 
   const getTaggedRefItems = (text) => {
-    const mentions = ((text || '').match(/@(\w+)/g) || []).map(m => m.slice(1).toLowerCase())
-    return allRefItems.filter(item => mentions.some(m => item.name?.toLowerCase().replace(/\s+/g, '') === m || item.name?.toLowerCase().includes(m)))
-  }
+    if (!text) return [];
+    const mentions = ((text || '').match(/@([\w]+)/g) || []).map(m => m.slice(1).toLowerCase());
+    if (mentions.length === 0) return [];
+    
+    // Strict exact tag matching & deduplication — prevents random false positives and duplicate badges
+    const seen = new Set();
+    const result = [];
+    
+    for (const item of allRefItems) {
+      if (!item) continue;
+      const key = item.id || item.imageUrl || item.url;
+      if (key && seen.has(key)) continue;
+
+      const rawName = (item.name || '').toLowerCase();
+      const cleanUnderscore = rawName.replace(/[\s-]+/g, '_');
+      const cleanNoSpace = rawName.replace(/[\s_-]+/g, '');
+
+      const isExactMatch = mentions.some(m => m === cleanUnderscore || m === cleanNoSpace || (item.prefix && m === `${item.prefix}_${cleanNoSpace}`));
+      if (isExactMatch) {
+        if (key) seen.add(key);
+        result.push(item);
+      }
+    }
+    return result;
+  };
+
+  const promptDebounceRef = useRef(null);
 
   const handleRemoveTag = (item) => {
-    const mentionName = item.name.replace(/\s+/g, '')
-    const regex = new RegExp(`@${mentionName}\\s*`, 'gi')
-    setPromptText(prev => prev.replace(regex, ''))
-  }
-
-  const handleTextChange = useCallback((e) => {
-    const val = e.target?.value ?? '';
-    const isOmniEngine = panelTab === 'omni' || activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview';
-    if (isOmniEngine) {
-      setOmniPromptText(val);
-    } else {
-      setPromptText(val);
+    const rawName = item.name || '';
+    const cleanUnderscore = rawName.replace(/[\s-]+/g, '_');
+    const cleanNoSpace = rawName.replace(/[\s_-]+/g, '');
+    const regex = new RegExp(`@(${cleanUnderscore}|${cleanNoSpace})\\s*`, 'gi');
+    if (textareaRef.current) {
+      textareaRef.current.value = textareaRef.current.value.replace(regex, '');
     }
-    if (activeEngine === 'kling/v3-turbo-image-to-video') {
-      setMentionSearch(null);
+    setPromptText(prev => prev.replace(regex, ''));
+    setOmniPromptText(prev => prev.replace(regex, ''));
+  };
+
+  const activeEngineRef = useRef(activeEngine);
+  useEffect(() => { activeEngineRef.current = activeEngine; }, [activeEngine]);
+
+  const handleTextChange = useCallback((e, immediate = false) => {
+    const val = e.target?.value ?? '';
+    const cursor = e.target?.selectionStart || 0;
+
+    // Fast inline mention detection
+    if (activeEngineRef.current === 'kling/v3-turbo-image-to-video') {
+      setMentionSearch(prev => (prev !== null ? null : prev));
+    } else {
+      const match = val.slice(0, cursor).match(/@([\w_<>]*)$/);
+      if (match) {
+        setMentionSearch(match[1].toLowerCase());
+        setMentionCursorPos(cursor);
+        setMentionField('promptText');
+      } else {
+        setMentionSearch(prev => (prev !== null ? null : prev));
+      }
+    }
+
+    if (promptDebounceRef.current) clearTimeout(promptDebounceRef.current);
+
+    if (immediate) {
+      React.startTransition(() => {
+        setPromptText(val);
+        setOmniPromptText(val);
+      });
       return;
     }
-    const cursor = e.target.selectionStart || 0;
-    const match = val.slice(0, cursor).match(/@(\w*)$/);
-    if (match) {
-      setMentionSearch(match[1].toLowerCase());
-      setMentionCursorPos(cursor);
-      setMentionField('promptText');
-    } else {
-      setMentionSearch(null);
-    }
-  }, [panelTab, activeEngine]);
+
+    // Debounce parent studio state updates by 800ms with startTransition (zero typing lag)
+    promptDebounceRef.current = setTimeout(() => {
+      React.startTransition(() => {
+        setPromptText(val);
+        setOmniPromptText(val);
+      });
+    }, 800);
+  }, []);
 
   const selectMention = (item) => {
-    const text = promptText || ''
-    const before = text.slice(0, mentionCursorPos).replace(/@\w*$/, '')
-    const after = text.slice(mentionCursorPos)
-    const mentionName = item.name.replace(/\s+/g, '')
-    const newText = `${before}@${mentionName} ${after}`
-    setPromptText(newText)
-    setMentionSearch(null)
-    if (textareaRef.current) textareaRef.current.focus()
-  }
+    const tx = textareaRef.current;
+    const text = tx ? tx.value : (promptText || '');
+    const cursor = mentionCursorPos || (tx ? tx.selectionStart : text.length);
+    const before = text.slice(0, cursor).replace(/@[\w_<>]*$/, '');
+    const after = text.slice(cursor);
+    const cleanName = (item.name || '').startsWith('@') ? item.name.slice(1) : (item.name || '');
+    const mentionName = cleanName.replace(/\s+/g, '_');
+    const tagText = `@${mentionName} `;
+    const newText = `${before}${tagText}${after}`;
+    const nextCursor = before.length + tagText.length;
+    const savedScrollTop = tx ? tx.scrollTop : 0;
+
+    if (tx) {
+      tx.value = newText;
+    }
+    if (promptDebounceRef.current) clearTimeout(promptDebounceRef.current);
+    setPromptText(newText);
+    setOmniPromptText(newText);
+    setMentionSearch(null);
+
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        textareaRef.current.value = newText;
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(nextCursor, nextCursor);
+        textareaRef.current.scrollTop = savedScrollTop;
+      }
+    });
+  };
 
   const compressImage = (file, maxWidth = 1024, maxHeight = 1024, quality = 0.8) => {
     return new Promise((resolve) => {
@@ -1632,6 +1763,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     }
     if (engineId === 'seedance-fast') {
       return (resolution === '480p' ? 7 : 12) * duration; // halved from 15 : 25
+    }
+    if (engineId === 'seedance-2.5') {
+      const costPerSec = resolution === '1080p' ? 70 : resolution === '720p' ? 30 : 15;
+      return costPerSec * duration;
     }
     if (engineId === 'seedace') {
       const costPerSec = resolution === '1080p' ? 35 : 15;
@@ -2029,7 +2164,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   const getCompiledPrompt = () => {
     const isOmniEngine = activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview';
-    let basePrompt = isOmniEngine ? omniPromptText.trim() : promptText.trim();
+    const domVal = textareaRef?.current?.value;
+    let basePrompt = (domVal !== undefined && domVal !== '') ? domVal.trim() : (isOmniEngine ? omniPromptText.trim() : promptText.trim());
     const firstPreview = isOmniEngine ? omniFirstFramePreview : firstFramePreview;
     
     if (!useCameraSettings) {
@@ -2108,6 +2244,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       } else if (secondaryImg) {
         compiledPrompt = `${compiledPrompt}. Animation Flow: Animate the camera and scene naturally to terminate exactly on the composition and framing of the last frame image.`;
       }
+
+      if (generateAudio) {
+        compiledPrompt = `${compiledPrompt}. Audio: Realistic synchronized environmental sound effects, natural foley, and ambient room tone ONLY. Strictly NO background music, NO BGM, NO soundtrack, NO musical instruments, NO melody, NO singing. High-fidelity diegetic sound effects only.`;
+      }
     }
 
     // Append Style Preset (for image)
@@ -2157,31 +2297,27 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   };
 
   const getCompiledPayload = () => {
-    const basePrompt = promptText.trim();
+    const domVal = textareaRef?.current?.value;
+    const basePrompt = (domVal !== undefined && domVal !== '') ? domVal.trim() : promptText.trim();
     const activeRatio = aspectRatio;
     const taggedItems = getTaggedRefItems(basePrompt);
     const compiled = getCompiledPrompt();
     const resVal = resolution === '480p' ? 'SD' : resolution === '720p' ? '1K' : resolution === '1080p' ? '2K' : '4K';
 
     if (activeTab === 'image') {
+      const isGptModel = activeEngine.startsWith('gpt-image') || activeEngine.includes('sunburst') || activeEngine.includes('flare');
       let finalSize = '1024x1024';
-      if (activeRatio === '16:9') finalSize = '1792x1024';
-      else if (activeRatio === '9:16') finalSize = '1024x1792';
+      if (activeRatio === '16:9') finalSize = isGptModel ? '1536x1024' : '1792x1024';
+      else if (activeRatio === '9:16') finalSize = isGptModel ? '1024x1536' : '1024x1792';
 
       const reqRefImages = [];
       if (firstFrameImage) {
         reqRefImages.push(firstFrameImage);
       }
-      // [DISABLED] Auto-include staged/saved Mood/Style reference image from the Reference Board if present
-      /*
-      const moodItem = mergedBoard.moods?.[0];
-      if (moodItem?.imageUrl && !reqRefImages.includes(moodItem.imageUrl)) {
-        reqRefImages.push(moodItem.imageUrl);
-      }
-      */
       taggedItems.forEach(item => {
-        if (item.imageUrl && !reqRefImages.includes(item.imageUrl)) {
-          reqRefImages.push(item.imageUrl);
+        const url = item.imageUrl || item.url || item.data;
+        if (url && !reqRefImages.includes(url)) {
+          reqRefImages.push(url);
         }
       });
 
@@ -2190,52 +2326,102 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         prompt: compiled,
         size: finalSize,
         aspectRatio: activeRatio,
-        imageSize: '1K',
-        resolution: '1K',
+        imageSize: resVal,
+        resolution: resVal,
         userId,
         referenceImages: reqRefImages
       };
     } else {
+      if (activeEngine === 'kling-motion') {
+        const subImg = motionSubjectImage || motionSubjectPreview || firstFrameImage;
+        const refVid = motionRefVideo || motionRefVideoPreview || omniRefVideoPreview;
+        return {
+          model: 'kling-3.0/motion-control',
+          prompt: compiled || "No distortion, the character's movements are consistent with the video.",
+          input_urls: subImg ? [subImg] : [],
+          video_urls: refVid ? [refVid] : [],
+          mode: motionMode || '720p',
+          character_orientation: characterOrientation || 'video',
+          duration: motionRefVideoDuration || duration || 5,
+          aspectRatio: activeRatio,
+          userId
+        };
+      }
+
+      if (activeEngine === 'kling/v3-turbo-image-to-video') {
+        return {
+          model: 'kling/v3-turbo-image-to-video',
+          prompt: compiled,
+          firstFrame: firstFrameImage || omniFirstFrameImage || undefined,
+          lastFrame: lastFrameImage || omniLastFrameImage || undefined,
+          duration,
+          resolution,
+          userId
+        };
+      }
+
+      if (activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini' || activeEngine === 'seedance-2.5') {
+        const modelId = activeEngine === 'seedance-2.5'
+          ? 'bytedance/seedance-2-5'
+          : activeEngine === 'seedance-fast'
+          ? 'bytedance/seedance-2-fast'
+          : activeEngine === 'seedance-mini'
+          ? 'bytedance/seedance-2-mini'
+          : 'bytedance/seedance-2';
+
+        const rawRefImgs = [
+          ...(seedanceRefs?.ref_images || []),
+          ...(omniRefImages || []).filter(Boolean),
+          ...taggedItems.filter(item => !isVideo(item) && !isAudio(item)).map(item => item.imageUrl || item.url || item.data)
+        ];
+        const rawRefVids = [
+          ...(seedanceRefs?.ref_videos || []),
+          ...(omniRefVideoPreview ? [omniRefVideoPreview] : []),
+          ...taggedItems.filter(item => isVideo(item)).map(item => item.imageUrl || item.url || item.data)
+        ];
+        const rawRefAuds = [
+          ...(seedanceRefs?.ref_audios || []),
+          ...taggedItems.filter(item => isAudio(item)).map(item => item.imageUrl || item.url || item.data)
+        ];
+
+        const seedanceContentArray = buildSeedanceContentArray(
+          compiled,
+          taggedItems,
+          firstFrameImage || omniFirstFrameImage,
+          lastFrameImage || omniLastFrameImage,
+          { ref_images: rawRefImgs, ref_videos: rawRefVids, ref_audios: rawRefAuds }
+        );
+
+        return {
+          engine: activeEngine,
+          model: modelId,
+          seedanceContentArray,
+          firstFrame: firstFrameImage || omniFirstFrameImage || undefined,
+          lastFrame: lastFrameImage || omniLastFrameImage || undefined,
+          reference_image_urls: rawRefImgs,
+          reference_video_urls: rawRefVids,
+          reference_audio_urls: rawRefAuds,
+          duration,
+          aspectRatio: activeRatio,
+          resolution,
+          userId,
+          generateAudio
+        };
+      }
+
       let targetModel = activeEngine;
       if (activeEngine === 'omni') targetModel = 'gemini-omni-preview';
       else if (activeEngine === 'omni-flash') targetModel = 'gemini-omni-flash-preview';
+      else if (activeEngine === 'omni-flash-1.1' || activeEngine === 'gemini-omni-1.1-flash-preview') targetModel = 'gemini-omni-1.1-flash-preview';
 
       const identity_images = taggedItems.map(item => item.imageUrl).filter(Boolean);
       const identity_gcs_uris = taggedItems.map(item => ({ name: item.name, uri: item.imageUrl }));
 
-      if (activeEngine === 'seedance-fast' || activeEngine === 'seedace') {
-        const seedanceContentArray = buildSeedanceContentArray(compiled, taggedItems, firstFrameImage, lastFrameImage, seedanceRefs);
-        return {
-          engine: activeEngine,
-          model: activeEngine === 'seedance-fast' ? 'dreamina-seedance-2-0-fast-260128' : 'dreamina-seedance-2-0-260128',
-          seedanceContentArray,
-          duration,
-          aspectRatio: activeRatio,
-          resolution,
-          userId,
-          generateAudio
-        };
-      }
-
-      if (activeEngine === 'seedance-mini') {
-        const seedanceContentArray = buildSeedanceContentArray(compiled, taggedItems, firstFrameImage, lastFrameImage, seedanceRefs);
-        return {
-          engine: activeEngine,
-          model: 'bytedance/seedance-2-mini',
-          seedanceContentArray,
-          duration,
-          aspectRatio: activeRatio,
-          resolution,
-          userId,
-          generateAudio
-        };
-      }
-
       return {
-        image: firstFrameImage || undefined,
-        firstFrameImage: firstFrameImage || undefined,
-        lastFrameImage: lastFrameImage || undefined,
-        imageEnd: lastFrameImage || undefined,
+        image: firstFrameImage || omniFirstFrameImage || undefined,
+        firstFrameImage: firstFrameImage || omniFirstFrameImage || undefined,
+        lastFrameImage: lastFrameImage || omniLastFrameImage || undefined,
+        imageEnd: lastFrameImage || omniLastFrameImage || undefined,
         motionPrompt: compiled,
         duration,
         aspectRatio: activeRatio,
@@ -2272,6 +2458,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   /* ─── GENERATE ───────────────────────────────────────────── */
   const handleGenerate = async (overridePrompt, overrideEngine, overrideOptions = {}) => {
+    if (isSubmittingRef.current) return;
     if (isMaxConcurrentReached) {
       const showToast = useAppStore.getState().showToast;
       const msg = `Maximum concurrent job limit reached (${maxConcurrent} active). Please wait for a video to complete.`;
@@ -2279,8 +2466,6 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       else alert(msg);
       return;
     }
-    setIsSubmitting(true);
-    setTimeout(() => setIsSubmitting(false), 800);
 
     // Use override engine if provided (avoids React batching race from SidePanel)
     const resolvedEngine = overrideEngine || activeEngine;
@@ -2307,14 +2492,19 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       return;
     }
 
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
     setStatus('generating');
     setErrorMsg('');
     setPollMsg('');
 
-    // Use overridePrompt from SidePanel if provided to bypass stale state reads
+    // Use overridePrompt from SidePanel or DOM textarea if provided to bypass stale debounced state reads
+    const domVal = textareaRef?.current?.value;
     const basePrompt = overridePrompt
       ? overridePrompt.trim()
-      : (resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview') ? omniPromptText.trim() : promptText.trim();
+      : (domVal !== undefined && domVal !== '')
+        ? domVal.trim()
+        : ((resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview') ? omniPromptText.trim() : promptText.trim());
     const activeRatio = overrideOptions?.aspectRatio !== undefined ? overrideOptions.aspectRatio : aspectRatio;
 
     // Identify all active reference tags using getTaggedRefItems
@@ -2324,415 +2514,519 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     const identity_images = taggedItems.map(item => item.imageUrl).filter(Boolean);
     const identity_gcs_uris = taggedItems.map(item => ({ name: item.name, uri: item.imageUrl }));
 
-    // Deduct credits for each variation separately to prevent double-charging and match backend verification
+    // Instant optimistic gallery placeholder update (0ms latency, eliminates loading card delay/flash!)
+    const activeVarCount = (activeTab === 'image' || resolvedEngine.startsWith('veo-3.1') || resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview') ? variationCount : 1;
+    const tempItems = Array.from({ length: activeVarCount }).map((_, idx) => ({
+      id: `temp-${activeTab}-${Date.now()}-${idx}`,
+      type: activeTab === 'image' ? 'image' : 'video',
+      loading: true,
+      prompt: compiledPrompt || basePrompt,
+      aspect: activeRatio,
+      ts: Date.now() + (activeVarCount - idx),
+      projectId: activeProjectId
+    }));
+    setGallery(prev => [...tempItems, ...prev]);
+
     try {
-      const singleCost = getRequiredCredits(resolvedEngine);
-      const spendPromises = Array.from({ length: variationCount }).map(() =>
-        spendShorts(userId, singleCost, activeTab === 'image' ? 'cinematic_image_generation' : 'cinematic_video_generation')
-      );
-      const spendResults = await Promise.all(spendPromises);
-      if (spendResults.some(r => !r.success)) {
-        throw new Error('Failed to authorize credit deduction.');
-      }
-    } catch (err) {
-      setStatus('error');
-      const errText = err.message || 'Insufficient credit balance.';
-      setErrorMsg(errText);
-      const showToast = useAppStore.getState().showToast;
-      if (showToast) {
-        showToast(errText, "error", {
-          label: "⚡ Top Up Credits",
-          onClick: () => {
-            const setTab = useAppStore.getState().setActiveTab;
-            if (setTab) setTab('pricing');
-          }
-        });
-      }
-      return;
-    }
-
-    // Retain the prompt in the text box so the user can easily tweak and re-generate!
-
-    if (activeTab === 'image') {
+      // Deduct credits for each variation separately to prevent double-charging and match backend verification
       try {
-        let finalSize = '1024x1024';
-        if (activeRatio === '16:9') finalSize = '1792x1024';
-        else if (activeRatio === '9:16') finalSize = '1024x1792';
-
-        const finalPrompt = compiledPrompt;
-
-        const reqRefImages = [];
-        if (firstFrameImage) {
-          reqRefImages.push(firstFrameImage);
+        const singleCost = getRequiredCredits(resolvedEngine);
+        const spendPromises = Array.from({ length: activeVarCount }).map(() =>
+          spendShorts(userId, singleCost, activeTab === 'image' ? 'cinematic_image_generation' : 'cinematic_video_generation')
+        );
+        const spendResults = await Promise.all(spendPromises);
+        if (spendResults.some(r => !r.success)) {
+          throw new Error('Failed to authorize credit deduction.');
         }
-        // [DISABLED] Auto-include staged/saved Mood/Style reference image from the Reference Board if present
-        /*
-        const moodItem = mergedBoard.moods?.[0];
-        if (moodItem?.imageUrl && !reqRefImages.includes(moodItem.imageUrl)) {
-          reqRefImages.push(moodItem.imageUrl);
-        }
-        */
-        identity_images.forEach(img => {
-          if (!reqRefImages.includes(img)) reqRefImages.push(img);
-        });
-
-        const engineLabel = IMAGE_ENGINES.find(e => e.id === activeEngine)?.label || 'Nano Banana 2';
-
-        // Pre-populate gallery with placeholder loading items
-        const tempItems = Array.from({ length: variationCount }).map((_, idx) => ({
-          id: `temp-image-${Date.now()}-${idx}`,
-          type: 'image',
-          loading: true,
-          prompt: finalPrompt,
-          aspect: activeRatio,
-          ts: Date.now() + (variationCount - idx),
-          projectId: activeProjectId
-        }));
-        setGallery(prev => [...tempItems, ...prev]);
-
-        if (variationCount > 1) {
-          setPollMsg(`Developing ${variationCount} variations...`);
-        }
-
-        console.log(`[CinematicStudio] Generating ${variationCount} image variations...`);
-
-        // Execute generations in parallel
-        const promises = Array.from({ length: variationCount }).map(async (_, idx) => {
-          const tempId = tempItems[idx].id;
-          const seedVal = Math.floor(Math.random() * 1000000);
-          const tweakedPrompt = `${finalPrompt} [seed: ${seedVal}]`;
-
-          const resVal = resolution === '480p' ? 'SD' : resolution === '720p' ? '1K' : resolution === '1080p' ? '2K' : '4K';
-          const _adminTrialOn = localStorage.getItem('useAdminTrialApiKey') === 'true';
-          const _adminKey = localStorage.getItem('adminTrialApiKey') || '';
-          const _imgHeaders = { 'Content-Type': 'application/json' };
-          if (_adminTrialOn && _adminKey) _imgHeaders['x-admin-trial-key'] = _adminKey;
-
-          try {
-            const resp = await fetch(getApiUrl('/api/generate-image'), {
-              method: 'POST',
-              headers: _imgHeaders,
-              body: JSON.stringify({
-                model: activeEngine,
-                prompt: tweakedPrompt,
-                size: finalSize,
-                aspectRatio: activeRatio,
-                imageSize: resVal,
-                resolution: resVal,
-                userId,
-                projectId: activeProjectId,
-                referenceImages: reqRefImages,
-                creditReason: 'cinematic_image_generation'
-              })
-            });
-
-            const data = await resp.json();
-            if (!resp.ok) throw new Error(data.error || `Image variation ${idx + 1} failed.`);
-            if (!data.url) throw new Error(`Variation ${idx + 1} returned no URL.`);
-
-            // Replace placeholder in gallery immediately
-            const finishedItem = {
-              id: Date.now() + idx + Math.random(),
-              type: 'image',
-              url: data.url,
-              prompt: finalPrompt,
-              engine: engineLabel,
-              aspect: activeRatio,
-              ts: Date.now(),
-              projectId: activeProjectId
-            };
-            setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
-            return data.url;
-          } catch (err) {
-            // Remove the placeholder if this variation failed
-            setGallery(prev => prev.filter(item => item.id !== tempId));
-            throw err;
-          }
-        });
-
-        await Promise.all(promises);
-        
-        setStatus('idle');
-        setPollMsg('');
-        refreshShorts();
       } catch (err) {
+        setGallery(prev => prev.filter(item => !tempItems.some(t => t.id === item.id)));
         setStatus('error');
-        setPollMsg('');
-        const label = IMAGE_ENGINES.find(e => e.id === activeEngine)?.label || 'Nano Banana 2';
-        const cleanErr = cleanErrorMessage(err.message || `${label} engine failed.`);
-        setErrorMsg(cleanErr);
+        const errText = err.message || 'Insufficient credit balance.';
+        setErrorMsg(errText);
         const showToast = useAppStore.getState().showToast;
-        if (showToast) showToast(cleanErr, "error");
-        await triggerRefund('cinematic_image_generation');
-      }
-      return;
-    }
-
-    if (resolvedEngine !== 'seedace' && resolvedEngine !== 'seedance-fast' && resolvedEngine !== 'seedance-mini' && resolvedEngine !== 'kling/v3-turbo-image-to-video') {
-      const isOmniEngine = resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview';
-      try {
-        let targetModel = resolvedEngine;
-        let engineLabel = ENGINES.find(e => e.id === resolvedEngine)?.label || (isOmniEngine ? 'Omni' : 'Veo 3.1');
-        
-        if (resolvedEngine === 'omni') {
-          targetModel = 'gemini-omni-preview';
-          engineLabel = 'Omni';
-        } else if (resolvedEngine === 'omni-flash') {
-          targetModel = 'gemini-omni-flash-preview';
-          engineLabel = 'Omni';
-        } else if (resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview') {
-          targetModel = 'gemini-omni-1.1-flash-preview';
-          engineLabel = 'Omni';
-        }
-
-        const activeDuration = overrideOptions?.duration !== undefined ? overrideOptions.duration : duration;
-        const activeResolution = overrideOptions?.resolution !== undefined ? overrideOptions.resolution : resolution;
-        const currentRatio = overrideOptions?.aspectRatio !== undefined ? overrideOptions.aspectRatio : activeRatio;
-
-        const rawPrimary = overrideOptions?.firstFrame || (isOmniEngine ? (omniFirstFrameImage || firstFrameImage) : (firstFrameImage || omniFirstFrameImage));
-        const rawSecondary = overrideOptions?.lastFrame || (isOmniEngine ? (omniLastFrameImage || lastFrameImage) : (lastFrameImage || omniLastFrameImage));
-        const primaryImg = await resolveBlobToBase64(rawPrimary);
-        const secondaryImg = await resolveBlobToBase64(rawSecondary);
-
-        // Pre-populate gallery with placeholder loading items
-        const tempItems = Array.from({ length: variationCount }).map((_, idx) => ({
-          id: `temp-video-${Date.now()}-${idx}`,
-          type: 'video',
-          loading: true,
-          prompt: compiledPrompt,
-          aspect: currentRatio,
-          ts: Date.now() + (variationCount - idx),
-          projectId: activeProjectId
-        }));
-        setGallery(prev => [...tempItems, ...prev]);
-
-        if (variationCount > 1) {
-          setPollMsg(`Rendering ${variationCount} video variations...`);
-        }
-
-        console.log(`[CinematicStudio] Generating ${variationCount} video variations with ${resolvedEngine}...`);
-
-        // Execute generations in parallel
-        const promises = Array.from({ length: variationCount }).map(async (_, idx) => {
-          const tempId = tempItems[idx].id;
-          const seedVal = Math.floor(Math.random() * 1000000);
-          const tweakedPrompt = `${compiledPrompt} [seed: ${seedVal}]`;
-
-          const _veoAdminOn = localStorage.getItem('useAdminTrialApiKey') === 'true';
-          const _veoAdminKey = localStorage.getItem('adminTrialApiKey') || '';
-          const _veoHeaders = { 'Content-Type': 'application/json' };
-          if (_veoAdminOn && _veoAdminKey) _veoHeaders['x-admin-trial-key'] = _veoAdminKey;
-
-          try {
-            const endpointUrl = isOmniEngine ? '/api/omni-i2v' : '/api/veo-i2v';
-            const resp = await fetch(getApiUrl(endpointUrl), {
-              method: 'POST',
-              headers: _veoHeaders,
-              body: JSON.stringify({
-                image: primaryImg || undefined,
-                firstFrame: primaryImg || undefined,
-                firstFrameImage: primaryImg || undefined,
-                lastFrame: secondaryImg || undefined,
-                lastFrameImage: secondaryImg || undefined,
-                imageEnd: secondaryImg || undefined,
-                motionPrompt: tweakedPrompt,
-                duration: activeDuration,
-                aspectRatio: currentRatio,
-                resolution: activeResolution,
-                model: targetModel,
-                identity_images: isOmniEngine ? [...omniRefImages.filter(Boolean), ...identity_images] : identity_images,
-                identity_gcs_uris,
-                referenceImages: isOmniEngine ? [...omniRefImages.filter(Boolean), ...identity_images] : identity_images,
-                ref_images: [
-                  ...(isOmniEngine ? omniRefImages.filter(Boolean).map(url => ({ url })) : []),
-                  ...taggedItems.map(item => ({ url: item.imageUrl || item.url || item.data || item }))
-                ],
-                ref_videos: [
-                  ...(omniRefVideoPreview ? [{ url: omniRefVideoPreview, duration: omniRefVideoDuration }] : []),
-                  ...taggedItems.filter(item => isVideo(item)).map(item => ({ url: item.imageUrl || item.url || item.data || item }))
-                ],
-                refVideo: omniRefVideoPreview || undefined,
-                ref_audios: taggedItems.filter(item => isAudio(item)).map(item => ({ url: item.imageUrl || item.url || item.data || item })),
-                task: (primaryImg && secondaryImg) ? 'reference_to_video' : omniTask,
-                userId,
-                projectId: activeProjectId,
-                generateAudio,
-                creditReason: 'cinematic_video_generation'
-              })
-            });
-
-            if (!resp.ok) {
-              const errText = await resp.text();
-              let parsedError = `Video variation ${idx + 1} failed (${resp.status})`;
-              try {
-                const parsed = JSON.parse(errText);
-                if (parsed.error) parsedError = parsed.error;
-              } catch (_) {
-                // Ignore non-JSON text body error
-              }
-              throw new Error(parsedError);
+        if (showToast) {
+          showToast(errText, "error", {
+            label: "⚡ Top Up Credits",
+            onClick: () => {
+              const setTab = useAppStore.getState().setActiveTab;
+              if (setTab) setTab('pricing');
             }
+          });
+        }
+        return;
+      }
 
-            const data = await resp.json();
-            if (!data.videoUrl) throw new Error(`Variation ${idx + 1} returned no videoUrl.`);
+      // Retain the prompt in the text box so the user can easily tweak and re-generate!
 
-            // Replace placeholder in gallery immediately
-            const finishedItem = {
-              id: Date.now() + idx + Math.random(),
-              type: 'video',
-              url: data.videoUrl,
-              prompt: compiledPrompt,
-              engine: isOmniEngine ? 'Omni' : engineLabel,
-              aspect: currentRatio,
-              ts: Date.now(),
-              projectId: activeProjectId
-            };
-            setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
-            return data.videoUrl;
-          } catch (err) {
-            // Remove the placeholder if this variation failed
-            setGallery(prev => prev.filter(item => item.id !== tempId));
-            throw err;
+      if (activeTab === 'image') {
+        try {
+          const isGptModel = activeEngine.startsWith('gpt-image') || activeEngine.includes('sunburst') || activeEngine.includes('flare');
+          let finalSize = '1024x1024';
+          if (activeRatio === '16:9') finalSize = isGptModel ? '1536x1024' : '1792x1024';
+          else if (activeRatio === '9:16') finalSize = isGptModel ? '1024x1536' : '1024x1792';
+
+          const finalPrompt = compiledPrompt;
+
+          const reqRefImages = [];
+          if (firstFrameImage) {
+            const resolvedFirst = await resolveBlobToBase64(firstFrameImage);
+            if (resolvedFirst) reqRefImages.push(resolvedFirst);
           }
-        });
+          for (const img of identity_images) {
+            const resolvedImg = await resolveBlobToBase64(img);
+            if (resolvedImg && !reqRefImages.includes(resolvedImg)) reqRefImages.push(resolvedImg);
+          }
 
-        await Promise.all(promises);
+          const engineLabel = IMAGE_ENGINES.find(e => e.id === activeEngine)?.label || 'Nano Banana 2';
 
-        setStatus('idle');
-        setPollMsg('');
-        refreshShorts();
-      } catch (err) {
-        setStatus('error');
-        setPollMsg('');
-        const label = ENGINES.find(e => e.id === resolvedEngine)?.label || (isOmniEngine ? 'Omni' : 'Veo 3.1');
-        let cleanErr = err.message || `${label} engine failed.`;
-        if (cleanErr.includes('Responsible AI') || cleanErr.includes('violates Google')) {
-          cleanErr = "⚠️ Content Safety Filter: Google's Responsible AI policy blocked this prompt or reference media. Your credits have been automatically refunded.";
-        }
-        setErrorMsg(cleanErr);
-        const showToast = useAppStore.getState().showToast;
-        if (showToast) showToast(cleanErr, "error");
-        await triggerRefund('cinematic_video_generation');
-      }
-    } else if (resolvedEngine === 'seedance-fast' || resolvedEngine === 'seedace' || resolvedEngine === 'seedance-mini') {
-      const tempId = `temp-seedance-${Date.now()}`;
-      try {
-        if (variationCount > 1) {
+          if (variationCount > 1) {
+            setPollMsg(`Developing ${variationCount} variations...`);
+          }
+
+          console.log(`[CinematicStudio] Generating ${variationCount} image variations...`);
+
+          // Execute generations in parallel
+          const promises = Array.from({ length: variationCount }).map(async (_, idx) => {
+            const tempId = tempItems[idx].id;
+            const seedVal = Math.floor(Math.random() * 1000000);
+            const tweakedPrompt = `${finalPrompt} [seed: ${seedVal}]`;
+
+            const resVal = resolution === '480p' ? 'SD' : resolution === '720p' ? '1K' : resolution === '1080p' ? '2K' : '4K';
+            const qualityVal = resolution === '4k' ? 'max' : resolution === '1080p' ? 'xhigh' : resolution === '720p' ? 'high' : 'medium';
+
+            const _adminTrialOn = localStorage.getItem('useAdminTrialApiKey') === 'true';
+            const _adminKey = localStorage.getItem('adminTrialApiKey') || '';
+            const _imgHeaders = { 'Content-Type': 'application/json' };
+            if (_adminTrialOn && _adminKey) _imgHeaders['x-admin-trial-key'] = _adminKey;
+
+            try {
+              const resp = await fetch(getApiUrl('/api/generate-image'), {
+                method: 'POST',
+                headers: _imgHeaders,
+                body: JSON.stringify({
+                  model: activeEngine,
+                  prompt: tweakedPrompt,
+                  size: finalSize,
+                  aspectRatio: activeRatio,
+                  imageSize: resVal,
+                  resolution: resVal,
+                  quality: qualityVal,
+                  userId,
+                  projectId: activeProjectId,
+                  referenceImages: reqRefImages,
+                  creditReason: 'cinematic_image_generation'
+                })
+              });
+
+              const data = await resp.json();
+              if (!resp.ok) throw new Error(data.error || `Image variation ${idx + 1} failed.`);
+              if (!data.url) throw new Error(`Variation ${idx + 1} returned no URL.`);
+
+              // Replace placeholder in gallery immediately
+              const finishedItem = {
+                id: Date.now() + idx + Math.random(),
+                type: 'image',
+                url: data.url,
+                prompt: finalPrompt,
+                engine: engineLabel,
+                aspect: activeRatio,
+                ts: Date.now(),
+                projectId: activeProjectId
+              };
+              setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
+              return data.url;
+            } catch (err) {
+              // Remove the placeholder if this variation failed
+              setGallery(prev => prev.filter(item => item.id !== tempId));
+              throw err;
+            }
+          });
+
+          await Promise.all(promises);
+          
+          setStatus('idle');
+          setPollMsg('');
+          refreshShorts();
+        } catch (err) {
+          setStatus('error');
+          setPollMsg('');
+          const label = IMAGE_ENGINES.find(e => e.id === activeEngine)?.label || 'Nano Banana 2';
+          const cleanErr = cleanErrorMessage(err.message || `${label} engine failed.`);
+          setErrorMsg(cleanErr);
           const showToast = useAppStore.getState().showToast;
-          if (showToast) showToast("Seedance currently supports 1 variation per request natively. Processing 1.", "info");
+          if (showToast) showToast(cleanErr, "error");
+          await triggerRefund('cinematic_image_generation');
         }
-
-        const modelParam = activeEngine === 'seedance-fast'
-          ? 'dreamina-seedance-2-0-fast-260128'
-          : activeEngine === 'seedance-mini'
-          ? 'bytedance/seedance-2-mini'
-          : 'dreamina-seedance-2-0-260128';
-
-        const seedanceContentArray = buildSeedanceContentArray(compiledPrompt, taggedItems, firstFrameImage, lastFrameImage, seedanceRefs);
-
-        // Pre-populate gallery with placeholder loading item
-        const tempItem = {
-          id: tempId,
-          type: 'video',
-          loading: true,
-          prompt: compiledPrompt,
-          aspect: activeRatio,
-          ts: Date.now(),
-          projectId: activeProjectId
-        };
-        setGallery(prev => [tempItem, ...prev]);
-
-        const resp = await fetch(getApiUrl('/api/seedance/generate'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            engine: activeEngine,
-            model: modelParam,
-            seedanceContentArray,
-            duration,
-            aspectRatio: activeRatio,
-            resolution,
-            userId,
-            projectId: activeProjectId,
-            generateAudio,
-            creditReason: 'cinematic_video_generation'
-          })
-        });
-
-        const json = await resp.json();
-        if (!resp.ok) throw new Error(json.error || 'Seedance task initialization failed.');
-
-        const taskId = json.requestId;
-        if (!taskId) throw new Error('No task ID returned from backend.');
-
-        await pollSeedanceTask(taskId, basePrompt, activeRatio, json.engine || activeEngine, tempId);
-      } catch (err) {
-        // Remove the placeholder on failure
-        setGallery(prev => prev.filter(item => item.id !== tempId));
-        setStatus('error');
-        const label = ENGINES.find(e => e.id === activeEngine)?.label || 'Seedance';
-        const cleanErr = cleanErrorMessage(err.message || `${label} engine failed.`);
-        setErrorMsg(cleanErr);
-        const showToast = useAppStore.getState().showToast;
-        if (showToast) showToast(cleanErr, "error");
-        await triggerRefund('cinematic_video_generation');
-      } finally {
-        setStatus(prev => (prev === 'generating' || prev === 'polling' ? 'idle' : prev));
-        setPollMsg('');
+        return;
       }
-    } else if (resolvedEngine === 'kling/v3-turbo-image-to-video') {
-      const tempId = `temp-kling-${Date.now()}`;
-      try {
-        if (variationCount > 1) {
+
+      if (resolvedEngine !== 'seedace' && resolvedEngine !== 'seedance-fast' && resolvedEngine !== 'seedance-mini' && resolvedEngine !== 'seedance-2.5' && resolvedEngine !== 'kling/v3-turbo-image-to-video' && resolvedEngine !== 'kling-motion') {
+        const isOmniEngine = resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview';
+        try {
+          let targetModel = resolvedEngine;
+          let engineLabel = ENGINES.find(e => e.id === resolvedEngine)?.label || (isOmniEngine ? 'Omni' : 'Veo 3.1');
+          
+          if (resolvedEngine === 'omni') {
+            targetModel = 'gemini-omni-preview';
+            engineLabel = 'Omni';
+          } else if (resolvedEngine === 'omni-flash') {
+            targetModel = 'gemini-omni-flash-preview';
+            engineLabel = 'Omni';
+          } else if (resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview') {
+            targetModel = 'gemini-omni-1.1-flash-preview';
+            engineLabel = 'Omni';
+          }
+
+          const activeDuration = overrideOptions?.duration !== undefined ? overrideOptions.duration : duration;
+          const activeResolution = overrideOptions?.resolution !== undefined ? overrideOptions.resolution : resolution;
+          const currentRatio = overrideOptions?.aspectRatio !== undefined ? overrideOptions.aspectRatio : activeRatio;
+
+          const rawPrimary = overrideOptions?.firstFrame || (isOmniEngine ? (omniFirstFrameImage || firstFrameImage) : (firstFrameImage || omniFirstFrameImage));
+          const rawSecondary = overrideOptions?.lastFrame || (isOmniEngine ? (omniLastFrameImage || lastFrameImage) : (lastFrameImage || omniLastFrameImage));
+          const primaryImg = await resolveBlobToBase64(rawPrimary);
+          const secondaryImg = await resolveBlobToBase64(rawSecondary);
+
+          // Resolve all Omni multi-reference images & videos from Refboard, SidePanel slots & Multi-asset drawers
+          const rawOmniImgs = [
+            ...(overrideOptions?.reference_image_urls || []),
+            ...(overrideOptions?.omniRefImages || omniRefImages || []).filter(Boolean),
+            ...(overrideOptions?.omniMultiImages || []).filter(Boolean),
+            ...identity_images
+          ];
+          const resolvedOmniImgs = Array.from(new Set((await Promise.all(rawOmniImgs.map(img => resolveBlobToBase64(img)))).filter(Boolean)));
+
+          const rawOmniVids = [
+            ...(overrideOptions?.reference_video_urls || []),
+            ...(overrideOptions?.omniRefVideoPreview ? [{ url: overrideOptions.omniRefVideoPreview, duration: omniRefVideoDuration }] : (omniRefVideoPreview ? [{ url: omniRefVideoPreview, duration: omniRefVideoDuration }] : [])),
+            ...(overrideOptions?.omniMultiVideos || []).filter(Boolean),
+            ...taggedItems.filter(item => isVideo(item))
+          ];
+          const resolvedOmniVids = (await Promise.all(rawOmniVids.map(async (vid) => {
+            const url = typeof vid === 'string' ? vid : (vid.url || vid.imageUrl || vid.data);
+            const resolvedUrl = await resolveBlobToBase64(url);
+            return resolvedUrl ? { url: resolvedUrl, duration: vid.duration || 10 } : null;
+          }))).filter(Boolean);
+
+          const resolvedOmniAuds = (await Promise.all(
+            [...(overrideOptions?.reference_audio_urls || []), ...taggedItems.filter(item => isAudio(item))].map(async (aud) => {
+              const url = typeof aud === 'string' ? aud : (aud.url || aud.imageUrl || aud.data);
+              const resolvedUrl = await resolveBlobToBase64(url);
+              return resolvedUrl ? { url: resolvedUrl } : null;
+            })
+          )).filter(Boolean);
+
+          if (variationCount > 1) {
+            setPollMsg(`Rendering ${variationCount} video variations...`);
+          }
+
+          console.log(`[CinematicStudio] Generating ${variationCount} video variations with ${resolvedEngine}...`);
+
+          // Execute generations in parallel
+          const promises = Array.from({ length: variationCount }).map(async (_, idx) => {
+            const tempId = tempItems[idx].id;
+            const seedVal = Math.floor(Math.random() * 1000000);
+            const tweakedPrompt = `${compiledPrompt} [seed: ${seedVal}]`;
+
+            const _veoAdminOn = localStorage.getItem('useAdminTrialApiKey') === 'true';
+            const _veoAdminKey = localStorage.getItem('adminTrialApiKey') || '';
+            const _veoHeaders = { 'Content-Type': 'application/json' };
+            if (_veoAdminOn && _veoAdminKey) _veoHeaders['x-admin-trial-key'] = _veoAdminKey;
+
+            try {
+              const endpointUrl = isOmniEngine ? '/api/omni-i2v' : '/api/veo-i2v';
+              const resp = await fetch(getApiUrl(endpointUrl), {
+                method: 'POST',
+                headers: _veoHeaders,
+                body: JSON.stringify({
+                  image: primaryImg || undefined,
+                  firstFrame: primaryImg || undefined,
+                  firstFrameImage: primaryImg || undefined,
+                  lastFrame: secondaryImg || undefined,
+                  lastFrameImage: secondaryImg || undefined,
+                  imageEnd: secondaryImg || undefined,
+                  motionPrompt: tweakedPrompt,
+                  duration: activeDuration,
+                  aspectRatio: currentRatio,
+                  resolution: activeResolution,
+                  model: targetModel,
+                  identity_images: resolvedOmniImgs,
+                  identity_gcs_uris,
+                  referenceImages: resolvedOmniImgs,
+                  ref_images: resolvedOmniImgs.map(url => ({ url })),
+                  ref_videos: resolvedOmniVids,
+                  refVideo: resolvedOmniVids[0]?.url || undefined,
+                  ref_audios: resolvedOmniAuds,
+                  task: (primaryImg && secondaryImg) ? 'reference_to_video' : (resolvedOmniImgs.length > 0 ? 'multi_reference' : omniTask),
+                  userId,
+                  projectId: activeProjectId,
+                  generateAudio,
+                  creditReason: 'cinematic_video_generation'
+                })
+              });
+
+              if (!resp.ok) {
+                const errText = await resp.text();
+                let parsedError = `Video variation ${idx + 1} failed (${resp.status})`;
+                try {
+                  const parsed = JSON.parse(errText);
+                  if (parsed.error) parsedError = parsed.error;
+                } catch (_) {
+                  // Ignore non-JSON text body error
+                }
+                throw new Error(parsedError);
+              }
+
+              const data = await resp.json();
+              if (!data.videoUrl) throw new Error(`Variation ${idx + 1} returned no videoUrl.`);
+
+              // Replace placeholder in gallery immediately
+              const finishedItem = {
+                id: Date.now() + idx + Math.random(),
+                type: 'video',
+                url: data.videoUrl,
+                prompt: compiledPrompt,
+                engine: isOmniEngine ? 'Omni' : engineLabel,
+                aspect: currentRatio,
+                ts: Date.now(),
+                projectId: activeProjectId
+              };
+              setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
+              return data.videoUrl;
+            } catch (err) {
+              // Remove the placeholder if this variation failed
+              setGallery(prev => prev.filter(item => item.id !== tempId));
+              throw err;
+            }
+          });
+
+          await Promise.all(promises);
+
+          setStatus('idle');
+          setPollMsg('');
+          refreshShorts();
+        } catch (err) {
+          setStatus('error');
+          setPollMsg('');
+          const label = ENGINES.find(e => e.id === resolvedEngine)?.label || (isOmniEngine ? 'Omni' : 'Veo 3.1');
+          let cleanErr = err.message || `${label} engine failed.`;
+          if (cleanErr.includes('Responsible AI') || cleanErr.includes('violates Google')) {
+            cleanErr = "⚠️ Content Safety Filter: Google's Responsible AI policy blocked this prompt or reference media. Your credits have been automatically refunded.";
+          }
+          setErrorMsg(cleanErr);
           const showToast = useAppStore.getState().showToast;
-          if (showToast) showToast("Kling currently supports 1 variation per request. Processing 1.", "info");
+          if (showToast) showToast(cleanErr, "error");
+          await triggerRefund('cinematic_video_generation');
         }
+      } else if (resolvedEngine === 'seedance-fast' || resolvedEngine === 'seedace' || resolvedEngine === 'seedance-mini' || resolvedEngine === 'seedance-2.5') {
+        const tempId = tempItems[0].id;
+        try {
+          if (variationCount > 1) {
+            const showToast = useAppStore.getState().showToast;
+            if (showToast) showToast("Seedance currently supports 1 variation per request natively. Processing 1.", "info");
+          }
 
-        // Pre-populate gallery with placeholder loading item
-        const tempItem = {
-          id: tempId,
-          type: 'video',
-          loading: true,
-          prompt: compiledPrompt,
-          aspect: activeRatio,
-          ts: Date.now()
-        };
-        setGallery(prev => [tempItem, ...prev]);
+          const modelParam = resolvedEngine === 'seedance-2.5'
+            ? 'bytedance/seedance-2-5'
+            : resolvedEngine === 'seedance-fast'
+            ? 'dreamina-seedance-2-0-fast-260128'
+            : resolvedEngine === 'seedance-mini'
+            ? 'bytedance/seedance-2-mini'
+            : 'dreamina-seedance-2-0-260128';
 
-        const resp = await fetch(getApiUrl('/api/kling/generate'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'kling/v3-turbo-image-to-video',
-            prompt: compiledPrompt,
-            firstFrame: firstFrameImage || undefined,
-            lastFrame: lastFrameImage || undefined,
-            duration,
-            resolution,
-            userId,
-            creditReason: 'cinematic_video_generation'
-          })
-        });
+          const rawStart = overrideOptions?.firstFrame || firstFrameImage || omniFirstFrameImage;
+          const rawEnd = overrideOptions?.lastFrame || lastFrameImage || omniLastFrameImage;
 
-        const json = await resp.json();
-        if (!resp.ok) throw new Error(json.error || 'Kling task initialization failed.');
+          const [resolvedStart, resolvedEnd] = await Promise.all([
+            rawStart ? resolveBlobToBase64(rawStart) : null,
+            rawEnd ? resolveBlobToBase64(rawEnd) : null
+          ]);
 
-        const taskId = json.requestId;
-        if (!taskId) throw new Error('No task ID returned from backend.');
+          const rawRefImgs = [
+            ...(overrideOptions?.reference_image_urls || []),
+            ...(seedanceRefs?.ref_images || []),
+            ...(overrideOptions?.omniRefImages || omniRefImages || []).filter(Boolean),
+            ...taggedItems.filter(item => !isVideo(item) && !isAudio(item)).map(item => item.imageUrl || item.url || item.data)
+          ];
+          const resolvedRefImgs = Array.from(new Set((await Promise.all(rawRefImgs.map(img => resolveBlobToBase64(img)))).filter(Boolean)));
 
-        await pollKlingTask(taskId, compiledPrompt, activeRatio, activeEngine, tempId);
-      } catch (err) {
-        setGallery(prev => prev.filter(item => item.id !== tempId));
-        setStatus('error');
-        const cleanErr = cleanErrorMessage(err.message || 'Kling engine failed.');
-        setErrorMsg(cleanErr);
-        const showToast = useAppStore.getState().showToast;
-        if (showToast) showToast(cleanErr, "error");
-        await triggerRefund('cinematic_video_generation');
-      } finally {
-        setStatus(prev => (prev === 'generating' || prev === 'polling' ? 'idle' : prev));
-        setPollMsg('');
+          const rawRefVids = [
+            ...(overrideOptions?.reference_video_urls || []),
+            ...(seedanceRefs?.ref_videos || []),
+            ...(omniRefVideoPreview ? [omniRefVideoPreview] : []),
+            ...taggedItems.filter(item => isVideo(item)).map(item => item.imageUrl || item.url || item.data)
+          ];
+          const resolvedRefVids = Array.from(new Set((await Promise.all(rawRefVids.map(vid => resolveBlobToBase64(vid)))).filter(Boolean)));
+
+          const rawRefAuds = [
+            ...(overrideOptions?.reference_audio_urls || []),
+            ...(seedanceRefs?.ref_audios || []),
+            ...taggedItems.filter(item => isAudio(item)).map(item => item.imageUrl || item.url || item.data)
+          ];
+          const resolvedRefAuds = Array.from(new Set((await Promise.all(rawRefAuds.map(aud => resolveBlobToBase64(aud)))).filter(Boolean)));
+
+          const seedanceContentArray = overrideOptions?.seedanceContentArray || buildSeedanceContentArray(
+            compiledPrompt,
+            taggedItems,
+            resolvedStart,
+            resolvedEnd,
+            { ref_images: resolvedRefImgs, ref_videos: resolvedRefVids, ref_audios: resolvedRefAuds }
+          );
+          const reqDuration = overrideOptions?.duration !== undefined ? overrideOptions.duration : duration;
+          const reqResolution = overrideOptions?.resolution !== undefined ? overrideOptions.resolution : resolution;
+          const reqAspectRatio = overrideOptions?.aspectRatio !== undefined ? overrideOptions.aspectRatio : activeRatio;
+
+          const resp = await fetch(getApiUrl('/api/seedance/generate'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              engine: resolvedEngine,
+              model: modelParam,
+              seedanceContentArray,
+              firstFrame: resolvedStart || undefined,
+              lastFrame: resolvedEnd || undefined,
+              reference_image_urls: resolvedRefImgs,
+              reference_video_urls: resolvedRefVids,
+              reference_audio_urls: resolvedRefAuds,
+              duration: reqDuration,
+              aspectRatio: reqAspectRatio,
+              resolution: reqResolution,
+              userId,
+              projectId: activeProjectId,
+              generateAudio,
+              creditReason: 'cinematic_video_generation'
+            })
+          });
+
+          const json = await resp.json();
+          if (!resp.ok) throw new Error(json.error || 'Seedance task initialization failed.');
+
+          const taskId = json.requestId;
+          if (!taskId) throw new Error('No task ID returned from backend.');
+
+          await pollSeedanceTask(taskId, basePrompt, activeRatio, json.engine || activeEngine, tempId);
+        } catch (err) {
+          // Remove the placeholder on failure
+          setGallery(prev => prev.filter(item => item.id !== tempId));
+          setStatus('error');
+          const label = ENGINES.find(e => e.id === activeEngine)?.label || 'Seedance';
+          const cleanErr = cleanErrorMessage(err.message || `${label} engine failed.`);
+          setErrorMsg(cleanErr);
+          const showToast = useAppStore.getState().showToast;
+          if (showToast) showToast(cleanErr, "error");
+          await triggerRefund('cinematic_video_generation');
+        } finally {
+          setStatus(prev => (prev === 'generating' || prev === 'polling' ? 'idle' : prev));
+          setPollMsg('');
+        }
+      } else if (resolvedEngine === 'kling-motion') {
+        const tempId = tempItems[0].id;
+        try {
+          const rawInputUrl = overrideOptions?.input_url || motionSubjectImage || motionSubjectPreview || firstFrameImage;
+          const rawVideoUrl = overrideOptions?.video_url || motionRefVideo || motionRefVideoPreview || omniRefVideoPreview;
+
+          const [resolvedInputUrl, resolvedVideoUrl] = await Promise.all([
+            rawInputUrl ? resolveBlobToBase64(rawInputUrl) : null,
+            rawVideoUrl ? resolveBlobToBase64(rawVideoUrl) : null
+          ]);
+
+          if (!resolvedInputUrl || !resolvedVideoUrl) {
+            throw new Error("Kling Motion Control requires both a Subject Reference Image and a Motion Reference Video.");
+          }
+
+          const reqDuration = overrideOptions?.duration !== undefined ? overrideOptions.duration : (motionRefVideoDuration || duration || 5);
+          const reqMode = overrideOptions?.mode || motionMode || '720p';
+          const reqOrientation = overrideOptions?.character_orientation || characterOrientation || 'video';
+          const reqAspectRatio = overrideOptions?.aspectRatio !== undefined ? overrideOptions.aspectRatio : activeRatio;
+
+          const resp = await fetch(getApiUrl('/api/kling/motion-control'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: compiledPrompt,
+              input_url: resolvedInputUrl,
+              video_url: resolvedVideoUrl,
+              mode: reqMode,
+              character_orientation: reqOrientation,
+              duration: reqDuration,
+              aspectRatio: reqAspectRatio,
+              userId,
+              projectId: activeProjectId,
+              creditReason: 'cinematic_motion_control'
+            })
+          });
+
+          const json = await resp.json();
+          if (!resp.ok) throw new Error(json.error || 'Kling Motion Control initialization failed.');
+
+          const taskId = json.requestId || json.taskId;
+          if (!taskId) throw new Error('No task ID returned from backend.');
+
+          await pollKlingTask(taskId, compiledPrompt || 'Motion Control Video', reqAspectRatio, 'kling-motion', tempId);
+        } catch (err) {
+          setGallery(prev => prev.filter(item => item.id !== tempId));
+          setStatus('error');
+          const cleanErr = cleanErrorMessage(err.message || 'Kling Motion Control failed.');
+          setErrorMsg(cleanErr);
+          const showToast = useAppStore.getState().showToast;
+          if (showToast) showToast(cleanErr, "error");
+          await triggerRefund('cinematic_video_generation');
+        } finally {
+          setStatus(prev => (prev === 'generating' || prev === 'polling' ? 'idle' : prev));
+          setPollMsg('');
+        }
+      } else if (resolvedEngine === 'kling/v3-turbo-image-to-video') {
+        const tempId = tempItems[0].id;
+        try {
+          if (variationCount > 1) {
+            const showToast = useAppStore.getState().showToast;
+            if (showToast) showToast("Kling currently supports 1 variation per request. Processing 1.", "info");
+          }
+
+          const rawStart = firstFrameImage || omniFirstFrameImage;
+          const rawEnd = lastFrameImage || omniLastFrameImage;
+          const [resolvedStart, resolvedEnd] = await Promise.all([
+            rawStart ? resolveBlobToBase64(rawStart) : null,
+            rawEnd ? resolveBlobToBase64(rawEnd) : null
+          ]);
+
+          const resp = await fetch(getApiUrl('/api/kling/generate'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'kling/v3-turbo-image-to-video',
+              prompt: compiledPrompt,
+              firstFrame: resolvedStart || undefined,
+              lastFrame: resolvedEnd || undefined,
+              duration,
+              resolution,
+              userId,
+              creditReason: 'cinematic_video_generation'
+            })
+          });
+
+          const json = await resp.json();
+          if (!resp.ok) throw new Error(json.error || 'Kling task initialization failed.');
+
+          const taskId = json.requestId;
+          if (!taskId) throw new Error('No task ID returned from backend.');
+
+          await pollKlingTask(taskId, compiledPrompt, activeRatio, activeEngine, tempId);
+        } catch (err) {
+          setGallery(prev => prev.filter(item => item.id !== tempId));
+          setStatus('error');
+          const cleanErr = cleanErrorMessage(err.message || 'Kling engine failed.');
+          setErrorMsg(cleanErr);
+          const showToast = useAppStore.getState().showToast;
+          if (showToast) showToast(cleanErr, "error");
+          await triggerRefund('cinematic_video_generation');
+        } finally {
+          setStatus(prev => (prev === 'generating' || prev === 'polling' ? 'idle' : prev));
+          setPollMsg('');
+        }
       }
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -3209,9 +3503,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                         className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[7.5px] font-black uppercase tracking-widest border bg-fuchsia-500/15 border-fuchsia-500/30 text-fuchsia-400 hover:bg-fuchsia-500/25 hover:border-fuchsia-500/40 transition-all shrink-0 origin-bottom"
                         title="Open Reference Board to stage Characters, Locations, Wardrobes, Props, and Moods"
                       >
-                        {allRefItems.length > 0 && allRefItems[0].imageUrl ? (
+                        {refBoardItems.length > 0 && (refBoardItems[0].imageUrl || refBoardItems[0].url) ? (
                           <img 
-                            src={resolveUrl(allRefItems[0].imageUrl)} 
+                            src={resolveUrl(refBoardItems[0].imageUrl || refBoardItems[0].url)} 
                             alt="Ref Preview" 
                             className="w-3.5 h-3.5 rounded-full object-cover border border-white/20 shrink-0" 
                           />
@@ -3219,9 +3513,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                           <Users size={9} className="text-fuchsia-400" />
                         )}
                         <span>Refs</span>
-                        {allRefItems.length > 0 && (
+                        {refBoardItems.length > 0 && (
                           <span className="w-3.5 h-3.5 rounded-full bg-fuchsia-500 text-white text-[6.5px] font-black flex items-center justify-center shrink-0 ml-0.5">
-                            {allRefItems.length}
+                            {refBoardItems.length}
                           </span>
                         )}
                       </motion.button>
@@ -3522,47 +3816,54 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                       <button type="button" onClick={() => setMentionSearch(null)} className="text-[#D4FF00]/40 hover:text-[#D4FF00] p-1"><X size={14} /></button>
                     </div>
                     <div className="overflow-y-auto custom-scrollbar bg-black/90 backdrop-blur-2xl flex-1">
-                      {allRefItems
-                        .filter(item => item.name.toLowerCase().includes(mentionSearch.toLowerCase()))
-                        .length > 0 ? (
-                        allRefItems
-                          .filter(item => item.name.toLowerCase().includes(mentionSearch.toLowerCase()))
-                          .map((item, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => selectMention(item)}
-                              className="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-[#D4FF00]/20 transition-colors group border-b border-white/[0.05] last:border-0 text-left text-white"
-                            >
-                              <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden shrink-0 border border-white/10">
-                                {item.category === 'ref_videos' ? (
-                                  <Video className="w-3.5 h-3.5 text-rose-400" />
-                                ) : item.category === 'ref_audios' ? (
-                                  <Music className="w-3.5 h-3.5 text-amber-400" />
-                                ) : (item.imageUrl || item.url) ? (
-                                  <img src={resolveUrl(item.imageUrl || item.url)} className="w-full h-full object-cover" alt={item.name} />
-                                ) : (
-                                  <Users className="w-3.5 h-3.5 text-[#D4FF00]" />
-                                )}
-                              </div>
-                              <div className="text-left flex-1 min-w-0">
-                                <p className="text-xs font-black text-white group-hover:text-[#D4FF00] transition-colors truncate">@{item.name?.replace(/\s+/g, '')}</p>
-                                <p className="text-[8px] text-white/40 uppercase tracking-widest mt-0.5 font-bold">{item.category.replace('_', ' ')}</p>
-                              </div>
-                            </button>
-                          ))
-                      ) : (
-                        <div className="p-6 text-center bg-black/95">
-                          <p className="text-[10px] text-white/50 mb-3 font-bold uppercase tracking-wider">No matching reference elements</p>
+                      {(() => {
+                        const query = (mentionSearch || '').trim().toLowerCase();
+                        const matchedItems = allRefItems.filter(item => 
+                          !query || 
+                          (item.name && item.name.toLowerCase().includes(query)) || 
+                          (item.category && item.category.toLowerCase().includes(query))
+                        );
+
+                        if (matchedItems.length === 0) {
+                          return (
+                            <div className="p-6 text-center bg-black/95">
+                              <p className="text-[10px] text-white/50 mb-3 font-bold uppercase tracking-wider">No matching reference elements</p>
+                              <button
+                                type="button"
+                                onClick={() => { setShowRefBoard(true); setMentionSearch(null); }}
+                                className="w-full px-4 py-2.5 bg-[#D4FF00] text-black text-[9px] rounded-xl font-black transition-all hover:bg-white uppercase tracking-widest shadow-xl flex items-center justify-center gap-1.5 animate-pulse"
+                              >
+                                Load from Elements
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        return matchedItems.map((item, idx) => (
                           <button
+                            key={item.id || idx}
                             type="button"
-                            onClick={() => { setShowRefBoard(true); setMentionSearch(null); }}
-                            className="w-full px-4 py-2.5 bg-[#D4FF00] text-black text-[9px] rounded-xl font-black transition-all hover:bg-white uppercase tracking-widest shadow-xl flex items-center justify-center gap-1.5 animate-pulse"
+                            onClick={() => selectMention(item)}
+                            className="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-[#D4FF00]/20 transition-colors group border-b border-white/[0.05] last:border-0 text-left text-white"
                           >
-                            Load from Elements
+                            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden shrink-0 border border-white/10">
+                              {item.category === 'ref_videos' || item.isVideo ? (
+                                <Video className="w-3.5 h-3.5 text-rose-400" />
+                              ) : item.category === 'ref_audios' || item.isAudio ? (
+                                <Music className="w-3.5 h-3.5 text-amber-400" />
+                              ) : (item.imageUrl || item.url) ? (
+                                <img src={resolveUrl(item.imageUrl || item.url)} className="w-full h-full object-cover" alt={item.name} />
+                              ) : (
+                                <Users className="w-3.5 h-3.5 text-[#D4FF00]" />
+                              )}
+                            </div>
+                            <div className="text-left flex-1 min-w-0">
+                              <p className="text-xs font-black text-white group-hover:text-[#D4FF00] transition-colors truncate">@{item.name?.replace(/\s+/g, '_')}</p>
+                              <p className="text-[8px] text-white/40 uppercase tracking-widest mt-0.5 font-bold">{(item.category || '').replace('_', ' ')}</p>
+                            </div>
                           </button>
-                        </div>
-                      )}
+                        ));
+                      })()}
                     </div>
                   </div>
                 )}
@@ -3632,6 +3933,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                     handleGenerate={handleGenerate}
                     activeTab={activeTab}
                     isBusy={isBusy}
+                    firstFramePreview={firstFramePreview}
+                    lastFramePreview={lastFramePreview}
                   />
                 </div>
 
@@ -4224,20 +4527,20 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                     </UpwardDropdown>
                   )}
 
-                  {/* AUDIO TOGGLE (Video only, Seedance & Veo 3.1 engines) */}
-                  {activeTab === 'video' && (activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini' || activeEngine.startsWith('veo-3.1') || activeEngine === 'omni' || activeEngine === 'omni-flash') && (
+                  {/* AUDIO SFX TOGGLE (Video only, Seedance, Veo 3.1 & Omni engines) */}
+                  {activeTab === 'video' && (activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini' || activeEngine.startsWith('veo-3.1') || activeEngine === 'omni' || activeEngine === 'omni-flash' || activeEngine === 'gemini-omni-1.1-flash-preview') && (
                     <button
                       type="button"
                       onClick={() => setGenerateAudio(!generateAudio)}
                       className={cn(
-                        "flex items-center gap-1 px-2 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border transition-all shrink-0 select-none",
+                        "flex items-center gap-1 px-2 py-1 rounded-lg text-[7px] font-black uppercase tracking-widest border transition-all shrink-0 select-none cursor-pointer",
                         generateAudio
-                          ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-400"
+                          ? "bg-[#c8f135]/20 border-[#c8f135]/40 text-[#c8f135]"
                           : "bg-black/60 border-white/10 text-gray-500 hover:text-white"
                       )}
-                      title={activeEngine.startsWith('veo-3.1') ? "Generate synchronized audio with Google Veo 3.1" : (activeEngine.startsWith('omni') ? "Generate synchronized audio with Gemini Omni" : "Generate synchronized audio with Seedance 2.0")}
+                      title={generateAudio ? "Sound Effects ON (Realistic ambient foley & SFX only. Music is strictly excluded.)" : "Audio Muted (No audio or music track)"}
                     >
-                      <span className="text-[10px]">{generateAudio ? '🔊' : '🔇'}</span>
+                      <span className="text-[10px]">{generateAudio ? '🔊 SFX' : '🔇 Muted'}</span>
                     </button>
                   )}
 
@@ -4263,25 +4566,23 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
                 </div>
 
-                {/* Preview Payload Button (Image mode only) */}
-                {activeTab === 'image' && (
-                  <motion.button
-                    type="button"
-                    onClick={() => setShowPayloadModal(true)}
-                    disabled={!(promptText.trim() || firstFramePreview)}
-                    whileHover={(promptText.trim() || firstFramePreview) ? { scale: 1.05, backgroundColor: 'rgba(255, 255, 255, 0.08)' } : {}}
-                    whileTap={(promptText.trim() || firstFramePreview) ? { scale: 0.95 } : {}}
-                    className={cn(
-                      "w-9 h-9 rounded-xl flex items-center justify-center border transition-all shrink-0",
-                      (promptText.trim() || firstFramePreview)
-                        ? "border-white/10 text-white/60 hover:text-white cursor-pointer bg-white/[0.02]"
-                        : "border-white/5 text-white/10 cursor-not-allowed bg-transparent"
-                    )}
-                    title="Preview exact API Payload & Compiled Prompt"
-                  >
-                    <Eye size={13} />
-                  </motion.button>
-                )}
+                {/* Preview Payload Button (Image & Video modes) */}
+                <motion.button
+                  type="button"
+                  onClick={() => setShowPayloadModal(true)}
+                  disabled={!(activePromptText.trim() || firstFramePreview || omniFirstFramePreview || hasRefBoardMedia)}
+                  whileHover={(activePromptText.trim() || firstFramePreview || omniFirstFramePreview || hasRefBoardMedia) ? { scale: 1.05, backgroundColor: 'rgba(255, 255, 255, 0.08)' } : {}}
+                  whileTap={(activePromptText.trim() || firstFramePreview || omniFirstFramePreview || hasRefBoardMedia) ? { scale: 0.95 } : {}}
+                  className={cn(
+                    "w-9 h-9 rounded-xl flex items-center justify-center border transition-all shrink-0",
+                    (activePromptText.trim() || firstFramePreview || omniFirstFramePreview || hasRefBoardMedia)
+                      ? "border-white/10 text-white/60 hover:text-white cursor-pointer bg-white/[0.02]"
+                      : "border-white/5 text-white/10 cursor-not-allowed bg-transparent"
+                  )}
+                  title="Preview exact API Payload & Compiled Prompt"
+                >
+                  <Eye size={13} />
+                </motion.button>
 
                 {/* Generate Button — CSS pulse replaces framer-motion infinite loop (GPU-friendly) */}
                 <motion.button
@@ -4434,6 +4735,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         isBusy={isBusy}
         canGenerate={canGenerate}
         allRefItems={allRefItems}
+        gallery={gallery}
       />
 
       {/* PERSPECTIVE & FRAMING VISUAL MODAL */}

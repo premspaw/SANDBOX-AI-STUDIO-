@@ -241,14 +241,31 @@ identity drift, different face, different hairstyle, different clothing, differe
     if (!storyBrief.trim() || !lightboxItem?.url) return;
     setIsGeneratingStoryboard(true);
     const showToast = useAppStore.getState().showToast;
-    if (showToast) showToast("Drafting multi-frame storyboard panel...", "info");
+    const activeProjectId = useAppStore.getState().activeProjectId || 'default';
+    const referenceAspect = lightboxItem.aspect || '16:9';
+
+    // Instant optimistic gallery loading placeholder (0ms feedback!)
+    const tempId = `temp-storyboard-${Date.now()}`;
+    const tempItem = {
+      id: tempId,
+      type: 'image',
+      loading: true,
+      prompt: `Storyboard: ${storyBrief.split('.')[0]}`,
+      engine: `${engine === 'gpt-image-2' ? 'GPT-2' : engine === 'gemini-3.1-flash-lite' ? 'NB2 Lite' : 'Nano Banana 2'} (Storyboard)`,
+      aspect: referenceAspect,
+      ts: Date.now(),
+      projectId: activeProjectId
+    };
+
+    setGallery(prev => [tempItem, ...prev]);
+    if (showToast) showToast("Drafting multi-frame storyboard in gallery...", "info");
+    onClose(); // Close modal immediately so user sees optimistic loading card in gallery
 
     try {
       const credits = getCreditCost();
       const spendResult = await useAppStore.getState().spendShorts(userId, credits, 'image_grid_multishot'); // deduct credits based on engine
       if (!spendResult.success) {
-        setIsGeneratingStoryboard(false);
-        onClose();
+        setGallery(prev => prev.filter(i => i.id !== tempId));
         if (spendResult.reason === 'unauthenticated') {
           useAppStore.getState().setShowingAuthModal(true);
         } else {
@@ -268,8 +285,6 @@ identity drift, different face, different hairstyle, different clothing, differe
 
 [USER STORY SCENARIO BRIEF: Describe the specific actions or narrative detail to embed within the storyboard frames: "${storyBrief}"]`;
       }
-
-      const referenceAspect = lightboxItem.aspect || '16:9';
 
       const payload = {
         model: engine,
@@ -303,19 +318,20 @@ identity drift, different face, different hairstyle, different clothing, differe
           prompt: `Storyboard: ${storyBrief.split('.')[0]}`,
           engine: `${engine === 'gpt-image-2' ? 'GPT-2' : engine === 'gemini-3.1-flash-lite' ? 'NB2 Lite' : 'Nano Banana 2'} (Storyboard)`,
           aspect: referenceAspect,
-          ts: Date.now()
+          ts: Date.now(),
+          projectId: activeProjectId
         };
 
-        setGallery(prev => [newItem, ...prev]);
+        setGallery(prev => [newItem, ...prev.filter(i => i.id !== tempId)]);
         setLightboxItem(newItem);
 
         if (showToast) showToast("Storyboard generated successfully!", "success");
-        onClose();
       } else {
         throw new Error("No URL returned from server.");
       }
     } catch (err) {
       console.error("Storyboard generation failed:", err);
+      setGallery(prev => prev.filter(i => i.id !== tempId));
       if (showToast) showToast(`Storyboard failed: ${err.message}`, "error");
     } finally {
       setIsGeneratingStoryboard(false);

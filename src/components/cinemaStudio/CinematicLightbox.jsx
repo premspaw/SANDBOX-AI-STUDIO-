@@ -684,7 +684,7 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                   {lightboxItem.engine}
                 </span>
               )}
-              {(lightboxItem.engine === 'Screenshot' || lightboxItem.engine === 'ZeroLens Frame Extract' || lightboxItem.id?.startsWith('frame_')) && (
+              {(lightboxItem.engine === 'Screenshot' || lightboxItem.engine === 'ZeroLens Frame Extract' || String(lightboxItem.id || '').startsWith('frame_')) && (
                 <span className="px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest bg-amber-500/10 border border-amber-500/25 text-amber-300">
                   Screenshot
                 </span>

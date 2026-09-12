@@ -599,8 +599,8 @@ export default function UGC() {
     }
   }, [showTemplates]);
   const [leftPanelMode, setLeftPanelMode] = useState<'image' | 'video'>('video');
-  const [imgEngine, setImgEngine] = useState<'nb2' | 'gpt2' | 'nb2-lite' | 'nb2-open'>('nb2');
-  const [gpt2Quality, setGpt2Quality] = useState<'low' | 'medium' | 'high'>('low');
+  const [imgEngine, setImgEngine] = useState<'nb2' | 'gpt-image-2.5-sunburst' | 'gpt-image-2.5-flare' | 'gpt2' | 'nb2-lite' | 'nb2-open' | 'nano_banana' | 'nano-banana-pro' | 'sd' | 'imagen'>('gpt-image-2.5-sunburst');
+  const [gpt2Quality, setGpt2Quality] = useState<'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'auto'>('auto');
   const [isGalleryOpen, setIsGalleryOpen] = useState(true);
   const [inpaintImg, setInpaintImg] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth > 768 : true);
@@ -2789,72 +2789,154 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
 
       contents.push({ text: promptInstructions });
 
-    // gemini-3.1-flash-image = Nano Banana 2 (GA model — preview name retired)
-    const modelName = imgEngine === 'nb2-lite' ? 'gemini-3.1-flash-lite-image' : 'gemini-3.1-flash-image';
+      const isGptModel = imgEngine.startsWith('gpt') || imgEngine.includes('sunburst') || imgEngine.includes('flare') || imgEngine === 'nano_banana' || imgEngine === 'nano-banana-pro';
 
-    console.log(`[NB2 generateImage] Starting — model: ${modelName}, aspectRatio: ${aspectRatio}, parts: ${contents.length}`);
-    console.time('[NB2 generateImage] API call duration');
+      if (isGptModel) {
+        setImageProgressMsg('Processing Reference Assets...');
+        const refImages: string[] = [];
+        const readFileAsBase64 = (f: File): Promise<string> =>
+          new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = ev => resolve(ev.target?.result as string);
+            reader.readAsDataURL(f);
+          });
 
-    const NB2_TIMEOUT_MS = 90_000;
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('[NB2] Image generation timed out after 90s — try again')), NB2_TIMEOUT_MS)
-    );
+        if (characterImg?.file) refImages.push(await readFileAsBase64(characterImg.file));
+        if (productImg?.file) refImages.push(await readFileAsBase64(productImg.file));
+        if (locationImg?.file) refImages.push(await readFileAsBase64(locationImg.file));
 
-    const response = await Promise.race([
-      ai.models.generateContent({
-        model: modelName,
-        contents: [{ parts: contents }],
-        config: {
-          responseModalities: ['TEXT', 'IMAGE'],
-          responseFormat: {
-            image: {
-              aspectRatio: aspectRatio,
-              imageSize: '1K',
-            }
-          },
-          thinkingConfig: {
-            thinkingLevel: 'minimal',
-          },
-        } as any,
-      }),
-      timeoutPromise
-    ]);
+        const targetModel = imgEngine === 'gpt-image-2.5-sunburst' ? 'gpt-image-2.5-sunburst'
+          : imgEngine === 'gpt-image-2.5-flare' ? 'gpt-image-2.5-flare'
+          : imgEngine === 'gpt2' ? 'gpt-image-2'
+          : imgEngine === 'nano_banana' ? 'nano-banana-pro'
+          : 'gpt-image-2.5-sunburst';
 
-      console.timeEnd('[NB2 generateImage] API call duration');
-      const candidateCount = response.candidates?.length ?? 0;
-      console.log(`[NB2 generateImage] Response candidates: ${candidateCount}`);
-      if (candidateCount === 0) console.warn('[NB2 generateImage] WARNING: 0 candidates — possible safety block or empty response');
+        setImageProgressMsg(`Synthesizing Frame with ${targetModel}...`);
 
-      setImageProgressMsg('Processing Visual Output...');
-      for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          const url = `data:image/png;base64,${part.inlineData.data}`;
+        const gptRes = await fetch(getApiUrl('/api/generate-image'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: targetModel,
+            prompt: promptInstructions,
+            aspect_ratio: aspectRatio,
+            aspectRatio,
+            quality: gpt2Quality || 'auto',
+            size: aspectRatio === '16:9' ? '1536x1024' : aspectRatio === '1:1' ? '1024x1024' : '1024x1536',
+            userId: currentUserId,
+            folder: activeProjectId || 'default',
+            projectId: activeProjectId || 'default',
+            referenceImages: refImages,
+            ...(refImages[0] && { image: refImages[0] }),
+            ...(refImages[1] && { secondImage: refImages[1] })
+          }),
+        });
+
+        if (!gptRes.ok) {
+          const errData = await gptRes.json().catch(() => ({}));
+          throw new Error(errData.error || errData.message || `Server error: ${gptRes.status}`);
+        }
+
+        const gptData = await gptRes.json();
+        const url = gptData.url || gptData.imageUrl;
+        if (url) {
           generatedUrl = url;
-          try {
-            const byteCharacters = atob(part.inlineData.data || '');
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-              byteNumbers[i] = byteCharacters.charCodeAt(i);
+          setImageProgressMsg('Finalizing Frame...');
+          setGeneratedImg(url);
+          setGeneratedVideo('');
+          updateGalleryItem(placeholderImgId, { url, loading: false });
+          generateImageSuggestions(url);
+        } else if (gptData.jobId) {
+          setImageProgressMsg('Queued — polling for result...');
+          const pollUrl = getApiUrl(`/api/job-status/${gptData.jobId}`);
+          let attempts = 0;
+          while (attempts < 30) {
+            await new Promise(r => setTimeout(r, 3000));
+            attempts++;
+            const pollRes = await fetch(pollUrl);
+            const pollData = await pollRes.json();
+            if (pollData.status === 'done' && (pollData.imageUrl || pollData.url)) {
+              const finalUrl = pollData.imageUrl || pollData.url;
+              generatedUrl = finalUrl;
+              setGeneratedImg(finalUrl);
+              setGeneratedVideo('');
+              updateGalleryItem(placeholderImgId, { url: finalUrl, loading: false });
+              generateImageSuggestions(finalUrl);
+              break;
             }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: 'image/png' });
-            const publicUrl = await uploadToSupabase(blob, 'image', promptText, currentUserId);
-            const finalUrl = publicUrl || url;
-            generatedUrl = finalUrl;
-            setImageProgressMsg('Finalizing Frame...');
-            setGeneratedImg(finalUrl);
-            setGeneratedVideo('');
-            // Update the placeholder that was added at the start of generation
-            updateGalleryItem(placeholderImgId, { url: finalUrl, loading: false });
-            generateImageSuggestions(finalUrl);
-          } catch (uploadErr) {
-            console.error(uploadErr);
-            setGeneratedImg(url);
-            setGeneratedVideo('');
-            updateGalleryItem(placeholderImgId, { url, loading: false });
-            generateImageSuggestions(url);
+            if (pollData.status === 'error') {
+              throw new Error(`Queue job failed: ${pollData.error || 'Unknown'}`);
+            }
           }
-          break;
+        }
+      } else {
+        // gemini-3.1-flash-image = Nano Banana 2 (GA model — preview name retired)
+        const modelName = imgEngine === 'nb2-lite' ? 'gemini-3.1-flash-lite-image' : 'gemini-3.1-flash-image';
+
+        console.log(`[NB2 generateImage] Starting — model: ${modelName}, aspectRatio: ${aspectRatio}, parts: ${contents.length}`);
+        console.time('[NB2 generateImage] API call duration');
+
+        const NB2_TIMEOUT_MS = 90_000;
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('[NB2] Image generation timed out after 90s — try again')), NB2_TIMEOUT_MS)
+        );
+
+        const response = await Promise.race([
+          ai.models.generateContent({
+            model: modelName,
+            contents: [{ parts: contents }],
+            config: {
+              responseModalities: ['TEXT', 'IMAGE'],
+              responseFormat: {
+                image: {
+                  aspectRatio: aspectRatio,
+                  imageSize: '1K',
+                }
+              },
+              thinkingConfig: {
+                thinkingLevel: 'minimal',
+              },
+            } as any,
+          }),
+          timeoutPromise
+        ]);
+
+        console.timeEnd('[NB2 generateImage] API call duration');
+        const candidateCount = response.candidates?.length ?? 0;
+        console.log(`[NB2 generateImage] Response candidates: ${candidateCount}`);
+        if (candidateCount === 0) console.warn('[NB2 generateImage] WARNING: 0 candidates — possible safety block or empty response');
+
+        setImageProgressMsg('Processing Visual Output...');
+        for (const part of response.candidates?.[0]?.content?.parts || []) {
+          if (part.inlineData) {
+            const url = `data:image/png;base64,${part.inlineData.data}`;
+            generatedUrl = url;
+            try {
+              const byteCharacters = atob(part.inlineData.data || '');
+              const byteNumbers = new Array(byteCharacters.length);
+              for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+              }
+              const byteArray = new Uint8Array(byteNumbers);
+              const blob = new Blob([byteArray], { type: 'image/png' });
+              const publicUrl = await uploadToSupabase(blob, 'image', promptText, currentUserId);
+              const finalUrl = publicUrl || url;
+              generatedUrl = finalUrl;
+              setImageProgressMsg('Finalizing Frame...');
+              setGeneratedImg(finalUrl);
+              setGeneratedVideo('');
+              // Update the placeholder that was added at the start of generation
+              updateGalleryItem(placeholderImgId, { url: finalUrl, loading: false });
+              generateImageSuggestions(finalUrl);
+            } catch (uploadErr) {
+              console.error(uploadErr);
+              setGeneratedImg(url);
+              setGeneratedVideo('');
+              updateGalleryItem(placeholderImgId, { url, loading: false });
+              generateImageSuggestions(url);
+            }
+            break;
+          }
         }
       }
     } catch (e) {
@@ -3320,7 +3402,14 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
     setIsRegeneratingImage(false);
   };
 
-  const getImageCost = () => imgEngine === 'gpt2' ? 5 : imgEngine === 'nb2-lite' ? 0.5 : 2;
+  const getImageCost = () => {
+    if (imgEngine === 'gpt-image-2.5-sunburst') return 2.5;
+    if (imgEngine === 'gpt-image-2.5-flare') return 1.5;
+    if (imgEngine === 'gpt2') return 2;
+    if (imgEngine === 'nb2-lite') return 0.5;
+    if (imgEngine === 'nano_banana' || imgEngine === 'nano-banana-pro') return 3;
+    return 1;
+  };
 
   const getCurrentCost = (isMontage = false, customDuration?: number) => {
     const audioOn = isMontage ? montageAudioEnabled : includeAudio;
@@ -3795,12 +3884,12 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
       contents.push({ text: promptInstructions });
 
-      const useGPT2 = imgEngine === 'gpt2';
+      const useGPT = imgEngine.startsWith('gpt') || imgEngine.includes('sunburst') || imgEngine.includes('flare');
 
-      if (useGPT2) {
+      if (useGPT) {
         setMontageImgProgressMsg('Structuring Prompt…');
-        const GPT2_PROMPT_SYSTEM = `you are a prompt writer/structuring assistant for gpt image 2.
-        # your task: rewrite user raw prompt into gpt image 2 format. Dont change meaning, just structure. Start with "Generate an image with the following prompt, dont change it(DO NOT CHANGE THIS PROMPT, IT'S ALREADY AN IMPROVED PROMPT) - "`;
+        const GPT2_PROMPT_SYSTEM = `you are a prompt writer/structuring assistant for gpt image 2.5 / gpt image.
+        # your task: rewrite user raw prompt into optimal format. Dont change meaning, just structure. Start with "Generate an image with the following prompt, dont change it(DO NOT CHANGE THIS PROMPT, IT'S ALREADY AN IMPROVED PROMPT) - "`;
 
         let finalPrompt = promptInstructions;
         try {
@@ -3826,38 +3915,38 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
             reader.readAsDataURL(f);
           });
 
-        let primaryImage: string | undefined;
-        let secondaryImage: string | undefined;
+        const allRefImages: string[] = [];
+        if (primaryPersonImg?.file) allRefImages.push(await readFileAsBase64(primaryPersonImg.file));
+        if (secondaryPersonImg?.file) allRefImages.push(await readFileAsBase64(secondaryPersonImg.file));
+        if (activeProductImg?.file) allRefImages.push(await readFileAsBase64(activeProductImg.file));
+        if (activeLocationImg?.file) allRefImages.push(await readFileAsBase64(activeLocationImg.file));
 
-        if (primaryPersonImg?.file) primaryImage = await readFileAsBase64(primaryPersonImg.file);
-        if (isPodcastMode && secondaryPersonImg?.file) {
-          secondaryImage = await readFileAsBase64(secondaryPersonImg.file);
-        } else if (activeProductImg?.file) {
-          secondaryImage = await readFileAsBase64(activeProductImg.file);
-        }
-        if (!primaryImage && secondaryImage) {
-          primaryImage = secondaryImage;
-          secondaryImage = undefined;
-        }
+        let primaryImage: string | undefined = allRefImages[0];
+        let secondaryImage: string | undefined = allRefImages[1];
 
-        setMontageImgProgressMsg('GPT Image 2 Generating…');
+        const targetModel = imgEngine === 'gpt-image-2.5-sunburst' ? 'gpt-image-2.5-sunburst'
+          : imgEngine === 'gpt-image-2.5-flare' ? 'gpt-image-2.5-flare'
+          : 'gpt-image-2';
+
+        setMontageImgProgressMsg(`${targetModel} Generating…`);
         const gptRes = await fetch(getApiUrl('/api/generate-image'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'gpt-image-2',
+            model: targetModel,
             prompt: finalPrompt,
-            quality,
+            quality: gpt2Quality || 'auto',
             size: aspectRatio === '16:9' ? '1536x1024' : aspectRatio === '1:1' ? '1024x1024' : '1024x1536',
             aspect_ratio: aspectRatio,
             userId: currentUserId,
             folder: activeProjectId || 'default',
             projectId: activeProjectId || 'default',
+            referenceImages: allRefImages,
             ...(primaryImage && { image: primaryImage }),
             ...(secondaryImage && { secondImage: secondaryImage }),
           }),
         });
-        if (!gptRes.ok) throw new Error(`GPT Image 2 failed: ${gptRes.status}`);
+        if (!gptRes.ok) throw new Error(`${targetModel} failed: ${gptRes.status}`);
         const gptData = await gptRes.json();
         const url = gptData.url || gptData.imageUrl;
         if (url) { 

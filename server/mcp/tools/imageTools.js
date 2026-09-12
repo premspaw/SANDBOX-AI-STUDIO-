@@ -25,9 +25,9 @@ export function getImageToolDefinitions() {
           },
           model: {
             type: 'string',
-            enum: ['nano-banana-2', 'nano-banana-pro', 'nano-banana-2-lite', 'gpt-image-2'],
-            description: 'Image generation engine. "nano-banana-2" = standard high-quality, "nano-banana-pro" = ultra detail, "gpt-image-2" = OpenAI DALL-E / GPT Image.',
-            default: 'nano-banana-2'
+            enum: ['nano-banana-2', 'nano-banana-pro', 'nano-banana-2-lite', 'gpt-image-2.5-sunburst', 'gpt-image-2.5-flare', 'gpt-image-2'],
+            description: 'Image generation engine. "gpt-image-2.5-sunburst" = GPT Image 2.5 Sunburst (ultra editing/fidelity), "gpt-image-2.5-flare" = GPT Image 2.5 Flare (fast high-quality), "nano-banana-2" = standard high-quality, "nano-banana-pro" = ultra detail, "gpt-image-2" = OpenAI GPT Image 2.',
+            default: 'gpt-image-2.5-sunburst'
           },
           reference_image_url: {
             type: 'string',
@@ -78,7 +78,9 @@ export async function executeGenerateImage(args, user, deps) {
   const mLower = model.toLowerCase();
   if (mLower === 'nano-banana-2-lite') costPerImage = 0.5;
   else if (mLower === 'nano-banana-pro') costPerImage = 3;
-  else if (mLower === 'gpt-image-2') costPerImage = 2;
+  else if (mLower === 'gpt-image-2.5-sunburst' || mLower.includes('sunburst')) costPerImage = 2.5;
+  else if (mLower === 'gpt-image-2.5-flare' || mLower.includes('flare')) costPerImage = 1.5;
+  else if (mLower.includes('gpt-image-2')) costPerImage = 2;
 
   const totalCost = costPerImage * count;
   const { consumeCredits, supabaseAdmin, supabase, handleGoogle, handleOpenAI } = deps;

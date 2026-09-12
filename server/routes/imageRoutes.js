@@ -76,13 +76,24 @@ export default function createRouter(deps) {
             const { model } = req.body;
             const targetUserId = user ? user.id : req.body.userId;
 
-            // Deduct credits based on the model (halved)
-            let requiredCredits = 1; // Default (Gemini 3.1 Flash Image preview / Nano Banana 2)
+            // Deduct credits based on the model
+            let requiredCredits = 1; // Default (Nano Banana 2)
             const modelLower = (model || '').toLowerCase();
-            if (modelLower === 'gpt-image-2') {
-                const q = (req.body.quality || 'medium').toLowerCase();
+            const q = (req.body.quality || 'medium').toLowerCase();
+
+            if (modelLower.includes('sunburst') || modelLower === 'gpt-image-2.5-sunburst') {
+                if (q === 'low') requiredCredits = 1.5;
+                else if (q === 'xhigh' || q === 'max') requiredCredits = 3.5;
+                else if (q === 'high') requiredCredits = 2.5;
+                else requiredCredits = 2.5; // medium / auto
+            } else if (modelLower.includes('flare') || modelLower === 'gpt-image-2.5-flare') {
                 if (q === 'low') requiredCredits = 1;
-                else if (q === 'high') requiredCredits = 3;
+                else if (q === 'xhigh' || q === 'max') requiredCredits = 2.5;
+                else if (q === 'high') requiredCredits = 2;
+                else requiredCredits = 1.5; // medium / auto
+            } else if (modelLower === 'gpt-image-2' || modelLower === 'gpt-image-pro') {
+                if (q === 'low') requiredCredits = 1;
+                else if (q === 'high' || q === 'xhigh') requiredCredits = 3;
                 else requiredCredits = 2; // medium / auto
             } else if (modelLower.includes('gpt') || modelLower.includes('openai') || modelLower.includes('dall')) {
                 requiredCredits = 3; // OpenAI DALL-E costs 3 credits
@@ -91,7 +102,7 @@ export default function createRouter(deps) {
             } else if (modelLower === 'nano-banana-2-lite' || modelLower === 'nb2-lite' || modelLower === 'gemini-3.1-flash-lite' || modelLower === 'gemini-3.1-flash-lite-image') {
                 requiredCredits = 0.5;
             } else if (modelLower === 'nano-banana-2-open' || modelLower === 'nb2-open' || modelLower === 'gemini-3.1-flash-image') {
-                requiredCredits = 1; // NB2 Open (GA) - same cost as standard NB2 preview
+                requiredCredits = 1; // NB2 Open (GA)
             } else if (modelLower === 'nano-banana' || modelLower === 'banana') {
                 requiredCredits = 1;
             }
@@ -102,7 +113,7 @@ export default function createRouter(deps) {
                 await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
             }
 
-            if (model === 'gpt-image-2' || model === 'gpt-image-1' || model?.startsWith('gpt') || model?.startsWith('dall')) {
+            if (modelLower.includes('gpt') || modelLower.includes('sunburst') || modelLower.includes('flare') || modelLower.includes('dall') || modelLower.includes('openai')) {
                 return await handleOpenAI(req, res);
             }
             return await handleGoogle(req, res);
@@ -136,11 +147,16 @@ export default function createRouter(deps) {
 
             // 1. Deduct credits: Nano Banana 2 inpaint costs 2 credits, GPT inpaint costs 3 credits
             let requiredCredits = 2; // Default for Nano Banana 2
-            if (model === 'gpt' || model === 'gpt-image-2') {
+            const mLower = (model || '').toLowerCase();
+            if (mLower.includes('sunburst') || mLower === 'gpt-image-2.5-sunburst') {
+                requiredCredits = 3.5;
+            } else if (mLower.includes('flare') || mLower === 'gpt-image-2.5-flare') {
+                requiredCredits = 2.5;
+            } else if (mLower === 'gpt' || mLower === 'gpt-image-2') {
                 requiredCredits = 3;
-            } else if (model === 'gemini-3-pro-image-preview' || model === 'nano-banana-pro' || model === 'pro') {
+            } else if (mLower === 'gemini-3-pro-image-preview' || mLower === 'nano-banana-pro' || mLower === 'pro') {
                 requiredCredits = 5;
-            } else if (model === 'nano-banana-2-lite' || model === 'nb2-lite' || model === 'gemini-3.1-flash-lite' || model === 'gemini-3.1-flash-lite-image') {
+            } else if (mLower === 'nano-banana-2-lite' || mLower === 'nb2-lite' || mLower === 'gemini-3.1-flash-lite' || mLower === 'gemini-3.1-flash-lite-image') {
                 requiredCredits = 0.5;
             }
 

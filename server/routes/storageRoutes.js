@@ -144,9 +144,7 @@ export default function createRouter(deps) {
                     buffer = Buffer.from(await upstream.arrayBuffer());
                 }
                 res.setHeader('Cache-Control', 'public, max-age=86400');
-                res.setHeader('Content-Length', buffer.length);
-                res.status(upstream.status);
-                res.send(buffer);
+                res.status(upstream.status).send(buffer);
             }
         } catch (err) {
             if (abortController.signal.aborted || res.writableEnded) return;

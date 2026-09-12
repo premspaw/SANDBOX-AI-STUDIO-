@@ -173,8 +173,8 @@ export interface UGCContextType {
   setImageStyle: (v: any) => void;
   aspectRatio: '9:16' | '16:9' | '1:1';
   setAspectRatio: (v: any) => void;
-  imgEngine: 'nb2' | 'gpt2' | 'nb2-lite' | 'nb2-open';
-  setImgEngine: (v: 'nb2' | 'gpt2' | 'nb2-lite' | 'nb2-open') => void;
+  imgEngine: 'nb2' | 'gpt-image-2.5-sunburst' | 'gpt-image-2.5-flare' | 'gpt2' | 'nb2-lite' | 'nb2-open' | 'nano_banana' | 'nano-banana-pro' | 'sd' | 'imagen';
+  setImgEngine: (v: 'nb2' | 'gpt-image-2.5-sunburst' | 'gpt-image-2.5-flare' | 'gpt2' | 'nb2-lite' | 'nb2-open' | 'nano_banana' | 'nano-banana-pro' | 'sd' | 'imagen') => void;
 
   // ── Video output ──────────────────────────────────────────────────────────
   generatedVideo: string;
@@ -346,8 +346,8 @@ export interface UGCContextType {
   isUploadingKB: boolean;
   setIsUploadingKB: (v: boolean) => void;
   handleKBUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
-  gpt2Quality: 'low' | 'medium' | 'high';
-  setGpt2Quality: (v: 'low' | 'medium' | 'high') => void;
+  gpt2Quality: 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'auto';
+  setGpt2Quality: (v: 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'auto') => void;
   host1Voice: string;
   setHost1Voice: (v: string) => void;
   host2Voice: string;

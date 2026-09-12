@@ -1010,14 +1010,44 @@ async function resolveToPublicUrl(imgDataInput, userId) {
         imgData = imgData.url || imgData.data || imgData.dataUrl || imgData.imageUrl || '';
     }
     if (!imgData || typeof imgData !== 'string') return null;
-    if (imgData.startsWith('http')) return imgData;
+    if (imgData.startsWith('http://') || imgData.startsWith('https://')) return imgData;
     if (imgData.startsWith('//')) return `https:${imgData}`;
+    if (imgData.startsWith('blob:')) {
+        console.warn('[resolveToPublicUrl] Warning: Unresolved blob URL received on server:', imgData.substring(0, 50));
+        return null;
+    }
     try {
-        const buffer = imgData.startsWith('data:') ? Buffer.from(imgData.split(',')[1], 'base64') : Buffer.from(imgData, 'base64');
-        const name = `asset_${Date.now()}.jpg`;
+        let mimeType = 'image/jpeg';
+        let ext = 'jpg';
+        let base64Content = imgData;
+
+        if (imgData.startsWith('data:')) {
+            const matches = imgData.match(/^data:([a-zA-Z0-9-+/.]+);base64,(.+)$/);
+            if (matches) {
+                mimeType = matches[1].toLowerCase();
+                base64Content = matches[2];
+                if (mimeType.includes('png')) ext = 'png';
+                else if (mimeType.includes('webp')) ext = 'webp';
+                else if (mimeType.includes('gif')) ext = 'gif';
+                else if (mimeType.includes('mp4')) ext = 'mp4';
+                else if (mimeType.includes('quicktime') || mimeType.includes('mov')) ext = 'mov';
+                else if (mimeType.includes('webm')) ext = 'webm';
+                else if (mimeType.includes('mpeg') || mimeType.includes('mp3')) ext = 'mp3';
+                else if (mimeType.includes('wav')) ext = 'wav';
+                else if (mimeType.includes('aac')) ext = 'aac';
+                else if (mimeType.includes('m4a')) ext = 'm4a';
+                else if (mimeType.includes('ogg')) ext = 'ogg';
+            } else {
+                base64Content = imgData.split(',')[1] || imgData;
+            }
+        }
+
+        const buffer = Buffer.from(base64Content, 'base64');
+        const name = `asset_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
         const filePath = `users/${userId || 'anon'}/temp/${name}`;
-        return await storageService.uploadToGCS(buffer, filePath, 'image/jpeg');
+        return await storageService.uploadToGCS(buffer, filePath, mimeType);
     } catch (e) {
+        console.error('[resolveToPublicUrl] upload error:', e);
         return null;
     }
 }
@@ -1105,69 +1135,114 @@ async function resolveImageToBuffer(imgSrcInput) {
 
 async function handleOpenAI(req, res) {
     try {
-        const { model, prompt, quality, size, image, secondImage, userId, folder, format, output_format, output_compression, background } = req.body;
+        const {
+            model,
+            prompt,
+            quality,
+            size,
+            image,
+            secondImage,
+            referenceImages = [],
+            userId,
+            folder,
+            format,
+            output_format,
+            output_compression,
+            background,
+            moderation
+        } = req.body;
         
         // Force the official OpenAI client for image generation/edits since OpenRouter does not support it
         const openai = getOpenAIClient(true);
-        const isEdit = !!image;
+        const targetModel = model || 'gpt-image-2.5-sunburst';
+        const modelLower = targetModel.toLowerCase();
+        const isEdit = !!image || (Array.isArray(referenceImages) && referenceImages.length > 0);
         const finalFormat = output_format || format || 'png';
+
+        // Quality mapping
+        let finalQuality = 'auto';
+        if (quality) {
+            const qLower = String(quality).toLowerCase();
+            if (['low', 'medium', 'high', 'xhigh', 'max', 'auto'].includes(qLower)) {
+                finalQuality = qLower;
+            } else if (qLower === 'hd' || qLower === '2k') {
+                finalQuality = 'xhigh';
+            } else if (qLower === '4k') {
+                finalQuality = 'max';
+            } else if (qLower === 'sd') {
+                finalQuality = 'low';
+            }
+        }
+
+        // Size mapping
+        let finalSize = size || '1024x1024';
+        if (finalSize === '1792x1024') finalSize = '1536x1024';
+        if (finalSize === '1024x1792') finalSize = '1024x1536';
 
         let response;
         if (isEdit) {
-            // Resolve image buffer directly — no GCS roundtrip, preserves exact MIME type
             const { toFile } = await import('openai');
-            const resolved = await resolveImageToBuffer(image);
-            if (!resolved) throw new Error('Failed to resolve reference image to buffer.');
-            const { buffer: rawBuf, mimeType: imgMime } = resolved;
-            // OpenAI images.edit only accepts PNG — convert MIME header accordingly
-            const imageFile = await toFile(rawBuf, 'reference.png', { type: imgMime });
+            const imagesList = [];
 
-            const imagesList = [imageFile];
-            if (secondImage) {
+            // Collect all reference images
+            const allRefs = [
+                ...(image ? [image] : []),
+                ...(secondImage ? [secondImage] : []),
+                ...(Array.isArray(referenceImages) ? referenceImages : [])
+            ];
+
+            for (let i = 0; i < allRefs.length; i++) {
                 try {
-                    const resolved2 = await resolveImageToBuffer(secondImage);
-                    if (resolved2) {
-                        const imageFile2 = await toFile(resolved2.buffer, 'second_reference.png', { type: resolved2.mimeType });
-                        imagesList.push(imageFile2);
+                    const resolved = await resolveImageToBuffer(allRefs[i]);
+                    if (resolved) {
+                        const fileObj = await toFile(resolved.buffer, `ref_${i + 1}.png`, { type: resolved.mimeType || 'image/png' });
+                        imagesList.push(fileObj);
                     }
-                } catch (secErr) {
-                    console.warn('[handleOpenAI] Warning: Failed to resolve second image:', secErr.message);
+                } catch (rErr) {
+                    console.warn(`[handleOpenAI] Warning: Failed to resolve ref image ${i + 1}:`, rErr.message);
                 }
             }
 
-            let finalSize = size || '1024x1024';
-            if (finalSize === '1792x1024') finalSize = '1536x1024';
-            if (finalSize === '1024x1792') finalSize = '1024x1536';
+            if (imagesList.length === 0) {
+                throw new Error('Failed to resolve any reference image to valid buffers.');
+            }
 
-            const isGPTImage = model === 'gpt-image-2' || model === 'gpt-image-1.5' || (model && (model.startsWith('gpt-image') || model.startsWith('gpt-5')));
+            const isGPTImage = modelLower.includes('gpt-image') || modelLower.includes('sunburst') || modelLower.includes('flare') || modelLower.includes('gpt-5');
 
-            response = await openai.images.edit({
-                model: model === 'dall-e-2' ? 'dall-e-2' : (model || 'gpt-image-2'),
-                image: (isGPTImage && imagesList.length > 1) ? imagesList : imageFile,
+            const editParams = {
+                model: targetModel,
+                image: (isGPTImage && imagesList.length > 1) ? imagesList : imagesList[0],
                 prompt,
                 n: 1,
                 size: finalSize,
                 output_format: finalFormat,
                 ...((finalFormat === 'jpeg' || finalFormat === 'webp') && output_compression !== undefined ? { output_compression: Number(output_compression) } : {}),
-                ...(background ? { background } : {})
-            });
+                ...(background ? { background } : {}),
+                ...(moderation ? { moderation } : {})
+            };
+
+            // gpt-image-2.5 and gpt-image-2 support quality parameter on edits
+            if (isGPTImage && finalQuality) {
+                editParams.quality = finalQuality;
+            }
+
+            console.log(`[handleOpenAI] Dispatching edit with model: ${targetModel}, images: ${imagesList.length}, size: ${finalSize}, quality: ${finalQuality}`);
+            response = await openai.images.edit(editParams);
         } else {
-            let finalSize = size || '1024x1024';
-            if (finalSize === '1792x1024') finalSize = '1536x1024';
-            if (finalSize === '1024x1792') finalSize = '1024x1536';
-
-            const finalQuality = quality === 'hd' || quality === 'high' ? 'high' : (quality === 'low' ? 'low' : 'medium');
-
-            response = await openai.images.generate({
-                model: (model === 'dall-e-2') ? 'dall-e-2' : 'gpt-image-2',
+            const genParams = {
+                model: targetModel,
                 prompt,
                 quality: finalQuality,
                 size: finalSize,
                 n: 1,
                 output_format: finalFormat,
                 ...((finalFormat === 'jpeg' || finalFormat === 'webp') && output_compression !== undefined ? { output_compression: Number(output_compression) } : {}),
-                ...(background ? { background } : {})
-            });
+                ...(background ? { background } : {}),
+                ...(moderation ? { moderation } : {})
+            };
+
+            console.log(`[handleOpenAI] Dispatching generation with model: ${targetModel}, size: ${finalSize}, quality: ${finalQuality}`);
+            response = await openai.images.generate(genParams);
         }
 
         let imageBuffer;
@@ -1177,7 +1252,6 @@ async function handleOpenAI(req, res) {
         if (b64) {
             imageBuffer = Buffer.from(b64, 'base64');
         } else if (tempUrl) {
-            // Download the image and upload to Supabase to make it permanent
             const imageResp = await fetch(tempUrl);
             if (!imageResp.ok) {
                 throw new Error(`Failed to download image from OpenAI: ${imageResp.statusText}`);
@@ -1189,26 +1263,44 @@ async function handleOpenAI(req, res) {
 
         // Extract aspect ratio for metadata
         let aspectRatio = '1:1';
-        if (size === '1536x1024' || size === '1792x1024') aspectRatio = '16:9';
-        else if (size === '1024x1536' || size === '1024x1792') aspectRatio = '9:16';
+        if (finalSize === '1536x1024' || finalSize === '1792x1024') aspectRatio = '16:9';
+        else if (finalSize === '1024x1536' || finalSize === '1024x1792') aspectRatio = '9:16';
 
         const isGrid = !!req.body.isGrid;
         const extraMetadata = isGrid ? { isGrid: true } : {};
         const url = await uploadImageToSupabase(
             imageBuffer,
             userId,
-            'image/png',
+            `image/${finalFormat === 'jpeg' ? 'jpeg' : finalFormat === 'webp' ? 'webp' : 'png'}`,
             undefined,
             folder,
             aspectRatio,
             prompt || '',
-            model || 'DALL-E 3',
+            targetModel,
             extraMetadata
         );
 
         res.json({ url });
     } catch (error) {
         console.error('[handleOpenAI Error]:', error.message);
+        
+        // Handle OpenAI moderation block error details
+        if (error?.code === 'moderation_blocked' || error?.status === 400 && error.message?.includes('moderation')) {
+            const moderationDetails = error.error?.moderation_details;
+            const categories = moderationDetails?.categories ?? [];
+            const stage = moderationDetails?.moderation_stage;
+
+            let hint = "This prompt could not be completed because it did not meet safety requirements.";
+            if (categories.includes("harassment")) {
+                hint = "Try removing abusive or targeting language and focus on neutral visual descriptions instead.";
+            } else if (stage === "input") {
+                hint = "Try revising the prompt or input reference images and submit the request again.";
+            } else if (stage === "output") {
+                hint = "The generated image was blocked by safety checks. Try slightly adjusting your prompt and generating again.";
+            }
+            return res.status(400).json({ error: hint, code: 'moderation_blocked', moderation_details: moderationDetails });
+        }
+
         res.status(500).json({ error: error.message });
     }
 }
