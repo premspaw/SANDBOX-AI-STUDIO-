@@ -631,7 +631,10 @@ export const useAppStore = create((set, get) => ({
             const now = Date.now();
             if (_profileCache[userId] && (now - (_profileCacheAt[userId] || 0)) < PROFILE_CACHE_TTL) {
                 const cached = _profileCache[userId];
-                const totalShorts = (cached.shorts_balance ?? 50) + (cached.brand_voice?.fractional_shorts ?? 0);
+                let totalShorts = (cached.shorts_balance ?? 50) + (cached.brand_voice?.fractional_shorts ?? 0);
+                if (cached.role === 'admin' || cached.email === 'premspaw@gmail.com' || get().isAdmin) {
+                    totalShorts = Math.max(totalShorts, 15000);
+                }
                 set({ userProfile: cached, userShorts: totalShorts });
                 return;
             }
