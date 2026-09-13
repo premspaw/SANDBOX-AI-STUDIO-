@@ -11,6 +11,8 @@ export const TalkingHeadTab: React.FC = () => {
     setThScript,
     thEngine,
     setThEngine,
+    videoResolution,
+    setVideoResolution,
     thAspectRatio,
     setThAspectRatio,
     thDuration,
@@ -178,25 +180,25 @@ export const TalkingHeadTab: React.FC = () => {
               <select
                 value={thEngine}
                 onChange={e => setThEngine(e.target.value as any)}
-                className="appearance-none bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg pl-5 pr-4 py-0.5 text-[8px] font-bold uppercase tracking-widest text-white/50 hover:text-white/80 cursor-pointer transition-all font-sans"
+                className="appearance-none bg-white/[0.04] hover:bg-white/[0.08] border border-cyan-500/30 rounded-lg pl-5 pr-4 py-0.5 text-[8px] font-bold uppercase tracking-widest text-cyan-300 hover:text-white cursor-pointer transition-all font-sans"
               >
-                <option value="veo_lite" className="bg-[#0c0c0c] text-white">🍃 VEO LITE</option>
-                <option value="veo_fast" className="bg-[#0c0c0c] text-white">⚡ VEO FAST</option>
-                <option value="veo3" className="bg-[#0c0c0c] text-white">🎬 VEO 3 HQ</option>
                 <option value="omni-flash-1.1" className="bg-[#0c0c0c] text-white">⚡ OMNI FLASH 1.1</option>
-                <option value="omni-flash" className="bg-[#0c0c0c] text-white">✨ OMNI FLASH 1.0</option>
               </select>
-              {thEngine === 'veo_lite' ? (
-                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none leading-none">🍃</span>
-              ) : thEngine === 'veo3' ? (
-                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none leading-none">🎬</span>
-              ) : thEngine === 'omni-flash-1.1' ? (
-                <Zap size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-cyan-400 pointer-events-none" />
-              ) : thEngine === 'omni-flash' ? (
-                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none leading-none">✨</span>
-              ) : (
-                <Zap size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
-              )}
+              <Zap size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-cyan-400 pointer-events-none" />
+              <ChevronDown size={7} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+            </div>
+
+            {/* 3.5 Resolution Dropdown Pill */}
+            <div className="relative flex-shrink-0">
+              <select
+                value={videoResolution}
+                onChange={e => setVideoResolution(e.target.value as any)}
+                className="appearance-none bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg pl-5 pr-4 py-0.5 text-[8px] font-bold uppercase tracking-widest text-white/70 hover:text-white cursor-pointer transition-all font-sans"
+              >
+                <option value="720p" className="bg-[#0c0c0c] text-white">720P (HD)</option>
+                <option value="1080p" className="bg-[#0c0c0c] text-white">1080P (FHD)</option>
+              </select>
+              <Film size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-cyan-400 pointer-events-none" />
               <ChevronDown size={7} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
             </div>
 
@@ -224,16 +226,7 @@ export const TalkingHeadTab: React.FC = () => {
                 <option value="4" className="bg-[#0c0c0c] text-white">4 SEC</option>
                 <option value="6" className="bg-[#0c0c0c] text-white">6 SEC</option>
                 <option value="8" className="bg-[#0c0c0c] text-white">8 SEC</option>
-                {thEngine === 'omni-flash' && (
-                  <>
-                    <option value="10" className="bg-[#0c0c0c] text-white">10 SEC</option>
-                    <option value="20" className="bg-[#0c0c0c] text-white">20 SEC</option>
-                    <option value="30" className="bg-[#0c0c0c] text-white">30 SEC</option>
-                    <option value="40" className="bg-[#0c0c0c] text-white">40 SEC</option>
-                    <option value="50" className="bg-[#0c0c0c] text-white">50 SEC</option>
-                    <option value="60" className="bg-[#0c0c0c] text-white">60 SEC</option>
-                  </>
-                )}
+                <option value="10" className="bg-[#0c0c0c] text-white">10 SEC</option>
               </select>
               <Clock size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
               <ChevronDown size={7} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />

@@ -435,16 +435,14 @@ export const MontagePanel: React.FC = () => {
                 {/* Video Engine Selector Pill */}
                 <div className="relative shrink-0">
                   <select
-                    value={videoGenMode || 'omni-flash'}
+                    value={videoGenMode || 'omni-flash-1.1'}
                     onChange={e => setVideoGenMode(e.target.value as any)}
-                    className="appearance-none bg-[#c8f135]/10 border border-[#c8f135]/30 hover:border-[#c8f135]/60 rounded-lg pl-6 pr-5 py-1 text-[7.5px] font-mono text-[#c8f135] uppercase tracking-wider cursor-pointer transition-all focus:outline-none"
+                    className="appearance-none bg-cyan-500/10 border border-cyan-500/30 hover:border-cyan-500/60 rounded-lg pl-6 pr-5 py-1 text-[7.5px] font-mono text-cyan-300 uppercase tracking-wider cursor-pointer transition-all focus:outline-none"
                   >
-                    <option value="omni-flash" className="bg-[#0c0c0c] text-white">✨ Gemini Omni Flash</option>
-                    <option value="veo_fast" className="bg-[#0c0c0c] text-white">⚡ Veo 3 Fast</option>
-                    <option value="veo_standard" className="bg-[#0c0c0c] text-white">🎬 Veo 3 Standard</option>
+                    <option value="omni-flash-1.1" className="bg-[#0c0c0c] text-white">⚡ OMNI FLASH 1.1</option>
                   </select>
-                  <Sparkles size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
-                  <ChevronDown size={7} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[#c8f135]/60 pointer-events-none" />
+                  <Zap size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-cyan-400 pointer-events-none" />
+                  <ChevronDown size={7} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-cyan-400/60 pointer-events-none" />
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">

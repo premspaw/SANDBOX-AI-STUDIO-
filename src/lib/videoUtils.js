@@ -17,10 +17,17 @@ export const extractVideoFrame = (videoSrc, atTime = 0) => {
     video.preload = 'auto';
 
     const cleanSrc = resolveUrl(videoSrc);
-    const isRemote = cleanSrc.startsWith('http') && !cleanSrc.includes(window.location.host);
-    const targetSrc = isRemote 
-      ? getApiUrl(`/api/proxy-image?url=${encodeURIComponent(cleanSrc)}&cors=1`)
-      : cleanSrc;
+    // If cleanSrc is already proxied or from localhost/same host, don't wrap it again
+    let targetSrc = cleanSrc;
+    if (
+      cleanSrc.startsWith('http') &&
+      !cleanSrc.includes('/api/proxy-image') &&
+      !cleanSrc.includes('localhost') &&
+      !cleanSrc.includes('127.0.0.1') &&
+      (!typeof window !== 'undefined' || !cleanSrc.includes(window.location.host))
+    ) {
+      targetSrc = getApiUrl(`/api/proxy-image?url=${encodeURIComponent(cleanSrc)}&cors=1`);
+    }
 
     video.src = targetSrc;
 

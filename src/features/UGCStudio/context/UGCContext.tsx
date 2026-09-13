@@ -181,8 +181,8 @@ export interface UGCContextType {
   setGeneratedVideo: (v: string) => void;
   renderMode: 'image' | 'video';
   setRenderMode: (v: 'image' | 'video') => void;
-  durationSeconds: '4' | '6' | '8' | '10' | '20' | '30' | '40' | '50' | '60';
-  setDurationSeconds: (v: '4' | '6' | '8' | '10' | '20' | '30' | '40' | '50' | '60') => void;
+  durationSeconds: '4' | '6' | '8' | '10';
+  setDurationSeconds: (v: '4' | '6' | '8' | '10') => void;
   videoResolution: '720p' | '1080p';
   setVideoResolution: (v: '720p' | '1080p') => void;
   selectedVideoStyle: string;
@@ -274,8 +274,8 @@ export interface UGCContextType {
   setThEngine: (v: 'veo_lite' | 'veo_fast' | 'veo3' | 'omni-flash' | 'omni-flash-1.1') => void;
   thAspectRatio: '9:16' | '16:9';
   setThAspectRatio: (v: '9:16' | '16:9') => void;
-  thDuration: '4' | '6' | '8' | '10' | '20' | '30' | '40' | '50' | '60';
-  setThDuration: (v: '4' | '6' | '8' | '10' | '20' | '30' | '40' | '50' | '60') => void;
+  thDuration: '4' | '6' | '8' | '10';
+  setThDuration: (v: '4' | '6' | '8' | '10') => void;
   thGeneratedImg: string;
   setThGeneratedImg: (v: string) => void;
   thGeneratedVideo: string;

@@ -79,7 +79,13 @@ export const resolveUrl = (url) => {
 
     // ✅ FIX: Route ALL external video URLs through the backend proxy.
     // This prevents ERR_CACHE_OPERATION_NOT_SUPPORTED in Chrome for GCS/Supabase
-    if (isVideo && url.startsWith('http') && !url.includes('localhost') && !url.includes('/api/proxy-image')) {
+    if (
+        isVideo &&
+        url.startsWith('http') &&
+        !url.includes('localhost') &&
+        !url.includes('127.0.0.1') &&
+        !url.includes('/api/proxy-image')
+    ) {
         return getApiUrl(`/api/proxy-image?url=${encodeURIComponent(url)}&cors=1`);
     }
 

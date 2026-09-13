@@ -726,14 +726,8 @@ export default function createRouter(deps) {
                 finalTaskType = finalImageCount > 0 ? 'reference_to_video' : 'text_to_video';
             }
 
-            let modelName = 'gemini-omni-1.1-flash-preview';
-            if (modelLower.includes('omni-flash-1.0') || modelLower === 'omni-flash' || modelLower === 'gemini-omni-flash-preview') {
-                modelName = 'gemini-omni-flash-preview';
-            } else if (modelLower.includes('omni-preview') || (modelLower.includes('omni') && !modelLower.includes('flash') && !modelLower.includes('1.1'))) {
-                modelName = 'gemini-omni-preview';
-            } else {
-                modelName = 'gemini-omni-1.1-flash-preview';
-            }
+            // Enforce Google Gemini Omni Flash 1.1 as the sole model
+            const modelName = 'gemini-omni-1.1-flash-preview';
 
             const responseFormat = {
                 type: "video",
@@ -744,13 +738,7 @@ export default function createRouter(deps) {
                 responseFormat.aspect_ratio = validAspectRatio;
             }
             if (validResolution) {
-                // Vertex AI interactions API strictly supports only 720p for gemini-omni-flash-preview
-                if (modelName === 'gemini-omni-flash-preview' && validResolution !== '720p') {
-                    console.log(`[OMNI-I2V] Normalizing resolution from ${validResolution} to 720p (required by gemini-omni-flash-preview)`);
-                    responseFormat.resolution = '720p';
-                } else {
-                    responseFormat.resolution = validResolution;
-                }
+                responseFormat.resolution = validResolution;
             }
 
             const reqBody = {

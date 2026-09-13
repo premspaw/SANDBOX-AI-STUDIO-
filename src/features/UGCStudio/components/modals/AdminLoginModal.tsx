@@ -23,8 +23,8 @@ export default function AdminLoginModal() {
         setIsAdmin(true);
         setShowAdminLogin(false);
         setAdminPassword('');
-        setUserShorts(10000);
-        alert('Admin mode ON — 10,000 credits loaded');
+        setUserShorts(15000);
+        alert('Admin mode ON — 15,000 credits loaded');
       } else {
         alert('Invalid password');
       }

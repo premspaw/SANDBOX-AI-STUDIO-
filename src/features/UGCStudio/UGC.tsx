@@ -346,12 +346,12 @@ export default function UGC() {
   const [thGeneratedImg, setThGeneratedImg] = useState<string>('');
   const [thGeneratedVideo, setThGeneratedVideo] = useState<string>('');
   const [thScript, setThScript] = useState<string>('');
-  const [thEngine, setThEngine] = useState<'veo3' | 'veo_fast' | 'veo_lite' | 'omni-flash' | 'omni-flash-1.1'>('veo_fast');
+  const [thEngine, setThEngine] = useState<'omni-flash-1.1' | 'omni-flash' | 'veo3' | 'veo_fast' | 'veo_lite'>('omni-flash-1.1');
   const [thAnimation, setThAnimation] = useState<string>('none');
   const [thIsGeneratingImg, setThIsGeneratingImg] = useState(false);
   const [thIsGeneratingVideo, setThIsGeneratingVideo] = useState(false);
   const [thVideoProgress, setThVideoProgress] = useState('');
-  const [thDuration, setThDuration] = useState<'4' | '6' | '8' | '10' | '20' | '30' | '40' | '50' | '60'>('8');
+  const [thDuration, setThDuration] = useState<'4' | '6' | '8' | '10'>('10');
   const [thAspectRatio, setThAspectRatio] = useState<'9:16' | '16:9'>('9:16');
 
   const [voiceSampleFile, setVoiceSampleFile] = useState<File | null>(null);
@@ -361,7 +361,7 @@ export default function UGC() {
   const [isAnalyzingVoice, setIsAnalyzingVoice] = useState(false);
   const [imageStyle, setImageStyle] = useState<'studio' | 'ultra-realistic' | 'iphone' | 'short' | 'normal' | 'cinematic'>('ultra-realistic');
   const [aspectRatio, setAspectRatio] = useState<'9:16' | '16:9' | '1:1'>('9:16');
-  const [durationSeconds, setDurationSeconds] = useState<'4' | '6' | '8' | '10' | '20' | '30' | '40' | '50' | '60'>('10');
+  const [durationSeconds, setDurationSeconds] = useState<'4' | '6' | '8' | '10'>('10');
   const [includeAudio, setIncludeAudio] = useState(true);
   const [videoResolution, setVideoResolution] = useState<'720p' | '1080p'>('720p');
   const [selectedVideoStyle, setSelectedVideoStyle] = useState<'calm' | 'energetic' | 'action' | 'professional' | 'casual' | 'storytelling'>('calm');
@@ -514,6 +514,12 @@ export default function UGC() {
     return () => clearTimeout(timer);
   }, [trainedStrategy]);
 
+  useEffect(() => {
+    if (isAdmin || isGlobalAdmin) {
+      setUserShorts(15000);
+    }
+  }, [isAdmin, isGlobalAdmin]);
+
   const handleAdminLogin = async () => {
     if (!adminPassword) return;
     try {
@@ -526,8 +532,8 @@ export default function UGC() {
         setIsAdmin(true);
         setShowAdminLogin(false);
         setAdminPassword('');
-        setUserShorts(10000);
-        showToast('Admin mode ON — 10,000 credits loaded', 'success');
+        setUserShorts(15000);
+        showToast('Admin mode ON — 15,000 credits loaded', 'success');
       } else {
         alert('Invalid password');
       }
@@ -621,29 +627,15 @@ export default function UGC() {
   const [showLiveGuide, setShowLiveGuide] = useState(false);
   const [showPromptDropdown, setShowPromptDropdown] = useState(false);
 
-  const handleScriptModelChange = (model: 'veo3' | 'omni') => {
-    setScriptModel(model);
-    if (model === 'omni') {
-      setVideoGenMode('omni-flash');
-      setDurationSeconds('10');
-      
-      if (scriptDuration === '8 seconds') setScriptDuration('10 seconds');
-      else if (scriptDuration === '16 seconds') setScriptDuration('20 seconds');
-      else if (scriptDuration === '24 seconds') setScriptDuration('30 seconds');
-      else if (scriptDuration === '36 seconds' || scriptDuration === '42 seconds') setScriptDuration('40 seconds');
-      else setScriptDuration('20 seconds');
-    } else {
-      if (videoGenMode === 'omni-flash') {
-        setVideoGenMode('veo_fast');
-      }
-      setDurationSeconds('8');
-
-      if (scriptDuration === '10 seconds') setScriptDuration('8 seconds');
-      else if (scriptDuration === '20 seconds') setScriptDuration('16 seconds');
-      else if (scriptDuration === '30 seconds') setScriptDuration('24 seconds');
-      else if (scriptDuration === '40 seconds') setScriptDuration('36 seconds');
-      else setScriptDuration('16 seconds');
-    }
+  const handleScriptModelChange = (model: 'veo3' | 'omni' = 'omni') => {
+    setScriptModel('omni');
+    setVideoGenMode('omni-flash-1.1');
+    setDurationSeconds('10');
+    if (scriptDuration === '8 seconds') setScriptDuration('10 seconds');
+    else if (scriptDuration === '16 seconds') setScriptDuration('20 seconds');
+    else if (scriptDuration === '24 seconds') setScriptDuration('30 seconds');
+    else if (scriptDuration === '36 seconds' || scriptDuration === '42 seconds') setScriptDuration('40 seconds');
+    else if (!scriptDuration.includes('second')) setScriptDuration('20 seconds');
   };
 
 
@@ -2446,8 +2438,9 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       const body: any = {
         motionPrompt,
         task: 'edit',
-        model: 'gemini-omni-flash-preview',
+        model: 'gemini-omni-1.1-flash-preview',
         aspectRatio: '9:16',
+        resolution: videoResolution,
         duration: sceneDurationSec,
         userId: currentUserId,
         image: `data:${videoMimeType};base64,${videoBase64}`,
@@ -3129,67 +3122,18 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
 
       setThVideoProgress('✨ Directing your video scene...');
 
-      if (isAdmin || isGlobalAdmin) {
-        setThVideoProgress('🔥 Generating high-converting video...');
+      try {
+        setThVideoProgress('🔥 Generating talking head video with Omni 1.1...');
         const headers: any = { 'Content-Type': 'application/json' };
         const customKey = getApiKey();
         if (customKey) headers['x-admin-trial-key'] = customKey;
 
-        const resp = await fetch(getApiUrl('/api/ugc/video'), {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            image: thGeneratedImg || undefined,
-            script: talkingPrompt,
-            userId: currentUserId,
-            duration: thDuration,
-            resolution: '720p',
-            model: thEngine === 'veo3' ? 'veo3' : 'veo_fast',
-            aspect_ratio: thAspectRatio,
-            projectId: activeProjectId || 'default',
-            folder: activeProjectId || 'default'
-          })
-        });
-
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || 'Talking Head generation failed.');
-        if (!data.url) throw new Error('Returned no video URL.');
-
-        setThGeneratedVideo(data.url);
-        updateGalleryItem(placeholderThVideoId, {
-          url: data.url,
-          loading: false,
-          prompt: talkingPrompt.substring(0, 1000)
-        });
-        setThIsGeneratingVideo(false);
-        setThVideoProgress('');
-        showToast('Talking Head video ready!', 'success');
-        return;
-      }
-
-      const videoRequest: any = {
-        model: veoModel,
-        prompt: talkingPrompt,
-        config: {
-          numberOfVideos: 1,
-          resolution: '720p',
-          aspectRatio: thAspectRatio,
-          durationSeconds: parseInt(thDuration),
-          includeAudio: true,
-        },
-      };
-      if (imagePayload) videoRequest.image = imagePayload;
-
-      if (thEngine === 'omni-flash') {
-        setThVideoProgress('✨ Directing your talking scene...');
         let imageToSend = '';
         if (imagePayload) {
           imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
+        } else if (thGeneratedImg) {
+          imageToSend = thGeneratedImg;
         }
-
-        const headers: any = { 'Content-Type': 'application/json' };
-        const customKey = getApiKey();
-        if (customKey) headers['x-admin-trial-key'] = customKey;
 
         let audioToSend = undefined;
         if (voiceSampleFile) {
@@ -3209,8 +3153,8 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
             motionPrompt: talkingPrompt,
             duration: parseInt(thDuration),
             aspectRatio: thAspectRatio,
-            resolution: '720p',
-            model: 'gemini-omni-flash-preview',
+            resolution: videoResolution,
+            model: 'gemini-omni-1.1-flash-preview',
             userId: currentUserId,
             generateAudio: true,
             creditReason: 'veo_fast'
@@ -3221,93 +3165,22 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
         if (!resp.ok) throw new Error(data.error || 'Omni generation failed.');
         if (!data.videoUrl) throw new Error('Omni returned no video URL.');
 
-        const videoUrl = data.videoUrl;
-        const res = await fetch(videoUrl);
-        const blob = await res.blob();
-        const localUrl = URL.createObjectURL(blob);
-
-        setThGeneratedVideo(localUrl);
+        setThGeneratedVideo(data.videoUrl);
         updateGalleryItem(placeholderThVideoId, {
-          url: localUrl,
+          url: data.videoUrl,
           loading: false,
           prompt: talkingPrompt.substring(0, 1000)
         });
-        showToast('Talking Head video ready!', 'success');
-
-        uploadToSupabase(blob, 'video', talkingPrompt, currentUserId)
-          .then(publicUrl => {
-            if (publicUrl) {
-              updateGalleryItem(placeholderThVideoId, { url: publicUrl });
-              setThGeneratedVideo(publicUrl);
-            }
-          })
-          .catch(err => {
-            console.error('[Background Upload] Talking head upload failed:', err);
-          });
-
         setThIsGeneratingVideo(false);
         setThVideoProgress('');
+        showToast('Talking Head video ready!', 'success');
         return;
-      }
-
-      const operation = await (ai.models as any).generateVideo(videoRequest);
-      let op = operation;
-      setThVideoProgress('Rendering frames…');
-
-      let attempts = 0;
-      while (!op.done && attempts < 60) {
-        await new Promise(r => setTimeout(r, 5000));
-        op = await (ai.operations as any).getVideosOperation({ operation: op });
-        attempts++;
-        setThVideoProgress(`Rendering… (${attempts * 5}s / 300s)`);
-      }
-
-      if (!op.done) throw new Error('Talking head video generation timed out. Try a shorter duration.');
-
-      const raiFiltered = op.response?.raiMediaFilteredCount ?? 0;
-      if (raiFiltered > 0) {
-        const errStr = 'Video blocked by Veo safety filter. Rephrase the script.';
-        showToast(errStr, 'error');
+      } catch (err: any) {
+        console.error('[Talking Head] Video generation failed:', err);
+        const errMsg = err.message || JSON.stringify(err);
+        updateGalleryItem(placeholderThVideoId, { loading: false, error: `Error: ${errMsg}` });
         if (!isAdmin && !isGlobalAdmin) refund('veo_fast', unitCost as any);
-        setThIsGeneratingVideo(false);
-        setThVideoProgress('');
-        updateGalleryItem(placeholderThVideoId, { loading: false, error: errStr });
-        return;
-      }
-
-      const downloadLink = op.response?.generatedVideos?.[0]?.video?.uri;
-      if (downloadLink) {
-        const currentApiKey = getApiKey();
-
-        // ── Step 1: Download blob immediately for instant preview ──────────────
-        setThVideoProgress('Downloading video...');
-        const resp = await fetch(downloadLink, {
-          headers: { 'x-goog-api-key': currentApiKey },
-        });
-        if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
-        const blob = await resp.blob();
-        const localUrl = URL.createObjectURL(blob);
-
-        // ── Step 2: Show instantly in gallery + player ─────────────────────────
-        setThGeneratedVideo(localUrl);
-        updateGalleryItem(placeholderThVideoId, {
-          url: localUrl,
-          loading: false,
-          prompt: talkingPrompt.substring(0, 1000)
-        });
-        showToast('Talking Head video ready!', 'success');
-
-        // ── Step 3: Upload to Supabase in background ───────────────────────────
-        uploadToSupabase(blob, 'video', talkingPrompt, currentUserId)
-          .then(publicUrl => {
-            if (publicUrl) {
-              setThGeneratedVideo(publicUrl);
-              updateGalleryItem(placeholderThVideoId, { url: publicUrl });
-            }
-          })
-          .catch(err => console.error('[Background Save] Failed:', err));
-      } else {
-        throw new Error('No video returned from Veo.');
+        handleApiError(err, 'Talking Head video');
       }
     } catch (e: any) {
       const errMsg = e.message || JSON.stringify(e);
@@ -3629,49 +3502,94 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
           continue; // Move to next scene
         }
 
-        const videoRequest: any = {
-          model: veoModel,
-          prompt: prompt.substring(0, 1000),
-          config: {
-            numberOfVideos: 1,
-            resolution: videoResolution as any,
-            aspectRatio: resolvedAspectRatio,
-            durationSeconds: resolvedDuration,
-            includeAudio: resolvedIncludeAudio,
-          },
-        };
-        if (imagePayload) videoRequest.image = imagePayload;
+        let sceneVideoUrl = '';
+        let sceneBlob: Blob | null = null;
 
-        let op = await ai.models.generateVideos(videoRequest);
-        const start = Date.now();
+        // Try backend Vertex AI first
+        try {
+          const headers: any = { 'Content-Type': 'application/json' };
+          const customKey = getApiKey();
+          if (customKey) headers['x-admin-trial-key'] = customKey;
 
-        while (!op.done) {
-          if (Date.now() - start > 90_000) {
-            showToast(`Shot ${i + 1} timed out`, 'error');
-            break;
+          let imageToSend = undefined;
+          if (imagePayload) {
+            imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
           }
-          await new Promise((r) => setTimeout(r, 5000));
-          op = await ai.operations.getVideosOperation({ operation: op });
-          setVideoProgressMsg(
-            `Shot ${i + 1}/${splitScenes.length} · ${Math.round((Date.now() - start) / 1000)}s`,
-          );
+
+          const resp = await fetch(getApiUrl('/api/ugc/video'), {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              image: imageToSend,
+              script: prompt.substring(0, 1000),
+              userId: currentUserId,
+              duration: resolvedDuration,
+              resolution: videoResolution,
+              model: veoModel.includes('fast') ? 'veo_fast' : veoModel.includes('lite') ? 'veo_lite' : 'veo3',
+              aspect_ratio: resolvedAspectRatio,
+              projectId: activeProjectId || 'default',
+              folder: activeProjectId || 'default'
+            })
+          });
+
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data?.url) {
+              sceneVideoUrl = data.url;
+            }
+          }
+        } catch (backendErr) {
+          console.warn('[Scene Gen] Backend Vertex AI attempt failed, falling back to client SDK:', backendErr);
         }
 
-        const link = op.response?.generatedVideos?.[0]?.video?.uri;
-        if (link) {
-          const res = await fetch(link, { headers: { 'x-goog-api-key': getApiKey() } });
-          const blob = await res.blob();
-          const localUrl = URL.createObjectURL(blob);
+        if (!sceneVideoUrl) {
+          const videoRequest: any = {
+            model: veoModel,
+            prompt: prompt.substring(0, 1000),
+            config: {
+              numberOfVideos: 1,
+              resolution: videoResolution as any,
+              aspectRatio: resolvedAspectRatio,
+              durationSeconds: resolvedDuration,
+              includeAudio: resolvedIncludeAudio,
+            },
+          };
+          if (imagePayload) videoRequest.image = imagePayload;
+
+          let op = await ai.models.generateVideos(videoRequest);
+          const start = Date.now();
+
+          while (!op.done) {
+            if (Date.now() - start > 90_000) {
+              showToast(`Shot ${i + 1} timed out`, 'error');
+              break;
+            }
+            await new Promise((r) => setTimeout(r, 5000));
+            op = await ai.operations.getVideosOperation({ operation: op });
+            setVideoProgressMsg(
+              `Shot ${i + 1}/${splitScenes.length} · ${Math.round((Date.now() - start) / 1000)}s`,
+            );
+          }
+
+          const link = op.response?.generatedVideos?.[0]?.video?.uri;
+          if (link) {
+            const res = await fetch(link, { headers: { 'x-goog-api-key': getApiKey() } });
+            sceneBlob = await res.blob();
+            sceneVideoUrl = URL.createObjectURL(sceneBlob);
+          }
+        }
+
+        if (sceneVideoUrl) {
           const tempId = Date.now().toString();
 
-          // Immediately push to gallery and timeline using local URL
-          addToGallery({ id: tempId, type: 'video', url: localUrl });
+          // Immediately push to gallery and timeline
+          addToGallery({ id: tempId, type: 'video', url: sceneVideoUrl });
           const timelineId = `shot-${i}-${Date.now()}`;
           setTimeline((prev: TimelineItem[]) => [
             ...prev,
             {
               id: timelineId,
-              url: localUrl,
+              url: sceneVideoUrl,
               start: 0,
               end: Math.min(parseInt(durationSeconds), 8),
               duration: Math.min(parseInt(durationSeconds), 8),
@@ -3680,18 +3598,19 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
           ]);
           showToast(`Shot ${i + 1} done ✓`, 'success');
 
-          // Upload to Supabase in the background
-          uploadToSupabase(blob, 'video', prompt, currentUserId).then((publicUrl) => {
-            if (publicUrl) {
-              updateGalleryItem(tempId, { url: publicUrl });
-              // Also update the timeline item URL
-              setTimeline((prev: TimelineItem[]) =>
-                prev.map((t) => (t.id === timelineId ? { ...t, url: publicUrl } : t))
-              );
-            }
-          }).catch((err) => {
-            console.error('[Background Upload] Shot upload failed:', err);
-          });
+          // Upload to Supabase in the background if local blob exists
+          if (sceneBlob) {
+            uploadToSupabase(sceneBlob, 'video', prompt, currentUserId).then((publicUrl) => {
+              if (publicUrl) {
+                updateGalleryItem(tempId, { url: publicUrl });
+                setTimeline((prev: TimelineItem[]) =>
+                  prev.map((t) => (t.id === timelineId ? { ...t, url: publicUrl } : t))
+                );
+              }
+            }).catch((err) => {
+              console.error('[Background Upload] Shot upload failed:', err);
+            });
+          }
         }
 
         if (i < splitScenes.length - 1) {
@@ -4188,289 +4107,132 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
       const engine = activeTab === 'talking-head' ? thEngine : videoGenMode;
 
-      if (engine === 'omni-flash') {
-        setVideoProgressMsg('✨ Directing your video scene...');
-        const resolvedAspectRatio = activeTab === 'talking-head' ? thAspectRatio : (aspectRatio === '1:1' ? '9:16' : aspectRatio as any);
-        const resolvedDuration = activeTab === 'talking-head' ? parseInt(thDuration) : parseInt(durationSeconds);
-        const resolvedIncludeAudio = activeTab === 'talking-head' ? true : includeAudio;
+      setVideoProgressMsg('✨ Directing your video scene with Omni 1.1...');
+      const resolvedAspectRatio = activeTab === 'talking-head' ? thAspectRatio : (aspectRatio === '1:1' ? '9:16' : aspectRatio as any);
+      const resolvedDuration = activeTab === 'talking-head' ? parseInt(thDuration) : parseInt(durationSeconds);
+      const resolvedIncludeAudio = activeTab === 'talking-head' ? true : includeAudio;
 
-        let imageToSend = '';
-        if (imagePayload) {
-          imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
-        }
-
-        // Helper to resolve Asset objects or raw strings to Base64 data URLs on the client
-        const resolveAssetToBase64 = async (asset: any) => {
-          if (!asset) return null;
-          try {
-            if (typeof asset === 'string') {
-              if (asset.startsWith('data:')) return asset;
-              const blob = await fetchImageAsBlob(asset);
-              const base64 = await resizeImage(blob);
-              return `data:image/jpeg;base64,${base64}`;
-            }
-            if (asset.file) {
-              const base64 = await resizeImage(asset.file);
-              return `data:image/jpeg;base64,${base64}`;
-            }
-            if (asset.url) {
-              if (asset.url.startsWith('data:')) return asset.url;
-              const blob = await fetchImageAsBlob(asset.url);
-              const base64 = await resizeImage(blob);
-              return `data:image/jpeg;base64,${base64}`;
-            }
-          } catch (e) {
-            console.warn('[UGC-OMNI] Reference resolution failed:', e);
-          }
-          return null;
-        };
-
-        const activeCharacterImg = activeTab === 'talking-head' ? thPersonImg : characterImg;
-        const activeProductImg = activeTab === 'talking-head' ? thProductImg : productImg;
-        const activeLocationImg = activeTab === 'talking-head' ? thLocationImg : locationImg;
-
-        const currentScene = splitScenes[activeSplitTab];
-        const customSceneRefs = splitScenes.length > 0
-          ? (currentScene?.refImages || (currentScene?.refImage ? [currentScene.refImage] : []))
-          : attachedRefImages;
-
-        // Resolve reference images in parallel
-        const resolvedList = await Promise.all([
-          resolveAssetToBase64(activeCharacterImg),
-          resolveAssetToBase64(activeProductImg),
-          resolveAssetToBase64(activeLocationImg),
-          ...customSceneRefs.map(ref => resolveAssetToBase64({ url: ref }))
-        ]);
-
-        const charBase64 = resolvedList[0];
-        const prodBase64 = resolvedList[1];
-        const locBase64 = resolvedList[2];
-        const customB64s = resolvedList.slice(3);
-
-        const allRefs = (customB64s.length > 0)
-          ? [...customB64s, charBase64, prodBase64, locBase64].filter((val): val is string => !!val && val !== imageToSend)
-          : [charBase64, prodBase64, locBase64].filter((val): val is string => !!val && val !== imageToSend);
-
-        // Deduplicate references to prevent sending the same image twice
-        const uniqueRefs = Array.from(new Set(allRefs));
-        const refImagesList = uniqueRefs.map(url => ({ url }));
-
-        const headers: any = { 'Content-Type': 'application/json' };
-        const customKey = getApiKey();
-        if (customKey) headers['x-admin-trial-key'] = customKey;
-
-        let audioToSend = undefined;
-        if (voiceSampleFile) {
-          try {
-            const b64 = await fileToBase64(voiceSampleFile);
-            const mime = voiceSampleFile.type || 'audio/webm';
-            const match = b64.match(/^data:([^;]+);base64,(.+)$/);
-            if (match) {
-              audioToSend = `data:${match[1]};base64,${match[2]}`;
-            } else {
-              audioToSend = `data:${mime};base64,${b64}`;
-            }
-          } catch (e) {
-            console.error('Failed to convert voice sample to base64', e);
-          }
-        }
-        
-        // Remove <IMAGE_REF_x> tags since Omni Flash doesn't use this syntax
-        const cleanedMotionPrompt = promptText.replace(/<IMAGE_REF_\d+>/g, 'the reference image').substring(0, 3500);
-
-        const resp = await fetch(getApiUrl('/api/omni-i2v'), {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            image: imageToSend || undefined,
-            motionPrompt: cleanedMotionPrompt,
-            duration: resolvedDuration,
-            aspectRatio: resolvedAspectRatio,
-            resolution: '720p',
-            model: 'gemini-omni-flash-preview',
-            userId: currentUserId,
-            generateAudio: resolvedIncludeAudio,
-            creditReason: 'veo_fast',
-            ref_images: refImagesList,
-            audio: audioToSend
-          })
-        });
-
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || 'Omni generation failed.');
-        if (!data.videoUrl) throw new Error('Omni returned no video URL.');
-
-        setGeneratedVideo(data.videoUrl);
-        updateGalleryItem(placeholderVideoId, {
-          url: data.videoUrl,
-          loading: false,
-          prompt: promptText.substring(0, 1000)
-        });
-        setIsGeneratingVideo(false);
-        setVideoProgressMsg('');
-        showToast('Video scene generated successfully!', 'success');
-        return;
+      let imageToSend = '';
+      if (imagePayload) {
+        imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
       }
 
-      setVideoProgressMsg('✨ Bringing your scene to life...');
-
-      if (isAdmin || isGlobalAdmin) {
-        setVideoProgressMsg('🔥 Generating high-converting video...');
-        const headers: any = { 'Content-Type': 'application/json' };
-        const customKey = getApiKey();
-        if (customKey) headers['x-admin-trial-key'] = customKey;
-
-        const imageToSend = activeRefImg || undefined;
-
-        const resp = await fetch(getApiUrl('/api/ugc/video'), {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            image: imageToSend,
-            script: promptText,
-            userId: currentUserId,
-            duration: activeTab === 'talking-head' ? thDuration : durationSeconds,
-            resolution: videoResolution,
-            model: engine === 'veo3' ? 'veo3' : 'veo_fast',
-            aspect_ratio: activeTab === 'talking-head' ? thAspectRatio : aspectRatio,
-            projectId: activeProjectId || 'default',
-            folder: activeProjectId || 'default'
-          })
-        });
-
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || 'Vertex AI Veo generation failed.');
-        if (!data.url) throw new Error('Vertex AI returned no video URL.');
-
-        setGeneratedVideo(data.url);
-        updateGalleryItem(placeholderVideoId, {
-          url: data.url,
-          loading: false,
-          prompt: promptText.substring(0, 1000)
-        });
-        setIsGeneratingVideo(false);
-        setVideoProgressMsg('');
-        showToast('Video scene generated successfully via Vertex AI!', 'success');
-        return;
-      }
-
-      const veoModel = engine === 'veo3'
-        ? 'veo-3.1-generate-preview'
-        : engine === 'veo_lite'
-        ? 'veo-3.1-lite-generate-preview'
-        : 'veo-3.1-fast-generate-preview';
-
-      const videoRequest: any = {
-        model: veoModel,
-        prompt: promptText.substring(0, 1000), // Safety truncation
-        config: {
-          numberOfVideos: 1,
-          resolution: videoResolution as any,
-          aspectRatio: activeTab === 'talking-head' ? thAspectRatio : (aspectRatio === '1:1' ? '9:16' : aspectRatio as any),
-          durationSeconds: activeTab === 'talking-head' ? parseInt(thDuration) : parseInt(durationSeconds),
-          includeAudio: activeTab === 'talking-head' ? true : includeAudio
+      // Helper to resolve Asset objects or raw strings to Base64 data URLs on the client
+      const resolveAssetToBase64 = async (asset: any) => {
+        if (!asset) return null;
+        try {
+          if (typeof asset === 'string') {
+            if (asset.startsWith('data:')) return asset;
+            const blob = await fetchImageAsBlob(asset);
+            const base64 = await resizeImage(blob);
+            return `data:image/jpeg;base64,${base64}`;
+          }
+          if (asset.file) {
+            const base64 = await resizeImage(asset.file);
+            return `data:image/jpeg;base64,${base64}`;
+          }
+          if (asset.url) {
+            if (asset.url.startsWith('data:')) return asset.url;
+            const blob = await fetchImageAsBlob(asset.url);
+            const base64 = await resizeImage(blob);
+            return `data:image/jpeg;base64,${base64}`;
+          }
+        } catch (e) {
+          console.warn('[UGC-OMNI] Reference resolution failed:', e);
         }
+        return null;
       };
 
-      if (imagePayload) {
-        videoRequest.image = imagePayload;
-      }
+      const activeCharacterImg = activeTab === 'talking-head' ? thPersonImg : characterImg;
+      const activeProductImg = activeTab === 'talking-head' ? thProductImg : productImg;
+      const activeLocationImg = activeTab === 'talking-head' ? thLocationImg : locationImg;
 
-      let operation = await ai.models.generateVideos(videoRequest);
+      const currentScene = splitScenes[activeSplitTab];
+      const customSceneRefs = splitScenes.length > 0
+        ? (currentScene?.refImages || (currentScene?.refImage ? [currentScene.refImage] : []))
+        : attachedRefImages;
 
-      let pollCount = 0;
-      const messages = [
-        'Generating Video Frames...',
-        'Refining Realistic Details...',
-        'Processing Motion Dynamics...',
-        'Applying High-Res Textures...',
-        'Finalizing Render...'
-      ];
+      // Resolve reference images in parallel
+      const resolvedList = await Promise.all([
+        resolveAssetToBase64(activeCharacterImg),
+        resolveAssetToBase64(activeProductImg),
+        resolveAssetToBase64(activeLocationImg),
+        ...customSceneRefs.map(ref => resolveAssetToBase64({ url: ref }))
+      ]);
 
-      const VIDEO_TIMEOUT_MS = videoGenMode === 'veo3' ? 150_000 : videoGenMode === 'veo_lite' ? 60_000 : 90_000; // 150s HQ / 60s Lite / 90s Fast
-      const pollStart = Date.now();
+      const charBase64 = resolvedList[0];
+      const prodBase64 = resolvedList[1];
+      const locBase64 = resolvedList[2];
+      const customB64s = resolvedList.slice(3);
 
-      while (!operation.done) {
-        const elapsed = Math.floor((Date.now() - pollStart) / 1000);
-        if (Date.now() - pollStart > VIDEO_TIMEOUT_MS) {
-          setVideoTimedOut(true);
-          setIsGeneratingVideo(false);
-          setVideoProgressMsg('');
-          showToast(`Video generation timed out after ${elapsed}s — tap Retry to try again.`, 'error');
-          if (!isAdmin && !isGlobalAdmin) refund('veo_fast', unitCost as any);
-          updateGalleryItem(placeholderVideoId, { loading: false, error: `Video generation timed out after ${elapsed}s. Please check billing or try again.` });
-          return;
+      const allRefs = (customB64s.length > 0)
+        ? [...customB64s, charBase64, prodBase64, locBase64].filter((val): val is string => !!val && val !== imageToSend)
+        : [charBase64, prodBase64, locBase64].filter((val): val is string => !!val && val !== imageToSend);
+
+      // Deduplicate references to prevent sending the same image twice
+      const uniqueRefs = Array.from(new Set(allRefs));
+      const refImagesList = uniqueRefs.map(url => ({ url }));
+
+      const headers: any = { 'Content-Type': 'application/json' };
+      const customKey = getApiKey();
+      if (customKey) headers['x-admin-trial-key'] = customKey;
+
+      let audioToSend = undefined;
+      if (voiceSampleFile) {
+        try {
+          const b64 = await fileToBase64(voiceSampleFile);
+          const mime = voiceSampleFile.type || 'audio/webm';
+          const match = b64.match(/^data:([^;]+);base64,(.+)$/);
+          if (match) {
+            audioToSend = `data:${match[1]};base64,${match[2]}`;
+          } else {
+            audioToSend = `data:${mime};base64,${b64}`;
+          }
+        } catch (e) {
+          console.error('Failed to convert voice sample to base64', e);
         }
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        const msg = messages[Math.min(pollCount, messages.length - 1)];
-        setVideoProgressMsg(`${msg} (${elapsed}s / ${Math.floor(VIDEO_TIMEOUT_MS / 1000)}s)`);
-        pollCount++;
-        operation = await ai.operations.getVideosOperation({ operation });
       }
+      
+      // Remove <IMAGE_REF_x> tags since Omni Flash doesn't use this syntax
+      const cleanedMotionPrompt = promptText.replace(/<IMAGE_REF_\d+>/g, 'the reference image').substring(0, 3500);
 
-      setVideoProgressMsg('Checking Response...');
-      const generateVideoResponse = (operation.response as any)?.generateVideoResponse;
-      const raiFiltered = generateVideoResponse?.raiMediaFilteredCount || 0;
+      const resp = await fetch(getApiUrl('/api/omni-i2v'), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          image: imageToSend || undefined,
+          motionPrompt: cleanedMotionPrompt,
+          duration: resolvedDuration,
+          aspectRatio: resolvedAspectRatio,
+          resolution: videoResolution,
+          model: 'gemini-omni-1.1-flash-preview',
+          userId: currentUserId,
+          generateAudio: resolvedIncludeAudio,
+          creditReason: 'veo_fast',
+          ref_images: refImagesList,
+          audio: audioToSend
+        })
+      });
 
-      if (raiFiltered > 0) {
-        const reason = generateVideoResponse?.raiMediaFilteredReasons?.[0] || 'Prompt conflicted with safety policies.';
-        const errStr = `Video blocked by Veo safety filter. Reason: ${reason}`;
-        setVideoError(errStr);
-        showToast('Video blocked by safety filter — try rephrasing the prompt.', 'error');
-        setIsGeneratingVideo(false);
-        setVideoProgressMsg('');
-        updateGalleryItem(placeholderVideoId, { loading: false, error: errStr });
-        return;
-      }
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Omni generation failed.');
+      if (!data.videoUrl) throw new Error('Omni returned no video URL.');
 
-      const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-      if (downloadLink) {
-        const currentApiKey = getApiKey();
-
-        // ── Step 1: Download blob immediately ──────────────────────────────────
-        setVideoProgressMsg('Downloading video...');
-        const resp = await fetch(downloadLink, {
-          headers: { 'x-goog-api-key': currentApiKey },
-        });
-        if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
-        const blob = await resp.blob();
-        const localUrl = URL.createObjectURL(blob);
-
-        // ── Step 2: Show instantly in gallery + player ─────────────────────────
-        setGeneratedVideo(localUrl);
-        updateGalleryItem(placeholderVideoId, { url: localUrl, loading: false, prompt: promptText.substring(0, 1000) });
-        showToast('Video ready! Saving to cloud...', 'success');
-
-        // ── Step 3: Upload to Supabase in background ───────────────────────────
-        uploadToSupabase(blob, 'video', promptText, currentUserId)
-          .then(publicUrl => {
-            if (publicUrl) {
-              setGeneratedVideo(publicUrl);
-              updateGalleryItem(placeholderVideoId, { url: publicUrl });
-            }
-          })
-          .catch(err => {
-            console.error('[Background GCS Save] Failed:', err);
-          });
-      } else {
-        const errStr = 'Veo returned no video. The prompt may have been filtered — try a different prompt.';
-        setVideoError(errStr);
-        showToast('No video generated. Try rephrasing your prompt.', 'error');
-        updateGalleryItem(placeholderVideoId, { loading: false, error: errStr });
-      }
+      setGeneratedVideo(data.videoUrl);
+      updateGalleryItem(placeholderVideoId, {
+        url: data.videoUrl,
+        loading: false,
+        prompt: promptText.substring(0, 1000)
+      });
+      setIsGeneratingVideo(false);
+      setVideoProgressMsg('');
+      showToast('Video scene generated successfully with Omni 1.1!', 'success');
+      return;
     } catch (e: any) {
       if (!isAdmin && !isGlobalAdmin) refund('veo_fast', unitCost as any);
       handleApiError(e, "Video generation");
       const errMsg = e.message || JSON.stringify(e);
       let displayError = `Error: ${errMsg}`;
-      if (errMsg.includes("Requested entity was not found")) {
-        displayError = "Session expired or invalid key. Please try re-selecting your API key.";
-      } else if (errMsg.includes("403") || errMsg.includes("PERMISSION_DENIED")) {
-        displayError = `Permission Denied: Your API key doesn't have access to Veo-3.1. Please ensure:
-    1. Billing is ACTIVE for your Google Cloud project.
-    2. The Generative AI Video API is enabled.
-    3. You have selected a valid API key from a paid project.`;
-      }
       setVideoError(displayError);
       updateGalleryItem(placeholderVideoId, { loading: false, error: displayError });
     }
@@ -4954,13 +4716,13 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                       {/* Script Model Switcher Dropdown */}
                       <Dropdown
                         label=""
-                        value={scriptModel === 'veo3' ? 'VEO 3' : 'OMNI'}
-                        options={['VEO 3', 'OMNI']}
-                        onChange={(val: string) => {
-                          handleScriptModelChange(val === 'VEO 3' ? 'veo3' : 'omni');
+                        value="OMNI 1.1"
+                        options={['OMNI 1.1']}
+                        onChange={() => {
+                          handleScriptModelChange('omni');
                         }}
                         direction="up"
-                        className="w-[65px] md:w-[75px] shrink-0"
+                        className="w-[75px] md:w-[85px] shrink-0"
                       />
 
                       {/* Multi-Shot Toggle */}

@@ -35,9 +35,23 @@ export default function createRouter(deps) {
         });
 
         try {
-            const { url } = req.query;
+            let { url } = req.query;
             if (!url) {
                 return res.status(400).json({ error: 'url parameter is required' });
+            }
+
+            // Unwrap any accidentally nested proxy URLs
+            while (typeof url === 'string' && url.includes('/api/proxy-image?url=')) {
+                try {
+                    const match = url.match(/proxy-image\?url=([^&]+)/);
+                    if (match && match[1]) {
+                        url = decodeURIComponent(match[1]);
+                    } else {
+                        break;
+                    }
+                } catch (_) {
+                    break;
+                }
             }
 
             // Secure validation to prevent SSRF

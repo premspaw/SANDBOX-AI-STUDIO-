@@ -679,7 +679,10 @@ export const useAppStore = create((set, get) => ({
             if (data) {
                 _profileCache[userId] = data;
                 _profileCacheAt[userId] = Date.now();
-                const totalShorts = (data.shorts_balance ?? 50) + (data.brand_voice?.fractional_shorts ?? 0);
+                let totalShorts = (data.shorts_balance ?? 50) + (data.brand_voice?.fractional_shorts ?? 0);
+                if (data.role === 'admin' || data.email === 'premspaw@gmail.com' || get().isAdmin) {
+                    totalShorts = Math.max(totalShorts, 15000);
+                }
                 set({ userProfile: data, userShorts: totalShorts });
 
                 if (data.role === 'admin' || data.email === 'premspaw@gmail.com') {
@@ -716,7 +719,10 @@ export const useAppStore = create((set, get) => ({
         }
         const cached = _profileCache[userId];
         if (cached) {
-            const totalShorts = (cached.shorts_balance ?? 50) + (cached.brand_voice?.fractional_shorts ?? 0);
+            let totalShorts = (cached.shorts_balance ?? 50) + (cached.brand_voice?.fractional_shorts ?? 0);
+            if (get().userProfile?.role === 'admin' || get().userProfile?.email === 'premspaw@gmail.com' || get().isAdmin) {
+                totalShorts = Math.max(totalShorts, 15000);
+            }
             set({ userShorts: totalShorts });
             return;
         }
@@ -727,7 +733,10 @@ export const useAppStore = create((set, get) => ({
                 .eq('id', userId)
                 .single();
             if (data) {
-                const totalShorts = (data.shorts_balance ?? 50) + (data.brand_voice?.fractional_shorts ?? 0);
+                let totalShorts = (data.shorts_balance ?? 50) + (data.brand_voice?.fractional_shorts ?? 0);
+                if (get().userProfile?.role === 'admin' || get().userProfile?.email === 'premspaw@gmail.com' || get().isAdmin) {
+                    totalShorts = Math.max(totalShorts, 15000);
+                }
                 set({ userShorts: totalShorts });
             }
         } catch (err) {

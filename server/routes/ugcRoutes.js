@@ -48,26 +48,32 @@ export default function createRouter(deps) {
             const durationSecs = [4, 6, 8].includes(requestedDuration) ? requestedDuration : 6;
             const validAspectRatio = aspect_ratio || "9:16";
 
-            // Convert image to base64 if it's a URL
+            // Convert image to base64 if it's provided (supports both Text-to-Video and Image-to-Video)
             let imageBase64, imageMime;
-            if (image.startsWith('data:')) {
-                const [meta, data] = image.split(',');
-                imageBase64 = data;
-                imageMime = meta.split(':')[1]?.split(';')[0] || 'image/png';
-            } else {
-                console.log(`[Video API] Fetching image from URL: ${image.substring(0, 80)}...`);
-                const imgResp = await fetch(image);
-                if (!imgResp.ok) throw new Error(`Failed to fetch image: ${imgResp.status}`);
-                const imgBuffer = await imgResp.arrayBuffer();
-                imageMime = imgResp.headers.get('content-type') || 'image/png';
-                imageBase64 = Buffer.from(imgBuffer).toString('base64');
+            if (image && typeof image === 'string' && image.trim()) {
+                if (image.startsWith('data:')) {
+                    const [meta, data] = image.split(',');
+                    imageBase64 = data;
+                    imageMime = meta.split(':')[1]?.split(';')[0] || 'image/png';
+                } else if (image.startsWith('http://') || image.startsWith('https://')) {
+                    console.log(`[Video API] Fetching image from URL: ${image.substring(0, 80)}...`);
+                    const imgResp = await fetch(image);
+                    if (!imgResp.ok) throw new Error(`Failed to fetch image: ${imgResp.status}`);
+                    const imgBuffer = await imgResp.arrayBuffer();
+                    imageMime = imgResp.headers.get('content-type') || 'image/png';
+                    imageBase64 = Buffer.from(imgBuffer).toString('base64');
+                }
+            }
+
+            const instance = {
+                prompt: script
+            };
+            if (imageBase64) {
+                instance.image = { bytesBase64Encoded: imageBase64, mimeType: imageMime };
             }
 
             const payload = {
-                instances: [{
-                    prompt: script,
-                    image: { bytesBase64Encoded: imageBase64, mimeType: imageMime }
-                }],
+                instances: [instance],
                 parameters: {
                     sampleCount: 1,
                     aspectRatio: validAspectRatio,
@@ -105,8 +111,8 @@ export default function createRouter(deps) {
                     const operationName = initialData.name;
                     if (!operationName) throw new Error('No operation name returned from Vertex AI');
 
-                    const pollPath = operationName.includes('/') ? operationName : `projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/operations/${operationName}`;
-                    console.log(`[Video API] [Vertex AI] Operation created: ${operationName}. Polling...`);
+                    const fetchOpUrl = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelName}:fetchPredictOperation`;
+                    console.log(`[Video API] [Vertex AI] Operation created: ${operationName}. Polling via fetchPredictOperation...`);
 
                     let done = false;
                     let resultData = null;
@@ -117,18 +123,31 @@ export default function createRouter(deps) {
                         await new Promise(r => setTimeout(r, 6000));
                         attempts++;
 
-                        const pollUrl = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/${pollPath}`;
-                        const pollResponse = await fetch(pollUrl, {
-                            headers: { 'Authorization': `Bearer ${vertexToken}` }
+                        const pollResponse = await fetch(fetchOpUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${vertexToken}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ operationName })
                         });
-                        if (pollResponse.status === 404) {
-                            console.log(`[Video API] Operation not propagated yet (404). Waiting...`);
+                        if (!pollResponse.ok) {
+                            if (pollResponse.status === 404) {
+                                console.log(`[Video API] Operation not propagated yet (404). Waiting...`);
+                                continue;
+                            }
+                            if (pollResponse.status === 429) {
+                                await new Promise(r => setTimeout(r, 6000));
+                                continue;
+                            }
+                            const errText = await pollResponse.text().catch(() => pollResponse.status);
+                            console.warn(`[Video API] [Vertex AI] Poll attempt #${attempts} returned ${pollResponse.status}: ${errText}`);
                             continue;
                         }
                         const pollData = await pollResponse.json();
                         if (pollData.error) throw new Error(pollData.error.message);
                         if (pollData.done) {
-                            resultData = pollData.response;
+                            resultData = pollData.response || pollData;
                             done = true;
                         }
                         if (attempts % 3 === 0) {
@@ -138,22 +157,43 @@ export default function createRouter(deps) {
 
                     if (!done) throw new Error('Vertex AI video generation timed out');
 
-                    // Extract video bytes directly or download if a URI is returned
-                    const b64 = resultData?.predictions?.[0]?.bytesBase64Encoded;
+                    // Check for safety / RAI filtering
+                    if (resultData?.raiMediaFilteredCount > 0 || resultData?.raiMediaFilteredReasons) {
+                        const reasons = resultData.raiMediaFilteredReasons ? ` (${resultData.raiMediaFilteredReasons.join(', ')})` : '';
+                        throw new Error(`Video blocked by safety filters${reasons}. Please adjust prompt and try again.`);
+                    }
+
+                    // Extract video bytes directly or download if a URI is returned (Check all known Veo shapes)
+                    const b64 = resultData?.predictions?.[0]?.bytesBase64Encoded 
+                             || resultData?.videos?.[0]?.bytesBase64Encoded
+                             || resultData?.generatedVideos?.[0]?.video?.bytesBase64Encoded;
+
                     if (b64) {
                         videoBuffer = Buffer.from(b64, 'base64');
                         success = true;
                         console.log(`[Video API] [Vertex AI] Video generated successfully via base64 predictions (${videoBuffer.length} bytes)`);
                     } else {
-                        const videoUri = resultData?.generatedVideos?.[0]?.video?.uri || resultData?.predictions?.[0]?.uri;
+                        const videoUri = resultData?.generatedVideos?.[0]?.video?.uri 
+                                      || resultData?.generatedVideos?.[0]?.uri 
+                                      || resultData?.predictions?.[0]?.uri 
+                                      || resultData?.predictions?.[0]?.video?.uri
+                                      || resultData?.videos?.[0]?.uri 
+                                      || resultData?.videos?.[0]?.video?.uri;
+
                         if (videoUri) {
-                            const downloadUrl = `${videoUri}&key=${vertexToken}`;
-                            const videoResp = await fetch(downloadUrl);
+                            console.log(`[Video API] [Vertex AI] Downloading video from URI: ${videoUri}`);
+                            const videoResp = await fetch(videoUri, {
+                                headers: { 'Authorization': `Bearer ${vertexToken}` }
+                            });
                             if (videoResp.ok) {
                                 videoBuffer = Buffer.from(await videoResp.arrayBuffer());
                                 success = true;
                                 console.log(`[Video API] [Vertex AI] Video downloaded successfully via URI (${videoBuffer.length} bytes)`);
+                            } else {
+                                console.warn(`[Video API] [Vertex AI] URI download failed with status ${videoResp.status}`);
                             }
+                        } else {
+                            console.warn(`[Video API] [Vertex AI] Finished operation but could not find video in response keys:`, Object.keys(resultData || {}));
                         }
                     }
                 } catch (vertexErr) {
@@ -993,7 +1033,7 @@ Return ONLY valid JSON.`
 
                     broadcastProgress(taskId, 3, 3, 'Rendering video (Service Account)...');
 
-                    const pollPath = operationName.includes('/') ? operationName : `projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/operations/${operationName}`;
+                    const fetchOpUrl = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${veoModel}:fetchPredictOperation`;
                     let attempts = 0;
                     const maxAttempts = 60;
                     let done = false;
@@ -1003,19 +1043,32 @@ Return ONLY valid JSON.`
                         await new Promise(r => setTimeout(r, 6000));
                         attempts++;
 
-                        const pollUrl = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/${pollPath}`;
-                        const pollResp = await fetch(pollUrl, {
-                            headers: { 'Authorization': `Bearer ${token}` }
+                        const pollResp = await fetch(fetchOpUrl, {
+                            method: 'POST',
+                            headers: { 
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ operationName })
                         });
-                        if (pollResp.status === 404) {
-                            console.log(`[UGC-PREVIEW] Operation not propagated yet (404). Waiting...`);
+                        if (!pollResp.ok) {
+                            if (pollResp.status === 404) {
+                                console.log(`[UGC-PREVIEW] Operation not propagated yet (404). Waiting...`);
+                                continue;
+                            }
+                            if (pollResp.status === 429) {
+                                await new Promise(r => setTimeout(r, 6000));
+                                continue;
+                            }
+                            const errText = await pollResp.text().catch(() => pollResp.status);
+                            console.warn(`[UGC-PREVIEW] [Vertex AI] Poll attempt #${attempts} returned ${pollResp.status}: ${errText}`);
                             continue;
                         }
                         const opStatus = await pollResp.json();
 
                         if (opStatus.error) throw new Error(opStatus.error.message);
                         if (opStatus.done) {
-                            resultData = opStatus.response;
+                            resultData = opStatus.response || opStatus;
                             done = true;
                         }
                         if (attempts % 3 === 0) {
@@ -1025,22 +1078,43 @@ Return ONLY valid JSON.`
 
                     if (!done) throw new Error('Vertex AI video generation timed out');
 
-                    // Extract bytes directly or download via GCS URI
-                    const b64 = resultData?.predictions?.[0]?.bytesBase64Encoded;
+                    // Check for safety / RAI filtering
+                    if (resultData?.raiMediaFilteredCount > 0 || resultData?.raiMediaFilteredReasons) {
+                        const reasons = resultData.raiMediaFilteredReasons ? ` (${resultData.raiMediaFilteredReasons.join(', ')})` : '';
+                        throw new Error(`Video blocked by safety filters${reasons}. Please adjust prompt and try again.`);
+                    }
+
+                    // Extract bytes directly or download via GCS URI (Check all known Veo shapes)
+                    const b64 = resultData?.predictions?.[0]?.bytesBase64Encoded
+                             || resultData?.videos?.[0]?.bytesBase64Encoded
+                             || resultData?.generatedVideos?.[0]?.video?.bytesBase64Encoded;
+
                     if (b64) {
                         videoBuffer = Buffer.from(b64, 'base64');
                         success = true;
                         console.log(`[UGC-PREVIEW] [Vertex AI] Video generated successfully via base64 predictions (${videoBuffer.length} bytes)`);
                     } else {
-                        const videoUri = resultData?.generatedVideos?.[0]?.video?.uri || resultData?.predictions?.[0]?.uri;
+                        const videoUri = resultData?.generatedVideos?.[0]?.video?.uri 
+                                      || resultData?.generatedVideos?.[0]?.uri 
+                                      || resultData?.predictions?.[0]?.uri 
+                                      || resultData?.predictions?.[0]?.video?.uri
+                                      || resultData?.videos?.[0]?.uri 
+                                      || resultData?.videos?.[0]?.video?.uri;
+
                         if (videoUri) {
-                            const downloadUrl = `${videoUri}&key=${token}`;
-                            const videoResp = await fetch(downloadUrl);
+                            console.log(`[UGC-PREVIEW] [Vertex AI] Downloading video from URI: ${videoUri}`);
+                            const videoResp = await fetch(videoUri, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            });
                             if (videoResp.ok) {
                                 videoBuffer = Buffer.from(await videoResp.arrayBuffer());
                                 success = true;
                                 console.log(`[UGC-PREVIEW] [Vertex AI] Video downloaded successfully via URI (${videoBuffer.length} bytes)`);
+                            } else {
+                                console.warn(`[UGC-PREVIEW] [Vertex AI] URI download failed with status ${videoResp.status}`);
                             }
+                        } else {
+                            console.warn(`[UGC-PREVIEW] [Vertex AI] Finished operation but could not find video in response keys:`, Object.keys(resultData || {}));
                         }
                     }
                 } catch (vertexErr) {
