@@ -2377,8 +2377,8 @@ export const SidePanel = React.memo(({
             onKeyUp={updateCursorState}
             onMouseUp={updateCursorState}
             placeholder={placeholderText}
-            rows={8}
-            className="w-full bg-transparent p-4 text-xs text-white placeholder-zinc-500 outline-none resize-none custom-scrollbar leading-relaxed font-medium caret-[#c8f135] selection:bg-[#c8f135]/30 selection:text-white min-h-[190px] max-h-[420px]"
+            rows={6}
+            className="w-full bg-transparent p-3 sm:p-4 text-xs text-white placeholder-zinc-500 outline-none resize-none custom-scrollbar leading-relaxed font-medium caret-[#c8f135] selection:bg-[#c8f135]/30 selection:text-white min-h-[120px] sm:min-h-[180px] max-h-[380px]"
           />
 
           {/* Bottom Reference Status Bar */}
@@ -2450,25 +2450,25 @@ export const SidePanel = React.memo(({
         : "w-full md:w-[350px] lg:w-[370px] border-r border-white/[0.08] shadow-[20px_0_60px_rgba(0,0,0,0.8)]"
     )}>
       {/* 1. Header with ZeroLens Aesthetic */}
-      <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-b border-white/[0.08] flex items-center justify-between shrink-0 bg-white/[0.02]">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-[#c8f135]/20 to-transparent border border-[#c8f135]/30 flex items-center justify-center shadow-[0_0_15px_rgba(200,241,53,0.15)]">
+      <div className="px-3.5 py-2.5 sm:px-5 sm:py-3.5 border-b border-white/[0.08] flex items-center justify-between shrink-0 bg-white/[0.02]">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-[#c8f135]/20 to-transparent border border-[#c8f135]/30 flex items-center justify-center shadow-[0_0_15px_rgba(200,241,53,0.15)] shrink-0">
             <Sparkles className="w-3.5 h-3.5 text-[#c8f135]" />
           </div>
-          <div>
-            <h2 className="text-xs sm:text-sm font-black text-white tracking-tight uppercase flex items-center gap-1.5">
-              Studio Generator
-              <span className="text-[8.5px] font-mono font-extrabold px-1.5 py-0.2 rounded bg-[#c8f135]/10 text-[#c8f135] border border-[#c8f135]/20">
+          <div className="min-w-0">
+            <h2 className="text-xs sm:text-sm font-black text-white tracking-tight uppercase flex items-center gap-1.5 truncate">
+              <span className="truncate">Studio Generator</span>
+              <span className="text-[8px] sm:text-[8.5px] font-mono font-extrabold px-1.5 py-0.2 rounded bg-[#c8f135]/10 text-[#c8f135] border border-[#c8f135]/20 shrink-0">
                 PRO
               </span>
             </h2>
-            <p className="text-[9.5px] font-semibold text-zinc-400 uppercase tracking-wider">
+            <p className="text-[8.5px] sm:text-[9.5px] font-semibold text-zinc-400 uppercase tracking-wider truncate">
               ZeroLens Cinema Engine v2.5
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             type="button"
             onClick={() => setShowDocs(!showDocs)}
@@ -2483,10 +2483,10 @@ export const SidePanel = React.memo(({
           <button
             type="button"
             onClick={onClose}
-            className="md:hidden flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/[0.08] hover:bg-white/15 text-[#c8f135] text-xs font-black uppercase tracking-wider border border-white/15 cursor-pointer transition-all active:scale-95 min-h-[38px]"
+            className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/15 text-[#c8f135] text-[11px] font-black uppercase tracking-wider border border-white/15 cursor-pointer transition-all active:scale-95 min-h-[34px]"
             title="View Gallery"
           >
-            <Film size={14} />
+            <Film size={13} />
             <span>Gallery</span>
           </button>
           <button
@@ -2500,9 +2500,9 @@ export const SidePanel = React.memo(({
         </div>
       </div>
 
-      {/* 2. ZeroLens Mode Switcher Tabs (Text-only, scrollable, single-line) */}
-      <div className="px-3 sm:px-4 py-2 border-b border-white/[0.08] bg-black/40 shrink-0">
-        <div className="flex items-center gap-1 p-1 bg-black/60 rounded-2xl border border-white/[0.06] overflow-x-auto no-scrollbar">
+      {/* 2. ZeroLens Mode Switcher Tabs (Touch-friendly scrollable single line) */}
+      <div className="px-2.5 sm:px-4 py-2 border-b border-white/[0.08] bg-black/40 shrink-0">
+        <div className="flex items-center gap-1.5 p-1 bg-black/60 rounded-2xl border border-white/[0.06] overflow-x-auto no-scrollbar scroll-smooth">
           <button
             type="button"
             onClick={() => {
@@ -2511,7 +2511,7 @@ export const SidePanel = React.memo(({
               setActiveEngine('gemini-omni-1.1-flash-preview');
             }}
             className={cn(
-              "flex-1 min-w-fit py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
+              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
               panelTab === 'omni'
                 ? "bg-gradient-to-r from-[#c8f135]/20 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
                 : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
@@ -2532,7 +2532,7 @@ export const SidePanel = React.memo(({
               }
             }}
             className={cn(
-              "flex-1 min-w-fit py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
+              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
               panelTab === 'seedance'
                 ? "bg-gradient-to-r from-[#c8f135]/20 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
                 : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
@@ -2551,7 +2551,7 @@ export const SidePanel = React.memo(({
               if (resolution === '4k') setResolution('1080p');
             }}
             className={cn(
-              "flex-1 min-w-fit py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
+              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
               panelTab === 'seedance-2.5'
                 ? "bg-gradient-to-r from-[#c8f135]/20 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
                 : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
@@ -2568,7 +2568,7 @@ export const SidePanel = React.memo(({
               setActiveEngine('gemini-omni-1.1-flash-preview');
             }}
             className={cn(
-              "flex-1 min-w-fit py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
+              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
               panelTab === 'omni-multi'
                 ? "bg-gradient-to-r from-[#c8f135]/20 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
                 : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
@@ -2585,7 +2585,7 @@ export const SidePanel = React.memo(({
               setActiveEngine('kling-motion');
             }}
             className={cn(
-              "flex-1 min-w-fit py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
+              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
               panelTab === 'motion'
                 ? "bg-gradient-to-r from-[#c8f135]/20 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
                 : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
@@ -2820,7 +2820,7 @@ export const SidePanel = React.memo(({
                                   className="fixed inset-0 z-40"
                                   onClick={() => setSeedanceAddMenuOpen(false)}
                                 />
-                                <div className="absolute left-0 top-full mt-2 z-50 w-60 bg-[#0d0d16] border border-white/20 rounded-2xl p-1.5 shadow-[0_20px_60px_rgba(0,0,0,0.95)] backdrop-blur-2xl space-y-1">
+                                <div className="absolute left-0 top-full mt-2 z-50 w-64 max-w-[calc(100vw-32px)] bg-[#0d0d16] border border-white/20 rounded-2xl p-1.5 shadow-[0_20px_60px_rgba(0,0,0,0.95)] backdrop-blur-2xl space-y-1">
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -2992,8 +2992,8 @@ export const SidePanel = React.memo(({
                           value={localPrompt}
                           onChange={handlePromptChange}
                           placeholder="Describe your scene in detail. Use @ to reference assets"
-                          rows={8}
-                          className="w-full bg-transparent text-xs text-white placeholder-zinc-500 outline-none resize-none custom-scrollbar leading-relaxed font-medium caret-[#c8f135] min-h-[190px] max-h-[420px]"
+                          rows={6}
+                          className="w-full bg-transparent text-xs text-white placeholder-zinc-500 outline-none resize-none custom-scrollbar leading-relaxed font-medium caret-[#c8f135] min-h-[120px] sm:min-h-[180px] max-h-[380px]"
                         />
 
                         {/* Bottom Inner Prompt Row: [@ Elements] [🔊 Sound Toggle] */}
@@ -3956,53 +3956,53 @@ export const SidePanel = React.memo(({
             {/* Studio Gallery Direct Reference Picker Modal */}
             <AnimatePresence>
               {galleryPickerSlot && (
-                <div className="fixed inset-0 z-[400] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto">
+                <div className="fixed inset-0 z-[400] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 pointer-events-auto">
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="w-full max-w-lg max-h-[80vh] bg-[#0c0c14] border border-white/15 rounded-3xl p-5 shadow-2xl flex flex-col gap-4 overflow-hidden"
+                    className="w-full max-w-lg max-h-[85vh] bg-[#0c0c14] border border-white/15 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-2xl flex flex-col gap-3 sm:gap-4 overflow-hidden"
                   >
-                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                      <div>
-                        <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2.5 sm:pb-3">
+                      <div className="min-w-0 pr-2">
+                        <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white flex items-center gap-1.5 sm:gap-2 truncate">
                           {(galleryPickerSlot.type === 'image' || galleryPickerSlot.type === 'seedance_image' || galleryPickerSlot.type === 'first' || galleryPickerSlot.type === 'seedance_first' || galleryPickerSlot.type === 'last' || galleryPickerSlot.type === 'seedance_last' || galleryPickerSlot.type === 'motion_subject') ? (
-                            <ImageIcon className="w-4 h-4 text-[#c8f135]" />
+                            <ImageIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#c8f135] shrink-0" />
                           ) : (
-                            <Video className="w-4 h-4 text-cyan-400" />
+                            <Video className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400 shrink-0" />
                           )}
-                          <span>
+                          <span className="truncate">
                             {galleryPickerSlot.type === 'first' || galleryPickerSlot.type === 'seedance_first'
-                              ? 'Select Start Frame (First Frame) from Gallery'
+                              ? 'Select Start Frame'
                               : galleryPickerSlot.type === 'last' || galleryPickerSlot.type === 'seedance_last'
-                              ? 'Select End Frame (Last Frame) from Gallery'
+                              ? 'Select End Frame'
                               : galleryPickerSlot.type === 'motion_subject'
-                              ? 'Select Subject Reference Image'
+                              ? 'Select Subject Reference'
                               : galleryPickerSlot.type === 'motion_video'
                               ? 'Select Motion Pattern Video'
                               : galleryPickerSlot.type === 'seedance_image'
-                              ? `Select Seedance @image${galleryPickerSlot.slotIdx + 1} from Gallery`
+                              ? `Select @image${galleryPickerSlot.slotIdx + 1}`
                               : galleryPickerSlot.type === 'seedance_video'
-                              ? `Select Seedance @video${galleryPickerSlot.slotIdx + 1} from Gallery`
+                              ? `Select @video${galleryPickerSlot.slotIdx + 1}`
                               : galleryPickerSlot.type === 'image'
-                              ? `Select @image${galleryPickerSlot.slotIdx + 1} from Studio Gallery`
-                              : `Select @video${galleryPickerSlot.slotIdx + 1} from Studio Gallery`}
+                              ? `Select @image${galleryPickerSlot.slotIdx + 1}`
+                              : `Select @video${galleryPickerSlot.slotIdx + 1}`}
                           </span>
                         </h3>
-                        <p className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                        <p className="text-[9px] sm:text-[10px] text-zinc-400 font-mono mt-0.5 truncate">
                           {(galleryPickerSlot.type === 'image' || galleryPickerSlot.type === 'seedance_image' || galleryPickerSlot.type === 'first' || galleryPickerSlot.type === 'seedance_first' || galleryPickerSlot.type === 'last' || galleryPickerSlot.type === 'seedance_last' || galleryPickerSlot.type === 'motion_subject')
-                            ? 'Pick any generated image or extracted video frame'
+                            ? 'Pick generated image or extracted frame'
                             : galleryPickerSlot.type === 'motion_video'
-                            ? 'Pick a generated driving video (3–30s duration limit)'
+                            ? 'Pick driving video (3–30s)'
                             : galleryPickerSlot.type === 'seedance_video'
-                            ? 'Pick a generated video (Max 15s duration limit)'
-                            : 'Pick a generated video (Max 10s duration limit)'}
+                            ? 'Pick driving video (2–15s)'
+                            : 'Pick video (Max 10s)'}
                         </p>
                       </div>
                       <button
                         type="button"
                         onClick={() => setGalleryPickerSlot(null)}
-                        className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
+                        className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer shrink-0"
                       >
                         <X size={16} />
                       </button>
@@ -4025,7 +4025,7 @@ export const SidePanel = React.memo(({
                         }
 
                         return (
-                          <div className="grid grid-cols-3 gap-2.5">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
                             {items.map(item => {
                               const dur = Number(item.duration) || 0;
                               const isTooLong = !isImg && (isMotionVideo ? dur > 30.5 : isSeedanceVid ? dur > 15.05 : dur > 10.05);

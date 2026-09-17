@@ -2809,12 +2809,32 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           setPollMsg('');
           const label = ENGINES.find(e => e.id === resolvedEngine)?.label || (isOmniEngine ? 'Omni' : 'Veo 3.1');
           let cleanErr = err.message || `${label} engine failed.`;
-          if (cleanErr.includes('Responsible AI') || cleanErr.includes('violates Google')) {
-            cleanErr = "⚠️ Content Safety Filter: Google's Responsible AI policy blocked this prompt or reference media. Your credits have been automatically refunded.";
+          const isPolicyViolation = cleanErr.includes('Responsible AI') || 
+                                    cleanErr.includes('violates Google') || 
+                                    cleanErr.includes('content_blocked') || 
+                                    cleanErr.includes('policy') || 
+                                    cleanErr.includes('Policy') || 
+                                    cleanErr.includes('prohibited') || 
+                                    cleanErr.includes('prominent individuals') || 
+                                    cleanErr.includes('recognizable');
+
+          if (isPolicyViolation) {
+            cleanErr = "Google's Responsible AI policy blocked this prompt or reference media (detected recognizable persons or prohibited content). Your credits have been automatically refunded.";
           }
           setErrorMsg(cleanErr);
           const showToast = useAppStore.getState().showToast;
-          if (showToast) showToast(cleanErr, "error");
+          if (showToast) {
+            if (isPolicyViolation) {
+              showToast(cleanErr, "policy", {
+                label: "Use Seedance 2.0",
+                onClick: () => {
+                  setActiveEngine('seedance-fast');
+                }
+              });
+            } else {
+              showToast(cleanErr, "error");
+            }
+          }
           await triggerRefund('cinematic_video_generation');
         }
       } else if (resolvedEngine === 'seedance-fast' || resolvedEngine === 'seedace' || resolvedEngine === 'seedance-mini' || resolvedEngine === 'seedance-2.5') {

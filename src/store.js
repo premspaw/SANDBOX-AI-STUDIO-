@@ -153,7 +153,7 @@ export const useAppStore = create((set, get) => ({
     showToast: (message, type = 'error', action = null) => {
         set({ toast: { message, type, action } });
         if (get().toastTimeout) clearTimeout(get().toastTimeout);
-        const duration = action ? 7000 : 4000;
+        const duration = action ? 8000 : (type === 'policy' || type === 'warning') ? 7000 : 4000;
         const timeout = setTimeout(() => set({ toast: null }), duration);
         set({ toastTimeout: timeout });
     },

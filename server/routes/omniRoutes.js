@@ -89,12 +89,38 @@ async function resolveMediaToBase64(mediaUrl) {
         if (mediaUrl.startsWith('//')) fullUrl = `https:${mediaUrl}`;
         else if (mediaUrl.startsWith('/')) fullUrl = `https://pub-05a4fe33e706492e8d437c36f9a8aa94.r2.dev${mediaUrl}`;
         
-        const resp = await fetch(fullUrl);
-        if (!resp.ok) throw new Error(`Failed to fetch media from URL (${resp.status}): ${resp.statusText}`);
-        const buffer = await resp.arrayBuffer();
-        data = Buffer.from(buffer).toString('base64');
-        const contentType = resp.headers.get('content-type');
-        if (contentType) mimeType = contentType;
+        let success = false;
+        let lastErr = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 20000);
+                const resp = await fetch(fullUrl, {
+                    signal: controller.signal,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': '*/*'
+                    }
+                });
+                clearTimeout(timeoutId);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+                const buffer = await resp.arrayBuffer();
+                data = Buffer.from(buffer).toString('base64');
+                const contentType = resp.headers.get('content-type');
+                if (contentType) mimeType = contentType;
+                success = true;
+                break;
+            } catch (fetchErr) {
+                lastErr = fetchErr;
+                if (attempt < 2) {
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+            }
+        }
+        if (!success) {
+            console.warn(`[OMNI-I2V] Failed to fetch media from URL (${fullUrl}): ${lastErr?.message}`);
+            return null;
+        }
     } else {
         data = mediaUrl; // Assume raw base64
     }
@@ -914,12 +940,24 @@ export default function createRouter(deps) {
                     }
                 } catch (serviceErr) {
                     lastOmniError = serviceErr.message;
-                    console.warn(`[OMNI-I2V] [Vertex AI SDK] Vertex AI Omni generation failed (${serviceErr.message}). Trying Google AI Studio Fallback...`);
+                    console.warn(`[OMNI-I2V] [Vertex AI SDK] Vertex AI Omni generation failed: ${serviceErr.message}`);
                 }
             }
 
-            // --- Option B: Multi-Key Google AI Studio Fallback ---
-            if (!success) {
+            const isVertexPolicyViolation = lastOmniError && (
+                lastOmniError.includes('content_blocked') ||
+                lastOmniError.includes('policy') ||
+                lastOmniError.includes('Policy') ||
+                lastOmniError.includes('Responsible AI') ||
+                lastOmniError.includes('prohibited') ||
+                lastOmniError.includes('prominent individuals') ||
+                lastOmniError.includes('photorealistic individuals') ||
+                lastOmniError.includes('reputational harms') ||
+                lastOmniError.includes('violates Google')
+            );
+
+            // --- Option B: Multi-Key Google AI Studio Fallback (Only if not a policy block) ---
+            if (!success && !isVertexPolicyViolation) {
                 const candidateKeys = [
                     (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : null,
                     process.env.ADMIN_GOOGLE_API_KEY,
@@ -951,7 +989,16 @@ export default function createRouter(deps) {
 
                         const interactionResult = await restResponse.json();
                         if (interactionResult.error) {
-                            console.warn(`[OMNI-I2V] [AI Studio Fallback] Key ${studioKey.substring(0, 10)} failed: ${interactionResult.error.message}`);
+                            const errMessage = interactionResult.error.message || JSON.stringify(interactionResult.error);
+                            console.warn(`[OMNI-I2V] [AI Studio Fallback] Key ${studioKey.substring(0, 10)} failed: ${errMessage}`);
+                            // If key is depleted, don't overwrite a meaningful Vertex error with "prepayment credits depleted"
+                            if (!errMessage.includes('prepayment credits are depleted')) {
+                                lastOmniError = errMessage;
+                            }
+                            if (errMessage.includes('content_blocked') || errMessage.includes('policy') || errMessage.includes('Responsible AI') || errMessage.includes('prohibited') || errMessage.includes('prominent individuals')) {
+                                lastOmniError = errMessage;
+                                break;
+                            }
                             continue;
                         }
 
@@ -1090,7 +1137,7 @@ export default function createRouter(deps) {
             }
 
             let msg = error.message || 'Video generation failed';
-            if (msg.includes('Responsible AI') || msg.includes('violates Google') || msg.includes('prominent individuals') || msg.includes('prohibited_content')) {
+            if (msg.includes('Responsible AI') || msg.includes('violates Google') || msg.includes('prominent individuals') || msg.includes('prohibited_content') || msg.includes('prohibited content') || msg.includes('content_blocked') || msg.includes('policy') || msg.includes('Policy') || msg.includes('Safety') || msg.includes('safety') || msg.includes('reputational harms') || msg.includes('photorealistic individuals')) {
                 msg = "Google's Responsible AI policy blocked this generation (detected recognizable persons or prohibited content). Please use a different reference image/video or adjust your prompt and try again. Your credits have been refunded.";
             } else if (msg.includes('prepayment credits are depleted')) {
                 msg = "Google AI Studio API key prepayment credits are depleted. Please add credits at https://ai.studio/projects or wait for Vertex AI quota to reset. Credits refunded.";

@@ -303,6 +303,8 @@ export default function UGC() {
       } else {
         showToast("API Quota Exceeded. Please try again later or configure your own API key in Settings.", 'error');
       }
+    } else if (errorMsg.includes('content_blocked') || errorMsg.includes('Responsible AI') || errorMsg.includes('policy') || errorMsg.includes('Policy') || errorMsg.includes('prohibited') || errorMsg.includes('prominent individuals') || errorMsg.includes('recognizable')) {
+      showToast("⚠️ Google Policy Restriction: Content was blocked by Google Responsible AI filter. Your credits have been refunded. Please adjust your prompt or use Seedance 2.0.", 'error');
     } else if (errorMsg.includes('No API Key')) {
       showToast(`${context} requires API key. Add it in Settings or it will route through server.`, 'error');
     } else {

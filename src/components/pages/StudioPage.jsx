@@ -175,9 +175,13 @@ function StudioGalleryCard({
     const isPolicyViolation = item.error?.includes('Responsible AI') || 
                               item.error?.includes('celebrities') || 
                               item.error?.includes('policy') ||
+                              item.error?.includes('Policy') ||
                               item.error?.includes('prohibited') ||
                               item.error?.includes('prominent individuals') ||
-                              item.error?.includes('recognizable');
+                              item.error?.includes('recognizable') ||
+                              item.error?.includes('content_blocked') ||
+                              item.error?.includes('Content Safety') ||
+                              item.error?.includes('violates Google');
     return (
       <div className={cn(
         "w-full rounded-2xl flex flex-col items-center justify-between p-4 relative overflow-hidden shadow-xl min-h-[220px]",
@@ -207,19 +211,47 @@ function StudioGalleryCard({
             </span>
           )}
         </div>
-        <div className="w-full flex gap-2 pt-2 border-t border-white/5 mt-2">
-          <button
-            onClick={(e) => { e.stopPropagation(); onDeleteItem(item.id, e); }}
-            className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
-          >
-            Dismiss
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onRetry && onRetry(item); }}
-            className="flex-1 py-1.5 rounded-lg bg-[#c8f135]/20 hover:bg-[#c8f135]/30 text-[#c8f135] text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
-          >
-            {isPolicyViolation ? "Change Media" : "Retry"}
-          </button>
+        <div className="w-full flex flex-col gap-1.5 pt-2 border-t border-white/5 mt-2">
+          {isPolicyViolation ? (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); onRetry && onRetry(item, 'seedance'); }}
+                className="w-full py-1.5 rounded-lg bg-gradient-to-r from-amber-400 to-[#c8f135] text-black text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-md hover:brightness-110 flex items-center justify-center gap-1 active:scale-95"
+              >
+                <Sparkles size={11} className="fill-black text-black" />
+                <span>Try with Seedance 2.0</span>
+              </button>
+              <div className="flex gap-1.5 w-full">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDeleteItem(item.id, e); }}
+                  className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                >
+                  Dismiss
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onRetry && onRetry(item, 'edit'); }}
+                  className="flex-1 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                >
+                  Change Media
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex gap-2 w-full">
+              <button
+                onClick={(e) => { e.stopPropagation(); onDeleteItem(item.id, e); }}
+                className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onRetry && onRetry(item); }}
+                className="flex-1 py-1.5 rounded-lg bg-[#c8f135]/20 hover:bg-[#c8f135]/30 text-[#c8f135] text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
+              >
+                Retry
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -358,7 +390,7 @@ function StudioGalleryCard({
         className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex items-center gap-1 sm:gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 z-20"
         onClick={e => e.stopPropagation()}
       >
-        {/* Audio Toggle (Video Only) - Visible on both mobile & desktop */}
+        {/* Audio Toggle (Video Only) */}
         {isVideo && (
           <button
             onClick={toggleAudio}
@@ -374,10 +406,10 @@ function StudioGalleryCard({
           </button>
         )}
 
-        {/* Use as Omni Reference */}
+        {/* Use as Omni Reference (Desktop Hover or Lightbox on Mobile) */}
         <button
           onClick={(e) => onUseAsOmniRef(item, e)}
-          className="p-1 sm:p-2 rounded-lg sm:rounded-xl bg-black/80 hover:bg-[#c8f135] text-white hover:text-black border border-white/20 backdrop-blur-md transition-all shadow-lg cursor-pointer flex items-center justify-center"
+          className="hidden sm:flex p-1 sm:p-2 rounded-lg sm:rounded-xl bg-black/80 hover:bg-[#c8f135] text-white hover:text-black border border-white/20 backdrop-blur-md transition-all shadow-lg cursor-pointer items-center justify-center"
           title={item.type === 'image' ? "Use as Omni Reference Image" : "Use as Omni Reference Video"}
         >
           <Layers size={11} className="sm:w-[13px] sm:h-[13px]" />
@@ -392,7 +424,7 @@ function StudioGalleryCard({
           <Download size={11} className="sm:w-[13px] sm:h-[13px]" />
         </button>
 
-        {/* Expand / Lightbox - Visible on both mobile & desktop */}
+        {/* Expand / Lightbox */}
         <button
           onClick={() => onOpenLightbox(item)}
           className="p-1 sm:p-2 rounded-lg sm:rounded-xl bg-black/80 hover:bg-[#c8f135] text-white hover:text-black border border-white/20 backdrop-blur-md transition-all shadow-lg cursor-pointer flex items-center justify-center"
@@ -401,10 +433,10 @@ function StudioGalleryCard({
           <Maximize2 size={11} className="sm:w-[13px] sm:h-[13px]" />
         </button>
 
-        {/* Delete - Visible on both mobile & desktop */}
+        {/* Delete (Desktop Hover or Lightbox on Mobile) */}
         <button
           onClick={(e) => onDeleteItem(item.id, e)}
-          className="p-1 sm:p-2 rounded-lg sm:rounded-xl bg-black/80 hover:bg-red-500 text-white border border-white/20 backdrop-blur-md transition-all shadow-lg cursor-pointer flex items-center justify-center"
+          className="hidden sm:flex p-1 sm:p-2 rounded-lg sm:rounded-xl bg-black/80 hover:bg-red-500 text-white border border-white/20 backdrop-blur-md transition-all shadow-lg cursor-pointer items-center justify-center"
           title="Delete Asset"
         >
           <Trash2 size={11} className="sm:w-[13px] sm:h-[13px]" />
@@ -1281,13 +1313,42 @@ export default function StudioPage() {
         }
       } catch (err) {
         console.error("Generation error:", err);
+        const errMsg = err.message || 'Video generation failed';
+        const isPolicy = errMsg.includes('Responsible AI') || 
+                         errMsg.includes('celebrities') || 
+                         errMsg.includes('policy') ||
+                         errMsg.includes('Policy') ||
+                         errMsg.includes('prohibited') ||
+                         errMsg.includes('prominent individuals') ||
+                         errMsg.includes('recognizable') ||
+                         errMsg.includes('content_blocked') ||
+                         errMsg.includes('Content Safety') ||
+                         errMsg.includes('violates Google');
+
         setGallery(prev => prev.map(item => item.id === tempId ? {
           ...item,
           status: 'failed',
-          error: err.message
+          error: errMsg
         } : item));
+
         const showToast = useAppStore.getState().showToast;
-        if (showToast) showToast(err.message, "error");
+        if (showToast) {
+          if (isPolicy) {
+            showToast(
+              "⚠️ Google Policy Restriction: Blocked by Responsible AI. Credits refunded (100%). Use Seedance 2.0 to bypass.",
+              "policy",
+              {
+                label: "Try Seedance 2.0",
+                onClick: () => {
+                  setPanelTab('seedance');
+                  setActiveEngine('seedance-fast');
+                }
+              }
+            );
+          } else {
+            showToast(errMsg, "error");
+          }
+        }
       }
     });
   };
@@ -1885,12 +1946,27 @@ export default function StudioPage() {
                       onDownload={handleDownload}
                       onDeleteItem={handleDeleteItem}
                       onUseAsOmniRef={handleUseAsOmniRef}
-                      onRetry={(failedItem) => {
+                      onRetry={(failedItem, targetAction) => {
                         handleDeleteItem(failedItem.id);
-                        if (failedItem.prompt) {
-                          if (panelTab === 'omni') setOmniPromptText(failedItem.prompt);
-                          else setPromptText(failedItem.prompt);
-                          handleGenerate();
+                        if (targetAction === 'seedance') {
+                          setPanelTab('seedance');
+                          setActiveEngine('seedance-fast');
+                          if (failedItem.prompt) setPromptText(failedItem.prompt);
+                          if (isMobile) setMobileTab('controls');
+                          else setIsSidebarOpen(true);
+                        } else if (targetAction === 'edit') {
+                          if (failedItem.prompt) {
+                            if (panelTab === 'omni' || panelTab === 'omni-multi') setOmniPromptText(failedItem.prompt);
+                            else setPromptText(failedItem.prompt);
+                          }
+                          if (isMobile) setMobileTab('controls');
+                          else setIsSidebarOpen(true);
+                        } else {
+                          if (failedItem.prompt) {
+                            if (panelTab === 'omni' || panelTab === 'omni-multi') setOmniPromptText(failedItem.prompt);
+                            else setPromptText(failedItem.prompt);
+                            handleGenerate();
+                          }
                         }
                       }}
                     />
@@ -1906,7 +1982,7 @@ export default function StudioPage() {
           <button
             type="button"
             onClick={() => setMobileTab('controls')}
-            className="md:hidden fixed bottom-6 right-5 z-40 px-4 py-2.5 rounded-full bg-[#c8f135] text-black font-black text-xs uppercase tracking-wider shadow-[0_0_25px_rgba(200,241,53,0.5)] border border-[#d4ff00] flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
+            className="md:hidden fixed bottom-24 right-4 z-40 px-4 py-2.5 rounded-full bg-[#c8f135] text-black font-black text-xs uppercase tracking-wider shadow-[0_0_25px_rgba(200,241,53,0.5)] border border-[#d4ff00] flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
           >
             <Sparkles className="w-4 h-4 fill-current text-black" />
             <span>Create Video</span>
