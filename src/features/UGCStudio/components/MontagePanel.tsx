@@ -172,221 +172,51 @@ export const MontagePanel: React.FC = () => {
         imageBase64 = await resizeImage(activeProductImg.file);
       }
 
-      if (videoGenMode === 'omni-flash') {
-        setVideoProgressMsg('✨ Crafting your viral performance video...');
-        let imageToSend = '';
-        if (imageBase64) {
-          imageToSend = `data:${imageMime};base64,${imageBase64}`;
-        }
+      setVideoProgressMsg('✨ Crafting your viral performance video with Omni Flash 1.1...');
+      let imageToSend = '';
+      if (imageBase64) {
+        imageToSend = `data:${imageMime};base64,${imageBase64}`;
+      }
 
-        const headers: any = { 'Content-Type': 'application/json' };
-        const customKey = getApiKey();
-        if (customKey) headers['x-admin-trial-key'] = customKey;
+      const headers: any = { 'Content-Type': 'application/json' };
+      const customKey = getApiKey();
+      if (customKey) headers['x-admin-trial-key'] = customKey;
 
-        const resp = await fetch(getApiUrl('/api/omni-i2v'), {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            image: imageToSend || undefined,
-            motionPrompt: option.prompt.substring(0, 1000),
-            duration: duration,
-            aspectRatio: aspectRatio === '1:1' ? '9:16' : aspectRatio,
-            resolution: '720p',
-            model: 'gemini-omni-flash-preview',
-            userId: currentUserId,
-            generateAudio: montageAudioEnabled,
-            creditReason: 'ugc_video_generation'
-          })
-        });
-
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || 'Omni generation failed.');
-        if (!data.videoUrl) throw new Error('Omni returned no video URL.');
-
-        setMontageGeneratedImg('');
-        addToGallery({ id: Date.now().toString(), type: 'video', url: data.videoUrl });
-        addToTimeline({
-          id: `montage-${Date.now()}`,
-          url: data.videoUrl,
-          start: 0,
-          end: duration,
+      const resp = await fetch(getApiUrl('/api/omni-i2v'), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          image: imageToSend || undefined,
+          motionPrompt: option.prompt.substring(0, 1000),
           duration: duration,
-          type: 'video'
-        });
-        showToast('Montage video generated successfully!', 'success');
-        setIsGeneratingVideo(false);
-        setVideoProgressMsg('');
-        return;
-      }
-
-      const selectedVeoModel = (videoGenMode as string) === 'veo_standard' ? 'veo_standard' : 'veo_fast';
-      const engineTitle = selectedVeoModel === 'veo_standard' ? 'Veo 3 Standard' : 'Veo 3 Fast';
-      setIsGeneratingVideo(true);
-      setVideoProgressMsg(`✨ Bringing your scene to life...`);
-
-      if (isAdmin || isGlobalAdmin) {
-        const headers: any = { 'Content-Type': 'application/json' };
-        const customKey = getApiKey();
-        if (customKey) headers['x-admin-trial-key'] = customKey;
-
-        const imageToSend = imageBase64 ? `data:${imageMime};base64,${imageBase64}` : undefined;
-
-        // Progress message cycler while waiting for API
-        const veoMsgs = [
-          `✨ Bringing your scene to life...`,
-          `🎬 Directing character & camera motion...`,
-          `🔥 Rendering high-converting visuals...`,
-          `✨ Polishing lighting & color depth...`,
-          `🚀 Finalizing your cinematic video clip...`
-        ];
-        let veoStep = 0;
-        const progressTimer = setInterval(() => {
-          veoStep = (veoStep + 1) % veoMsgs.length;
-          setVideoProgressMsg(veoMsgs[veoStep]);
-        }, 3500);
-
-        try {
-          const resp = await fetch(getApiUrl('/api/ugc/video'), {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              image: imageToSend,
-              script: option.prompt,
-              userId: currentUserId,
-              duration: duration,
-              resolution: '720p',
-              model: selectedVeoModel,
-              aspect_ratio: aspectRatio === '1:1' ? '9:16' : aspectRatio,
-              projectId: activeProjectId || 'default',
-              folder: activeProjectId || 'default'
-            })
-          });
-
-          clearInterval(progressTimer);
-          const data = await resp.json();
-          if (!resp.ok) throw new Error(data.error || `${engineTitle} Montage generation failed.`);
-          if (!data.url) throw new Error(`${engineTitle} returned no video URL.`);
-
-          const tempId = Date.now().toString();
-          const newItemId = Math.random().toString(36).substr(2, 9);
-          const newItem = {
-            id: newItemId,
-            type: 'video' as const,
-            url: data.url,
-            start: 0,
-            end: duration,
-            duration: duration
-          };
-          addToTimeline(newItem);
-          addToGallery({
-            id: tempId,
-            type: 'video',
-            url: data.url,
-            prompt: option.prompt.substring(0, 1000)
-          });
-          showToast(`${option.title} montage ready via ${engineTitle}!`, 'success');
-          setShowMontageOptions(false);
-          setMontageGeneratedImg('');
-          setIsGeneratingVideo(false);
-          setVideoProgressMsg('');
-          return;
-        } catch (veoErr) {
-          clearInterval(progressTimer);
-          throw veoErr;
-        }
-      }
-      let operation = await ai.models.generateVideos({
-        model: 'veo-3.1-fast-generate-preview',
-        prompt: option.prompt.substring(0, 1000),
-        image: {
-          imageBytes: imageBase64,
-          mimeType: imageMime,
-        },
-        config: {
-          numberOfVideos: 1,
-          durationSeconds: duration,
-          includeAudio: montageAudioEnabled,
-          resolution: '720p',
           aspectRatio: aspectRatio === '1:1' ? '9:16' : aspectRatio,
-        } as any
+          resolution: '720p',
+          model: 'gemini-omni-1.1-flash-preview',
+          userId: currentUserId,
+          generateAudio: montageAudioEnabled,
+          creditReason: 'ugc_video_generation'
+        })
       });
 
-      const pollMsgs = [
-        'Generating Video Frames...',
-        'Animating Character Motion...',
-        'Refining Realistic Details...',
-        'Processing Visual Output...',
-        'Finalizing Render...'
-      ];
-      let pollCount = 0;
-      const MONTAGE_TIMEOUT_MS = 90_000;
-      const montagePollStart = Date.now();
-      while (!operation.done) {
-        const elapsed = Math.floor((Date.now() - montagePollStart) / 1000);
-        if (Date.now() - montagePollStart > MONTAGE_TIMEOUT_MS) {
-          throw new Error(`Montage generation timed out after ${elapsed}s.`);
-        }
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        const msg = pollMsgs[Math.min(pollCount, pollMsgs.length - 1)];
-        setVideoProgressMsg(`${msg} (${elapsed}s)`);
-        pollCount++;
-        operation = await ai.operations.getVideosOperation({ operation });
-      }
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Omni generation failed.');
+      if (!data.videoUrl) throw new Error('Omni returned no video URL.');
 
-      const generateVideoResponse = (operation.response as any)?.generateVideoResponse;
-      const raiFiltered = generateVideoResponse?.raiMediaFilteredCount || 0;
-
-      if (raiFiltered > 0) {
-        throw new Error('Montage blocked by safety filter — try rephrasing the prompt.');
-      }
-
-      const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-      if (downloadLink) {
-        const apiKey = getApiKey();
-        const directUrl = `${downloadLink}${downloadLink.includes('?') ? '&' : '?'}key=${apiKey}`;
-        const tempId = Date.now().toString();
-        
-        const newItemId = Math.random().toString(36).substr(2, 9);
-        const newItem = {
-          id: newItemId,
-          type: 'video' as const,
-          url: directUrl,
-          start: 0,
-          end: duration,
-          duration: duration
-        };
-        addToTimeline(newItem);
-        addToGallery({ id: tempId, type: 'video', url: directUrl });
-        showToast(`${option.title} montage added to timeline!`, 'success');
-        setShowMontageOptions(false);
-        setMontageGeneratedImg('');
-
-        // Download and upload to Supabase in the background
-        fetch(downloadLink, {
-          method: 'GET',
-          headers: { 'x-goog-api-key': apiKey },
-        })
-          .then(res => {
-            if (!res.ok) throw new Error(`Background download failed: ${res.status}`);
-            return res.blob();
-          })
-          .then(blob => {
-            return uploadToSupabase(blob, 'video', option.prompt || option.title, currentUserId);
-          })
-          .then(publicUrl => {
-            if (publicUrl) {
-              updateGalleryItem(tempId, { url: publicUrl });
-              setTimeline((prev: any[]) =>
-                prev.map((t) => (t.id === newItemId ? { ...t, url: publicUrl } : t))
-              );
-            }
-          })
-          .catch((err) => {
-            console.error('[Background Upload] Montage upload failed:', err);
-          });
-      } else {
-        throw new Error('Veo returned no video. The prompt may have been filtered. Try rephrasing.');
-      }
+      setMontageGeneratedImg('');
+      addToGallery({ id: Date.now().toString(), type: 'video', url: data.videoUrl });
+      addToTimeline({
+        id: `montage-${Date.now()}`,
+        url: data.videoUrl,
+        start: 0,
+        end: duration,
+        duration: duration,
+        type: 'video'
+      });
+      showToast('Montage video generated successfully with Omni Flash 1.1!', 'success');
+      setIsGeneratingVideo(false);
+      setVideoProgressMsg('');
+      setShowMontageOptions(false);
+      return;
     } catch (e) {
       if (!isAdmin && !isGlobalAdmin) refund('veo_fast', unitCost as any);
       handleApiError(e, 'Montage video generation');
@@ -638,7 +468,7 @@ export const MontagePanel: React.FC = () => {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between">
                               <p className="text-[8.5px] font-black uppercase tracking-widest text-[#c8f135]">Generating Performance Video</p>
-                              <span className="text-[7px] font-mono text-white/50 uppercase">{(videoGenMode as string) === 'omni-flash' ? '✨ Omni Flash' : (videoGenMode as string) === 'veo_standard' ? '🎬 Veo 3 Standard' : '⚡ Veo 3 Fast'}</span>
+                              <span className="text-[7px] font-mono text-cyan-400 uppercase">⚡ Omni Flash 1.1</span>
                             </div>
                             <p className="text-[7.5px] font-mono text-white/80 uppercase tracking-tight truncate mt-0.5">{videoProgressMsg || 'Submitting to video generation engine...'}</p>
                           </div>

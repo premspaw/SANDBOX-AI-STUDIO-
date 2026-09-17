@@ -847,6 +847,16 @@ export default function StudioPage() {
       const dur = Math.ceil(motionRefVideoDuration || duration || 5);
       return Math.round(dur * rate);
     }
+    if (panelTab === 'transition' || panelTab === 'seedance-2.5' || activeEngine === 'seedance-2.5') {
+      const resLower = (resolution || '720p').toLowerCase();
+      const costPerSec = resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30);
+      return Math.ceil(costPerSec * (Number(duration) || 5));
+    }
+    if (panelTab === 'seedance' || activeEngine.startsWith('seedan') || activeEngine === 'seedace') {
+      const resLower = (resolution || '720p').toLowerCase();
+      const costPerSec = (activeEngine === 'seedace') ? (resLower === '4k' ? 140 : (resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30))) : (activeEngine === 'seedance-mini' ? (resLower === '480p' ? 10 : 15) : (resLower === '480p' ? 15 : 25));
+      return Math.ceil(costPerSec * (Number(duration) || 5));
+    }
     if (panelTab === 'omni' || panelTab === 'omni-multi' || activeEngine.includes('omni')) {
       let costPerSec = 5;
       const resLower = (resolution || '720p').toLowerCase();
@@ -903,7 +913,7 @@ export default function StudioPage() {
   const handleGenerate = async (customPrompt, customEngine, customOptions = {}) => {
     const engineToUse = customEngine || activeEngine;
     const isMotion = panelTab === 'motion' || engineToUse.includes('motion') || engineToUse.includes('kling');
-    const isSeedance = !isMotion && (panelTab === 'seedance' || panelTab === 'seedance-2.5' || engineToUse.startsWith('seedan') || engineToUse === 'seedace');
+    const isSeedance = !isMotion && (panelTab === 'transition' || panelTab === 'seedance' || panelTab === 'seedance-2.5' || engineToUse.startsWith('seedan') || engineToUse === 'seedace');
     const isOmni = !isMotion && !isSeedance && (panelTab === 'omni' || panelTab === 'omni-multi' || engineToUse.includes('omni') || engineToUse.includes('flash'));
     const promptToUse = customPrompt || (isMotion ? (promptText || '') : (isOmni ? omniPromptText : promptText));
     const activeDuration = customOptions?.duration !== undefined ? customOptions.duration : duration;
@@ -1116,7 +1126,7 @@ export default function StudioPage() {
             });
           }
 
-          const modelParam = (engineToUse === 'seedance-2.5' || panelTab === 'seedance-2.5')
+          const modelParam = (engineToUse === 'seedance-2.5' || panelTab === 'seedance-2.5' || panelTab === 'transition')
             ? 'bytedance/seedance-2-5'
             : engineToUse === 'seedance-fast'
             ? 'dreamina-seedance-2-0-fast-260128'
@@ -1133,6 +1143,8 @@ export default function StudioPage() {
               seedanceContentArray: contentArray,
               firstFrame: resolvedStart || undefined,
               lastFrame: resolvedEnd || undefined,
+              first_frame_url: resolvedStart || undefined,
+              last_frame_url: resolvedEnd || undefined,
               reference_image_urls: resolvedRefImgs,
               reference_video_urls: resolvedRefVids,
               reference_audio_urls: resolvedRefAuds,
@@ -1142,6 +1154,9 @@ export default function StudioPage() {
               userId,
               projectId: activeProjectId,
               generateAudio: activeAudio,
+              output_format: 'mp4',
+              web_search: false,
+              nsfw_checker: true,
               creditReason: 'studio_seedance_generation'
             })
           });

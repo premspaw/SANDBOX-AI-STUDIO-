@@ -818,7 +818,7 @@ Return a JSON object structured exactly as:
 You are a master real estate & interior architecture video director and copywriter.
 ${visualContextInstruction}
 
-TASK: Generate a multi-shot showcase prompt script for Google Omni Flash / Veo (${actualDuration} Seconds Total | Multi-Shot with Hard Cuts).
+TASK: Generate a multi-shot showcase prompt script for Google Omni Flash 1.1 (${actualDuration} Seconds Total | Multi-Shot with Hard Cuts).
 
 The property tour moves through the following rooms/spaces:
 ${activeSequence.map((r, i) => `${i + 1}. Room: "${r?.label || 'Room'}" (${r.images?.length || 0} reference photos attached)`).join('\n')}
@@ -1487,212 +1487,128 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         finalPrompt += " -- cinematic ultra-realistic video, lifelike textures, highly realistic lighting, natural human motion. Focus on realism rather than commercial premium aesthetics.";
       }
 
-      if (videoGenMode === 'omni-flash') {
-        let imageToSend = '';
-        if (imagePayload) {
-          imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
-        }
-
-        // Add strict geometry and layout preservation to prevent morphing, transitions, flips or perspective warping
-        finalPrompt += `\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No weird transitions. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).`;
-
-        // Add a short face-consistency instruction when a realtor image is present
-        if (realtorImg) {
-          finalPrompt += `\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.`;
-        }
-
-        if (includeAudio && room.script) {
-          // Clean accidental UI labels like "[0:00 - 0:10] BEDROOM 2:" that AI sometimes hallucinates
-          const cleanScript = room.script.replace(/^\[.*?\]\s*(.*?:\s*)?/, '').trim();
-          finalPrompt += `\n\nThe person in the video is speaking to the camera. They say exactly: "${cleanScript}"`;
-        }
-
-        const headers: any = { 'Content-Type': 'application/json' };
-        const customKey = getApiKey();
-        if (customKey) headers['x-admin-trial-key'] = customKey;
-
-        // Resolve realtor image as a reference image for face identity lock in Omni Flash
-        let refImagesList: any[] = [];
-        
-        if (startFrameImg) {
-          try {
-            const blob = await fetchImageAsBlob(startFrameImg.url || (startFrameImg.file ? URL.createObjectURL(startFrameImg.file) : ''));
-            const base64 = await resizeImage(blob);
-            refImagesList.push({ url: `data:${blob.type || 'image/jpeg'};base64,${base64}` });
-          } catch (e) {
-            console.warn('[HomeTour-Omni] Failed to attach startFrameImg:', e);
-          }
-        }
-        
-        if (realtorImg) {
-          try {
-            const blob = await fetchImageAsBlob(realtorImg.url || (realtorImg.file ? URL.createObjectURL(realtorImg.file) : ''));
-            const base64 = await resizeImage(blob);
-            refImagesList.push({ url: `data:${blob.type || 'image/jpeg'};base64,${base64}` });
-          } catch (e) {
-            console.warn('[HomeTour-Omni] Failed to resolve realtor reference image:', e);
-          }
-        }
-
-        // Add all images of the current room as references
-        if (room.images && room.images.length > 0) {
-          for (const img of room.images) {
-            try {
-              const blob = await fetchImageAsBlob(img.url);
-              const base64 = await resizeImage(blob);
-              refImagesList.push({ url: `data:image/jpeg;base64,${base64}` });
-            } catch (e) {
-              console.warn('[HomeTour-Omni] Failed to attach current room image:', e);
-            }
-          }
-        }
-
-        // Attach up to 3 other rooms from the sidebar to give the model more context
-        const otherRooms = rooms.filter(r => r.images && r.images.length > 0 && r.id !== room.id).slice(0, 3);
-        for (const r of otherRooms) {
-          if (r.images && r.images.length > 0) {
-            try {
-              const blob = await fetchImageAsBlob(r.images[0].url);
-              const base64 = await resizeImage(blob);
-              refImagesList.push({ url: `data:image/jpeg;base64,${base64}` });
-            } catch (e) {
-              console.warn('[HomeTour-Omni] Failed to resolve other room reference image:', e);
-            }
-          }
-        }
-
-        const resp = await fetch(getApiUrl('/api/omni-i2v'), {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            image: imageToSend || undefined,
-            motionPrompt: finalPrompt.substring(0, 2000),
-            duration: room.duration,
-            aspectRatio: aspectRatio === '1:1' ? '9:16' : aspectRatio as any,
-            resolution: '720p',
-            model: 'gemini-omni-flash-preview',
-            userId: currentUserId,
-            generateAudio: includeAudio,
-            creditReason: 'veo_fast',
-            ref_images: refImagesList
-          })
-        });
-
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || 'Omni generation failed.');
-        if (!data.videoUrl) throw new Error('Omni returned no video URL.');
-
-        const directUrl = data.videoUrl;
-        const timelineId = `room-${room.id}-${Date.now()}`;
-
-        // Update room with generated video instantly using direct URL
-        setRooms(prev => prev.map(r =>
-          r.id === room.id ? { ...r, generatedVideo: directUrl } : r
-        ));
-
-        // Add to gallery + timeline instantly using direct URL
-        updateGalleryItem(galleryId, { loading: false, url: directUrl, prompt: finalPrompt });
-
-        // Add to timeline
-        setTimeline(prev => [
-          ...prev,
-          {
-            id: timelineId,
-            url: directUrl,
-            start: 0,
-            end: room.duration,
-            duration: room.duration,
-            type: 'video'
-          }
-        ]);
-
-        showToast(`${room.label} done ✓`, 'success');
-        setGeneratingRoomId(null);
-        setVideoProgressMsg('');
-        return;
+      let imageToSend = '';
+      if (imagePayload) {
+        imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
       }
 
-      const veoModel = videoGenMode === 'veo3'
-        ? 'veo-3.1-generate-preview'
-        : videoGenMode === 'veo_lite'
-        ? 'veo-3.1-lite-generate-preview'
-        : 'veo-3.1-fast-generate-preview';
+      // Add strict geometry and layout preservation to prevent morphing, transitions, flips or perspective warping
+      finalPrompt += `\n\nSTRICT GEOMETRY PRESERVATION: Do NOT morph, warp, distort, or flip the room layout. Cut to the scene is completely fine, but absolutely NO morphing between objects. The background structure, walls, kitchen counters, cabinets, furniture, and geometric details MUST remain 100% stable and identical to the starting frame image. No weird transitions. Only very subtle, slow, steady camera motion (like a slow dolly forward or a subtle pan).`;
 
-      const videoRequest: any = {
-        model: veoModel,
-        prompt: finalPrompt.substring(0, 1000),
-        config: {
-          numberOfVideos: 1,
-          resolution: videoResolution as any,
+      // Add a short face-consistency instruction when a realtor image is present
+      if (realtorImg) {
+        finalPrompt += `\n\nCRITICAL FACE LIKENESS LOCK: The realtor/agent in the video MUST have the exact face likeness, bone structure, skin tone, hair, and identity matching the realtor reference photo. Maintain complete facial consistency.`;
+      }
+
+      if (includeAudio && room.script) {
+        // Clean accidental UI labels like "[0:00 - 0:10] BEDROOM 2:" that AI sometimes hallucinates
+        const cleanScript = room.script.replace(/^\[.*?\]\s*(.*?:\s*)?/, '').trim();
+        finalPrompt += `\n\nThe person in the video is speaking to the camera. They say exactly: "${cleanScript}"`;
+      }
+
+      const headers: any = { 'Content-Type': 'application/json' };
+      const customKey = getApiKey();
+      if (customKey) headers['x-admin-trial-key'] = customKey;
+
+      // Resolve realtor image as a reference image for face identity lock in Omni Flash
+      let refImagesList: any[] = [];
+      
+      if (startFrameImg) {
+        try {
+          const blob = await fetchImageAsBlob(startFrameImg.url || (startFrameImg.file ? URL.createObjectURL(startFrameImg.file) : ''));
+          const base64 = await resizeImage(blob);
+          refImagesList.push({ url: `data:${blob.type || 'image/jpeg'};base64,${base64}` });
+        } catch (e) {
+          console.warn('[HomeTour-Omni] Failed to attach startFrameImg:', e);
+        }
+      }
+      
+      if (realtorImg) {
+        try {
+          const blob = await fetchImageAsBlob(realtorImg.url || (realtorImg.file ? URL.createObjectURL(realtorImg.file) : ''));
+          const base64 = await resizeImage(blob);
+          refImagesList.push({ url: `data:${blob.type || 'image/jpeg'};base64,${base64}` });
+        } catch (e) {
+          console.warn('[HomeTour-Omni] Failed to resolve realtor reference image:', e);
+        }
+      }
+
+      // Add all images of the current room as references
+      if (room.images && room.images.length > 0) {
+        for (const img of room.images) {
+          try {
+            const blob = await fetchImageAsBlob(img.url);
+            const base64 = await resizeImage(blob);
+            refImagesList.push({ url: `data:image/jpeg;base64,${base64}` });
+          } catch (e) {
+            console.warn('[HomeTour-Omni] Failed to attach current room image:', e);
+          }
+        }
+      }
+
+      // Attach up to 3 other rooms from the sidebar to give the model more context
+      const otherRooms = rooms.filter(r => r.images && r.images.length > 0 && r.id !== room.id).slice(0, 3);
+      for (const r of otherRooms) {
+        if (r.images && r.images.length > 0) {
+          try {
+            const blob = await fetchImageAsBlob(r.images[0].url);
+            const base64 = await resizeImage(blob);
+            refImagesList.push({ url: `data:image/jpeg;base64,${base64}` });
+          } catch (e) {
+            console.warn('[HomeTour-Omni] Failed to resolve other room reference image:', e);
+          }
+        }
+      }
+
+      const resp = await fetch(getApiUrl('/api/omni-i2v'), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          image: imageToSend || undefined,
+          motionPrompt: finalPrompt.substring(0, 2000),
+          duration: room.duration,
           aspectRatio: aspectRatio === '1:1' ? '9:16' : aspectRatio as any,
-          durationSeconds: room.duration,
-          includeAudio: includeAudio,
-        },
-      };
-      if (imagePayload) videoRequest.image = imagePayload;
+          resolution: '720p',
+          model: 'gemini-omni-1.1-flash-preview',
+          userId: currentUserId,
+          generateAudio: includeAudio,
+          creditReason: 'veo_fast',
+          ref_images: refImagesList
+        })
+      });
 
-      let op = await ai.models.generateVideos(videoRequest);
-      const start = Date.now();
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Omni generation failed.');
+      if (!data.videoUrl) throw new Error('Omni returned no video URL.');
 
-      while (!op.done) {
-        if (Date.now() - start > 90_000) {
-          throw new Error('Video generation timed out after 90 seconds.');
-        }
-        await new Promise(r => setTimeout(r, 5000));
-        op = await ai.operations.getVideosOperation({ operation: op });
-        setVideoProgressMsg(
-          `${room.label} · ${Math.round((Date.now() - start) / 1000)}s / 90s`
-        );
-      }
+      const directUrl = data.videoUrl;
+      const timelineId = `room-${room.id}-${Date.now()}`;
 
-      const link = op.response?.generatedVideos?.[0]?.video?.uri;
-      if (link) {
-        const apiKey = getApiKey();
-        const directUrl = `${link}${link.includes('?') ? '&' : '?'}key=${apiKey}`;
-        const timelineId = `room-${room.id}-${Date.now()}`;
+      // Update room with generated video instantly using direct URL
+      setRooms(prev => prev.map(r =>
+        r.id === room.id ? { ...r, generatedVideo: directUrl } : r
+      ));
 
-        // Update room with generated video instantly using direct URL
-        setRooms(prev => prev.map(r =>
-          r.id === room.id ? { ...r, generatedVideo: directUrl } : r
-        ));
+      // Add to gallery + timeline instantly using direct URL
+      updateGalleryItem(galleryId, { loading: false, url: directUrl, prompt: finalPrompt });
 
-        // Add to gallery + timeline instantly using direct URL
-        updateGalleryItem(galleryId, { loading: false, url: directUrl, prompt: finalPrompt });
-        setTimeline(prev => [...prev, {
+      // Add to timeline
+      setTimeline(prev => [
+        ...prev,
+        {
           id: timelineId,
           url: directUrl,
           start: 0,
           end: room.duration,
           duration: room.duration,
-          type: 'video' as const,
-        }]);
+          type: 'video'
+        }
+      ]);
 
-        showToast(`${room.label} done ✓`, 'success');
-
-        // Download and upload to Supabase in the background
-        fetch(link, { headers: { 'x-goog-api-key': apiKey } })
-          .then(res => {
-            if (!res.ok) throw new Error(`Background download failed: ${res.status}`);
-            return res.blob();
-          })
-          .then(blob => {
-            return uploadToSupabase(blob, 'video', finalPrompt, currentUserId);
-          })
-          .then(publicUrl => {
-            if (publicUrl) {
-              setRooms(prev => prev.map(r =>
-                r.id === room.id ? { ...r, generatedVideo: publicUrl } : r
-              ));
-              updateGalleryItem(galleryId, { url: publicUrl });
-              setTimeline(prev => prev.map(t =>
-                t.id === timelineId ? { ...t, url: publicUrl } : t
-              ));
-            }
-          })
-          .catch(err => {
-            console.error('[Background Save] Failed:', err);
-          });
-      }
+      showToast(`${room.label} done ✓`, 'success');
+      setGeneratingRoomId(null);
+      setVideoProgressMsg('');
+      return;
 
     } catch (e: any) {
       const errMsg = e.message || JSON.stringify(e);
@@ -2377,7 +2293,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                         />
                       </div>
 
-                      {/* Column 2: Visual scene/Veo Prompt */}
+                      {/* Column 2: Visual scene/Omni Flash Prompt */}
                       <div className="flex flex-col space-y-2 bg-white/5 border border-white/10 p-3 rounded-xl relative overflow-hidden font-mono">
                         {(isGeneratingScripts || isGeneratingSingleScript) && (
                           <div className="absolute inset-0 z-10 bg-black/70 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center gap-2">
@@ -2405,7 +2321,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                           onChange={e => setRooms(prev => prev.map(r =>
                             r.id === activeRoom.id ? { ...r, prompt: e.target.value } : r
                           ))}
-                          placeholder="Veo video prompt — auto-generated from property context and style..."
+                          placeholder="Omni Flash 1.1 video prompt — auto-generated from property context and style..."
                           rows={5}
                           className="w-full bg-black/40 border border-[#1e1e24] rounded-xl px-3 py-2 text-[10px] text-white/50 font-mono focus:outline-none focus:border-[#c8f135]/40 resize-none leading-relaxed flex-1"
                         />

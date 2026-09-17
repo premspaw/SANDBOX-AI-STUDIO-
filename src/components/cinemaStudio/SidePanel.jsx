@@ -1329,10 +1329,10 @@ export const SidePanel = React.memo(({
       const dur = motionRefVideoDuration > 0 ? Math.ceil(motionRefVideoDuration) : (duration || 5);
       return rate * dur;
     }
-    if (panelTab === 'seedance-2.5' || activeEngine === 'seedance-2.5') {
+    if (panelTab === 'transition' || panelTab === 'seedance-2.5' || activeEngine === 'seedance-2.5') {
       const resLower = (resolution || '720p').toLowerCase();
       const costPerSec = resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30);
-      return Math.ceil(costPerSec * (Number(duration) || 10));
+      return Math.ceil(costPerSec * (Number(duration) || 5));
     }
     if (panelTab === 'seedance' || isSeedanceEngine) {
       const resLower = (resolution || '720p').toLowerCase();
@@ -1442,7 +1442,7 @@ export const SidePanel = React.memo(({
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     const showToast = useAppStore.getState().showToast;
 
-    const engineToUse = (panelTab === 'seedance-2.5' || activeEngine === 'seedance-2.5')
+    const engineToUse = (panelTab === 'transition' || panelTab === 'seedance-2.5' || activeEngine === 'seedance-2.5')
       ? 'seedance-2.5'
       : (activeEngine === 'seedace' || activeEngine === 'seedance-mini')
       ? activeEngine
@@ -1538,13 +1538,18 @@ export const SidePanel = React.memo(({
       seedanceContentArray: compiledContent,
       firstFrame: resolvedStartImg,
       lastFrame: resolvedEndImg,
+      first_frame_url: resolvedStartImg,
+      last_frame_url: resolvedEndImg,
       reference_image_urls: resolvedImages,
       reference_video_urls: resolvedVideos,
       reference_audio_urls: resolvedAudios,
-      duration: Number(duration) || (panelTab === 'seedance-2.5' ? 10 : 5),
-      resolution: (panelTab === 'seedance-2.5' && resolution === '4k') ? '1080p' : resolution,
-      aspectRatio,
-      generateAudio
+      duration: Number(duration) || ((panelTab === 'seedance-2.5' && duration >= 10) ? 10 : 5),
+      resolution: ((panelTab === 'seedance-2.5' || panelTab === 'transition') && resolution === '4k') ? '1080p' : resolution,
+      aspectRatio: aspectRatio || 'adaptive',
+      generateAudio,
+      output_format: 'mp4',
+      web_search: false,
+      nsfw_checker: true
     });
   };
 
@@ -1861,6 +1866,22 @@ export const SidePanel = React.memo(({
       return [...seedanceSlots, ...(allRefItems || []), ...galleryHistoryItems];
     }
 
+    if (panelTab === 'transition') {
+      const transitionSlots = [
+        ...(firstPreview ? [
+          { name: 'Image1', category: 'Start Frame', imageUrl: firstPreview, isKeyframe: true },
+          { name: 'first_frame', category: 'Start Frame', imageUrl: firstPreview, isKeyframe: true },
+          { name: '<FIRST_FRAME>', category: 'Start Frame', imageUrl: firstPreview, isKeyframe: true }
+        ] : []),
+        ...(lastPreview ? [
+          { name: 'Image2', category: 'End Frame', imageUrl: lastPreview, isKeyframe: true },
+          { name: 'last_frame', category: 'End Frame', imageUrl: lastPreview, isKeyframe: true },
+          { name: '<LAST_FRAME>', category: 'End Frame', imageUrl: lastPreview, isKeyframe: true }
+        ] : [])
+      ];
+      return [...transitionSlots, ...(allRefItems || []), ...galleryHistoryItems];
+    }
+
     if (panelTab === 'omni-multi') {
       return [...multiSlots, ...(allRefItems || []), ...galleryHistoryItems];
     }
@@ -1930,6 +1951,7 @@ export const SidePanel = React.memo(({
   }, [localPrompt]);
 
   const aspectOptions = useMemo(() => [
+    { value: 'adaptive', label: 'Adaptive', desc: 'Auto-detect from frames' },
     { value: '16:9', label: '16:9 Landscape', desc: '1920×1080 Widescreen' },
     { value: '9:16', label: '9:16 Vertical', desc: '1080×1920 Reels/Shorts' },
     { value: '1:1', label: '1:1 Square', desc: '1080×1080 Feed Post' },
@@ -1946,6 +1968,15 @@ export const SidePanel = React.memo(({
     { value: 10, label: '10 Seconds', desc: 'Long sequence (10s)' }
   ], []);
 
+  const transitionDurationOptions = useMemo(() => [
+    { value: 4, label: '4 Seconds', desc: '4s Quick burst' },
+    { value: 5, label: '5 Seconds', desc: '5s Standard (Default)' },
+    { value: 8, label: '8 Seconds', desc: '8s Extended transition' },
+    { value: 10, label: '10 Seconds', desc: '10s Long transition' },
+    { value: 12, label: '12 Seconds', desc: '12s Extended scene' },
+    { value: 15, label: '15 Seconds', desc: '15s Maximum duration' }
+  ], []);
+
   const seedanceDurationOptions = useMemo(() => [
     { value: 4, label: '4 Seconds', desc: '4s Quick shot' },
     { value: 6, label: '6 Seconds', desc: '6s Standard clip' },
@@ -1955,6 +1986,7 @@ export const SidePanel = React.memo(({
   ], []);
 
   const seedance25DurationOptions = useMemo(() => [
+    { value: 5, label: '5 Seconds', desc: '5s Quick shot' },
     { value: 10, label: '10 Seconds', desc: '10s Baseline clip' },
     { value: 15, label: '15 Seconds', desc: '15s Extended shot' },
     { value: 20, label: '20 Seconds', desc: '20s Cinematic scene' },
@@ -1973,11 +2005,11 @@ export const SidePanel = React.memo(({
   ], []);
 
   const resolutionOptions = useMemo(() => {
-    if (panelTab === 'seedance-2.5') {
+    if (panelTab === 'transition' || panelTab === 'seedance-2.5') {
       return [
-        { value: '480p', label: '480p SD', desc: '15 cr/s · SD Preview' },
-        { value: '720p', label: '720p HD', desc: '30 cr/s · Standard HD' },
-        { value: '1080p', label: '1080p FHD', desc: '70 cr/s · High-def cinematic' }
+        { value: '720p', label: '720p HD', desc: '30 cr/s · Standard HD (Default)' },
+        { value: '1080p', label: '1080p FHD', desc: '70 cr/s · High-def cinematic' },
+        { value: '480p', label: '480p SD', desc: '15 cr/s · Fast preview' }
       ];
     }
     if (panelTab === 'seedance') {
@@ -2523,6 +2555,26 @@ export const SidePanel = React.memo(({
           <button
             type="button"
             onClick={() => {
+              setPanelTab('transition');
+              setActiveTab('video');
+              setActiveEngine('seedance-2.5');
+              setDuration(5);
+              setAspectRatio('adaptive');
+              if (resolution === '4k') setResolution('1080p');
+            }}
+            className={cn(
+              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
+              panelTab === 'transition'
+                ? "bg-gradient-to-r from-amber-400/20 via-[#c8f135]/20 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+            )}
+          >
+            Transition
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
               setPanelTab('seedance');
               setActiveTab('video');
               const targetEngine = (seedanceSubModel === 'seedace' || seedanceSubModel === 'seedance-mini') ? seedanceSubModel : 'seedance-fast';
@@ -2547,7 +2599,7 @@ export const SidePanel = React.memo(({
               setPanelTab('seedance-2.5');
               setActiveTab('video');
               setActiveEngine('seedance-2.5');
-              if (duration < 10) setDuration(10);
+              if (duration < 5) setDuration(10);
               if (resolution === '4k') setResolution('1080p');
             }}
             className={cn(
@@ -3477,13 +3529,13 @@ export const SidePanel = React.memo(({
                 ) : (
                   /* DIRECTING FLOW: Keyframe Conditioning + Prompt Studio + Driving Video Reference */
                   <div className="space-y-3">
-                    {/* KEYFRAME CONDITIONING (START FRAME & END FRAME) - OMNI & VEO 3.1 */}
-                    {(panelTab === 'omni' || panelTab === 'veo') && (
+                    {/* KEYFRAME CONDITIONING (START FRAME & END FRAME) - TRANSITION (SEEDANCE 2.5) & OMNI & VEO 3.1 */}
+                    {(panelTab === 'transition' || panelTab === 'omni' || panelTab === 'veo') && (
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
                           <label className="text-[9.5px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
                             <ImageIcon className="w-3 h-3 text-[#c8f135]" />
-                            <span>Keyframe Conditioning</span>
+                            <span>{panelTab === 'transition' ? 'Seedance 2.5 Transition Keyframes' : 'Keyframe Conditioning'}</span>
                           </label>
                           <span className="text-[8.5px] font-mono text-[#c8f135]/90 bg-[#c8f135]/10 px-1.5 py-0.2 rounded border border-[#c8f135]/20 font-bold">
                             Start (0s) → End ({duration}s)
@@ -3508,7 +3560,7 @@ export const SidePanel = React.memo(({
                                     + Gal
                                   </button>
                                 )}
-                                {(omniFirstFramePreview || firstFramePreview) && (
+                                {(omniFirstFramePreview || firstFramePreview || seedanceFirstFrame) && (
                                   <button
                                     type="button"
                                     onClick={handleClearStartFrame}
@@ -3521,10 +3573,10 @@ export const SidePanel = React.memo(({
                               </div>
                             </div>
 
-                            {(omniFirstFramePreview || firstFramePreview) ? (
+                            {(omniFirstFramePreview || firstFramePreview || seedanceFirstFrame) ? (
                               <div className="aspect-video w-full rounded-lg overflow-hidden bg-black/60 border border-violet-500/30 relative group shadow-inner">
                                 <img
-                                  src={omniFirstFramePreview || firstFramePreview}
+                                  src={omniFirstFramePreview || firstFramePreview || seedanceFirstFrame}
                                   alt="Start Frame"
                                   className="w-full h-full object-cover"
                                 />
@@ -3538,11 +3590,11 @@ export const SidePanel = React.memo(({
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => insertTagAtCursor('<FIRST_FRAME>')}
+                                    onClick={() => insertTagAtCursor(panelTab === 'transition' ? '@Image1' : '<FIRST_FRAME>')}
                                     className="px-1.5 py-0.5 bg-[#c8f135]/20 hover:bg-[#c8f135]/30 text-[#c8f135] rounded text-[8.5px] font-mono font-bold cursor-pointer"
-                                    title="Insert <FIRST_FRAME> into prompt"
+                                    title={panelTab === 'transition' ? "Insert @Image1 into prompt" : "Insert <FIRST_FRAME> into prompt"}
                                   >
-                                    Tag
+                                    {panelTab === 'transition' ? '@Image1' : 'Tag'}
                                   </button>
                                 </div>
                               </div>
@@ -3575,7 +3627,7 @@ export const SidePanel = React.memo(({
                                     + Gal
                                   </button>
                                 )}
-                                {(omniLastFramePreview || lastFramePreview) && (
+                                {(omniLastFramePreview || lastFramePreview || seedanceLastFrame) && (
                                   <button
                                     type="button"
                                     onClick={handleClearEndFrame}
@@ -3588,10 +3640,10 @@ export const SidePanel = React.memo(({
                               </div>
                             </div>
 
-                            {(omniLastFramePreview || lastFramePreview) ? (
+                            {(omniLastFramePreview || lastFramePreview || seedanceLastFrame) ? (
                               <div className="aspect-video w-full rounded-lg overflow-hidden bg-black/60 border border-cyan-500/30 relative group shadow-inner">
                                 <img
-                                  src={omniLastFramePreview || lastFramePreview}
+                                  src={omniLastFramePreview || lastFramePreview || seedanceLastFrame}
                                   alt="End Frame"
                                   className="w-full h-full object-cover"
                                 />
@@ -3605,11 +3657,11 @@ export const SidePanel = React.memo(({
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => insertTagAtCursor('<LAST_FRAME>')}
+                                    onClick={() => insertTagAtCursor(panelTab === 'transition' ? '@Image2' : '<LAST_FRAME>')}
                                     className="px-1.5 py-0.5 bg-[#c8f135]/20 hover:bg-[#c8f135]/30 text-[#c8f135] rounded text-[8.5px] font-mono font-bold cursor-pointer"
-                                    title="Insert <LAST_FRAME> into prompt"
+                                    title={panelTab === 'transition' ? "Insert @Image2 into prompt" : "Insert <LAST_FRAME> into prompt"}
                                   >
-                                    Tag
+                                    {panelTab === 'transition' ? '@Image2' : 'Tag'}
                                   </button>
                                 </div>
                               </div>
@@ -3630,7 +3682,9 @@ export const SidePanel = React.memo(({
 
                     {/* 1. PROMPT STUDIO */}
                     {renderPromptStudio(
-                      panelTab === 'omni'
+                      panelTab === 'transition'
+                        ? "Reference @Image1 for start frame, @Image2 for end frame. Describe character action, martial arts, camera transitions..."
+                        : panelTab === 'omni'
                         ? "Describe scene composition, dynamic movement, camera transitions, and lighting..."
                         : panelTab === 'veo'
                         ? "Describe cinematic scene, character actions, camera motion, and atmosphere for Veo 3.1..."
@@ -3712,7 +3766,93 @@ export const SidePanel = React.memo(({
 
               {/* SECTION B: ZERO-LENS CINEMA PARAMETER CONTROLS */}
               <div className="space-y-3 pt-2.5 border-t border-white/[0.08]">
-                {panelTab === 'seedance-2.5' ? (
+                {panelTab === 'transition' ? (
+                  /* Dedicated Parameters for Seedance 2.5 Transition */
+                  <div className="space-y-3">
+                    {/* Model + Resolution Side by Side */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <GlassSelect
+                        label="Engine"
+                        icon={Sparkles}
+                        value="seedance-2.5"
+                        onChange={() => {}}
+                        options={[
+                          { value: 'seedance-2.5', label: 'Seedance 2.5', desc: 'First & Last Frame Transition' }
+                        ]}
+                        align="up"
+                      />
+
+                      <GlassSelect
+                        label="Resolution"
+                        value={resolution === '4k' ? '1080p' : (resolution || '720p')}
+                        onChange={setResolution}
+                        options={[
+                          { value: '720p', label: '720p HD', desc: '30 cr/s · Standard HD (Default)' },
+                          { value: '1080p', label: '1080p FHD', desc: '70 cr/s · High-def cinematic' },
+                          { value: '480p', label: '480p SD', desc: '15 cr/s · Fast preview' }
+                        ]}
+                        align="up"
+                      />
+                    </div>
+
+                    {/* Aspect Ratio + Clip Duration Side by Side */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <GlassSelect
+                        label="Aspect Ratio"
+                        value={aspectRatio}
+                        onChange={setAspectRatio}
+                        options={aspectOptions}
+                        align="up"
+                      />
+
+                      <GlassSelect
+                        label="Clip Duration"
+                        value={duration}
+                        onChange={(val) => setDuration(Number(val))}
+                        options={transitionDurationOptions}
+                        align="up"
+                      />
+                    </div>
+
+                    {/* Audio Toggle */}
+                    <div className="space-y-1.5 w-full">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[9.5px] font-black uppercase tracking-[0.16em] text-zinc-400 flex items-center gap-1">
+                          <Volume2 className="w-3 h-3 text-zinc-400" />
+                          <span>Sound Effects (SFX)</span>
+                        </label>
+                        <span className="text-[8.5px] font-mono text-zinc-500">Native Audio</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setGenerateAudio(!generateAudio)}
+                        className={cn(
+                          "w-full h-[38px] px-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all cursor-pointer select-none",
+                          generateAudio
+                            ? "bg-[#c8f135]/15 border-[#c8f135]/50 text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.15)] font-extrabold"
+                            : "bg-black/40 border-white/[0.08] text-zinc-400 hover:text-white hover:border-white/20"
+                        )}
+                      >
+                        <div className="flex items-center gap-1.5 truncate">
+                          {generateAudio ? (
+                            <Volume2 size={13} className="text-[#c8f135] shrink-0" />
+                          ) : (
+                            <VolumeX size={13} className="text-zinc-500 shrink-0" />
+                          )}
+                          <span className="text-[10.5px] font-bold truncate">{generateAudio ? 'SFX ON' : 'Muted'}</span>
+                        </div>
+                        <span className={cn(
+                          "text-[8.5px] font-mono font-bold px-1 py-0.2 rounded border shrink-0",
+                          generateAudio
+                            ? "bg-[#c8f135]/20 text-[#c8f135] border-[#c8f135]/30"
+                            : "bg-white/[0.04] text-zinc-500 border-white/[0.06]"
+                        )}>
+                          {generateAudio ? 'SFX ON' : 'OFF'}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                ) : panelTab === 'seedance-2.5' ? (
                   /* Dedicated Bottom Controls for Seedance 2.5 */
                   <div className="space-y-3">
                     {/* Model + Resolution Side by Side */}
@@ -3895,7 +4035,9 @@ export const SidePanel = React.memo(({
                 <div className="flex items-center gap-1">
                   <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse shrink-0", (panelTab === 'seedance' || panelTab === 'seedance-2.5') ? "bg-amber-400" : "bg-[#c8f135]")} />
                   <span className="text-[9px] sm:text-[9.5px] font-black text-zinc-300 uppercase tracking-widest truncate">
-                    {panelTab === 'seedance-2.5'
+                    {panelTab === 'transition'
+                      ? 'Seedance 2.5 Transition Ready'
+                      : panelTab === 'seedance-2.5'
                       ? 'Seedance 2.5 Pro Ready'
                       : panelTab === 'seedance'
                       ? `${activeEngine === 'seedace' ? 'Seedance 2.0 Pro' : activeEngine === 'seedance-mini' ? 'Seedance Mini' : 'Seedance Fast'} Ready`
@@ -3916,7 +4058,7 @@ export const SidePanel = React.memo(({
               <button
                 type="button"
                 onClick={
-                  (panelTab === 'seedance' || panelTab === 'seedance-2.5')
+                  (panelTab === 'transition' || panelTab === 'seedance' || panelTab === 'seedance-2.5')
                     ? triggerGenerateSeedance
                     : panelTab === 'omni' || panelTab === 'omni-multi'
                     ? triggerGenerateOmni

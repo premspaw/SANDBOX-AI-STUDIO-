@@ -262,18 +262,28 @@ function App() {
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+    const safetyTimer = setTimeout(() => {
+      if (mounted) setAuthChecked(true);
+    }, 1500);
+
     const checkSession = async () => {
-      if (supabase) {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user) {
-          setUser(session.user)
-          // ✅ CRITICAL: Ensure profile is loaded into Store for persistence to work
-          useAppStore.getState().fetchUserProfile(session.user.id);
+      try {
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user && mounted) {
+            setUser(session.user);
+            useAppStore.getState().fetchUserProfile(session.user.id);
+          }
         }
+      } catch (err) {
+        console.warn('Session check error:', err);
+      } finally {
+        if (mounted) setAuthChecked(true);
+        clearTimeout(safetyTimer);
       }
-      setAuthChecked(true)
-    }
-    checkSession()
+    };
+    checkSession();
 
     // Listen for auth state changes
     if (supabase) {
@@ -283,44 +293,51 @@ function App() {
             setIsRecoveringPassword(true);
           }
           
-          const currentUserId = useAppStore.getState().userProfile?.id || null
-          const nextUserId = session?.user?.id || null
+          const currentUserId = useAppStore.getState().userProfile?.id || null;
+          const nextUserId = session?.user?.id || null;
 
           if (!session || (currentUserId && nextUserId && currentUserId !== nextUserId)) {
-            useAppStore.getState().clearSession()
+            useAppStore.getState().clearSession();
           }
           
           if (session?.user) {
-            setUser(session.user)
-            // ✅ CRITICAL: Ensure profile is loaded into Store on auth change
+            setUser(session.user);
             useAppStore.getState().fetchUserProfile(session.user.id);
           } else {
-            setUser(null)
+            setUser(null);
           }
         }
-      )
-      return () => subscription.unsubscribe()
+      );
+      return () => {
+        mounted = false;
+        clearTimeout(safetyTimer);
+        subscription.unsubscribe();
+      };
     }
-  }, [])
+    return () => {
+      mounted = false;
+      clearTimeout(safetyTimer);
+    };
+  }, []);
 
   const handleEnterStudio = () => {
     if (user) {
       // Already logged in, go directly to avatar creator (or cinema studio on mobile)
       const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-      setActiveTab(isMobile ? 'cinematic-studio' : 'avatar')
+      setActiveTab(isMobile ? 'cinematic-studio' : 'avatar');
     } else {
       // Not logged in, show auth page
-      setActiveTab('auth')
+      setActiveTab('auth');
     }
-  }
+  };
 
   const handleAuthSuccess = (authUser) => {
-    setUser(authUser)
+    setUser(authUser);
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-    setActiveTab(isMobile ? 'cinematic-studio' : 'avatar')
-  }
+    setActiveTab(isMobile ? 'cinematic-studio' : 'avatar');
+  };
 
-  if (!authChecked) return null; // wait for session check
+  if (!authChecked) return <StudioLoader />;
 
   const renderTabContent = () => {
     switch (activeTab) {

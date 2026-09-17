@@ -117,9 +117,9 @@ export interface UGCContextType {
   setScenes: (v: Scene[]) => void;
   activeSceneIndex: number;
   setActiveSceneIndex: (v: number) => void;
-  scriptModel: 'veo3' | 'omni';
-  setScriptModel: (v: 'veo3' | 'omni') => void;
-  handleScriptModelChange: (model: 'veo3' | 'omni') => void;
+  scriptModel: 'omni';
+  setScriptModel: (v: 'omni') => void;
+  handleScriptModelChange: (model?: 'omni') => void;
 
   // ── Split scenes ─────────────────────────────────────────────────────────
   splitScenes: SplitScene[];
@@ -148,8 +148,8 @@ export interface UGCContextType {
   // ── Video generation ──────────────────────────────────────────────────────
   videoPrompt: string;
   setVideoPrompt: (v: string) => void;
-  videoGenMode: 'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash' | 'omni-flash-1.1';
-  setVideoGenMode: (v: 'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash' | 'omni-flash-1.1') => void;
+  videoGenMode: 'omni-flash-1.1' | 'omni-flash' | 'montage';
+  setVideoGenMode: (v: 'omni-flash-1.1' | 'omni-flash' | 'montage') => void;
   thAnimation: string;
   setThAnimation: (v: string) => void;
   isGeneratingVideo: boolean;
@@ -270,8 +270,8 @@ export interface UGCContextType {
   // ── Talking Head Tab States ───────────────────────────────────────────────
   thScript: string;
   setThScript: (v: string) => void;
-  thEngine: 'veo_lite' | 'veo_fast' | 'veo3' | 'omni-flash' | 'omni-flash-1.1';
-  setThEngine: (v: 'veo_lite' | 'veo_fast' | 'veo3' | 'omni-flash' | 'omni-flash-1.1') => void;
+  thEngine: 'omni-flash-1.1' | 'omni-flash';
+  setThEngine: (v: 'omni-flash-1.1' | 'omni-flash') => void;
   thAspectRatio: '9:16' | '16:9';
   setThAspectRatio: (v: '9:16' | '16:9') => void;
   thDuration: '4' | '6' | '8' | '10';

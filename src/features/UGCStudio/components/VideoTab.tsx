@@ -64,15 +64,7 @@ export default function VideoTab() {
             }}
             rows={2}
             className="w-full bg-transparent border-0 text-[11px] text-white/80 placeholder-white/20 focus:outline-none resize-none leading-relaxed px-3 pt-3 pb-1 min-h-[52px] font-sans rounded-t-2xl"
-            placeholder={videoGenMode === 'veo_fast'
-              ? 'Describe your video scene — Veo Fast generates an 8-sec clip…'
-              : videoGenMode === 'veo_lite'
-              ? 'Describe your video scene — Veo Lite generates a fast clip…'
-              : videoGenMode === 'omni-flash-1.1'
-              ? 'Describe your video scene — Gemini Omni Flash 1.1 generates up to a 10-sec clip…'
-              : videoGenMode === 'omni-flash'
-              ? 'Describe your video scene — Gemini Omni Flash 1.0 generates up to a 10-sec clip…'
-              : 'Describe your video scene — Veo 3 HQ generates a premium clip…'}
+            placeholder="Describe your video scene — Gemini Omni Flash 1.1 generates up to a 10-sec clip…"
           />
 
           {/* Attached Reference Images Row */}

@@ -245,7 +245,7 @@ export default function UGC() {
   const [userPrompt, setUserPrompt] = useState('');
   const [script, setScript] = useState('');
   const [scriptDuration, setScriptDuration] = useState('20 seconds');
-  const [scriptModel, setScriptModel] = useState<'veo3' | 'omni'>('omni');
+  const [scriptModel, setScriptModel] = useState<'omni'>('omni');
   const [selectedScriptTone, setSelectedScriptTone] = useState('viral_marketing');
   const [selectedNiche, setSelectedNiche] = useState('none');
   const [videoPrompt, setVideoPrompt] = useState('');
@@ -348,7 +348,7 @@ export default function UGC() {
   const [thGeneratedImg, setThGeneratedImg] = useState<string>('');
   const [thGeneratedVideo, setThGeneratedVideo] = useState<string>('');
   const [thScript, setThScript] = useState<string>('');
-  const [thEngine, setThEngine] = useState<'omni-flash-1.1' | 'omni-flash' | 'veo3' | 'veo_fast' | 'veo_lite'>('omni-flash-1.1');
+  const [thEngine, setThEngine] = useState<'omni-flash-1.1' | 'omni-flash'>('omni-flash-1.1');
   const [thAnimation, setThAnimation] = useState<string>('none');
   const [thIsGeneratingImg, setThIsGeneratingImg] = useState(false);
   const [thIsGeneratingVideo, setThIsGeneratingVideo] = useState(false);
@@ -624,12 +624,12 @@ export default function UGC() {
   const [selectedMultiShotPreset, setSelectedMultiShotPreset] = useState('food_beverage_review');
   const [chatTab, setChatTab] = useState<'script' | 'video'>('script');
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
-  const [videoGenMode, setVideoGenMode] = useState<'veo_fast' | 'veo3' | 'veo_lite' | 'montage' | 'omni-flash' | 'omni-flash-1.1'>('omni-flash-1.1');
+  const [videoGenMode, setVideoGenMode] = useState<'omni-flash-1.1' | 'omni-flash' | 'montage'>('omni-flash-1.1');
   const [showVideoMontageOptions, setShowVideoMontageOptions] = useState(true);
   const [showLiveGuide, setShowLiveGuide] = useState(false);
   const [showPromptDropdown, setShowPromptDropdown] = useState(false);
 
-  const handleScriptModelChange = (model: 'veo3' | 'omni' = 'omni') => {
+  const handleScriptModelChange = (model: 'omni' = 'omni') => {
     setScriptModel('omni');
     setVideoGenMode('omni-flash-1.1');
     setDurationSeconds('10');
@@ -662,23 +662,11 @@ export default function UGC() {
   }, [showTemplates]);
 
   useEffect(() => {
-    if (videoGenMode === 'omni-flash') {
-      setDurationSeconds('10');
-    } else {
-      if (durationSeconds === '10') {
-        setDurationSeconds('8');
-      }
-    }
+    setDurationSeconds('10');
   }, [videoGenMode]);
 
   useEffect(() => {
-    if (thEngine === 'omni-flash') {
-      setThDuration('10');
-    } else {
-      if (thDuration === '10') {
-        setThDuration('8');
-      }
-    }
+    setThDuration('10');
   }, [thEngine]);
 
   useEffect(() => {
@@ -1407,11 +1395,11 @@ Return a detailed JSON with:
     if (!script) return;
     setIsExtractingPrompts(true);
     try {
-      const prompt = `You are an expert AI video prompt engineer for Veo 3.1. 
-      I have a UGC script. I need you to break it down into scenes (approx 8 seconds each) and for each scene, provide:
+      const prompt = `You are an expert AI video prompt engineer for Gemini Omni Flash 1.1. 
+      I have a UGC script. I need you to break it down into scenes (approx 10 seconds each) and for each scene, provide:
       1. The dialogue (text being said).
       2. A "visualCue" (brief description of the action).
-      3. A detailed "visualPrompt" (60-80 words) for Veo 3.1 that includes camera angles, lighting, facial expressions, and lipsync requirements.
+      3. A detailed "visualPrompt" (60-80 words) for Omni Flash 1.1 that includes camera angles, lighting, facial expressions, and lipsync requirements.
 
       SCRIPT:
       ${script}
@@ -3097,12 +3085,6 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
         imagePayload = { imageBytes: base64, mimeType: 'image/jpeg' };
       } catch { /* no ref image — generate from prompt only */ }
 
-      const veoModel = thEngine === 'veo3'
-        ? 'veo-3.1-generate-preview'
-        : thEngine === 'veo_lite'
-        ? 'veo-3.1-lite-generate-preview'
-        : 'veo-3.1-fast-generate-preview';
-        
       let animationPrompt = '';
       if (thAnimation && thAnimation !== 'none') {
         const readableAnimation = thAnimation.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
@@ -3296,45 +3278,8 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       ? parseInt(thDuration)
       : parseInt(durationSeconds);
 
-    let engine = 'veo_fast';
-    if (activeTab === 'talking-head') {
-      engine = thEngine;
-    } else if (isMontage) {
-      engine = 'veo_fast';
-    } else {
-      engine = videoGenMode;
-    }
-
-    let costPerSec = 10;
-    const is4K = (videoResolution as string) === '4k' || (videoResolution as string) === '4K';
-    const is1080p = (videoResolution as string) === '1080p';
-
-    if (engine === 'veo3') {
-      if (is4K) {
-        costPerSec = audioOn ? 80 : 54;
-      } else {
-        costPerSec = audioOn ? 54 : 30;
-      }
-    } else if (engine === 'veo_fast') {
-      if (is4K) {
-        costPerSec = audioOn ? 38 : 31;
-      } else if (is1080p) {
-        costPerSec = audioOn ? 15 : 12;
-      } else {
-        costPerSec = audioOn ? 12 : 10;
-      }
-    } else if (engine === 'veo_lite') {
-      if (is4K || is1080p) {
-        costPerSec = audioOn ? 10 : 6;
-      } else {
-        costPerSec = audioOn ? 6 : 4;
-      }
-    } else if (engine === 'omni-flash') {
-      const costPerSec = audioOn ? 6 : 5;
-      return Math.ceil(costPerSec * 1.1 * duration);
-    }
-
-    return costPerSec * duration;
+    const costPerSec = audioOn ? 6 : 5;
+    return Math.ceil(costPerSec * 1.1 * duration);
   };
 
   // ─── GENERATE ALL SHOTS (multi-cut loop) ───────────────────────────────
@@ -3396,224 +3341,98 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
           imagePayload = { imageBytes: base64, mimeType: 'image/jpeg' };
         }
 
-        // Use talking-head model/settings when in that tab, otherwise use UGC video settings
-        const resolvedEngine = isTalkingHead ? thEngine : videoGenMode;
-        const veoModel =
-          resolvedEngine === 'veo3'
-            ? 'veo-3.1-generate-preview'
-            : resolvedEngine === 'veo_lite'
-            ? 'veo-3.1-lite-generate-preview'
-            : 'veo-3.1-fast-generate-preview';
-
         const resolvedAspectRatio = isTalkingHead ? thAspectRatio : (aspectRatio === '1:1' ? '9:16' : aspectRatio as any);
-        const resolvedDuration = isTalkingHead 
-          ? parseInt(thDuration) 
-          : (resolvedEngine === 'omni-flash' ? 10 : 8);
+        const resolvedDuration = isTalkingHead ? parseInt(thDuration) : 10;
         const resolvedIncludeAudio = isTalkingHead ? true : includeAudio;
 
-        if (resolvedEngine === 'omni-flash') {
-          setVideoProgressMsg(`Shot ${i + 1}/${splitScenes.length} · Submitting to Gemini Omni Flash...`);
-          let imageToSend = '';
-          if (imagePayload) {
-            imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
-          }
-
-          const headers: any = { 'Content-Type': 'application/json' };
-          const customKey = getApiKey();
-          if (customKey) headers['x-admin-trial-key'] = customKey;
-
-          const hasVoiceover = (
-            prompt.toLowerCase().includes('voice-over') ||
-            prompt.toLowerCase().includes('voiceover') ||
-            prompt.toLowerCase().includes('off-screen') ||
-            prompt.toLowerCase().includes('narration') ||
-            prompt.toLowerCase().includes('narrat') ||
-            prompt.toLowerCase().includes('b-roll') ||
-            prompt.toLowerCase().includes('broll')
-          );
-          let dialogueInstruction = `Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): "${sc.dialog}".`;
-          if (hasVoiceover) {
-            dialogueInstruction = `Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): "${sc.dialog}" (strictly lip-sync only the portions where the face is on screen/speaking in the timecodes; all other portions must be generated as off-camera voice-over narration with no mouth/lip movement).`;
-          }
-          const finalMotionPrompt = (prompt.includes('Dialogue to speak:') ? prompt : `${prompt} ${dialogueInstruction}`).substring(0, 1000);
-
-          let audioToSend = undefined;
-          if (voiceSampleFile) {
-            try {
-              const b64 = await fileToBase64(voiceSampleFile);
-              const mime = voiceSampleFile.type || 'audio/mp3';
-              audioToSend = `data:${mime};base64,${b64}`;
-            } catch (e) { console.error('Failed to encode voice sample', e); }
-          }
-
-          const resp = await fetch(getApiUrl('/api/omni-i2v'), {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              image: imageToSend || undefined,
-              audio: audioToSend,
-              motionPrompt: finalMotionPrompt,
-              duration: resolvedDuration,
-              aspectRatio: resolvedAspectRatio,
-              resolution: '720p',
-              model: 'gemini-omni-flash-preview',
-              userId: currentUserId,
-              generateAudio: resolvedIncludeAudio,
-              creditReason: 'veo_fast'
-            })
-          });
-
-          const data = await resp.json();
-          if (!resp.ok) throw new Error(data.error || 'Omni generation failed.');
-          if (!data.videoUrl) throw new Error('Omni returned no video URL.');
-
-          const videoUrl = data.videoUrl;
-          const res = await fetch(videoUrl);
-          const blob = await res.blob();
-          const localUrl = URL.createObjectURL(blob);
-          const tempId = Date.now().toString();
-
-          // Immediately push to gallery and timeline using local URL
-          addToGallery({ id: tempId, type: 'video', url: localUrl });
-          const timelineId = `shot-${i}-${Date.now()}`;
-          setTimeline((prev: TimelineItem[]) => [
-            ...prev,
-            {
-              id: timelineId,
-              url: localUrl,
-              start: 0,
-              end: resolvedDuration,
-              duration: resolvedDuration,
-              type: 'video' as const,
-            },
-          ]);
-          showToast(`Shot ${i + 1} done ✓`, 'success');
-
-          // Upload to Supabase in the background
-          uploadToSupabase(blob, 'video', prompt, currentUserId).then((publicUrl) => {
-            if (publicUrl) {
-              updateGalleryItem(tempId, { url: publicUrl });
-              setTimeline((prev: TimelineItem[]) =>
-                prev.map((t) => (t.id === timelineId ? { ...t, url: publicUrl } : t))
-              );
-            }
-          }).catch((err) => {
-            console.error('[Background Upload] Shot upload failed:', err);
-          });
-
-          continue; // Move to next scene
+        setVideoProgressMsg(`Shot ${i + 1}/${splitScenes.length} · Generating with Gemini Omni Flash 1.1...`);
+        let imageToSend = '';
+        if (imagePayload) {
+          imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
         }
 
-        let sceneVideoUrl = '';
-        let sceneBlob: Blob | null = null;
+        const headers: any = { 'Content-Type': 'application/json' };
+        const customKey = getApiKey();
+        if (customKey) headers['x-admin-trial-key'] = customKey;
 
-        // Try backend Vertex AI first
-        try {
-          const headers: any = { 'Content-Type': 'application/json' };
-          const customKey = getApiKey();
-          if (customKey) headers['x-admin-trial-key'] = customKey;
+        const hasVoiceover = (
+          prompt.toLowerCase().includes('voice-over') ||
+          prompt.toLowerCase().includes('voiceover') ||
+          prompt.toLowerCase().includes('off-screen') ||
+          prompt.toLowerCase().includes('narration') ||
+          prompt.toLowerCase().includes('narrat') ||
+          prompt.toLowerCase().includes('b-roll') ||
+          prompt.toLowerCase().includes('broll')
+        );
+        let dialogueInstruction = `Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): "${sc.dialog}".`;
+        if (hasVoiceover) {
+          dialogueInstruction = `Dialogue to speak (CRITICAL: every word of this dialogue must be fully spoken in the audio from start to finish without skipping, shortening, or omitting, even if the creator is performing actions like eating or applying skincare): "${sc.dialog}" (strictly lip-sync only the portions where the face is on screen/speaking in the timecodes; all other portions must be generated as off-camera voice-over narration with no mouth/lip movement).`;
+        }
+        const finalMotionPrompt = (prompt.includes('Dialogue to speak:') ? prompt : `${prompt} ${dialogueInstruction}`).substring(0, 1000);
 
-          let imageToSend = undefined;
-          if (imagePayload) {
-            imageToSend = `data:${imagePayload.mimeType};base64,${imagePayload.imageBytes}`;
-          }
-
-          const resp = await fetch(getApiUrl('/api/ugc/video'), {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              image: imageToSend,
-              script: prompt.substring(0, 1000),
-              userId: currentUserId,
-              duration: resolvedDuration,
-              resolution: videoResolution,
-              model: veoModel.includes('fast') ? 'veo_fast' : veoModel.includes('lite') ? 'veo_lite' : 'veo3',
-              aspect_ratio: resolvedAspectRatio,
-              projectId: activeProjectId || 'default',
-              folder: activeProjectId || 'default'
-            })
-          });
-
-          if (resp.ok) {
-            const data = await resp.json();
-            if (data?.url) {
-              sceneVideoUrl = data.url;
-            }
-          }
-        } catch (backendErr) {
-          console.warn('[Scene Gen] Backend Vertex AI attempt failed, falling back to client SDK:', backendErr);
+        let audioToSend = undefined;
+        if (voiceSampleFile) {
+          try {
+            const b64 = await fileToBase64(voiceSampleFile);
+            const mime = voiceSampleFile.type || 'audio/mp3';
+            audioToSend = `data:${mime};base64,${b64}`;
+          } catch (e) { console.error('Failed to encode voice sample', e); }
         }
 
-        if (!sceneVideoUrl) {
-          const videoRequest: any = {
-            model: veoModel,
-            prompt: prompt.substring(0, 1000),
-            config: {
-              numberOfVideos: 1,
-              resolution: videoResolution as any,
-              aspectRatio: resolvedAspectRatio,
-              durationSeconds: resolvedDuration,
-              includeAudio: resolvedIncludeAudio,
-            },
-          };
-          if (imagePayload) videoRequest.image = imagePayload;
+        const resp = await fetch(getApiUrl('/api/omni-i2v'), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            image: imageToSend || undefined,
+            audio: audioToSend,
+            motionPrompt: finalMotionPrompt,
+            duration: resolvedDuration,
+            aspectRatio: resolvedAspectRatio,
+            resolution: '720p',
+            model: 'gemini-omni-1.1-flash-preview',
+            userId: currentUserId,
+            generateAudio: resolvedIncludeAudio,
+            creditReason: 'veo_fast'
+          })
+        });
 
-          let op = await ai.models.generateVideos(videoRequest);
-          const start = Date.now();
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Omni generation failed.');
+        if (!data.videoUrl) throw new Error('Omni returned no video URL.');
 
-          while (!op.done) {
-            if (Date.now() - start > 90_000) {
-              showToast(`Shot ${i + 1} timed out`, 'error');
-              break;
-            }
-            await new Promise((r) => setTimeout(r, 5000));
-            op = await ai.operations.getVideosOperation({ operation: op });
-            setVideoProgressMsg(
-              `Shot ${i + 1}/${splitScenes.length} · ${Math.round((Date.now() - start) / 1000)}s`,
+        const videoUrl = data.videoUrl;
+        const res = await fetch(videoUrl);
+        const blob = await res.blob();
+        const localUrl = URL.createObjectURL(blob);
+        const tempId = Date.now().toString();
+
+        // Immediately push to gallery and timeline using local URL
+        addToGallery({ id: tempId, type: 'video', url: localUrl });
+        const timelineId = `shot-${i}-${Date.now()}`;
+        setTimeline((prev: TimelineItem[]) => [
+          ...prev,
+          {
+            id: timelineId,
+            url: localUrl,
+            start: 0,
+            end: resolvedDuration,
+            duration: resolvedDuration,
+            type: 'video' as const,
+          },
+        ]);
+        showToast(`Shot ${i + 1} done ✓`, 'success');
+
+        // Upload to Supabase in the background
+        uploadToSupabase(blob, 'video', prompt, currentUserId).then((publicUrl) => {
+          if (publicUrl) {
+            updateGalleryItem(tempId, { url: publicUrl });
+            setTimeline((prev: TimelineItem[]) =>
+              prev.map((t) => (t.id === timelineId ? { ...t, url: publicUrl } : t))
             );
           }
-
-          const link = op.response?.generatedVideos?.[0]?.video?.uri;
-          if (link) {
-            const res = await fetch(link, { headers: { 'x-goog-api-key': getApiKey() } });
-            sceneBlob = await res.blob();
-            sceneVideoUrl = URL.createObjectURL(sceneBlob);
-          }
-        }
-
-        if (sceneVideoUrl) {
-          const tempId = Date.now().toString();
-
-          // Immediately push to gallery and timeline
-          addToGallery({ id: tempId, type: 'video', url: sceneVideoUrl });
-          const timelineId = `shot-${i}-${Date.now()}`;
-          setTimeline((prev: TimelineItem[]) => [
-            ...prev,
-            {
-              id: timelineId,
-              url: sceneVideoUrl,
-              start: 0,
-              end: Math.min(parseInt(durationSeconds), 8),
-              duration: Math.min(parseInt(durationSeconds), 8),
-              type: 'video' as const,
-            },
-          ]);
-          showToast(`Shot ${i + 1} done ✓`, 'success');
-
-          // Upload to Supabase in the background if local blob exists
-          if (sceneBlob) {
-            uploadToSupabase(sceneBlob, 'video', prompt, currentUserId).then((publicUrl) => {
-              if (publicUrl) {
-                updateGalleryItem(tempId, { url: publicUrl });
-                setTimeline((prev: TimelineItem[]) =>
-                  prev.map((t) => (t.id === timelineId ? { ...t, url: publicUrl } : t))
-                );
-              }
-            }).catch((err) => {
-              console.error('[Background Upload] Shot upload failed:', err);
-            });
-          }
-        }
+        }).catch((err) => {
+          console.error('[Background Upload] Shot upload failed:', err);
+        });
 
         if (i < splitScenes.length - 1) {
           await new Promise((r) => setTimeout(r, 2000));
@@ -3640,7 +3459,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
             Avoid "cinematic" or "commercial" tropes. Focus on natural lighting, relatable settings, and authentic product usage.
             For each idea, provide:
             1. A short title (e.g., "Applying", "Opening", "Texture").
-            2. A detailed video generation prompt for Veo (e.g., "A close-up of a person's hand as they squeeze a small amount of the cream, natural bathroom lighting, shot on iPhone, realistic UGC style, 4k").
+            2. A detailed video generation prompt for Gemini Omni Flash 1.1 (e.g., "A close-up of a person's hand as they squeeze a small amount of the cream, natural bathroom lighting, shot on iPhone, realistic UGC style, 4k").
             3. A relevant Lucide icon name (e.g., "Sparkles", "Zap", "Fingerprint", "Droplets", "Wind", "Scissors").
             Return the result as a JSON array of objects with keys: id, title, prompt, icon.`;
     
@@ -3972,13 +3791,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     setIsGeneratingVideo(true);
     setVideoError('');
     setVideoTimedOut(false);
-    setVideoProgressMsg(
-      videoGenMode === 'veo3'
-        ? 'Initializing Veo 3 HQ…'
-        : videoGenMode === 'veo_lite'
-        ? 'Initializing Veo 3 Lite…'
-        : 'Initializing Veo 3 Fast…'
-    );
+    setVideoProgressMsg('✨ Directing your video scene with Omni Flash 1.1…');
     const placeholderVideoId = `vid-pending-${Date.now()}`;
     addToGallery({ id: placeholderVideoId, type: 'video', url: '', loading: true });
     try {
@@ -4742,7 +4555,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                         <span>Multi-Shot</span>
                       </button>
 
-                      <Dropdown label="" value={scriptDuration} options={scriptModel === 'omni' ? ['10 seconds', '20 seconds', '30 seconds', '40 seconds', '50 seconds', '60 seconds'] : ['8 seconds', '16 seconds', '24 seconds', '36 seconds', '42 seconds']} onChange={setScriptDuration} direction="up" className="w-[82px] md:w-[100px] shrink-0" />
+                      <Dropdown label="" value={scriptDuration} options={['10 seconds', '20 seconds', '30 seconds', '40 seconds', '50 seconds', '60 seconds']} onChange={setScriptDuration} direction="up" className="w-[82px] md:w-[100px] shrink-0" />
                       <Dropdown
                         label=""
                         value={SCRIPT_TONES[selectedScriptTone] ? SCRIPT_TONES[selectedScriptTone].name : selectedScriptTone}

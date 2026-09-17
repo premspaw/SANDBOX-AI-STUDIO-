@@ -161,7 +161,7 @@ export const buildScriptPrompt = (params: {
   strategyContext: string;
   trainingContent: string;
   nicheHookContext?: string;
-  scriptModel?: 'veo3' | 'omni';
+  scriptModel?: 'omni';
   isMultiShot?: boolean;
 }) => {
   const toneInfo = params.SCRIPT_TONES[params.selectedScriptTone] || params.SCRIPT_TONES.viral_marketing;
@@ -170,9 +170,9 @@ export const buildScriptPrompt = (params: {
     ? params.SCENE_STYLES[params.selectedSceneStyle]
     : null;
 
-  const isOmni = params.scriptModel === 'omni';
-  const sceneSeconds = isOmni ? 10 : 8;
-  const wordCountConstraint = getWordRange(params.language, isOmni, params.sceneCount, !!params.isMultiShot);
+  const isOmni = true;
+  const sceneSeconds = 10;
+  const wordCountConstraint = getWordRange(params.language, true, params.sceneCount, !!params.isMultiShot);
   const timestampExamples = buildTimestampExamples(params.sceneCount, sceneSeconds);
 
   return `You are a professional UGC script writer. You write exactly how real people talk on camera.
@@ -287,16 +287,16 @@ export const buildRegenerateScriptPartPrompt = (params: {
   productDetails?: string;
   selectedSceneStyle?: string;
   SCENE_STYLES?: any;
-  scriptModel?: 'veo3' | 'omni';
+  scriptModel?: 'omni';
   language?: string;
 }) => {
   const sceneStyleInfo = params.SCENE_STYLES && params.selectedSceneStyle
     ? params.SCENE_STYLES[params.selectedSceneStyle]
     : null;
 
-  const isOmni = params.scriptModel === 'omni';
-  const sceneSeconds = isOmni ? 10 : 8;
-  const wordRange = getWordRange(params.language || 'English', isOmni, 1, true);
+  const isOmni = true;
+  const sceneSeconds = 10;
+  const wordRange = getWordRange(params.language || 'English', true, 1, true);
 
   return `You are an expert UGC video editor refining a viral script.
 CURRENT FULL SCRIPT:
@@ -356,7 +356,7 @@ ${params.imageDescription ? `REFERENCE IMAGE ANALYSIS: ${params.imageDescription
     ? `VISUAL STYLE PRESET: ${sceneStyleInfo.name} — ${sceneStyleInfo.description}. You MUST ensure the visual cue describes this style. Prompt Modifier: ${sceneStyleInfo.promptModifier}`
     : '';
 
-  return `Analyze the following UGC script dialogue and generate a detailed visual prompt for a video generation model (like Veo 3.1).
+  return `Analyze the following UGC script dialogue and generate a detailed visual prompt for a video generation model (Gemini Omni Flash 1.1).
 
 DIALOGUE: "${params.text}"
 PRODUCT: ${params.productDetails}
@@ -396,11 +396,11 @@ export const buildImageAnalysisPrompt = (params: {
     ? params.SCENE_STYLES[params.selectedSceneStyle]
     : null;
 
-  return `You are an expert Veo 3.1 prompt engineer. A reference image of the UGC creator is provided.
+  return `You are an expert Gemini Omni Flash 1.1 prompt engineer. A reference image of the UGC creator is provided.
 
 Your job is to:
 1. ANALYZE the reference image — describe the person's exact face, skin tone, hair, eye color, facial structure, outfit, and expression in detail.
-2. GENERATE a Veo 3.1 video prompt (max 120 words) that:
+2. GENERATE a Gemini Omni Flash 1.1 video prompt (max 120 words) that:
    - Starts by describing the creator using the EXACT physical details from the image (e.g. "A [skin tone] [gender] creator with [hair description], [eye description], wearing [outfit]...")
    - Has them speak naturally to camera: "${params.text}"
    - Uses UGC creator style — direct, relatable, authentic — NOT cinematic
@@ -436,7 +436,7 @@ export const buildSplitScenePrompt = (params: {
     ? params.SCENE_STYLES[params.selectedSceneStyle]
     : null;
 
-  return `You are an expert Veo 3.1 video prompt engineer for UGC (User-Generated Content) videos.
+  return `You are an expert Gemini Omni Flash 1.1 video prompt engineer for UGC (User-Generated Content) videos.
 
 DIALOGUE for this scene: "${params.dialog}"
 PRODUCT / BRAND CONTEXT: ${params.productDetails || 'a consumer product'}

@@ -79,6 +79,8 @@ export default function createRouter(deps) {
                 prompt, // Legacy text prompt
                 firstFrame,
                 lastFrame,
+                first_frame_url,
+                last_frame_url,
                 identity_images,
                 reference_image_urls,
                 reference_video_urls,
@@ -91,7 +93,10 @@ export default function createRouter(deps) {
                 aspectRatio,
                 resolution,
                 userId,
-                generateAudio
+                generateAudio,
+                output_format,
+                web_search,
+                nsfw_checker
             } = req.body;
 
             const targetUserId = user ? user.id : userId;
@@ -176,11 +181,13 @@ export default function createRouter(deps) {
             }
 
             // Merge top-level firstFrame / lastFrame if not already discovered
-            if (!resolvedFirstFrame && firstFrame) {
-                resolvedFirstFrame = await resolveToPublicUrl(firstFrame, userId);
+            const rawFirst = firstFrame || first_frame_url;
+            const rawLast = lastFrame || last_frame_url;
+            if (!resolvedFirstFrame && rawFirst) {
+                resolvedFirstFrame = await resolveToPublicUrl(rawFirst, userId);
             }
-            if (!resolvedLastFrame && lastFrame) {
-                resolvedLastFrame = await resolveToPublicUrl(lastFrame, userId);
+            if (!resolvedLastFrame && rawLast) {
+                resolvedLastFrame = await resolveToPublicUrl(rawLast, userId);
             }
 
             // Merge any top-level reference images passed
@@ -522,12 +529,14 @@ export default function createRouter(deps) {
 
                 const seedance25Input = {
                     prompt: finalPrompt,
-                    aspect_ratio: (aspectRatio || "16:9"),
-                    duration: Number(duration) || 10,
+                    aspect_ratio: (aspectRatio || "adaptive"),
+                    duration: Number(duration) || 5,
                     generate_audio: !!generateAudio,
                     resolution: resolution25,
-                    return_last_frame: false,
-                    web_search: false
+                    output_format: output_format || req.body.output_format || 'mp4',
+                    web_search: web_search !== undefined ? !!web_search : false,
+                    nsfw_checker: nsfw_checker !== undefined ? !!nsfw_checker : true,
+                    return_last_frame: false
                 };
 
                 if (resolvedFirstFrame) seedance25Input.first_frame_url = resolvedFirstFrame;
