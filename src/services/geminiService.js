@@ -33,7 +33,22 @@ const getAIConfig = () => {
 let _aiInstance = null;
 let _lastApiKeyUsed = null;
 const getAI = (customApiKey) => {
-    const activeKey = customApiKey || getAIConfig().apiKey;
+    const config = getAIConfig();
+    const activeKey = customApiKey || config.apiKey;
+
+    if (activeKey === 'VERTEX_AI_CLIENT') {
+        const authOptions = {};
+        if (typeof globalThis.process !== 'undefined' && globalThis.process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+            authOptions.keyFilename = globalThis.process.env.GOOGLE_APPLICATION_CREDENTIALS;
+        }
+        return new GoogleGenAI({
+            vertexai: true,
+            project: config.projectId,
+            location: config.location,
+            googleAuthOptions: authOptions.keyFilename ? { keyFilename: authOptions.keyFilename } : undefined
+        });
+    }
+
     if (!activeKey) {
         throw new Error('[geminiService] GOOGLE_API_KEY is not set. Add it to your Railway service variables.');
     }

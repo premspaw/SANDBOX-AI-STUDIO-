@@ -171,8 +171,13 @@ function getCredentials(fileName, envKey) {
                     if (credentials.private_key) {
                         credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
                     }
-                    console.log(`[AUTH] ✅ Parsed credentials from env: ${key}`);
-                    return credentials;
+                    const tempPath = path.join(process.cwd(), '.google-credentials-temp.json');
+                    fs.writeFileSync(tempPath, JSON.stringify(credentials), 'utf8');
+                    console.log(`[AUTH] ✅ Parsed credentials from env: ${key} and saved to ${tempPath}`);
+                    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+                        process.env.GOOGLE_APPLICATION_CREDENTIALS = tempPath;
+                    }
+                    return tempPath;
                 } catch (e) {
                     console.error(`[AUTH] Failed to parse ${key}:`, e.message);
                 }
@@ -1430,7 +1435,7 @@ async function handleGoogle(req, res) {
             const hasReferences = referenceImages && referenceImages.length > 0;
             const isGeminiImageModel = activeModel.includes('gemini') || activeModel.includes('nano-banana');
             
-            if ((apiKey === 'VERTEX_AI_CLIENT' || token) && !hasReferences && !isGeminiImageModel) {
+            if ((apiKey === 'VERTEX_AI_CLIENT' || token) && !hasReferences) {
                 try {
                     const vertexModel = 'imagen-3.0-generate-002';
                     const url = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${vertexModel}:predict`;
@@ -1481,7 +1486,7 @@ async function handleGoogle(req, res) {
 
                     if (VERTEX_KEY || apiKey === 'VERTEX_AI_CLIENT' || token) {
                         const activeModelLower = activeModel.toLowerCase();
-                        const needsGlobal = activeModelLower.includes('gemini') || activeModelLower.includes('banana') || activeModelLower.includes('omni');
+                        const needsGlobal = false; // Vertex AI Gemini requires regional endpoints, never use global
                         const authOptions = {};
                         if (VERTEX_KEY) {
                             if (typeof VERTEX_KEY === 'string') {
@@ -1593,9 +1598,9 @@ async function handleGoogle(req, res) {
                         if (token) {
                             try {
                                 const activeModelLower = activeModel.toLowerCase();
-                                const needsGlobal = activeModelLower.includes('gemini') || activeModelLower.includes('banana') || activeModelLower.includes('omni');
-                                const targetLocation = needsGlobal ? 'global' : (VERTEX_LOCATION || 'us-central1');
-                                const apiVersion = needsGlobal ? 'v1beta1' : 'v1';
+                                const needsGlobal = false; // Vertex AI Gemini requires regional endpoints
+                                const targetLocation = VERTEX_LOCATION || 'us-central1';
+                                const apiVersion = 'v1';
                                 const cleanModel = activeModel.startsWith('models/') ? activeModel.replace('models/', '') : activeModel;
                                 const vertexUrl = `https://${VERTEX_LOCATION || 'us-central1'}-aiplatform.googleapis.com/${apiVersion}/projects/${VERTEX_PROJECT_ID}/locations/${targetLocation}/publishers/google/models/${cleanModel}:generateContent`;
 

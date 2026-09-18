@@ -1267,9 +1267,9 @@ Return ONLY valid JSON.`
                 let mappedModel = 'gemini-2.5-flash';
                 if (model) {
                     const cleanModel = String(model).toLowerCase();
-                    if (cleanModel.includes('banana') || cleanModel.includes('3.1-flash')) {
+                    if (cleanModel.includes('banana') || cleanModel.includes('3.1-flash') || cleanModel.includes('2.0-flash')) {
                         mappedModel = 'gemini-2.5-flash';
-                    } else if (cleanModel.includes('3.1-pro')) {
+                    } else if (cleanModel.includes('3.1-pro') || cleanModel.includes('2.0-pro')) {
                         mappedModel = 'gemini-2.5-flash';
                     } else {
                         mappedModel = model;
