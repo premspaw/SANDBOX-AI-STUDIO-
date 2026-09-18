@@ -1620,7 +1620,14 @@ Return a detailed JSON with:
           })
         });
 
-        if (!response.ok) throw new Error(`Podcast script generation failed: ${response.status} ${response.statusText}`);
+        if (!response.ok) {
+          let errorDetail = `${response.status} ${response.statusText}`.trim();
+          try {
+            const errJson = await response.json();
+            if (errJson?.error) errorDetail = errJson.error;
+          } catch (_) {}
+          throw new Error(`Podcast script generation failed: ${errorDetail}`);
+        }
         const data = await response.json();
         const result = safeJsonParse(data.text);
         if (result?.script) setScript(result.script);
@@ -1735,7 +1742,12 @@ Return a detailed JSON with:
       });
 
       if (!response.ok) {
-        throw new Error(`Script generation failed: ${response.status} ${response.statusText}`);
+        let errorDetail = `${response.status} ${response.statusText}`.trim();
+        try {
+          const errJson = await response.json();
+          if (errJson?.error) errorDetail = errJson.error;
+        } catch (_) {}
+        throw new Error(`Script generation failed: ${errorDetail}`);
       }
 
       const data = await response.json();

@@ -1,5 +1,7 @@
 import express from 'express';
 import fs from 'fs';
+import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { analyzeWardrobeRoute, wardrobeUploadMiddleware } from '../../services/wardrobeAnalyzerService.js';
 import { analyzeLocationRoute, locationUploadMiddleware } from '../../services/locationAnalyzerService.js';
 import * as productService from '../../services/productService.js';
@@ -1294,30 +1296,126 @@ Return ONLY valid JSON.`
                     return part;
                 });
 
+                const candidateModels = Array.from(new Set([
+                    mappedModel,
+                    'gemini-2.5-flash',
+                    'gemini-2.0-flash',
+                    'gemini-1.5-flash',
+                    'gemini-2.0-flash-001'
+                ])).filter(Boolean);
+
+                const studioApiKey = process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
                 const apiKey = await resolveGoogleApiKey(req, userId);
-                const gemini = getGeminiClient(apiKey);
-                const payload = {
-                    model: mappedModel,
-                    contents: [{ role: 'user', parts: formattedParts }]
-                };
-
-                if (generationConfig) {
-                    payload.config = generationConfig;
-                }
-
-                const result = await gemini.models.generateContent(payload);
 
                 let responseText = '';
-                if (result.text) {
-                    responseText = result.text;
-                } else if (typeof result.text === 'function') {
-                    responseText = result.text();
-                } else if (result.response && typeof result.response.text === 'function') {
-                    responseText = result.response.text();
-                } else if (result.response && result.response.text) {
-                    responseText = result.response.text;
-                } else if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                    responseText = result.candidates[0].content.parts[0].text;
+                let lastError = null;
+
+                // 1. Collect clients to try (Primary Vertex/Studio client first, then direct Studio fallback client)
+                const clientsToTry = [];
+                try {
+                    const primaryClient = getGeminiClient(apiKey);
+                    if (primaryClient) clientsToTry.push({ name: 'primary', client: primaryClient });
+                } catch (e) {
+                    console.warn('[UGC AI API] Primary client init failed:', e.message);
+                }
+
+                if (studioApiKey) {
+                    try {
+                        const fallbackGenAI = new GoogleGenAI({ apiKey: studioApiKey });
+                        clientsToTry.push({ name: 'fallback-studio', client: fallbackGenAI });
+                    } catch (e) {
+                        console.warn('[UGC AI API] Fallback GoogleGenAI client init failed:', e.message);
+                    }
+                }
+
+                // 2. Iterate through clients and candidate models
+                for (const { name: clientName, client: targetClient } of clientsToTry) {
+                    for (const candidateModel of candidateModels) {
+                        try {
+                            console.log(`[UGC AI API] Attempting generation with client=${clientName}, model=${candidateModel}`);
+                            const payload = {
+                                model: candidateModel,
+                                contents: [{ role: 'user', parts: formattedParts }]
+                            };
+
+                            if (generationConfig) {
+                                payload.config = generationConfig;
+                            }
+
+                            const result = await targetClient.models.generateContent(payload);
+
+                            if (result.text) {
+                                responseText = result.text;
+                            } else if (typeof result.text === 'function') {
+                                responseText = result.text();
+                            } else if (result.response && typeof result.response.text === 'function') {
+                                responseText = result.response.text();
+                            } else if (result.response && result.response.text) {
+                                responseText = result.response.text;
+                            } else if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                                responseText = result.candidates[0].content.parts[0].text;
+                            }
+
+                            if (responseText && responseText.trim()) {
+                                console.log(`[UGC AI API] ✅ Generation succeeded with client=${clientName}, model=${candidateModel}`);
+                                break;
+                            }
+                        } catch (err) {
+                            lastError = err;
+                            console.warn(`[UGC AI API] Failed with client=${clientName}, model=${candidateModel}:`, err.message);
+                            
+                            // If schema validation or strict responseSchema caused an error, retry without config schema
+                            if (generationConfig?.responseSchema && String(err?.message || '').toLowerCase().includes('schema')) {
+                                try {
+                                    console.log(`[UGC AI API] Retrying without strict schema for model=${candidateModel}`);
+                                    const fallbackPayload = {
+                                        model: candidateModel,
+                                        contents: [{ role: 'user', parts: formattedParts }]
+                                    };
+                                    const resFallback = await targetClient.models.generateContent(fallbackPayload);
+                                    let fbText = '';
+                                    if (resFallback.text) fbText = resFallback.text;
+                                    else if (typeof resFallback.text === 'function') fbText = resFallback.text();
+                                    else if (resFallback.response?.text) fbText = typeof resFallback.response.text === 'function' ? resFallback.response.text() : resFallback.response.text;
+                                    else if (resFallback.candidates?.[0]?.content?.parts?.[0]?.text) fbText = resFallback.candidates[0].content.parts[0].text;
+
+                                    if (fbText && fbText.trim()) {
+                                        responseText = fbText;
+                                        break;
+                                    }
+                                } catch (_) {}
+                            }
+                        }
+                    }
+                    if (responseText && responseText.trim()) break;
+                }
+
+                // 3. Fallback: Legacy GoogleGenerativeAI SDK if needed
+                if (!responseText && studioApiKey) {
+                    for (const candidateModel of candidateModels) {
+                        try {
+                            console.log(`[UGC AI API] Attempting legacy GoogleGenerativeAI with model=${candidateModel}`);
+                            const genAI = new GoogleGenerativeAI(studioApiKey);
+                            const modelInstance = genAI.getGenerativeModel({ model: candidateModel });
+                            const partsPayload = formattedParts.map(p => {
+                                if (p.inlineData) return { inlineData: p.inlineData };
+                                return p.text || String(p);
+                            });
+                            const result = await modelInstance.generateContent(partsPayload);
+                            const resText = result.response.text();
+                            if (resText && resText.trim()) {
+                                responseText = resText;
+                                break;
+                            }
+                        } catch (e) {
+                            lastError = e;
+                            console.warn(`[UGC AI API] Legacy GoogleGenerativeAI failed with model=${candidateModel}:`, e.message);
+                        }
+                    }
+                }
+
+                if (!responseText) {
+                    throw lastError || new Error('All AI generation models and clients failed to generate response');
                 }
 
                 return res.json({ text: responseText });
