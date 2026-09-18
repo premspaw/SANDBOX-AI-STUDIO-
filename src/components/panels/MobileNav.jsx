@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  FilmSlate, Megaphone, UsersThree, GearSix, FolderOpen 
+  VideoCamera, Megaphone, UsersThree, GearSix, FolderOpen 
 } from '@phosphor-icons/react';
 import { cn } from '../../lib/utils';
 import { motion } from 'framer-motion';
@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 export function MobileNav({ activeTab, setActiveTab }) {
     const mainNavItems = [
         { id: 'ugc', label: 'UGC', icon: UsersThree, color: 'text-amber-400', glow: 'rgba(251,191,36,0.15)' },
-        { id: 'cinematic-studio', label: 'Cinema', icon: FilmSlate, color: 'text-fuchsia-400', glow: 'rgba(232,121,249,0.2)' },
+        { id: 'studio', label: 'Studio', icon: VideoCamera, color: 'text-violet-400', glow: 'rgba(167,139,250,0.25)' },
         { id: 'marketing', label: 'Marketing', icon: Megaphone, color: 'text-rose-400', glow: 'rgba(251,113,133,0.15)' },
         { id: 'assets', label: 'Assets', icon: FolderOpen, color: 'text-[#AADD00]', glow: 'rgba(170,221,0,0.15)' },
         { id: 'settings', label: 'Settings', icon: GearSix, color: 'text-neutral-300', glow: 'rgba(163,163,163,0.2)' },

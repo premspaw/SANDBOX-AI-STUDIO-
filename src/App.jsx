@@ -322,9 +322,9 @@ function App() {
 
   const handleEnterStudio = () => {
     if (user) {
-      // Already logged in, go directly to avatar creator (or cinema studio on mobile)
+      // Already logged in, go directly to avatar creator (or studio on mobile)
       const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-      setActiveTab(isMobile ? 'cinematic-studio' : 'avatar');
+      setActiveTab(isMobile ? 'studio' : 'avatar');
     } else {
       // Not logged in, show auth page
       setActiveTab('auth');
@@ -334,7 +334,7 @@ function App() {
   const handleAuthSuccess = (authUser) => {
     setUser(authUser);
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-    setActiveTab(isMobile ? 'cinematic-studio' : 'avatar');
+    setActiveTab(isMobile ? 'studio' : 'avatar');
   };
 
   if (!authChecked) return <StudioLoader />;
