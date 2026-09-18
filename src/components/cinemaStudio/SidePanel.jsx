@@ -2515,8 +2515,8 @@ export const SidePanel = React.memo(({
         ? "w-full border-r border-white/[0.08]"
         : "w-full md:w-[350px] lg:w-[370px] border-r border-white/[0.08] shadow-[20px_0_60px_rgba(0,0,0,0.8)]"
     )}>
-      {/* 1. Header with ZeroLens Aesthetic */}
-      <div className="px-3.5 py-2.5 sm:px-5 sm:py-3.5 border-b border-white/[0.08] flex items-center justify-between shrink-0 bg-white/[0.02]">
+      {/* 1. Header with ZeroLens Aesthetic (Hidden on mobile to maximize vertical space) */}
+      <div className="hidden md:flex px-3.5 py-2.5 sm:px-5 sm:py-3.5 border-b border-white/[0.08] items-center justify-between shrink-0 bg-white/[0.02]">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-[#c8f135]/20 to-transparent border border-[#c8f135]/30 flex items-center justify-center shadow-[0_0_15px_rgba(200,241,53,0.15)] shrink-0">
             <Sparkles className="w-3.5 h-3.5 text-[#c8f135]" />
