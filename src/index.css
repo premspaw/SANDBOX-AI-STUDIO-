@@ -651,3 +651,20 @@ img {
   }
 }
 
+/* ─── GLOBAL MOBILE PERFORMANCE OPTIMIZATION ─── */
+/* 
+   Backdrop-blur destroys mobile GPU performance, causing massive lag/hanging on UGC & Studio pages.
+   This disables blur globally on mobile and fallback transparent background colors to solid colors.
+*/
+@media (max-width: 768px) {
+  * {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  /* Make highly transparent backgrounds more opaque on mobile to maintain readability without blur */
+  .bg-gray-900\/40, 
+  .bg-black\/40, 
+  .bg-black\/60 {
+    background-color: rgb(15, 15, 20) !important;
+  }
+}
