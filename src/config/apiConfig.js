@@ -6,27 +6,30 @@
 // Determine if we're in a development environment
 const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
 
-// Safe environment variable retrieval
-const getProcessEnv = (key) => {
+// Safe environment variable retrieval (handles runtime injection via window.__ENV__)
+const getEnv = (key) => {
+    // 1. Check runtime injected environment (for Railway/Docker deployments)
+    if (typeof window !== 'undefined' && window.__ENV__ && window.__ENV__[key]) {
+        return window.__ENV__[key];
+    }
+    // 2. Check Vite build-time environment
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+        return import.meta.env[key];
+    }
+    // 3. Check Node.js process environment (for SSR/Backend context)
     try {
         if (typeof globalThis !== 'undefined' && globalThis.process && globalThis.process.env) {
             return globalThis.process.env[key];
         }
     } catch (_err) {
         // Ignore environment access errors in restricted browser contexts
+        return undefined;
     }
     return undefined;
 };
 
-const VITE_API_URL =
-    (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) ||
-    getProcessEnv('VITE_API_URL') ||
-    (isDev ? 'http://127.0.0.1:3002' : '');
-
-const VITE_WS_URL =
-    (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_WS_URL) ||
-    getProcessEnv('VITE_WS_URL') ||
-    (isDev ? 'ws://127.0.0.1:3002' : '');
+const VITE_API_URL = getEnv('VITE_API_URL') || (isDev ? 'http://127.0.0.1:3002' : '');
+const VITE_WS_URL = getEnv('VITE_WS_URL') || (isDev ? 'ws://127.0.0.1:3002' : '');
 
 // Ensure base URL doesn't have a trailing slash
 export const API_BASE_URL = VITE_API_URL ? (VITE_API_URL.endsWith('/') ? VITE_API_URL.slice(0, -1) : VITE_API_URL) : '';

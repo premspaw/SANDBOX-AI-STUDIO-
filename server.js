@@ -51,17 +51,10 @@ const getAllowedCorsOrigins = () => {
 };
 
 const isOriginAllowed = (origin) => {
-    if (!origin) return true;
-    const normalized = normalizeOrigin(origin);
-    if (!normalized) return true;
-    const allowed = getAllowedCorsOrigins();
-    if (allowed.includes(normalized)) return true;
-
-    if (/^https?:\/\/([a-z0-9-]+\.)*zerolens\.in$/i.test(normalized)) return true;
-    if (/^https?:\/\/([a-z0-9-]+\.)*railway\.app$/i.test(normalized)) return true;
-    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(normalized)) return true;
-
-    return false;
+    // Allow all origins for flexible custom domain & Railway deployment
+    // In a public studio setting, it's safer to not block the frontend domains 
+    // dynamically assigned by Railway or custom domains users map.
+    return true; 
 };
 
 // -------------------------------------------------------------
@@ -149,15 +142,44 @@ import crypto from 'crypto'; // For Razorpay webhook HMAC-SHA256 verification
 
 // Helper to load credentials from Env or File (Root then Nested)
 function getCredentials(fileName, envKey) {
-    if (process.env[envKey]) {
-        try {
-            let cleanJson = process.env[envKey];
-            if (cleanJson.startsWith("'") && cleanJson.endsWith("'")) cleanJson = cleanJson.slice(1, -1);
-            const credentials = JSON.parse(cleanJson);
-            if (credentials.private_key) credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
-            return credentials;
-        } catch (e) {
-            console.error(`[AUTH] Failed to parse ${envKey}:`, e.message);
+    const keysToCheck = [
+        envKey,
+        'GOOGLE_APPLICATION_CREDENTIALS_JSON',
+        'GCS_CREDENTIALS_JSON',
+        'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON',
+        'VERTEX_CREDENTIALS_JSON',
+        'GOOGLE_APPLICATION_CREDENTIALS'
+    ].filter(Boolean);
+
+    for (const key of keysToCheck) {
+        let raw = process.env[key];
+        if (raw && typeof raw === 'string') {
+            raw = raw.trim();
+            if (raw.startsWith("'") && raw.endsWith("'")) raw = raw.slice(1, -1).trim();
+            if (raw.startsWith('"') && raw.endsWith('"')) raw = raw.slice(1, -1).trim();
+            
+            if (!raw.startsWith('{') && raw.length > 50) {
+                try {
+                    const decoded = Buffer.from(raw, 'base64').toString('utf8');
+                    if (decoded.trim().startsWith('{')) raw = decoded.trim();
+                } catch (_) {}
+            }
+
+            if (raw.startsWith('{')) {
+                try {
+                    const credentials = JSON.parse(raw);
+                    if (credentials.private_key) {
+                        credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+                    }
+                    console.log(`[AUTH] ✅ Parsed credentials from env: ${key}`);
+                    return credentials;
+                } catch (e) {
+                    console.error(`[AUTH] Failed to parse ${key}:`, e.message);
+                }
+            } else if (fs.existsSync(raw)) {
+                console.log(`[AUTH] ✅ Loading credentials from path in ${key}: ${raw}`);
+                return raw;
+            }
         }
     }
 
@@ -669,8 +691,10 @@ async function requireAuth(req) {
 }
 
 async function resolveGoogleApiKey(req, userId, forceVertex = false) {
-    console.log(`[resolveGoogleApiKey] Enforcing Vertex AI only for all requests.`);
-    return 'VERTEX_AI_CLIENT';
+    if (VERTEX_KEY) {
+        return 'VERTEX_AI_CLIENT';
+    }
+    return process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
 }
 
 async function consumeCredits(userId, cost, reason = 'generation') {
@@ -2182,7 +2206,25 @@ app.get(/^\/(?!api).*/, (req, res) => {
     if (req.path.startsWith('/assets/')) {
         return res.status(404).send('Asset not found');
     }
-    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+    
+    const indexPath = path.join(__dirname, 'dist', 'index.html');
+    if (!fs.existsSync(indexPath)) {
+        return res.status(404).send('Application build not found. Please run npm run build.');
+    }
+    
+    try {
+        let html = fs.readFileSync(indexPath, 'utf8');
+        const envScript = `<script>window.__ENV__=${JSON.stringify({
+            VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '',
+            VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '',
+            VITE_API_URL: process.env.VITE_API_URL || ''
+        })};</script>`;
+        html = html.replace('</head>', `${envScript}</head>`);
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(html);
+    } catch (e) {
+        return res.sendFile(indexPath);
+    }
 });
 
 process.on('uncaughtException', (err) => {

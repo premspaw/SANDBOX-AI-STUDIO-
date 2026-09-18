@@ -1458,10 +1458,10 @@ Return ONLY valid JSON.`
             if (!prompt && !parts) return res.status(400).json({ error: 'prompt or parts is required' });
 
             const selectedModel = model || 'gemini-2.5-flash';
-            console.log(`[UGC-TEXT] Server-side text generation — model: ${selectedModel}`);
+            console.log(`[UGC-TEXT] Server-side text generation — requested model: ${selectedModel}`);
 
+            const studioApiKey = process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
             const apiKey = await resolveGoogleApiKey(req, userId);
-            const gemini = getGeminiClient(apiKey);
             
             const config = {};
             if (responseSchema) {
@@ -1469,29 +1469,88 @@ Return ONLY valid JSON.`
                 config.responseSchema = responseSchema;
             }
 
-            const result = await gemini.models.generateContent({
-                model: selectedModel,
-                contents: parts && Array.isArray(parts)
-                    ? [{ role: 'user', parts }]
-                    : [{ role: 'user', parts: [{ text: prompt }] }],
-                config,
-            });
+            const candidateModels = Array.from(new Set([
+                selectedModel,
+                'gemini-2.5-flash',
+                'gemini-2.0-flash',
+                'gemini-1.5-flash',
+                'gemini-2.0-flash-001'
+            ])).filter(Boolean);
 
-            let text = '';
-            if (result.text) {
-                text = result.text;
-            } else if (typeof result.text === 'function') {
-                text = result.text();
-            } else if (result.response && typeof result.response.text === 'function') {
-                text = result.response.text();
-            } else if (result.response && result.response.text) {
-                text = result.response.text;
-            } else if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                text = result.candidates[0].content.parts[0].text;
+            const clientsToTry = [];
+            try {
+                const primaryClient = getGeminiClient(apiKey);
+                if (primaryClient) clientsToTry.push({ name: 'primary', client: primaryClient });
+            } catch (e) {
+                console.warn('[UGC-TEXT] Primary client init failed:', e.message);
             }
 
-            if (!text) throw new Error('Empty response from AI');
-            console.log(`[UGC-TEXT] ✅ Success`);
+            if (studioApiKey) {
+                try {
+                    const fallbackGenAI = new GoogleGenAI({ apiKey: studioApiKey });
+                    clientsToTry.push({ name: 'fallback-studio', client: fallbackGenAI });
+                } catch (e) {
+                    console.warn('[UGC-TEXT] Fallback GoogleGenAI client init failed:', e.message);
+                }
+            }
+
+            let text = '';
+            let lastError = null;
+
+            for (const { name: clientName, client: targetClient } of clientsToTry) {
+                for (const candidateModel of candidateModels) {
+                    try {
+                        const result = await targetClient.models.generateContent({
+                            model: candidateModel,
+                            contents: parts && Array.isArray(parts)
+                                ? [{ role: 'user', parts }]
+                                : [{ role: 'user', parts: [{ text: prompt }] }],
+                            config,
+                        });
+
+                        if (result.text) {
+                            text = result.text;
+                        } else if (typeof result.text === 'function') {
+                            text = result.text();
+                        } else if (result.response && typeof result.response.text === 'function') {
+                            text = result.response.text();
+                        } else if (result.response && result.response.text) {
+                            text = result.response.text;
+                        } else if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                            text = result.candidates[0].content.parts[0].text;
+                        }
+
+                        if (text && text.trim()) {
+                            console.log(`[UGC-TEXT] ✅ Succeeded with client=${clientName}, model=${candidateModel}`);
+                            break;
+                        }
+                    } catch (err) {
+                        lastError = err;
+                        console.warn(`[UGC-TEXT] Failed with client=${clientName}, model=${candidateModel}:`, err.message);
+                    }
+                }
+                if (text && text.trim()) break;
+            }
+
+            if (!text && studioApiKey) {
+                for (const candidateModel of candidateModels) {
+                    try {
+                        const genAI = new GoogleGenerativeAI(studioApiKey);
+                        const modelInstance = genAI.getGenerativeModel({ model: candidateModel });
+                        const promptPayload = parts && Array.isArray(parts) ? parts : (prompt || '');
+                        const result = await modelInstance.generateContent(promptPayload);
+                        const resText = result.response.text();
+                        if (resText && resText.trim()) {
+                            text = resText;
+                            break;
+                        }
+                    } catch (e) {
+                        lastError = e;
+                    }
+                }
+            }
+
+            if (!text) throw lastError || new Error('Empty response from AI');
             return res.json({ text });
         } catch (error) {
             console.error('UGC-TEXT Error:', error);
