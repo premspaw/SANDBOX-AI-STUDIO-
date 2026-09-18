@@ -1329,7 +1329,15 @@ export const SidePanel = React.memo(({
       const dur = motionRefVideoDuration > 0 ? Math.ceil(motionRefVideoDuration) : (duration || 5);
       return rate * dur;
     }
-    if (panelTab === 'transition' || panelTab === 'seedance-2.5' || activeEngine === 'seedance-2.5') {
+    if (panelTab === 'transition') {
+      const resLower = (resolution || '720p').toLowerCase();
+      const isMini = activeEngine === 'seedance-mini';
+      const costPerSec = isMini
+        ? (resLower === '480p' ? 10 : 15)
+        : (resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30));
+      return Math.ceil(costPerSec * (Number(duration) || 5));
+    }
+    if (panelTab === 'seedance-2.5' || activeEngine === 'seedance-2.5') {
       const resLower = (resolution || '720p').toLowerCase();
       const costPerSec = resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30);
       return Math.ceil(costPerSec * (Number(duration) || 5));
@@ -1442,7 +1450,9 @@ export const SidePanel = React.memo(({
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     const showToast = useAppStore.getState().showToast;
 
-    const engineToUse = (panelTab === 'transition' || panelTab === 'seedance-2.5' || activeEngine === 'seedance-2.5')
+    const engineToUse = panelTab === 'transition'
+      ? (activeEngine === 'seedance-mini' ? 'seedance-mini' : 'seedance-2.5')
+      : (panelTab === 'seedance-2.5' || activeEngine === 'seedance-2.5')
       ? 'seedance-2.5'
       : (activeEngine === 'seedace' || activeEngine === 'seedance-mini')
       ? activeEngine
@@ -1968,13 +1978,24 @@ export const SidePanel = React.memo(({
     { value: 10, label: '10 Seconds', desc: 'Long sequence (10s)' }
   ], []);
 
-  const transitionDurationOptions = useMemo(() => [
-    { value: 4, label: '4 Seconds', desc: '4s Quick burst' },
-    { value: 5, label: '5 Seconds', desc: '5s Standard (Default)' },
-    { value: 8, label: '8 Seconds', desc: '8s Extended transition' },
-    { value: 10, label: '10 Seconds', desc: '10s Long transition' },
-    { value: 12, label: '12 Seconds', desc: '12s Extended scene' },
+  const transition25DurationOptions = useMemo(() => [
+    { value: 5, label: '5 Seconds', desc: '5s Quick shot (Default)' },
+    { value: 10, label: '10 Seconds', desc: '10s Baseline clip' },
+    { value: 15, label: '15 Seconds', desc: '15s Standard sequence' },
+    { value: 20, label: '20 Seconds', desc: '20s Cinematic scene' },
+    { value: 25, label: '25 Seconds', desc: '25s Long sequence' },
+    { value: 30, label: '30 Seconds', desc: '30s Maximum duration' }
+  ], []);
+
+  const transitionMiniDurationOptions = useMemo(() => [
+    { value: 5, label: '5 Seconds', desc: '5s Quick burst (Default)' },
+    { value: 10, label: '10 Seconds', desc: '10s Baseline clip' },
     { value: 15, label: '15 Seconds', desc: '15s Maximum duration' }
+  ], []);
+
+  const transitionModelOptions = useMemo(() => [
+    { value: 'seedance-2.5', label: 'Seedance 2.5', desc: 'Up to 30s · 480p / 720p / 1080p' },
+    { value: 'seedance-mini', label: 'Seedance Mini', desc: 'Up to 15s · 480p / 720p · Budget' }
   ], []);
 
   const seedanceDurationOptions = useMemo(() => [
@@ -2005,7 +2026,20 @@ export const SidePanel = React.memo(({
   ], []);
 
   const resolutionOptions = useMemo(() => {
-    if (panelTab === 'transition' || panelTab === 'seedance-2.5') {
+    if (panelTab === 'transition') {
+      if (activeEngine === 'seedance-mini') {
+        return [
+          { value: '720p', label: '720p HD', desc: '15 cr/s · Standard HD (Default)' },
+          { value: '480p', label: '480p SD', desc: '10 cr/s · Fast preview' }
+        ];
+      }
+      return [
+        { value: '720p', label: '720p HD', desc: '30 cr/s · Standard HD (Default)' },
+        { value: '1080p', label: '1080p FHD', desc: '70 cr/s · High-def cinematic' },
+        { value: '480p', label: '480p SD', desc: '15 cr/s · Fast preview' }
+      ];
+    }
+    if (panelTab === 'seedance-2.5') {
       return [
         { value: '720p', label: '720p HD', desc: '30 cr/s · Standard HD (Default)' },
         { value: '1080p', label: '1080p FHD', desc: '70 cr/s · High-def cinematic' },
@@ -3767,30 +3801,32 @@ export const SidePanel = React.memo(({
               {/* SECTION B: ZERO-LENS CINEMA PARAMETER CONTROLS */}
               <div className="space-y-3 pt-2.5 border-t border-white/[0.08]">
                 {panelTab === 'transition' ? (
-                  /* Dedicated Parameters for Seedance 2.5 Transition */
+                  /* Dedicated Parameters for Transition (Seedance 2.5 & Seedance Mini) */
                   <div className="space-y-3">
                     {/* Model + Resolution Side by Side */}
                     <div className="grid grid-cols-2 gap-2">
                       <GlassSelect
                         label="Engine"
                         icon={Sparkles}
-                        value="seedance-2.5"
-                        onChange={() => {}}
-                        options={[
-                          { value: 'seedance-2.5', label: 'Seedance 2.5', desc: 'First & Last Frame Transition' }
-                        ]}
+                        value={activeEngine === 'seedance-mini' ? 'seedance-mini' : 'seedance-2.5'}
+                        onChange={(val) => {
+                          setActiveEngine(val);
+                          if (val === 'seedance-mini') {
+                            if (duration > 15) setDuration(15);
+                            if (resolution === '1080p' || resolution === '4k') setResolution('720p');
+                          } else {
+                            if (resolution === '4k') setResolution('1080p');
+                          }
+                        }}
+                        options={transitionModelOptions}
                         align="up"
                       />
 
                       <GlassSelect
                         label="Resolution"
-                        value={resolution === '4k' ? '1080p' : (resolution || '720p')}
+                        value={resolution === '4k' ? '1080p' : (activeEngine === 'seedance-mini' && resolution === '1080p') ? '720p' : (resolution || '720p')}
                         onChange={setResolution}
-                        options={[
-                          { value: '720p', label: '720p HD', desc: '30 cr/s · Standard HD (Default)' },
-                          { value: '1080p', label: '1080p FHD', desc: '70 cr/s · High-def cinematic' },
-                          { value: '480p', label: '480p SD', desc: '15 cr/s · Fast preview' }
-                        ]}
+                        options={resolutionOptions}
                         align="up"
                       />
                     </div>
@@ -3807,9 +3843,9 @@ export const SidePanel = React.memo(({
 
                       <GlassSelect
                         label="Clip Duration"
-                        value={duration}
+                        value={activeEngine === 'seedance-mini' && duration > 15 ? 15 : duration}
                         onChange={(val) => setDuration(Number(val))}
-                        options={transitionDurationOptions}
+                        options={activeEngine === 'seedance-mini' ? transitionMiniDurationOptions : transition25DurationOptions}
                         align="up"
                       />
                     </div>
@@ -4036,7 +4072,7 @@ export const SidePanel = React.memo(({
                   <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse shrink-0", (panelTab === 'seedance' || panelTab === 'seedance-2.5') ? "bg-amber-400" : "bg-[#c8f135]")} />
                   <span className="text-[9px] sm:text-[9.5px] font-black text-zinc-300 uppercase tracking-widest truncate">
                     {panelTab === 'transition'
-                      ? 'Seedance 2.5 Transition Ready'
+                      ? `${activeEngine === 'seedance-mini' ? 'Seedance Mini' : 'Seedance 2.5'} Transition Ready`
                       : panelTab === 'seedance-2.5'
                       ? 'Seedance 2.5 Pro Ready'
                       : panelTab === 'seedance'

@@ -475,8 +475,10 @@ export default function createRouter(deps) {
                     duration: Number(duration) || 5,
                     generate_audio: !!generateAudio,
                     resolution: resolutionMini,
-                    return_last_frame: false,
-                    web_search: false
+                    output_format: output_format || req.body.output_format || 'mp4',
+                    web_search: web_search !== undefined ? !!web_search : false,
+                    nsfw_checker: nsfw_checker !== undefined ? !!nsfw_checker : true,
+                    return_last_frame: false
                 };
 
                 if (resolvedFirstFrame) miniInput.first_frame_url = resolvedFirstFrame;

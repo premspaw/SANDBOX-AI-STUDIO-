@@ -847,7 +847,15 @@ export default function StudioPage() {
       const dur = Math.ceil(motionRefVideoDuration || duration || 5);
       return Math.round(dur * rate);
     }
-    if (panelTab === 'transition' || panelTab === 'seedance-2.5' || activeEngine === 'seedance-2.5') {
+    if (panelTab === 'transition') {
+      const resLower = (resolution || '720p').toLowerCase();
+      const isMini = activeEngine === 'seedance-mini';
+      const costPerSec = isMini
+        ? (resLower === '480p' ? 10 : 15)
+        : (resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30));
+      return Math.ceil(costPerSec * (Number(duration) || 5));
+    }
+    if (panelTab === 'seedance-2.5' || activeEngine === 'seedance-2.5') {
       const resLower = (resolution || '720p').toLowerCase();
       const costPerSec = resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30);
       return Math.ceil(costPerSec * (Number(duration) || 5));
@@ -1126,12 +1134,12 @@ export default function StudioPage() {
             });
           }
 
-          const modelParam = (engineToUse === 'seedance-2.5' || panelTab === 'seedance-2.5' || panelTab === 'transition')
+          const modelParam = (engineToUse === 'seedance-2.5' || (panelTab === 'transition' && engineToUse !== 'seedance-mini') || panelTab === 'seedance-2.5')
             ? 'bytedance/seedance-2-5'
+            : (engineToUse === 'seedance-mini')
+            ? 'bytedance/seedance-2-mini'
             : engineToUse === 'seedance-fast'
             ? 'dreamina-seedance-2-0-fast-260128'
-            : engineToUse === 'seedance-mini'
-            ? 'bytedance/seedance-2-mini'
             : 'dreamina-seedance-2-0-260128';
 
           const resp = await fetch(getApiUrl('/api/seedance/generate'), {
