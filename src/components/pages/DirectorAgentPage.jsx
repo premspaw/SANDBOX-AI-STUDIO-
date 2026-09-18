@@ -146,7 +146,7 @@ const VISUAL_STYLES = [
 const AI_DIRECTOR_MODELS = [
     { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', badge: 'Ultra Fast & Sharp', provider: 'Google', desc: 'Next-gen multimodal reasoning, zero lag, precise script breakdown' },
     { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', badge: 'Deep Narrative', provider: 'Google', desc: 'Complex storytelling, subtext, high cinematic intelligence' },
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', badge: 'Fast & Reliable', provider: 'Google', desc: 'Solid multimodal speed and structured JSON output' },
+    { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', badge: 'Fast & Reliable', provider: 'Google', desc: 'Solid multimodal speed and structured JSON output' },
     { id: 'gpt-6-astra', name: 'Astra AI Director', badge: 'ChatGPT 6 Cinema', provider: 'Astra Neural', desc: 'Experiential Labs flagship director agent with autonomous memory' },
     { id: 'gpt-4o', name: 'OpenAI GPT-4o', badge: 'Omni Vision', provider: 'OpenAI', desc: 'High visual prompt refinement and dialogue rhythm' },
     { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', badge: 'Screenplay Master', provider: 'Anthropic', desc: 'Nuanced dialogue, pacing, and human character depth' },
@@ -767,7 +767,7 @@ Return ONLY a valid JSON object:
 
             const apiKey = getApiKey();
             if (apiKey) {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
                 const resp = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
