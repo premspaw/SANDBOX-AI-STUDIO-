@@ -1957,7 +1957,7 @@ Return ONLY a valid JSON array containing exactly ${targetShotsCount} shot objec
         <div className="h-full flex flex-col bg-[#06060c] text-white overflow-hidden select-none font-sans">
             
             {/* ================= TOP BAR ================= */}
-            <header className="h-14 shrink-0 px-5 border-b border-white/[0.06] bg-[#090913]/80 backdrop-blur-xl flex items-center justify-between z-30">
+            <header className="h-14 shrink-0 px-5 border-b border-white/[0.06] bg-[#090913] lg:bg-[#090913]/80 flex items-center justify-between z-30 overflow-x-auto no-scrollbar gap-4">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-900/30 border border-violet-400/30">
                         <Film className="w-4 h-4 text-white" />
@@ -2151,10 +2151,10 @@ Return ONLY a valid JSON array containing exactly ${targetShotsCount} shot objec
             </header>
 
             {/* ================= MAIN SPLIT WORKSPACE ================= */}
-            <div className="flex-1 flex min-h-0 overflow-hidden relative">
+            <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden relative">
                 
                 {/* ----------------- LEFT PANEL: PRODUCTION DECK & CONTINUITY LOCKS ----------------- */}
-                <aside className="w-84 lg:w-96 shrink-0 border-r border-white/[0.06] bg-[#080812]/95 flex flex-col min-h-0 relative z-20">
+                <aside className="w-full lg:w-96 h-[45vh] lg:h-full shrink-0 border-b lg:border-b-0 lg:border-r border-white/[0.06] bg-[#080812]/95 flex flex-col min-h-0 relative z-20">
                     
                     {/* FIXED TOP SECTION: Creative Script, Dialogues, Director Vision & Orchestrate Action */}
                     <div className="p-4 border-b border-white/[0.08] bg-[#090915] space-y-3 shrink-0 shadow-lg shadow-black/40">

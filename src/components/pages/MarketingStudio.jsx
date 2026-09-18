@@ -1744,7 +1744,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                     ))}
                                 </div>
                                 {/* Video template grid */}
-                                <div className="columns-2 gap-3 space-y-3">
+                                <div className="columns-1 sm:columns-2 gap-3 space-y-3">
                                     {(VIDEO_TEMPLATES[activeVideoCategory] || []).map(template => (
                                         <motion.div
                                             key={template.id}
@@ -1835,7 +1835,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                 <Loader2 className="w-5 h-5 animate-spin text-white/30" />
                             </div>
                         )}
-                        <div className="columns-2 gap-3 space-y-3">
+                        <div className="columns-1 sm:columns-2 gap-3 space-y-3">
                             {filteredTemplates.map(template => (
                                 <motion.div
                                     key={template.id}
@@ -2160,7 +2160,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !isGenerating) { e.preventDefault(); handleGenerate(); } }}
                                         placeholder={activeCategory === 'realestate' ? "Describe the property visual… (Shift+Enter for new line)" : referenceImages.length > 0 ? "Add extra instructions… or just hit Generate" : "Describe what you want to create… (Shift+Enter for new line)"}
                                         rows={2}
-                                        className="w-full bg-transparent text-sm text-white/80 placeholder:text-white/25 outline-none resize-none px-4 pt-3 pb-1 leading-relaxed"
+                                        className="w-full bg-transparent text-[16px] md:text-sm text-white/80 placeholder:text-white/25 outline-none resize-none px-4 pt-3 pb-1 leading-relaxed"
                                     />
 
                                  {/* Bottom toolbar row */}

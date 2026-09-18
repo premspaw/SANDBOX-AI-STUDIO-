@@ -290,10 +290,10 @@ export default function SettingsPage() {
             <div className="absolute top-0 left-1/4 w-[600px] h-[350px] bg-gradient-to-b from-[#c8f135]/10 via-emerald-500/5 to-transparent blur-[140px] pointer-events-none" />
             <div className="absolute bottom-10 right-10 w-[400px] h-[400px] bg-purple-600/10 blur-[130px] pointer-events-none" />
 
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 relative z-10 space-y-6">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-24 relative z-10 space-y-6">
                 
                 {/* 1. TOP HERO PROFILE & CREDIT STATUS BANNER */}
-                <div className="relative rounded-3xl bg-gradient-to-br from-white/[0.05] via-[#0b0b12] to-black border border-white/10 p-5 sm:p-6 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden">
+                <div className="relative rounded-3xl bg-gradient-to-br from-white/[0.05] via-[#0b0b12] to-black border border-white/10 p-4 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden">
                     <div className="absolute top-0 right-0 w-96 h-full bg-gradient-to-l from-[#c8f135]/10 to-transparent pointer-events-none" />
                     
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
@@ -335,7 +335,7 @@ export default function SettingsPage() {
                                     <button
                                         type="button"
                                         onClick={handleCopyUserId}
-                                        className="text-zinc-400 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
+                                        className="text-zinc-400 hover:text-white flex items-center gap-1 cursor-pointer transition-colors py-1 px-2 -ml-2 rounded-lg active:bg-white/5"
                                     >
                                         {copiedId ? <Check size={12} className="text-[#c8f135]" /> : <Copy size={12} />}
                                         <span>{copiedId ? 'Copied' : 'Copy'}</span>
@@ -345,12 +345,12 @@ export default function SettingsPage() {
                         </div>
 
                         {/* High-Energy Shorts Wallet & Plan Action */}
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-black/60 border border-white/10 p-3.5 sm:p-4 rounded-2xl backdrop-blur-xl shadow-inner shrink-0">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-black/60 border border-white/10 p-3.5 sm:p-4 rounded-2xl shadow-inner shrink-0">
                             <div className="flex items-center gap-3 px-2">
-                                <div className="w-10 h-10 rounded-xl bg-[#c8f135]/15 border border-[#c8f135]/40 flex items-center justify-center text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.25)]">
+                                <div className="w-10 h-10 rounded-xl bg-[#c8f135]/15 border border-[#c8f135]/40 flex items-center justify-center text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.25)] shrink-0">
                                     <Coins className="w-5 h-5" />
                                 </div>
-                                <div>
+                                <div className="flex-1">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
                                         Shorts Balance
                                     </span>
@@ -365,7 +365,7 @@ export default function SettingsPage() {
                                 <button
                                     type="button"
                                     onClick={() => setActiveTab('credits')}
-                                    className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(200,241,53,0.3)] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                                    className="flex-1 sm:flex-none px-4 py-3 sm:py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(200,241,53,0.3)] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
                                 >
                                     <Zap size={14} className="fill-black" />
                                     <span>Top Up / Renew</span>
@@ -373,7 +373,7 @@ export default function SettingsPage() {
                                 <button
                                     type="button"
                                     onClick={() => setActiveTabGlobal('pricing')}
-                                    className="px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer"
+                                    className="px-3 py-3 sm:py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer flex items-center justify-center"
                                     title="View All Studio Plans"
                                 >
                                     <ExternalLink size={14} />
@@ -384,7 +384,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* 2. NAVIGATION SEGMENTED TABS */}
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar snap-x snap-mandatory p-1.5 bg-[#0a0a12]/90 border border-white/[0.08] rounded-2xl backdrop-blur-xl shrink-0">
+                <div className="grid grid-cols-2 lg:flex lg:items-center gap-1.5 p-1.5 bg-[#0a0a12]/90 border border-white/[0.08] rounded-2xl shrink-0">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
                         const isSelected = activeTab === tab.id;
@@ -394,17 +394,17 @@ export default function SettingsPage() {
                                 type="button"
                                 onClick={() => setActiveTab(tab.id)}
                                 className={cn(
-                                    "flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap select-none snap-start active:scale-95 shrink-0",
+                                    "flex items-center justify-center lg:justify-start gap-2 px-3.5 py-3 lg:py-2.5 rounded-xl text-[11px] lg:text-xs font-black uppercase tracking-wider transition-all cursor-pointer select-none active:scale-95 shrink-0",
                                     isSelected
                                         ? "bg-[#c8f135] text-black shadow-[0_0_20px_rgba(200,241,53,0.3)] font-black"
                                         : "text-zinc-400 hover:text-white hover:bg-white/5"
                                 )}
                             >
                                 <Icon size={14} className={isSelected ? "text-black" : "text-zinc-400"} />
-                                <span>{tab.label}</span>
+                                <span className="truncate">{tab.label}</span>
                                 {tab.badge && (
                                     <span className={cn(
-                                        "text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-md",
+                                        "text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-md hidden sm:inline-block",
                                         isSelected ? "bg-black/20 text-black font-extrabold" : "bg-white/10 text-[#c8f135]"
                                     )}>
                                         {tab.badge}
