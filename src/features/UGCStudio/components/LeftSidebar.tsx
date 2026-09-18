@@ -1481,20 +1481,18 @@ export default function LeftSidebar() {
                 <select
                   value={imgEngine}
                   onChange={e => setImgEngine(e.target.value as any)}
-                  className="w-full bg-[#111113] border border-[#1e1e24] px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase text-white/80 outline-none cursor-pointer hover:border-white/20 transition-colors"
+                  className="w-full bg-[#111113] border border-[#1e1e24] px-3 py-2 rounded-full text-[9px] font-black uppercase text-white/80 outline-none cursor-pointer hover:border-white/20 transition-colors"
                 >
                   <option value="gpt-image-2.5-sunburst" className="bg-[#111113]">GPT 2.5 Sunburst ⚡ (2.5 cr)</option>
                   <option value="gpt-image-2.5-flare" className="bg-[#111113]">GPT 2.5 Flare ⚡ (1.5 cr)</option>
                   <option value="nb2" className="bg-[#111113]">Nano Banana 2 (1 cr)</option>
-                  <option value="nano_banana" className="bg-[#111113]">Nano Banana Pro 🍌 (3 cr)</option>
                   <option value="nb2-lite" className="bg-[#111113]">Nano Banana Lite ⚡ (0.5 cr)</option>
-                  <option value="gpt2" className="bg-[#111113]">GPT-2 Studio ✨ (2 cr)</option>
                 </select>
               </div>
               {(imgEngine.startsWith('gpt') || imgEngine.includes('sunburst') || imgEngine.includes('flare')) && (
-                <div>
+                <div className="w-16">
                   <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.15em] mb-1 block">Quality</span>
-                  <select value={gpt2Quality} onChange={e => setGpt2Quality(e.target.value as any)} className="bg-[#111113] border border-purple-500/30 px-2 py-1 rounded-full text-[8px] font-black uppercase text-purple-300 outline-none cursor-pointer">
+                  <select value={gpt2Quality} onChange={e => setGpt2Quality(e.target.value as any)} className="w-full bg-[#111113] border border-purple-500/30 px-1.5 py-1 rounded-lg text-[8px] font-bold uppercase text-purple-300 outline-none cursor-pointer">
                     <option value="auto">Auto</option>
                     <option value="low">Low ⚡</option>
                     <option value="medium">Med</option>
