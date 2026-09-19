@@ -299,7 +299,7 @@ function StudioGalleryCard({
                 playsInline
                 muted={isAudioMuted}
                 loop
-                preload="metadata"
+                preload="auto"
                 onTimeUpdate={handleTimeUpdate}
               />
             ) : (
@@ -321,7 +321,7 @@ function StudioGalleryCard({
             playsInline
             muted={isAudioMuted}
             loop
-            preload="metadata"
+            preload="auto"
             onTimeUpdate={handleTimeUpdate}
           />
         </div>

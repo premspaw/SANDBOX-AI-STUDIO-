@@ -2,6 +2,8 @@ import dns from 'dns/promises';
 import net from 'net';
 
 const DEFAULT_ALLOWED_HOSTS = [
+    'zerolens.in',
+    'cdn.zerolens.in',
     'storage.googleapis.com',
     'googleusercontent.com',
     'supabase.co',
@@ -11,16 +13,6 @@ const DEFAULT_ALLOWED_HOSTS = [
     'cloudflarestorage.com'
 ];
 
-// Add custom CDN host if configured
-if (process.env.GCS_CDN_BASE_URL) {
-    try {
-        const cdnHost = new URL(process.env.GCS_CDN_BASE_URL).hostname;
-        if (cdnHost && !DEFAULT_ALLOWED_HOSTS.includes(cdnHost)) {
-            DEFAULT_ALLOWED_HOSTS.push(cdnHost);
-        }
-    } catch (_) {}
-}
-
 const MAX_REDIRECTS = 3;
 const DEFAULT_MAX_BYTES = 50 * 1024 * 1024;
 
@@ -29,7 +21,14 @@ const getAllowedHosts = () => {
         .split(',')
         .map(host => host.trim().toLowerCase())
         .filter(Boolean);
-    return configured.length ? configured : DEFAULT_ALLOWED_HOSTS;
+    const dynamic = [...DEFAULT_ALLOWED_HOSTS];
+    if (process.env.GCS_CDN_BASE_URL) {
+        try {
+            const h = new URL(process.env.GCS_CDN_BASE_URL).hostname;
+            if (h && !dynamic.includes(h)) dynamic.push(h);
+        } catch (_) {}
+    }
+    return configured.length ? [...new Set([...configured, ...dynamic])] : dynamic;
 };
 
 const isAllowedHost = (hostname) => {
@@ -89,8 +88,14 @@ export const validateProxyUrl = async (rawUrl) => {
         throw err;
     }
 
-    const addresses = await dns.lookup(parsed.hostname, { all: true });
-    if (!addresses.length || addresses.some(({ address }) => isPrivateIp(address))) {
+    let addresses = [];
+    try {
+        addresses = await dns.lookup(parsed.hostname, { all: true });
+    } catch (lookupErr) {
+        console.warn(`[Proxy DNS Warning]: Could not resolve ${parsed.hostname} via local DNS: ${lookupErr.message}`);
+    }
+
+    if (addresses.length && addresses.some(({ address }) => isPrivateIp(address))) {
         const err = new Error('Proxy target resolved to a blocked network address');
         err.status = 403;
         throw err;

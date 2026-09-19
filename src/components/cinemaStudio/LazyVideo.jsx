@@ -82,7 +82,7 @@ export function LazyVideo({ src, aspect, onOpenLightbox }) {
         muted
         loop
         playsInline
-        preload="metadata"
+        preload="auto"
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         className="w-full h-full object-cover"
