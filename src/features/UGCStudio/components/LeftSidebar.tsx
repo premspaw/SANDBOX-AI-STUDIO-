@@ -105,6 +105,7 @@ export default function LeftSidebar() {
     analysisProgress,
     setShowTemplates,
     isAdmin,
+    isGlobalAdmin,
     setIsAdmin,
     trainAgent,
     isTraining,
@@ -142,6 +143,8 @@ export default function LeftSidebar() {
     durationSeconds,
   } = useUGC();
 
+  const hasAdminAccess = Boolean(isAdmin || isGlobalAdmin);
+
   if (activeTab === 'home-tour') return null;
 
   // Helper styles matching T design tokens
@@ -150,6 +153,13 @@ export default function LeftSidebar() {
   };
 
   const [sidebarTab, setSidebarTab] = useState<'creator' | 'motion-control' | 'storyboard'>('creator');
+
+  // Auto-reset non-admin users back to default studio creator view
+  useEffect(() => {
+    if (!hasAdminAccess && sidebarTab !== 'creator') {
+      setSidebarTab('creator');
+    }
+  }, [hasAdminAccess, sidebarTab]);
 
   // Motion Control Local States
   const [motionPreset, setMotionPreset] = useState<'push_in' | 'orbit' | 'macro' | 'tracking' | 'drone'>('push_in');
@@ -257,50 +267,52 @@ export default function LeftSidebar() {
         className="h-full border-r border-[#1e1e24] bg-[#080808] flex flex-col overflow-hidden relative z-[45]"
         style={{ minWidth: 0 }}
       >
-        {/* ── UNIFIED TOP TAB BAR IN SIDEBAR ── */}
-        <div className="p-2 border-b border-[#1e1e24] bg-[#0c0c12] shrink-0 z-10">
-          <div className="grid grid-cols-3 gap-1 bg-[#14141d] p-1 rounded-xl border border-white/5 select-none">
-            <button
-              onClick={() => setSidebarTab('creator')}
-              className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
-                sidebarTab === 'creator'
-                  ? 'bg-[#c8f135] text-black shadow-md shadow-[#c8f135]/20'
-                  : 'text-white/40 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Sparkles size={11} />
-              <span>Studio</span>
-            </button>
+        {/* ── UNIFIED TOP TAB BAR IN SIDEBAR (ADMIN ONLY) ── */}
+        {hasAdminAccess && (
+          <div className="p-2 border-b border-[#1e1e24] bg-[#0c0c12] shrink-0 z-10">
+            <div className="grid grid-cols-3 gap-1 bg-[#14141d] p-1 rounded-xl border border-white/5 select-none">
+              <button
+                onClick={() => setSidebarTab('creator')}
+                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                  sidebarTab === 'creator'
+                    ? 'bg-[#c8f135] text-black shadow-md shadow-[#c8f135]/20'
+                    : 'text-white/40 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Sparkles size={11} />
+                <span>Studio</span>
+              </button>
 
-            <button
-              onClick={() => setSidebarTab('motion-control')}
-              className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
-                sidebarTab === 'motion-control'
-                  ? 'bg-amber-400 text-black shadow-md shadow-amber-400/20'
-                  : 'text-white/40 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Video size={11} />
-              <span>Motion</span>
-            </button>
+              <button
+                onClick={() => setSidebarTab('motion-control')}
+                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                  sidebarTab === 'motion-control'
+                    ? 'bg-amber-400 text-black shadow-md shadow-amber-400/20'
+                    : 'text-white/40 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Video size={11} />
+                <span>Motion</span>
+              </button>
 
-            <button
-              onClick={() => setSidebarTab('storyboard')}
-              className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
-                sidebarTab === 'storyboard'
-                  ? 'bg-orange-500 text-black shadow-md shadow-orange-500/20'
-                  : 'text-white/40 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Layers size={11} />
-              <span>Board</span>
-            </button>
+              <button
+                onClick={() => setSidebarTab('storyboard')}
+                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                  sidebarTab === 'storyboard'
+                    ? 'bg-orange-500 text-black shadow-md shadow-orange-500/20'
+                    : 'text-white/40 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Layers size={11} />
+                <span>Board</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-5">
           {/* ── MOTION CONTROL SUB-PANEL ── */}
-          {sidebarTab === 'motion-control' ? (
+          {hasAdminAccess && sidebarTab === 'motion-control' ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-white/5 pb-2">
                 <h2 className="text-[10px] font-black text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -396,7 +408,7 @@ export default function LeftSidebar() {
                 <span>Apply Camera Motion to Scene</span>
               </button>
             </div>
-          ) : sidebarTab === 'storyboard' ? (
+          ) : hasAdminAccess && sidebarTab === 'storyboard' ? (
             /* ── STORYBOARD SUB-PANEL ── */
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-white/5 pb-2">
