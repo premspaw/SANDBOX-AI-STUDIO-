@@ -111,19 +111,18 @@ export default function VideoTab() {
           })()}
 
           {/* Bottom Toolbar inside Chat Box */}
-          <div className="flex items-center justify-between px-2.5 py-1.5 border-t border-white/[0.04] bg-white/[0.01] rounded-b-2xl">
-            <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-t border-white/[0.04] bg-white/[0.015] rounded-b-2xl overflow-x-auto no-scrollbar select-none" style={{ scrollbarWidth: 'none' }}>
             {/* Engine Pill */}
             <div className="relative flex-shrink-0">
               <select
                 value={videoGenMode}
                 onChange={e => setVideoGenMode(e.target.value as any)}
-                className="appearance-none bg-white/[0.04] hover:bg-white/[0.08] border border-cyan-500/30 rounded-lg pl-5 pr-4 py-0.5 text-[8px] font-bold uppercase tracking-widest text-cyan-300 hover:text-white cursor-pointer transition-all font-sans"
+                className="appearance-none bg-cyan-500/[0.08] hover:bg-cyan-500/[0.14] border border-cyan-500/30 rounded-lg pl-5 pr-4 py-1 text-[8.5px] font-bold uppercase tracking-wider text-cyan-300 hover:text-white cursor-pointer transition-all font-sans"
               >
                 <option value="omni-flash-1.1" className="bg-[#0c0c0c] text-white">⚡ OMNI FLASH 1.1</option>
               </select>
-              <Zap size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-cyan-400 pointer-events-none" />
-              <ChevronDown size={7} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+              <Zap size={8} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-cyan-400 pointer-events-none" />
+              <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
             </div>
 
             {/* Resolution Pill */}
@@ -131,13 +130,13 @@ export default function VideoTab() {
               <select
                 value={videoResolution}
                 onChange={e => setVideoResolution(e.target.value as any)}
-                className="appearance-none bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg pl-5 pr-4 py-0.5 text-[8px] font-bold uppercase tracking-widest text-white/70 hover:text-white cursor-pointer transition-all font-sans"
+                className="appearance-none bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 rounded-lg pl-5 pr-4 py-1 text-[8.5px] font-bold uppercase tracking-wider text-white/70 hover:text-white cursor-pointer transition-all font-sans"
               >
                 <option value="720p" className="bg-[#0c0c0c] text-white">720P (HD)</option>
                 <option value="1080p" className="bg-[#0c0c0c] text-white">1080P (FHD)</option>
               </select>
-              <Film size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-cyan-400 pointer-events-none" />
-              <ChevronDown size={7} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+              <Film size={8} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-cyan-400 pointer-events-none" />
+              <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
             </div>
 
             {/* Aspect Ratio Pill */}
@@ -145,14 +144,14 @@ export default function VideoTab() {
               <select
                 value={aspectRatio}
                 onChange={e => setAspectRatio(e.target.value as any)}
-                className="appearance-none bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg pl-5 pr-4 py-0.5 text-[8px] font-bold uppercase tracking-widest text-white/50 hover:text-white/80 cursor-pointer transition-all font-sans"
+                className="appearance-none bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 rounded-lg pl-5 pr-4 py-1 text-[8.5px] font-bold uppercase tracking-wider text-white/60 hover:text-white cursor-pointer transition-all font-sans"
               >
                 <option value="9:16" className="bg-[#0c0c0c] text-white">9:16</option>
                 <option value="16:9" className="bg-[#0c0c0c] text-white">16:9</option>
                 <option value="1:1" className="bg-[#0c0c0c] text-white">1:1</option>
               </select>
-              <Layout size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
-              <ChevronDown size={7} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+              <Layout size={8} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
+              <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
             </div>
 
             {/* Shot Duration Pill */}
@@ -160,26 +159,28 @@ export default function VideoTab() {
               <select
                 value={durationSeconds}
                 onChange={e => setDurationSeconds(e.target.value as any)}
-                className="appearance-none bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg pl-5 pr-4 py-0.5 text-[8px] font-bold uppercase tracking-widest text-white/50 hover:text-white/80 cursor-pointer transition-all font-sans"
+                className="appearance-none bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 rounded-lg pl-5 pr-4 py-1 text-[8.5px] font-bold uppercase tracking-wider text-white/60 hover:text-white cursor-pointer transition-all font-sans"
               >
                 <option value="4" className="bg-[#0c0c0c] text-white">4 SEC</option>
                 <option value="6" className="bg-[#0c0c0c] text-white">6 SEC</option>
                 <option value="8" className="bg-[#0c0c0c] text-white">8 SEC</option>
                 <option value="10" className="bg-[#0c0c0c] text-white">10 SEC</option>
               </select>
-              <Clock size={7} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
-              <ChevronDown size={7} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+              <Clock size={8} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[#c8f135] pointer-events-none" />
+              <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
             </div>
-            </div>
+
+            {/* Subtle Divider (Desktop only) */}
+            <div className="hidden sm:block w-[1px] h-3 bg-white/10 shrink-0 mx-0.5" />
 
             {/* From Script Shortcut */}
             {script && (
               <button
                 type="button"
                 onClick={() => setVideoPrompt(script.replace(/\[[^\]]+\]/g, '').replace(/HOOK:|PAYOFF:|Scene \d+:/gi, '').trim())}
-                className="px-2 py-0.5 rounded-lg border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70 transition-all flex items-center gap-1 flex-shrink-0 text-[8px] font-bold uppercase tracking-widest"
+                className="hidden sm:flex px-2 py-1 rounded-lg border border-white/[0.08] hover:border-white/20 bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white transition-all items-center gap-1 flex-shrink-0 text-[8.5px] font-bold uppercase tracking-wider"
               >
-                <FileText size={7} />
+                <FileText size={8} className="text-[#c8f135]" />
                 <span>Script</span>
               </button>
             )}
@@ -204,20 +205,20 @@ export default function VideoTab() {
                 { emoji: '🌅', label: 'Lifestyle', prompt: `Aspirational lifestyle shot: creator using ${prod} in a beautiful natural setting — morning coffee setup, golden hour light, relaxed aesthetic, premium UGC feel.` },
               ];
               return (
-                <div className="relative flex-shrink-0">
+                <div className="hidden sm:block relative flex-shrink-0">
                   <button
                     ref={presetsBtnRef}
                     type="button"
                     onClick={() => setShowPromptDropdown(!showPromptDropdown)}
-                    className={`px-2 py-0.5 rounded-lg border transition-all flex items-center gap-1 flex-shrink-0 text-[8px] font-bold uppercase tracking-widest cursor-pointer ${
+                    className={`px-2 py-1 rounded-lg border transition-all flex items-center gap-1 flex-shrink-0 text-[8.5px] font-bold uppercase tracking-wider cursor-pointer ${
                       showPromptDropdown
                         ? 'border-[#c8f135]/40 bg-[#c8f135]/10 text-[#c8f135]'
-                        : 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70'
+                        : 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white'
                     }`}
                   >
-                    <Sparkles size={7} />
+                    <Sparkles size={8} />
                     <span>Presets</span>
-                    <ChevronDown size={7} className={`transition-transform duration-200 ${showPromptDropdown ? 'rotate-180' : ''}`} />
+                    <ChevronDown size={8} className={`transition-transform duration-200 ${showPromptDropdown ? 'rotate-180' : ''}`} />
                   </button>
 
                   <DropUpPortal
@@ -251,7 +252,7 @@ export default function VideoTab() {
               );
             })()}
 
-            {/* AI Prompt Pill — only shown in single-shot mode */}
+            {/* AI Prompt Pill — only shown in single-shot mode on desktop */}
             {splitScenes.length === 0 && (script || videoPrompt) && (
               <button
                 type="button"
@@ -263,16 +264,16 @@ export default function VideoTab() {
                   }
                 }}
                 disabled={isGeneratingSplitPrompt || isGeneratingGeneralPrompt}
-                className={`px-2 py-0.5 rounded-lg border transition-all flex items-center gap-1 flex-shrink-0 text-[8px] font-bold uppercase tracking-widest ${
+                className={`hidden sm:flex px-2 py-1 rounded-lg border transition-all items-center gap-1 flex-shrink-0 text-[8.5px] font-bold uppercase tracking-wider ${
                   (isGeneratingSplitPrompt || isGeneratingGeneralPrompt)
                     ? 'border-white/[0.08] bg-white/[0.04] text-white/20 cursor-not-allowed'
                     : 'border-[#c8f135]/40 bg-[#c8f135]/10 text-[#c8f135] hover:bg-[#c8f135]/20'
                 }`}
               >
                 {(isGeneratingSplitPrompt || isGeneratingGeneralPrompt) ? (
-                  <Loader2 size={7} className="animate-spin" />
+                  <Loader2 size={8} className="animate-spin" />
                 ) : (
-                  <Sparkles size={7} />
+                  <Sparkles size={8} />
                 )}
                 <span>AI Prompt</span>
               </button>
@@ -284,13 +285,13 @@ export default function VideoTab() {
                 type="button"
                 onClick={() => setMultiShotPrompt(!multiShotPrompt)}
                 title={multiShotPrompt ? 'Multi-Shot Prompt: ON' : 'Multi-Shot Prompt: OFF'}
-                className={`px-2 py-0.5 rounded-lg border transition-all flex items-center gap-1 flex-shrink-0 text-[8px] font-bold uppercase tracking-widest ${
+                className={`hidden sm:flex px-2 py-1 rounded-lg border transition-all items-center gap-1 flex-shrink-0 text-[8.5px] font-bold uppercase tracking-wider ${
                   multiShotPrompt
                     ? 'border-[#c8f135]/40 bg-[#c8f135]/10 text-[#c8f135]'
-                    : 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70'
+                    : 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white'
                 }`}
               >
-                <Film size={7} />
+                <Film size={8} />
                 <span>Multi-Shot</span>
               </button>
             )}
@@ -300,9 +301,9 @@ export default function VideoTab() {
               <button
                 type="button"
                 onClick={() => setShowTemplates(true)}
-                className="px-2 py-0.5 rounded-lg border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-white/40 hover:text-white/70 transition-all flex items-center gap-1 flex-shrink-0 text-[8px] font-bold uppercase tracking-widest"
+                className="hidden sm:flex px-2 py-1 rounded-lg border border-white/[0.08] hover:border-white/20 bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white transition-all items-center gap-1 flex-shrink-0 text-[8.5px] font-bold uppercase tracking-wider"
               >
-                <Layout size={7} />
+                <Layout size={8} />
                 <span>Template</span>
               </button>
             )}
