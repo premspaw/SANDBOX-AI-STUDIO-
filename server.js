@@ -1484,9 +1484,12 @@ async function handleGoogle(req, res) {
                     const systemKey = process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
                     const isExplicitStudioKey = typeof apiKey === 'string' && (apiKey.startsWith('AIza') || apiKey.startsWith('AQ.'));
 
-                    if (VERTEX_KEY || apiKey === 'VERTEX_AI_CLIENT' || token) {
-                        const activeModelLower = activeModel.toLowerCase();
-                        const needsGlobal = false; // Vertex AI Gemini requires regional endpoints, never use global
+                    // Gemini image models (gemini-3.x-flash-*-image) are AI Studio only.
+                    // Do NOT use Vertex AI SDK for these — it returns an empty response which
+                    // causes the SDK to throw "model output must contain either output text or tool calls".
+                    const isGeminiImageModelForVertex = activeModel.toLowerCase().includes('gemini') && activeModel.toLowerCase().includes('image');
+
+                    if (!isGeminiImageModelForVertex && (VERTEX_KEY || apiKey === 'VERTEX_AI_CLIENT' || token)) {
                         const authOptions = {};
                         if (VERTEX_KEY) {
                             if (typeof VERTEX_KEY === 'string') {
@@ -1498,14 +1501,14 @@ async function handleGoogle(req, res) {
                         ai = new GoogleGenAI({
                             vertexai: true,
                             project: VERTEX_PROJECT_ID,
-                            location: needsGlobal ? 'global' : VERTEX_LOCATION,
+                            location: VERTEX_LOCATION,
                             googleAuthOptions: authOptions
                         });
-                        console.log(`[handleGoogle] [Vertex AI SDK PRIMARY] Calling model ${activeModel} (location: ${needsGlobal ? 'global' : VERTEX_LOCATION})`);
+                        console.log(`[handleGoogle] [Vertex AI SDK PRIMARY] Calling model ${activeModel} (location: ${VERTEX_LOCATION})`);
                     } else if (isExplicitStudioKey || systemKey) {
                         const activeApiKey = isExplicitStudioKey ? apiKey : systemKey;
                         ai = new GoogleGenAI({ apiKey: activeApiKey });
-                        console.log(`[handleGoogle] [AI Studio SDK Fallback] Calling model ${activeModel} via API Key`);
+                        console.log(`[handleGoogle] [AI Studio SDK] Calling model ${activeModel} via API Key (Gemini image model — AI Studio only)`);
                     } else {
                         ai = new GoogleGenAI({ apiKey: systemKey || apiKey });
                         console.log(`[handleGoogle] [AI Studio SDK] Calling model ${activeModel} via API Key`);
@@ -1541,7 +1544,7 @@ async function handleGoogle(req, res) {
                                 { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
                                 { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
                             ],
-                            responseModalities: ["IMAGE"],
+                            responseModalities: ["IMAGE", "TEXT"],
                             imageConfig: {
                                 aspectRatio: mappedRatio,
                                 imageSize: finalImageSize
@@ -1588,7 +1591,7 @@ async function handleGoogle(req, res) {
                                 { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
                                 { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
                             ],
-                            generationConfig: { responseModalities: ["IMAGE"] }
+                            generationConfig: { responseModalities: ["IMAGE", "TEXT"] }
                         };
 
                         let restResp = null;

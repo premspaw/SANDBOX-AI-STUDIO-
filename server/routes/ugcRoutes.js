@@ -944,8 +944,8 @@ Return ONLY valid JSON.`
             };
 
             const keyframeResult = await withRetry(() => client.models.generateContent({
-                model: 'gemini-2.5-flash',
-                config: { responseModalities: ['image', 'text'] },
+                model: 'gemini-3.1-flash-image',
+                config: { responseModalities: ['IMAGE', 'TEXT'] },
                 contents: [{
                     role: 'user',
                     parts: [
