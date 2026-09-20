@@ -607,7 +607,7 @@ export default function UGC() {
     }
   }, [showTemplates]);
   const [leftPanelMode, setLeftPanelMode] = useState<'image' | 'video'>('video');
-  const [imgEngine, setImgEngine] = useState<'nb2' | 'gpt-image-2.5-sunburst' | 'gpt-image-2.5-flare' | 'gpt2' | 'nb2-lite' | 'nb2-open' | 'nano_banana' | 'nano-banana-pro' | 'sd' | 'imagen'>('gpt-image-2.5-sunburst');
+  const [imgEngine, setImgEngine] = useState<'nb2' | 'gpt-image-2.5-sunburst' | 'gpt-image-2.5-flare' | 'gpt2' | 'nb2-lite' | 'nb2-open' | 'nano_banana' | 'nano-banana-pro' | 'sd' | 'imagen'>('nb2-lite');
   const [gpt2Quality, setGpt2Quality] = useState<'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'auto'>('auto');
   const [isGalleryOpen, setIsGalleryOpen] = useState(true);
   const [inpaintImg, setInpaintImg] = useState<string | null>(null);

@@ -1495,10 +1495,10 @@ export default function LeftSidebar() {
                   onChange={e => setImgEngine(e.target.value as any)}
                   className="w-full bg-[#111113] border border-[#1e1e24] px-3 py-2 rounded-full text-[9px] font-black uppercase text-white/80 outline-none cursor-pointer hover:border-white/20 transition-colors"
                 >
-                  <option value="gpt-image-2.5-sunburst" className="bg-[#111113]">GPT 2.5 Sunburst ⚡ (2.5 cr)</option>
-                  <option value="gpt-image-2.5-flare" className="bg-[#111113]">GPT 2.5 Flare ⚡ (1.5 cr)</option>
-                  <option value="nb2" className="bg-[#111113]">Nano Banana 2 (1 cr)</option>
                   <option value="nb2-lite" className="bg-[#111113]">Nano Banana Lite ⚡ (0.5 cr)</option>
+                  <option value="nb2" className="bg-[#111113]">Nano Banana 2 (1 cr)</option>
+                  <option value="gpt-image-2.5-flare" className="bg-[#111113]">GPT 2.5 Flare ⚡ (1.5 cr)</option>
+                  <option value="gpt-image-2.5-sunburst" className="bg-[#111113]">GPT 2.5 Sunburst ⚡ (2.5 cr)</option>
                 </select>
               </div>
               {(imgEngine.startsWith('gpt') || imgEngine.includes('sunburst') || imgEngine.includes('flare')) && (
