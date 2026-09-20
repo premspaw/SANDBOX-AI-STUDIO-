@@ -38,20 +38,42 @@ const resolveVideoUrl = (url: string): string => {
 };
 
 // ── VideoThumbnail ─────────────────────────────────────────────────────────────
-// Displays a preview frame of the video at 0.5s natively without preloading the full video.
+// Lazy-loads video preview natively with IntersectionObserver to keep mobile gallery at 60 FPS
 function VideoThumbnail({ url, className }: { url: string; className?: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
   const resolved = resolveVideoUrl(url);
   const videoSrc = resolved.startsWith('blob:') || resolved.startsWith('data:') ? resolved : `${resolved}#t=0.5`;
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      { rootMargin: '200px 0px', threshold: 0.01 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className={`relative w-full h-full ${className || ''}`}>
-      <video
-        key={videoSrc}
-        src={videoSrc}
-        className="w-full h-full object-cover"
-        preload="metadata"
-        playsInline
-        muted
-      />
+    <div ref={containerRef} className={`relative w-full h-full bg-[#111113] overflow-hidden ${className || ''}`}>
+      {isVisible ? (
+        <video
+          key={videoSrc}
+          src={videoSrc}
+          className="w-full h-full object-cover"
+          preload="metadata"
+          playsInline
+          muted
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-white/[0.02]">
+          <div className="w-4 h-4 rounded-full bg-white/5 animate-pulse" />
+        </div>
+      )}
     </div>
   );
 }
@@ -270,7 +292,9 @@ export default function GalleryGrid({ onSetStartFrame, startFrameUrl, onSetRealt
                       <img
                         src={resolveUrl(item.url)}
                         alt={`gen-${idx}`}
-                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover transition-opacity duration-200"
                         onError={() => markBroken(item.id)}
                       />
                     </div>
