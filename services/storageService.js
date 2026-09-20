@@ -140,13 +140,22 @@ export const uploadToGCS = async (data, fileName, contentType = 'image/png', tar
 
     if (r2Client) {
         try {
-            console.log(`[R2] Uploading ${fileName} → ${R2_BUCKET}...`);
+            console.log(`[R2] Uploading ${fileName} → ${R2_BUCKET} (${buffer.length} bytes, ${contentType})...`);
+            const isVideo = contentType.startsWith('video/');
             await r2Client.send(new PutObjectCommand({
-                Bucket:       R2_BUCKET,
-                Key:          fileName,
-                Body:         buffer,
-                ContentType:  contentType,
-                CacheControl: 'public, max-age=31536000',
+                Bucket:        R2_BUCKET,
+                Key:           fileName,
+                Body:          buffer,
+                ContentType:   contentType,
+                ContentLength: buffer.length,   // ← critical: prevents chunked encoding that breaks range requests
+                CacheControl:  'public, max-age=31536000',
+                // For video: signal range-request support so CDN can forward Accept-Ranges correctly
+                ...(isVideo ? {
+                    Metadata: {
+                        'accept-ranges': 'bytes',
+                        'x-content-type-options': 'nosniff',
+                    }
+                } : {})
             }));
             const url = toPublicUrl(fileName);
             console.log(`[R2] ✅ Uploaded: ${url}`);
@@ -223,11 +232,13 @@ export const readFromR2 = async (fileName) => {
  */
 export const writeToR2 = async (fileName, content, contentType = 'application/json') => {
     if (!r2Client) throw new Error('R2 not configured');
+    const body = Buffer.from(content, 'utf-8');
     await r2Client.send(new PutObjectCommand({
-        Bucket: R2_BUCKET,
-        Key: fileName,
-        Body: Buffer.from(content, 'utf-8'),
-        ContentType: contentType,
+        Bucket:        R2_BUCKET,
+        Key:           fileName,
+        Body:          body,
+        ContentType:   contentType,
+        ContentLength: body.length,
     }));
 };
 
