@@ -1728,7 +1728,7 @@ Return ONLY a valid JSON array containing exactly ${targetShotsCount} shot objec
             cameraMotion: 'Subtle lateral dolly track with steady focal framing',
             duration: 10,
             aspectRatio: aspectRatio || '16:9',
-            resolution: resolution || '1080p',
+            resolution: resolution || '720p',
             mode: 'i2v',
             characterTag: defaultCharTag,
             locationTag: currentScene?.locationTag || locationRef.tag || '@loc_setting',
@@ -1757,7 +1757,7 @@ Return ONLY a valid JSON array containing exactly ${targetShotsCount} shot objec
         if (!shot) return;
 
         // Target render resolution & aspect ratio
-        const targetResolution = shot.resolution || resolution || '1080p';
+        const targetResolution = shot.resolution || resolution || '720p';
         const targetAspectRatio = shot.aspectRatio || aspectRatio || '16:9';
 
         // Update shot status to generating

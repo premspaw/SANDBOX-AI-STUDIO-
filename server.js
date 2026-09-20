@@ -1719,13 +1719,13 @@ async function handleGoogle(req, res) {
 async function handleVeoJob(reqBody) {
     const {
         prompt, firstFrame, userId, aspectRatio, aspect_ratio,
-        duration = 8, resolution = '1080p', model
+        duration = 8, resolution = '720p', model
     } = reqBody;
 
     const validDuration = [4, 6, 8].includes(Number(duration)) ? Number(duration) : 8;
     const validAspectRatio = ['16:9', '9:16', '1:1'].includes(aspectRatio || aspect_ratio)
         ? (aspectRatio || aspect_ratio) : '16:9';
-    const validResolution = ['720p', '1080p', '4k'].includes(resolution) ? resolution : '1080p';
+    const validResolution = ['720p', '1080p', '4k'].includes(resolution) ? resolution : '720p';
     const modelName = model || 'veo-3.1-generate-preview';
 
     const apiKey = await resolveGoogleApiKey(null, userId, true);
@@ -1813,7 +1813,7 @@ async function handleVeoJob(reqBody) {
 async function handleSeedanceJob(reqBody) {
     const {
         engine = 'seedance-fast', prompt, firstFrame, lastFrame,
-        aspectRatio = '16:9', duration = 5, resolution = '1080p',
+        aspectRatio = '16:9', duration = 5, resolution = '720p',
         generateAudio, userId
     } = reqBody;
 
@@ -1856,7 +1856,7 @@ async function handleSeedanceJob(reqBody) {
             prompt,
             aspect_ratio: aspectRatio.replace(':', '/'),
             duration: Number(duration) || 5,
-            resolution: resolution === '4k' ? '1080p' : (resolution || '1080p'),
+            resolution: resolution === '4k' ? '1080p' : (resolution || '720p'),
             generate_audio: !!generateAudio,
             web_search: false
         };

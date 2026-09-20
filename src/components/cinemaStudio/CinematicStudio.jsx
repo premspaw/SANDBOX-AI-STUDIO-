@@ -620,7 +620,7 @@ export default function CinematicStudio() {
     return tab === 'image' ? 'nano-banana-2' : 'veo-3.1-lite-generate-preview';
   });
   const [aspectRatio, setAspectRatio] = useState(() => localStorage.getItem('cs_aspectRatio') || '16:9');
-  const [resolution, setResolution] = useState(() => localStorage.getItem('cs_resolution') || '1080p');
+  const [resolution, setResolution] = useState(() => localStorage.getItem('cs_resolution') || '720p');
   const [variationCount, setVariationCount] = useState(() => Number(localStorage.getItem('cs_variationCount')) || 1);
   const [duration, setDuration] = useState(() => Number(localStorage.getItem('cs_duration')) || 5);
   const [camera, setCamera] = useState(() => localStorage.getItem('cs_camera') || 'arri');

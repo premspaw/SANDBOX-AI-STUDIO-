@@ -85,7 +85,7 @@ export default function createRouter(deps) {
                 }
             }
 
-            const { image, motionPrompt, prompt, duration = 8, aspectRatio = '16:9', nodeId, userId, generateAudio, resolution = '1080p', model } = req.body;
+            const { image, motionPrompt, prompt, duration = 8, aspectRatio = '16:9', nodeId, userId, generateAudio, resolution = '720p', model } = req.body;
             const modelName = model || '';
             const textPrompt = motionPrompt || prompt;
             if (!textPrompt) throw new Error('No motion prompt provided');
@@ -112,7 +112,7 @@ export default function createRouter(deps) {
             const taskId = nodeId ? `veo-${nodeId}` : 'veo-default';
             const validDuration = [4, 5, 6, 8, 10, 12, 15].includes(Number(duration)) ? Number(duration) : 8;
             const validAspectRatio = ['16:9', '9:16', '1:1'].includes(aspectRatio) ? aspectRatio : '16:9';
-            const validResolution = ['720p', '1080p', '4k'].includes(resolution) ? resolution : '1080p';
+            const validResolution = ['720p', '1080p', '4k'].includes(resolution) ? resolution : '720p';
 
             console.log(`[VEO-I2V] Starting | taskId: ${taskId} | duration: ${validDuration}s | ratio: ${validAspectRatio} | res: ${validResolution} | image: ${!!image}`);
 
@@ -801,7 +801,7 @@ export default function createRouter(deps) {
                 provider = 'veo',
                 model,
                 duration = 8,
-                resolution = '1080p',
+                resolution = '720p',
                 userId,
                 engine
             } = req.body;

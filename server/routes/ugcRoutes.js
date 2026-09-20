@@ -80,6 +80,7 @@ export default function createRouter(deps) {
                     sampleCount: 1,
                     aspectRatio: validAspectRatio,
                     durationSeconds: durationSecs,
+                    resolution: resolution || '720p',
                 }
             };
 

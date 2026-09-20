@@ -3453,7 +3453,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
             motionPrompt: finalMotionPrompt,
             duration: resolvedDuration,
             aspectRatio: resolvedAspectRatio,
-            resolution: '720p',
+            resolution: videoResolution || '720p',
             model: 'gemini-omni-1.1-flash-preview',
             userId: currentUserId,
             generateAudio: resolvedIncludeAudio,

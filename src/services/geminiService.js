@@ -711,7 +711,7 @@ export const synthesizeSpeech = async (text, voice = 'Puck') => {
 export const generateLipSyncVideo = async (image, prompt, bible = null, opts = {}) => {
     try {
         // Derive model name
-        const { model = 'veo', duration = '4 Seconds', resolution = '1080p', aspect_ratio = '9:16' } = opts;
+        const { model = 'veo', duration = '4 Seconds', resolution = '720p', aspect_ratio = '9:16' } = opts;
         const modelName = (model === 'veo-fast') ? 'veo-3.1-fast-generate-preview' : 'veo-3.1-generate-preview';
 
         // Map duration string to seconds number and clamp to Veo valid durations
@@ -767,6 +767,7 @@ export const generateLipSyncVideo = async (image, prompt, bible = null, opts = {
                 sampleCount: 1,
                 aspectRatio: aspect_ratio || "9:16",
                 durationSeconds: durationSecs,
+                resolution: resolution || '720p',
             }
         };
 
