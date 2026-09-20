@@ -393,7 +393,7 @@ const getGeminiClient = (apiKey) => {
         });
     }
 
-    const activeKey = (isExplicitStudioKey ? apiKey : null) || process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
+    const activeKey = (isExplicitStudioKey ? apiKey : null) || process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.ADMIN_GOOGLE_API_KEY;
     if (!activeKey) {
         throw new Error('GOOGLE_API_KEY environment variable is not set and Vertex AI credentials unavailable.');
     }
@@ -696,10 +696,10 @@ async function requireAuth(req) {
 }
 
 async function resolveGoogleApiKey(req, userId, forceVertex = false) {
-    if (VERTEX_KEY) {
+    if (forceVertex && VERTEX_KEY) {
         return 'VERTEX_AI_CLIENT';
     }
-    return process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+    return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.ADMIN_GOOGLE_API_KEY || (VERTEX_KEY ? 'VERTEX_AI_CLIENT' : null);
 }
 
 async function consumeCredits(userId, cost, reason = 'generation') {

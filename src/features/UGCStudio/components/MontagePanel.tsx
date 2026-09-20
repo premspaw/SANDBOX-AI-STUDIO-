@@ -150,8 +150,6 @@ export const MontagePanel: React.FC = () => {
     setIsGeneratingVideo(true);
     setVideoProgressMsg(`Animating ${option.title} Montage...`);
     try {
-      const ai = getAI();
-
       let imageBase64 = '';
       let imageMime = 'image/jpeg';
 

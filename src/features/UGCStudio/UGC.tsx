@@ -2662,7 +2662,11 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
     addToGallery({ id: placeholderImgId, type: 'image', url: '', loading: true });
     let generatedUrl = '';
     try {
-      const ai = getAI();
+      const clientApiKey = getApiKey();
+      let ai = null;
+      if (clientApiKey) {
+        try { ai = getAI(); } catch (_) { ai = null; }
+      }
       setImageProgressMsg('Calibrating Lighting & Style...');
       let contents: { text?: string; inlineData?: { mimeType: string; data: string } }[] = [];
 
@@ -2863,6 +2867,58 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
               throw new Error(`Queue job failed: ${pollData.error || 'Unknown'}`);
             }
           }
+        }
+      } else if (!ai) {
+        // No client-side key — dispatch to backend server with full credentials & queue support
+        const modelName = imgEngine === 'nb2-lite' ? 'nano-banana-2-lite' : 'nano-banana-2';
+        setImageProgressMsg('Processing Reference Assets...');
+        const refImages: string[] = [];
+        const readFileAsBase64 = (f: File): Promise<string> =>
+          new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = ev => resolve(ev.target?.result as string);
+            reader.readAsDataURL(f);
+          });
+
+        if (characterImg?.file) refImages.push(await readFileAsBase64(characterImg.file));
+        if (productImg?.file) refImages.push(await readFileAsBase64(productImg.file));
+        if (locationImg?.file) refImages.push(await readFileAsBase64(locationImg.file));
+
+        setImageProgressMsg(`Synthesizing Frame with ${modelName}...`);
+
+        const gptRes = await fetch(getApiUrl('/api/generate-image'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: modelName,
+            prompt: promptInstructions,
+            aspect_ratio: aspectRatio,
+            aspectRatio,
+            quality: 'auto',
+            size: aspectRatio === '16:9' ? '1536x1024' : aspectRatio === '1:1' ? '1024x1024' : '1024x1536',
+            userId: currentUserId,
+            folder: activeProjectId || 'default',
+            projectId: activeProjectId || 'default',
+            referenceImages: refImages,
+            ...(refImages[0] && { image: refImages[0] }),
+            ...(refImages[1] && { secondImage: refImages[1] })
+          }),
+        });
+
+        if (!gptRes.ok) {
+          const errData = await gptRes.json().catch(() => ({}));
+          throw new Error(errData.error || errData.message || `Server error: ${gptRes.status}`);
+        }
+
+        const gptData = await gptRes.json();
+        const url = gptData.url || gptData.imageUrl;
+        if (url) {
+          generatedUrl = url;
+          setImageProgressMsg('Finalizing Frame...');
+          setGeneratedImg(url);
+          setGeneratedVideo('');
+          updateGalleryItem(placeholderImgId, { url, loading: false });
+          generateImageSuggestions(url);
         }
       } else {
         // gemini-3.1-flash-image = Nano Banana 2 (GA model — preview name retired)
@@ -3088,8 +3144,6 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
     addToGallery({ id: placeholderThVideoId, type: 'video', url: '', loading: true });
 
     try {
-      const ai = getAI();
-
       let imagePayload: { imageBytes: string; mimeType: string } | undefined;
       try {
         const imgBlob = await fetchImageAsBlob(thGeneratedImg);
@@ -3342,7 +3396,6 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       }
 
       try {
-        const ai = getAI();
         let imagePayload: { imageBytes: string; mimeType: string } | undefined;
 
         // For talking-head tab, fall back to the generated face image instead of characterImg
@@ -3807,8 +3860,6 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
     const placeholderVideoId = `vid-pending-${Date.now()}`;
     addToGallery({ id: placeholderVideoId, type: 'video', url: '', loading: true });
     try {
-      const ai = getAI();
-
       let stylePrompt = '';
       if (imageStyle === 'ultra-realistic') {
         stylePrompt = 'Ultra-realistic raw footage, natural looking normal video quality, super natural, no background blur, no bokeh, sharp focus across the entire frame, shot on a normal phone, mobile video aesthetic, natural lighting, super real human appearance, authentic and imperfect, 4K resolution, natural camera movement, no 85mm lens, no bokeh portrait effect, zero depth of field blur';
