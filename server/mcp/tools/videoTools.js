@@ -4,7 +4,7 @@ export function getVideoToolDefinitions() {
   return [
     {
       name: 'generate_video',
-      description: 'Generate high-end cinematic AI videos asynchronously using ZeroLens video engines (Seedance 2.0, Seedance Fast, Google Veo 3.1). Returns a generation ID immediately for asynchronous status checking.',
+      description: 'Generate cinematic AI videos using ZeroLens video engines. SUPPORTED MODELS: "seedance-2.5" (Seedance 2.5) and "omni-flash-1.1" (Gemini Omni Flash 1.1). IMPORTANT INSTRUCTIONS FOR ASSISTANT: You MUST NEVER generate immediately. Always ask the user first: 1) Which model? ("Seedance 2.5" or "Omni Flash 1.1"), 2) Which aspect ratio? ("16:9" Landscape or "9:16" Vertical Reel or "1:1" Square), 3) Which resolution? ("720p" or "480p"), 4) Duration? (5s default). Only execute this tool AFTER the user specifies these preferences.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -14,14 +14,14 @@ export function getVideoToolDefinitions() {
           },
           engine: {
             type: 'string',
-            enum: ['seedace', 'seedance-fast', 'veo-3.1-generate-preview'],
-            description: 'Video generation model. "seedance-fast" = quick renders, "seedace" = Seedance 2.0 (1080p high fidelity), "veo-3.1-generate-preview" = Google DeepMind Veo 3.1.',
-            default: 'seedance-fast'
+            enum: ['seedance-2.5', 'omni-flash-1.1', 'seedance-fast'],
+            description: 'Video generation engine. "seedance-2.5" = Seedance 2.5 (photorealistic cinematic motion), "omni-flash-1.1" = Gemini Omni Flash 1.1 (ultra-fast dynamic video), "seedance-fast" = Seedance Fast.',
+            default: 'seedance-2.5'
           },
           aspect_ratio: {
             type: 'string',
             enum: ['16:9', '9:16', '1:1'],
-            description: 'Video aspect ratio. Default: "16:9"',
+            description: 'Video aspect ratio. "16:9" (Landscape/YouTube), "9:16" (Vertical/Instagram Reels/TikTok), "1:1" (Square). Default: "16:9"',
             default: '16:9'
           },
           duration: {
@@ -31,8 +31,8 @@ export function getVideoToolDefinitions() {
           },
           resolution: {
             type: 'string',
-            enum: ['720p', '1080p'],
-            description: 'Resolution of the rendered video. Default: "720p"',
+            enum: ['720p', '480p'],
+            description: 'Resolution of the rendered video. "720p" (high fidelity) or "480p" (fast). Default: "720p"',
             default: '720p'
           },
           first_frame_url: {
@@ -85,6 +85,8 @@ export async function executeGenerateVideo(args, user, deps) {
 
   // Cost calculation
   let cost = 10;
+  if (resolution === '480p') cost = 6;
+  if (engine.toLowerCase().includes('omni')) cost = 8;
   if (engine === 'seedace') cost = 15;
   if (engine === 'veo-3.1-generate-preview' || engine.includes('veo')) cost = 20;
 
@@ -126,11 +128,14 @@ export async function executeGenerateVideo(args, user, deps) {
 
   const generationId = `gen_vid_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const appBaseUrl = (process.env.PUBLIC_APP_URL || 'https://zerolens.in').replace(/\/+$/, '');
+  const isOmni = engine.toLowerCase().includes('omni');
+  const targetKieModel = (resolution === '480p') ? 'bytedance/seedance-2-fast' : 'bytedance/seedance-2-5';
 
   const jobPayload = {
     jobId: generationId,
     prompt,
     engine,
+    targetModel: targetKieModel,
     aspectRatio: aspect_ratio,
     aspect_ratio,
     duration: Number(duration) || 5,
@@ -141,7 +146,7 @@ export async function executeGenerateVideo(args, user, deps) {
     userId: user.id,
     projectId: project_id,
     folder: project_id,
-    provider: engine.includes('veo') ? 'veo' : 'seedance'
+    provider: isOmni ? 'omni' : 'seedance'
   };
 
   // 3. Mark job as queued in tracking system
@@ -231,7 +236,7 @@ async function launchBackgroundVideoWorker(jobPayload, generationId, cost, user,
           const resp = await fetch('https://api.kie.ai/api/v1/jobs/createTask', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${kieApiKey}` },
-            body: JSON.stringify({ model: 'bytedance/seedance-2-fast', input })
+            body: JSON.stringify({ model: jobPayload.targetModel || 'bytedance/seedance-2-5', input })
           });
           const d = await resp.json();
           const taskId = d.data?.taskId;

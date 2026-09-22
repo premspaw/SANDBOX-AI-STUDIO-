@@ -108,6 +108,17 @@ export function createZeroLensMcpServer(userContext = null, deps = {}) {
     return {
       prompts: [
         {
+          name: 'create_video',
+          description: 'Interactive AI Video Creator. Asks for model (Seedance 2.5 vs Omni Flash 1.1), aspect ratio (16:9 Landscape vs 9:16 Vertical Reel vs 1:1), and resolution (720p vs 480p) before generating.',
+          arguments: [
+            {
+              name: 'prompt',
+              description: 'Scene description or video concept',
+              required: true
+            }
+          ]
+        },
+        {
           name: 'create_carousel',
           description: 'Design and generate a multi-slide social media carousel (LinkedIn / Instagram). Asks for format/ratio, plans each slide, and renders every image inline.',
           arguments: [
@@ -125,6 +136,17 @@ export function createZeroLensMcpServer(userContext = null, deps = {}) {
               name: 'aspect_ratio',
               description: 'Aspect ratio (e.g. 1:1, 4:5, 3:4, 16:9)',
               required: false
+            }
+          ]
+        },
+        {
+          name: 'create_image',
+          description: 'Generate high-fidelity AI images. Confirms model (Nano Banana 2 vs GPT Image 2.5), aspect ratio, and style, then embeds the image directly in chat.',
+          arguments: [
+            {
+              name: 'prompt',
+              description: 'Description of the image to generate',
+              required: true
             }
           ]
         },
@@ -151,6 +173,50 @@ export function createZeroLensMcpServer(userContext = null, deps = {}) {
   // Get specific prompt content
   server.setRequestHandler(GetPromptRequestSchema, async (request) => {
     const { name, arguments: promptArgs } = request.params;
+
+    if (name === 'create_video') {
+      const promptText = promptArgs?.prompt || 'Cinematic drone shot over misty mountains';
+      return {
+        description: `Generate an AI video for: "${promptText}"`,
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text: `I want to generate a video for: "${promptText}". 
+DO NOT generate immediately. Please ask me to confirm:
+1. Video Engine: "Seedance 2.5" (photorealistic cinematic motion) or "Omni Flash 1.1" (fast dynamic action)?
+2. Aspect Ratio: "16:9" (Landscape/YouTube) or "9:16" (Vertical/Instagram Reels/TikTok) or "1:1" (Square)?
+3. Resolution: "720p" (High Quality) or "480p" (Fast)?
+4. Duration: 5 seconds (default) or 8 seconds?
+Once I confirm, call the ZeroLens generate_video tool with my chosen parameters and provide the generation ID.`
+            }
+          }
+        ]
+      };
+    }
+
+    if (name === 'create_image') {
+      const promptText = promptArgs?.prompt || 'Futuristic cybernetic city';
+      return {
+        description: `Generate an image for: "${promptText}"`,
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text: `I want to generate an image for: "${promptText}".
+DO NOT generate immediately. Please ask me to confirm:
+1. Engine: "Nano Banana 2" (Photorealistic studio) or "GPT Image 2.5 Sunburst" (Intense typography/detail)?
+2. Aspect Ratio: "1:1" Square, "9:16" Story, "16:9" Landscape, or "3:4" Portrait?
+3. Visual Aesthetic/Style?
+Once confirmed, call ZeroLens generate_image and embed the resulting image directly in the chat with markdown: ![Image](url).`
+            }
+          }
+        ]
+      };
+    }
+
     if (name === 'create_carousel') {
       const topic = promptArgs?.topic || 'Founder Lessons';
       const count = promptArgs?.slides_count || 4;
@@ -168,6 +234,7 @@ export function createZeroLensMcpServer(userContext = null, deps = {}) {
         ]
       };
     }
+
     if (name === 'create_product_shot') {
       const product = promptArgs?.product || 'Luxury watch';
       const style = promptArgs?.lighting_style || 'professional studio lighting';
@@ -184,6 +251,7 @@ export function createZeroLensMcpServer(userContext = null, deps = {}) {
         ]
       };
     }
+
     throw new Error(`Unknown prompt: ${name}`);
   });
 
