@@ -185,10 +185,13 @@ export function createZeroLensMcpServer(userContext = null, deps = {}) {
               type: 'text',
               text: `I want to generate a video for: "${promptText}". 
 DO NOT generate immediately. Please ask me to confirm:
-1. Video Engine: "Seedance 2.5" (photorealistic cinematic motion) or "Omni Flash 1.1" (fast dynamic action)?
-2. Aspect Ratio: "16:9" (Landscape/YouTube) or "9:16" (Vertical/Instagram Reels/TikTok) or "1:1" (Square)?
-3. Resolution: "720p" (High Quality) or "480p" (Fast)?
-4. Duration: 5 seconds (default) or 8 seconds?
+1. Video Engine:
+   - "Seedance 2.5" (High-fidelity cinematic motion, default 480p or 720p)
+   - "Seedance 2 Fast" (Budget-friendly fast rendering, default 720p)
+   - "Omni Flash 1.1" (Ultra-fast dynamic action video, default 720p)
+2. Aspect Ratio: "16:9" (Landscape/YouTube), "9:16" (Vertical/Instagram Reels/TikTok), or "1:1" (Square)?
+3. Resolution: "720p" (default for Omni Flash & Seedance Fast) or "480p" (default for Seedance 2.5)?
+4. Duration: Default is 10 seconds (or 5s).
 Once I confirm, call the ZeroLens generate_video tool with my chosen parameters and provide the generation ID.`
             }
           }
@@ -207,9 +210,13 @@ Once I confirm, call the ZeroLens generate_video tool with my chosen parameters 
               type: 'text',
               text: `I want to generate an image for: "${promptText}".
 DO NOT generate immediately. Please ask me to confirm:
-1. Engine: "Nano Banana 2" (Photorealistic studio) or "GPT Image 2.5 Sunburst" (Intense typography/detail)?
-2. Aspect Ratio: "1:1" Square, "9:16" Story, "16:9" Landscape, or "3:4" Portrait?
-3. Visual Aesthetic/Style?
+1. Engine Choice:
+   - "Nano Banana Lite" (Fast & budget-friendly generation)
+   - "Nano Banana Pro" (Maximum studio detail & resolution)
+   - "GPT Image 2.5 Flare" (Fast high-quality GPT model)
+   - "GPT Image 2.5 Sunburst" (Deep typography, textures & editing fidelity)
+2. Aspect Ratio: "1:1" Square (Instagram Feed), "9:16" Vertical (Story/Reels), "16:9" Landscape, or "3:4" Portrait?
+3. Visual Aesthetic/Style: Photorealistic, Cinematic, Cyberpunk, 3D Render, or Minimalist?
 Once confirmed, call ZeroLens generate_image and embed the resulting image directly in the chat with markdown: ![Image](url).`
             }
           }
@@ -228,7 +235,11 @@ Once confirmed, call ZeroLens generate_image and embed the resulting image direc
             role: 'user',
             content: {
               type: 'text',
-              text: `I want to create a ${count}-slide carousel about "${topic}". First, confirm the aspect ratio (recommended: ${ratio}) and style with me. Then plan the title, slide content, and invoke ZeroLens generate_image for each slide, embedding every image directly into the chat with Markdown (![Slide](url)).`
+              text: `I want to create a ${count}-slide carousel about "${topic}". First, confirm with me:
+1. Engine: "Nano Banana Lite" (fast & budget), "Nano Banana Pro" (ultra detail), "GPT Image 2.5 Flare" (fast GPT), or "GPT Image 2.5 Sunburst" (typography & editing)?
+2. Aspect Ratio: (recommended: ${ratio}, or 4:5 / 1:1)?
+3. Visual style aesthetic?
+Then plan the title, slide content, and invoke ZeroLens generate_image for each slide, embedding every image directly into the chat with Markdown (![Slide](url)).`
             }
           }
         ]
@@ -295,7 +306,8 @@ function formatToolCallResponseText(name, result) {
       `* **Engine:** \`${result.engine || 'Seedance 2.0'}\``,
       `* **Prompt:** "${result.prompt || ''}"`,
       `* **Aspect Ratio:** \`${result.aspect_ratio || '16:9'}\``,
-      `* **Duration:** \`${result.duration || 5}s\``,
+      `* **Resolution:** \`${result.resolution || '720p'}\``,
+      `* **Duration:** \`${result.duration || 10}s\``,
       `* **Shorts Credits Deducted:** \`${result.credits_used ?? 10}\``,
       `* **Job ID:** \`${result.generation_id || ''}\``,
       ``,

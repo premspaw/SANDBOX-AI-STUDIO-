@@ -4,7 +4,7 @@ export function getImageToolDefinitions() {
   return [
     {
       name: 'generate_image',
-      description: 'Generate high-fidelity AI images using ZeroLens engines (Nano Banana 2, GPT Image 2.5 Sunburst). INSTRUCTIONS: 1. If aspect_ratio or visual style is unspecified, ask the user to choose their preferred ratio (1:1 Square, 9:16 Story, 16:9 Landscape, 3:4 Portrait) and style before running. 2. When this tool returns, you MUST ALWAYS embed and render the image directly in the chat using Markdown: ![Image Description](image_url). Never only output a text link.',
+      description: 'Generate high-fidelity AI images using ZeroLens engines. SUPPORTED ENGINES: 1) "nano-banana-2-lite" (Nano Banana Lite - ultra fast & budget), 2) "nano-banana-pro" (Nano Banana Pro - ultra detail studio quality), 3) "gpt-image-2.5-flare" (GPT Image 2.5 Flare - fast high-quality GPT model), 4) "gpt-image-2.5-sunburst" (GPT Image 2.5 Sunburst - deep typography & textures), 5) "nano-banana-2" (standard). IMPORTANT INSTRUCTIONS FOR ASSISTANT: You MUST NEVER generate immediately without asking the user first. Always ask: 1) Which engine? (Nano Banana Lite for fast/budget, Nano Banana Pro for maximum studio detail, GPT Image 2.5 Flare for fast GPT, or GPT Image 2.5 Sunburst for deep fidelity), 2) Which aspect ratio? (1:1 Square, 9:16 Story/Reel, 16:9 Landscape, 3:4 Portrait), 3) Visual style aesthetic? Once confirmed, execute generate_image and ALWAYS render the image inline using Markdown: ![Image Description](image_url).',
       inputSchema: {
         type: 'object',
         properties: {
@@ -15,7 +15,7 @@ export function getImageToolDefinitions() {
           aspect_ratio: {
             type: 'string',
             enum: ['1:1', '16:9', '9:16', '3:4', '4:3'],
-            description: 'Image aspect ratio. Default: "1:1"',
+            description: 'Image aspect ratio: "1:1" (Square), "9:16" (Vertical/Story), "16:9" (Landscape/Banner), "3:4" (Portrait). Default: "1:1"',
             default: '1:1'
           },
           style: {
@@ -25,9 +25,9 @@ export function getImageToolDefinitions() {
           },
           model: {
             type: 'string',
-            enum: ['nano-banana-2', 'nano-banana-pro', 'nano-banana-2-lite', 'gpt-image-2.5-sunburst', 'gpt-image-2.5-flare', 'gpt-image-2'],
-            description: 'Image generation engine. "gpt-image-2.5-sunburst" = GPT Image 2.5 Sunburst (ultra editing/fidelity), "gpt-image-2.5-flare" = GPT Image 2.5 Flare (fast high-quality), "nano-banana-2" = standard high-quality, "nano-banana-pro" = ultra detail, "gpt-image-2" = OpenAI GPT Image 2.',
-            default: 'gpt-image-2.5-sunburst'
+            enum: ['nano-banana-2-lite', 'nano-banana-pro', 'gpt-image-2.5-flare', 'gpt-image-2.5-sunburst', 'nano-banana-2'],
+            description: 'Image generation engine: "nano-banana-2-lite" (fast/budget), "nano-banana-pro" (ultra detail studio), "gpt-image-2.5-flare" (fast high-quality GPT), "gpt-image-2.5-sunburst" (deep typography & fidelity). Default: "nano-banana-2-lite"',
+            default: 'nano-banana-2-lite'
           },
           reference_image_url: {
             type: 'string',

@@ -175,8 +175,8 @@ describe('ZeroLens OpenAI App / MCP Test Suite', () => {
 
     assert.equal(res.status, 'processing');
     assert.ok(res.generation_id.startsWith('gen_vid_'));
-    assert.equal(res.credits_used, 10);
-    assert.equal(mockShortsBalance, initialBalance - 10);
+    assert.equal(res.credits_used, 5);
+    assert.equal(mockShortsBalance, initialBalance - 5);
     assert.ok(res.check_instructions.includes('check_generation'));
     assert.ok(res.embedded_ui_url.includes('/api/mcp/ui/widget'));
   });

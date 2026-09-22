@@ -4,7 +4,7 @@ export function getVideoToolDefinitions() {
   return [
     {
       name: 'generate_video',
-      description: 'Generate cinematic AI videos using ZeroLens video engines. SUPPORTED MODELS: "seedance-2.5" (Seedance 2.5) and "omni-flash-1.1" (Gemini Omni Flash 1.1). IMPORTANT INSTRUCTIONS FOR ASSISTANT: You MUST NEVER generate immediately. Always ask the user first: 1) Which model? ("Seedance 2.5" or "Omni Flash 1.1"), 2) Which aspect ratio? ("16:9" Landscape or "9:16" Vertical Reel or "1:1" Square), 3) Which resolution? ("720p" or "480p"), 4) Duration? (5s default). Only execute this tool AFTER the user specifies these preferences.',
+      description: 'Generate cinematic AI videos using ZeroLens video engines. SUPPORTED MODELS: "seedance-2.5" (Seedance 2.5 cinematic), "seedance-fast" (Seedance 2 Fast - budget-friendly 720p), and "omni-flash-1.1" (Gemini Omni Flash 1.1). IMPORTANT INSTRUCTIONS FOR ASSISTANT: You MUST NEVER generate immediately. Always ask the user first: 1) Which model? ("seedance-2.5", "seedance-fast" for budget, or "omni-flash-1.1"), 2) Which aspect ratio? ("16:9" Landscape, "9:16" Vertical Reel, or "1:1" Square), 3) Which resolution? ("720p" default for Omni Flash/Fast, or "480p" budget default for Seedance 2.5), 4) Duration in seconds? (default: 10s, or 5s). Only execute this tool AFTER the user specifies or confirms these preferences.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -14,8 +14,8 @@ export function getVideoToolDefinitions() {
           },
           engine: {
             type: 'string',
-            enum: ['seedance-2.5', 'omni-flash-1.1', 'seedance-fast'],
-            description: 'Video generation engine. "seedance-2.5" = Seedance 2.5 (photorealistic cinematic motion), "omni-flash-1.1" = Gemini Omni Flash 1.1 (ultra-fast dynamic video), "seedance-fast" = Seedance Fast.',
+            enum: ['seedance-2.5', 'seedance-fast', 'omni-flash-1.1'],
+            description: 'Video generation engine. "seedance-2.5" = Seedance 2.5 (cinematic fidelity), "seedance-fast" = Seedance 2 Fast (budget-friendly high-quality 720p), "omni-flash-1.1" = Gemini Omni Flash 1.1.',
             default: 'seedance-2.5'
           },
           aspect_ratio: {
@@ -26,13 +26,13 @@ export function getVideoToolDefinitions() {
           },
           duration: {
             type: 'number',
-            description: 'Duration in seconds (typically 5 or 8). Default: 5',
-            default: 5
+            description: 'Duration in seconds (e.g. 5, 8, 10). Default: 10',
+            default: 10
           },
           resolution: {
             type: 'string',
             enum: ['720p', '480p'],
-            description: 'Resolution of the rendered video. "720p" (high fidelity) or "480p" (fast). Default: "720p"',
+            description: 'Resolution of the rendered video. "720p" (default for Omni Flash & Seedance Fast) or "480p" (default for Seedance 2.5). Default: "720p"',
             default: '720p'
           },
           first_frame_url: {
@@ -69,10 +69,9 @@ export async function executeGenerateVideo(args, user, deps) {
 
   const {
     prompt,
-    engine = 'seedance-fast',
+    engine = 'seedance-2.5',
     aspect_ratio = '16:9',
-    duration = 5,
-    resolution = '720p',
+    duration = 10,
     first_frame_url,
     last_frame_url,
     generate_audio = false,
@@ -83,12 +82,23 @@ export async function executeGenerateVideo(args, user, deps) {
     throw new Error('Missing or empty prompt parameter.');
   }
 
+  // Resolve default resolution based on engine if not provided
+  let resolution = args.resolution;
+  if (!resolution) {
+    if (engine === 'seedance-2.5') {
+      resolution = '480p'; // Default 480p for Seedance 2.5
+    } else {
+      resolution = '720p'; // Default 720p for Omni Flash & Seedance Fast
+    }
+  }
+
   // Cost calculation
   let cost = 10;
-  if (resolution === '480p') cost = 6;
-  if (engine.toLowerCase().includes('omni')) cost = 8;
-  if (engine === 'seedace') cost = 15;
-  if (engine === 'veo-3.1-generate-preview' || engine.includes('veo')) cost = 20;
+  if (engine === 'seedance-fast') cost = 5;
+  else if (engine.toLowerCase().includes('omni')) cost = 6;
+  else if (engine === 'seedance-2.5') cost = (resolution === '480p' ? 8 : 10);
+  else if (engine === 'seedace') cost = 15;
+  else if (engine === 'veo-3.1-generate-preview' || engine.includes('veo')) cost = 20;
 
   const {
     consumeCredits,
@@ -129,7 +139,10 @@ export async function executeGenerateVideo(args, user, deps) {
   const generationId = `gen_vid_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const appBaseUrl = (process.env.PUBLIC_APP_URL || 'https://zerolens.in').replace(/\/+$/, '');
   const isOmni = engine.toLowerCase().includes('omni');
-  const targetKieModel = (resolution === '480p') ? 'bytedance/seedance-2-fast' : 'bytedance/seedance-2-5';
+  let targetKieModel = 'bytedance/seedance-2-5';
+  if (engine === 'seedance-fast' || resolution === '480p') {
+    targetKieModel = 'bytedance/seedance-2-fast';
+  }
 
   const jobPayload = {
     jobId: generationId,
@@ -138,7 +151,7 @@ export async function executeGenerateVideo(args, user, deps) {
     targetModel: targetKieModel,
     aspectRatio: aspect_ratio,
     aspect_ratio,
-    duration: Number(duration) || 5,
+    duration: Number(duration) || 10,
     resolution,
     firstFrame: first_frame_url,
     lastFrame: last_frame_url,
