@@ -4,7 +4,7 @@ export function getVideoToolDefinitions() {
   return [
     {
       name: 'generate_video',
-      description: 'Generates cinematic AI videos using ZeroLens studio engines. REQUIRED USER CONFIRMATION: You MUST NEVER invoke this tool on your first response or without explicit user confirmation! Whenever the user asks to generate a video or animation, you MUST first reply outlining the proposed scene, engine, aspect ratio, resolution, and duration (default: 10s), and ask: "Shall I create this video now? (Yes/No)". ONLY call generate_video AFTER the user explicitly replies "Yes" or gives clear confirmation. Supported engines: "seedance-2.5" (cinematic, default 480p), "seedance-fast" (budget 720p, 5 credits), "omni-flash-1.1" (Gemini Omni Flash 1.1, 6 credits). Duration defaults to 10s.',
+      description: 'Generates cinematic AI videos using ZeroLens studio engines. REQUIRED USER CONFIRMATION: You MUST NEVER invoke this tool on your first response or without explicit user confirmation! Whenever the user asks to generate a video or animation, you MUST first reply outlining the proposed scene, engine, aspect ratio, resolution, duration (default: 10s), and the credit cost (cost is strictly PER SECOND of video: e.g. 10s = 50 credits at 5 credits/sec), and ask: "Shall I create this video now? (Yes/No)". ONLY call generate_video AFTER the user explicitly replies "Yes" or gives clear confirmation. Supported engines: "seedance-2.5" (cinematic, 8 credits/sec at 480p, 10 credits/sec at 720p), "seedance-fast" (budget 720p, 5 credits/sec), "omni-flash-1.1" (Gemini Omni Flash 1.1, 5 credits/sec, 6 with audio). Duration defaults to 10s.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -97,13 +97,25 @@ export async function executeGenerateVideo(args, user, deps) {
     }
   }
 
-  // Cost calculation
-  let cost = 10;
-  if (engine === 'seedance-fast') cost = 5;
-  else if (engine.toLowerCase().includes('omni')) cost = 6;
-  else if (engine === 'seedance-2.5') cost = (resolution === '480p' ? 8 : 10);
-  else if (engine === 'seedace') cost = 15;
-  else if (engine === 'veo-3.1-generate-preview' || engine.includes('veo')) cost = 20;
+  // Video duration in seconds (default: 10s)
+  const durationSec = Math.max(Number(duration) || 10, 1);
+
+  // Per-second rate calculation
+  let costPerSec = 5;
+  if (engine === 'seedance-fast') {
+    costPerSec = 5;
+  } else if (engine.toLowerCase().includes('omni')) {
+    costPerSec = generate_audio ? 6 : 5;
+  } else if (engine === 'seedance-2.5') {
+    costPerSec = (resolution === '480p' ? 8 : 10);
+  } else if (engine === 'seedace') {
+    costPerSec = 15;
+  } else if (engine === 'veo-3.1-generate-preview' || engine.includes('veo')) {
+    costPerSec = 20;
+  }
+
+  // Total cost = costPerSec * durationSec
+  const cost = costPerSec * durationSec;
 
   const {
     consumeCredits,
@@ -203,8 +215,9 @@ export async function executeGenerateVideo(args, user, deps) {
     engine,
     prompt,
     aspect_ratio,
-    duration,
+    duration: durationSec,
     resolution,
+    cost_per_second: costPerSec,
     credits_used: cost,
     estimated_seconds: engine.includes('fast') ? 40 : 80,
     check_instructions: `Call the "check_generation" tool with generation_id "${generationId}" to retrieve render progress and the final video URL.`,

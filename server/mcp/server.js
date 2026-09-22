@@ -349,6 +349,8 @@ export function formatToolCallResponseText(name, result) {
   }
 
   if (name === 'generate_video') {
+    const duration = result.duration || 10;
+    const rate = result.cost_per_second || (result.credits_used ? Math.round(result.credits_used / duration) : 5);
     return [
       `### 🎬 Generated via ZeroLens Studio`,
       ``,
@@ -357,8 +359,10 @@ export function formatToolCallResponseText(name, result) {
       `* **Prompt:** "${result.prompt || ''}"`,
       `* **Aspect Ratio:** \`${result.aspect_ratio || '16:9'}\``,
       `* **Resolution:** \`${result.resolution || '720p'}\``,
-      `* **Duration:** \`${result.duration || 10}s\``,
-      `* **Shorts Credits Deducted:** \`${result.credits_used ?? 10}\``,
+      `* **Duration:** \`${duration}s\``,
+      `* **Rate:** \`${rate} Shorts/sec\``,
+      `* **Shorts Credits Deducted:** \`${result.credits_used ?? (duration * rate)}\` (${duration}s × ${rate} credits/sec)`,
+      `* **Remaining Shorts Balance:** \`${result.remaining_balance ?? 'N/A'}\``,
       `* **Job ID:** \`${result.generation_id || ''}\``,
       ``,
       result.video_url
