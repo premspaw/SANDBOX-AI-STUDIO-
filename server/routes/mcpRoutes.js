@@ -8,7 +8,10 @@ import {
   handleAuthorizeGet,
   handleAuthorizePost,
   handleTokenPost,
-  handleUserInfoGet
+  handleUserInfoGet,
+  getOAuthMetadata,
+  handleClientRegistration,
+  handleJwksGet
 } from '../mcp/auth/oauthHandler.js';
 import { renderWidgetHtml } from '../mcp/ui/widgetRenderer.js';
 
@@ -20,6 +23,31 @@ export default function createMcpRouter(deps = {}) {
 
   // Parse URL-encoded bodies for OAuth form submissions
   router.use(express.urlencoded({ extended: true }));
+
+  // ─────────────────────────────────────────────────────────────
+  // OAUTH 2.0 & OIDC DISCOVERY (RFC 8414)
+  // ─────────────────────────────────────────────────────────────
+  const sendOAuthDiscovery = (req, res) => {
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const host = req.get('host') || 'zerolens.in';
+    const baseUrl = `${protocol}://${host}`;
+    res.setHeader('Content-Type', 'application/json');
+    res.json(getOAuthMetadata(baseUrl));
+  };
+
+  router.get([
+    '/.well-known/oauth-authorization-server',
+    '/.well-known/openid-configuration',
+    '/.well-known/oauth-authorization-server/api/mcp'
+  ], sendOAuthDiscovery);
+
+  router.post('/auth/register', async (req, res) => {
+    await handleClientRegistration(req, res);
+  });
+
+  router.get('/auth/jwks.json', (req, res) => {
+    handleJwksGet(req, res);
+  });
 
   // ─────────────────────────────────────────────────────────────
   // 1. STREAMABLE HTTP ENDPOINT (ChatGPT Connectors / OpenAI Apps)

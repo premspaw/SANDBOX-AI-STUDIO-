@@ -2140,6 +2140,7 @@ import createAdminRouter from './server/routes/adminRoutes.js';
 import createAvatarRouter from './server/routes/avatar.js';
 import createYourVoiceRouter from './server/routes/yourVoiceRoutes.js';
 import createMcpRouter from './server/routes/mcpRoutes.js';
+import { getOAuthMetadata } from './server/mcp/auth/oauthHandler.js';
 
 // ── MCP (Model Context Protocol & ChatGPT Actions Gateway) ───────────────────
 const mcpRouterInstance = createMcpRouter(deps);
@@ -2148,6 +2149,19 @@ app.use('/mcp', mcpRouterInstance);
 app.use(['/sse', '/sse/'], (req, res, next) => {
   req.url = '/sse' + (req.url === '/' ? '' : req.url);
   mcpRouterInstance(req, res, next);
+});
+
+// OAuth 2.0 & OIDC Discovery Metadata (RFC 8414 / PKCE S256 for ChatGPT Apps & Connectors)
+app.get([
+  '/.well-known/oauth-authorization-server',
+  '/.well-known/openid-configuration',
+  '/.well-known/oauth-authorization-server/api/mcp'
+], (req, res) => {
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+  const host = req.get('host') || 'zerolens.in';
+  const baseUrl = `${protocol}://${host}`;
+  res.setHeader('Content-Type', 'application/json');
+  res.json(getOAuthMetadata(baseUrl));
 });
 
 // ── Credits ──────────────────────────────────────────────────────────────────

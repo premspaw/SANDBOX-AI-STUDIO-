@@ -504,3 +504,62 @@ export async function handleUserInfoGet(req, res, user) {
     name: user.email ? user.email.split('@')[0] : 'ZeroLens Creator'
   });
 }
+
+/**
+ * Returns RFC 8414 & OpenID Connect Discovery Metadata
+ * Informs ChatGPT that PKCE S256 is supported and provides endpoints
+ */
+export function getOAuthMetadata(baseUrl = 'https://zerolens.in') {
+  const cleanBase = baseUrl.replace(/\/+$/, '');
+  return {
+    issuer: cleanBase,
+    authorization_endpoint: `${cleanBase}/api/mcp/auth/authorize`,
+    token_endpoint: `${cleanBase}/api/mcp/auth/token`,
+    userinfo_endpoint: `${cleanBase}/api/mcp/auth/userinfo`,
+    registration_endpoint: `${cleanBase}/api/mcp/auth/register`,
+    jwks_uri: `${cleanBase}/api/mcp/auth/jwks.json`,
+    response_types_supported: ['code'],
+    response_modes_supported: ['query'],
+    grant_types_supported: ['authorization_code', 'refresh_token'],
+    token_endpoint_auth_methods_supported: ['client_secret_post', 'client_secret_basic', 'none'],
+    code_challenge_methods_supported: ['S256'],
+    scopes_supported: [
+      'openid',
+      'email',
+      'profile',
+      'generate_image',
+      'generate_video',
+      'check_generation',
+      'list_projects',
+      'get_usage'
+    ]
+  };
+}
+
+/**
+ * Handle RFC 7591 Dynamic Client Registration (DCR)
+ */
+export async function handleClientRegistration(req, res) {
+  const { client_name = 'ChatGPT', redirect_uris = [] } = req.body || {};
+  const clientId = `zl_client_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+  const clientSecret = `zl_secret_${crypto.randomBytes(16).toString('hex')}`;
+
+  return res.status(201).json({
+    client_id: clientId,
+    client_secret: clientSecret,
+    client_name,
+    redirect_uris,
+    grant_types: ['authorization_code', 'refresh_token'],
+    response_types: ['code'],
+    token_endpoint_auth_method: 'client_secret_post'
+  });
+}
+
+/**
+ * Handle GET /api/mcp/auth/jwks.json
+ */
+export function handleJwksGet(req, res) {
+  res.setHeader('Content-Type', 'application/json');
+  return res.json({ keys: [] });
+}
+
