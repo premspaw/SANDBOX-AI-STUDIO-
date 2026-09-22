@@ -175,6 +175,8 @@ export async function executeGenerateImage(args, user, deps) {
     const widgetUrl = `${appBaseUrl}/api/mcp/ui/widget?id=${generationId}&type=image&status=completed&url=${encodeURIComponent(previewUrl)}`;
 
     return {
+      branding: '✨ Generated via ZeroLens Studio (zerolens.in)',
+      provider: 'ZeroLens AI Studio',
       generation_id: generationId,
       status: 'completed',
       type: 'image',

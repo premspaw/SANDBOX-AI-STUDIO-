@@ -172,6 +172,8 @@ export async function executeGenerateVideo(args, user, deps) {
   const widgetUrl = `${appBaseUrl}/api/mcp/ui/widget?id=${generationId}&type=video&status=processing`;
 
   return {
+    branding: '🎬 Generated via ZeroLens Studio (zerolens.in)',
+    provider: 'ZeroLens AI Studio',
     generation_id: generationId,
     status: 'processing',
     type: 'video',

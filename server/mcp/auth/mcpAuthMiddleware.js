@@ -10,6 +10,11 @@ import { verifyAccessToken } from './oauthHandler.js';
 export async function resolveMcpUser(req, deps = {}) {
   const authHeader = (req.headers && (req.headers['authorization'] || req.headers['Authorization'])) || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+  const directCandidate = token
+    || (req.headers && (req.headers['x-api-key'] || req.headers['x-user-id'] || req.headers['x-zerolens-key']))
+    || (req.query && (req.query.api_key || req.query.user_id));
+
+  const adminClient = deps.supabaseAdmin || deps.supabase;
 
   if (token) {
     // 1. Check if token is ZeroLens OAuth Access Token
@@ -24,7 +29,6 @@ export async function resolveMcpUser(req, deps = {}) {
     }
 
     // 2. Check if token is a Supabase JWT Token
-    const adminClient = deps.supabaseAdmin || deps.supabase;
     if (adminClient && adminClient.auth) {
       try {
         const { data, error } = await adminClient.auth.getUser(token);
@@ -42,7 +46,49 @@ export async function resolveMcpUser(req, deps = {}) {
     }
   }
 
-  // 3. Fallback for public / unauthenticated MCP clients (e.g. ChatGPT "No Authentication" mode)
+  // 3. Check if candidate is a direct ZeroLens User ID (UUID) or user email
+  if (directCandidate && typeof directCandidate === 'string' && adminClient) {
+    try {
+      const cleanCandidate = directCandidate.trim();
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanCandidate);
+
+      if (isUuid) {
+        const { data: profile } = await adminClient
+          .from('profiles')
+          .select('id, email, role')
+          .eq('id', cleanCandidate)
+          .maybeSingle();
+
+        if (profile?.id) {
+          return {
+            id: profile.id,
+            email: profile.email || 'user@zerolens.in',
+            role: profile.role || 'authenticated',
+            authMethod: 'user_id'
+          };
+        }
+      } else if (cleanCandidate.includes('@')) {
+        const { data: profile } = await adminClient
+          .from('profiles')
+          .select('id, email, role')
+          .eq('email', cleanCandidate.toLowerCase())
+          .maybeSingle();
+
+        if (profile?.id) {
+          return {
+            id: profile.id,
+            email: profile.email,
+            role: profile.role || 'authenticated',
+            authMethod: 'user_email'
+          };
+        }
+      }
+    } catch (dbErr) {
+      console.warn('[MCP Auth] Profile resolution error:', dbErr.message);
+    }
+  }
+
+  // 4. Fallback for public / unauthenticated MCP clients (e.g. ChatGPT "No Authentication" mode)
   return {
     id: process.env.DEFAULT_MCP_USER_ID || process.env.DEV_MOCK_USER_ID || 'cec79985-ce59-4d23-82a2-3ae6f69994ed',
     email: 'guest@zerolens.in',

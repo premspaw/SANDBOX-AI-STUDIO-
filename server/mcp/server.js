@@ -97,6 +97,91 @@ export function createZeroLensMcpServer(userContext = null, deps = {}) {
     };
   });
 
+/**
+ * Formats the response text for ChatGPT / Claude / AI agents so it prominently
+ * features ZeroLens Studio branding, credits, and markdown-rendered media.
+ */
+function formatToolCallResponseText(name, result) {
+  if (!result || typeof result !== 'object') {
+    return typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+  }
+
+  if (name === 'generate_image') {
+    const urls = result.urls || (result.url ? [result.url] : []);
+    const imgMarkdown = urls
+      .map((u, i) => `**Output ${i + 1}:**\n![ZeroLens Image ${i + 1}](${u})\n[📥 View & Download Image ${i + 1}](${u})`)
+      .join('\n\n');
+
+    return [
+      `### 🎨 Generated via ZeroLens Studio`,
+      ``,
+      `* **Prompt:** "${result.prompt || ''}"`,
+      `* **Engine:** \`${result.model || 'Nano Banana 2'}\``,
+      `* **Aspect Ratio:** \`${result.aspect_ratio || '1:1'}\``,
+      `* **Shorts Credits Deducted:** \`${result.credits_used ?? 1}\``,
+      `* **Remaining Shorts Balance:** \`${result.remaining_balance ?? 'N/A'}\``,
+      `* **Job ID:** \`${result.generation_id || ''}\``,
+      ``,
+      imgMarkdown,
+      ``,
+      `---`,
+      `*Created with [ZeroLens Studio](https://zerolens.in)*`
+    ].join('\n');
+  }
+
+  if (name === 'generate_video') {
+    return [
+      `### 🎬 Generated via ZeroLens Studio`,
+      ``,
+      `* **Status:** \`${result.status || 'processing'}\``,
+      `* **Engine:** \`${result.engine || 'Seedance 2.0'}\``,
+      `* **Prompt:** "${result.prompt || ''}"`,
+      `* **Aspect Ratio:** \`${result.aspect_ratio || '16:9'}\``,
+      `* **Duration:** \`${result.duration || 5}s\``,
+      `* **Shorts Credits Deducted:** \`${result.credits_used ?? 10}\``,
+      `* **Job ID:** \`${result.generation_id || ''}\``,
+      ``,
+      result.video_url
+        ? `[🎥 Watch Generated Video](${result.video_url})`
+        : `⏳ **Rendering in progress.** *Please call \`check_generation\` with Job ID \`${result.generation_id}\` to retrieve the video link.*`,
+      ``,
+      `---`,
+      `*Created with [ZeroLens Studio](https://zerolens.in)*`
+    ].join('\n');
+  }
+
+  if (name === 'check_generation') {
+    if (result.status === 'completed' && (result.video_url || result.output_url)) {
+      const mediaUrl = result.video_url || result.output_url;
+      return [
+        `### ✨ ZeroLens Studio: Media Ready!`,
+        ``,
+        `* **Status:** \`completed\``,
+        `* **Job ID:** \`${result.generation_id || ''}\``,
+        `* **Media URL:** [📥 Download / Watch Result](${mediaUrl})`,
+        ``,
+        `---`,
+        `*Created with [ZeroLens Studio](https://zerolens.in)*`
+      ].join('\n');
+    }
+  }
+
+  if (name === 'get_usage') {
+    return [
+      `### 💳 ZeroLens Studio Account Status`,
+      ``,
+      `* **User:** \`${result.email || 'Creator'}\``,
+      `* **Shorts Balance:** \`${result.shorts_balance ?? 0} Credits\``,
+      `* **Subscription Tier:** \`${result.tier || 'Standard'}\``,
+      ``,
+      `---`,
+      `*Manage your account at [ZeroLens Studio](https://zerolens.in)*`
+    ].join('\n');
+  }
+
+  return JSON.stringify(result, null, 2);
+}
+
   // Call tool handler - returns both structuredContent and content for OpenAI Deep Research & Plugin compatibility
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
@@ -108,14 +193,14 @@ export function createZeroLensMcpServer(userContext = null, deps = {}) {
 
     try {
       const result = await dispatchMcpToolCall(name, args || {}, activeUser, deps);
-      const jsonString = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+      const responseText = formatToolCallResponseText(name, result);
 
       return {
         structuredContent: result,
         content: [
           {
             type: 'text',
-            text: jsonString
+            text: responseText
           }
         ]
       };
