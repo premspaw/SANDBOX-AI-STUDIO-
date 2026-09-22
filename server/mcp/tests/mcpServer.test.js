@@ -287,4 +287,26 @@ describe('ZeroLens OpenAI App / MCP Test Suite', () => {
     assert.ok(videoHtml.includes('Open in ZeroLens'));
   });
 
+  // 11. OpenAI Deep Research 'search' tool
+  it('11. OpenAI Deep Research: search tool returns results with valid canonical citation URLs', async () => {
+    const searchRes = await dispatchMcpToolCall('search', { query: 'seedance cinematic' }, mockUser, mockDeps);
+    assert.ok(Array.isArray(searchRes.results), 'results should be an array');
+    assert.ok(searchRes.results.length > 0, 'should return matching results');
+
+    const first = searchRes.results[0];
+    assert.ok(first.id, 'result must have id');
+    assert.ok(first.title, 'result must have title');
+    assert.ok(first.url && typeof first.url === 'string' && first.url.startsWith('http'), 'result must have valid citation url');
+  });
+
+  // 12. OpenAI Deep Research 'fetch' tool
+  it('12. OpenAI Deep Research: fetch tool retrieves full content and metadata by ID', async () => {
+    const fetchRes = await dispatchMcpToolCall('fetch', { id: 'kb_seedance_prompting_guide' }, mockUser, mockDeps);
+    assert.equal(fetchRes.id, 'kb_seedance_prompting_guide');
+    assert.ok(fetchRes.title, 'fetch result must have title');
+    assert.ok(fetchRes.text && fetchRes.text.length > 20, 'fetch result must have full text content');
+    assert.ok(fetchRes.url && fetchRes.url.startsWith('https://'), 'fetch result must have valid canonical citation url');
+    assert.ok(fetchRes.metadata, 'fetch result must have metadata');
+  });
+
 });

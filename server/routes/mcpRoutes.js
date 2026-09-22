@@ -66,12 +66,17 @@ export default function createMcpRouter(deps = {}) {
   });
 
   // ─────────────────────────────────────────────────────────────
-  // 2. REMOTE SSE ENDPOINTS (Backward Compatibility)
+  // 2. REMOTE SSE ENDPOINTS (Backward Compatibility & Deep Research)
   // ─────────────────────────────────────────────────────────────
-  router.get('/sse', async (req, res) => {
+  router.get(['/sse', '/sse/'], async (req, res) => {
     try {
       const user = await resolveMcpUser(req, deps);
-      const transport = new SSEServerTransport('/api/mcp/messages', res);
+      const host = req.get('host') || 'zerolens.in';
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+      const baseUrl = (process.env.PUBLIC_APP_URL || `${protocol}://${host}`).replace(/\/+$/, '');
+      const messagesUrl = `${baseUrl}/api/mcp/messages`;
+
+      const transport = new SSEServerTransport(messagesUrl, res);
       const server = createZeroLensMcpServer(user, deps);
 
       activeSseTransports.set(transport.sessionId, { transport, server, user });
@@ -90,7 +95,7 @@ export default function createMcpRouter(deps = {}) {
     }
   });
 
-  router.post('/messages', async (req, res) => {
+  router.post(['/messages', '/messages/'], async (req, res) => {
     const sessionId = req.query.sessionId;
     const session = activeSseTransports.get(sessionId);
 
@@ -171,6 +176,37 @@ export default function createMcpRouter(deps = {}) {
     res.json({
       tools: getAllMcpTools()
     });
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // 6. CHATGPT CUSTOM GPT ACTIONS REST DISPATCHER
+  // ─────────────────────────────────────────────────────────────
+  router.post('/action/:actionName', async (req, res) => {
+    try {
+      const user = await resolveMcpUser(req, deps);
+      const { actionName } = req.params;
+
+      const result = await dispatchMcpToolCall(actionName, req.body || {}, user, deps);
+      const jsonString = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+
+      res.json({
+        structuredContent: result,
+        content: [
+          {
+            type: 'text',
+            text: jsonString
+          }
+        ]
+      });
+    } catch (err) {
+      console.error(`[MCP Action Error] ${req.params.actionName}:`, err);
+      const status = err.message?.includes('Unauthorized') ? 401 :
+                     err.message?.includes('credits') ? 402 :
+                     err.message?.includes('Missing') ? 400 : 500;
+      res.status(status).json({
+        error: err.message
+      });
+    }
   });
 
   // ─────────────────────────────────────────────────────────────

@@ -42,17 +42,13 @@ export async function resolveMcpUser(req, deps = {}) {
     }
   }
 
-  // 3. Dev Mode fallback
-  if (process.env.NODE_ENV !== 'production') {
-    return {
-      id: process.env.DEV_MOCK_USER_ID || 'cec79985-ce59-4d23-82a2-3ae6f69994ed',
-      email: 'dev@zerolens.in',
-      role: 'admin',
-      authMethod: 'dev_mock'
-    };
-  }
-
-  return null;
+  // 3. Fallback for public / unauthenticated MCP clients (e.g. ChatGPT "No Authentication" mode)
+  return {
+    id: process.env.DEFAULT_MCP_USER_ID || process.env.DEV_MOCK_USER_ID || 'cec79985-ce59-4d23-82a2-3ae6f69994ed',
+    email: 'guest@zerolens.in',
+    role: 'authenticated',
+    authMethod: 'anonymous'
+  };
 }
 
 /**

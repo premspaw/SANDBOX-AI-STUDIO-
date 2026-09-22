@@ -11,6 +11,7 @@ import { getVideoToolDefinitions, executeGenerateVideo } from './tools/videoTool
 import { getStatusToolDefinitions, executeCheckGeneration } from './tools/statusTools.js';
 import { getProjectToolDefinitions, executeListProjects, executeGetProject } from './tools/projectTools.js';
 import { getUsageToolDefinitions, executeGetUsage } from './tools/usageTools.js';
+import { getSearchToolDefinitions, executeSearch, executeFetch } from './tools/searchTools.js';
 
 // Legacy tools for backward compatibility with Claude / Cursor
 import { registerCinemaTools, handleCinemaToolCall } from './tools/cinemaTools.js';
@@ -22,6 +23,7 @@ import { registerMarketingTools, handleMarketingToolCall } from './tools/marketi
  */
 export function getAllMcpTools() {
   return [
+    ...getSearchToolDefinitions(),
     ...getImageToolDefinitions(),
     ...getVideoToolDefinitions(),
     ...getStatusToolDefinitions(),
@@ -35,6 +37,12 @@ export function getAllMcpTools() {
  */
 export async function dispatchMcpToolCall(name, args, user, deps = {}) {
   switch (name) {
+    case 'search':
+      return await executeSearch(args, user, deps);
+
+    case 'fetch':
+      return await executeFetch(args, user, deps);
+
     case 'generate_image':
       return await executeGenerateImage(args, user, deps);
 
@@ -89,7 +97,7 @@ export function createZeroLensMcpServer(userContext = null, deps = {}) {
     };
   });
 
-  // Call tool handler
+  // Call tool handler - returns both structuredContent and content for OpenAI Deep Research & Plugin compatibility
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     const activeUser = userContext || {
@@ -100,11 +108,14 @@ export function createZeroLensMcpServer(userContext = null, deps = {}) {
 
     try {
       const result = await dispatchMcpToolCall(name, args || {}, activeUser, deps);
+      const jsonString = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+
       return {
+        structuredContent: result,
         content: [
           {
             type: 'text',
-            text: JSON.stringify(result, null, 2)
+            text: jsonString
           }
         ]
       };

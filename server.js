@@ -2145,6 +2145,10 @@ import createMcpRouter from './server/routes/mcpRoutes.js';
 const mcpRouterInstance = createMcpRouter(deps);
 app.use('/api/mcp', mcpRouterInstance);
 app.use('/mcp', mcpRouterInstance);
+app.use(['/sse', '/sse/'], (req, res, next) => {
+  req.url = '/sse' + (req.url === '/' ? '' : req.url);
+  mcpRouterInstance(req, res, next);
+});
 
 // ── Credits ──────────────────────────────────────────────────────────────────
 app.use('/api', createCreditsRouter(deps));
