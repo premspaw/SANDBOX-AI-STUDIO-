@@ -1,7 +1,9 @@
 .git
 .agent
+.agents
 .cursor
 .vscode
+.venv
 node_modules
 dist
 .npm-cache
@@ -14,3 +16,16 @@ coverage
 playwright-report
 test-results
 scratch
+scripts
+docs
+*.json.bak
+freeeapi-*.json
+project-*.json
+*-api-*.json
+*service-account*.json
+*credentials*.json
+local_assets.json
+*.timestamp-*.mjs
+*.py
+*.bat
+*.skill

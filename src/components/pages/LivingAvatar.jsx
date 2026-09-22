@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '../../store';
 import { 
   supabase 
@@ -163,7 +163,7 @@ export default function LivingAvatar() {
   const audioInputRef = useRef(null);
 
   // Fetch Saved Characters from Vault
-  const fetchVaultCharacters = async () => {
+  const fetchVaultCharacters = useCallback(async () => {
     if (!userId || userId === 'anon') return;
     setLoadingVault(true);
     try {
@@ -177,11 +177,11 @@ export default function LivingAvatar() {
     } finally {
       setLoadingVault(false);
     }
-  };
+  }, [userId]);
 
   useEffect(() => {
     fetchVaultCharacters();
-  }, [userId]);
+  }, [fetchVaultCharacters]);
 
   // Image Upload Helper
   const handleImageSelect = (e, setter) => {

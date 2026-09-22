@@ -24,7 +24,7 @@ export const extractVideoFrame = (videoSrc, atTime = 0) => {
       !cleanSrc.includes('/api/proxy-image') &&
       !cleanSrc.includes('localhost') &&
       !cleanSrc.includes('127.0.0.1') &&
-      (!typeof window !== 'undefined' || !cleanSrc.includes(window.location.host))
+      (typeof window !== 'undefined' && !cleanSrc.includes(window.location.host))
     ) {
       targetSrc = getApiUrl(`/api/proxy-image?url=${encodeURIComponent(cleanSrc)}&cors=1`);
     }

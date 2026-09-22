@@ -45,7 +45,9 @@ COPY --from=builder /app/services ./services
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/src/services ./src/services
 COPY --from=builder /app/src/config ./src/config
-COPY --from=builder /app/*.json ./
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/models_list.json ./models_list.json
+COPY --from=builder /app/cors.json ./cors.json
 
 # Set Environment Variables
 ENV NODE_ENV=production
