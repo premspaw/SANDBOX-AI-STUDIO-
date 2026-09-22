@@ -4,7 +4,7 @@ export function getVideoToolDefinitions() {
   return [
     {
       name: 'generate_video',
-      description: 'Generate cinematic AI videos using ZeroLens video engines. SUPPORTED MODELS: "seedance-2.5" (Seedance 2.5 cinematic), "seedance-fast" (Seedance 2 Fast - budget-friendly 720p), and "omni-flash-1.1" (Gemini Omni Flash 1.1). IMPORTANT INSTRUCTIONS FOR ASSISTANT: You MUST NEVER generate immediately. Always ask the user first: 1) Which model? ("seedance-2.5", "seedance-fast" for budget, or "omni-flash-1.1"), 2) Which aspect ratio? ("16:9" Landscape, "9:16" Vertical Reel, or "1:1" Square), 3) Which resolution? ("720p" default for Omni Flash/Fast, or "480p" budget default for Seedance 2.5), 4) Duration in seconds? (default: 10s, or 5s). Only execute this tool AFTER the user specifies or confirms these preferences.',
+      description: 'Generates cinematic AI videos using ZeroLens studio engines. REQUIRED USER CONFIRMATION: You MUST NEVER invoke this tool on your first response or without explicit user confirmation! Whenever the user asks to generate a video or animation, you MUST first reply outlining the proposed scene, engine, aspect ratio, resolution, and duration (default: 10s), and ask: "Shall I create this video now? (Yes/No)". ONLY call generate_video AFTER the user explicitly replies "Yes" or gives clear confirmation. Supported engines: "seedance-2.5" (cinematic, default 480p), "seedance-fast" (budget 720p, 5 credits), "omni-flash-1.1" (Gemini Omni Flash 1.1, 6 credits). Duration defaults to 10s.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -34,6 +34,11 @@ export function getVideoToolDefinitions() {
             enum: ['720p', '480p'],
             description: 'Resolution of the rendered video. "720p" (default for Omni Flash & Seedance Fast) or "480p" (default for Seedance 2.5). Default: "720p"',
             default: '720p'
+          },
+          user_confirmed: {
+            type: 'boolean',
+            description: 'Must be true. Confirms that the user explicitly replied "Yes" to create the video.',
+            default: false
           },
           first_frame_url: {
             type: 'string',

@@ -1,7 +1,7 @@
 import express from 'express';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { createZeroLensMcpServer, dispatchMcpToolCall, getAllMcpTools } from '../mcp/server.js';
+import { createZeroLensMcpServer, dispatchMcpToolCall, getAllMcpTools, formatToolCallResponseText } from '../mcp/server.js';
 import { generateOpenAPISpec } from '../mcp/openapiSpec.js';
 import { resolveMcpUser } from '../mcp/auth/mcpAuthMiddleware.js';
 import {
@@ -234,14 +234,15 @@ export default function createMcpRouter(deps = {}) {
       const { actionName } = req.params;
 
       const result = await dispatchMcpToolCall(actionName, req.body || {}, user, deps);
-      const jsonString = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+      const responseText = formatToolCallResponseText(actionName, result);
 
       res.json({
+        ...(typeof result === 'object' ? result : {}),
         structuredContent: result,
         content: [
           {
             type: 'text',
-            text: jsonString
+            text: responseText
           }
         ]
       });

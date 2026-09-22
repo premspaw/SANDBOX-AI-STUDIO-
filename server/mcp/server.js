@@ -266,22 +266,74 @@ Then plan the title, slide content, and invoke ZeroLens generate_image for each 
     throw new Error(`Unknown prompt: ${name}`);
   });
 
+  // Call tool handler - returns both structuredContent and content for OpenAI Deep Research & Plugin compatibility
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
+    const activeUser = userContext || {
+      id: process.env.DEV_MOCK_USER_ID || 'cec79985-ce59-4d23-82a2-3ae6f69994ed',
+      email: 'dev@zerolens.in',
+      role: 'authenticated'
+    };
+
+    try {
+      const result = await dispatchMcpToolCall(name, args || {}, activeUser, deps);
+      const responseText = formatToolCallResponseText(name, result);
+
+      const content = [
+        {
+          type: 'text',
+          text: responseText
+        }
+      ];
+
+      // Provide native image content block if base64 data is available
+      if (result?.base64_data) {
+        content.push({
+          type: 'image',
+          data: result.base64_data,
+          mimeType: result.mime_type || 'image/jpeg'
+        });
+      }
+
+      return {
+        structuredContent: result,
+        content
+      };
+    } catch (err) {
+      console.error(`[MCP Tool Error] ${name}:`, err);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error executing ${name}: ${err.message}`
+          }
+        ],
+        isError: true
+      };
+    }
+  });
+
+  return server;
+}
+
 /**
  * Formats the response text for ChatGPT / Claude / AI agents so it prominently
  * features ZeroLens Studio branding, credits, and markdown-rendered media.
  */
-function formatToolCallResponseText(name, result) {
+export function formatToolCallResponseText(name, result) {
   if (!result || typeof result !== 'object') {
     return typeof result === 'string' ? result : JSON.stringify(result, null, 2);
   }
 
   if (name === 'generate_image') {
-    const urls = result.urls || (result.url ? [result.url] : []);
+    const urls = result.proxy_urls || (result.url ? [result.url] : (result.urls || []));
     const imgMarkdown = urls
-      .map((u, i) => `**Output ${i + 1}:**\n![ZeroLens Image ${i + 1}](${u})\n[📥 View & Download Image ${i + 1}](${u})`)
+      .map((u, i) => `![ZeroLens Studio Image ${urls.length > 1 ? i + 1 : ''}](${u})`)
       .join('\n\n');
 
     return [
+      imgMarkdown,
+      ``,
       `### 🎨 Generated via ZeroLens Studio`,
       ``,
       `* **Prompt:** "${result.prompt || ''}"`,
@@ -290,8 +342,6 @@ function formatToolCallResponseText(name, result) {
       `* **Shorts Credits Deducted:** \`${result.credits_used ?? 1}\``,
       `* **Remaining Shorts Balance:** \`${result.remaining_balance ?? 'N/A'}\``,
       `* **Job ID:** \`${result.generation_id || ''}\``,
-      ``,
-      imgMarkdown,
       ``,
       `---`,
       `*Created with [ZeroLens Studio](https://zerolens.in)*`
@@ -303,7 +353,7 @@ function formatToolCallResponseText(name, result) {
       `### 🎬 Generated via ZeroLens Studio`,
       ``,
       `* **Status:** \`${result.status || 'processing'}\``,
-      `* **Engine:** \`${result.engine || 'Seedance 2.0'}\``,
+      `* **Engine:** \`${result.engine || 'Seedance 2.5'}\``,
       `* **Prompt:** "${result.prompt || ''}"`,
       `* **Aspect Ratio:** \`${result.aspect_ratio || '16:9'}\``,
       `* **Resolution:** \`${result.resolution || '720p'}\``,
@@ -350,43 +400,4 @@ function formatToolCallResponseText(name, result) {
   }
 
   return JSON.stringify(result, null, 2);
-}
-
-  // Call tool handler - returns both structuredContent and content for OpenAI Deep Research & Plugin compatibility
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params;
-    const activeUser = userContext || {
-      id: process.env.DEV_MOCK_USER_ID || 'cec79985-ce59-4d23-82a2-3ae6f69994ed',
-      email: 'dev@zerolens.in',
-      role: 'authenticated'
-    };
-
-    try {
-      const result = await dispatchMcpToolCall(name, args || {}, activeUser, deps);
-      const responseText = formatToolCallResponseText(name, result);
-
-      return {
-        structuredContent: result,
-        content: [
-          {
-            type: 'text',
-            text: responseText
-          }
-        ]
-      };
-    } catch (err) {
-      console.error(`[MCP Tool Error] ${name}:`, err);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Error executing ${name}: ${err.message}`
-          }
-        ],
-        isError: true
-      };
-    }
-  });
-
-  return server;
 }

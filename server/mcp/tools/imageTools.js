@@ -4,7 +4,7 @@ export function getImageToolDefinitions() {
   return [
     {
       name: 'generate_image',
-      description: 'Generate high-fidelity AI images using ZeroLens engines. SUPPORTED ENGINES: 1) "nano-banana-2-lite" (Nano Banana Lite - ultra fast & budget), 2) "nano-banana-pro" (Nano Banana Pro - ultra detail studio quality), 3) "gpt-image-2.5-flare" (GPT Image 2.5 Flare - fast high-quality GPT model), 4) "gpt-image-2.5-sunburst" (GPT Image 2.5 Sunburst - deep typography & textures), 5) "nano-banana-2" (standard). IMPORTANT INSTRUCTIONS FOR ASSISTANT: You MUST NEVER generate immediately without asking the user first. Always ask: 1) Which engine? (Nano Banana Lite for fast/budget, Nano Banana Pro for maximum studio detail, GPT Image 2.5 Flare for fast GPT, or GPT Image 2.5 Sunburst for deep fidelity), 2) Which aspect ratio? (1:1 Square, 9:16 Story/Reel, 16:9 Landscape, 3:4 Portrait), 3) Visual style aesthetic? Once confirmed, execute generate_image and ALWAYS render the image inline using Markdown: ![Image Description](image_url).',
+      description: 'Generates high-fidelity AI images using ZeroLens studio engines. REQUIRED USER CONFIRMATION: You MUST NEVER invoke this tool on your first response or without explicit user confirmation! Whenever the user asks to generate an image, slide, carousel, or graphic, you MUST first reply to the user outlining the proposed design, engine, and aspect ratio, and ask: "Shall I create this now? (Yes/No)". ONLY call generate_image AFTER the user explicitly replies "Yes" or gives clear confirmation. When this tool returns, you MUST render the visual image in your chat reply using Markdown: ![ZeroLens Studio Image](IMAGE_URL). Supported models: "nano-banana-2-lite" (0.5 credits, fast/budget), "nano-banana-pro" (3 credits, ultra detail), "gpt-image-2.5-flare" (1.5 credits), "gpt-image-2.5-sunburst" (2.5 credits), "nano-banana-2" (1 credit).',
       inputSchema: {
         type: 'object',
         properties: {
@@ -28,6 +28,11 @@ export function getImageToolDefinitions() {
             enum: ['nano-banana-2-lite', 'nano-banana-pro', 'gpt-image-2.5-flare', 'gpt-image-2.5-sunburst', 'nano-banana-2'],
             description: 'Image generation engine: "nano-banana-2-lite" (fast/budget), "nano-banana-pro" (ultra detail studio), "gpt-image-2.5-flare" (fast high-quality GPT), "gpt-image-2.5-sunburst" (deep typography & fidelity). Default: "nano-banana-2-lite"',
             default: 'nano-banana-2-lite'
+          },
+          user_confirmed: {
+            type: 'boolean',
+            description: 'Must be true. Confirms that the user explicitly replied "Yes" to create the image.',
+            default: false
           },
           reference_image_url: {
             type: 'string',
@@ -172,7 +177,23 @@ export async function executeGenerateImage(args, user, deps) {
 
     const appBaseUrl = (process.env.PUBLIC_APP_URL || 'https://zerolens.in').replace(/\/+$/, '');
     const previewUrl = generatedUrls[0];
+    const proxyUrl = `${appBaseUrl}/api/proxy-image?url=${encodeURIComponent(previewUrl)}`;
     const widgetUrl = `${appBaseUrl}/api/mcp/ui/widget?id=${generationId}&type=image&status=completed&url=${encodeURIComponent(previewUrl)}`;
+
+    let base64Data = null;
+    let mimeType = 'image/jpeg';
+    try {
+      const imgRes = await fetch(previewUrl);
+      if (imgRes.ok) {
+        const arrayBuf = await imgRes.arrayBuffer();
+        if (arrayBuf.byteLength <= 3.5 * 1024 * 1024) {
+          base64Data = Buffer.from(arrayBuf).toString('base64');
+          mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
+        }
+      }
+    } catch (e) {
+      console.warn('[MCP Image] Base64 fetch skipped:', e.message);
+    }
 
     return {
       branding: '✨ Generated via ZeroLens Studio (zerolens.in)',
@@ -180,8 +201,15 @@ export async function executeGenerateImage(args, user, deps) {
       generation_id: generationId,
       status: 'completed',
       type: 'image',
+      url: proxyUrl,
+      image_url: proxyUrl,
+      raw_cdn_url: previewUrl,
+      base64_data: base64Data,
+      mime_type: mimeType,
       count: generatedUrls.length,
       urls: generatedUrls,
+      proxy_urls: generatedUrls.map(u => `${appBaseUrl}/api/proxy-image?url=${encodeURIComponent(u)}`),
+      markdown_image: `![ZeroLens Studio Image](${proxyUrl})`,
       prompt,
       model,
       aspect_ratio,
