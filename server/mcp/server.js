@@ -4,7 +4,12 @@
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema
+} from '@modelcontextprotocol/sdk/types.js';
 
 import { getImageToolDefinitions, executeGenerateImage } from './tools/imageTools.js';
 import { getVideoToolDefinitions, executeGenerateVideo } from './tools/videoTools.js';
@@ -85,7 +90,8 @@ export function createZeroLensMcpServer(userContext = null, deps = {}) {
     },
     {
       capabilities: {
-        tools: {}
+        tools: {},
+        prompts: {}
       }
     }
   );
@@ -95,6 +101,90 @@ export function createZeroLensMcpServer(userContext = null, deps = {}) {
     return {
       tools: getAllMcpTools()
     };
+  });
+
+  // List all available guided prompt workflows
+  server.setRequestHandler(ListPromptsRequestSchema, async () => {
+    return {
+      prompts: [
+        {
+          name: 'create_carousel',
+          description: 'Design and generate a multi-slide social media carousel (LinkedIn / Instagram). Asks for format/ratio, plans each slide, and renders every image inline.',
+          arguments: [
+            {
+              name: 'topic',
+              description: 'Topic or headline of the carousel',
+              required: true
+            },
+            {
+              name: 'slides_count',
+              description: 'Number of slides (default: 4)',
+              required: false
+            },
+            {
+              name: 'aspect_ratio',
+              description: 'Aspect ratio (e.g. 1:1, 4:5, 3:4, 16:9)',
+              required: false
+            }
+          ]
+        },
+        {
+          name: 'create_product_shot',
+          description: 'Generate a commercial studio photograph for a product using ZeroLens Nano Banana 2.',
+          arguments: [
+            {
+              name: 'product',
+              description: 'Description of the product to photograph',
+              required: true
+            },
+            {
+              name: 'lighting_style',
+              description: 'e.g. moody, soft studio, neon, sunlight',
+              required: false
+            }
+          ]
+        }
+      ]
+    };
+  });
+
+  // Get specific prompt content
+  server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+    const { name, arguments: promptArgs } = request.params;
+    if (name === 'create_carousel') {
+      const topic = promptArgs?.topic || 'Founder Lessons';
+      const count = promptArgs?.slides_count || 4;
+      const ratio = promptArgs?.aspect_ratio || '1:1';
+      return {
+        description: `Create a ${count}-slide carousel about ${topic}`,
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text: `I want to create a ${count}-slide carousel about "${topic}". First, confirm the aspect ratio (recommended: ${ratio}) and style with me. Then plan the title, slide content, and invoke ZeroLens generate_image for each slide, embedding every image directly into the chat with Markdown (![Slide](url)).`
+            }
+          }
+        ]
+      };
+    }
+    if (name === 'create_product_shot') {
+      const product = promptArgs?.product || 'Luxury watch';
+      const style = promptArgs?.lighting_style || 'professional studio lighting';
+      return {
+        description: `Create a studio product shot of ${product}`,
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text: `Generate a studio product photo of "${product}" with ${style} using ZeroLens generate_image. Make sure to embed the final image directly into the chat using markdown: ![${product}](url).`
+            }
+          }
+        ]
+      };
+    }
+    throw new Error(`Unknown prompt: ${name}`);
   });
 
 /**
