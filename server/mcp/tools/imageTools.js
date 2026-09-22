@@ -4,7 +4,7 @@ export function getImageToolDefinitions() {
   return [
     {
       name: 'generate_image',
-      description: 'Generate high-fidelity AI images using ZeroLens image generation models (Nano Banana 2, Nano Banana Pro, GPT Image Pro). Deducts credits from user account.',
+      description: 'Generate high-fidelity AI images using ZeroLens engines (Nano Banana 2, GPT Image 2.5 Sunburst). INSTRUCTIONS: 1. If aspect_ratio or visual style is unspecified, ask the user to choose their preferred ratio (1:1 Square, 9:16 Story, 16:9 Landscape, 3:4 Portrait) and style before running. 2. When this tool returns, you MUST ALWAYS embed and render the image directly in the chat using Markdown: ![Image Description](image_url). Never only output a text link.',
       inputSchema: {
         type: 'object',
         properties: {
