@@ -22,23 +22,20 @@ export default function createMcpRouter(deps = {}) {
   router.use(express.urlencoded({ extended: true }));
 
   // ─────────────────────────────────────────────────────────────
-  // 1. STREAMABLE HTTP ENDPOINT (Official OpenAI Apps Architecture)
+  // 1. STREAMABLE HTTP ENDPOINT (ChatGPT Connectors / OpenAI Apps)
   // ─────────────────────────────────────────────────────────────
   router.post('/', async (req, res) => {
     try {
-      const user = await resolveMcpUser(req, deps);
-
-      if (!user) {
-        res.setHeader('WWW-Authenticate', 'Bearer realm="ZeroLens", error="invalid_token"');
-        return res.status(401).json({
-          jsonrpc: '2.0',
-          error: {
-            code: -32000,
-            message: 'Unauthorized: Valid ZeroLens OAuth Bearer token or Supabase session required.'
-          },
-          id: req.body?.id ?? null
-        });
+      // ChatGPT Connectors send only Accept: application/json.
+      // @modelcontextprotocol/sdk StreamableHTTPServerTransport requires
+      // both application/json AND text/event-stream in the Accept header or
+      // it returns 406 Not Acceptable, which causes ChatGPT backend to return
+      // 500 to the user. We patch the header here before the SDK checks it.
+      if (!req.headers['accept'] || !req.headers['accept'].includes('text/event-stream')) {
+        req.headers['accept'] = 'application/json, text/event-stream';
       }
+
+      const user = await resolveMcpUser(req, deps);
 
       // Create an MCP server instance scoped to this authenticated user
       const server = createZeroLensMcpServer(user, deps);
@@ -62,7 +59,8 @@ export default function createMcpRouter(deps = {}) {
 
   // Alias for clients explicitly asking for /streamable
   router.post('/streamable', async (req, res) => {
-    return router.handle(Object.assign(req, { url: '/' }), res);
+    req.url = '/';
+    return router.handle(req, res);
   });
 
   // ─────────────────────────────────────────────────────────────
