@@ -74,7 +74,28 @@ export default function createMcpRouter(deps = {}) {
       const host = req.get('host') || 'zerolens.in';
       const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
       const baseUrl = (process.env.PUBLIC_APP_URL || `${protocol}://${host}`).replace(/\/+$/, '');
-      const messagesUrl = `${baseUrl}/api/mcp/messages`;
+      const messagesPath = '/api/mcp/messages';
+      const messagesUrl = `${baseUrl}${messagesPath}`;
+
+      // Patch res.write so the MCP SDK's relative 'endpoint' event data becomes an absolute URL.
+      // The @modelcontextprotocol/sdk SSEServerTransport ignores the host portion of the URL
+      // and sends only the path in the SSE `endpoint` event. ChatGPT requires an absolute URL
+      // to know where to POST tool call messages, so we intercept and rewrite it here.
+      const _write = res.write.bind(res);
+      res.write = function (chunk, encoding, cb) {
+        try {
+          const str = typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+          if (str.includes('event: endpoint') || str.startsWith('data: ' + messagesPath)) {
+            // Replace relative path with full absolute URL in the SSE endpoint event
+            const rewritten = str.replace(
+              /(data:\s*)(\/[^\s?]*\/messages[^\n]*)/g,
+              (_, prefix, path) => `${prefix}${baseUrl}${path.startsWith('/') ? '' : '/'}${path.replace(baseUrl, '')}`
+            );
+            return _write(rewritten, encoding, cb);
+          }
+        } catch (_) { /* passthrough on any patch error */ }
+        return _write(chunk, encoding, cb);
+      };
 
       const transport = new SSEServerTransport(messagesUrl, res);
       const server = createZeroLensMcpServer(user, deps);
@@ -86,7 +107,7 @@ export default function createMcpRouter(deps = {}) {
       };
 
       await server.connect(transport);
-      console.log(`[MCP SSE] Connected session: ${transport.sessionId} (User: ${user?.email || 'anon'})`);
+      console.log(`[MCP SSE] Connected: ${transport.sessionId} → ${messagesUrl}?sessionId=${transport.sessionId} (User: ${user?.email || 'anon'})`);
     } catch (err) {
       console.error('[MCP SSE Error]:', err);
       if (!res.headersSent) {
