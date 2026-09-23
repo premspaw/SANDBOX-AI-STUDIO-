@@ -301,17 +301,18 @@ async function launchBackgroundVideoWorker(jobPayload, generationId, cost, user,
         if (dbClient) {
           try {
             await dbClient.from('assets').insert([{
-              id: generationId,
               name: `video_${Date.now()}.mp4`,
               type: 'video',
               url: finalVideoUrl,
               user_id: user.id,
               created_at: new Date().toISOString(),
+              model: jobPayload.engine || 'veo-3.1',
               metadata: {
                 prompt: jobPayload.prompt,
                 engine: jobPayload.engine,
                 aspect: jobPayload.aspectRatio,
-                projectId: jobPayload.projectId || 'default'
+                projectId: jobPayload.projectId || 'default',
+                generationId
               }
             }]);
           } catch (dbErr) {

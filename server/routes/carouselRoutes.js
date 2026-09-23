@@ -254,10 +254,10 @@ export default function createRouter(deps) {
                                 name: `Carousel Slide ${i + 1} (${brand?.name || 'Zerolens'})`,
                                 type: 'image',
                                 url: uploaded,
-                                prompt: cleanPrompt,
                                 user_id: userId,
                                 created_at: new Date().toISOString(),
-                                metadata: { aspect: '9:16' }
+                                model: modelName || 'nano-banana-2',
+                                metadata: { aspect: '9:16', prompt: cleanPrompt, folder: 'marketing' }
                             }]);
                         } catch (dbErr) {
                             console.error('[DB] Failed to save slide to assets:', dbErr.message);
@@ -322,10 +322,10 @@ export default function createRouter(deps) {
                                         name: `Carousel Slide ${i + 1} (Fallback - ${brand?.name || 'Zerolens'})`,
                                         type: 'image',
                                         url: uploaded,
-                                        prompt: cleanPrompt,
                                         user_id: userId,
                                         created_at: new Date().toISOString(),
-                                        metadata: { aspect: '9:16' }
+                                        model: 'gpt-image-2',
+                                        metadata: { aspect: '9:16', prompt: cleanPrompt, folder: 'marketing' }
                                     }]);
                                 } catch (dbErr) {
                                     console.error('[DB] Failed to save fallback slide to assets:', dbErr.message);

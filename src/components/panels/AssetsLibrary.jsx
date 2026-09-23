@@ -476,11 +476,19 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
             
             if (!response.ok) throw new Error(data.error || "Failed to fetch assets");
             const allAssets = data.assets || [];
-            const dbImages = allAssets.filter(a => a.type === 'image' && a.folder !== 'marketing').map(a => {
+            const isMarketingAsset = (a) => {
+                const folder = a.folder || a.metadata?.folder;
+                if (folder === 'marketing') return true;
+                if (a.type === 'marketing_template' || a.metadata?.isMarketingCampaign) return true;
+                if (a.url && a.url.includes('/marketing/templates/')) return true;
+                return false;
+            };
+
+            const dbImages = allAssets.filter(a => a.type === 'image' && !isMarketingAsset(a)).map(a => {
                 let displayName = a.name;
                 if (!displayName || displayName === 'CHARACTER Target' || displayName.toUpperCase().endsWith(' TARGET')) {
                     const boardType = a.metadata?.boardType || 'Image';
-                    const extracted = parseNameAndAgeFromPrompt(a.metadata?.prompt);
+                    const extracted = parseNameAndAgeFromPrompt(a.metadata?.prompt || a.prompt);
                     if (extracted) {
                         displayName = `${extracted.name} — ${boardType} Board`;
                     } else {
@@ -492,9 +500,9 @@ export function AssetsLibrary({ compact = false, onSelectReference, setActiveTab
                     name: displayName
                 };
             });
-            const dbVideos = allAssets.filter(a => a.type === 'video' && a.folder !== 'marketing');
-            const dbUpscaled = allAssets.filter(a => (a.type === 'upscaled' || a.type === 'upscale') && a.folder !== 'marketing');
-            const dbMarketing = allAssets.filter(a => a.folder === 'marketing' || (a.url && a.url.includes('/marketing/')));
+            const dbVideos = allAssets.filter(a => a.type === 'video' && !isMarketingAsset(a));
+            const dbUpscaled = allAssets.filter(a => (a.type === 'upscaled' || a.type === 'upscale') && !isMarketingAsset(a));
+            const dbMarketing = allAssets.filter(a => isMarketingAsset(a) || a.folder === 'marketing' || (a.url && a.url.includes('/marketing/templates/')));
 
             let avatarStudioImages = [];
             try {

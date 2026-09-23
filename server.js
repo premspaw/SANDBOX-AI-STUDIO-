@@ -874,8 +874,9 @@ function findVideoInResponse(obj) {
 
 async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9', folder = 'generated', prompt = '', engine = '', extraMetadata = {}) {
     const name = `veo_${userId || 'anon'}_${Date.now()}.mp4`;
-    const filePath = `users/${userId || 'anon'}/${folder}/${name}`;
-    const projectId = extraMetadata.projectId || extraMetadata.project_id || (folder !== 'generated' ? folder : 'default');
+    const cleanFolder = folder || 'generated';
+    const filePath = `users/${userId || 'anon'}/${cleanFolder}/${name}`;
+    const projectId = extraMetadata.projectId || extraMetadata.project_id || (cleanFolder !== 'generated' ? cleanFolder : 'default');
 
     try {
         console.log(`[STORAGE-VIDEO] Uploading video ${name} via storageService...`);
@@ -889,7 +890,7 @@ async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9', 
             user_id: userId || 'local_user',
             project_id: projectId,
             aspect: aspectRatio,
-            metadata: { folder, projectId, project_id: projectId, ...extraMetadata },
+            metadata: { folder: cleanFolder, projectId, project_id: projectId, prompt, engine, ...extraMetadata },
             prompt: prompt,
             engine: engine
         });
@@ -898,13 +899,23 @@ async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9', 
         if (dbClient && isValidUuid(userId)) {
             try {
                 await dbClient.from('assets').insert([{
-                    name, type: 'video', url: publicUrl,
-                    user_id: userId, created_at: new Date().toISOString(),
-                    project_id: projectId,
-                    metadata: { aspect: aspectRatio, folder, projectId, project_id: projectId, ...extraMetadata },
-                    prompt: prompt,
-                    engine: engine
+                    name,
+                    type: 'video',
+                    url: publicUrl,
+                    user_id: userId,
+                    created_at: new Date().toISOString(),
+                    model: engine || null,
+                    metadata: {
+                        aspect: aspectRatio,
+                        folder: cleanFolder,
+                        projectId,
+                        project_id: projectId,
+                        prompt,
+                        engine,
+                        ...extraMetadata
+                    }
                 }]);
+                console.log(`[DB-ASSET] Saved video asset ${name} to Supabase`);
             } catch (e) {
                 console.warn('[DB]', e.message);
             }
@@ -917,11 +928,12 @@ async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9', 
 }
 
 
-async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg', targetBucket = MARKETING_BUCKET, folder = `${MARKETING_FOLDER}/generated`, aspectRatio = '1:1', prompt = '', engine = '', extraMetadata = {}) {
+async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg', targetBucket = MARKETING_BUCKET, folder = 'generated', aspectRatio = '1:1', prompt = '', engine = '', extraMetadata = {}) {
     const ext = mimeType.split('/')[1] || 'jpg';
     const name = `gen_${userId || 'anon'}_${Date.now()}.${ext}`;
-    let filePath = (userId && userId !== 'anon') ? `users/${userId}/${folder}/${name}` : `${folder}/anon/${name}`;
-    const projectId = extraMetadata.projectId || extraMetadata.project_id || (folder !== 'generated' ? folder : 'default');
+    const cleanFolder = folder || 'generated';
+    let filePath = (userId && userId !== 'anon') ? `users/${userId}/${cleanFolder}/${name}` : `${cleanFolder}/anon/${name}`;
+    const projectId = extraMetadata.projectId || extraMetadata.project_id || (cleanFolder !== 'generated' ? cleanFolder : 'default');
 
     try {
         const publicUrl = await storageService.uploadToGCS(imageBuffer, filePath, mimeType, targetBucket);
@@ -934,7 +946,7 @@ async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg
             user_id: userId || 'local_user',
             project_id: projectId,
             aspect: aspectRatio,
-            metadata: { folder, projectId, project_id: projectId, ...extraMetadata },
+            metadata: { folder: cleanFolder, projectId, project_id: projectId, prompt, engine, ...extraMetadata },
             prompt: prompt,
             engine: engine
         });
@@ -943,12 +955,23 @@ async function uploadImageToSupabase(imageBuffer, userId, mimeType = 'image/jpeg
         if (dbClient && isValidUuid(userId)) {
             try {
                 await dbClient.from('assets').insert([{
-                    name, type: 'image', url: publicUrl,
-                    user_id: userId, created_at: new Date().toISOString(),
-                    metadata: { aspect: aspectRatio, folder, ...extraMetadata },
-                    prompt: prompt,
-                    engine: engine
+                    name,
+                    type: 'image',
+                    url: publicUrl,
+                    user_id: userId,
+                    created_at: new Date().toISOString(),
+                    model: engine || null,
+                    metadata: {
+                        aspect: aspectRatio,
+                        folder: cleanFolder,
+                        projectId,
+                        project_id: projectId,
+                        prompt,
+                        engine,
+                        ...extraMetadata
+                    }
                 }]);
+                console.log(`[DB-ASSET] Saved image asset ${name} to Supabase`);
             } catch (e) {
                 console.warn('[DB]', e.message);
             }
