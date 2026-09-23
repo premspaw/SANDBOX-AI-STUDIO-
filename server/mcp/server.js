@@ -286,15 +286,6 @@ Then plan the title, slide content, and invoke ZeroLens generate_image for each 
         }
       ];
 
-      // Provide native image content block if base64 data is available
-      if (result?.base64_data) {
-        content.push({
-          type: 'image',
-          data: result.base64_data,
-          mimeType: result.mime_type || 'image/jpeg'
-        });
-      }
-
       return {
         structuredContent: result,
         content
@@ -326,19 +317,26 @@ export function formatToolCallResponseText(name, result) {
   }
 
   if (name === 'generate_image') {
-    const urls = result.proxy_urls || (result.url ? [result.url] : (result.urls || []));
-    const imgMarkdown = urls
-      .map((u, i) => `![ZeroLens Studio Image ${urls.length > 1 ? i + 1 : ''}](${u})`)
+    const rawList = result.urls?.length ? result.urls : (result.url ? [result.url] : (result.raw_cdn_url ? [result.raw_cdn_url] : []));
+    const cleanUrls = rawList.filter(u => typeof u === 'string' && u.startsWith('http') && !u.includes('/api/proxy-image'));
+    const urls = cleanUrls.length ? cleanUrls : (result.url ? [result.url] : []);
+
+    const mediaMarkdown = urls
+      .map((u, i) => {
+        const label = urls.length > 1 ? `Image ${i + 1}` : 'Generated Image';
+        return `![${label}](${u})\n\n[🖼️ **View / Download Full-Resolution Image**](${u})`;
+      })
       .join('\n\n');
 
     return [
-      imgMarkdown,
+      mediaMarkdown,
       ``,
       `### 🎨 Generated via ZeroLens Studio`,
       ``,
       `* **Prompt:** "${result.prompt || ''}"`,
       `* **Engine:** \`${result.model || 'Nano Banana 2'}\``,
       `* **Aspect Ratio:** \`${result.aspect_ratio || '1:1'}\``,
+      `* **Direct Image Link:** ${urls[0] ? `[${urls[0]}](${urls[0]})` : 'N/A'}`,
       `* **Shorts Credits Deducted:** \`${result.credits_used ?? 1}\``,
       `* **Remaining Shorts Balance:** \`${result.remaining_balance ?? 'N/A'}\``,
       `* **Job ID:** \`${result.generation_id || ''}\``,

@@ -177,23 +177,7 @@ export async function executeGenerateImage(args, user, deps) {
 
     const appBaseUrl = (process.env.PUBLIC_APP_URL || 'https://zerolens.in').replace(/\/+$/, '');
     const previewUrl = generatedUrls[0];
-    const proxyUrl = `${appBaseUrl}/api/proxy-image?url=${encodeURIComponent(previewUrl)}`;
     const widgetUrl = `${appBaseUrl}/api/mcp/ui/widget?id=${generationId}&type=image&status=completed&url=${encodeURIComponent(previewUrl)}`;
-
-    let base64Data = null;
-    let mimeType = 'image/jpeg';
-    try {
-      const imgRes = await fetch(previewUrl);
-      if (imgRes.ok) {
-        const arrayBuf = await imgRes.arrayBuffer();
-        if (arrayBuf.byteLength <= 3.5 * 1024 * 1024) {
-          base64Data = Buffer.from(arrayBuf).toString('base64');
-          mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
-        }
-      }
-    } catch (e) {
-      console.warn('[MCP Image] Base64 fetch skipped:', e.message);
-    }
 
     return {
       branding: '✨ Generated via ZeroLens Studio (zerolens.in)',
@@ -204,13 +188,9 @@ export async function executeGenerateImage(args, user, deps) {
       url: previewUrl,
       image_url: previewUrl,
       raw_cdn_url: previewUrl,
-      proxy_url: proxyUrl,
-      base64_data: base64Data,
-      mime_type: mimeType,
       count: generatedUrls.length,
       urls: generatedUrls,
-      proxy_urls: generatedUrls.map(u => `${appBaseUrl}/api/proxy-image?url=${encodeURIComponent(u)}`),
-      markdown_image: `![ZeroLens Studio Image](${previewUrl})`,
+      markdown_image: `![ZeroLens Studio Image](${previewUrl})\n\n[🖼️ View / Download Full-Resolution Image](${previewUrl})`,
       prompt,
       model,
       aspect_ratio,
