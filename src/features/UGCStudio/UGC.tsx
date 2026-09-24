@@ -2671,17 +2671,19 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       let contents: { text?: string; inlineData?: { mimeType: string; data: string } }[] = [];
 
       let stylePrompt = '';
-      const frontFacing = 'SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, NOT turned or angled to either side.';
+      const frontFacing = 'SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, engaging eye contact.';
+      const anatomyProportionsBlock = `ANATOMICAL PROPORTIONS & FRAMING (CRITICAL): Perfectly realistic, natural human anatomy. Standard head-to-shoulder and head-to-body proportions (head is naturally sized and proportional, NEVER enlarged, NEVER oversized, NOT a caricature or bobblehead). Upper-body / mid-torso framing with comfortable breathing room above the head and across the shoulders. Shot on standard 50mm natural focal length lens, zero wide-angle distortion, zero fisheye distortion, natural perspective compression.`;
+
       if (imageStyle === 'ultra-realistic') {
-        stylePrompt = `${frontFacing} Ultra-realistic raw photo, natural looking normal photo quality, super natural, no background blur, no bokeh, sharp focus across the entire frame, shot on a normal phone, mobile photography aesthetic, natural lighting, super real human appearance, authentic and imperfect, 8K resolution, wide angle or medium shot, natural environment, no 85mm, no portrait lens effect, zero depth of field blur`;
+        stylePrompt = `${frontFacing} ${anatomyProportionsBlock} Ultra-realistic raw photo, natural balanced human appearance, authentic and imperfect, sharp focus across subject, natural ambient lighting, authentic skin textures and micro-details, 8K resolution, natural environment.`;
       } else if (imageStyle === 'iphone') {
-        stylePrompt = `${frontFacing} POV selfie shot on iPhone 15 front-facing camera. The person is visibly holding the phone with one extended hand, showing their arm reaching towards the camera lens. Casual, spontaneous social media aesthetic, slightly imperfect natural lighting, authentic unedited vlog style, slight lens distortion typical of a front-facing smartphone camera, relatable and genuine.`;
+        stylePrompt = `${frontFacing} ${anatomyProportionsBlock} POV natural photo shot on iPhone 15. Natural upper-body framing, balanced natural human proportions (no wide-angle head distortion), casual spontaneous social media aesthetic, authentic natural lighting, genuine UGC creator look.`;
       } else if (imageStyle === 'short') {
-        stylePrompt = `${frontFacing} Quick snapshot style, candid, slightly blurry background, fast shutter speed, everyday lighting, highly relatable and casual, like a quick photo taken for a friend.`;
+        stylePrompt = `${frontFacing} ${anatomyProportionsBlock} Quick casual snapshot style, natural human anatomy and proportions, candid, everyday lighting, highly relatable, standard portrait perspective.`;
       } else if (imageStyle === 'normal') {
-        stylePrompt = `${frontFacing} Standard digital photography, clear and well-lit, balanced colors, realistic but flattering, typical high-quality social media post, no extreme filters.`;
+        stylePrompt = `${frontFacing} ${anatomyProportionsBlock} Standard digital photography, realistic natural human proportions and head-to-torso balance, clear and well-lit, balanced colors, flattering and authentic social media aesthetic.`;
       } else {
-        stylePrompt = `${frontFacing} Ultra-realistic studio lighting, high contrast, moody, cinematic, shot on 35mm lens, polished commercial look, authentic skin textures, professional UGC aesthetic, 8K resolution, highly detailed.`;
+        stylePrompt = `${frontFacing} ${anatomyProportionsBlock} Cinematic portrait photography, natural human proportions, shot on 50mm lens, polished commercial look, authentic skin textures, professional UGC aesthetic, 8K resolution.`;
       }
 
       // If overridePrompt is a string, wrap it. Otherwise use the default.
@@ -2717,16 +2719,16 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       let promptInstructions = '';
 
       const faceLockInstructions = hasChar
-        ? ` Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, natural asymmetry. Ultra-realistic skin: visible pores, subtle texture, no airbrushing, no beauty filter. This is a real person — do not idealize or alter.`
+        ? ` Preserve every facial feature exactly — bone structure, eye shape, skin tone, nose, lips, natural asymmetry, and exact head-to-shoulder anatomical proportions. Ultra-realistic skin: visible pores, subtle texture, no airbrushing, no beauty filter. This is a real person — do not idealize or alter.`
         : '';
 
-      const skinRealismBlock = `SKIN REALISM (critical): Ultra-realistic human skin — visible pores, natural texture, subtle imperfections, micro-hair detail. NO airbrushed or plastic skin. NO beauty filter. Skin must look like an unedited photo of a real person.`;
+      const skinRealismBlock = `SKIN REALISM (critical): Ultra-realistic human skin — visible pores, natural texture, subtle imperfections, micro-hair detail. NO airbrushed or plastic skin. NO beauty filter. Skin must look like an unedited photo of a real person. Natural realistic head-to-body proportions.`;
 
       const photoQualityBlock = imageStyle === 'ultra-realistic'
-        ? `Shot on iPhone, natural ambient light, imperfect raw quality, slight handheld movement, no studio polish, real-life moment feel, 2K resolution.`
+        ? `Shot on 50mm lens, natural ambient light, imperfect raw quality, real-life moment feel, perfectly proportioned human anatomy, 2K resolution.`
         : imageStyle === 'cinematic'
-        ? `Shot on Sony A7 IV, 35mm f/1.8, dramatic natural light, cinematic color grade, shallow depth of field on background only.`
-        : `Natural phone camera quality, authentic lighting, candid feel.`;
+        ? `Shot on Sony A7 IV, 50mm f/1.8, dramatic natural light, cinematic color grade, natural perspective, shallow depth of field on background only.`
+        : `Natural phone camera quality, 50mm natural focal length, authentic lighting, candid feel, proper anatomical proportions.`;
 
       if (hasChar && hasProd && hasLoc) {
         promptInstructions = `One seamless photograph. 
@@ -3040,15 +3042,17 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       if (thLocationImg) contents.push(await fileToGenerativePart(thLocationImg.file));
 
       let promptInstructions = '';
+      const thAnatomyProportions = `ANATOMICAL PROPORTIONS & FRAMING (CRITICAL): Perfectly realistic, anatomically correct human proportions. Standard natural head-to-shoulder and head-to-torso ratio (head is natural and proportional to body, NEVER enlarged, NEVER oversized, NOT a bobblehead). Upper-body / mid-torso framing with comfortable breathing room above the head and across the shoulders. Shot on 50mm natural focal length lens, zero wide-angle distortion, zero fisheye distortion.`;
+
       if (thPersonImg) {
         if (thProductImg && thLocationImg) {
-          promptInstructions = `Images: PERSON, PRODUCT, LOCATION. Generate ONE photorealistic portrait photo of this person holding or using the product, placed inside the location environment. Match the person's likeness exactly. The person faces directly at camera with a confident, engaging expression — ready to deliver a brand message. Natural lighting, sharp focus on face. No collage.`;
+          promptInstructions = `Images: PERSON, PRODUCT, LOCATION. ${thAnatomyProportions} Generate ONE photorealistic upper-body portrait photo of this person holding or using the product, placed inside the location environment. Match the person's likeness and exact natural proportions. The person faces directly at camera with a confident, engaging expression — ready to deliver a brand message. Natural lighting, sharp focus on face. 9:16 portrait format. No collage.`;
         } else if (thProductImg) {
-          promptInstructions = `Images: PERSON, PRODUCT. Generate ONE photorealistic portrait photo of this person holding or showcasing the product. They face directly at camera, confident and engaging. Professional UGC lighting. No collage.`;
+          promptInstructions = `Images: PERSON, PRODUCT. ${thAnatomyProportions} Generate ONE photorealistic upper-body portrait photo of this person holding or showcasing the product. Match the person's likeness and natural proportions. They face directly at camera, confident and engaging. Professional UGC lighting, 9:16 portrait format. No collage.`;
         } else if (thLocationImg) {
-          promptInstructions = `Images: PERSON, LOCATION. Generate ONE photorealistic portrait photo of this person placed inside the location environment. They face camera confidently, ready to speak. Match the location lighting and atmosphere. Hands relaxed at sides. DO NOT add or show any product, bottle, box, container, or object in their hands. Person is NOT holding any product. No collage.`;
+          promptInstructions = `Images: PERSON, LOCATION. ${thAnatomyProportions} Generate ONE photorealistic upper-body portrait photo of this person placed inside the location environment. Match natural anatomical proportions. They face camera confidently, ready to speak. Match the location lighting and atmosphere. Hands relaxed at sides. DO NOT add or show any product, bottle, box, container, or object in their hands. Person is NOT holding any product. 9:16 portrait format. No collage.`;
         } else {
-          promptInstructions = `Images: PERSON. Generate ONE photorealistic portrait photo of this person facing the camera directly, chest-up shot, confident and engaging expression, professional studio/indoor UGC lighting, clean background. Hands relaxed at sides. DO NOT add or show any product, bottle, package, container, or object in their hands. The person MUST NOT hold any product or item. No collage.`;
+          promptInstructions = `Images: PERSON. ${thAnatomyProportions} Generate ONE photorealistic upper-body portrait photo of this person facing the camera directly, mid-torso framing with natural head-to-shoulder ratio, confident and engaging expression, professional studio/indoor UGC lighting, clean background, 9:16 portrait format. Hands relaxed at sides. DO NOT add or show any product, bottle, package, container, or object in their hands. The person MUST NOT hold any product or item. No collage.`;
         }
       } else {
         // Person photo is empty -> Generate AI spokesperson according to user prompt options!
@@ -3073,18 +3077,18 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
         const styleRefNote = styleRefImg ? ' Match the artistic style, lighting mood, and color palette from the style reference image.' : '';
 
         if (thSpokespersonShotType === 'character-sheet') {
-          promptInstructions = `Character reference sheet of a single consistent ${regionText} ${ageText} ${genderText} creator${outfitText}, presented on a pure clean neutral grey background, 3 vertical panels: Column 1 chest-up portrait facing camera, Column 2 full-body front pose, Column 3 3/4 side profile view. Identical facial identity across all panels.${poseText}${styleRefNote}`;
+          promptInstructions = `Character reference sheet of a single consistent ${regionText} ${ageText} ${genderText} creator${outfitText}, presented on a pure clean neutral grey background, 3 vertical panels: Column 1 upper-body portrait facing camera with natural head-to-body proportions, Column 2 full-body front pose, Column 3 3/4 side profile view. Identical facial identity across all panels.${poseText}${styleRefNote}`;
         } else if (thProductImg && thLocationImg) {
-          promptInstructions = `Images: PRODUCT, LOCATION${styleRefImg ? ', STYLE_REF' : ''}. Generate ONE photorealistic portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText} holding or using the product, placed inside the location environment. They face directly at camera with a confident, engaging expression. Natural studio lighting, sharp focus on face. 9:16 portrait format.${poseText}${styleRefNote} No collage.`;
+          promptInstructions = `Images: PRODUCT, LOCATION${styleRefImg ? ', STYLE_REF' : ''}. ${thAnatomyProportions} Generate ONE photorealistic upper-body portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText} holding or using the product, placed inside the location environment. They face directly at camera with a confident, engaging expression. Natural studio lighting, sharp focus on face. 9:16 portrait format.${poseText}${styleRefNote} No collage.`;
         } else if (thProductImg) {
-          promptInstructions = `Images: PRODUCT${styleRefImg ? ', STYLE_REF' : ''}. Generate ONE photorealistic portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText} holding or showcasing the product. They face directly at camera, confident and engaging. Professional UGC lighting, 9:16 portrait format.${poseText}${styleRefNote} No collage.`;
+          promptInstructions = `Images: PRODUCT${styleRefImg ? ', STYLE_REF' : ''}. ${thAnatomyProportions} Generate ONE photorealistic upper-body portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText} holding or showcasing the product. They face directly at camera, confident and engaging. Professional UGC lighting, 9:16 portrait format.${poseText}${styleRefNote} No collage.`;
         } else if (thLocationImg) {
-          promptInstructions = `Images: LOCATION${styleRefImg ? ', STYLE_REF' : ''}. Generate ONE photorealistic portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText} placed inside the location environment. They face camera confidently, ready to speak. Match the location lighting and atmosphere. Hands relaxed at sides. DO NOT add or show any product, bottle, box, container, or object in their hands. Person is NOT holding any product. 9:16 portrait format.${poseText}${styleRefNote} No collage.`;
+          promptInstructions = `Images: LOCATION${styleRefImg ? ', STYLE_REF' : ''}. ${thAnatomyProportions} Generate ONE photorealistic upper-body portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText} placed inside the location environment. They face camera confidently, ready to speak. Match the location lighting and atmosphere. Hands relaxed at sides. DO NOT add or show any product, bottle, box, container, or object in their hands. Person is NOT holding any product. 9:16 portrait format.${poseText}${styleRefNote} No collage.`;
         } else {
-          promptInstructions = `Generate ONE photorealistic portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText}, chest-up portrait shot, facing camera directly with a warm, confident, engaging expression. Professional studio/indoor UGC lighting, clean background, 9:16 portrait format, smartphone camera aesthetic. Hands relaxed at sides. DO NOT add or show any product, bottle, package, container, or object in their hands. The person MUST NOT hold any product or item.${poseText}${styleRefNote} No collage.`;
+          promptInstructions = `Generate ONE photorealistic upper-body portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText}, ${thAnatomyProportions} upper-body mid-torso framing, facing camera directly with a warm, confident, engaging expression. Professional studio/indoor UGC lighting, clean background, 9:16 portrait format. Hands relaxed at sides. DO NOT add or show any product, bottle, package, container, or object in their hands. The person MUST NOT hold any product or item.${poseText}${styleRefNote} No collage.`;
         }
       }
-      promptInstructions += ` Style: Ultra-realistic 8k resolution, natural skin texture with micro pores, photorealistic skin tone falloff, sharp facial details, crisp tack-sharp focus on eyes, raw unedited smartphone camera aesthetic, zero plastic airbrushing.`;
+      promptInstructions += ` Style: Ultra-realistic 8k resolution, natural human proportions and head-to-shoulder ratio, natural skin texture with micro pores, photorealistic skin tone falloff, sharp facial details, crisp tack-sharp focus on eyes, raw unedited 50mm camera aesthetic, zero plastic airbrushing.`;
       contents.push({ text: promptInstructions });
 
       const response = await ai.models.generateContent({

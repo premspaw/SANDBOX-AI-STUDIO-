@@ -202,14 +202,14 @@ function getCredentials(fileName, envKey) {
     return null;
 }
 
-const GCS_KEY = getCredentials('project-c0b5ea74-5ba2-4e68-8ab.json', 'GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('project-c0b5ea74-5ba2-4e68-8ab.json', 'GCS_CREDENTIALS_JSON') || getCredentials('new-zerolens-api-073f27e79f0c.json', 'GCS_CREDENTIALS_JSON') || getCredentials('freeeapi-499012-fd14302639c7.json', 'GCS_CREDENTIALS_JSON');
+const GCS_KEY = getCredentials('new-zerolens-api.json', 'GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('project-c0b5ea74-5ba2-4e68-8ab.json', 'GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('project-c0b5ea74-5ba2-4e68-8ab.json', 'GCS_CREDENTIALS_JSON') || getCredentials('new-zerolens-api-073f27e79f0c.json', 'GCS_CREDENTIALS_JSON') || getCredentials('freeeapi-499012-fd14302639c7.json', 'GCS_CREDENTIALS_JSON');
 const storage = new Storage({ 
     ...(typeof GCS_KEY === 'string' ? { keyFilename: GCS_KEY } : { credentials: GCS_KEY })
 });
 
 const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'zerolensbucket_1';
 
-const VERTEX_KEY = getCredentials('project-c0b5ea74-5ba2-4e68-8ab.json', 'GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('project-c0b5ea74-5ba2-4e68-8ab.json', 'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('new-zerolens-api-073f27e79f0c.json', 'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('freeeapi-499012-fd14302639c7.json', 'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON');
+const VERTEX_KEY = getCredentials('new-zerolens-api.json', 'GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('new-zerolens-api.json', 'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('project-c0b5ea74-5ba2-4e68-8ab.json', 'GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('project-c0b5ea74-5ba2-4e68-8ab.json', 'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('new-zerolens-api-073f27e79f0c.json', 'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON') || getCredentials('freeeapi-499012-fd14302639c7.json', 'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON');
 
 let resolvedProjectId = '';
 if (VERTEX_KEY) {
