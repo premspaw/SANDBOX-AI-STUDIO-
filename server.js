@@ -358,10 +358,8 @@ const openaiChat = async (messages, model = 'gpt-4o', jsonMode = false, options 
 
 let _geminiClient = null;
 const getGeminiClient = (apiKey) => {
-    const isExplicitStudioKey = typeof apiKey === 'string' && (apiKey.startsWith('AIza') || apiKey.startsWith('AQ.'));
-    const shouldUseVertex = !isExplicitStudioKey && (Boolean(VERTEX_KEY) || apiKey === 'VERTEX_AI_CLIENT' || (typeof apiKey === 'string' && apiKey.startsWith('ya29.')));
-
-    if (shouldUseVertex && VERTEX_KEY) {
+    // 1. If VERTEX_KEY is configured on the backend, ALWAYS use Vertex AI as PRIMARY
+    if (VERTEX_KEY) {
         console.log(`[GEMINI-CLIENT] Initializing Vertex AI Gemini Client as PRIMARY: project=${VERTEX_PROJECT_ID}, location=${VERTEX_LOCATION}`);
         const authOptions = {};
         if (typeof VERTEX_KEY === 'string') {
@@ -393,6 +391,7 @@ const getGeminiClient = (apiKey) => {
         });
     }
 
+    const isExplicitStudioKey = typeof apiKey === 'string' && (apiKey.startsWith('AIza') || apiKey.startsWith('AQ.'));
     const activeKey = (isExplicitStudioKey ? apiKey : null) || process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.ADMIN_GOOGLE_API_KEY;
     if (!activeKey) {
         throw new Error('GOOGLE_API_KEY environment variable is not set and Vertex AI credentials unavailable.');
@@ -1393,19 +1392,13 @@ async function handleGoogle(req, res) {
             const op = await resp.json();
             res.json(op);
         } else {
-            let activeModel = model || 'gemini-3.1-flash-image';
-            const modelLower = activeModel.toLowerCase();
-            // nb2-open = gemini-3.1-flash-image (GA open model, distinct from preview)
-            if (modelLower === 'nano-banana-2-open' || modelLower === 'nb2-open') {
-                activeModel = 'gemini-3.1-flash-image';
-            } else if (modelLower === 'nano-banana-2' || modelLower === 'nano-banana' || modelLower === 'gemini-3.1-flash-image-preview') {
-                activeModel = 'gemini-3.1-flash-image'; // preview name retired, use GA
-            } else if (modelLower === 'nano-banana-2-lite' || modelLower === 'nb2-lite' || modelLower === 'gemini-3.1-flash-lite' || modelLower === 'gemini-3.1-flash-lite-image') {
-                activeModel = 'gemini-3.1-flash-lite-image';
-            } else if (modelLower === 'nano-banana-pro' || modelLower === 'pro' || modelLower === 'gemini-3-pro-image') {
-                activeModel = 'gemini-3-pro-image-preview';
-            } else if (modelLower === 'gemini-2.5-flash-image') {
-                activeModel = 'gemini-3.1-flash-image'; // map old alias to GA model
+            let activeModel = model || 'gemini-2.5-flash-image';
+            const modelLower = (activeModel || '').toLowerCase();
+            // Map models to supported image model on Vertex AI (gemini-2.5-flash-image)
+            if (modelLower.includes('banana') || modelLower.includes('gemini') || modelLower.includes('nb2') || modelLower.includes('image') || modelLower.includes('gpt-image')) {
+                activeModel = 'gemini-2.5-flash-image';
+            } else {
+                activeModel = 'gemini-2.5-flash-image';
             }
 
             let compiledPrompt = prompt || '';
@@ -1422,7 +1415,7 @@ async function handleGoogle(req, res) {
             let finalImageSize = '1K';
             const modelLowerStr = (model || '').toLowerCase();
             // Lite model and NB2 Open are capped at 1K
-            const isLiteOrOpenModel = modelLowerStr === 'nano-banana-2-lite' || modelLowerStr === 'nb2-lite' || modelLowerStr === 'gemini-3.1-flash-lite' || modelLowerStr === 'gemini-3.1-flash-lite-image' || modelLowerStr === 'nano-banana-2-open' || modelLowerStr === 'nb2-open' || modelLowerStr === 'gemini-3.1-flash-image';
+            const isLiteOrOpenModel = modelLowerStr === 'nano-banana-2-lite' || modelLowerStr === 'nb2-lite' || modelLowerStr === 'gemini-3.1-flash-lite' || modelLowerStr === 'gemini-3.1-flash-lite-image' || modelLowerStr === 'nano-banana-2-open' || modelLowerStr === 'nb2-open';
             if (!isLiteOrOpenModel) {
                 const sizeVal = (imageSize || resolution || quality || size || '').toUpperCase();
                 if (sizeVal.includes('2K') || sizeVal.includes('2048')) {
@@ -1454,88 +1447,24 @@ async function handleGoogle(req, res) {
 
             const token = await getVertexToken();
 
-            // --- Option A: Vertex AI Imagen (First Preference) ---
-            const hasReferences = referenceImages && referenceImages.length > 0;
-            const isGeminiImageModel = activeModel.includes('gemini') || activeModel.includes('nano-banana');
-            
-            if ((apiKey === 'VERTEX_AI_CLIENT' || token) && !hasReferences) {
+            // --- Option A: Vertex AI SDK as PRIMARY (Directly supported on Vertex with gemini-2.5-flash-image) ---
+            if (VERTEX_KEY || apiKey === 'VERTEX_AI_CLIENT' || token) {
                 try {
-                    const vertexModel = 'imagen-3.0-generate-002';
-                    const url = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/publishers/google/models/${vertexModel}:predict`;
-                    console.log(`[handleGoogle] [Vertex AI] Calling model ${vertexModel} on url: ${url}`);
- 
-                    const vertexPayload = {
-                        instances: [{
-                            prompt: promptWithHint
-                        }],
-                        parameters: {
-                            sampleCount: 1,
-                            aspectRatio: mappedRatio,
-                            outputMimeType: "image/png"
+                    const authOptions = {};
+                    if (VERTEX_KEY) {
+                        if (typeof VERTEX_KEY === 'string') {
+                            authOptions.keyFilename = VERTEX_KEY;
+                        } else {
+                            authOptions.credentials = VERTEX_KEY;
                         }
-                    };
- 
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify(vertexPayload)
+                    }
+                    const ai = new GoogleGenAI({
+                        vertexai: true,
+                        project: VERTEX_PROJECT_ID,
+                        location: VERTEX_LOCATION,
+                        googleAuthOptions: authOptions
                     });
- 
-                    const data = await response.json();
-                    if (data.error) throw new Error(data.error.message);
-                     
-                    const predictions = data.predictions || [];
-                    if (predictions[0] && predictions[0].bytesBase64Encoded) {
-                        b64 = predictions[0].bytesBase64Encoded;
-                        success = true;
-                        console.log(`[handleGoogle] [Vertex AI] Image generated successfully (${b64.length} base64 chars)`);
-                    } else {
-                        throw new Error('No predictions returned from Vertex AI Imagen');
-                    }
-                } catch (vertexErr) {
-                    console.warn(`[handleGoogle] [Vertex AI] Failed. Error: ${vertexErr.message}. Falling back to Google AI Studio...`);
-                }
-            }
-
-            // --- Option B: Vertex AI SDK as PRIMARY, Google AI Studio SDK as Secondary Fallback ---
-            if (!success) {
-                try {
-                    let ai;
-                    const systemKey = process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
-                    const isExplicitStudioKey = typeof apiKey === 'string' && (apiKey.startsWith('AIza') || apiKey.startsWith('AQ.'));
-
-                    // Gemini image models (gemini-3.x-flash-*-image) are AI Studio only.
-                    // Do NOT use Vertex AI SDK for these — it returns an empty response which
-                    // causes the SDK to throw "model output must contain either output text or tool calls".
-                    const isGeminiImageModelForVertex = activeModel.toLowerCase().includes('gemini') && activeModel.toLowerCase().includes('image');
-
-                    if (!isGeminiImageModelForVertex && (VERTEX_KEY || apiKey === 'VERTEX_AI_CLIENT' || token)) {
-                        const authOptions = {};
-                        if (VERTEX_KEY) {
-                            if (typeof VERTEX_KEY === 'string') {
-                                authOptions.keyFilename = VERTEX_KEY;
-                            } else {
-                                authOptions.credentials = VERTEX_KEY;
-                            }
-                        }
-                        ai = new GoogleGenAI({
-                            vertexai: true,
-                            project: VERTEX_PROJECT_ID,
-                            location: VERTEX_LOCATION,
-                            googleAuthOptions: authOptions
-                        });
-                        console.log(`[handleGoogle] [Vertex AI SDK PRIMARY] Calling model ${activeModel} (location: ${VERTEX_LOCATION})`);
-                    } else if (isExplicitStudioKey || systemKey) {
-                        const activeApiKey = isExplicitStudioKey ? apiKey : systemKey;
-                        ai = new GoogleGenAI({ apiKey: activeApiKey });
-                        console.log(`[handleGoogle] [AI Studio SDK] Calling model ${activeModel} via API Key (Gemini image model — AI Studio only)`);
-                    } else {
-                        ai = new GoogleGenAI({ apiKey: systemKey || apiKey });
-                        console.log(`[handleGoogle] [AI Studio SDK] Calling model ${activeModel} via API Key`);
-                    }
+                    console.log(`[handleGoogle] [Vertex AI SDK PRIMARY] Calling model ${activeModel} (project: ${VERTEX_PROJECT_ID}, location: ${VERTEX_LOCATION})`);
 
                     const parts = [];
                     if (referenceImages && referenceImages.length > 0) {
@@ -1582,97 +1511,98 @@ async function handleGoogle(req, res) {
 
                     const fallbackB64 = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
                     if (!fallbackB64) {
-                        throw new Error(`Google GenAI SDK returned no image candidates. finishReason: ${candidate?.finishReason}`);
+                        throw new Error(`Vertex AI GenAI SDK returned no image candidates. finishReason: ${candidate?.finishReason}`);
                     }
 
                     b64 = fallbackB64;
                     success = true;
-                    console.log(`[handleGoogle] [SDK] Image generated successfully (${b64.length} base64 chars)`);
-                } catch (studioErr) {
-                    console.error(`[handleGoogle] [AI Studio SDK] Failed: ${studioErr.message}. Trying direct REST generateContent fallback...`);
+                    console.log(`[handleGoogle] [Vertex AI SDK] Image generated successfully (${b64.length} base64 chars)`);
+                } catch (vErr) {
+                    console.warn(`[handleGoogle] [Vertex AI SDK] Failed: ${vErr.message}. Trying direct REST generateContent fallback...`);
+                }
+            }
 
-                    try {
-                        const parts = [];
-                        if (referenceImages && referenceImages.length > 0) {
-                            for (const imgUrl of referenceImages) {
-                                const resolved = await resolveImageForGemini(imgUrl);
-                                if (resolved) {
-                                    if (resolved.fileData) parts.push(resolved);
-                                    else if (resolved.type === 'inline' && resolved.data) {
-                                        parts.push({ inlineData: { mimeType: resolved.mimeType, data: resolved.data } });
-                                    }
+            // --- Option B: Direct REST Fallback (Vertex AI REST, then AI Studio REST if needed) ---
+            if (!success) {
+                try {
+                    const parts = [];
+                    if (referenceImages && referenceImages.length > 0) {
+                        for (const imgUrl of referenceImages) {
+                            const resolved = await resolveImageForGemini(imgUrl);
+                            if (resolved) {
+                                if (resolved.fileData) parts.push(resolved);
+                                else if (resolved.type === 'inline' && resolved.data) {
+                                    parts.push({ inlineData: { mimeType: resolved.mimeType, data: resolved.data } });
                                 }
                             }
                         }
-                        parts.push({ text: promptWithHint });
+                    }
+                    parts.push({ text: promptWithHint });
 
-                        const restPayload = {
-                            contents: [{ role: 'user', parts }],
-                            safetySettings: [
-                                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-                            ],
-                            generationConfig: { responseModalities: ["IMAGE", "TEXT"] }
-                        };
+                    const restPayload = {
+                        contents: [{ role: 'user', parts }],
+                        safetySettings: [
+                            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                        ],
+                        generationConfig: { responseModalities: ["IMAGE", "TEXT"] }
+                    };
 
-                        let restResp = null;
-                        const systemKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+                    let restResp = null;
+                    const systemKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
 
-                        // 1. Try Vertex AI REST endpoint if token is present
-                        if (token) {
-                            try {
-                                const activeModelLower = activeModel.toLowerCase();
-                                const needsGlobal = false; // Vertex AI Gemini requires regional endpoints
-                                const targetLocation = VERTEX_LOCATION || 'us-central1';
-                                const apiVersion = 'v1';
-                                const cleanModel = activeModel.startsWith('models/') ? activeModel.replace('models/', '') : activeModel;
-                                const vertexUrl = `https://${VERTEX_LOCATION || 'us-central1'}-aiplatform.googleapis.com/${apiVersion}/projects/${VERTEX_PROJECT_ID}/locations/${targetLocation}/publishers/google/models/${cleanModel}:generateContent`;
+                    // 1. Try Vertex AI REST endpoint if token is present
+                    if (token) {
+                        try {
+                            const targetLocation = VERTEX_LOCATION || 'us-central1';
+                            const apiVersion = 'v1';
+                            const cleanModel = activeModel.startsWith('models/') ? activeModel.replace('models/', '') : activeModel;
+                            const vertexUrl = `https://${targetLocation}-aiplatform.googleapis.com/${apiVersion}/projects/${VERTEX_PROJECT_ID}/locations/${targetLocation}/publishers/google/models/${cleanModel}:generateContent`;
 
-                                console.log(`[handleGoogle] [REST Fallback Vertex] Calling ${vertexUrl}`);
-                                restResp = await fetch(vertexUrl, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                                    body: JSON.stringify(restPayload)
-                                });
-                            } catch (vRestErr) {
-                                console.warn('[handleGoogle] [REST Fallback Vertex] Failed:', vRestErr.message);
-                            }
+                            console.log(`[handleGoogle] [REST Fallback Vertex] Calling ${vertexUrl}`);
+                            restResp = await fetch(vertexUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                                body: JSON.stringify(restPayload)
+                            });
+                        } catch (vRestErr) {
+                            console.warn('[handleGoogle] [REST Fallback Vertex] Failed:', vRestErr.message);
                         }
-
-                        // 2. Try Google AI Studio REST endpoint if systemKey is present and Vertex REST didn't succeed
-                        if ((!restResp || !restResp.ok) && systemKey) {
-                            try {
-                                const studioUrl = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${systemKey}`;
-                                console.log(`[handleGoogle] [REST Fallback AI Studio] Calling ${studioUrl}`);
-                                restResp = await fetch(studioUrl, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify(restPayload)
-                                });
-                            } catch (sRestErr) {
-                                console.warn('[handleGoogle] [REST Fallback AI Studio] Failed:', sRestErr.message);
-                            }
-                        }
-
-                        if (restResp && restResp.ok) {
-                            const restData = await restResp.json();
-                            const candidate = restData.candidates?.[0];
-                            const inlineData = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData;
-                            if (inlineData && inlineData.data) {
-                                b64 = inlineData.data;
-                                success = true;
-                                console.log(`[handleGoogle] [REST Fallback] Image generated successfully (${b64.length} base64 chars)`);
-                            }
-                        }
-                    } catch (restErr) {
-                        console.error(`[handleGoogle] [REST Fallback] Failed: ${restErr.message}`);
                     }
 
-                    if (!success) {
-                        throw new Error(`Image generation failed on both Vertex AI and Google AI Studio: ${studioErr.message}`);
+                    // 2. Try Google AI Studio REST endpoint only if systemKey is present and Vertex REST didn't succeed
+                    if ((!restResp || !restResp.ok) && systemKey && !VERTEX_KEY) {
+                        try {
+                            const studioUrl = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${systemKey}`;
+                            console.log(`[handleGoogle] [REST Fallback AI Studio] Calling ${studioUrl}`);
+                            restResp = await fetch(studioUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(restPayload)
+                            });
+                        } catch (sRestErr) {
+                            console.warn('[handleGoogle] [REST Fallback AI Studio] Failed:', sRestErr.message);
+                        }
                     }
+
+                    if (restResp && restResp.ok) {
+                        const restData = await restResp.json();
+                        const candidate = restData.candidates?.[0];
+                        const inlineData = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData;
+                        if (inlineData && inlineData.data) {
+                            b64 = inlineData.data;
+                            success = true;
+                            console.log(`[handleGoogle] [REST Fallback] Image generated successfully (${b64.length} base64 chars)`);
+                        }
+                    }
+                } catch (restErr) {
+                    console.error(`[handleGoogle] [REST Fallback] Failed: ${restErr.message}`);
+                }
+
+                if (!success) {
+                    throw new Error(`Image generation failed on Vertex AI.`);
                 }
             }
 

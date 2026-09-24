@@ -1299,9 +1299,9 @@ Return ONLY valid JSON.`
 
                 const candidateModels = Array.from(new Set([
                     mappedModel,
-                    'gemini-3.6-flash',
                     'gemini-2.5-flash',
-                    'gemini-1.5-flash'
+                    'gemini-2.5-flash-lite',
+                    'gemini-2.5-pro'
                 ])).filter(Boolean);
 
                 const studioApiKey = process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
@@ -1471,9 +1471,9 @@ Return ONLY valid JSON.`
 
             const candidateModels = Array.from(new Set([
                 selectedModel,
-                'gemini-3.6-flash',
                 'gemini-2.5-flash',
-                'gemini-1.5-flash'
+                'gemini-2.5-flash-lite',
+                'gemini-2.5-pro'
             ])).filter(Boolean);
 
             const clientsToTry = [];

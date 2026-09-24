@@ -57,10 +57,8 @@ export default function createRouter(deps) {
             candidateModels.push(preferredModel);
         }
         if (!candidateModels.includes('gemini-2.5-pro')) candidateModels.push('gemini-2.5-pro');
-        if (!candidateModels.includes('gemini-3.6-flash')) candidateModels.push('gemini-3.6-flash');
         if (!candidateModels.includes('gemini-2.5-flash')) candidateModels.push('gemini-2.5-flash');
-        if (!candidateModels.includes('gemini-1.5-pro')) candidateModels.push('gemini-1.5-pro');
-        if (!candidateModels.includes('gemini-1.5-flash')) candidateModels.push('gemini-1.5-flash');
+        if (!candidateModels.includes('gemini-2.5-flash-lite')) candidateModels.push('gemini-2.5-flash-lite');
 
         for (const model of candidateModels) {
             try {

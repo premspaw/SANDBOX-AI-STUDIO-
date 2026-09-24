@@ -45,7 +45,7 @@ export async function analyzeProductItem(image, broadcast) {
         required: ["productName", "category", "description", "materials", "colors", "vibe", "lightingSuggestion", "recommendedCameraShot", "labels"]
     };
 
-    const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash'];
+    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro'];
     let text = '';
     let lastErr = null;
 
