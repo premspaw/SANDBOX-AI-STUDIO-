@@ -2672,7 +2672,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
 
       let stylePrompt = '';
       const frontFacing = 'SUBJECT FACING: The person looks straight and directly into the camera lens, full-frontal face, engaging eye contact.';
-      const anatomyProportionsBlock = `ANATOMICAL PROPORTIONS & FRAMING (CRITICAL): Perfectly realistic, natural human anatomy. Standard head-to-shoulder and head-to-body proportions (head is naturally sized and proportional, NEVER enlarged, NEVER oversized, NOT a caricature or bobblehead). Upper-body / mid-torso framing with comfortable breathing room above the head and across the shoulders. Shot on standard 50mm natural focal length lens, zero wide-angle distortion, zero fisheye distortion, natural perspective compression.`;
+      const anatomyProportionsBlock = `ANATOMICAL PROPORTIONS & FRAMING (CRITICAL): Perfectly realistic, natural human anatomy. Standard head-to-shoulder and head-to-body proportions (head is naturally sized and proportional, NEVER enlarged, NEVER oversized, NOT a caricature or bobblehead). Upper-body / mid-torso framing with comfortable breathing room above the head and across the shoulders. Natural perspective, zero wide-angle distortion, zero fisheye distortion.`;
 
       if (imageStyle === 'ultra-realistic') {
         stylePrompt = `${frontFacing} ${anatomyProportionsBlock} Ultra-realistic raw photo, natural balanced human appearance, authentic and imperfect, sharp focus across subject, natural ambient lighting, authentic skin textures and micro-details, 8K resolution, natural environment.`;
@@ -2683,7 +2683,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       } else if (imageStyle === 'normal') {
         stylePrompt = `${frontFacing} ${anatomyProportionsBlock} Standard digital photography, realistic natural human proportions and head-to-torso balance, clear and well-lit, balanced colors, flattering and authentic social media aesthetic.`;
       } else {
-        stylePrompt = `${frontFacing} ${anatomyProportionsBlock} Cinematic portrait photography, natural human proportions, shot on 50mm lens, polished commercial look, authentic skin textures, professional UGC aesthetic, 8K resolution.`;
+        stylePrompt = `${frontFacing} ${anatomyProportionsBlock} Cinematic portrait photography, natural human proportions, polished commercial look, authentic skin textures, professional UGC aesthetic, 8K resolution.`;
       }
 
       // If overridePrompt is a string, wrap it. Otherwise use the default.
@@ -2724,11 +2724,9 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
 
       const skinRealismBlock = `SKIN REALISM (critical): Ultra-realistic human skin — visible pores, natural texture, subtle imperfections, micro-hair detail. NO airbrushed or plastic skin. NO beauty filter. Skin must look like an unedited photo of a real person. Natural realistic head-to-body proportions.`;
 
-      const photoQualityBlock = imageStyle === 'ultra-realistic'
-        ? `Shot on 50mm lens, natural ambient light, imperfect raw quality, real-life moment feel, perfectly proportioned human anatomy, 2K resolution.`
-        : imageStyle === 'cinematic'
-        ? `Shot on Sony A7 IV, 50mm f/1.8, dramatic natural light, cinematic color grade, natural perspective, shallow depth of field on background only.`
-        : `Natural phone camera quality, 50mm natural focal length, authentic lighting, candid feel, proper anatomical proportions.`;
+      const photoQualityBlock = imageStyle === 'cinematic'
+        ? `Shot on Sony A7 IV, dramatic natural light, cinematic color grade, natural perspective, shallow depth of field on background only.`
+        : `Shot on iPhone, natural ambient light, imperfect raw quality, slightly handling movement, no studio polish, real-life moment feel, 2K resolution.`;
 
       if (hasChar && hasProd && hasLoc) {
         promptInstructions = `One seamless photograph. 
@@ -3042,7 +3040,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
       if (thLocationImg) contents.push(await fileToGenerativePart(thLocationImg.file));
 
       let promptInstructions = '';
-      const thAnatomyProportions = `ANATOMICAL PROPORTIONS & FRAMING (CRITICAL): Perfectly realistic, anatomically correct human proportions. Standard natural head-to-shoulder and head-to-torso ratio (head is natural and proportional to body, NEVER enlarged, NEVER oversized, NOT a bobblehead). Upper-body / mid-torso framing with comfortable breathing room above the head and across the shoulders. Shot on 50mm natural focal length lens, zero wide-angle distortion, zero fisheye distortion.`;
+      const thAnatomyProportions = `ANATOMICAL PROPORTIONS & FRAMING (CRITICAL): Perfectly realistic, anatomically correct human proportions. Standard natural head-to-shoulder and head-to-torso ratio (head is natural and proportional to body, NEVER enlarged, NEVER oversized, NOT a bobblehead). Upper-body / mid-torso framing with comfortable breathing room above the head and across the shoulders. Natural perspective, zero wide-angle distortion, zero fisheye distortion.`;
 
       if (thPersonImg) {
         if (thProductImg && thLocationImg) {
@@ -3088,7 +3086,7 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
           promptInstructions = `Generate ONE photorealistic upper-body portrait photo of an attractive ${regionText} ${ageText} ${genderText} content creator / spokesperson${outfitText}, ${thAnatomyProportions} upper-body mid-torso framing, facing camera directly with a warm, confident, engaging expression. Professional studio/indoor UGC lighting, clean background, 9:16 portrait format. Hands relaxed at sides. DO NOT add or show any product, bottle, package, container, or object in their hands. The person MUST NOT hold any product or item.${poseText}${styleRefNote} No collage.`;
         }
       }
-      promptInstructions += ` Style: Ultra-realistic 8k resolution, natural human proportions and head-to-shoulder ratio, natural skin texture with micro pores, photorealistic skin tone falloff, sharp facial details, crisp tack-sharp focus on eyes, raw unedited 50mm camera aesthetic, zero plastic airbrushing.`;
+      promptInstructions += ` Style: Ultra-realistic 8k resolution, natural human proportions and head-to-shoulder ratio, natural skin texture with micro pores, photorealistic skin tone falloff, sharp facial details, crisp tack-sharp focus on eyes, raw unedited iPhone camera aesthetic, zero plastic airbrushing.`;
       contents.push({ text: promptInstructions });
 
       const response = await ai.models.generateContent({
