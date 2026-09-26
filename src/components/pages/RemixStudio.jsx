@@ -415,20 +415,20 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
   return (
     <div className="flex-1 h-full w-full bg-[#0a0c10] text-white flex flex-col overflow-hidden relative font-sans">
       {/* Top Header Bar */}
-      <div className="h-12 sm:h-14 border-b border-white/10 px-3 sm:px-6 flex items-center justify-between bg-black/40 backdrop-blur-xl z-20 shrink-0">
-        <div className="flex items-center gap-3 sm:gap-6">
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <span className="text-xs sm:text-sm font-bold text-white tracking-wide px-2.5 py-1 rounded-lg bg-white/10 border border-white/10">Create Video</span>
-            <span className="text-xs text-zinc-400 hover:text-white px-2 py-1 rounded-lg transition-colors cursor-pointer hidden sm:inline-block">Edit Video</span>
-            <span className="text-xs text-zinc-400 hover:text-white px-2 py-1 rounded-lg transition-colors cursor-pointer hidden sm:inline-block">Motion Control</span>
+      <div className="h-14 border-b border-white/10 px-6 flex items-center justify-between bg-black/40 backdrop-blur-xl z-20 shrink-0">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-white tracking-wide">Create Video</span>
+            <span className="text-xs text-zinc-500 font-medium hover:text-zinc-300 cursor-pointer transition-colors">Edit Video</span>
+            <span className="text-xs text-zinc-500 font-medium hover:text-zinc-300 cursor-pointer transition-colors">Motion Control</span>
           </div>
         </div>
 
         {/* Credit Pill */}
-        <div className="flex items-center gap-2 sm:gap-4">
-          <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-[11px] sm:text-xs text-zinc-300">
-            <Coins size={14} className="text-[#D4FF00]" />
-            <span className="hidden sm:inline">Shorts Balance:</span>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-zinc-300">
+            <Coins size={15} className="text-[#D4FF00]" />
+            <span>Shorts Balance:</span>
             <span className="font-bold text-white">{shorts ?? 0}</span>
           </div>
         </div>
@@ -437,33 +437,33 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
       {/* Main Studio Body */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden z-10">
         
-        {/* Left Controls Column (Compact, Adjacent, Low-Padding) */}
-        <div className="w-full lg:w-[390px] xl:w-[430px] border-r border-white/10 bg-[#0d0f14] flex flex-col min-h-0 overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-2.5 sm:space-y-3 shrink-0">
+        {/* Left Controls Column */}
+        <div className="w-full lg:w-[420px] xl:w-[460px] border-r border-white/10 bg-[#0d0f14] flex flex-col min-h-0 overflow-y-auto custom-scrollbar p-5 space-y-4 shrink-0">
           
           {/* Mode Pill Toggle (Motion Transfer vs Objects Swap) */}
-          <div className="grid grid-cols-2 gap-1 bg-black/50 p-1 rounded-xl border border-white/10 shrink-0">
+          <div className="grid grid-cols-2 gap-1.5 bg-black/40 p-1 rounded-2xl border border-white/10">
             <button
               type="button"
               onClick={() => handleModeChange('motion-transfer')}
-              className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
                 !isSwapMode
                   ? 'bg-zinc-800 text-white border border-white/20 shadow-md'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              <ArrowsClockwise size={14} weight={!isSwapMode ? "bold" : "regular"} className={!isSwapMode ? "text-[#D4FF00]" : ""} />
+              <ArrowsClockwise size={16} weight={!isSwapMode ? "bold" : "regular"} className={!isSwapMode ? "text-[#D4FF00]" : ""} />
               <span>Motion transfer</span>
             </button>
             <button
               type="button"
               onClick={() => handleModeChange('object-swap')}
-              className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
                 isSwapMode
                   ? 'bg-zinc-800 text-white border border-white/20 shadow-md'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              <Cube size={14} weight={isSwapMode ? "bold" : "regular"} className={isSwapMode ? "text-[#D4FF00]" : ""} />
+              <Cube size={16} weight={isSwapMode ? "bold" : "regular"} className={isSwapMode ? "text-[#D4FF00]" : ""} />
               <span>Objects swap</span>
             </button>
           </div>
@@ -472,152 +472,152 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
           <input type="file" accept="video/*" ref={fileInputVideoRef} onChange={handleVideoUpload} className="hidden" />
           <input type="file" accept="image/*" multiple ref={fileInputImageRef} onChange={handleImageUpload} className="hidden" />
 
-          {/* Combined Adjacent Media Setup Box */}
-          <div className="rounded-xl border border-white/10 bg-black/30 divide-y divide-white/10 overflow-hidden shrink-0">
-            {/* Card 1: Reference Video Input */}
-            <div 
-              onClick={() => !videoPreview && fileInputVideoRef.current?.click()}
-              className="p-3 hover:bg-white/[0.02] transition-all cursor-pointer group"
-            >
-              {videoPreview ? (
-                <div className="relative w-full h-28 rounded-lg overflow-hidden bg-black">
-                  <video src={videoPreview} className="w-full h-full object-cover" muted loop autoPlay />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); fileInputVideoRef.current?.click(); }}
-                      className="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 backdrop-blur-md text-[11px] font-bold text-white transition-all"
-                    >
-                      Replace
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setGalleryTarget('video'); setShowGalleryModal(true); }}
-                      className="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 backdrop-blur-md text-[11px] font-bold text-white transition-all"
-                    >
-                      Gallery
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setVideoPreview(''); setVideoFile(null); }}
-                      className="p-1.5 rounded-lg bg-red-500/80 hover:bg-red-500 text-white transition-all"
-                    >
-                      <Trash size={13} />
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-800/80 border border-white/10 flex items-center justify-center text-zinc-300 group-hover:text-white group-hover:bg-zinc-700 shrink-0 transition-all">
-                    <VideoCamera size={18} weight="fill" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xs font-bold text-white truncate">
-                      {isSwapMode ? 'Add a video to swap objects' : 'Add reference video for motion'}
-                    </h3>
-                    <p className="text-[10px] text-zinc-400 mt-0.5">Duration: 4–30 seconds</p>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); fileInputVideoRef.current?.click(); }}
-                      className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] text-zinc-200 font-semibold transition-all"
-                    >
-                      Upload
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setGalleryTarget('video'); setShowGalleryModal(true); }}
-                      className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] text-zinc-200 font-semibold transition-all"
-                    >
-                      Gallery
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Card 2: Reference Characters, Products, or Clothes */}
-            <div className="p-3 space-y-2">
-              <div 
-                onClick={() => fileInputImageRef.current?.click()}
-                className="flex items-center justify-between p-2 rounded-lg border border-dashed border-white/15 hover:border-white/30 hover:bg-white/[0.02] cursor-pointer transition-all group"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="flex items-center -space-x-1 shrink-0">
-                    <div className="w-6 h-6 rounded-full bg-zinc-800 border border-white/15 flex items-center justify-center text-zinc-300">
-                      <ImageIcon size={12} />
-                    </div>
-                    <div className="w-6 h-6 rounded-full bg-zinc-800 border border-white/15 flex items-center justify-center text-zinc-300">
-                      <Package size={12} />
-                    </div>
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-[11px] font-bold text-white truncate">Add characters, products or clothes</h4>
-                    <span className="text-[10px] text-zinc-400">Max 8 images ({referenceImages.length}/8)</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
+          {/* Card 1: Reference Video Input */}
+          <div 
+            onClick={() => !videoPreview && fileInputVideoRef.current?.click()}
+            className="relative rounded-2xl border border-white/10 hover:border-white/25 bg-black/30 hover:bg-white/[0.02] p-5 flex flex-col items-center justify-center text-center transition-all cursor-pointer min-h-[140px] group overflow-hidden"
+          >
+            {videoPreview ? (
+              <div className="relative w-full h-32 rounded-xl overflow-hidden bg-black">
+                <video src={videoPreview} className="w-full h-full object-cover" muted loop autoPlay />
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
                   <button
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); fileInputImageRef.current?.click(); }}
-                    className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] text-zinc-200 font-semibold transition-all"
+                    onClick={(e) => { e.stopPropagation(); fileInputVideoRef.current?.click(); }}
+                    className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md text-xs font-bold text-white transition-all"
                   >
-                    Upload
+                    Replace
                   </button>
                   <button
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); setGalleryTarget('image'); setShowGalleryModal(true); }}
-                    className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] text-zinc-200 font-semibold transition-all"
+                    onClick={(e) => { e.stopPropagation(); setGalleryTarget('video'); setShowGalleryModal(true); }}
+                    className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md text-xs font-bold text-white transition-all"
                   >
                     Gallery
                   </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setVideoPreview(''); setVideoFile(null); }}
+                    className="p-1.5 rounded-xl bg-red-500/80 hover:bg-red-500 text-white transition-all"
+                  >
+                    <Trash size={14} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-11 h-11 rounded-full bg-zinc-800/80 border border-white/10 flex items-center justify-center text-zinc-300 group-hover:text-white group-hover:bg-zinc-700 transition-all">
+                  <VideoCamera size={20} weight="fill" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-white">
+                    {isSwapMode ? 'Add a video to swap objects' : 'Add a reference video to extract motion'}
+                  </h3>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">Video duration: 4–30 seconds</p>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); fileInputVideoRef.current?.click(); }}
+                    className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-zinc-300 font-medium transition-all"
+                  >
+                    From Computer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setGalleryTarget('video'); setShowGalleryModal(true); }}
+                    className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-zinc-300 font-medium transition-all"
+                  >
+                    From Gallery
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Card 2: Reference Characters, Products, or Clothes */}
+          <div className="relative rounded-2xl border border-white/10 bg-black/30 p-4 space-y-3">
+            <div 
+              onClick={() => fileInputImageRef.current?.click()}
+              className="flex flex-col items-center justify-center text-center p-3 rounded-xl border border-dashed border-white/10 hover:border-white/20 hover:bg-white/[0.02] cursor-pointer transition-all group"
+            >
+              {/* Top Icons Row */}
+              <div className="flex items-center gap-1.5 mb-2">
+                <div className="w-8 h-8 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center text-zinc-300">
+                  <ImageIcon size={15} />
+                </div>
+                <div className="w-8 h-8 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center text-zinc-300">
+                  <Package size={15} />
+                </div>
+                <div className="w-8 h-8 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center text-zinc-300">
+                  <Cube size={15} />
                 </div>
               </div>
 
-              {/* Thumbnail Grid with Sequential Badges */}
-              {referenceImages.length > 0 && (
-                <div className="grid grid-cols-4 gap-1.5 pt-0.5">
-                  {referenceImages.map((img, idx) => (
-                    <div key={img.id || idx} className="relative group rounded-lg overflow-hidden border border-white/15 bg-black aspect-square shadow-sm">
-                      <img src={img.url} alt={img.tag} className="w-full h-full object-cover" />
-                      
-                      {/* Sequential Tag Badge */}
-                      <div className="absolute top-1 left-1 px-1 py-0.2 rounded bg-black/80 text-[#D4FF00] font-black text-[8px] uppercase tracking-wider border border-[#D4FF00]/40">
-                        {img.tag}
-                      </div>
+              <h3 className="text-xs font-bold text-white">
+                Add your characters, products, or clothes
+              </h3>
+              <p className="text-[11px] text-zinc-400 mt-0.5">Up to 8 images ({referenceImages.length}/8 added)</p>
 
-                      {/* Quick Insert Tag Action */}
-                      <button
-                        type="button"
-                        onClick={() => insertTagIntoPrompt(img.tag)}
-                        className="absolute bottom-1 left-1 right-1 py-0.5 rounded bg-black/80 hover:bg-[#D4FF00] hover:text-black text-[8px] font-bold text-white opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-1"
-                        title="Insert tag into prompt"
-                      >
-                        <TagIcon size={9} />
-                        <span>Tag</span>
-                      </button>
-
-                      {/* Remove Action */}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImage(idx)}
-                        className="absolute top-1 right-1 p-0.5 bg-red-500/80 hover:bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash size={10} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); fileInputImageRef.current?.click(); }}
+                  className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-zinc-300 font-medium transition-all"
+                >
+                  Upload File
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setGalleryTarget('image'); setShowGalleryModal(true); }}
+                  className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-zinc-300 font-medium transition-all"
+                >
+                  Pick from Gallery
+                </button>
+              </div>
             </div>
+
+            {/* Thumbnail Grid with Sequential Badges */}
+            {referenceImages.length > 0 && (
+              <div className="grid grid-cols-4 gap-2 pt-1">
+                {referenceImages.map((img, idx) => (
+                  <div key={img.id || idx} className="relative group rounded-xl overflow-hidden border border-white/15 bg-black aspect-square shadow-md">
+                    <img src={img.url} alt={img.tag} className="w-full h-full object-cover" />
+                    
+                    {/* Sequential Tag Badge */}
+                    <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded-md bg-black/80 text-[#D4FF00] font-black text-[8px] uppercase tracking-wider border border-[#D4FF00]/40">
+                      {img.tag}
+                    </div>
+
+                    {/* Quick Insert Tag Action */}
+                    <button
+                      type="button"
+                      onClick={() => insertTagIntoPrompt(img.tag)}
+                      className="absolute bottom-1 left-1 right-1 py-1 rounded bg-black/80 hover:bg-[#D4FF00] hover:text-black text-[8px] font-bold text-white opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-1"
+                      title="Insert tag into prompt"
+                    >
+                      <TagIcon size={10} />
+                      <span>Tag</span>
+                    </button>
+
+                    {/* Remove Action */}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(idx)}
+                      className="absolute top-1 right-1 p-1 bg-red-500/80 hover:bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash size={11} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Transformation Prompt Section with Auto-Expanding Height & Inline @ Autocomplete */}
-          <div className="space-y-1.5 shrink-0">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-300">
+              <label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
                 Prompt Instructions
               </label>
               <span className="text-[10px] text-zinc-400">Type @ to tag references</span>
@@ -625,14 +625,14 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
 
             {/* Reference Tags Helper Chips */}
             {referenceImages.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1 p-1 rounded-lg bg-white/[0.02] border border-white/10">
+              <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-xl bg-white/[0.02] border border-white/10">
                 <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider pl-1">Tags:</span>
                 {referenceImages.map((img) => (
                   <button
                     key={img.id}
                     type="button"
                     onClick={() => insertTagIntoPrompt(img.tag)}
-                    className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-[9px] font-bold text-[#D4FF00] transition-all flex items-center gap-0.5"
+                    className="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] font-bold text-[#D4FF00] transition-all flex items-center gap-1"
                   >
                     <span>+</span>
                     <span>{img.tag}</span>
@@ -642,7 +642,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                   <button
                     type="button"
                     onClick={() => insertTagIntoPrompt(isSwapMode ? 'scene video' : 'driving video')}
-                    className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-[9px] font-bold text-white transition-all flex items-center gap-0.5"
+                    className="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-[10px] font-bold text-white transition-all flex items-center gap-1"
                   >
                     <span>+</span>
                     <span>{isSwapMode ? 'scene video' : 'driving video'}</span>
@@ -656,31 +656,31 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
               <AnimatePresence>
                 {mentionSearch !== null && (
                   <motion.div
-                    initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.98 }}
                     transition={{ duration: 0.12 }}
-                    className="absolute bottom-full mb-1.5 left-0 right-0 z-50 bg-[#0d0f15]/95 backdrop-blur-2xl border border-[#D4FF00]/80 rounded-xl shadow-[0_-12px_35px_rgba(212,255,0,0.25)] overflow-hidden flex flex-col max-h-[220px]"
+                    className="absolute bottom-full mb-2 left-0 right-0 z-50 bg-[#0d0f15]/95 backdrop-blur-2xl border border-[#D4FF00]/80 rounded-2xl shadow-[0_-15px_45px_rgba(212,255,0,0.25)] overflow-hidden flex flex-col max-h-[260px]"
                   >
-                    <div className="p-2 border-b border-white/10 bg-[#D4FF00]/10 flex items-center justify-between">
-                      <span className="text-[10px] font-black text-[#D4FF00] uppercase tracking-widest flex items-center gap-1">
-                        <TagIcon size={11} weight="bold" />
+                    <div className="p-2.5 border-b border-white/10 bg-[#D4FF00]/10 flex items-center justify-between">
+                      <span className="text-[10px] font-black text-[#D4FF00] uppercase tracking-widest flex items-center gap-1.5">
+                        <TagIcon size={12} weight="bold" />
                         <span>Tag Active Studio Media</span>
                       </span>
                       <button 
                         type="button" 
                         onClick={() => setMentionSearch(null)} 
-                        className="text-zinc-400 hover:text-white p-0.5 rounded hover:bg-white/10 transition-colors"
+                        className="text-zinc-400 hover:text-white p-0.5 rounded-lg hover:bg-white/10 transition-colors"
                       >
-                        <X size={11} />
+                        <X size={12} />
                       </button>
                     </div>
 
-                    <div className="overflow-y-auto custom-scrollbar p-1 space-y-0.5">
+                    <div className="overflow-y-auto custom-scrollbar p-1.5 space-y-1">
                       {filteredMentionSlots.length === 0 ? (
-                        <div className="p-3 text-center">
-                          <p className="text-[10px] text-zinc-400 font-medium">No slot matches &quot;@{mentionSearch}&quot;</p>
-                          <p className="text-[9px] text-zinc-500 mt-0.5">Upload images or video to tag them</p>
+                        <div className="p-4 text-center">
+                          <p className="text-[11px] text-zinc-400 font-medium">No uploaded slot matches &quot;@{mentionSearch}&quot;</p>
+                          <p className="text-[9px] text-zinc-500 mt-1">Upload images or video to tag them</p>
                         </div>
                       ) : (
                         filteredMentionSlots.map((slot, idx) => (
@@ -688,13 +688,13 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                             key={slot.id || idx}
                             type="button"
                             onClick={() => selectMentionSlot(slot)}
-                            className={`w-full p-1.5 rounded-lg flex items-center gap-2 text-left transition-all group ${
+                            className={`w-full p-2 rounded-xl flex items-center gap-2.5 text-left transition-all group ${
                               idx === mentionIndex 
-                                ? 'bg-[#D4FF00] text-black font-bold shadow-sm' 
+                                ? 'bg-[#D4FF00] text-black font-bold shadow-md' 
                                 : 'hover:bg-white/10 text-white'
                             }`}
                           >
-                            <div className="w-7 h-7 rounded overflow-hidden bg-black/60 border border-white/15 shrink-0 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-lg overflow-hidden bg-black/60 border border-white/15 shrink-0 flex items-center justify-center">
                               {slot.type === 'video' ? (
                                 <video src={slot.url} className="w-full h-full object-cover" muted />
                               ) : (
@@ -703,12 +703,12 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
-                                <span className="text-[11px] font-black truncate">{slot.tag}</span>
-                                <span className={`text-[8px] font-mono px-1 py-0.2 rounded ${idx === mentionIndex ? 'bg-black/20 text-black' : 'bg-[#D4FF00]/20 text-[#D4FF00]'}`}>
+                                <span className="text-xs font-black truncate">{slot.tag}</span>
+                                <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded ${idx === mentionIndex ? 'bg-black/20 text-black' : 'bg-[#D4FF00]/20 text-[#D4FF00]'}`}>
                                   {slot.token}
                                 </span>
                               </div>
-                              <p className={`text-[8px] truncate ${idx === mentionIndex ? 'text-black/80 font-medium' : 'text-zinc-400'}`}>
+                              <p className={`text-[9px] truncate ${idx === mentionIndex ? 'text-black/80 font-medium' : 'text-zinc-400'}`}>
                                 {slot.desc}
                               </p>
                             </div>
@@ -725,63 +725,63 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                 value={prompt}
                 onInput={handlePromptInput}
                 onKeyDown={handlePromptKeyDown}
-                rows={2}
+                rows={3}
                 placeholder={isSwapMode 
                   ? "Describe which object to replace and how Image 1 should be integrated... Type @ to tag media" 
                   : "e.g. Extract the character from Image 1 and clothing styling from Image 2 while preserving exact motion... Type @ to tag media"}
-                className="w-full bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-[#D4FF00]/80 focus:ring-1 focus:ring-[#D4FF00]/30 transition-all resize-none font-sans custom-scrollbar min-h-[56px] max-h-[180px]"
+                className="w-full bg-black/40 border border-white/10 rounded-2xl p-3 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-[#D4FF00]/80 focus:ring-1 focus:ring-[#D4FF00]/30 transition-all resize-none font-sans custom-scrollbar min-h-[72px] max-h-[240px]"
               />
             </div>
           </div>
 
           {/* Resolution Dropdown Quality Selector */}
-          <div className="space-y-1 shrink-0">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-300">
+              <label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
                 Quality & Resolution
               </label>
-              <span className="text-[11px] font-bold text-[#D4FF00]">{costAmount} Shorts</span>
+              <span className="text-xs font-bold text-[#D4FF00]">{costAmount} Shorts</span>
             </div>
 
             <div className="relative">
               <select
                 value={resolution}
                 onChange={(e) => setResolution(e.target.value)}
-                className="w-full appearance-none bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-medium focus:outline-none focus:border-[#D4FF00]/80 cursor-pointer transition-colors"
+                className="w-full appearance-none bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white font-medium focus:outline-none focus:border-[#D4FF00]/80 cursor-pointer transition-colors"
               >
                 <option value="480p" className="bg-zinc-900 text-white">480p SD · Fast Generation (5 Shorts)</option>
                 <option value="720p" className="bg-zinc-900 text-white">720p HD · Standard High Quality (8 Shorts)</option>
                 <option value="1080p" className="bg-zinc-900 text-white">1080p Full HD · Studio Master (12 Shorts)</option>
               </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
-                <CaretDown size={13} weight="bold" />
+              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
+                <CaretDown size={14} weight="bold" />
               </div>
             </div>
           </div>
 
           {/* Error Banner */}
           {errorMessage && (
-            <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-2 text-xs text-red-300 shrink-0">
-              <WarningCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-2 text-xs text-red-300">
+              <WarningCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
               <span>{errorMessage}</span>
             </div>
           )}
 
-          {/* Bottom High-Visibility Generate Button */}
-          <div className="pt-1 shrink-0">
+          {/* Bottom High-Visibility Generate Button (Higgsfield Style) */}
+          <div className="pt-2">
             <button
               onClick={handleStartGeneration}
               disabled={isGenerating}
-              className={`w-full py-3 sm:py-3.5 rounded-xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
+              className={`w-full py-4 rounded-2xl font-black uppercase tracking-wider text-sm flex items-center justify-center gap-2.5 transition-all ${
                 isGenerating
                   ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed border border-white/10'
-                  : 'bg-[#D4FF00] hover:bg-[#bce400] text-black shadow-[0_0_25px_rgba(212,255,0,0.3)] active:scale-[0.98]'
+                  : 'bg-[#D4FF00] hover:bg-[#bce400] text-black shadow-[0_0_30px_rgba(212,255,0,0.35)] active:scale-[0.98]'
               }`}
             >
               {isGenerating ? (
                 <>
-                  <ArrowsClockwise size={18} className="animate-spin text-[#D4FF00]" />
-                  <span>Processing ({generationProgress}%)</span>
+                  <ArrowsClockwise size={20} className="animate-spin text-[#D4FF00]" />
+                  <span>Processing {isSwapMode ? 'Object Swap' : 'Motion Remix'} ({generationProgress}%)</span>
                 </>
               ) : (
                 <>
@@ -793,23 +793,23 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
         </div>
 
         {/* Right Viewport: Real-time Player & Generation Canvas */}
-        <div className="flex-1 flex flex-col min-h-0 bg-black/40 overflow-y-auto custom-scrollbar p-3 sm:p-5 space-y-4">
+        <div className="flex-1 flex flex-col min-h-0 bg-black/40 overflow-y-auto custom-scrollbar p-6 space-y-6">
           
           {/* Main Display Stage */}
-          <div className="w-full flex-1 min-h-[300px] sm:min-h-[380px] lg:min-h-[440px] rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl relative overflow-hidden flex items-center justify-center shadow-[0_0_40px_rgba(0,0,0,0.8)]">
+          <div className="w-full flex-1 min-h-[440px] rounded-3xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl relative overflow-hidden flex items-center justify-center shadow-[0_0_40px_rgba(0,0,0,0.8)]">
             
             {isGenerating ? (
-              <div className="flex flex-col items-center gap-3 text-center p-4 sm:p-6 z-10">
-                <div className="relative w-20 h-20">
+              <div className="flex flex-col items-center gap-4 text-center p-6 z-10">
+                <div className="relative w-24 h-24">
                   <div className="absolute inset-0 rounded-full border-4 border-white/10" />
                   <div className="absolute inset-0 rounded-full border-4 border-[#D4FF00] border-t-transparent animate-spin" />
-                  <div className="absolute inset-0 flex items-center justify-center text-xs sm:text-sm font-black text-[#D4FF00]">
+                  <div className="absolute inset-0 flex items-center justify-center text-sm font-black text-[#D4FF00]">
                     {generationProgress}%
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">{statusMessage}</h3>
-                  <p className="text-[11px] text-zinc-400 mt-1">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">{statusMessage}</h3>
+                  <p className="text-xs text-zinc-400 mt-1">
                     {isSwapMode 
                       ? 'Replacing object geometry while preserving lighting & reflections...' 
                       : 'Preserving actor motion, camera trajectory, and frame timing...'}
@@ -817,51 +817,51 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                 </div>
               </div>
             ) : generatedResult ? (
-              <div className="relative w-full h-full flex flex-col items-center justify-center p-2 sm:p-4">
+              <div className="relative w-full h-full flex flex-col items-center justify-center p-4">
                 <video
                   src={generatedResult.url}
-                  className="w-full h-full object-contain max-h-[560px] rounded-xl shadow-2xl"
+                  className="w-full h-full object-contain max-h-[580px] rounded-2xl shadow-2xl"
                   controls
                   autoPlay
                   loop
                 />
                 
                 {/* Overlay Action Bar */}
-                <div className="absolute top-4 right-4 flex items-center gap-1.5 sm:gap-2">
+                <div className="absolute top-6 right-6 flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => handleCopyLink(generatedResult.url)}
-                    className="p-2 sm:p-2.5 rounded-lg bg-black/70 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all flex items-center gap-1 text-xs font-semibold"
+                    className="p-2.5 rounded-xl bg-black/70 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all flex items-center gap-1.5 text-xs font-semibold"
                   >
-                    <Copy size={14} />
-                    <span className="hidden sm:inline">{copiedUrl ? 'Copied!' : 'Copy Link'}</span>
+                    <Copy size={16} />
+                    <span>{copiedUrl ? 'Copied!' : 'Copy Link'}</span>
                   </button>
                   <a
                     href={generatedResult.url}
                     download={isSwapMode ? "genjutsu-object-swap.mp4" : "remix-motion-transfer.mp4"}
                     target="_blank"
                     rel="noreferrer"
-                    className="p-2 sm:p-2.5 rounded-lg bg-[#D4FF00] text-black font-bold hover:bg-[#bce400] transition-all flex items-center gap-1 text-xs"
+                    className="p-2.5 rounded-xl bg-[#D4FF00] text-black font-bold hover:bg-[#bce400] transition-all flex items-center gap-1.5 text-xs"
                   >
-                    <DownloadSimple size={14} weight="bold" />
-                    <span>Download</span>
+                    <DownloadSimple size={16} weight="bold" />
+                    <span>Download MP4</span>
                   </a>
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-2.5 text-center p-4 sm:p-6 text-zinc-500 max-w-md">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-center text-zinc-600">
+              <div className="flex flex-col items-center gap-3 text-center p-6 text-zinc-500 max-w-md">
+                <div className="w-16 h-16 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-center text-zinc-600">
                   {isSwapMode ? (
-                    <Cube size={28} />
+                    <Cube size={32} />
                   ) : (
-                    <FilmSlate size={28} />
+                    <FilmSlate size={32} />
                   )}
                 </div>
                 <div>
-                  <h3 className="text-xs sm:text-sm font-bold text-zinc-300 uppercase tracking-wider">
+                  <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider">
                     Ready for {isSwapMode ? 'Object Swap Synthesis' : 'Motion Transfer Synthesis'}
                   </h3>
-                  <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">
+                  <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
                     {isSwapMode 
                       ? 'Upload your scene video on the left, add reference images of your desired replacement object, and click Generate.' 
                       : 'Upload your source video on the left, add reference images of your desired character or style, and click Generate.'}
@@ -873,29 +873,29 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
 
           {/* History / Recent Generations Carousel */}
           {historyList.length > 0 && (
-            <div className="space-y-2.5">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                <Clock size={14} />
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+                <Clock size={16} />
                 <span>Recent Studio Generations ({historyList.length})</span>
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {historyList.map((item) => (
                   <div
                     key={item.id}
                     onClick={() => setGeneratedResult(item)}
-                    className="group relative rounded-xl border border-white/10 hover:border-[#D4FF00]/50 bg-white/[0.02] p-2 cursor-pointer transition-all overflow-hidden"
+                    className="group relative rounded-2xl border border-white/10 hover:border-[#D4FF00]/50 bg-white/[0.02] p-2.5 cursor-pointer transition-all overflow-hidden"
                   >
-                    <div className="w-full h-24 rounded-lg bg-black overflow-hidden relative">
+                    <div className="w-full h-28 rounded-xl bg-black overflow-hidden relative">
                       <video src={item.url} className="w-full h-full object-cover" muted />
                       <div className="absolute inset-0 bg-black/40 group-hover:opacity-0 transition-opacity flex items-center justify-center">
-                        <Play size={20} className="text-white opacity-80" />
+                        <Play size={22} className="text-white opacity-80" />
                       </div>
-                      <div className={`absolute top-1 left-1 px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider ${item.mode === 'object-swap' ? 'bg-cyan-400 text-black' : 'bg-[#D4FF00] text-black'}`}>
+                      <div className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${item.mode === 'object-swap' ? 'bg-cyan-400 text-black' : 'bg-[#D4FF00] text-black'}`}>
                         {item.mode === 'object-swap' ? 'Swap' : 'Remix'}
                       </div>
                     </div>
-                    <div className="p-0.5 mt-1">
-                      <p className="text-[10px] text-zinc-200 truncate font-medium">{item.prompt}</p>
+                    <div className="p-1 mt-1">
+                      <p className="text-[11px] text-zinc-200 truncate font-medium">{item.prompt}</p>
                       <div className="flex items-center justify-between text-[9px] text-zinc-500 mt-0.5">
                         <span>{item.createdAt}</span>
                         <span className="font-bold text-[#D4FF00]">{item.resolution}</span>

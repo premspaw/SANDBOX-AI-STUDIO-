@@ -217,8 +217,9 @@ export const SidePanel = React.memo(({
   const [showDocs, setShowDocs] = useState(false);
   const [galleryPickerSlot, setGalleryPickerSlot] = useState(null); // { type: 'image' | 'video' | 'first' | 'last' | 'motion_subject' | 'motion_video', slotIdx?: number }
 
-  // Kling 3.0 Motion Control Local States & Refs
+  // Kling 3.0 Motion Control & Remix Local States & Refs
   const motionImageInputRef = useRef(null);
+  const remixImageInputRef = useRef(null);
   const motionVideoInputRef = useRef(null);
   const [isUploadingMotionImage, setIsUploadingMotionImage] = useState(false);
   const [isUploadingMotionVideo, setIsUploadingMotionVideo] = useState(false);
@@ -624,6 +625,71 @@ export const SidePanel = React.memo(({
     setMotionRefVideoPreview('');
     setMotionRefVideoDuration(5);
     if (motionVideoInputRef.current) motionVideoInputRef.current.value = '';
+  };
+
+  // Remix Dedicated Upload & Pick Handlers
+  const handleRemixImageUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const showToast = useAppStore.getState().showToast;
+
+    for (const file of files) {
+      if (!file.type.match(/^image\/(jpeg|png|jpg|webp)/i)) {
+        if (showToast) showToast("Reference image must be JPEG, PNG, or WebP format.", "error");
+        continue;
+      }
+      if (file.size > 15 * 1024 * 1024) {
+        if (showToast) showToast("Reference image exceeds 15MB limit.", "error");
+        continue;
+      }
+
+      const dataUrl = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(file);
+      });
+
+      if (!motionSubjectPreview && !motionSubjectImage) {
+        setMotionSubjectPreview(dataUrl);
+        setMotionSubjectImage(dataUrl);
+        autoTagIfMissing('@image1');
+      } else {
+        let insertedTag = null;
+        setSeedanceImages(prev => {
+          const next = [...prev];
+          const emptyIdx = next.findIndex(i => !i);
+          if (emptyIdx !== -1 && emptyIdx < 7) {
+            next[emptyIdx] = dataUrl;
+            insertedTag = `@image${emptyIdx + 2}`;
+          }
+          return next;
+        });
+        if (insertedTag) {
+          autoTagIfMissing(insertedTag);
+        }
+      }
+    }
+    if (remixImageInputRef.current) remixImageInputRef.current.value = '';
+    if (showToast) showToast("Reference image(s) attached as @image tags!", "success");
+  };
+
+  const handlePickRemixImage = (item, slotIdx = 0) => {
+    if (slotIdx === 0) {
+      setMotionSubjectPreview(item.url);
+      setMotionSubjectImage(item.url);
+      autoTagIfMissing('@image1');
+    } else {
+      const targetIdx = slotIdx - 1;
+      setSeedanceImages(prev => {
+        const next = [...prev];
+        next[targetIdx] = item.url;
+        return next;
+      });
+      autoTagIfMissing(`@image${slotIdx + 1}`);
+    }
+    setGalleryPickerSlot(null);
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) showToast(`Added to @image${slotIdx + 1}!`, "success");
   };
 
   // File Input Refs for 4 Image Slots and 3 Video Slots
@@ -1953,6 +2019,17 @@ export const SidePanel = React.memo(({
         };
       });
 
+    if (panelTab === 'remix') {
+      const vid = motionRefVideoPreview || motionRefVideo || videoPreview;
+      const img1 = motionSubjectPreview || motionSubjectImage;
+      const remixSlots = [
+        ...(vid ? [{ name: 'video1', category: 'Driving Video', isVideo: true, imageUrl: vid }] : []),
+        ...(img1 ? [{ name: 'image1', category: 'Image 1 (Subject)', imageUrl: img1 }] : []),
+        ...seedanceImages.map((img, idx) => img ? { name: `image${idx + 2}`, category: `Image ${idx + 2}`, imageUrl: img } : null).filter(Boolean)
+      ];
+      return remixSlots;
+    }
+
     if (panelTab === 'seedance') {
       return [...seedanceSlots, ...(allRefItems || []), ...galleryHistoryItems];
     }
@@ -1986,7 +2063,7 @@ export const SidePanel = React.memo(({
       ...(allRefItems || []),
       ...galleryHistoryItems
     ];
-  }, [panelTab, firstFramePreview, lastFramePreview, firstFrameImage, lastFrameImage, omniFirstFramePreview, omniLastFramePreview, omniFirstFrameImage, omniLastFrameImage, omniRefPreviews, videoPreview, omniMultiImages, omniMultiVideos, seedanceFirstFrame, seedanceLastFrame, seedanceImages, seedanceVideos, seedanceAudios, allRefItems, gallery]);
+  }, [panelTab, firstFramePreview, lastFramePreview, firstFrameImage, lastFrameImage, omniFirstFramePreview, omniLastFramePreview, omniFirstFrameImage, omniLastFrameImage, omniRefPreviews, videoPreview, omniMultiImages, omniMultiVideos, seedanceFirstFrame, seedanceLastFrame, seedanceImages, seedanceVideos, seedanceAudios, allRefItems, gallery, motionRefVideoPreview, motionRefVideo, motionSubjectPreview, motionSubjectImage]);
 
   const handlePromptChange = useCallback((e) => {
     const val = e.target.value;
@@ -2199,7 +2276,55 @@ export const SidePanel = React.memo(({
 
     // Compile active payload attached references
     const activePayloadRefs = [];
-    if (panelTab === 'seedance' || panelTab === 'seedance-2.5') {
+    if (panelTab === 'remix') {
+      const vid = motionRefVideoPreview || motionRefVideo || videoPreview;
+      if (vid) {
+        const isTagged = promptStr.includes('@video1') || promptStr.includes('@video') || promptStr.includes('<REF_VIDEO>');
+        activePayloadRefs.push({
+          id: 'remix_driving_vid',
+          tag: '@video1',
+          displayTag: '@video1',
+          label: 'Driving Video',
+          isVideo: true,
+          imageUrl: vid,
+          isTagged,
+          onInsert: () => insertTagAtCursor('@video1'),
+          onClear: handleClearMotionVideo
+        });
+      }
+
+      const img1 = motionSubjectPreview || motionSubjectImage;
+      if (img1) {
+        const isTagged = promptStr.includes('@image1') || promptStr.includes('@Image1') || promptStr.includes('@image_1');
+        activePayloadRefs.push({
+          id: 'remix_subject_img_1',
+          tag: '@image1',
+          displayTag: '@image1',
+          label: 'Image 1',
+          imageUrl: img1,
+          isTagged,
+          onInsert: () => insertTagAtCursor('@image1'),
+          onClear: handleClearMotionSubject
+        });
+      }
+
+      seedanceImages.forEach((img, idx) => {
+        if (img) {
+          const tag = `@image${idx + 2}`;
+          const isTagged = promptStr.includes(tag);
+          activePayloadRefs.push({
+            id: `remix_img_${idx + 2}`,
+            tag,
+            displayTag: tag,
+            label: `Image ${idx + 2}`,
+            imageUrl: img,
+            isTagged,
+            onInsert: () => insertTagAtCursor(tag),
+            onClear: () => handleClearSeedanceImage(idx)
+          });
+        }
+      });
+    } else if (panelTab === 'seedance' || panelTab === 'seedance-2.5') {
       if (seedanceFirstFrame) {
         const isTagged = promptStr.includes('@first_frame') || promptStr.includes('<FIRST_FRAME>') || promptStr.includes('@FIRST_FRAME');
         activePayloadRefs.push({
@@ -2840,6 +2965,14 @@ export const SidePanel = React.memo(({
         className="hidden"
         onChange={handleMotionVideoSelect}
       />
+      <input
+        type="file"
+        ref={remixImageInputRef}
+        accept="image/jpeg,image/png,image/jpg,image/webp"
+        multiple
+        className="hidden"
+        onChange={handleRemixImageUpload}
+      />
 
       {/* Seedance Dedicated Hidden Inputs */}
       <input
@@ -3430,14 +3563,14 @@ export const SidePanel = React.memo(({
                       <div className="flex items-center justify-between pb-1 border-b border-white/5">
                         <span className="text-[9.5px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
                           <Video className="w-3 h-3 text-amber-400" />
-                          <span>1. Driving Source Video (Motion DNA)</span>
+                          <span>1. Driving Source Video (@video1)</span>
                         </span>
                         <div className="flex items-center gap-1">
                           {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
                             <button
                               type="button"
                               onClick={() => setGalleryPickerSlot({ type: 'motion_video' })}
-                              className="text-[7.5px] font-bold text-amber-400 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/25 px-1 py-0.2 rounded transition-all cursor-pointer"
+                              className="text-[7.5px] font-bold text-amber-400 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/25 px-1.5 py-0.5 rounded transition-all cursor-pointer"
                               title="Pick Driving Video from Studio Gallery"
                             >
                               + Gal
@@ -3459,6 +3592,9 @@ export const SidePanel = React.memo(({
                       {(motionRefVideoPreview || motionRefVideo) ? (
                         <div className="aspect-video w-full rounded-xl overflow-hidden bg-black/70 border border-amber-500/40 relative group shadow-md flex items-center justify-center">
                           <video src={motionRefVideoPreview || motionRefVideo} className="w-full h-full object-cover" muted loop autoPlay playsInline />
+                          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 border border-amber-400/40 text-[9px] font-mono font-bold text-amber-300">
+                            @video1
+                          </div>
                           <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all gap-1.5 backdrop-blur-[2px]">
                             <button
                               type="button"
@@ -3493,8 +3629,16 @@ export const SidePanel = React.memo(({
                           {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
                             <button
                               type="button"
-                              onClick={() => setGalleryPickerSlot({ type: 'motion_subject' })}
-                              className="text-[7.5px] font-bold text-purple-400 bg-purple-400/10 hover:bg-purple-400/20 border border-purple-400/25 px-1 py-0.2 rounded transition-all cursor-pointer"
+                              onClick={() => {
+                                const hasSubject = Boolean(motionSubjectPreview || motionSubjectImage);
+                                if (!hasSubject) {
+                                  setGalleryPickerSlot({ type: 'remix_image', slotIdx: 0 });
+                                } else {
+                                  const emptyIdx = seedanceImages.findIndex(i => !i);
+                                  setGalleryPickerSlot({ type: 'remix_image', slotIdx: emptyIdx !== -1 ? emptyIdx + 1 : 1 });
+                                }
+                              }}
+                              className="text-[7.5px] font-bold text-purple-400 bg-purple-400/10 hover:bg-purple-400/20 border border-purple-400/25 px-1.5 py-0.5 rounded transition-all cursor-pointer"
                               title="Pick Reference Image from Studio Gallery"
                             >
                               + Gal
@@ -3502,8 +3646,8 @@ export const SidePanel = React.memo(({
                           )}
                           <button
                             type="button"
-                            onClick={() => motionImageInputRef.current?.click()}
-                            className="text-[7.5px] font-bold text-purple-400 bg-purple-400/10 hover:bg-purple-400/20 border border-purple-400/25 px-1.5 py-0.2 rounded transition-all cursor-pointer"
+                            onClick={() => remixImageInputRef.current?.click()}
+                            className="text-[7.5px] font-bold text-purple-400 bg-purple-400/10 hover:bg-purple-400/20 border border-purple-400/25 px-1.5 py-0.5 rounded transition-all cursor-pointer"
                           >
                             + Upload
                           </button>
@@ -3513,8 +3657,11 @@ export const SidePanel = React.memo(({
                       {/* Display Selected Subject Image & Seedance Image Slots */}
                       <div className="grid grid-cols-4 gap-1.5 pt-1">
                         {(motionSubjectPreview || motionSubjectImage) && (
-                          <div className="relative group aspect-square rounded-xl overflow-hidden border border-purple-400/50 bg-black">
-                            <img src={motionSubjectPreview || motionSubjectImage} alt="Ref 1" className="w-full h-full object-cover" />
+                          <div className="relative group aspect-square rounded-xl overflow-hidden border border-purple-400/60 bg-black shadow-md">
+                            <img src={motionSubjectPreview || motionSubjectImage} alt="Image 1" className="w-full h-full object-cover" />
+                            <div className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-black/80 border border-purple-400/40 text-[8px] font-mono font-bold text-purple-300">
+                              @image1
+                            </div>
                             <button
                               type="button"
                               onClick={handleClearMotionSubject}
@@ -3525,8 +3672,11 @@ export const SidePanel = React.memo(({
                           </div>
                         )}
                         {seedanceImages.slice(0, 7).map((img, idx) => img ? (
-                          <div key={idx} className="relative group aspect-square rounded-xl overflow-hidden border border-purple-400/40 bg-black">
-                            <img src={img} alt={`Ref ${idx + 2}`} className="w-full h-full object-cover" />
+                          <div key={idx} className="relative group aspect-square rounded-xl overflow-hidden border border-purple-400/50 bg-black shadow-md">
+                            <img src={img} alt={`Image ${idx + 2}`} className="w-full h-full object-cover" />
+                            <div className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-black/80 border border-purple-400/40 text-[8px] font-mono font-bold text-purple-300">
+                              {`@image${idx + 2}`}
+                            </div>
                             <button
                               type="button"
                               onClick={() => handleClearSeedanceImage(idx)}
@@ -3540,7 +3690,7 @@ export const SidePanel = React.memo(({
                         {/* Add Button */}
                         <button
                           type="button"
-                          onClick={() => motionImageInputRef.current?.click()}
+                          onClick={() => remixImageInputRef.current?.click()}
                           className="aspect-square rounded-xl border border-dashed border-white/15 hover:border-purple-400/60 bg-white/[0.02] hover:bg-purple-500/[0.04] flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-purple-300 transition-all cursor-pointer"
                         >
                           <Plus size={14} />
@@ -4510,7 +4660,7 @@ export const SidePanel = React.memo(({
                     {/* Gallery Grid */}
                     <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
                       {(() => {
-                        const isImg = galleryPickerSlot.type === 'image' || galleryPickerSlot.type === 'seedance_image' || galleryPickerSlot.type === 'first' || galleryPickerSlot.type === 'seedance_first' || galleryPickerSlot.type === 'last' || galleryPickerSlot.type === 'seedance_last' || galleryPickerSlot.type === 'motion_subject';
+                        const isImg = galleryPickerSlot.type === 'image' || galleryPickerSlot.type === 'seedance_image' || galleryPickerSlot.type === 'remix_image' || galleryPickerSlot.type === 'first' || galleryPickerSlot.type === 'seedance_first' || galleryPickerSlot.type === 'last' || galleryPickerSlot.type === 'seedance_last' || galleryPickerSlot.type === 'motion_subject';
                         const isMotionVideo = galleryPickerSlot.type === 'motion_video';
                         const isSeedanceVid = galleryPickerSlot.type === 'seedance_video';
                         const items = (gallery || []).filter(item => isImg ? (item.type === 'image' || !item.url?.includes('.mp4')) : (item.type === 'video' || item.url?.includes('.mp4')));
@@ -4549,6 +4699,8 @@ export const SidePanel = React.memo(({
                                       handlePickSeedanceLastFrame(item);
                                     } else if (galleryPickerSlot.type === 'seedance_image') {
                                       handlePickSeedanceImage(item, galleryPickerSlot.slotIdx);
+                                    } else if (galleryPickerSlot.type === 'remix_image') {
+                                      handlePickRemixImage(item, galleryPickerSlot.slotIdx);
                                     } else if (galleryPickerSlot.type === 'seedance_video') {
                                       handlePickSeedanceVideo(item, galleryPickerSlot.slotIdx);
                                     } else if (galleryPickerSlot.type === 'motion_subject') {
