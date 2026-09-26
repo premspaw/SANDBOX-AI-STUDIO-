@@ -2647,6 +2647,24 @@ export const SidePanel = React.memo(({
           <button
             type="button"
             onClick={() => {
+              setPanelTab('remix');
+              setActiveTab('video');
+              setActiveEngine('remix-motion-transfer');
+              if (resolution === '4k') setResolution('1080p');
+            }}
+            className={cn(
+              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
+              panelTab === 'remix'
+                ? "bg-gradient-to-r from-amber-400/25 via-yellow-400/20 to-transparent text-amber-300 border border-amber-400/50 shadow-[0_0_15px_rgba(251,191,36,0.25)] font-black"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+            )}
+          >
+            Remix
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
               setPanelTab('omni');
               setActiveTab('video');
               setActiveEngine('gemini-omni-1.1-flash-preview');
@@ -2679,27 +2697,6 @@ export const SidePanel = React.memo(({
             )}
           >
             Transition
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setPanelTab('seedance');
-              setActiveTab('video');
-              const targetEngine = (seedanceSubModel === 'seedace' || seedanceSubModel === 'seedance-mini') ? seedanceSubModel : 'seedance-fast';
-              setActiveEngine(targetEngine);
-              if (targetEngine !== 'seedace' && (resolution === '1080p' || resolution === '4k')) {
-                setResolution('720p');
-              }
-            }}
-            className={cn(
-              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
-              panelTab === 'seedance'
-                ? "bg-gradient-to-r from-[#c8f135]/20 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
-                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
-            )}
-          >
-            Seedance
           </button>
 
           <button
@@ -2741,6 +2738,27 @@ export const SidePanel = React.memo(({
           <button
             type="button"
             onClick={() => {
+              setPanelTab('seedance');
+              setActiveTab('video');
+              const targetEngine = (seedanceSubModel === 'seedace' || seedanceSubModel === 'seedance-mini') ? seedanceSubModel : 'seedance-fast';
+              setActiveEngine(targetEngine);
+              if (targetEngine !== 'seedace' && (resolution === '1080p' || resolution === '4k')) {
+                setResolution('720p');
+              }
+            }}
+            className={cn(
+              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
+              panelTab === 'seedance'
+                ? "bg-gradient-to-r from-[#c8f135]/20 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+            )}
+          >
+            Seedance
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
               setPanelTab('motion');
               setActiveTab('video');
               setActiveEngine('kling-motion');
@@ -2753,24 +2771,6 @@ export const SidePanel = React.memo(({
             )}
           >
             Motion
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setPanelTab('remix');
-              setActiveTab('video');
-              setActiveEngine('remix-motion-transfer');
-              if (resolution === '4k') setResolution('1080p');
-            }}
-            className={cn(
-              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
-              panelTab === 'remix'
-                ? "bg-gradient-to-r from-amber-400/25 via-yellow-400/20 to-transparent text-amber-300 border border-amber-400/50 shadow-[0_0_15px_rgba(251,191,36,0.25)] font-black"
-                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
-            )}
-          >
-            Remix
           </button>
         </div>
       </div>
