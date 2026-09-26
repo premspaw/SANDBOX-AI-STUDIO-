@@ -145,7 +145,7 @@ const VISUAL_STYLES = [
 // AI Story & Director Intelligence Reasoning Engines
 const AI_DIRECTOR_MODELS = [
     { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', badge: 'Ultra Fast & Sharp', provider: 'Google', desc: 'Next-gen multimodal reasoning, zero lag, precise script breakdown' },
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', badge: 'Deep Narrative', provider: 'Google', desc: 'Complex storytelling, subtext, high cinematic intelligence' },
+    { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro', badge: 'Deep Narrative', provider: 'Google', desc: 'Complex storytelling, subtext, high cinematic intelligence' },
     { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', badge: 'Fast & Reliable', provider: 'Google', desc: 'Solid multimodal speed and structured JSON output' },
     { id: 'gpt-6-astra', name: 'Astra AI Director', badge: 'ChatGPT 6 Cinema', provider: 'Astra Neural', desc: 'Experiential Labs flagship director agent with autonomous memory' },
     { id: 'gpt-4o', name: 'OpenAI GPT-4o', badge: 'Omni Vision', provider: 'OpenAI', desc: 'High visual prompt refinement and dialogue rhythm' },

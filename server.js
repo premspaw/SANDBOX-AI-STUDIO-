@@ -1572,8 +1572,8 @@ async function handleGoogle(req, res) {
                         }
                     }
 
-                    // 2. Try Google AI Studio REST endpoint only if systemKey is present and Vertex REST didn't succeed
-                    if ((!restResp || !restResp.ok) && systemKey && !VERTEX_KEY) {
+                    // 2. Try Google AI Studio REST endpoint if systemKey is present and Vertex REST didn't succeed
+                    if ((!restResp || !restResp.ok) && systemKey) {
                         try {
                             const studioUrl = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${systemKey}`;
                             console.log(`[handleGoogle] [REST Fallback AI Studio] Calling ${studioUrl}`);
@@ -1600,14 +1600,15 @@ async function handleGoogle(req, res) {
                 } catch (restErr) {
                     console.error(`[handleGoogle] [REST Fallback] Failed: ${restErr.message}`);
                 }
-
-                if (!success) {
-                    throw new Error(`Image generation failed on Vertex AI.`);
-                }
             }
 
             if (!success || !b64) {
-                throw new Error('Image generation failed to return valid image buffer.');
+                if (process.env.OPENAI_API_KEY) {
+                    console.log(`[handleGoogle] Google image models unavailable, seamlessly falling back to OpenAI image generation...`);
+                    req.body.model = req.body.model || 'gpt-image-2.5-sunburst';
+                    return await handleOpenAI(req, res);
+                }
+                throw new Error('Image generation failed on Vertex AI and Google AI Studio.');
             }
 
             const isGrid = !!req.body.isGrid;

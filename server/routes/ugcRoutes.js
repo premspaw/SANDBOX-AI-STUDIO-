@@ -1301,7 +1301,8 @@ Return ONLY valid JSON.`
                     mappedModel,
                     'gemini-2.5-flash',
                     'gemini-2.5-flash-lite',
-                    'gemini-2.5-pro'
+                    'gemini-3.1-pro-preview',
+                    'gemini-1.5-flash'
                 ])).filter(Boolean);
 
                 const studioApiKey = process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
@@ -1473,7 +1474,8 @@ Return ONLY valid JSON.`
                 selectedModel,
                 'gemini-2.5-flash',
                 'gemini-2.5-flash-lite',
-                'gemini-2.5-pro'
+                'gemini-3.1-pro-preview',
+                'gemini-1.5-flash'
             ])).filter(Boolean);
 
             const clientsToTry = [];
