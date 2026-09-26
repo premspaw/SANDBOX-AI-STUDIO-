@@ -1264,7 +1264,6 @@ export default function StudioPage() {
               },
               ...prev.filter(item => item.id !== tempId)
             ]);
-            setStatus('idle');
             const showToast = useAppStore.getState().showToast;
             if (showToast) showToast("Seedance 2.5 video generated successfully!", "success");
             return;
