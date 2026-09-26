@@ -1331,7 +1331,14 @@ async function handleOpenAI(req, res) {
             extraMetadata
         );
 
-        res.json({ url });
+        res.json({
+            url,
+            ...(req._fallbackTriggered ? {
+                fallbackTriggered: true,
+                provider: 'openai-fallback',
+                diagnostics: req._fallbackDiagnostics
+            } : {})
+        });
     } catch (error) {
         console.error('[handleOpenAI Error]:', error.message);
         
@@ -1448,6 +1455,9 @@ async function handleGoogle(req, res) {
 
             const token = await getVertexToken();
 
+            let lastVertexError = null;
+            let lastStudioError = null;
+
             // --- Option A: Vertex AI SDK as PRIMARY (Directly supported on Vertex with gemini-2.5-flash-image) ---
             if (VERTEX_KEY || apiKey === 'VERTEX_AI_CLIENT' || token) {
                 try {
@@ -1519,6 +1529,7 @@ async function handleGoogle(req, res) {
                     success = true;
                     console.log(`[handleGoogle] [Vertex AI SDK] Image generated successfully (${b64.length} base64 chars)`);
                 } catch (vErr) {
+                    lastVertexError = vErr.message;
                     console.warn(`[handleGoogle] [Vertex AI SDK] Failed: ${vErr.message}. Trying direct REST generateContent fallback...`);
                 }
             }
@@ -1568,7 +1579,12 @@ async function handleGoogle(req, res) {
                                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                                 body: JSON.stringify(restPayload)
                             });
+                            if (!restResp.ok) {
+                                const errTxt = await restResp.text().catch(() => '');
+                                lastVertexError = `${restResp.status} ${errTxt}`.slice(0, 300);
+                            }
                         } catch (vRestErr) {
+                            lastVertexError = vRestErr.message;
                             console.warn('[handleGoogle] [REST Fallback Vertex] Failed:', vRestErr.message);
                         }
                     }
@@ -1583,7 +1599,12 @@ async function handleGoogle(req, res) {
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(restPayload)
                             });
+                            if (!restResp.ok) {
+                                const errTxt = await restResp.text().catch(() => '');
+                                lastStudioError = `${restResp.status} ${errTxt}`.slice(0, 300);
+                            }
                         } catch (sRestErr) {
+                            lastStudioError = sRestErr.message;
                             console.warn('[handleGoogle] [REST Fallback AI Studio] Failed:', sRestErr.message);
                         }
                     }
@@ -1604,12 +1625,27 @@ async function handleGoogle(req, res) {
             }
 
             if (!success || !b64) {
+                console.warn(`[IMAGE-GENERATION-DIAGNOSTICS] ⚠️ Google Image generation failed:
+  - Requested Model: ${model || 'gemini-3.1-flash-image'}
+  - Vertex AI Error: ${lastVertexError || 'No candidate images returned'}
+  - Google AI Studio Error: ${lastStudioError || 'No candidate images returned'}
+  - Active GCP Project: ${VERTEX_PROJECT_ID}
+  - Active Location: ${VERTEX_LOCATION}`);
+
                 if (process.env.OPENAI_API_KEY) {
-                    console.log(`[handleGoogle] Google image models unavailable, seamlessly falling back to OpenAI image generation...`);
-                    req.body.model = req.body.model || 'gpt-image-2.5-sunburst';
+                    console.log(`[IMAGE-GENERATION-DIAGNOSTICS] ➡️ Auto-fallback to OpenAI image generation (gpt-image-2.5-sunburst)`);
+                    req._fallbackTriggered = true;
+                    req._fallbackDiagnostics = {
+                        originalModel: model || 'Nano Banana 2',
+                        vertexError: lastVertexError || 'Vertex AI returned no candidate images',
+                        studioError: lastStudioError || 'Google AI Studio returned no candidate images',
+                        fallbackProvider: 'openai',
+                        fallbackModel: 'gpt-image-2.5-sunburst'
+                    };
+                    req.body.model = 'gpt-image-2.5-sunburst';
                     return await handleOpenAI(req, res);
                 }
-                throw new Error('Image generation failed on Vertex AI and Google AI Studio.');
+                throw new Error(`Google Image generation failed. Vertex AI: ${lastVertexError || 'no response'}, AI Studio: ${lastStudioError || 'no response'}`);
             }
 
             const isGrid = !!req.body.isGrid;
