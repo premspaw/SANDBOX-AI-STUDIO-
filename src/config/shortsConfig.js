@@ -37,5 +37,10 @@ export const SHORTS_COST = {
 
     // AI Refinement
     refine_prompt: 1,
+
+    // Remix Studio (Higgsfield Genjutsu Motion Transfer)
+    remix_motion_transfer_480p: 5,
+    remix_motion_transfer_720p: 8,
+    remix_motion_transfer_1080p: 12,
 };
 

@@ -2092,6 +2092,7 @@ import createStorageRouter from './server/routes/storageRoutes.js';
 import createAdminRouter from './server/routes/adminRoutes.js';
 import createAvatarRouter from './server/routes/avatar.js';
 import createYourVoiceRouter from './server/routes/yourVoiceRoutes.js';
+import createRemixRouter from './server/routes/remixRoutes.js';
 import createMcpRouter from './server/routes/mcpRoutes.js';
 import { getOAuthMetadata } from './server/mcp/auth/oauthHandler.js';
 
@@ -2159,6 +2160,10 @@ app.use('/api', createAvatarRouter(deps));            // legacy paths
 
 // ── Your Voice ───────────────────────────────────────────────────────────────
 app.use('/api', createYourVoiceRouter(deps));
+
+// ── Remix Studio (Higgsfield Genjutsu Motion Transfer) ────────────────────────
+app.use('/api/remix', createRemixRouter(deps));
+app.use('/api', createRemixRouter(deps));
 
 // Serve production static assets from dist directory with proper MIME types & caching
 app.use(express.static(path.join(__dirname, 'dist'), {
