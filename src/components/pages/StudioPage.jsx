@@ -517,6 +517,7 @@ export default function StudioPage() {
   const [omniMultiVideos, setOmniMultiVideos] = useState(['', '', '']);
   const [omniRefVideoPreview, setOmniRefVideoPreview] = useState('');
   const [omniRefVideoDuration, setOmniRefVideoDuration] = useState(0);
+  const lastGenerateTimestampRef = useRef(0);
 
   // Kling 3.0 Motion Control Conditioning States
   const [motionSubjectImage, setMotionSubjectImage] = useState('');
@@ -925,6 +926,13 @@ export default function StudioPage() {
 
   // Handle Generation
   const handleGenerate = async (customPrompt, customEngine, customOptions = {}) => {
+    const now = Date.now();
+    if (now - lastGenerateTimestampRef.current < 4000) {
+      console.warn("[Studio] Duplicate generate call ignored (debounce window active)");
+      return;
+    }
+    lastGenerateTimestampRef.current = now;
+
     const engineToUse = customEngine || activeEngine;
     const isRemix = panelTab === 'remix' || engineToUse.includes('remix') || engineToUse.includes('genjutsu') || engineToUse.includes('motion-transfer');
     const isMotion = !isRemix && (panelTab === 'motion' || engineToUse.includes('motion') || engineToUse.includes('kling'));
