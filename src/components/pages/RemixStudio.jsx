@@ -424,16 +424,12 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
           </div>
         </div>
 
-        {/* Credit & Status Pill */}
+        {/* Credit Pill */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-zinc-300">
             <Coins size={15} className="text-[#D4FF00]" />
             <span>Shorts Balance:</span>
             <span className="font-bold text-white">{shorts ?? 0}</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-[#D4FF00] bg-[#D4FF00]/10 border border-[#D4FF00]/20 px-3 py-1.5 rounded-xl">
-            <span className="w-2 h-2 rounded-full bg-[#D4FF00] animate-pulse" />
-            <span className="font-medium">Genjutsu Live</span>
           </div>
         </div>
       </div>
@@ -445,7 +441,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
         <div className="w-full lg:w-[420px] xl:w-[460px] border-r border-white/10 bg-[#0d0f14] flex flex-col min-h-0 overflow-y-auto custom-scrollbar p-5 space-y-4 shrink-0">
           
           {/* Top Banner Card */}
-          <div className="relative w-full h-32 rounded-2xl overflow-hidden border border-white/10 flex flex-col justify-end p-4 shadow-lg group">
+          <div className="relative w-full h-28 rounded-2xl overflow-hidden border border-white/10 flex flex-col justify-end p-4 shadow-lg group">
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/30 z-10" />
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-600/30 via-purple-900/20 to-black opacity-80" />
             
@@ -465,9 +461,6 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
               <h2 className="text-base font-black tracking-wider uppercase text-[#D4FF00] drop-shadow-md">
                 HIGGSFIELD GENJUTSU
               </h2>
-              <p className="text-xs text-zinc-300 font-medium">
-                Reality manipulation
-              </p>
             </div>
           </div>
 
