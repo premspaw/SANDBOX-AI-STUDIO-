@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowsClockwise, 
@@ -26,53 +26,59 @@ import {
   Package,
   Watch,
   Cube,
-  Tag
+  Tag as TagIcon,
+  Image as ImageIcon,
+  FolderOpen,
+  MusicNotes,
+  FilmStrip,
+  X
 } from '@phosphor-icons/react';
 import { useAppStore } from '../../store';
 import { useShorts } from '../../hooks/useShorts';
 import { SHORTS_COST } from '../../config/shortsConfig';
+import { AssetsLibrary } from '../panels/AssetsLibrary';
 
 const OBJECT_SWAP_PRESETS = [
   { 
     id: 'outfit_swap', 
     label: '🥋 Tactical Sci-Fi Outfit', 
     icon: Sparkle,
-    prompt: 'Swap the character clothing and outfit with a high-tech sleek cyberpunk carbon-fiber tactical jacket with neon cyan illuminated seams and metallic accents.' 
+    prompt: 'Swap the character clothing and outfit with the reference from Image 1, featuring high-tech sleek cyberpunk carbon-fiber tactical jacket with neon cyan illuminated seams and metallic accents.' 
   },
   { 
     id: 'prop_swap', 
     label: '🗡️ Neon Katana / Prop', 
     icon: MagicWand,
-    prompt: 'Replace the handheld item/prop with an ultra-detailed glowing energy blade katana with subtle electric particle sparks and specular highlights.' 
+    prompt: 'Replace the handheld item/prop with the reference item from Image 1, matching ultra-detailed glowing energy blade katana with subtle electric particle sparks and specular highlights.' 
   },
   { 
     id: 'product_placement', 
     label: '🥤 Luxury Product Can', 
     icon: Package,
-    prompt: 'Replace the held drink container with the reference premium matte energy drink can, maintaining realistic lighting, hand grip reflection and shadows.' 
+    prompt: 'Replace the held drink container with the reference product from Image 1, maintaining realistic lighting, hand grip reflection and shadows.' 
   },
   { 
     id: 'watch_accessory', 
     label: '⌚ Luxury Chronograph', 
     icon: Watch,
-    prompt: 'Swap the wrist accessory with the reference luxury Swiss sapphire crystal chronograph watch, matching natural wrist movement, glare and skin occlusion.' 
+    prompt: 'Swap the wrist accessory with the reference watch from Image 1, matching natural wrist movement, glare and skin occlusion.' 
   },
   { 
     id: 'vehicle_swap', 
     label: '🏎️ Cyber Hypercar', 
     icon: Cube,
-    prompt: 'Replace the vehicle in the background with the sleek reference matte black hypercar with glowing taillights and realistic road reflections.' 
+    prompt: 'Replace the vehicle in the background with the reference vehicle from Image 1, featuring glowing taillights and realistic road reflections.' 
   },
   { 
     id: 'sneaker_swap', 
     label: '👟 Futuristic Sneakers', 
-    icon: Tag,
-    prompt: 'Swap the footwear with the reference futuristic limited-edition athletic sneakers, preserving foot placement, creases and floor contact shadows.' 
+    icon: TagIcon,
+    prompt: 'Swap the footwear with the reference shoes from Image 1, preserving foot placement, creases and floor contact shadows.' 
   }
 ];
 
 export default function ObjectSwapStudio() {
-  const [prompt, setPrompt] = useState('Swap the target object in the video with the provided reference item, preserving flawless lighting, depth, and motion dynamics.');
+  const [prompt, setPrompt] = useState('Swap the target object in the video with the reference item from Image 1, preserving flawless lighting, depth, and motion dynamics.');
   const [resolution, setResolution] = useState('720p');
   
   // Media State
@@ -83,7 +89,18 @@ export default function ObjectSwapStudio() {
 
   const [imageInputMode, setImageInputMode] = useState('upload'); // 'upload' | 'url'
   const [imageUrlInput, setImageUrlInput] = useState('');
-  const [referenceImages, setReferenceImages] = useState([]); // array of { url: string, isDataUrl: boolean }
+  // Array of { id, url, tag: 'Image 1', token: '@image1', name: string }
+  const [referenceImages, setReferenceImages] = useState([]); 
+
+  // Additional Media (Audio Track, Start Frame, End Frame)
+  const [audioUrl, setAudioUrl] = useState('');
+  const [startFrameUrl, setStartFrameUrl] = useState('');
+  const [endFrameUrl, setEndFrameUrl] = useState('');
+
+  // Plus Menu & Gallery Picker State
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const [showGalleryModal, setShowGalleryModal] = useState(false);
+  const [galleryTarget, setGalleryTarget] = useState('image'); // 'image' | 'video' | 'audio' | 'startFrame' | 'endFrame'
 
   // Generation & Progress State
   const [isGenerating, setIsGenerating] = useState(false);
@@ -96,12 +113,28 @@ export default function ObjectSwapStudio() {
 
   const fileInputVideoRef = useRef(null);
   const fileInputImageRef = useRef(null);
+  const fileInputAudioRef = useRef(null);
+  const fileInputStartFrameRef = useRef(null);
+  const fileInputEndFrameRef = useRef(null);
+  const plusMenuRef = useRef(null);
+  const promptTextareaRef = useRef(null);
 
   const { shorts, spend, refund, canAfford } = useShorts();
   const userProfile = useAppStore(state => state.userProfile);
 
   const costKey = `object_swap_${resolution}`;
   const costAmount = SHORTS_COST[costKey] || 8;
+
+  // Close plus menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (plusMenuRef.current && !plusMenuRef.current.contains(e.target)) {
+        setShowPlusMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Convert File to Base64 Data URL
   const fileToDataUrl = (file) => {
@@ -123,12 +156,59 @@ export default function ObjectSwapStudio() {
     }
   };
 
+  const handleAudioUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const dataUrl = await fileToDataUrl(file);
+      setAudioUrl(dataUrl);
+      setErrorMessage('');
+    }
+  };
+
+  const handleStartFrameUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const dataUrl = await fileToDataUrl(file);
+      setStartFrameUrl(dataUrl);
+      setErrorMessage('');
+    }
+  };
+
+  const handleEndFrameUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const dataUrl = await fileToDataUrl(file);
+      setEndFrameUrl(dataUrl);
+      setErrorMessage('');
+    }
+  };
+
   const handleApplyVideoUrl = () => {
     if (videoUrlInput.trim()) {
       setVideoPreview(videoUrlInput.trim());
       setVideoFile(null);
       setErrorMessage('');
     }
+  };
+
+  // Add references with strict sequential tagging: Image 1, Image 2, etc.
+  const addImagesWithTags = (urls) => {
+    setReferenceImages(prev => {
+      const newRefs = [...prev];
+      for (const item of urls) {
+        if (newRefs.length >= 8) break;
+        const currentIdx = newRefs.length + 1;
+        const urlStr = typeof item === 'string' ? item : item.url;
+        newRefs.push({
+          id: `ref_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          url: urlStr,
+          tag: `Image ${currentIdx}`,
+          token: `@image${currentIdx}`,
+          name: typeof item === 'object' && item.name ? item.name : `Image ${currentIdx}`
+        });
+      }
+      return newRefs;
+    });
   };
 
   const handleImageUpload = async (e) => {
@@ -139,7 +219,7 @@ export default function ObjectSwapStudio() {
         return;
       }
       const dataUrls = await Promise.all(files.map(fileToDataUrl));
-      setReferenceImages(prev => [...prev, ...dataUrls.map(url => ({ url, isDataUrl: true }))]);
+      addImagesWithTags(dataUrls);
       setErrorMessage('');
     }
   };
@@ -150,18 +230,62 @@ export default function ObjectSwapStudio() {
         setErrorMessage('Maximum 8 replacement reference images allowed.');
         return;
       }
-      setReferenceImages(prev => [...prev, { url: imageUrlInput.trim(), isDataUrl: false }]);
+      addImagesWithTags([imageUrlInput.trim()]);
       setImageUrlInput('');
       setErrorMessage('');
     }
   };
 
   const handleRemoveImage = (indexToRemove) => {
-    setReferenceImages(prev => prev.filter((_, idx) => idx !== indexToRemove));
+    setReferenceImages(prev => {
+      const filtered = prev.filter((_, idx) => idx !== indexToRemove);
+      // Re-index tags so Image 1, Image 2 remain contiguous
+      return filtered.map((img, idx) => ({
+        ...img,
+        tag: `Image ${idx + 1}`,
+        token: `@image${idx + 1}`
+      }));
+    });
+  };
+
+  // Insert tag into prompt at cursor
+  const insertTagIntoPrompt = (tagStr) => {
+    const textarea = promptTextareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart || prompt.length;
+      const end = textarea.selectionEnd || prompt.length;
+      const newPrompt = prompt.substring(0, start) + ` ${tagStr} ` + prompt.substring(end);
+      setPrompt(newPrompt.replace(/\s+/g, ' '));
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + tagStr.length + 2, start + tagStr.length + 2);
+      }, 50);
+    } else {
+      setPrompt(prev => `${prev} ${tagStr}`.trim());
+    }
   };
 
   const handleSelectPreset = (presetPrompt) => {
     setPrompt(presetPrompt);
+  };
+
+  // Handle Gallery Modal Pick
+  const handleGallerySelect = (url, item) => {
+    if (galleryTarget === 'video') {
+      setVideoPreview(url);
+      setVideoFile(null);
+    } else if (galleryTarget === 'audio') {
+      setAudioUrl(url);
+    } else if (galleryTarget === 'startFrame') {
+      setStartFrameUrl(url);
+    } else if (galleryTarget === 'endFrame') {
+      setEndFrameUrl(url);
+    } else {
+      // Default: Image reference
+      addImagesWithTags([{ url, name: item?.name || 'Gallery Asset' }]);
+    }
+    setShowGalleryModal(false);
+    setErrorMessage('');
   };
 
   const handleStartObjectSwap = async () => {
@@ -175,7 +299,7 @@ export default function ObjectSwapStudio() {
     }
 
     if (referenceImages.length === 0) {
-      setErrorMessage('Please provide at least one reference image for the replacement object.');
+      setErrorMessage('Please provide at least one replacement reference image (Image 1).');
       return;
     }
 
@@ -200,7 +324,7 @@ export default function ObjectSwapStudio() {
       setGenerationProgress(prev => {
         if (prev >= 92) return 92;
         if (prev < 30) setStatusMessage('Analyzing Scene Geometry & Tracking Objects...');
-        else if (prev < 55) setStatusMessage('Segmenting Target Items & Boundaries...');
+        else if (prev < 55) setStatusMessage('Segmenting Target Items & Boundaries (Image 1, Image 2)...');
         else if (prev < 78) setStatusMessage('Neural Inpainting & Object Material Swap...');
         else setStatusMessage('Synthesizing Motion Consistency & Reflections...');
         return prev + Math.floor(Math.random() * 8 + 4);
@@ -218,6 +342,10 @@ export default function ObjectSwapStudio() {
           prompt,
           video_url: sourceVideo,
           image_urls: referenceImages.map(img => img.url),
+          referenceImages: referenceImages.map(img => ({ tag: img.tag, token: img.token, url: img.url })),
+          audio_url: audioUrl || undefined,
+          start_frame_url: startFrameUrl || undefined,
+          end_frame_url: endFrameUrl || undefined,
           resolution,
           userId: userProfile?.id
         })
@@ -309,40 +437,179 @@ export default function ObjectSwapStudio() {
         {/* Left Controls & Parameters Sidebar */}
         <div className="w-full lg:w-[440px] xl:w-[480px] border-r border-white/10 bg-black/60 backdrop-blur-2xl flex flex-col min-h-0 overflow-y-auto custom-scrollbar p-5 space-y-5 shrink-0">
           
+          {/* Quick Insert (+) Plus Action Toolbar */}
+          <div className="relative" ref={plusMenuRef}>
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.03] border border-white/10">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPlusMenu(!showPlusMenu)}
+                  className="w-8 h-8 rounded-xl bg-cyan-400 text-black hover:bg-cyan-300 flex items-center justify-center transition-all shadow-[0_0_15px_rgba(6,182,212,0.35)]"
+                  title="Quick Media Uploads & Actions"
+                >
+                  <Plus size={18} weight="bold" className={showPlusMenu ? 'rotate-45 transition-transform' : 'transition-transform'} />
+                </button>
+                <div>
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <span>Quick Media Actions</span>
+                    <span className="text-[10px] text-cyan-400 font-mono">Upload / Library</span>
+                  </div>
+                  <div className="text-[10px] text-zinc-400">Add replacement references, scene videos & audio</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => { setGalleryTarget('image'); setShowGalleryModal(true); }}
+                  className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] text-zinc-300 font-semibold flex items-center gap-1.5 transition-all"
+                >
+                  <FolderOpen size={14} className="text-cyan-400" />
+                  <span>Gallery</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Plus Quick Action Dropdown Menu */}
+            <AnimatePresence>
+              {showPlusMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-full left-0 right-0 mt-2 z-50 bg-zinc-900/95 backdrop-blur-2xl border border-white/15 rounded-2xl p-2 shadow-[0_15px_35px_rgba(0,0,0,0.8)] grid grid-cols-2 gap-1.5"
+                >
+                  <button
+                    type="button"
+                    onClick={() => { setShowPlusMenu(false); fileInputImageRef.current?.click(); }}
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/10 text-left transition-all group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                      <ImageIcon size={16} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white group-hover:text-cyan-300">Upload Image</div>
+                      <div className="text-[9px] text-zinc-400">From computer (Image 1, 2)</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setShowPlusMenu(false); setGalleryTarget('image'); setShowGalleryModal(true); }}
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/10 text-left transition-all group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                      <FolderOpen size={16} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white group-hover:text-cyan-300">Image from Gallery</div>
+                      <div className="text-[9px] text-zinc-400">Pick from Studio Library</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setShowPlusMenu(false); fileInputVideoRef.current?.click(); }}
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/10 text-left transition-all group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                      <VideoCamera size={16} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white group-hover:text-cyan-300">Upload Scene Video</div>
+                      <div className="text-[9px] text-zinc-400">From computer</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setShowPlusMenu(false); setGalleryTarget('video'); setShowGalleryModal(true); }}
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/10 text-left transition-all group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0">
+                      <FilmStrip size={16} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white group-hover:text-cyan-300">Video from Gallery</div>
+                      <div className="text-[9px] text-zinc-400">Pick saved video</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setShowPlusMenu(false); fileInputAudioRef.current?.click(); }}
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/10 text-left transition-all group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+                      <MusicNotes size={16} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white group-hover:text-cyan-300">Upload Audio Track</div>
+                      <div className="text-[9px] text-zinc-400">MP3, WAV audio sync</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setShowPlusMenu(false); fileInputStartFrameRef.current?.click(); }}
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/10 text-left transition-all group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                      <FilmSlate size={16} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white group-hover:text-cyan-300">Start / End Frame</div>
+                      <div className="text-[9px] text-zinc-400">Anchor frame control</div>
+                    </div>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Hidden File Inputs */}
+          <input type="file" accept="audio/*" ref={fileInputAudioRef} onChange={handleAudioUpload} className="hidden" />
+          <input type="file" accept="image/*" ref={fileInputStartFrameRef} onChange={handleStartFrameUpload} className="hidden" />
+          <input type="file" accept="image/*" ref={fileInputEndFrameRef} onChange={handleEndFrameUpload} className="hidden" />
+          <input type="file" accept="video/*" ref={fileInputVideoRef} onChange={handleVideoUpload} className="hidden" />
+          <input type="file" accept="image/*" multiple ref={fileInputImageRef} onChange={handleImageUpload} className="hidden" />
+          
           {/* Source Video Section */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold uppercase tracking-wider text-zinc-200 flex items-center gap-1.5">
                 <VideoCamera size={14} className="text-cyan-400" />
-                <span>1. Source Video (Required)</span>
+                <span>1. Source Scene Video (Required)</span>
               </label>
-              <div className="flex gap-1 bg-white/5 p-0.5 rounded-lg border border-white/10 text-[10px]">
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setVideoInputMode('upload')}
-                  className={`px-2 py-0.5 rounded ${videoInputMode === 'upload' ? 'bg-cyan-400 text-black font-bold' : 'text-zinc-400'}`}
+                  onClick={() => { setGalleryTarget('video'); setShowGalleryModal(true); }}
+                  className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-zinc-300 font-semibold"
                 >
-                  Upload
+                  From Gallery
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setVideoInputMode('url')}
-                  className={`px-2 py-0.5 rounded ${videoInputMode === 'url' ? 'bg-cyan-400 text-black font-bold' : 'text-zinc-400'}`}
-                >
-                  URL
-                </button>
+                <div className="flex gap-1 bg-white/5 p-0.5 rounded-lg border border-white/10 text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => setVideoInputMode('upload')}
+                    className={`px-2 py-0.5 rounded ${videoInputMode === 'upload' ? 'bg-cyan-400 text-black font-bold' : 'text-zinc-400'}`}
+                  >
+                    Upload
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVideoInputMode('url')}
+                    className={`px-2 py-0.5 rounded ${videoInputMode === 'url' ? 'bg-cyan-400 text-black font-bold' : 'text-zinc-400'}`}
+                  >
+                    URL
+                  </button>
+                </div>
               </div>
             </div>
 
             {videoInputMode === 'upload' ? (
               <div>
-                <input 
-                  type="file" 
-                  accept="video/*" 
-                  ref={fileInputVideoRef}
-                  onChange={handleVideoUpload} 
-                  className="hidden" 
-                />
                 <div 
                   onClick={() => fileInputVideoRef.current?.click()}
                   className="relative flex flex-col items-center justify-center h-32 rounded-2xl border-2 border-dashed border-white/15 hover:border-cyan-500/50 bg-white/[0.02] hover:bg-cyan-500/[0.03] transition-all cursor-pointer overflow-hidden group"
@@ -359,8 +626,8 @@ export default function ObjectSwapStudio() {
                       <div className="w-8 h-8 rounded-xl bg-white/5 group-hover:bg-cyan-500/20 flex items-center justify-center text-zinc-400 group-hover:text-cyan-400 transition-colors">
                         <UploadSimple size={18} />
                       </div>
-                      <span className="text-[11px] font-semibold text-zinc-200">Click to Upload Footage</span>
-                      <span className="text-[9px] text-zinc-500">MP4, MOV (The scene containing the object to swap)</span>
+                      <span className="text-[11px] font-semibold text-zinc-200">Click to Upload Footage or Pick from Gallery</span>
+                      <span className="text-[9px] text-zinc-500">MP4, MOV (The scene containing the target item to swap)</span>
                     </div>
                   )}
                 </div>
@@ -385,51 +652,51 @@ export default function ObjectSwapStudio() {
             )}
           </div>
 
-          {/* Replacement Object/Item Reference Images Section */}
+          {/* Replacement Object/Item Reference Images Section with Auto-Tagging: Image 1, Image 2 */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold uppercase tracking-wider text-zinc-200 flex items-center gap-1.5">
                 <Package size={14} className="text-emerald-400" />
-                <span>2. Replacement Object Reference (1-8 Images)</span>
+                <span>2. Replacement Object Reference ({referenceImages.length}/8)</span>
               </label>
-              <div className="flex gap-1 bg-white/5 p-0.5 rounded-lg border border-white/10 text-[10px]">
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setImageInputMode('upload')}
-                  className={`px-2 py-0.5 rounded ${imageInputMode === 'upload' ? 'bg-emerald-400 text-black font-bold' : 'text-zinc-400'}`}
+                  onClick={() => { setGalleryTarget('image'); setShowGalleryModal(true); }}
+                  className="px-2 py-0.5 rounded bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-[10px] text-emerald-300 font-semibold"
                 >
-                  Upload
+                  + From Gallery
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setImageInputMode('url')}
-                  className={`px-2 py-0.5 rounded ${imageInputMode === 'url' ? 'bg-emerald-400 text-black font-bold' : 'text-zinc-400'}`}
-                >
-                  URL
-                </button>
+                <div className="flex gap-1 bg-white/5 p-0.5 rounded-lg border border-white/10 text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => setImageInputMode('upload')}
+                    className={`px-2 py-0.5 rounded ${imageInputMode === 'upload' ? 'bg-emerald-400 text-black font-bold' : 'text-zinc-400'}`}
+                  >
+                    Upload
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageInputMode('url')}
+                    className={`px-2 py-0.5 rounded ${imageInputMode === 'url' ? 'bg-emerald-400 text-black font-bold' : 'text-zinc-400'}`}
+                  >
+                    URL
+                  </button>
+                </div>
               </div>
             </div>
 
             {imageInputMode === 'upload' ? (
               <div>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  multiple
-                  ref={fileInputImageRef}
-                  onChange={handleImageUpload} 
-                  className="hidden" 
-                />
                 <div 
                   onClick={() => fileInputImageRef.current?.click()}
-                  className="relative flex flex-col items-center justify-center h-24 rounded-2xl border-2 border-dashed border-white/15 hover:border-emerald-500/50 bg-white/[0.02] hover:bg-emerald-500/[0.03] transition-all cursor-pointer overflow-hidden group"
+                  className="relative flex flex-col items-center justify-center h-20 rounded-2xl border-2 border-dashed border-white/15 hover:border-emerald-500/50 bg-white/[0.02] hover:bg-emerald-500/[0.03] transition-all cursor-pointer overflow-hidden group"
                 >
                   <div className="flex flex-col items-center gap-1 text-center p-2">
-                    <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-emerald-500/20 flex items-center justify-center text-zinc-400 group-hover:text-emerald-400 transition-colors">
-                      <Plus size={16} />
+                    <div className="w-6 h-6 rounded-lg bg-white/5 group-hover:bg-emerald-500/20 flex items-center justify-center text-zinc-400 group-hover:text-emerald-400 transition-colors">
+                      <Plus size={14} />
                     </div>
-                    <span className="text-[11px] font-semibold text-zinc-200">Add Object / Product Photos</span>
-                    <span className="text-[9px] text-zinc-500">PNG, JPG (Upload angles of the replacement object)</span>
+                    <span className="text-[11px] font-semibold text-zinc-200">Upload Reference (Auto-tagged as Image 1, 2...)</span>
                   </div>
                 </div>
               </div>
@@ -452,12 +719,30 @@ export default function ObjectSwapStudio() {
               </div>
             )}
 
-            {/* Thumbnail Grid of Reference Images */}
+            {/* Thumbnail Grid of Reference Images with Glowing Sequential Tag Badges */}
             {referenceImages.length > 0 && (
-              <div className="grid grid-cols-4 gap-2 pt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
                 {referenceImages.map((img, idx) => (
-                  <div key={idx} className="relative group rounded-xl overflow-hidden border border-white/10 bg-black aspect-square">
-                    <img src={img.url} alt={`Object Ref ${idx + 1}`} className="w-full h-full object-cover" />
+                  <div key={img.id || idx} className="relative group rounded-xl overflow-hidden border border-emerald-500/30 bg-black aspect-square shadow-lg">
+                    <img src={img.url} alt={img.tag} className="w-full h-full object-cover" />
+                    
+                    {/* Tag Badge */}
+                    <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded-md bg-emerald-600/90 text-white font-black text-[9px] uppercase tracking-wider shadow-md backdrop-blur-sm border border-emerald-400/40">
+                      {img.tag}
+                    </div>
+
+                    {/* Quick Insert Tag Action */}
+                    <button
+                      type="button"
+                      onClick={() => insertTagIntoPrompt(img.tag)}
+                      className="absolute bottom-1 left-1 right-1 py-1 rounded bg-black/80 hover:bg-emerald-500 text-[9px] font-bold text-white opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-1"
+                      title="Insert tag into prompt"
+                    >
+                      <TagIcon size={10} />
+                      <span>Tag</span>
+                    </button>
+
+                    {/* Remove Action */}
                     <button
                       type="button"
                       onClick={() => handleRemoveImage(idx)}
@@ -492,17 +777,38 @@ export default function ObjectSwapStudio() {
             </div>
           </div>
 
-          {/* Object Swap Prompt */}
+          {/* Transformation Prompt Section with Tag Quick-Chips */}
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-zinc-200 flex items-center justify-between">
-              <span>3. Swap Instructions / Prompt</span>
-              <span className="text-[10px] text-cyan-400">Specify Target Item</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-zinc-200 flex items-center justify-between">
+                <span>3. Swap Instructions / Prompt</span>
+              </label>
+              <span className="text-[10px] text-cyan-400">Reference: Image 1, Image 2</span>
+            </div>
+
+            {/* Reference Tags Helper Chips */}
+            {referenceImages.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-xl bg-white/[0.02] border border-white/10">
+                <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider pl-1">Insert Tags:</span>
+                {referenceImages.map((img) => (
+                  <button
+                    key={img.id}
+                    type="button"
+                    onClick={() => insertTagIntoPrompt(img.tag)}
+                    className="px-2 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold flex items-center gap-1 transition-all"
+                  >
+                    <span>+ {img.tag}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             <textarea
+              ref={promptTextareaRef}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={3}
-              placeholder="Describe which object to replace and how the replacement should integrate..."
+              placeholder="Describe which object to replace and how Image 1 should be integrated..."
               className="w-full bg-white/[0.03] border border-white/10 rounded-2xl p-3 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/30 transition-all resize-none"
             />
           </div>
@@ -671,6 +977,49 @@ export default function ObjectSwapStudio() {
           )}
         </div>
       </div>
+
+      {/* Gallery Modal Picker */}
+      <AnimatePresence>
+        {showGalleryModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-4xl max-h-[85vh] bg-zinc-900 border border-white/15 rounded-3xl overflow-hidden shadow-2xl flex flex-col relative"
+            >
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-black/40">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-cyan-400/20 text-cyan-400 flex items-center justify-center">
+                    <FolderOpen size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">
+                      Select Asset from Studio Library ({galleryTarget === 'video' ? 'Scene Video' : galleryTarget === 'audio' ? 'Audio Track' : galleryTarget === 'startFrame' ? 'Start Frame' : galleryTarget === 'endFrame' ? 'End Frame' : 'Reference Image'})
+                    </h3>
+                    <p className="text-[11px] text-zinc-400">Click any media item to select and attach to your object swap</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowGalleryModal(false)}
+                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-all"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                <AssetsLibrary
+                  compact={true}
+                  defaultTab={galleryTarget === 'video' ? 'videos' : 'images'}
+                  onSelectReference={handleGallerySelect}
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
