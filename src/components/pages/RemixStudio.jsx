@@ -459,36 +459,39 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
       {/* Main Studio Body */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden z-10">
         
-        {/* Left Controls Column */}
-        <div className="w-full lg:w-[380px] xl:w-[420px] border-r border-white/10 bg-[#0d0f14] flex flex-col min-h-0 overflow-y-auto custom-scrollbar p-3.5 space-y-3 shrink-0">
+        {/* Left Controls Column (Scrollable controls + Fixed Bottom Button) */}
+        <div className="w-full lg:w-[380px] xl:w-[420px] border-r border-white/10 bg-[#0d0f14] flex flex-col h-full min-h-0 shrink-0 overflow-hidden">
           
-          {/* Mode Pill Toggle (Motion Transfer vs Objects Swap) */}
-          <div className="grid grid-cols-2 gap-1 bg-black/40 p-1 rounded-xl border border-white/10">
-            <button
-              type="button"
-              onClick={() => handleModeChange('motion-transfer')}
-              className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all ${
-                !isSwapMode
-                  ? 'bg-zinc-800 text-white border border-white/20 shadow-md'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <ArrowsClockwise size={15} weight={!isSwapMode ? "bold" : "regular"} className={!isSwapMode ? "text-[#D4FF00]" : ""} />
-              <span>Motion transfer</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleModeChange('object-swap')}
-              className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all ${
-                isSwapMode
-                  ? 'bg-zinc-800 text-white border border-white/20 shadow-md'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <Cube size={15} weight={isSwapMode ? "bold" : "regular"} className={isSwapMode ? "text-[#D4FF00]" : ""} />
-              <span>Objects swap</span>
-            </button>
-          </div>
+          {/* Scrollable Form Area */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2 min-h-0">
+            
+            {/* Mode Pill Toggle (Motion Transfer vs Objects Swap) */}
+            <div className="grid grid-cols-2 gap-1 bg-black/50 p-1 rounded-xl border border-white/10">
+              <button
+                type="button"
+                onClick={() => handleModeChange('motion-transfer')}
+                className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all ${
+                  !isSwapMode
+                    ? 'bg-zinc-800 text-white border border-white/20 shadow-md'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <ArrowsClockwise size={15} weight={!isSwapMode ? "bold" : "regular"} className={!isSwapMode ? "text-[#D4FF00]" : ""} />
+                <span>Motion transfer</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange('object-swap')}
+                className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all ${
+                  isSwapMode
+                    ? 'bg-zinc-800 text-white border border-white/20 shadow-md'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Cube size={15} weight={isSwapMode ? "bold" : "regular"} className={isSwapMode ? "text-[#D4FF00]" : ""} />
+                <span>Objects swap</span>
+              </button>
+            </div>
 
           {/* Hidden File Inputs */}
           <input type="file" accept="video/*" ref={fileInputVideoRef} onChange={handleVideoUpload} className="hidden" />
@@ -759,41 +762,42 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
             </div>
           </div>
 
-          {/* Resolution Dropdown Quality Selector */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-                Quality & Resolution ({ratePerSec} Shorts/s)
-              </label>
-              <span className="text-xs font-bold text-[#D4FF00]">{costAmount} Shorts ({effectiveDuration}s)</span>
-            </div>
+            {/* Resolution Dropdown Quality Selector */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-300">
+                  Quality & Resolution ({ratePerSec} Shorts/s)
+                </label>
+                <span className="text-[11px] font-bold text-[#D4FF00]">{costAmount} Shorts ({effectiveDuration}s)</span>
+              </div>
 
-            <div className="relative">
-              <select
-                value={resolution}
-                onChange={(e) => setResolution(e.target.value)}
-                className="w-full appearance-none bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white font-medium focus:outline-none focus:border-[#D4FF00]/80 cursor-pointer transition-colors"
-              >
-                <option value="480p" className="bg-zinc-900 text-white">480p SD · Fast (5 Shorts/s · {5 * effectiveDuration} total)</option>
-                <option value="720p" className="bg-zinc-900 text-white">720p HD · Standard (8 Shorts/s · {8 * effectiveDuration} total)</option>
-                <option value="1080p" className="bg-zinc-900 text-white">1080p Full HD · Master (12 Shorts/s · {12 * effectiveDuration} total)</option>
-              </select>
-              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
-                <CaretDown size={14} weight="bold" />
+              <div className="relative">
+                <select
+                  value={resolution}
+                  onChange={(e) => setResolution(e.target.value)}
+                  className="w-full appearance-none bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-medium focus:outline-none focus:border-[#D4FF00]/80 cursor-pointer transition-colors"
+                >
+                  <option value="480p" className="bg-zinc-900 text-white">480p SD · Fast (5 Shorts/s · {5 * effectiveDuration} total)</option>
+                  <option value="720p" className="bg-zinc-900 text-white">720p HD · Standard (8 Shorts/s · {8 * effectiveDuration} total)</option>
+                  <option value="1080p" className="bg-zinc-900 text-white">1080p Full HD · Master (12 Shorts/s · {12 * effectiveDuration} total)</option>
+                </select>
+                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
+                  <CaretDown size={14} weight="bold" />
+                </div>
               </div>
             </div>
+
+            {/* Error Banner */}
+            {errorMessage && (
+              <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-2 text-xs text-red-300">
+                <WarningCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
           </div>
 
-          {/* Error Banner */}
-          {errorMessage && (
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-2 text-xs text-red-300">
-              <WarningCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
-              <span>{errorMessage}</span>
-            </div>
-          )}
-
-          {/* Bottom High-Visibility Generate Button */}
-          <div className="pt-1">
+          {/* Fixed Bottom Generate Action (Pinned, non-scrollable) */}
+          <div className="p-3 border-t border-white/10 bg-[#0d0f14] shrink-0">
             <button
               onClick={handleStartGeneration}
               disabled={isGenerating}
@@ -817,7 +821,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
           </div>
         </div>
 
-        {/* Right Viewport: Real-time Player & Preview Canvas */}
+        {/* Right Viewport: Real-time Player & Generation Canvas */}
         <div className="flex-1 flex flex-col min-h-0 bg-[#07080c] overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-3">
           
           {/* Main Display Stage */}
@@ -871,25 +875,6 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                     <DownloadSimple size={15} weight="bold" />
                     <span>Download MP4</span>
                   </a>
-                </div>
-              </div>
-            ) : videoPreview ? (
-              /* Active Reference Video Player Stage */
-              <div className="relative w-full h-full flex flex-col items-center justify-center p-2">
-                <video
-                  src={videoPreview}
-                  className="w-full h-full object-contain max-h-[75vh] rounded-xl shadow-2xl"
-                  controls
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                />
-                <div className="absolute top-4 left-4 flex items-center gap-2">
-                  <div className="px-3 py-1 rounded-xl bg-black/80 backdrop-blur-md border border-[#D4FF00]/40 text-[#D4FF00] text-xs font-bold flex items-center gap-1.5">
-                    <VideoCamera size={14} weight="fill" />
-                    <span>Reference Video Loaded ({effectiveDuration}s)</span>
-                  </div>
                 </div>
               </div>
             ) : (
