@@ -78,6 +78,8 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
   const [historyList, setHistoryList] = useState([]);
   const [copiedUrl, setCopiedUrl] = useState(false);
 
+  const [videoDuration, setVideoDuration] = useState(5);
+
   const fileInputVideoRef = useRef(null);
   const fileInputImageRef = useRef(null);
   const promptTextareaRef = useRef(null);
@@ -86,8 +88,10 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
   const userProfile = useAppStore(state => state.userProfile);
 
   const isSwapMode = activeMode === 'object-swap';
+  const ratePerSec = resolution === '480p' ? 5 : resolution === '1080p' ? 12 : 8;
+  const effectiveDuration = Math.max(1, Math.round(videoDuration || 5));
+  const costAmount = ratePerSec * effectiveDuration;
   const costKey = isSwapMode ? `object_swap_${resolution}` : `remix_motion_transfer_${resolution}`;
-  const costAmount = SHORTS_COST[costKey] || 8;
 
   // Switch Mode handler
   const handleModeChange = (mode) => {
@@ -114,12 +118,28 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
     });
   };
 
+  // Probe Video Duration in seconds
+  const probeVideoDuration = (dataUrlOrBlob) => {
+    return new Promise((resolve) => {
+      const v = document.createElement('video');
+      v.preload = 'metadata';
+      v.onloadedmetadata = () => {
+        const dur = v.duration && !isNaN(v.duration) ? Math.round(v.duration) : 5;
+        resolve(Math.max(1, dur));
+      };
+      v.onerror = () => resolve(5);
+      v.src = dataUrlOrBlob;
+    });
+  };
+
   const handleVideoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
       setVideoFile(file);
       const dataUrl = await fileToDataUrl(file);
       setVideoPreview(dataUrl);
+      const dur = await probeVideoDuration(dataUrl);
+      setVideoDuration(dur);
       setErrorMessage('');
     }
   };
@@ -288,10 +308,12 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
   };
 
   // Handle Gallery Modal Pick
-  const handleGallerySelect = (url, item) => {
+  const handleGallerySelect = async (url, item) => {
     if (galleryTarget === 'video') {
       setVideoPreview(url);
       setVideoFile(null);
+      const dur = item?.duration ? Math.round(Number(item.duration)) : await probeVideoDuration(url);
+      setVideoDuration(dur || 5);
     } else {
       // Default: Image reference
       addImagesWithTags([{ url, name: item?.name || 'Gallery Asset' }]);
@@ -315,14 +337,14 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
       return;
     }
 
-    // Check Credits
-    if (!canAfford(costKey)) {
-      setErrorMessage(`Insufficient Shorts balance. You need ${costAmount} Shorts for ${resolution} ${isSwapMode ? 'Object Swap' : 'Motion Remix'}.`);
+    // Check Credits (Per-Second Dynamic Cost)
+    if (!canAfford(costKey, costAmount)) {
+      setErrorMessage(`Insufficient Shorts balance. You need ${costAmount} Shorts (${ratePerSec} Shorts/s × ${effectiveDuration}s) for ${resolution} ${isSwapMode ? 'Object Swap' : 'Motion Remix'}.`);
       return;
     }
 
     // Deduct credits
-    const spendRes = await spend(costKey);
+    const spendRes = await spend(costKey, costAmount);
     if (!spendRes.success) {
       setErrorMessage('Failed to deduct credits. Please check your Shorts balance.');
       return;
@@ -400,9 +422,9 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
       console.error(`[RemixStudio] ${isSwapMode ? 'Object Swap' : 'Motion Remix'} error:`, err);
       clearInterval(progressInterval);
       setIsGenerating(false);
-      setErrorMessage(err.message || `Generation failed on Higgsfield engine.`);
+      setErrorMessage(err.message || `Generation failed on engine.`);
       // Refund credits
-      await refund(costKey);
+      await refund(costKey, costAmount);
     }
   };
 
@@ -438,32 +460,32 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden z-10">
         
         {/* Left Controls Column */}
-        <div className="w-full lg:w-[420px] xl:w-[460px] border-r border-white/10 bg-[#0d0f14] flex flex-col min-h-0 overflow-y-auto custom-scrollbar p-5 space-y-4 shrink-0">
+        <div className="w-full lg:w-[380px] xl:w-[420px] border-r border-white/10 bg-[#0d0f14] flex flex-col min-h-0 overflow-y-auto custom-scrollbar p-3.5 space-y-3 shrink-0">
           
           {/* Mode Pill Toggle (Motion Transfer vs Objects Swap) */}
-          <div className="grid grid-cols-2 gap-1.5 bg-black/40 p-1 rounded-2xl border border-white/10">
+          <div className="grid grid-cols-2 gap-1 bg-black/40 p-1 rounded-xl border border-white/10">
             <button
               type="button"
               onClick={() => handleModeChange('motion-transfer')}
-              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all ${
                 !isSwapMode
                   ? 'bg-zinc-800 text-white border border-white/20 shadow-md'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              <ArrowsClockwise size={16} weight={!isSwapMode ? "bold" : "regular"} className={!isSwapMode ? "text-[#D4FF00]" : ""} />
+              <ArrowsClockwise size={15} weight={!isSwapMode ? "bold" : "regular"} className={!isSwapMode ? "text-[#D4FF00]" : ""} />
               <span>Motion transfer</span>
             </button>
             <button
               type="button"
               onClick={() => handleModeChange('object-swap')}
-              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all ${
                 isSwapMode
                   ? 'bg-zinc-800 text-white border border-white/20 shadow-md'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              <Cube size={16} weight={isSwapMode ? "bold" : "regular"} className={isSwapMode ? "text-[#D4FF00]" : ""} />
+              <Cube size={15} weight={isSwapMode ? "bold" : "regular"} className={isSwapMode ? "text-[#D4FF00]" : ""} />
               <span>Objects swap</span>
             </button>
           </div>
@@ -475,45 +497,48 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
           {/* Card 1: Reference Video Input */}
           <div 
             onClick={() => !videoPreview && fileInputVideoRef.current?.click()}
-            className="relative rounded-2xl border border-white/10 hover:border-white/25 bg-black/30 hover:bg-white/[0.02] p-5 flex flex-col items-center justify-center text-center transition-all cursor-pointer min-h-[140px] group overflow-hidden"
+            className="relative rounded-2xl border border-white/10 hover:border-white/25 bg-black/30 hover:bg-white/[0.02] p-3.5 flex flex-col items-center justify-center text-center transition-all cursor-pointer min-h-[120px] group overflow-hidden"
           >
             {videoPreview ? (
-              <div className="relative w-full h-32 rounded-xl overflow-hidden bg-black">
-                <video src={videoPreview} className="w-full h-full object-cover" muted loop autoPlay />
+              <div className="relative w-full h-28 rounded-xl overflow-hidden bg-black">
+                <video src={videoPreview} className="w-full h-full object-cover" muted loop autoPlay playsInline />
+                <div className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-black/70 border border-white/20 text-[9px] font-mono font-bold text-[#D4FF00]">
+                  {effectiveDuration}s
+                </div>
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); fileInputVideoRef.current?.click(); }}
-                    className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md text-xs font-bold text-white transition-all"
+                    className="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 backdrop-blur-md text-xs font-bold text-white transition-all"
                   >
                     Replace
                   </button>
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setGalleryTarget('video'); setShowGalleryModal(true); }}
-                    className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md text-xs font-bold text-white transition-all"
+                    className="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 backdrop-blur-md text-xs font-bold text-white transition-all"
                   >
                     Gallery
                   </button>
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setVideoPreview(''); setVideoFile(null); }}
-                    className="p-1.5 rounded-xl bg-red-500/80 hover:bg-red-500 text-white transition-all"
+                    className="p-1.5 rounded-lg bg-red-500/80 hover:bg-red-500 text-white transition-all"
                   >
-                    <Trash size={14} />
+                    <Trash size={13} />
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-11 h-11 rounded-full bg-zinc-800/80 border border-white/10 flex items-center justify-center text-zinc-300 group-hover:text-white group-hover:bg-zinc-700 transition-all">
-                  <VideoCamera size={20} weight="fill" />
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="w-9 h-9 rounded-full bg-zinc-800/80 border border-white/10 flex items-center justify-center text-zinc-300 group-hover:text-white group-hover:bg-zinc-700 transition-all">
+                  <VideoCamera size={18} weight="fill" />
                 </div>
                 <div>
                   <h3 className="text-xs font-bold text-white">
                     {isSwapMode ? 'Add a video to swap objects' : 'Add a reference video to extract motion'}
                   </h3>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">Video duration: 4–30 seconds</p>
+                  <p className="text-[10.5px] text-zinc-400 mt-0.5">Video duration: 3–30 seconds</p>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
                   <button
@@ -738,9 +763,9 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-                Quality & Resolution
+                Quality & Resolution ({ratePerSec} Shorts/s)
               </label>
-              <span className="text-xs font-bold text-[#D4FF00]">{costAmount} Shorts</span>
+              <span className="text-xs font-bold text-[#D4FF00]">{costAmount} Shorts ({effectiveDuration}s)</span>
             </div>
 
             <div className="relative">
@@ -749,9 +774,9 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                 onChange={(e) => setResolution(e.target.value)}
                 className="w-full appearance-none bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white font-medium focus:outline-none focus:border-[#D4FF00]/80 cursor-pointer transition-colors"
               >
-                <option value="480p" className="bg-zinc-900 text-white">480p SD · Fast Generation (5 Shorts)</option>
-                <option value="720p" className="bg-zinc-900 text-white">720p HD · Standard High Quality (8 Shorts)</option>
-                <option value="1080p" className="bg-zinc-900 text-white">1080p Full HD · Studio Master (12 Shorts)</option>
+                <option value="480p" className="bg-zinc-900 text-white">480p SD · Fast (5 Shorts/s · {5 * effectiveDuration} total)</option>
+                <option value="720p" className="bg-zinc-900 text-white">720p HD · Standard (8 Shorts/s · {8 * effectiveDuration} total)</option>
+                <option value="1080p" className="bg-zinc-900 text-white">1080p Full HD · Master (12 Shorts/s · {12 * effectiveDuration} total)</option>
               </select>
               <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
                 <CaretDown size={14} weight="bold" />
@@ -767,12 +792,12 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
             </div>
           )}
 
-          {/* Bottom High-Visibility Generate Button (Higgsfield Style) */}
-          <div className="pt-2">
+          {/* Bottom High-Visibility Generate Button */}
+          <div className="pt-1">
             <button
               onClick={handleStartGeneration}
               disabled={isGenerating}
-              className={`w-full py-4 rounded-2xl font-black uppercase tracking-wider text-sm flex items-center justify-center gap-2.5 transition-all ${
+              className={`w-full py-3.5 rounded-2xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
                 isGenerating
                   ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed border border-white/10'
                   : 'bg-[#D4FF00] hover:bg-[#bce400] text-black shadow-[0_0_30px_rgba(212,255,0,0.35)] active:scale-[0.98]'
@@ -780,27 +805,27 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
             >
               {isGenerating ? (
                 <>
-                  <ArrowsClockwise size={20} className="animate-spin text-[#D4FF00]" />
-                  <span>Processing {isSwapMode ? 'Object Swap' : 'Motion Remix'} ({generationProgress}%)</span>
+                  <ArrowsClockwise size={18} className="animate-spin text-[#D4FF00]" />
+                  <span>Processing ({generationProgress}%)</span>
                 </>
               ) : (
                 <>
-                  <span>Generate</span>
+                  <span>Generate • {costAmount} Shorts ({effectiveDuration}s)</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* Right Viewport: Real-time Player & Generation Canvas */}
-        <div className="flex-1 flex flex-col min-h-0 bg-black/40 overflow-y-auto custom-scrollbar p-6 space-y-6">
+        {/* Right Viewport: Real-time Player & Preview Canvas */}
+        <div className="flex-1 flex flex-col min-h-0 bg-[#07080c] overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-3">
           
           {/* Main Display Stage */}
-          <div className="w-full flex-1 min-h-[440px] rounded-3xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl relative overflow-hidden flex items-center justify-center shadow-[0_0_40px_rgba(0,0,0,0.8)]">
+          <div className="w-full flex-1 min-h-[360px] sm:min-h-[460px] rounded-2xl border border-white/10 bg-black/90 backdrop-blur-xl relative overflow-hidden flex items-center justify-center shadow-2xl">
             
             {isGenerating ? (
               <div className="flex flex-col items-center gap-4 text-center p-6 z-10">
-                <div className="relative w-24 h-24">
+                <div className="relative w-20 h-20">
                   <div className="absolute inset-0 rounded-full border-4 border-white/10" />
                   <div className="absolute inset-0 rounded-full border-4 border-[#D4FF00] border-t-transparent animate-spin" />
                   <div className="absolute inset-0 flex items-center justify-center text-sm font-black text-[#D4FF00]">
@@ -817,23 +842,23 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                 </div>
               </div>
             ) : generatedResult ? (
-              <div className="relative w-full h-full flex flex-col items-center justify-center p-4">
+              <div className="relative w-full h-full flex flex-col items-center justify-center p-2">
                 <video
                   src={generatedResult.url}
-                  className="w-full h-full object-contain max-h-[580px] rounded-2xl shadow-2xl"
+                  className="w-full h-full object-contain max-h-[75vh] rounded-xl shadow-2xl"
                   controls
                   autoPlay
                   loop
                 />
                 
                 {/* Overlay Action Bar */}
-                <div className="absolute top-6 right-6 flex items-center gap-2">
+                <div className="absolute top-4 right-4 flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => handleCopyLink(generatedResult.url)}
-                    className="p-2.5 rounded-xl bg-black/70 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all flex items-center gap-1.5 text-xs font-semibold"
+                    className="p-2 rounded-xl bg-black/70 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all flex items-center gap-1.5 text-xs font-semibold"
                   >
-                    <Copy size={16} />
+                    <Copy size={15} />
                     <span>{copiedUrl ? 'Copied!' : 'Copy Link'}</span>
                   </button>
                   <a
@@ -841,24 +866,43 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                     download={isSwapMode ? "genjutsu-object-swap.mp4" : "remix-motion-transfer.mp4"}
                     target="_blank"
                     rel="noreferrer"
-                    className="p-2.5 rounded-xl bg-[#D4FF00] text-black font-bold hover:bg-[#bce400] transition-all flex items-center gap-1.5 text-xs"
+                    className="p-2 rounded-xl bg-[#D4FF00] text-black font-bold hover:bg-[#bce400] transition-all flex items-center gap-1.5 text-xs"
                   >
-                    <DownloadSimple size={16} weight="bold" />
+                    <DownloadSimple size={15} weight="bold" />
                     <span>Download MP4</span>
                   </a>
                 </div>
               </div>
+            ) : videoPreview ? (
+              /* Active Reference Video Player Stage */
+              <div className="relative w-full h-full flex flex-col items-center justify-center p-2">
+                <video
+                  src={videoPreview}
+                  className="w-full h-full object-contain max-h-[75vh] rounded-xl shadow-2xl"
+                  controls
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                />
+                <div className="absolute top-4 left-4 flex items-center gap-2">
+                  <div className="px-3 py-1 rounded-xl bg-black/80 backdrop-blur-md border border-[#D4FF00]/40 text-[#D4FF00] text-xs font-bold flex items-center gap-1.5">
+                    <VideoCamera size={14} weight="fill" />
+                    <span>Reference Video Loaded ({effectiveDuration}s)</span>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="flex flex-col items-center gap-3 text-center p-6 text-zinc-500 max-w-md">
-                <div className="w-16 h-16 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-center text-zinc-600">
+                <div className="w-14 h-14 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-center text-zinc-600">
                   {isSwapMode ? (
-                    <Cube size={32} />
+                    <Cube size={28} />
                   ) : (
-                    <FilmSlate size={32} />
+                    <FilmSlate size={28} />
                   )}
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider">
+                  <h3 className="text-xs sm:text-sm font-bold text-zinc-300 uppercase tracking-wider">
                     Ready for {isSwapMode ? 'Object Swap Synthesis' : 'Motion Transfer Synthesis'}
                   </h3>
                   <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
