@@ -1272,22 +1272,6 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       ...(seedanceRefs.ref_audios || []).map((aud, idx) => aud ? { id: `slot_aud_${idx}`, name: `audio${idx + 1}`, category: `Audio ${idx + 1}`, isAudio: true, imageUrl: aud } : null).filter(Boolean),
     ];
 
-    const historyItems = (gallery || [])
-      .filter(item => !item.loading && item.url)
-      .slice(0, 20)
-      .map((item, idx) => {
-        const cleanPrompt = item.prompt ? item.prompt.slice(0, 24).replace(/[^\w]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '') : `history_${idx + 1}`;
-        return {
-          id: item.id || `hist_${idx}`,
-          name: cleanPrompt || `history_${idx + 1}`,
-          category: item.type === 'video' ? 'History Video' : 'History Image',
-          imageUrl: item.url,
-          url: item.url,
-          isVideo: item.type === 'video',
-          isHistory: true
-        };
-      });
-
     return [
       ...seedanceSlots,
       ...mergedBoard.characters.map(i => ({ ...i, category: 'character', prefix: 'char' })),
@@ -1297,10 +1281,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       ...mergedBoard.moods.map(i => ({ ...i, category: 'mood', prefix: 'mood' })),
       ...(mergedBoard.ref_images || []).map((i, idx) => ({ ...i, name: i.name || `img${idx + 1}`, category: 'ref_images', prefix: 'img' })),
       ...(mergedBoard.ref_videos || []).map((i, idx) => ({ ...i, name: i.name || `vid${idx + 1}`, category: 'ref_videos', prefix: 'vid' })),
-      ...(mergedBoard.ref_audios || []).map((i, idx) => ({ ...i, name: i.name || `aud${idx + 1}`, category: 'ref_audios', prefix: 'aud' })),
-      ...historyItems
+      ...(mergedBoard.ref_audios || []).map((i, idx) => ({ ...i, name: i.name || `aud${idx + 1}`, category: 'ref_audios', prefix: 'aud' }))
     ];
-  }, [refBoard, stagedRefBoard, firstFramePreview, lastFramePreview, seedanceRefs, gallery]);
+  }, [refBoard, stagedRefBoard, firstFramePreview, lastFramePreview, seedanceRefs]);
 
   const addRefItem = (item) => {
     const categoryKey = item.category.endsWith('s') ? item.category : item.category + 's'

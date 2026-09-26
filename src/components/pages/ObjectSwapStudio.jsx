@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowsClockwise, 
@@ -246,6 +246,141 @@ export default function ObjectSwapStudio() {
         token: `@image${idx + 1}`
       }));
     });
+  };
+
+  // Autocomplete Mentions Query State (@image1, @video1, etc.)
+  const [mentionSearch, setMentionSearch] = useState(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [mentionCursorPos, setMentionCursorPos] = useState(0);
+
+  // Active mention slots (strictly uploaded / active inputs in this studio session only - no history items)
+  const activeMentionSlots = useMemo(() => {
+    const slots = [];
+    referenceImages.forEach((img, idx) => {
+      slots.push({
+        id: img.id || `ref_${idx}`,
+        name: `image${idx + 1}`,
+        token: `@image${idx + 1}`,
+        tag: `Image ${idx + 1}`,
+        label: `Image ${idx + 1}`,
+        desc: img.name || `Replacement Reference ${idx + 1}`,
+        url: img.url,
+        type: 'image'
+      });
+    });
+    if (videoPreview) {
+      slots.push({
+        id: 'slot_scene_video',
+        name: 'video1',
+        token: '@video1',
+        tag: 'Scene Video',
+        label: 'Scene Video',
+        desc: 'Source Scene Video',
+        url: videoPreview,
+        type: 'video'
+      });
+    }
+    if (audioUrl) {
+      slots.push({
+        id: 'slot_audio',
+        name: 'audio1',
+        token: '@audio1',
+        tag: 'Audio Track',
+        label: 'Audio Track',
+        desc: 'Synced Audio Track',
+        url: audioUrl,
+        type: 'audio'
+      });
+    }
+    if (startFrameUrl) {
+      slots.push({
+        id: 'slot_start_frame',
+        name: 'start_frame',
+        token: '@start_frame',
+        tag: 'Start Frame',
+        label: 'Start Frame',
+        desc: 'Anchor Start Frame',
+        url: startFrameUrl,
+        type: 'image'
+      });
+    }
+    if (endFrameUrl) {
+      slots.push({
+        id: 'slot_end_frame',
+        name: 'end_frame',
+        token: '@end_frame',
+        tag: 'End Frame',
+        label: 'End Frame',
+        desc: 'Anchor End Frame',
+        url: endFrameUrl,
+        type: 'image'
+      });
+    }
+    return slots;
+  }, [referenceImages, videoPreview, audioUrl, startFrameUrl, endFrameUrl]);
+
+  const filteredMentionSlots = useMemo(() => {
+    if (mentionSearch === null) return [];
+    const q = mentionSearch.trim().toLowerCase();
+    if (!q) return activeMentionSlots;
+    return activeMentionSlots.filter(s => 
+      s.token.toLowerCase().includes(q) || 
+      s.name.toLowerCase().includes(q) || 
+      s.tag.toLowerCase().includes(q)
+    );
+  }, [activeMentionSlots, mentionSearch]);
+
+  const handlePromptChange = (e) => {
+    const val = e.target.value;
+    const cursor = e.target.selectionStart || 0;
+    setPrompt(val);
+
+    const match = val.slice(0, cursor).match(/@([\w_]*)$/);
+    if (match) {
+      setMentionSearch(match[1].toLowerCase());
+      setMentionCursorPos(cursor);
+      setMentionIndex(0);
+    } else {
+      setMentionSearch(null);
+    }
+  };
+
+  const selectMentionSlot = (slot) => {
+    const textarea = promptTextareaRef.current;
+    const text = prompt;
+    const cursor = mentionCursorPos || (textarea ? textarea.selectionStart : text.length);
+    const before = text.slice(0, cursor).replace(/@[\w_]*$/, '');
+    const after = text.slice(cursor);
+    const tagText = `${slot.tag} `;
+    const newText = `${before}${tagText}${after}`;
+    const nextCursor = before.length + tagText.length;
+
+    setPrompt(newText);
+    setMentionSearch(null);
+
+    setTimeout(() => {
+      if (promptTextareaRef.current) {
+        promptTextareaRef.current.focus();
+        promptTextareaRef.current.setSelectionRange(nextCursor, nextCursor);
+      }
+    }, 50);
+  };
+
+  const handlePromptKeyDown = (e) => {
+    if (mentionSearch !== null && filteredMentionSlots.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionIndex(prev => (prev + 1) % filteredMentionSlots.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionIndex(prev => (prev - 1 + filteredMentionSlots.length) % filteredMentionSlots.length);
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        selectMentionSlot(filteredMentionSlots[mentionIndex] || filteredMentionSlots[0]);
+      } else if (e.key === 'Escape') {
+        setMentionSearch(null);
+      }
+    }
   };
 
   // Insert tag into prompt at cursor
@@ -803,14 +938,87 @@ export default function ObjectSwapStudio() {
               </div>
             )}
 
-            <textarea
-              ref={promptTextareaRef}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              rows={3}
-              placeholder="Describe which object to replace and how Image 1 should be integrated..."
-              className="w-full bg-white/[0.03] border border-white/10 rounded-2xl p-3 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/30 transition-all resize-none"
-            />
+            <div className="relative">
+              {/* Autocomplete mention popover */}
+              <AnimatePresence>
+                {mentionSearch !== null && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                    transition={{ duration: 0.12 }}
+                    className="absolute bottom-full mb-2 left-0 right-0 z-50 bg-[#0d0f15]/95 backdrop-blur-2xl border-2 border-cyan-400/80 rounded-2xl shadow-[0_-15px_45px_rgba(6,182,212,0.25)] overflow-hidden flex flex-col max-h-[260px]"
+                  >
+                    <div className="p-2.5 border-b border-white/10 bg-cyan-400/10 flex items-center justify-between">
+                      <span className="text-[10px] font-black text-cyan-300 uppercase tracking-widest flex items-center gap-1.5">
+                        <TagIcon size={12} weight="bold" />
+                        <span>Tag Active Studio Media</span>
+                      </span>
+                      <button 
+                        type="button" 
+                        onClick={() => setMentionSearch(null)} 
+                        className="text-zinc-400 hover:text-white p-0.5 rounded-lg hover:bg-white/10 transition-colors"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+
+                    <div className="overflow-y-auto custom-scrollbar p-1.5 space-y-1">
+                      {filteredMentionSlots.length === 0 ? (
+                        <div className="p-4 text-center">
+                          <p className="text-[11px] text-zinc-400 font-medium">No uploaded slot matches &quot;@{mentionSearch}&quot;</p>
+                          <p className="text-[9px] text-zinc-500 mt-1">Upload images (Image 1, 2) or scene video to tag them</p>
+                        </div>
+                      ) : (
+                        filteredMentionSlots.map((slot, idx) => (
+                          <button
+                            key={slot.id || idx}
+                            type="button"
+                            onClick={() => selectMentionSlot(slot)}
+                            className={`w-full p-2 rounded-xl flex items-center gap-2.5 text-left transition-all group ${
+                              idx === mentionIndex 
+                                ? 'bg-cyan-400 text-black font-bold shadow-md' 
+                                : 'hover:bg-white/10 text-white'
+                            }`}
+                          >
+                            <div className="w-8 h-8 rounded-lg overflow-hidden bg-black/60 border border-white/15 shrink-0 flex items-center justify-center">
+                              {slot.type === 'video' ? (
+                                <video src={slot.url} className="w-full h-full object-cover" muted />
+                              ) : slot.type === 'audio' ? (
+                                <MusicNotes size={14} className={idx === mentionIndex ? "text-black" : "text-rose-400"} />
+                              ) : (
+                                <img src={slot.url} alt={slot.label} className="w-full h-full object-cover" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-black truncate">{slot.tag}</span>
+                                <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded ${idx === mentionIndex ? 'bg-black/20 text-black' : 'bg-cyan-400/20 text-cyan-300'}`}>
+                                  {slot.token}
+                                </span>
+                              </div>
+                              <p className={`text-[9px] truncate ${idx === mentionIndex ? 'text-black/80 font-medium' : 'text-zinc-400'}`}>
+                                {slot.desc}
+                              </p>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <textarea
+                ref={promptTextareaRef}
+                value={prompt}
+                onChange={handlePromptChange}
+                onKeyDown={handlePromptKeyDown}
+                rows={3}
+                placeholder="Describe which object to replace and how Image 1 should be integrated... Type @ to tag media"
+                className="w-full bg-white/[0.03] border border-white/10 rounded-2xl p-3 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-cyan-500/60 focus:ring-1 focus:ring-cyan-500/30 transition-all resize-none"
+              />
+            </div>
           </div>
 
           {/* Resolution Options with Credit Cost */}
