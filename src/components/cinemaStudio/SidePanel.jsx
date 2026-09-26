@@ -1337,6 +1337,12 @@ export const SidePanel = React.memo(({
         : (resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30));
       return Math.ceil(costPerSec * (Number(duration) || 5));
     }
+    if (panelTab === 'remix' || activeEngine === 'remix-motion-transfer') {
+      const resLower = (resolution || '720p').toLowerCase();
+      if (resLower === '1080p') return 12;
+      if (resLower === '480p') return 5;
+      return 8;
+    }
     if (panelTab === 'seedance-2.5' || activeEngine === 'seedance-2.5') {
       const resLower = (resolution || '720p').toLowerCase();
       const costPerSec = resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30);
@@ -1600,6 +1606,52 @@ export const SidePanel = React.memo(({
       character_orientation: characterOrientation,
       background_source: backgroundSource,
       duration: dur,
+      aspectRatio
+    });
+  };
+
+  const triggerGenerateRemix = async () => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    const showToast = useAppStore.getState().showToast;
+
+    const rawVid = motionRefVideo || motionRefVideoPreview || videoPreview || (seedanceVideos && seedanceVideos[0]);
+    if (!rawVid) {
+      const msg = "Please upload or select a Driving Source Motion Video for Remix.";
+      if (showToast) showToast(msg, "error");
+      else alert(msg);
+      return;
+    }
+
+    const rawImages = [
+      motionSubjectImage,
+      motionSubjectPreview,
+      ...(seedanceImages || []).filter(Boolean),
+      ...(omniRefPreviews || []).filter(Boolean),
+      firstFramePreview,
+      omniFirstFramePreview
+    ].filter(Boolean);
+
+    if (rawImages.length === 0) {
+      const msg = "Please upload or select at least 1 Character / Style Reference Image.";
+      if (showToast) showToast(msg, "error");
+      else alert(msg);
+      return;
+    }
+
+    const [resolvedVid, resolvedImgs] = await Promise.all([
+      resolveBlobToBase64(rawVid),
+      Promise.all(rawImages.slice(0, 8).map(img => resolveBlobToBase64(img)))
+    ]);
+
+    const engineToUse = 'remix-motion-transfer';
+    setPromptText(localPrompt);
+    setActiveTab('video');
+    setActiveEngine(engineToUse);
+    handleGenerate(localPrompt, engineToUse, {
+      video_url: resolvedVid || rawVid,
+      image_urls: (resolvedImgs || []).filter(Boolean),
+      resolution: (resolution === '4k') ? '1080p' : (resolution || '720p'),
+      duration: duration || 5,
       aspectRatio
     });
   };
@@ -2071,6 +2123,13 @@ export const SidePanel = React.memo(({
       return [
         { value: '480p', label: '480p SD', desc: '15 cr/s · Fast preview' },
         { value: '720p', label: '720p HD', desc: '25 cr/s · Standard HD' }
+      ];
+    }
+    if (panelTab === 'remix') {
+      return [
+        { value: '480p', label: '480p SD', desc: '5 Shorts · Fast motion render' },
+        { value: '720p', label: '720p HD', desc: '8 Shorts · Standard HD' },
+        { value: '1080p', label: '1080p FHD', desc: '12 Shorts · High-def cinematic' }
       ];
     }
     if (panelTab === 'omni' || panelTab === 'omni-multi') {
@@ -2678,6 +2737,24 @@ export const SidePanel = React.memo(({
             )}
           >
             Motion
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setPanelTab('remix');
+              setActiveTab('video');
+              setActiveEngine('remix-motion-transfer');
+              if (resolution === '4k') setResolution('1080p');
+            }}
+            className={cn(
+              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
+              panelTab === 'remix'
+                ? "bg-gradient-to-r from-amber-400/25 via-yellow-400/20 to-transparent text-amber-300 border border-amber-400/50 shadow-[0_0_15px_rgba(251,191,36,0.25)] font-black"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+            )}
+          >
+            Remix
           </button>
         </div>
       </div>
@@ -3299,6 +3376,136 @@ export const SidePanel = React.memo(({
 
                     {/* Multi-Ref Prompt Studio */}
                     {renderPromptStudio("Direct with references! E.g.: '@image1 character walks past @image2 while matching camera motion of @video1, 4k 60fps'")}
+                  </div>
+                ) : panelTab === 'remix' ? (
+                  /* ── REMIX (GENJUTSU MOTION TRANSFER) FLOW ── */
+                  <div className="space-y-3">
+                    {/* Source Driving Video Card */}
+                    <div className="space-y-1.5 p-2.5 rounded-2xl bg-black/40 border border-white/[0.08] backdrop-blur-xl">
+                      <div className="flex items-center justify-between pb-1 border-b border-white/5">
+                        <span className="text-[9.5px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                          <Video className="w-3 h-3 text-amber-400" />
+                          <span>1. Driving Source Video (Motion DNA)</span>
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
+                            <button
+                              type="button"
+                              onClick={() => setGalleryPickerSlot({ type: 'motion_video' })}
+                              className="text-[7.5px] font-bold text-amber-400 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/25 px-1 py-0.2 rounded transition-all cursor-pointer"
+                              title="Pick Driving Video from Studio Gallery"
+                            >
+                              + Gal
+                            </button>
+                          )}
+                          {(motionRefVideoPreview || motionRefVideo) && (
+                            <button
+                              type="button"
+                              onClick={handleClearMotionVideo}
+                              className="p-0.5 hover:bg-rose-500/20 text-rose-400 rounded transition-colors cursor-pointer"
+                              title="Clear Driving Video"
+                            >
+                              <Trash2 size={10} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {(motionRefVideoPreview || motionRefVideo) ? (
+                        <div className="aspect-video w-full rounded-xl overflow-hidden bg-black/70 border border-amber-500/40 relative group shadow-md flex items-center justify-center">
+                          <video src={motionRefVideoPreview || motionRefVideo} className="w-full h-full object-cover" muted loop autoPlay playsInline />
+                          <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all gap-1.5 backdrop-blur-[2px]">
+                            <button
+                              type="button"
+                              onClick={() => motionVideoInputRef.current?.click()}
+                              className="px-2 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg text-[9px] font-bold uppercase tracking-wider cursor-pointer"
+                            >
+                              Replace Video
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => motionVideoInputRef.current?.click()}
+                          className="aspect-video w-full rounded-xl border border-dashed border-white/15 hover:border-amber-400/60 bg-white/[0.01] hover:bg-amber-500/[0.04] transition-all flex flex-col items-center justify-center gap-1 text-zinc-400 hover:text-amber-300 cursor-pointer p-2"
+                        >
+                          <Upload size={16} className="text-amber-400/80" />
+                          <span className="text-[9px] font-bold uppercase tracking-wider">Upload Source Motion Video</span>
+                          <span className="text-[7.5px] text-zinc-500 font-mono">MP4, MOV (Motion & timing transferred)</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Character / Style Reference Images Gallery (1 to 8 images) */}
+                    <div className="space-y-1.5 p-2.5 rounded-2xl bg-black/40 border border-white/[0.08] backdrop-blur-xl">
+                      <div className="flex items-center justify-between pb-1 border-b border-white/5">
+                        <span className="text-[9.5px] font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                          <Sparkles className="w-3 h-3 text-purple-400" />
+                          <span>2. Character / Style References (1-8)</span>
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
+                            <button
+                              type="button"
+                              onClick={() => setGalleryPickerSlot({ type: 'motion_subject' })}
+                              className="text-[7.5px] font-bold text-purple-400 bg-purple-400/10 hover:bg-purple-400/20 border border-purple-400/25 px-1 py-0.2 rounded transition-all cursor-pointer"
+                              title="Pick Reference Image from Studio Gallery"
+                            >
+                              + Gal
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => motionImageInputRef.current?.click()}
+                            className="text-[7.5px] font-bold text-purple-400 bg-purple-400/10 hover:bg-purple-400/20 border border-purple-400/25 px-1.5 py-0.2 rounded transition-all cursor-pointer"
+                          >
+                            + Upload
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Display Selected Subject Image & Seedance Image Slots */}
+                      <div className="grid grid-cols-4 gap-1.5 pt-1">
+                        {(motionSubjectPreview || motionSubjectImage) && (
+                          <div className="relative group aspect-square rounded-xl overflow-hidden border border-purple-400/50 bg-black">
+                            <img src={motionSubjectPreview || motionSubjectImage} alt="Ref 1" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={handleClearMotionSubject}
+                              className="absolute top-0.5 right-0.5 p-0.5 bg-rose-600/80 rounded opacity-0 group-hover:opacity-100 text-white transition-opacity"
+                            >
+                              <Trash2 size={8} />
+                            </button>
+                          </div>
+                        )}
+                        {seedanceImages.slice(0, 7).map((img, idx) => img ? (
+                          <div key={idx} className="relative group aspect-square rounded-xl overflow-hidden border border-purple-400/40 bg-black">
+                            <img src={img} alt={`Ref ${idx + 2}`} className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => handleClearSeedanceImage(idx)}
+                              className="absolute top-0.5 right-0.5 p-0.5 bg-rose-600/80 rounded opacity-0 group-hover:opacity-100 text-white transition-opacity"
+                            >
+                              <Trash2 size={8} />
+                            </button>
+                          </div>
+                        ) : null)}
+
+                        {/* Add Button */}
+                        <button
+                          type="button"
+                          onClick={() => motionImageInputRef.current?.click()}
+                          className="aspect-square rounded-xl border border-dashed border-white/15 hover:border-purple-400/60 bg-white/[0.02] hover:bg-purple-500/[0.04] flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-purple-300 transition-all cursor-pointer"
+                        >
+                          <Plus size={14} />
+                          <span className="text-[7.5px] font-bold">Add Ref</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Prompt Studio */}
+                    {renderPromptStudio("Describe character appearance, lighting, style, scene ambiance for Genjutsu Motion Transfer...")}
                   </div>
                 ) : panelTab === 'motion' ? (
                   /* ── MOTION CONTROL FLOW ── */
@@ -3978,6 +4185,27 @@ export const SidePanel = React.memo(({
                       />
                     </div>
                   </div>
+                ) : panelTab === 'remix' ? (
+                  /* Dedicated Parameters for Remix (Resolution Quality + Aspect Ratio) */
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <GlassSelect
+                        label="Resolution"
+                        value={resolution === '4k' ? '1080p' : (resolution || '720p')}
+                        onChange={setResolution}
+                        options={resolutionOptions}
+                        align="up"
+                      />
+
+                      <GlassSelect
+                        label="Aspect Ratio"
+                        value={aspectRatio}
+                        onChange={setAspectRatio}
+                        options={aspectOptions}
+                        align="up"
+                      />
+                    </div>
+                  </div>
                 ) : panelTab === 'motion' ? (
                   /* ONLY Aspect Ratio for Motion Tab (duration from driving video, resolution from Quality Mode, audio not applicable) */
                   <div className="space-y-1">
@@ -4069,7 +4297,7 @@ export const SidePanel = React.memo(({
             <div className="absolute bottom-0 left-0 right-0 py-2.5 sm:py-3.5 px-3 sm:px-4 bg-[#06060a]/95 border-t border-white/[0.08] backdrop-blur-2xl flex items-center justify-between gap-2 sm:gap-3 z-20 shadow-[0_-20px_40px_rgba(0,0,0,0.9)] pb-safe">
               <div className="flex flex-col min-w-0">
                 <div className="flex items-center gap-1">
-                  <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse shrink-0", (panelTab === 'seedance' || panelTab === 'seedance-2.5') ? "bg-amber-400" : "bg-[#c8f135]")} />
+                  <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse shrink-0", (panelTab === 'seedance' || panelTab === 'seedance-2.5' || panelTab === 'remix') ? "bg-amber-400" : "bg-[#c8f135]")} />
                   <span className="text-[9px] sm:text-[9.5px] font-black text-zinc-300 uppercase tracking-widest truncate">
                     {panelTab === 'transition'
                       ? `${activeEngine === 'seedance-mini' ? 'Seedance Mini' : 'Seedance 2.5'} Transition Ready`
@@ -4077,6 +4305,8 @@ export const SidePanel = React.memo(({
                       ? 'Seedance 2.5 Pro Ready'
                       : panelTab === 'seedance'
                       ? `${activeEngine === 'seedace' ? 'Seedance 2.0 Pro' : activeEngine === 'seedance-mini' ? 'Seedance Mini' : 'Seedance Fast'} Ready`
+                      : panelTab === 'remix'
+                      ? 'Genjutsu Motion Transfer Ready'
                       : panelTab === 'omni'
                       ? 'Omni Ready'
                       : panelTab === 'omni-multi'
@@ -4094,7 +4324,9 @@ export const SidePanel = React.memo(({
               <button
                 type="button"
                 onClick={
-                  (panelTab === 'transition' || panelTab === 'seedance' || panelTab === 'seedance-2.5')
+                  panelTab === 'remix'
+                    ? triggerGenerateRemix
+                    : (panelTab === 'transition' || panelTab === 'seedance' || panelTab === 'seedance-2.5')
                     ? triggerGenerateSeedance
                     : panelTab === 'omni' || panelTab === 'omni-multi'
                     ? triggerGenerateOmni
@@ -4102,11 +4334,11 @@ export const SidePanel = React.memo(({
                     ? triggerGenerateMotion
                     : triggerGenerateVeo
                 }
-                disabled={isBusy || (panelTab === 'motion' ? (!motionSubjectPreview && !motionSubjectImage) || (!motionRefVideoPreview && !motionRefVideo) : !canGenerate)}
+                disabled={isBusy || (panelTab === 'remix' ? (!motionRefVideoPreview && !motionRefVideo && !videoPreview) || (!motionSubjectPreview && !motionSubjectImage && seedanceImages.every(i => !i)) : panelTab === 'motion' ? (!motionSubjectPreview && !motionSubjectImage) || (!motionRefVideoPreview && !motionRefVideo) : !canGenerate)}
                 className={cn(
                   "h-10 sm:h-11 px-3.5 sm:px-5 rounded-xl sm:rounded-2xl text-[10.5px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-[0_0_30px_rgba(200,241,53,0.3)] border shrink-0 active:scale-95 select-none",
-                  (panelTab === 'motion' ? (!!(motionSubjectPreview || motionSubjectImage) && !!(motionRefVideoPreview || motionRefVideo)) : canGenerate && !isBusy)
-                    ? (panelTab === 'seedance' || panelTab === 'seedance-2.5')
+                  (panelTab === 'remix' ? ((motionRefVideoPreview || motionRefVideo || videoPreview) && (motionSubjectPreview || motionSubjectImage || seedanceImages.some(Boolean))) : panelTab === 'motion' ? (!!(motionSubjectPreview || motionSubjectImage) && !!(motionRefVideoPreview || motionRefVideo)) : canGenerate && !isBusy)
+                    ? (panelTab === 'seedance' || panelTab === 'seedance-2.5' || panelTab === 'remix')
                       ? "bg-gradient-to-r from-amber-400 to-[#c8f135] hover:brightness-110 text-black border-amber-400/60 hover:shadow-[0_0_40px_rgba(251,191,36,0.6)] cursor-pointer"
                       : "bg-[#c8f135] hover:bg-[#d8ff43] text-black border-[#d4ff00]/60 hover:shadow-[0_0_40px_rgba(200,241,53,0.6)] cursor-pointer"
                     : "bg-white/5 text-zinc-500 border-white/5 cursor-not-allowed shadow-none"

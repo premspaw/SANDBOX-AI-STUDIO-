@@ -855,6 +855,12 @@ export default function StudioPage() {
         : (resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30));
       return Math.ceil(costPerSec * (Number(duration) || 5));
     }
+    if (panelTab === 'remix' || activeEngine.includes('remix') || activeEngine.includes('motion-transfer')) {
+      const resLower = (resolution || '720p').toLowerCase();
+      if (resLower === '1080p') return 12;
+      if (resLower === '480p') return 5;
+      return 8;
+    }
     if (panelTab === 'seedance-2.5' || activeEngine === 'seedance-2.5') {
       const resLower = (resolution || '720p').toLowerCase();
       const costPerSec = resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30);
@@ -920,10 +926,11 @@ export default function StudioPage() {
   // Handle Generation
   const handleGenerate = async (customPrompt, customEngine, customOptions = {}) => {
     const engineToUse = customEngine || activeEngine;
-    const isMotion = panelTab === 'motion' || engineToUse.includes('motion') || engineToUse.includes('kling');
-    const isSeedance = !isMotion && (panelTab === 'transition' || panelTab === 'seedance' || panelTab === 'seedance-2.5' || engineToUse.startsWith('seedan') || engineToUse === 'seedace');
-    const isOmni = !isMotion && !isSeedance && (panelTab === 'omni' || panelTab === 'omni-multi' || engineToUse.includes('omni') || engineToUse.includes('flash'));
-    const promptToUse = customPrompt || (isMotion ? (promptText || '') : (isOmni ? omniPromptText : promptText));
+    const isRemix = panelTab === 'remix' || engineToUse.includes('remix') || engineToUse.includes('genjutsu') || engineToUse.includes('motion-transfer');
+    const isMotion = !isRemix && (panelTab === 'motion' || engineToUse.includes('motion') || engineToUse.includes('kling'));
+    const isSeedance = !isRemix && !isMotion && (panelTab === 'transition' || panelTab === 'seedance' || panelTab === 'seedance-2.5' || engineToUse.startsWith('seedan') || engineToUse === 'seedace');
+    const isOmni = !isRemix && !isMotion && !isSeedance && (panelTab === 'omni' || panelTab === 'omni-multi' || engineToUse.includes('omni') || engineToUse.includes('flash'));
+    const promptToUse = customPrompt || (isRemix ? (promptText || '') : isMotion ? (promptText || '') : (isOmni ? omniPromptText : promptText));
     const activeDuration = customOptions?.duration !== undefined ? customOptions.duration : duration;
     const activeRatio = customOptions?.aspectRatio !== undefined ? customOptions.aspectRatio : aspectRatio;
     const activeResolution = customOptions?.resolution !== undefined ? customOptions.resolution : (resolution || '720p').toLowerCase();
@@ -931,7 +938,22 @@ export default function StudioPage() {
 
     // Validation
     const showToast = useAppStore.getState().showToast;
-    if (isMotion) {
+    if (isRemix) {
+      const videoUrl = customOptions?.video_url || motionRefVideo || motionRefVideoPreview;
+      const imageUrls = customOptions?.image_urls || (motionSubjectImage ? [motionSubjectImage] : [motionSubjectPreview]);
+      if (!videoUrl) {
+        const errMsg = "Please upload or select a Driving Source Motion Video for Remix.";
+        if (showToast) showToast(errMsg, "error");
+        else alert(errMsg);
+        return;
+      }
+      if (!imageUrls || imageUrls.length === 0 || !imageUrls[0]) {
+        const errMsg = "Please upload or select at least 1 Character / Style Reference Image for Remix.";
+        if (showToast) showToast(errMsg, "error");
+        else alert(errMsg);
+        return;
+      }
+    } else if (isMotion) {
       const subjectUrl = customOptions?.input_url || motionSubjectImage || motionSubjectPreview;
       const videoUrl = customOptions?.video_url || motionRefVideo || motionRefVideoPreview;
       if (!subjectUrl) {
@@ -971,7 +993,9 @@ export default function StudioPage() {
         setMobileTab('gallery');
       }
       const tempId = 'gen_' + Date.now();
-      const engineDisplayLabel = isMotion 
+      const engineDisplayLabel = isRemix
+        ? 'Genjutsu Motion Transfer'
+        : isMotion 
         ? `Kling 3.0 (${motionMode === 'pro' ? 'Pro 1080p' : 'Std 720p'})`
         : isSeedance 
         ? (engineToUse.includes('fast') ? 'Seedance Fast' : engineToUse.includes('mini') ? 'Seedance Mini' : engineToUse.includes('2.5') ? 'Seedance 2.5 Pro' : 'Seedance 2.0')
@@ -982,7 +1006,7 @@ export default function StudioPage() {
       const newClip = {
         id: tempId,
         type: 'video',
-        prompt: promptToUse || (isMotion ? 'Kling 3.0 Motion Control' : isSeedance ? 'Seedance Video' : 'Cinematic Video'),
+        prompt: promptToUse || (isRemix ? 'Genjutsu Motion Transfer' : isMotion ? 'Kling 3.0 Motion Control' : isSeedance ? 'Seedance Video' : 'Cinematic Video'),
         engine: engineDisplayLabel,
         duration: isMotion ? Math.ceil(motionRefVideoDuration || 5) : activeDuration,
         aspectRatio: activeRatio,
@@ -995,6 +1019,47 @@ export default function StudioPage() {
       setGallery(prev => [newClip, ...prev]);
 
       try {
+        if (isRemix) {
+          const videoUrl = customOptions?.video_url || motionRefVideo || motionRefVideoPreview;
+          const rawImages = customOptions?.image_urls || (motionSubjectImage ? [motionSubjectImage] : [motionSubjectPreview]);
+
+          const resolvedVideo = await resolveBlobToBase64(videoUrl);
+          const resolvedImages = await Promise.all((rawImages || []).filter(Boolean).map(img => resolveBlobToBase64(img)));
+
+          const resp = await fetch(getApiUrl('/api/remix/motion-transfer'), {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-user-id': userId || 'anon'
+            },
+            body: JSON.stringify({
+              prompt: promptToUse || '',
+              video_url: resolvedVideo || videoUrl,
+              image_urls: resolvedImages.filter(Boolean),
+              resolution: activeResolution || '720p',
+              userId
+            })
+          });
+
+          if (!resp.ok) {
+            const errJson = await resp.json().catch(() => ({}));
+            throw new Error(errJson.error || `Motion Transfer failed (${resp.status})`);
+          }
+
+          const data = await resp.json();
+          const finalUrl = data.videoUrl || data.originalUrl;
+          if (!finalUrl) throw new Error(data.error || "No video URL returned from Remix Engine");
+
+          setGallery(prev => prev.map(item => item.id === tempId ? {
+            ...item,
+            status: 'completed',
+            url: finalUrl
+          } : item));
+
+          if (showToast) showToast("Genjutsu Motion Transfer video rendered!", "success");
+          return;
+        }
+
         if (isMotion) {
           const subjectUrl = customOptions?.input_url || motionSubjectImage || motionSubjectPreview;
           const videoUrl = customOptions?.video_url || motionRefVideo || motionRefVideoPreview;

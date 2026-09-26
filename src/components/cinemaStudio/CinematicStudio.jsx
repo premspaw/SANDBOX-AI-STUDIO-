@@ -2660,7 +2660,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         return;
       }
 
-      if (resolvedEngine !== 'seedace' && resolvedEngine !== 'seedance-fast' && resolvedEngine !== 'seedance-mini' && resolvedEngine !== 'seedance-2.5' && resolvedEngine !== 'kling/v3-turbo-image-to-video' && resolvedEngine !== 'kling-motion') {
+      if (resolvedEngine !== 'seedace' && resolvedEngine !== 'seedance-fast' && resolvedEngine !== 'seedance-mini' && resolvedEngine !== 'seedance-2.5' && resolvedEngine !== 'kling/v3-turbo-image-to-video' && resolvedEngine !== 'kling-motion' && resolvedEngine !== 'remix-motion-transfer') {
         const isOmniEngine = resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview';
         try {
           let targetModel = resolvedEngine;
@@ -2986,6 +2986,63 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           setGallery(prev => prev.filter(item => item.id !== tempId));
           setStatus('error');
           const cleanErr = cleanErrorMessage(err.message || 'Kling Motion Control failed.');
+          setErrorMsg(cleanErr);
+          const showToast = useAppStore.getState().showToast;
+          if (showToast) showToast(cleanErr, "error");
+          await triggerRefund('cinematic_video_generation');
+        } finally {
+          setStatus(prev => (prev === 'generating' || prev === 'polling' ? 'idle' : prev));
+          setPollMsg('');
+        }
+      } else if (resolvedEngine === 'remix-motion-transfer') {
+        const tempId = tempItems[0].id;
+        try {
+          const rawVid = overrideOptions?.video_url || motionRefVideo || motionRefVideoPreview || omniRefVideoPreview;
+          const rawImgs = overrideOptions?.image_urls || (motionSubjectImage ? [motionSubjectImage] : [motionSubjectPreview]);
+
+          const [resolvedVid, resolvedImgs] = await Promise.all([
+            rawVid ? resolveBlobToBase64(rawVid) : null,
+            Promise.all((rawImgs || []).filter(Boolean).map(img => resolveBlobToBase64(img)))
+          ]);
+
+          if (!resolvedVid || resolvedImgs.length === 0) {
+            throw new Error("Remix Motion Transfer requires a Source Motion Video and at least 1 Reference Image.");
+          }
+
+          const resp = await fetch(getApiUrl('/api/remix/motion-transfer'), {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-user-id': userId || 'anon'
+            },
+            body: JSON.stringify({
+              prompt: compiledPrompt || overridePrompt || '',
+              video_url: resolvedVid,
+              image_urls: resolvedImgs.filter(Boolean),
+              resolution: overrideOptions?.resolution || resolution || '720p',
+              userId
+            })
+          });
+
+          const data = await resp.json();
+          if (!resp.ok) throw new Error(data.error || 'Remix Motion Transfer failed.');
+
+          const finalUrl = data.videoUrl || data.originalUrl;
+          if (!finalUrl) throw new Error(data.error || 'No video URL returned from Remix Engine.');
+
+          setGallery(prev => prev.map(item => item.id === tempId ? {
+            ...item,
+            loading: false,
+            status: 'completed',
+            url: finalUrl
+          } : item));
+
+          const showToast = useAppStore.getState().showToast;
+          if (showToast) showToast("Genjutsu Motion Transfer video rendered!", "success");
+        } catch (err) {
+          setGallery(prev => prev.filter(item => item.id !== tempId));
+          setStatus('error');
+          const cleanErr = cleanErrorMessage(err.message || 'Remix Motion Transfer failed.');
           setErrorMsg(cleanErr);
           const showToast = useAppStore.getState().showToast;
           if (showToast) showToast(cleanErr, "error");
