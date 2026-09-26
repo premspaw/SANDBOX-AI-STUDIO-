@@ -249,7 +249,7 @@ export default function createRouter(deps) {
 
     async function uploadToGcs(buffer, mimeType) {
         const authOptions = {
-            projectId: VERTEX_PROJECT_ID || process.env.NEW_GOOGLE_PROJECT_ID || process.env.GOOGLE_PROJECT_ID || 'project-c0b5ea74-5ba2-4e68-8ab'
+            projectId: VERTEX_PROJECT_ID || process.env.GOOGLE_PROJECT_ID || 'new-zerolens-api'
         };
         if (VERTEX_KEY) {
             if (typeof VERTEX_KEY === 'string') {
@@ -259,7 +259,7 @@ export default function createRouter(deps) {
             }
         }
         const storageClient = storage || new Storage(authOptions);
-        const bucketName = process.env.GCS_BUCKET_NAME || BUCKET_NAME || 'zerolens-omni-project-c0b5ea74';
+        const bucketName = process.env.GCS_BUCKET_NAME || BUCKET_NAME || 'zerolensbucket-cdn';
         const bucket = storageClient.bucket(bucketName);
         const filename = `motion-ref-videos/${Date.now()}-${Math.random().toString(36).substring(7)}.mp4`;
         const file = bucket.file(filename);

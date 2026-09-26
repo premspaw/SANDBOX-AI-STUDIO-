@@ -58,11 +58,11 @@ async function getMcpAccessToken() {
   if (keyPath) {
     try {
       const parsed = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
-      _cachedProjectId = parsed.project_id || process.env.NEW_GOOGLE_PROJECT_ID || process.env.GOOGLE_PROJECT_ID;
+      _cachedProjectId = parsed.project_id || process.env.GOOGLE_PROJECT_ID;
     } catch (_) {}
   }
   if (!_cachedProjectId) {
-    _cachedProjectId = process.env.NEW_GOOGLE_PROJECT_ID || process.env.GOOGLE_PROJECT_ID || 'project-c0b5ea74-5ba2-4e68-8ab';
+    _cachedProjectId = process.env.GOOGLE_PROJECT_ID || 'new-zerolens-api';
   }
 
   _cachedToken = { token, expiry: now + 50 * 60 * 1000 };
