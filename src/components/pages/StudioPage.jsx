@@ -1230,6 +1230,7 @@ export default function StudioPage() {
               output_format: 'mp4',
               web_search: false,
               nsfw_checker: true,
+              provider: localStorage.getItem('cs_seedance_provider') || 'auto',
               creditReason: 'studio_seedance_generation'
             })
           });
@@ -1247,6 +1248,28 @@ export default function StudioPage() {
           }
 
           const data = await resp.json();
+
+          // If backend completed synchronously (e.g. Higgsfield withPolling: true)
+          if (data.status === 'completed' && (data.videoUrl || data.url)) {
+            const finalUrl = data.videoUrl || data.url;
+            setGallery(prev => [
+              {
+                id: data.requestId || `gen_${Date.now()}`,
+                type: 'video',
+                url: finalUrl,
+                prompt: promptToUse,
+                engine: data.engine || engineToUse,
+                aspectRatio: activeRatio,
+                timestamp: Date.now()
+              },
+              ...prev.filter(item => item.id !== tempId)
+            ]);
+            setStatus('idle');
+            const showToast = useAppStore.getState().showToast;
+            if (showToast) showToast("Seedance 2.5 video generated successfully!", "success");
+            return;
+          }
+
           const taskId = data.requestId;
           if (!taskId) throw new Error(data.error || "No task ID returned from Seedance API");
 

@@ -2913,12 +2913,34 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               userId,
               projectId: activeProjectId,
               generateAudio,
+              provider: localStorage.getItem('cs_seedance_provider') || 'auto',
               creditReason: 'cinematic_video_generation'
             })
           });
 
           const json = await resp.json();
           if (!resp.ok) throw new Error(json.error || 'Seedance task initialization failed.');
+
+          // If backend completed synchronously (e.g. Higgsfield withPolling: true)
+          if (json.status === 'completed' && (json.videoUrl || json.url)) {
+            const finalUrl = json.videoUrl || json.url;
+            setGallery(prev => [
+              {
+                id: json.requestId || `gen_${Date.now()}`,
+                type: 'video',
+                url: finalUrl,
+                prompt: basePrompt,
+                engine: json.engine || activeEngine,
+                aspectRatio: activeRatio,
+                timestamp: Date.now()
+              },
+              ...prev.filter(item => item.id !== tempId)
+            ]);
+            setStatus('idle');
+            const showToast = useAppStore.getState().showToast;
+            if (showToast) showToast("Seedance 2.5 video generated successfully!", "success");
+            return;
+          }
 
           const taskId = json.requestId;
           if (!taskId) throw new Error('No task ID returned from backend.');

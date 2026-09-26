@@ -1,8 +1,30 @@
 import express from 'express';
+import { config as configHiggsfield, higgsfield } from '@higgsfield/client/v2';
+
+function normalizeHfAspectRatio(ratio) {
+    if (!ratio) return '16:9';
+    const r = String(ratio).toLowerCase().trim();
+    if (r === '16:9' || r === 'landscape' || r === 'horizontal' || r === 'wide') return '16:9';
+    if (r === '9:16' || r === 'portrait' || r === 'vertical' || r === 'reels' || r === 'tiktok') return '9:16';
+    if (r === '1:1' || r === 'square') return '1:1';
+    if (r === '4:3') return '4:3';
+    if (r === '3:4') return '3:4';
+    if (r === '21:9' || r === 'cinematic' || r === 'ultrawide') return '21:9';
+    return '16:9';
+}
 
 export default function createRouter(deps) {
     const router = express.Router();
     const { uploadVideoToSupabase, resolveToPublicUrl, requireAuth, consumeCredits, claimOrCreateSpend } = deps;
+
+    // Configure Higgsfield credentials
+    const hfCredentials = process.env.HF_CREDENTIALS || process.env.HF_KEY;
+    if (hfCredentials) {
+        configHiggsfield({
+            credentials: hfCredentials.trim(),
+        });
+        console.log('[SEEDANCE] ✅ Higgsfield client initialized for Seedance 2.5');
+    }
 
     const generateKieTask = async ({
         prompt,
@@ -520,19 +542,114 @@ export default function createRouter(deps) {
                 return res.json({ success: true, requestId: taskId, engine: 'seedance-mini' });
             }
 
-            // Handle seedance-2.5 model — routes through Kie.ai
-            if (engine === 'seedance-2.5' || engine === 'seedance-2-5' || engine === 'bytedance/seedance-2-5') {
-                const kieApiKey = process.env.KIE_API_KEY;
-                if (!kieApiKey) {
-                    throw new Error("KIE_API_KEY is not configured on the server, cannot run seedance-2.5.");
-                }
+            // Handle seedance-2.5 model — supports Higgsfield and Kie.ai with auto-fallback
+            if (
+                engine === 'seedance-2.5' || 
+                engine === 'seedance-2-5' || 
+                engine === 'bytedance/seedance-2-5' || 
+                engine === 'bytedance/seedance-2.5/text-to-video' ||
+                engine === 'seedance-2.5-higgsfield'
+            ) {
+                const requestedProvider = (
+                    req.body.provider || 
+                    req.body.seedanceProvider || 
+                    req.body.provider25 || 
+                    (engine === 'seedance-2.5-higgsfield' ? 'higgsfield' : 'auto')
+                ).toLowerCase();
 
                 const resolution25 = resolution === '4k' ? '1080p' : (resolution || '720p');
+                const durationClamped = Math.min(30, Math.max(4, Number(duration) || 5));
+                const hfRatio = normalizeHfAspectRatio(aspectRatio);
+
+                const activeHfKey = process.env.HF_CREDENTIALS || process.env.HF_KEY;
+                const activeKieKey = process.env.KIE_API_KEY;
+
+                // 1. Try Higgsfield if provider is 'higgsfield' or 'auto' (with HF credentials present)
+                if ((requestedProvider === 'higgsfield' || requestedProvider === 'auto') && activeHfKey) {
+                    try {
+                        configHiggsfield({
+                            credentials: activeHfKey.trim(),
+                        });
+
+                        console.log(`[SEEDANCE-2.5-HIGGSFIELD] Submitting job to Higgsfield:`, {
+                            model: "bytedance/seedance-2.5/text-to-video",
+                            prompt: finalPrompt.substring(0, 50) + "...",
+                            duration: durationClamped,
+                            resolution: resolution25 === '1080p' ? '1080p' : (resolution25 === '480p' ? '480p' : '720p'),
+                            aspect_ratio: hfRatio,
+                            bitrate_mode: req.body.bitrate_mode || 'high',
+                            output_format: output_format || req.body.output_format || 'mp4',
+                            generate_audio: generateAudio !== undefined ? !!generateAudio : true
+                        });
+
+                        const hfResult = await higgsfield.subscribe(
+                            "bytedance/seedance-2.5/text-to-video",
+                            {
+                                input: {
+                                    prompt: finalPrompt,
+                                    duration: durationClamped,
+                                    resolution: resolution25 === '1080p' ? '1080p' : (resolution25 === '480p' ? '480p' : '720p'),
+                                    aspect_ratio: hfRatio,
+                                    bitrate_mode: req.body.bitrate_mode || 'high',
+                                    output_format: output_format || req.body.output_format || 'mp4',
+                                    generate_audio: generateAudio !== undefined ? !!generateAudio : true
+                                },
+                                withPolling: true,
+                            }
+                        );
+
+                        console.log(`[SEEDANCE-2.5-HIGGSFIELD] Result status:`, hfResult.status);
+
+                        if (hfResult.status === 'completed' && hfResult.video?.url) {
+                            let finalVideoUrl = hfResult.video.url;
+                            if (typeof uploadVideoToSupabase === 'function') {
+                                try {
+                                    const saved = await uploadVideoToSupabase(finalVideoUrl, `seedance25_${Date.now()}.mp4`, targetUserId);
+                                    if (saved) finalVideoUrl = saved;
+                                } catch (saveErr) {
+                                    console.warn('[SEEDANCE-2.5-HIGGSFIELD] Notice: fallback direct CDN url:', saveErr.message);
+                                }
+                            }
+
+                            return res.json({
+                                success: true,
+                                status: 'completed',
+                                requestId: hfResult.request_id || `hf-seedance-${Date.now()}`,
+                                videoUrl: finalVideoUrl,
+                                url: finalVideoUrl,
+                                engine: 'seedance-2.5-higgsfield',
+                                provider: 'higgsfield',
+                                zipUrl: hfResult.zip?.url || null,
+                                movUrl: hfResult.mov?.url || null,
+                                meta: {
+                                    prompt: finalPrompt,
+                                    duration: durationClamped,
+                                    resolution: resolution25,
+                                    aspectRatio: hfRatio,
+                                    provider: 'higgsfield'
+                                }
+                            });
+                        } else if (hfResult.status === 'failed') {
+                            throw new Error(hfResult.error || 'Higgsfield Seedance 2.5 generation returned failed state.');
+                        }
+                    } catch (hfErr) {
+                        console.warn(`[SEEDANCE-2.5-HIGGSFIELD] Request failed: ${hfErr.message}`);
+                        if (requestedProvider === 'higgsfield') {
+                            throw new Error(`Higgsfield Seedance 2.5 Error: ${hfErr.message}`);
+                        }
+                        console.log(`[SEEDANCE-2.5-FALLBACK] Falling back to Kie.ai provider...`);
+                    }
+                }
+
+                // 2. KIE API Provider (or Fallback from Higgsfield)
+                if (!activeKieKey) {
+                    throw new Error("Neither Higgsfield credentials nor KIE_API_KEY is available for Seedance 2.5.");
+                }
 
                 const seedance25Input = {
                     prompt: finalPrompt,
                     aspect_ratio: (aspectRatio || "adaptive"),
-                    duration: Number(duration) || 5,
+                    duration: durationClamped,
                     generate_audio: !!generateAudio,
                     resolution: resolution25,
                     output_format: output_format || req.body.output_format || 'mp4',
@@ -559,7 +676,7 @@ export default function createRouter(deps) {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${kieApiKey}`
+                        'Authorization': `Bearer ${activeKieKey}`
                     },
                     body: JSON.stringify({
                         model: req.body.model || 'bytedance/seedance-2-5',
@@ -576,8 +693,13 @@ export default function createRouter(deps) {
                     throw new Error("Kie.ai task creation succeeded but did not return a taskId.");
                 }
 
-                console.log(`[SEEDANCE-2.5] Task created successfully: ${taskId}`);
-                return res.json({ success: true, requestId: taskId, engine: 'seedance-2.5-kie' });
+                console.log(`[SEEDANCE-2.5] Task created successfully on Kie.ai: ${taskId}`);
+                return res.json({ 
+                    success: true, 
+                    requestId: taskId, 
+                    engine: 'seedance-2.5-kie',
+                    provider: 'kie'
+                });
             }
 
             throw new Error(`Unsupported engine: ${engine}`);

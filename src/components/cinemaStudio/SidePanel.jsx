@@ -2077,6 +2077,22 @@ export const SidePanel = React.memo(({
     { value: 'seedance-2.5', label: 'Seedance 2.5 Pro', desc: 'Up to 30s · 50 references · Native Audio' }
   ], []);
 
+  const seedanceProviderOptions = useMemo(() => [
+    { value: 'auto', label: '⚡ Auto Fallback (Higgsfield → KIE)', desc: 'Smart Multi-Provider Routing' },
+    { value: 'higgsfield', label: 'Higgsfield (Official API)', desc: 'Direct bytedance/seedance-2.5' },
+    { value: 'kie', label: 'KIE API (Legacy Bridge)', desc: 'Direct bytedance/seedance-2-5' }
+  ], []);
+
+  const userProfile = useAppStore(state => state.userProfile);
+  const isAdmin = useAppStore(state => state.isAdmin) || userProfile?.role === 'admin';
+  const [seedanceProvider, setSeedanceProvider] = useState(() => {
+    return localStorage.getItem('cs_seedance_provider') || 'auto';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('cs_seedance_provider', seedanceProvider);
+  }, [seedanceProvider]);
+
   const resolutionOptions = useMemo(() => {
     if (panelTab === 'transition') {
       if (activeEngine === 'seedance-mini') {
@@ -4094,6 +4110,27 @@ export const SidePanel = React.memo(({
                         </span>
                       </button>
                     </div>
+
+                    {/* Admin Only: Seedance 2.5 Provider Switcher */}
+                    {isAdmin && activeEngine === 'seedance-2.5' && (
+                      <div className="p-2.5 rounded-xl border border-cyan-500/30 bg-cyan-500/5 space-y-1.5 mt-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-400 flex items-center gap-1.5">
+                            <Sparkles className="w-3 h-3 text-cyan-400" />
+                            <span>Seedance 2.5 Provider</span>
+                          </label>
+                          <span className="text-[8px] font-mono font-bold text-cyan-300 bg-cyan-400/10 px-1.5 py-0.5 rounded border border-cyan-400/20">
+                            Admin Only
+                          </span>
+                        </div>
+                        <GlassSelect
+                          value={seedanceProvider}
+                          onChange={setSeedanceProvider}
+                          options={seedanceProviderOptions}
+                          align="up"
+                        />
+                      </div>
+                    )}
                   </div>
                 ) : panelTab === 'seedance-2.5' ? (
                   /* Dedicated Bottom Controls for Seedance 2.5 */
@@ -4136,6 +4173,27 @@ export const SidePanel = React.memo(({
                         align="up"
                       />
                     </div>
+
+                    {/* Admin Only: Seedance 2.5 Provider Switcher */}
+                    {isAdmin && (
+                      <div className="p-2.5 rounded-xl border border-cyan-500/30 bg-cyan-500/5 space-y-1.5 mt-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-400 flex items-center gap-1.5">
+                            <Sparkles className="w-3 h-3 text-cyan-400" />
+                            <span>Seedance 2.5 Provider</span>
+                          </label>
+                          <span className="text-[8px] font-mono font-bold text-cyan-300 bg-cyan-400/10 px-1.5 py-0.5 rounded border border-cyan-400/20">
+                            Admin Only
+                          </span>
+                        </div>
+                        <GlassSelect
+                          value={seedanceProvider}
+                          onChange={setSeedanceProvider}
+                          options={seedanceProviderOptions}
+                          align="up"
+                        />
+                      </div>
+                    )}
                   </div>
                 ) : panelTab === 'seedance' ? (
                   /* Dedicated Bottom Controls for Seedance (Model Selector + Ratio / Duration / Resolution) */
