@@ -1,4 +1,4 @@
-import { Robot, FilmSlate, GearSix, CaretLeft, CaretRight, FolderOpen, Users, ShieldCheck, VideoCamera, Coins, SquaresFour, Aperture, Megaphone, UserFocus, MicrophoneStage, UsersThree, ChatCircle, Microphone, Palette, Cpu, Kanban } from '@phosphor-icons/react'
+import { Robot, FilmSlate, GearSix, CaretLeft, CaretRight, FolderOpen, Users, ShieldCheck, VideoCamera, Coins, SquaresFour, Aperture, Megaphone, UserFocus, MicrophoneStage, UsersThree, ChatCircle, Microphone, Palette, Cpu, Kanban, ArrowsClockwise } from '@phosphor-icons/react'
 
 import logo from '../../assets/acs-icon.svg'
 import BrandLogo from '../common/BrandLogo'
@@ -116,7 +116,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
         { id: 'assets', label: 'Assets Library', icon: FolderOpen, color: 'text-[#AADD00]', bgColor: 'bg-[#AADD00]', hoverColor: 'group-hover/navitem:text-[#AADD00]', glow: 'shadow-[0_0_15px_rgba(96,165,250,0.1)]' },
         { id: 'design', label: 'Design', icon: Palette, color: 'text-purple-400', bgColor: 'bg-purple-400', hoverColor: 'group-hover/navitem:text-purple-400', glow: 'shadow-[0_0_15px_rgba(192,132,252,0.25)]', onClick: () => window.open('http://127.0.0.1:7456', '_blank') },
         { id: 'agent', label: 'Director Agent', icon: Robot, color: 'text-violet-400', bgColor: 'bg-violet-400', hoverColor: 'group-hover/navitem:text-violet-400', glow: 'shadow-[0_0_15px_rgba(167,139,250,0.2)]' },
-        { id: 'directors-cut', label: "Director's Cut", icon: FilmSlate, color: 'text-cyan-400', bgColor: 'bg-cyan-400', hoverColor: 'group-hover/navitem:text-cyan-400', glow: 'shadow-[0_0_15px_rgba(34,211,238,0.1)]' },
+        { id: 'remix', label: 'Remix', icon: ArrowsClockwise, color: 'text-yellow-400', bgColor: 'bg-yellow-400', hoverColor: 'group-hover/navitem:text-yellow-400', glow: 'shadow-[0_0_15px_rgba(250,204,21,0.2)]' },
         { id: 'admin', label: 'Admin', icon: ShieldCheck, color: 'text-red-500', bgColor: 'bg-red-500', hoverColor: 'group-hover/navitem:text-red-500', glow: 'shadow-[0_0_15px_rgba(248,113,113,0.1)]' },
     ]
 

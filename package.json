@@ -28,6 +28,7 @@
     "@google-cloud/text-to-speech": "^6.4.0",
     "@google/genai": "^1.42.0",
     "@google/generative-ai": "^0.24.1",
+    "@higgsfield/client": "^0.2.6",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@phosphor-icons/react": "^2.1.10",
     "@playwright/browser-chromium": "^1.60.0",

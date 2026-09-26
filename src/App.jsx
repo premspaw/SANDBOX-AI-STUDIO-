@@ -71,6 +71,7 @@ const StudioPage = lazyWithRetry(() => import('./components/pages/StudioPage'));
 const YourVoice = lazyWithRetry(() => import('./components/pages/YourVoice'));
 const McpConnectionPage = lazyWithRetry(() => import('./components/pages/McpConnectionPage'));
 const StoryboardStudio = lazyWithRetry(() => import('./components/pages/StoryboardStudio'));
+const RemixStudio = lazyWithRetry(() => import('./components/pages/RemixStudio'));
 
 
 // Beautiful, futuristic stand-by placeholder for the new Avatar Studio
@@ -155,6 +156,7 @@ const FULL_HEIGHT_TABS = new Set([
   'mcp-connection',
   'storyboard',
   'design',
+  'remix',
 ])
 
 function App() {
@@ -386,6 +388,8 @@ function App() {
         return <McpConnectionPage />;
       case 'storyboard':
         return <StoryboardStudio />;
+      case 'remix':
+        return <RemixStudio />;
       case 'design':
         return null;
       default:
