@@ -59,7 +59,7 @@ export default function createRouter(deps) {
         if (!candidateModels.includes('gemini-2.5-flash')) candidateModels.push('gemini-2.5-flash');
         if (!candidateModels.includes('gemini-2.5-flash-lite')) candidateModels.push('gemini-2.5-flash-lite');
         if (!candidateModels.includes('gemini-3.1-pro-preview')) candidateModels.push('gemini-3.1-pro-preview');
-        if (!candidateModels.includes('gemini-1.5-flash')) candidateModels.push('gemini-1.5-flash');
+        if (!candidateModels.includes('gemini-2.0-flash')) candidateModels.push('gemini-2.0-flash');
 
         for (const model of candidateModels) {
             try {
@@ -89,6 +89,26 @@ export default function createRouter(deps) {
                 console.warn(`[GeminiCascade] Failed on model ${model}:`, e.message);
             }
         }
+
+        // Fallback to OpenAI if Google fails
+        if (process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY) {
+            try {
+                const { default: OpenAI } = await import('openai');
+                const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY });
+                const completion = await openai.chat.completions.create({
+                    model: 'gpt-4o-mini',
+                    messages: [{ role: 'user', content: promptText }],
+                    ...(isJson ? { response_format: { type: 'json_object' } } : {})
+                });
+                const text = completion.choices?.[0]?.message?.content;
+                if (text && text.trim()) {
+                    return { text: text.trim(), model: 'gpt-4o-mini' };
+                }
+            } catch (openAiErr) {
+                console.error('[GeminiCascade] OpenAI fallback failed:', openAiErr.message);
+            }
+        }
+
         return null;
     };
 

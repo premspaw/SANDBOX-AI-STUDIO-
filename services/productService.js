@@ -5,7 +5,7 @@ const getApiKey = () => process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_AP
 const APP_ORIGIN = (process.env.APP_ORIGIN || process.env.PUBLIC_APP_URL || 'https://zerolens.in').replace(/\/+$/, '');
 
 /**
- * Core product analysis logic using Gemini 2.5 Flash
+ * Core product analysis logic using Gemini 2.5 Flash with fallback
  */
 export async function analyzeProductItem(image, broadcast) {
     // Robust base64 extraction
@@ -45,7 +45,7 @@ export async function analyzeProductItem(image, broadcast) {
         required: ["productName", "category", "description", "materials", "colors", "vibe", "lightingSuggestion", "recommendedCameraShot", "labels"]
     };
 
-    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.1-pro-preview', 'gemini-1.5-flash'];
+    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.1-pro-preview', 'gemini-2.0-flash'];
     let text = '';
     let lastErr = null;
 
@@ -78,6 +78,43 @@ export async function analyzeProductItem(image, broadcast) {
         }
     }
 
+    // Fallback to OpenAI Vision if Google models fail
+    if (!text && (process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY)) {
+        try {
+            console.log('[ProductService] Google models failed. Falling back to OpenAI (gpt-4o-mini)...');
+            const { default: OpenAI } = await import('openai');
+            const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY });
+            const completion = await openai.chat.completions.create({
+                model: 'gpt-4o-mini',
+                messages: [
+                    {
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'image_url',
+                                image_url: {
+                                    url: `data:${mimeType};base64,${base64Data}`
+                                }
+                            },
+                            {
+                                type: 'text',
+                                text: "Analyze this product image and return a JSON object with keys: productName, category, description, materials, colors (3 hex codes), vibe, lightingSuggestion, recommendedCameraShot, targetAudience, labels (array)."
+                            }
+                        ]
+                    }
+                ],
+                response_format: { type: 'json_object' }
+            });
+            const fbText = completion.choices?.[0]?.message?.content;
+            if (fbText && fbText.trim()) {
+                console.log('[ProductService] ✅ OpenAI fallback succeeded');
+                text = fbText;
+            }
+        } catch (openAiErr) {
+            console.error('[ProductService] OpenAI fallback failed:', openAiErr.message);
+        }
+    }
+
     if (!text) throw lastErr || new Error('All models failed');
 
     try {
@@ -89,4 +126,3 @@ export async function analyzeProductItem(image, broadcast) {
         throw new Error("Failed to parse AI structure.");
     }
 }
-

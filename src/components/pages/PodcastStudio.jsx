@@ -514,7 +514,7 @@ Return ONLY valid JSON: { "lines": [{ "hostId": 0, "text": "...", "type": "Intro
 
       const res = await fetch(getApiUrl('/api/ai/analyze-ugc'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parts: [{ text: prompt }], model: 'gemini-1.5-flash-latest', generationConfig: { responseMimeType: 'application/json' } })
+        body: JSON.stringify({ parts: [{ text: prompt }], model: 'gemini-2.5-flash', generationConfig: { responseMimeType: 'application/json' } })
       });
       if (!res.ok) throw new Error(res.status);
       const data = await res.json();

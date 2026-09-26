@@ -1,5 +1,6 @@
 import express from 'express';
 import fs from 'fs';
+import OpenAI from 'openai';
 import { GoogleGenAI } from '@google/genai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { analyzeWardrobeRoute, wardrobeUploadMiddleware } from '../../services/wardrobeAnalyzerService.js';
@@ -1302,7 +1303,7 @@ Return ONLY valid JSON.`
                     'gemini-2.5-flash',
                     'gemini-2.5-flash-lite',
                     'gemini-3.1-pro-preview',
-                    'gemini-1.5-flash'
+                    'gemini-2.0-flash'
                 ])).filter(Boolean);
 
                 const studioApiKey = process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;
@@ -1415,6 +1416,47 @@ Return ONLY valid JSON.`
                     }
                 }
 
+                // 4. Fallback: OpenAI Vision/Text if Google models fail
+                if (!responseText && (process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY)) {
+                    try {
+                        console.log('[UGC AI API] Google models failed. Falling back to OpenAI (gpt-4o-mini)...');
+                        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY });
+                        const openaiContent = [];
+                        for (const p of formattedParts) {
+                            if (p.inlineData && p.inlineData.data) {
+                                openaiContent.push({
+                                    type: 'image_url',
+                                    image_url: {
+                                        url: `data:${p.inlineData.mimeType || 'image/jpeg'};base64,${p.inlineData.data}`
+                                    }
+                                });
+                            } else if (p.text) {
+                                openaiContent.push({
+                                    type: 'text',
+                                    text: p.text
+                                });
+                            }
+                        }
+
+                        const reqOpts = {
+                            model: 'gpt-4o-mini',
+                            messages: [{ role: 'user', content: openaiContent }]
+                        };
+                        if (generationConfig?.responseMimeType === 'application/json') {
+                            reqOpts.response_format = { type: 'json_object' };
+                        }
+
+                        const completion = await openai.chat.completions.create(reqOpts);
+                        const openAIText = completion.choices?.[0]?.message?.content;
+                        if (openAIText && openAIText.trim()) {
+                            console.log('[UGC AI API] ✅ OpenAI fallback succeeded');
+                            responseText = openAIText;
+                        }
+                    } catch (openAiErr) {
+                        console.error('[UGC AI API] OpenAI fallback failed:', openAiErr.message);
+                    }
+                }
+
                 if (!responseText) {
                     throw lastError || new Error('All AI generation models and clients failed to generate response');
                 }
@@ -1475,7 +1517,7 @@ Return ONLY valid JSON.`
                 'gemini-2.5-flash',
                 'gemini-2.5-flash-lite',
                 'gemini-3.1-pro-preview',
-                'gemini-1.5-flash'
+                'gemini-2.0-flash'
             ])).filter(Boolean);
 
             const clientsToTry = [];
@@ -1548,6 +1590,26 @@ Return ONLY valid JSON.`
                     } catch (e) {
                         lastError = e;
                     }
+                }
+            }
+
+            // Fallback: OpenAI if Google fails
+            if (!text && (process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY)) {
+                try {
+                    console.log('[UGC-TEXT] Google models failed. Falling back to OpenAI (gpt-4o-mini)...');
+                    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY });
+                    const completion = await openai.chat.completions.create({
+                        model: 'gpt-4o-mini',
+                        messages: [{ role: 'user', content: prompt || (parts && parts.map(p => p.text || '').join('\n')) || '' }],
+                        ...(responseSchema ? { response_format: { type: 'json_object' } } : {})
+                    });
+                    const fbText = completion.choices?.[0]?.message?.content;
+                    if (fbText && fbText.trim()) {
+                        console.log('[UGC-TEXT] ✅ OpenAI fallback succeeded');
+                        text = fbText;
+                    }
+                } catch (openAiErr) {
+                    console.error('[UGC-TEXT] OpenAI fallback failed:', openAiErr.message);
                 }
             }
 
