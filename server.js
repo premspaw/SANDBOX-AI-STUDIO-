@@ -1563,7 +1563,7 @@ async function handleGoogle(req, res) {
                     };
 
                     let restResp = null;
-                    const systemKey = process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+                    const systemKey = process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
 
                     // 1. Try Vertex AI REST endpoint if token is present
                     if (token) {
@@ -1582,6 +1582,15 @@ async function handleGoogle(req, res) {
                             if (!restResp.ok) {
                                 const errTxt = await restResp.text().catch(() => '');
                                 lastVertexError = `${restResp.status} ${errTxt}`.slice(0, 300);
+                            } else {
+                                const restData = await restResp.json();
+                                const candidate = restData.candidates?.[0];
+                                const inlineData = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData;
+                                if (inlineData && inlineData.data) {
+                                    b64 = inlineData.data;
+                                    success = true;
+                                    console.log(`[handleGoogle] [REST Vertex] Image generated successfully (${b64.length} base64 chars)`);
+                                }
                             }
                         } catch (vRestErr) {
                             lastVertexError = vRestErr.message;
@@ -1589,34 +1598,66 @@ async function handleGoogle(req, res) {
                         }
                     }
 
-                    // 2. Try Google AI Studio REST endpoint if systemKey is present and Vertex REST didn't succeed
-                    if ((!restResp || !restResp.ok) && systemKey) {
-                        try {
-                            const studioUrl = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${systemKey}`;
-                            console.log(`[handleGoogle] [REST Fallback AI Studio] Calling ${studioUrl}`);
-                            restResp = await fetch(studioUrl, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(restPayload)
-                            });
-                            if (!restResp.ok) {
-                                const errTxt = await restResp.text().catch(() => '');
-                                lastStudioError = `${restResp.status} ${errTxt}`.slice(0, 300);
+                    // 2. Try Google AI Studio REST endpoints if systemKey is present and not yet successful
+                    if (!success && systemKey) {
+                        const studioCandidateModels = [activeModel, 'gemini-2.5-flash-image', 'gemini-2.0-flash-exp'];
+                        for (const studioModel of studioCandidateModels) {
+                            try {
+                                const studioUrl = `https://generativelanguage.googleapis.com/v1beta/models/${studioModel}:generateContent?key=${systemKey}`;
+                                console.log(`[handleGoogle] [REST Fallback AI Studio] Calling ${studioUrl}`);
+                                const sResp = await fetch(studioUrl, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(restPayload)
+                                });
+                                if (!sResp.ok) {
+                                    const errTxt = await sResp.text().catch(() => '');
+                                    lastStudioError = `${sResp.status} ${errTxt}`.slice(0, 300);
+                                } else {
+                                    const restData = await sResp.json();
+                                    const candidate = restData.candidates?.[0];
+                                    const inlineData = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData;
+                                    if (inlineData && inlineData.data) {
+                                        b64 = inlineData.data;
+                                        success = true;
+                                        console.log(`[handleGoogle] [REST AI Studio (${studioModel})] Image generated successfully (${b64.length} base64 chars)`);
+                                        break;
+                                    }
+                                }
+                            } catch (sRestErr) {
+                                lastStudioError = sRestErr.message;
+                                console.warn(`[handleGoogle] [REST Fallback AI Studio (${studioModel})] Failed:`, sRestErr.message);
                             }
-                        } catch (sRestErr) {
-                            lastStudioError = sRestErr.message;
-                            console.warn('[handleGoogle] [REST Fallback AI Studio] Failed:', sRestErr.message);
                         }
-                    }
 
-                    if (restResp && restResp.ok) {
-                        const restData = await restResp.json();
-                        const candidate = restData.candidates?.[0];
-                        const inlineData = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData;
-                        if (inlineData && inlineData.data) {
-                            b64 = inlineData.data;
-                            success = true;
-                            console.log(`[handleGoogle] [REST Fallback] Image generated successfully (${b64.length} base64 chars)`);
+                        // 3. Try Imagen 3 Predict on Google AI Studio as secondary Google fallback
+                        if (!success) {
+                            try {
+                                const imagenUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${systemKey}`;
+                                console.log(`[handleGoogle] [REST Fallback Imagen 3] Calling ${imagenUrl}`);
+                                const imgResp = await fetch(imagenUrl, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        instances: [{ prompt: promptWithHint }],
+                                        parameters: { sampleCount: 1, aspectRatio: mappedRatio }
+                                    })
+                                });
+                                if (imgResp.ok) {
+                                    const imgData = await imgResp.json();
+                                    const predB64 = imgData.predictions?.[0]?.bytesBase64Encoded;
+                                    if (predB64) {
+                                        b64 = predB64;
+                                        success = true;
+                                        console.log(`[handleGoogle] [REST Fallback Imagen 3] Image generated successfully (${b64.length} base64 chars)`);
+                                    }
+                                } else {
+                                    const errTxt = await imgResp.text().catch(() => '');
+                                    lastStudioError = `${imgResp.status} ${errTxt}`.slice(0, 300);
+                                }
+                            } catch (imgErr) {
+                                console.warn('[handleGoogle] [REST Fallback Imagen 3] Failed:', imgErr.message);
+                            }
                         }
                     }
                 } catch (restErr) {
@@ -1632,20 +1673,16 @@ async function handleGoogle(req, res) {
   - Active GCP Project: ${VERTEX_PROJECT_ID}
   - Active Location: ${VERTEX_LOCATION}`);
 
-                if (process.env.OPENAI_API_KEY) {
-                    console.log(`[IMAGE-GENERATION-DIAGNOSTICS] ➡️ Auto-fallback to OpenAI image generation (gpt-image-2.5-sunburst)`);
-                    req._fallbackTriggered = true;
-                    req._fallbackDiagnostics = {
-                        originalModel: model || 'Nano Banana 2',
-                        vertexError: lastVertexError || 'Vertex AI returned no candidate images',
-                        studioError: lastStudioError || 'Google AI Studio returned no candidate images',
-                        fallbackProvider: 'openai',
-                        fallbackModel: 'gpt-image-2.5-sunburst'
-                    };
-                    req.body.model = 'gpt-image-2.5-sunburst';
-                    return await handleOpenAI(req, res);
-                }
-                throw new Error(`Google Image generation failed. Vertex AI: ${lastVertexError || 'no response'}, AI Studio: ${lastStudioError || 'no response'}`);
+                return res.status(503).json({
+                    error: `Google Image generation failed (${lastVertexError || lastStudioError || 'Service unavailable'}). Try selecting GPT 2.5 (OpenAI) in Engine settings.`,
+                    code: 'google_image_failed',
+                    hint: 'Try selecting GPT 2.5 (OpenAI) in the Engine options for image generation.',
+                    diagnostics: {
+                        requestedModel: model || activeModel,
+                        vertexError: lastVertexError,
+                        studioError: lastStudioError
+                    }
+                });
             }
 
             const isGrid = !!req.body.isGrid;
