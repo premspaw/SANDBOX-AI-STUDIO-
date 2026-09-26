@@ -249,29 +249,22 @@ export const SidePanel = React.memo(({
   const backgroundSource = propBackgroundSource !== undefined ? propBackgroundSource : internalBackgroundSource;
   const setBackgroundSource = propSetBackgroundSource || setInternalBackgroundSource;
 
-  // 10-second Cooldown & Double-click Prevention
-  const [cooldownSeconds, setCooldownSeconds] = useState(0);
-  const cooldownIntervalRef = useRef(null);
+  // 8-second Cooldown & Double-click Prevention
+  const [isCooldown, setIsCooldown] = useState(false);
+  const cooldownTimerRef = useRef(null);
 
-  const startCooldown = (secs = 10) => {
-    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
-    setCooldownSeconds(secs);
-    cooldownIntervalRef.current = setInterval(() => {
-      setCooldownSeconds((prev) => {
-        if (prev <= 1) {
-          clearInterval(cooldownIntervalRef.current);
-          cooldownIntervalRef.current = null;
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+  const startCooldown = (secs = 8) => {
+    if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
+    setIsCooldown(true);
+    cooldownTimerRef.current = setTimeout(() => {
+      setIsCooldown(false);
+      cooldownTimerRef.current = null;
+    }, secs * 1000);
   };
 
   useEffect(() => {
     return () => {
-      if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
     };
   }, []);
 
@@ -1406,9 +1399,9 @@ export const SidePanel = React.memo(({
   }, [panelTab, activeEngine, seedanceSubModel, motionMode, motionRefVideoDuration, isOmniEngine, isSeedanceEngine, resolution, generateAudio, duration]);
 
   const triggerGenerateVeo = async () => {
-    if (cooldownSeconds > 0 || isBusy) return;
+    if (isCooldown || isBusy) return;
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    startCooldown(10);
+    startCooldown(8);
     const engineToUse = isVeoEngine ? activeEngine : 'veo-3.1-generate-preview';
     setPromptText(localPrompt);
     setActiveTab('video');
@@ -1436,9 +1429,9 @@ export const SidePanel = React.memo(({
   };
 
   const triggerGenerateOmni = async () => {
-    if (cooldownSeconds > 0 || isBusy) return;
+    if (isCooldown || isBusy) return;
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    startCooldown(10);
+    startCooldown(8);
     const engineToUse = 'gemini-omni-1.1-flash-preview';
     setPromptText(localPrompt);
     setActiveTab('video');
@@ -1483,7 +1476,7 @@ export const SidePanel = React.memo(({
   };
 
   const triggerGenerateSeedance = async () => {
-    if (cooldownSeconds > 0 || isBusy) return;
+    if (isCooldown || isBusy) return;
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     const showToast = useAppStore.getState().showToast;
 
@@ -1577,7 +1570,7 @@ export const SidePanel = React.memo(({
       return;
     }
 
-    startCooldown(10);
+    startCooldown(8);
     setPromptText(localPrompt);
     setActiveTab('video');
     setActiveEngine(engineToUse);
@@ -1602,7 +1595,7 @@ export const SidePanel = React.memo(({
   };
 
   const triggerGenerateMotion = async () => {
-    if (cooldownSeconds > 0 || isBusy) return;
+    if (isCooldown || isBusy) return;
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     const showToast = useAppStore.getState().showToast;
 
@@ -1627,7 +1620,7 @@ export const SidePanel = React.memo(({
       rawVid ? resolveBlobToBase64(rawVid) : null
     ]);
 
-    startCooldown(10);
+    startCooldown(8);
     const dur = motionRefVideoDuration > 0 ? Math.ceil(motionRefVideoDuration) : (duration || 5);
     const engineToUse = 'kling-motion';
     setPromptText(localPrompt);
@@ -1645,7 +1638,7 @@ export const SidePanel = React.memo(({
   };
 
   const triggerGenerateRemix = async () => {
-    if (cooldownSeconds > 0 || isBusy) return;
+    if (isCooldown || isBusy) return;
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     const showToast = useAppStore.getState().showToast;
 
@@ -1678,7 +1671,7 @@ export const SidePanel = React.memo(({
       Promise.all(rawImages.slice(0, 8).map(img => resolveBlobToBase64(img)))
     ]);
 
-    startCooldown(10);
+    startCooldown(8);
     const engineToUse = 'remix-motion-transfer';
     setPromptText(localPrompt);
     setActiveTab('video');
@@ -4418,7 +4411,7 @@ export const SidePanel = React.memo(({
               <button
                 type="button"
                 onClick={
-                  cooldownSeconds > 0 || isBusy
+                  isCooldown || isBusy
                     ? undefined
                     : panelTab === 'remix'
                     ? triggerGenerateRemix
@@ -4430,24 +4423,17 @@ export const SidePanel = React.memo(({
                     ? triggerGenerateMotion
                     : triggerGenerateVeo
                 }
-                disabled={cooldownSeconds > 0 || isBusy || (panelTab === 'remix' ? (!motionRefVideoPreview && !motionRefVideo && !videoPreview) || (!motionSubjectPreview && !motionSubjectImage && seedanceImages.every(i => !i)) : panelTab === 'motion' ? (!motionSubjectPreview && !motionSubjectImage) || (!motionRefVideoPreview && !motionRefVideo) : !canGenerate)}
+                disabled={isCooldown || isBusy || (panelTab === 'remix' ? (!motionRefVideoPreview && !motionRefVideo && !videoPreview) || (!motionSubjectPreview && !motionSubjectImage && seedanceImages.every(i => !i)) : panelTab === 'motion' ? (!motionSubjectPreview && !motionSubjectImage) || (!motionRefVideoPreview && !motionRefVideo) : !canGenerate)}
                 className={cn(
                   "h-10 sm:h-11 px-3.5 sm:px-5 rounded-xl sm:rounded-2xl text-[10.5px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-[0_0_30px_rgba(200,241,53,0.3)] border shrink-0 active:scale-95 select-none",
-                  cooldownSeconds > 0
-                    ? "bg-zinc-800/80 text-zinc-400 border-white/10 cursor-not-allowed shadow-none"
-                    : (panelTab === 'remix' ? ((motionRefVideoPreview || motionRefVideo || videoPreview) && (motionSubjectPreview || motionSubjectImage || seedanceImages.some(Boolean))) : panelTab === 'motion' ? (!!(motionSubjectPreview || motionSubjectImage) && !!(motionRefVideoPreview || motionRefVideo)) : canGenerate && !isBusy)
+                  (!isCooldown && (panelTab === 'remix' ? ((motionRefVideoPreview || motionRefVideo || videoPreview) && (motionSubjectPreview || motionSubjectImage || seedanceImages.some(Boolean))) : panelTab === 'motion' ? (!!(motionSubjectPreview || motionSubjectImage) && !!(motionRefVideoPreview || motionRefVideo)) : canGenerate && !isBusy))
                     ? (panelTab === 'seedance' || panelTab === 'seedance-2.5' || panelTab === 'remix')
                       ? "bg-gradient-to-r from-amber-400 to-[#c8f135] hover:brightness-110 text-black border-amber-400/60 hover:shadow-[0_0_40px_rgba(251,191,36,0.6)] cursor-pointer"
                       : "bg-[#c8f135] hover:bg-[#d8ff43] text-black border-[#d4ff00]/60 hover:shadow-[0_0_40px_rgba(200,241,53,0.6)] cursor-pointer"
                     : "bg-white/5 text-zinc-500 border-white/5 cursor-not-allowed shadow-none"
                 )}
               >
-                {cooldownSeconds > 0 ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />
-                    <span className="text-zinc-300">Wait ({cooldownSeconds}s)</span>
-                  </>
-                ) : isBusy ? (
+                {isBusy ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
                     <span>Queue Full ({activeJobsCount}/{maxConcurrent})</span>
