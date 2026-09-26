@@ -1392,13 +1392,14 @@ async function handleGoogle(req, res) {
             const op = await resp.json();
             res.json(op);
         } else {
-            let activeModel = model || 'gemini-2.5-flash-image';
-            const modelLower = (activeModel || '').toLowerCase();
-            // Map models to supported image model on Vertex AI (gemini-2.5-flash-image)
-            if (modelLower.includes('banana') || modelLower.includes('gemini') || modelLower.includes('nb2') || modelLower.includes('image') || modelLower.includes('gpt-image')) {
-                activeModel = 'gemini-2.5-flash-image';
+            let activeModel = 'gemini-3.1-flash-image';
+            const modelLower = (model || '').toLowerCase();
+            if (modelLower.includes('lite') || modelLower === 'gemini-3.1-flash-lite-image' || modelLower === 'gemini-3.1-flash-lite') {
+                activeModel = 'gemini-3.1-flash-lite-image';
+            } else if (modelLower.includes('pro') || modelLower.includes('gemini-3-pro')) {
+                activeModel = 'gemini-3-pro-image-preview';
             } else {
-                activeModel = 'gemini-2.5-flash-image';
+                activeModel = 'gemini-3.1-flash-image';
             }
 
             let compiledPrompt = prompt || '';
