@@ -1596,6 +1596,47 @@ async function handleGoogle(req, res) {
                             lastVertexError = vRestErr.message;
                             console.warn('[handleGoogle] [REST Fallback Vertex] Failed:', vRestErr.message);
                         }
+
+                        // 1b. Try Vertex AI native Imagen 3 Predict endpoint if generateContent didn't return an image
+                        if (!success) {
+                            try {
+                                const targetLocation = VERTEX_LOCATION || 'us-central1';
+                                const vertexImagenUrl = `https://${targetLocation}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${targetLocation}/publishers/google/models/imagen-3.0-generate-002:predict`;
+                                console.log(`[handleGoogle] [Vertex Imagen 3 Predict] Calling ${vertexImagenUrl}`);
+                                const vImgResp = await fetch(vertexImagenUrl, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${token}`
+                                    },
+                                    body: JSON.stringify({
+                                        instances: [{ prompt: promptWithHint }],
+                                        parameters: {
+                                            sampleCount: 1,
+                                            aspectRatio: mappedRatio === '1:1' ? '1:1' : mappedRatio === '16:9' ? '16:9' : mappedRatio === '9:16' ? '9:16' : mappedRatio === '4:3' ? '4:3' : '3:4',
+                                            personGeneration: 'ALLOW_ADULT',
+                                            safetySetting: 'block_only_high'
+                                        }
+                                    })
+                                });
+                                if (vImgResp.ok) {
+                                    const vImgData = await vImgResp.json();
+                                    const predB64 = vImgData.predictions?.[0]?.bytesBase64Encoded;
+                                    if (predB64) {
+                                        b64 = predB64;
+                                        success = true;
+                                        console.log(`[handleGoogle] [Vertex Imagen 3 Predict] Image generated successfully (${b64.length} base64 chars)`);
+                                    }
+                                } else {
+                                    const errTxt = await vImgResp.text().catch(() => '');
+                                    lastVertexError = `Vertex Imagen 3 (${vImgResp.status}): ${errTxt}`.slice(0, 300);
+                                    console.warn(`[handleGoogle] [Vertex Imagen 3 Predict] Response status ${vImgResp.status}:`, errTxt);
+                                }
+                            } catch (vImgErr) {
+                                lastVertexError = vImgErr.message;
+                                console.warn('[handleGoogle] [Vertex Imagen 3 Predict] Failed:', vImgErr.message);
+                            }
+                        }
                     }
 
                     // 2. Try Google AI Studio REST endpoints if systemKey is present and not yet successful
