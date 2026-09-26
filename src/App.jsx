@@ -391,9 +391,9 @@ function App() {
       case 'storyboard':
         return <StoryboardStudio />;
       case 'remix':
-        return <RemixStudio />;
+        return <RemixStudio initialMode="motion-transfer" />;
       case 'object-swap':
-        return <ObjectSwapStudio />;
+        return <RemixStudio initialMode="object-swap" />;
       case 'design':
         return null;
       default:

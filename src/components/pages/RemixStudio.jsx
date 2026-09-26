@@ -22,20 +22,23 @@ import {
   Trash,
   LinkSimple,
   Copy,
-  ArrowSquareOut,
+  MagicWand,
+  Package,
+  Watch,
+  Cube,
+  Tag as TagIcon,
   Image as ImageIcon,
   FolderOpen,
   MusicNotes,
   FilmStrip,
-  X,
-  Tag as TagIcon
+  X
 } from '@phosphor-icons/react';
 import { useAppStore } from '../../store';
 import { useShorts } from '../../hooks/useShorts';
 import { SHORTS_COST } from '../../config/shortsConfig';
 import { AssetsLibrary } from '../panels/AssetsLibrary';
 
-const STYLE_PRESETS = [
+const MOTION_TRANSFER_PRESETS = [
   { id: 'cyberpunk', label: '⚡ Cyberpunk Neon', prompt: 'Transform subject from Image 1 in cyberpunk aesthetic, glowing neon lights, holographic reflections, dark chromatic atmosphere' },
   { id: 'anime', label: '🌸 Anime Studio', prompt: 'Transform subject from Image 1 in Studio Ghibli / Makoto Shinkai anime style, vibrant painted colors, soft cinematic cel shading' },
   { id: 'noir', label: '🎬 Cinematic Noir', prompt: 'Transform subject from Image 1 in 1940s film noir, high contrast black and white lighting, deep dramatic shadows' },
@@ -44,9 +47,23 @@ const STYLE_PRESETS = [
   { id: 'vintage_vhs', label: '📼 Retro 80s VHS', prompt: 'Transform subject from Image 1 into vintage 1980s VHS tape aesthetic, analog tape grain, subtle chromatic aberration' }
 ];
 
-export default function RemixStudio() {
-  const [prompt, setPrompt] = useState('Transform the subject from Image 1 with cinematic lighting, dynamic styling and high-end aesthetic fidelity while preserving the exact motion from driving video');
-  const [negativePrompt, setNegativePrompt] = useState('low quality, blurry, distorted artifacts, stuttering');
+const OBJECT_SWAP_PRESETS = [
+  { id: 'outfit_swap', label: '🥋 Tactical Sci-Fi Outfit', prompt: 'Swap the character clothing and outfit with the reference from Image 1, featuring high-tech sleek cyberpunk carbon-fiber tactical jacket with neon cyan illuminated seams and metallic accents.' },
+  { id: 'prop_swap', label: '🗡️ Neon Katana / Prop', prompt: 'Replace the handheld item/prop with the reference item from Image 1, matching ultra-detailed glowing energy blade katana with subtle electric particle sparks and specular highlights.' },
+  { id: 'product_placement', label: '🥤 Luxury Product Can', prompt: 'Replace the held drink container with the reference product from Image 1, maintaining realistic lighting, hand grip reflection and shadows.' },
+  { id: 'watch_accessory', label: '⌚ Luxury Chronograph', prompt: 'Swap the wrist accessory with the reference watch from Image 1, matching natural wrist movement, glare and skin occlusion.' },
+  { id: 'vehicle_swap', label: '🏎️ Cyber Hypercar', prompt: 'Replace the vehicle in the background with the reference vehicle from Image 1, featuring glowing taillights and realistic road reflections.' },
+  { id: 'sneaker_swap', label: '👟 Futuristic Sneakers', prompt: 'Swap the footwear with the reference shoes from Image 1, preserving foot placement, creases and floor contact shadows.' }
+];
+
+export default function RemixStudio({ initialMode = 'motion-transfer' }) {
+  // Mode: 'motion-transfer' | 'object-swap'
+  const [activeMode, setActiveMode] = useState(initialMode);
+
+  const defaultMotionPrompt = 'Transform the subject from Image 1 with cinematic lighting, dynamic styling and high-end aesthetic fidelity while preserving the exact motion from driving video';
+  const defaultSwapPrompt = 'Swap the target object in the video with the reference item from Image 1, preserving flawless lighting, depth, and motion dynamics.';
+
+  const [prompt, setPrompt] = useState(initialMode === 'object-swap' ? defaultSwapPrompt : defaultMotionPrompt);
   const [resolution, setResolution] = useState('720p');
   
   // Media State
@@ -70,13 +87,18 @@ export default function RemixStudio() {
   const [showGalleryModal, setShowGalleryModal] = useState(false);
   const [galleryTarget, setGalleryTarget] = useState('image'); // 'image' | 'video' | 'audio' | 'startFrame' | 'endFrame'
 
+  // Autocomplete Mentions Query State (@image1, @video1, etc.)
+  const [mentionSearch, setMentionSearch] = useState(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [mentionCursorPos, setMentionCursorPos] = useState(0);
+
   // Generation & Progress State
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [generatedResult, setGeneratedResult] = useState(null);
-  const [remixHistory, setRemixHistory] = useState([]);
+  const [historyList, setHistoryList] = useState([]);
   const [copiedUrl, setCopiedUrl] = useState(false);
 
   const fileInputVideoRef = useRef(null);
@@ -90,8 +112,26 @@ export default function RemixStudio() {
   const { shorts, spend, refund, canAfford } = useShorts();
   const userProfile = useAppStore(state => state.userProfile);
 
-  const costKey = `remix_motion_transfer_${resolution}`;
+  const isSwapMode = activeMode === 'object-swap';
+  const costKey = isSwapMode ? `object_swap_${resolution}` : `remix_motion_transfer_${resolution}`;
   const costAmount = SHORTS_COST[costKey] || 8;
+
+  const accentColor = isSwapMode ? 'cyan' : 'amber';
+
+  // Switch Mode handler
+  const handleModeChange = (mode) => {
+    setActiveMode(mode);
+    setErrorMessage('');
+    if (mode === 'object-swap') {
+      if (prompt === defaultMotionPrompt || !prompt.trim()) {
+        setPrompt(defaultSwapPrompt);
+      }
+    } else {
+      if (prompt === defaultSwapPrompt || !prompt.trim()) {
+        setPrompt(defaultMotionPrompt);
+      }
+    }
+  };
 
   // Close plus menu on outside click
   useEffect(() => {
@@ -207,7 +247,7 @@ export default function RemixStudio() {
   const handleRemoveImage = (indexToRemove) => {
     setReferenceImages(prev => {
       const filtered = prev.filter((_, idx) => idx !== indexToRemove);
-      // Re-index tags so Image 1, Image 2 remain cleanly contiguous
+      // Re-index tags so Image 1, Image 2 remain contiguous
       return filtered.map((img, idx) => ({
         ...img,
         tag: `Image ${idx + 1}`,
@@ -216,12 +256,7 @@ export default function RemixStudio() {
     });
   };
 
-  // Autocomplete Mentions Query State (@image1, @video1, etc.)
-  const [mentionSearch, setMentionSearch] = useState(null);
-  const [mentionIndex, setMentionIndex] = useState(0);
-  const [mentionCursorPos, setMentionCursorPos] = useState(0);
-
-  // Active mention slots (strictly uploaded / active inputs in this studio session only - no history items)
+  // Active mention slots (strictly uploaded / active inputs in this studio session only - no history pollution)
   const activeMentionSlots = useMemo(() => {
     const slots = [];
     referenceImages.forEach((img, idx) => {
@@ -238,12 +273,12 @@ export default function RemixStudio() {
     });
     if (videoPreview) {
       slots.push({
-        id: 'slot_driving_video',
+        id: 'slot_video',
         name: 'video1',
         token: '@video1',
-        tag: 'Driving Video',
-        label: 'Driving Video',
-        desc: 'Source Motion Video',
+        tag: isSwapMode ? 'Scene Video' : 'Driving Video',
+        label: isSwapMode ? 'Scene Video' : 'Driving Video',
+        desc: isSwapMode ? 'Source Scene Video' : 'Source Motion Video',
         url: videoPreview,
         type: 'video'
       });
@@ -285,7 +320,7 @@ export default function RemixStudio() {
       });
     }
     return slots;
-  }, [referenceImages, videoPreview, audioUrl, startFrameUrl, endFrameUrl]);
+  }, [referenceImages, videoPreview, audioUrl, startFrameUrl, endFrameUrl, isSwapMode]);
 
   const filteredMentionSlots = useMemo(() => {
     if (mentionSearch === null) return [];
@@ -391,24 +426,24 @@ export default function RemixStudio() {
     setErrorMessage('');
   };
 
-  const handleStartRemix = async () => {
+  const handleStartGeneration = async () => {
     if (isGenerating) return;
     setErrorMessage('');
 
     const sourceVideo = videoPreview;
     if (!sourceVideo) {
-      setErrorMessage('Please upload or specify a source video.');
+      setErrorMessage(`Please upload or specify a ${isSwapMode ? 'scene video' : 'source driving video'}.`);
       return;
     }
 
     if (referenceImages.length === 0) {
-      setErrorMessage('Please provide at least one reference style/character image (Image 1).');
+      setErrorMessage(`Please provide at least one reference image (Image 1) for ${isSwapMode ? 'object replacement' : 'motion remix'}.`);
       return;
     }
 
     // Check Credits
     if (!canAfford(costKey)) {
-      setErrorMessage(`Insufficient Shorts balance. You need ${costAmount} Shorts for ${resolution} generation.`);
+      setErrorMessage(`Insufficient Shorts balance. You need ${costAmount} Shorts for ${resolution} ${isSwapMode ? 'Object Swap' : 'Motion Remix'}.`);
       return;
     }
 
@@ -421,20 +456,29 @@ export default function RemixStudio() {
 
     setIsGenerating(true);
     setGenerationProgress(10);
-    setStatusMessage('Initiating Genjutsu Motion Transfer Engine...');
+    setStatusMessage(isSwapMode ? 'Initiating Genjutsu Object Swap Engine...' : 'Initiating Genjutsu Motion Transfer Engine...');
 
     const progressInterval = setInterval(() => {
       setGenerationProgress(prev => {
         if (prev >= 92) return 92;
-        if (prev < 30) setStatusMessage('Uploading & Analyzing Source Motion DNA...');
-        else if (prev < 60) setStatusMessage('Mapping Character References (Image 1, Image 2)...');
-        else setStatusMessage('Synthesizing Neural Motion Transfer Layers...');
+        if (isSwapMode) {
+          if (prev < 30) setStatusMessage('Analyzing Scene Geometry & Tracking Objects...');
+          else if (prev < 55) setStatusMessage('Segmenting Target Items & Boundaries (Image 1, Image 2)...');
+          else if (prev < 78) setStatusMessage('Neural Inpainting & Object Material Swap...');
+          else setStatusMessage('Synthesizing Motion Consistency & Reflections...');
+        } else {
+          if (prev < 30) setStatusMessage('Uploading & Analyzing Source Motion DNA...');
+          else if (prev < 60) setStatusMessage('Mapping Character References (Image 1, Image 2)...');
+          else setStatusMessage('Synthesizing Neural Motion Transfer Layers...');
+        }
         return prev + Math.floor(Math.random() * 8 + 4);
       });
     }, 1800);
 
+    const endpoint = isSwapMode ? '/api/remix/object-swap' : '/api/remix/motion-transfer';
+
     try {
-      const response = await fetch('/api/remix/motion-transfer', {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -456,32 +500,36 @@ export default function RemixStudio() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to complete Motion Transfer.');
+        throw new Error(data.error || `Failed to complete ${isSwapMode ? 'Object Swap' : 'Motion Remix'}.`);
       }
 
       clearInterval(progressInterval);
       setGenerationProgress(100);
-      setStatusMessage('Motion Transfer Complete!');
+      setStatusMessage(`${isSwapMode ? 'Object Swap' : 'Motion Remix'} Synthesis Complete!`);
 
       const newItem = {
-        id: data.requestId || `remix-${Date.now()}`,
+        id: data.requestId || `${isSwapMode ? 'swap' : 'remix'}-${Date.now()}`,
+        mode: activeMode,
         prompt,
         resolution,
         url: data.videoUrl || data.originalUrl,
         zipUrl: data.zipUrl,
         movUrl: data.movUrl,
+        jsxUrl: data.jsxUrl,
+        fbxUrl: data.fbxUrl,
+        plyUrl: data.plyUrl,
         createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
       setGeneratedResult(newItem);
-      setRemixHistory(prev => [newItem, ...prev]);
+      setHistoryList(prev => [newItem, ...prev]);
       setIsGenerating(false);
 
     } catch (err) {
-      console.error('[RemixStudio] Generation error:', err);
+      console.error(`[RemixStudio] ${isSwapMode ? 'Object Swap' : 'Motion Remix'} error:`, err);
       clearInterval(progressInterval);
       setIsGenerating(false);
-      setErrorMessage(err.message || 'Generation failed on Higgsfield engine.');
+      setErrorMessage(err.message || `Generation failed on Higgsfield engine.`);
       // Refund credits
       await refund(costKey);
     }
@@ -494,37 +542,73 @@ export default function RemixStudio() {
   };
 
   return (
-    <div className="flex-1 h-full w-full bg-[#08080c] text-white flex flex-col overflow-hidden relative font-sans">
-      {/* Dynamic Background Ambience */}
-      <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-amber-500/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-10 left-1/3 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[160px] pointer-events-none" />
+    <div className="flex-1 h-full w-full bg-[#07090e] text-white flex flex-col overflow-hidden relative font-sans">
+      {/* Dynamic Ambient Glows */}
+      <div className={`absolute top-0 right-1/4 w-[500px] h-[500px] ${isSwapMode ? 'bg-cyan-500/10' : 'bg-amber-500/10'} rounded-full blur-[140px] pointer-events-none transition-colors duration-500`} />
+      <div className={`absolute bottom-10 left-1/3 w-[600px] h-[600px] ${isSwapMode ? 'bg-teal-600/10' : 'bg-orange-600/10'} rounded-full blur-[160px] pointer-events-none transition-colors duration-500`} />
 
-      {/* Top Header */}
+      {/* Top Header Bar */}
       <div className="h-16 border-b border-white/10 px-6 flex items-center justify-between bg-black/40 backdrop-blur-xl z-20 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.3)]">
-            <ArrowsClockwise size={20} weight="bold" className={isGenerating ? "animate-spin" : ""} />
+        <div className="flex items-center gap-4">
+          <div className={`w-9 h-9 rounded-xl ${isSwapMode ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]' : 'bg-amber-500/20 border-amber-500/40 text-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.3)]'} border flex items-center justify-center transition-all`}>
+            {isSwapMode ? (
+              <MagicWand size={20} weight="bold" className={isGenerating ? "animate-spin" : ""} />
+            ) : (
+              <ArrowsClockwise size={20} weight="bold" className={isGenerating ? "animate-spin" : ""} />
+            )}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-sm font-black tracking-wider uppercase text-white">Remix Studio</h1>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/10 border border-amber-400/30 text-amber-300">
-                GENJUTSU MOTION TRANSFER
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isSwapMode ? 'bg-cyan-400/10 border-cyan-400/30 text-cyan-300' : 'bg-amber-400/10 border-amber-400/30 text-amber-300'} border`}>
+                {isSwapMode ? 'GENJUTSU OBJECT SWAP' : 'GENJUTSU MOTION TRANSFER'}
               </span>
             </div>
-            <p className="text-[11px] text-zinc-400">Transform video footage using character references while preserving exact motion & timing</p>
+            <p className="text-[11px] text-zinc-400">
+              {isSwapMode 
+                ? 'Swap props, outfits, products & items in video with reference images' 
+                : 'Transfer actor motion & choreography from video onto any reference character'}
+            </p>
+          </div>
+
+          {/* Mode Sub-Tabs Toggle */}
+          <div className="hidden sm:flex items-center bg-white/5 p-1 rounded-2xl border border-white/10 ml-2">
+            <button
+              type="button"
+              onClick={() => handleModeChange('motion-transfer')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                !isSwapMode
+                  ? 'bg-amber-400 text-black shadow-[0_0_15px_rgba(251,191,36,0.35)]'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <ArrowsClockwise size={14} weight="bold" />
+              <span>Motion Transfer</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeChange('object-swap')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                isSwapMode
+                  ? 'bg-cyan-400 text-black shadow-[0_0_15px_rgba(6,182,212,0.35)]'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <MagicWand size={14} weight="bold" />
+              <span>Object Swap</span>
+            </button>
           </div>
         </div>
 
         {/* Credit & Status Pill */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-zinc-300">
-            <Coins size={16} className="text-amber-400" />
+            <Coins size={16} className={isSwapMode ? "text-cyan-400" : "text-amber-400"} />
             <span>Shorts Balance:</span>
             <span className="font-bold text-white">{shorts ?? 0}</span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <div className={`flex items-center gap-1.5 text-xs ${isSwapMode ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' : 'text-amber-400 bg-amber-500/10 border-amber-500/20'} border px-3 py-1.5 rounded-xl`}>
+            <span className={`w-2 h-2 rounded-full ${isSwapMode ? 'bg-cyan-400' : 'bg-amber-400'} animate-pulse`} />
             <span className="font-medium">Higgsfield Engine Live</span>
           </div>
         </div>
@@ -536,21 +620,52 @@ export default function RemixStudio() {
         {/* Left Controls & Parameters Sidebar */}
         <div className="w-full lg:w-[440px] xl:w-[480px] border-r border-white/10 bg-black/60 backdrop-blur-2xl flex flex-col min-h-0 overflow-y-auto custom-scrollbar p-5 space-y-5 shrink-0">
           
-          {/* Quick Media Attach Plus Bar */}
+          {/* Mobile Mode Switcher */}
+          <div className="flex sm:hidden items-center bg-white/5 p-1 rounded-2xl border border-white/10 w-full">
+            <button
+              type="button"
+              onClick={() => handleModeChange('motion-transfer')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                !isSwapMode
+                  ? 'bg-amber-400 text-black shadow-md'
+                  : 'text-zinc-400'
+              }`}
+            >
+              <ArrowsClockwise size={14} weight="bold" />
+              <span>Motion Transfer</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeChange('object-swap')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                isSwapMode
+                  ? 'bg-cyan-400 text-black shadow-md'
+                  : 'text-zinc-400'
+              }`}
+            >
+              <MagicWand size={14} weight="bold" />
+              <span>Object Swap</span>
+            </button>
+          </div>
+
+          {/* Quick Insert (+) Plus Action Toolbar */}
           <div className="relative" ref={plusMenuRef}>
-            <div className="flex items-center justify-between bg-white/[0.03] border border-white/10 rounded-2xl p-2.5">
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.03] border border-white/10">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setShowPlusMenu(!showPlusMenu)}
-                  className="w-8 h-8 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-black flex items-center justify-center font-bold shadow-[0_0_15px_rgba(251,191,36,0.35)] transition-all active:scale-95"
-                  title="Add Media / Reference Options"
+                  className={`w-8 h-8 rounded-xl ${isSwapMode ? 'bg-cyan-400 hover:bg-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.35)]' : 'bg-amber-400 hover:bg-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.35)]'} text-black flex items-center justify-center transition-all`}
+                  title="Quick Media Uploads & Actions"
                 >
-                  <Plus size={18} weight="bold" />
+                  <Plus size={18} weight="bold" className={showPlusMenu ? 'rotate-45 transition-transform' : 'transition-transform'} />
                 </button>
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">Quick Attach Media</span>
-                  <span className="text-[10px] text-zinc-400">Add character images (Image 1, 2), video, or audio</span>
+                <div>
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <span>Quick Media Actions</span>
+                    <span className={`text-[10px] ${isSwapMode ? 'text-cyan-400' : 'text-amber-400'} font-mono`}>Upload / Library</span>
+                  </div>
+                  <div className="text-[10px] text-zinc-400">Add reference images, videos, audio & keyframes</div>
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
@@ -559,7 +674,7 @@ export default function RemixStudio() {
                   onClick={() => { setGalleryTarget('image'); setShowGalleryModal(true); }}
                   className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] text-zinc-300 font-semibold flex items-center gap-1.5 transition-all"
                 >
-                  <FolderOpen size={14} className="text-purple-400" />
+                  <FolderOpen size={14} className={isSwapMode ? "text-cyan-400" : "text-purple-400"} />
                   <span>Gallery</span>
                 </button>
               </div>
@@ -580,11 +695,11 @@ export default function RemixStudio() {
                     onClick={() => { setShowPlusMenu(false); fileInputImageRef.current?.click(); }}
                     className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/10 text-left transition-all group"
                   >
-                    <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+                    <div className={`w-7 h-7 rounded-lg ${isSwapMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-purple-500/20 text-purple-400'} flex items-center justify-center shrink-0`}>
                       <ImageIcon size={16} />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-white group-hover:text-amber-300">Upload Image</div>
+                      <div className={`text-xs font-bold text-white ${isSwapMode ? 'group-hover:text-cyan-300' : 'group-hover:text-amber-300'}`}>Upload Image</div>
                       <div className="text-[9px] text-zinc-400">From computer (Image 1, 2)</div>
                     </div>
                   </button>
@@ -598,7 +713,7 @@ export default function RemixStudio() {
                       <FolderOpen size={16} />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-white group-hover:text-amber-300">Image from Gallery</div>
+                      <div className={`text-xs font-bold text-white ${isSwapMode ? 'group-hover:text-cyan-300' : 'group-hover:text-amber-300'}`}>Image from Gallery</div>
                       <div className="text-[9px] text-zinc-400">Pick from Studio Library</div>
                     </div>
                   </button>
@@ -608,11 +723,13 @@ export default function RemixStudio() {
                     onClick={() => { setShowPlusMenu(false); fileInputVideoRef.current?.click(); }}
                     className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/10 text-left transition-all group"
                   >
-                    <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                    <div className={`w-7 h-7 rounded-lg ${isSwapMode ? 'bg-cyan-500/20 text-cyan-400' : 'bg-amber-500/20 text-amber-400'} flex items-center justify-center shrink-0`}>
                       <VideoCamera size={16} />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-white group-hover:text-amber-300">Upload Driving Video</div>
+                      <div className={`text-xs font-bold text-white ${isSwapMode ? 'group-hover:text-cyan-300' : 'group-hover:text-amber-300'}`}>
+                        {isSwapMode ? 'Upload Scene Video' : 'Upload Driving Video'}
+                      </div>
                       <div className="text-[9px] text-zinc-400">From computer</div>
                     </div>
                   </button>
@@ -622,11 +739,11 @@ export default function RemixStudio() {
                     onClick={() => { setShowPlusMenu(false); setGalleryTarget('video'); setShowGalleryModal(true); }}
                     className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/10 text-left transition-all group"
                   >
-                    <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                    <div className="w-7 h-7 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0">
                       <FilmStrip size={16} />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-white group-hover:text-amber-300">Video from Gallery</div>
+                      <div className={`text-xs font-bold text-white ${isSwapMode ? 'group-hover:text-cyan-300' : 'group-hover:text-amber-300'}`}>Video from Gallery</div>
                       <div className="text-[9px] text-zinc-400">Pick saved video</div>
                     </div>
                   </button>
@@ -640,7 +757,7 @@ export default function RemixStudio() {
                       <MusicNotes size={16} />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-white group-hover:text-amber-300">Upload Audio Track</div>
+                      <div className={`text-xs font-bold text-white ${isSwapMode ? 'group-hover:text-cyan-300' : 'group-hover:text-amber-300'}`}>Upload Audio Track</div>
                       <div className="text-[9px] text-zinc-400">MP3, WAV audio sync</div>
                     </div>
                   </button>
@@ -650,11 +767,11 @@ export default function RemixStudio() {
                     onClick={() => { setShowPlusMenu(false); fileInputStartFrameRef.current?.click(); }}
                     className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/10 text-left transition-all group"
                   >
-                    <div className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                    <div className={`w-7 h-7 rounded-lg ${isSwapMode ? 'bg-amber-500/20 text-amber-400' : 'bg-cyan-500/20 text-cyan-400'} flex items-center justify-center shrink-0`}>
                       <FilmSlate size={16} />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-white group-hover:text-amber-300">Start / End Frame</div>
+                      <div className={`text-xs font-bold text-white ${isSwapMode ? 'group-hover:text-cyan-300' : 'group-hover:text-amber-300'}`}>Start / End Frame</div>
                       <div className="text-[9px] text-zinc-400">Anchor frame control</div>
                     </div>
                   </button>
@@ -674,8 +791,8 @@ export default function RemixStudio() {
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold uppercase tracking-wider text-zinc-200 flex items-center gap-1.5">
-                <VideoCamera size={14} className="text-amber-400" />
-                <span>1. Source Motion Video (Required)</span>
+                <VideoCamera size={14} className={isSwapMode ? "text-cyan-400" : "text-amber-400"} />
+                <span>1. {isSwapMode ? 'Source Scene Video (Required)' : 'Source Motion Video (Required)'}</span>
               </label>
               <div className="flex items-center gap-1.5">
                 <button
@@ -689,14 +806,14 @@ export default function RemixStudio() {
                   <button
                     type="button"
                     onClick={() => setVideoInputMode('upload')}
-                    className={`px-2 py-0.5 rounded ${videoInputMode === 'upload' ? 'bg-amber-400 text-black font-bold' : 'text-zinc-400'}`}
+                    className={`px-2 py-0.5 rounded ${videoInputMode === 'upload' ? (isSwapMode ? 'bg-cyan-400 text-black font-bold' : 'bg-amber-400 text-black font-bold') : 'text-zinc-400'}`}
                   >
                     Upload
                   </button>
                   <button
                     type="button"
                     onClick={() => setVideoInputMode('url')}
-                    className={`px-2 py-0.5 rounded ${videoInputMode === 'url' ? 'bg-amber-400 text-black font-bold' : 'text-zinc-400'}`}
+                    className={`px-2 py-0.5 rounded ${videoInputMode === 'url' ? (isSwapMode ? 'bg-cyan-400 text-black font-bold' : 'bg-amber-400 text-black font-bold') : 'text-zinc-400'}`}
                   >
                     URL
                   </button>
@@ -708,22 +825,26 @@ export default function RemixStudio() {
               <div>
                 <div 
                   onClick={() => fileInputVideoRef.current?.click()}
-                  className="relative flex flex-col items-center justify-center h-32 rounded-2xl border-2 border-dashed border-white/15 hover:border-amber-500/50 bg-white/[0.02] hover:bg-amber-500/[0.03] transition-all cursor-pointer overflow-hidden group"
+                  className={`relative flex flex-col items-center justify-center h-32 rounded-2xl border-2 border-dashed border-white/15 ${isSwapMode ? 'hover:border-cyan-500/50 hover:bg-cyan-500/[0.03]' : 'hover:border-amber-500/50 hover:bg-amber-500/[0.03]'} bg-white/[0.02] transition-all cursor-pointer overflow-hidden group`}
                 >
                   {videoPreview ? (
                     <>
                       <video src={videoPreview} className="w-full h-full object-cover" muted loop autoPlay />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs font-semibold text-amber-300 transition-opacity">
+                      <div className={`absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs font-semibold ${isSwapMode ? 'text-cyan-300' : 'text-amber-300'} transition-opacity`}>
                         Replace Video
                       </div>
                     </>
                   ) : (
                     <div className="flex flex-col items-center gap-1.5 text-center p-3">
-                      <div className="w-8 h-8 rounded-xl bg-white/5 group-hover:bg-amber-500/20 flex items-center justify-center text-zinc-400 group-hover:text-amber-400 transition-colors">
+                      <div className={`w-8 h-8 rounded-xl bg-white/5 ${isSwapMode ? 'group-hover:bg-cyan-500/20 group-hover:text-cyan-400' : 'group-hover:bg-amber-500/20 group-hover:text-amber-400'} flex items-center justify-center text-zinc-400 transition-colors`}>
                         <UploadSimple size={18} />
                       </div>
-                      <span className="text-[11px] font-semibold text-zinc-200">Click to Upload Video or Pick from Gallery</span>
-                      <span className="text-[9px] text-zinc-500">MP4, MOV (Motion & Timing will be transferred)</span>
+                      <span className="text-[11px] font-semibold text-zinc-200">
+                        {isSwapMode ? 'Click to Upload Scene Video or Pick from Gallery' : 'Click to Upload Driving Video or Pick from Gallery'}
+                      </span>
+                      <span className="text-[9px] text-zinc-500">
+                        {isSwapMode ? 'MP4, MOV (The scene containing the target item to swap)' : 'MP4, MOV (Motion & Timing will be transferred)'}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -732,15 +853,15 @@ export default function RemixStudio() {
               <div className="flex gap-2">
                 <input
                   type="url"
-                  placeholder="https://example.com/motion-video.mp4"
+                  placeholder={isSwapMode ? "https://example.com/scene-video.mp4" : "https://example.com/motion-video.mp4"}
                   value={videoUrlInput}
                   onChange={(e) => setVideoUrlInput(e.target.value)}
-                  className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-500/60"
+                  className={`flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none ${isSwapMode ? 'focus:border-cyan-500/60' : 'focus:border-amber-500/60'}`}
                 />
                 <button
                   type="button"
                   onClick={handleApplyVideoUrl}
-                  className="px-3 py-2 rounded-xl bg-amber-400 text-black text-xs font-bold hover:bg-amber-300"
+                  className={`px-3 py-2 rounded-xl ${isSwapMode ? 'bg-cyan-400 hover:bg-cyan-300' : 'bg-amber-400 hover:bg-amber-300'} text-black text-xs font-bold`}
                 >
                   Apply
                 </button>
@@ -752,14 +873,18 @@ export default function RemixStudio() {
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold uppercase tracking-wider text-zinc-200 flex items-center gap-1.5">
-                <Sparkle size={14} className="text-purple-400" />
-                <span>2. Character / Style References ({referenceImages.length}/8)</span>
+                {isSwapMode ? (
+                  <Package size={14} className="text-emerald-400" />
+                ) : (
+                  <Sparkle size={14} className="text-purple-400" />
+                )}
+                <span>2. {isSwapMode ? 'Replacement Object Reference' : 'Character / Style References'} ({referenceImages.length}/8)</span>
               </label>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => { setGalleryTarget('image'); setShowGalleryModal(true); }}
-                  className="px-2 py-0.5 rounded bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-[10px] text-purple-300 font-semibold"
+                  className={`px-2 py-0.5 rounded ${isSwapMode ? 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/40 text-emerald-300' : 'bg-purple-500/20 hover:bg-purple-500/30 border-purple-500/40 text-purple-300'} border text-[10px] font-semibold`}
                 >
                   + From Gallery
                 </button>
@@ -767,14 +892,14 @@ export default function RemixStudio() {
                   <button
                     type="button"
                     onClick={() => setImageInputMode('upload')}
-                    className={`px-2 py-0.5 rounded ${imageInputMode === 'upload' ? 'bg-purple-400 text-black font-bold' : 'text-zinc-400'}`}
+                    className={`px-2 py-0.5 rounded ${imageInputMode === 'upload' ? (isSwapMode ? 'bg-emerald-400 text-black font-bold' : 'bg-purple-400 text-black font-bold') : 'text-zinc-400'}`}
                   >
                     Upload
                   </button>
                   <button
                     type="button"
                     onClick={() => setImageInputMode('url')}
-                    className={`px-2 py-0.5 rounded ${imageInputMode === 'url' ? 'bg-purple-400 text-black font-bold' : 'text-zinc-400'}`}
+                    className={`px-2 py-0.5 rounded ${imageInputMode === 'url' ? (isSwapMode ? 'bg-emerald-400 text-black font-bold' : 'bg-purple-400 text-black font-bold') : 'text-zinc-400'}`}
                   >
                     URL
                   </button>
@@ -786,10 +911,10 @@ export default function RemixStudio() {
               <div>
                 <div 
                   onClick={() => fileInputImageRef.current?.click()}
-                  className="relative flex flex-col items-center justify-center h-20 rounded-2xl border-2 border-dashed border-white/15 hover:border-purple-500/50 bg-white/[0.02] hover:bg-purple-500/[0.03] transition-all cursor-pointer overflow-hidden group"
+                  className={`relative flex flex-col items-center justify-center h-20 rounded-2xl border-2 border-dashed border-white/15 ${isSwapMode ? 'hover:border-emerald-500/50 hover:bg-emerald-500/[0.03]' : 'hover:border-purple-500/50 hover:bg-purple-500/[0.03]'} bg-white/[0.02] transition-all cursor-pointer overflow-hidden group`}
                 >
                   <div className="flex flex-col items-center gap-1 text-center p-2">
-                    <div className="w-6 h-6 rounded-lg bg-white/5 group-hover:bg-purple-500/20 flex items-center justify-center text-zinc-400 group-hover:text-purple-400 transition-colors">
+                    <div className={`w-6 h-6 rounded-lg bg-white/5 ${isSwapMode ? 'group-hover:bg-emerald-500/20 group-hover:text-emerald-400' : 'group-hover:bg-purple-500/20 group-hover:text-purple-400'} flex items-center justify-center text-zinc-400 transition-colors`}>
                       <Plus size={14} />
                     </div>
                     <span className="text-[11px] font-semibold text-zinc-200">Upload Reference (Auto-tagged as Image 1, 2...)</span>
@@ -800,15 +925,15 @@ export default function RemixStudio() {
               <div className="flex gap-2">
                 <input
                   type="url"
-                  placeholder="https://example.com/character-ref.jpg"
+                  placeholder={isSwapMode ? "https://example.com/replacement-item.jpg" : "https://example.com/character-ref.jpg"}
                   value={imageUrlInput}
                   onChange={(e) => setImageUrlInput(e.target.value)}
-                  className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-purple-500/60"
+                  className={`flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none ${isSwapMode ? 'focus:border-emerald-500/60' : 'focus:border-purple-500/60'}`}
                 />
                 <button
                   type="button"
                   onClick={handleAddImageUrl}
-                  className="px-3 py-2 rounded-xl bg-purple-400 text-black text-xs font-bold hover:bg-purple-300"
+                  className={`px-3 py-2 rounded-xl ${isSwapMode ? 'bg-emerald-400 hover:bg-emerald-300' : 'bg-purple-400 hover:bg-purple-300'} text-black text-xs font-bold`}
                 >
                   Add
                 </button>
@@ -819,11 +944,11 @@ export default function RemixStudio() {
             {referenceImages.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
                 {referenceImages.map((img, idx) => (
-                  <div key={img.id || idx} className="relative group rounded-xl overflow-hidden border border-purple-500/30 bg-black aspect-square shadow-lg">
+                  <div key={img.id || idx} className={`relative group rounded-xl overflow-hidden border ${isSwapMode ? 'border-emerald-500/30' : 'border-purple-500/30'} bg-black aspect-square shadow-lg`}>
                     <img src={img.url} alt={img.tag} className="w-full h-full object-cover" />
                     
                     {/* Tag Badge */}
-                    <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded-md bg-purple-600/90 text-white font-black text-[9px] uppercase tracking-wider shadow-md backdrop-blur-sm border border-purple-400/40">
+                    <div className={`absolute top-1 left-1 px-1.5 py-0.5 rounded-md ${isSwapMode ? 'bg-emerald-600/90 border-emerald-400/40' : 'bg-purple-600/90 border-purple-400/40'} text-white font-black text-[9px] uppercase tracking-wider shadow-md backdrop-blur-sm border`}>
                       {img.tag}
                     </div>
 
@@ -831,7 +956,7 @@ export default function RemixStudio() {
                     <button
                       type="button"
                       onClick={() => insertTagIntoPrompt(img.tag)}
-                      className="absolute bottom-1 left-1 right-1 py-1 rounded bg-black/80 hover:bg-purple-500 text-[9px] font-bold text-white opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-1"
+                      className={`absolute bottom-1 left-1 right-1 py-1 rounded bg-black/80 ${isSwapMode ? 'hover:bg-emerald-500' : 'hover:bg-purple-500'} text-[9px] font-bold text-white opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-1`}
                       title="Insert tag into prompt"
                     >
                       <TagIcon size={10} />
@@ -852,16 +977,18 @@ export default function RemixStudio() {
             )}
           </div>
 
-          {/* Style Presets */}
+          {/* Presets Grid */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Style Presets</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+              {isSwapMode ? 'Object Swap Presets' : 'Style Presets'}
+            </label>
             <div className="grid grid-cols-2 gap-1.5">
-              {STYLE_PRESETS.map((preset) => (
+              {(isSwapMode ? OBJECT_SWAP_PRESETS : MOTION_TRANSFER_PRESETS).map((preset) => (
                 <button
                   key={preset.id}
                   type="button"
                   onClick={() => handleSelectPreset(preset.prompt)}
-                  className="px-2.5 py-1.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/10 hover:border-amber-400/40 text-[11px] text-zinc-300 text-left transition-all truncate"
+                  className={`px-2.5 py-1.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/10 ${isSwapMode ? 'hover:border-cyan-400/40' : 'hover:border-amber-400/40'} text-[11px] text-zinc-300 text-left transition-all truncate`}
                 >
                   {preset.label}
                 </button>
@@ -869,13 +996,13 @@ export default function RemixStudio() {
             </div>
           </div>
 
-          {/* Transformation Prompt Section with Tag Quick-Chips */}
+          {/* Transformation Prompt Section with Tag Quick-Chips & Inline @ Autocomplete */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold uppercase tracking-wider text-zinc-200 flex items-center gap-1.5">
-                <span>3. Transformation Prompt</span>
+                <span>3. Instructions / Prompt</span>
               </label>
-              <span className="text-[10px] text-amber-400">Reference: Image 1, Image 2</span>
+              <span className={`text-[10px] ${isSwapMode ? 'text-cyan-400' : 'text-amber-400'}`}>Reference: Image 1, Image 2</span>
             </div>
 
             {/* Reference Tags Helper Chips */}
@@ -887,7 +1014,7 @@ export default function RemixStudio() {
                     key={img.id}
                     type="button"
                     onClick={() => insertTagIntoPrompt(img.tag)}
-                    className="px-2 py-0.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/40 border border-purple-500/40 text-[10px] font-bold text-purple-300 transition-all flex items-center gap-1"
+                    className={`px-2 py-0.5 rounded-lg ${isSwapMode ? 'bg-emerald-500/20 hover:bg-emerald-500/40 border-emerald-500/40 text-emerald-300' : 'bg-purple-500/20 hover:bg-purple-500/40 border-purple-500/40 text-purple-300'} border text-[10px] font-bold transition-all flex items-center gap-1`}
                   >
                     <span>+</span>
                     <span>{img.tag}</span>
@@ -896,11 +1023,11 @@ export default function RemixStudio() {
                 {videoPreview && (
                   <button
                     type="button"
-                    onClick={() => insertTagIntoPrompt('driving video')}
-                    className="px-2 py-0.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 border border-amber-500/40 text-[10px] font-bold text-amber-300 transition-all flex items-center gap-1"
+                    onClick={() => insertTagIntoPrompt(isSwapMode ? 'scene video' : 'driving video')}
+                    className={`px-2 py-0.5 rounded-lg ${isSwapMode ? 'bg-cyan-500/20 hover:bg-cyan-500/40 border-cyan-500/40 text-cyan-300' : 'bg-amber-500/20 hover:bg-amber-500/40 border-amber-500/40 text-amber-300'} border text-[10px] font-bold transition-all flex items-center gap-1`}
                   >
                     <span>+</span>
-                    <span>driving video</span>
+                    <span>{isSwapMode ? 'scene video' : 'driving video'}</span>
                   </button>
                 )}
               </div>
@@ -915,10 +1042,10 @@ export default function RemixStudio() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.98 }}
                     transition={{ duration: 0.12 }}
-                    className="absolute bottom-full mb-2 left-0 right-0 z-50 bg-[#0d0f15]/95 backdrop-blur-2xl border-2 border-amber-400/80 rounded-2xl shadow-[0_-15px_45px_rgba(251,191,36,0.25)] overflow-hidden flex flex-col max-h-[260px]"
+                    className={`absolute bottom-full mb-2 left-0 right-0 z-50 bg-[#0d0f15]/95 backdrop-blur-2xl border-2 ${isSwapMode ? 'border-cyan-400/80 shadow-[0_-15px_45px_rgba(6,182,212,0.25)]' : 'border-amber-400/80 shadow-[0_-15px_45px_rgba(251,191,36,0.25)]'} rounded-2xl overflow-hidden flex flex-col max-h-[260px]`}
                   >
-                    <div className="p-2.5 border-b border-white/10 bg-amber-400/10 flex items-center justify-between">
-                      <span className="text-[10px] font-black text-amber-300 uppercase tracking-widest flex items-center gap-1.5">
+                    <div className={`p-2.5 border-b border-white/10 ${isSwapMode ? 'bg-cyan-400/10' : 'bg-amber-400/10'} flex items-center justify-between`}>
+                      <span className={`text-[10px] font-black ${isSwapMode ? 'text-cyan-300' : 'text-amber-300'} uppercase tracking-widest flex items-center gap-1.5`}>
                         <TagIcon size={12} weight="bold" />
                         <span>Tag Active Studio Media</span>
                       </span>
@@ -935,7 +1062,7 @@ export default function RemixStudio() {
                       {filteredMentionSlots.length === 0 ? (
                         <div className="p-4 text-center">
                           <p className="text-[11px] text-zinc-400 font-medium">No uploaded slot matches &quot;@{mentionSearch}&quot;</p>
-                          <p className="text-[9px] text-zinc-500 mt-1">Upload images (Image 1, 2) or source video to tag them</p>
+                          <p className="text-[9px] text-zinc-500 mt-1">Upload images (Image 1, 2) or video to tag them</p>
                         </div>
                       ) : (
                         filteredMentionSlots.map((slot, idx) => (
@@ -945,7 +1072,7 @@ export default function RemixStudio() {
                             onClick={() => selectMentionSlot(slot)}
                             className={`w-full p-2 rounded-xl flex items-center gap-2.5 text-left transition-all group ${
                               idx === mentionIndex 
-                                ? 'bg-amber-400 text-black font-bold shadow-md' 
+                                ? (isSwapMode ? 'bg-cyan-400 text-black font-bold shadow-md' : 'bg-amber-400 text-black font-bold shadow-md')
                                 : 'hover:bg-white/10 text-white'
                             }`}
                           >
@@ -961,7 +1088,7 @@ export default function RemixStudio() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-black truncate">{slot.tag}</span>
-                                <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded ${idx === mentionIndex ? 'bg-black/20 text-black' : 'bg-amber-400/20 text-amber-300'}`}>
+                                <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded ${idx === mentionIndex ? 'bg-black/20 text-black' : (isSwapMode ? 'bg-cyan-400/20 text-cyan-300' : 'bg-amber-400/20 text-amber-300')}`}>
                                   {slot.token}
                                 </span>
                               </div>
@@ -983,8 +1110,10 @@ export default function RemixStudio() {
                 onChange={handlePromptChange}
                 onKeyDown={handlePromptKeyDown}
                 rows={3}
-                placeholder="e.g. Extract the character from Image 1 and clothing styling from Image 2 while preserving exact motion... Type @ to tag media"
-                className="w-full bg-white/[0.03] border border-white/10 rounded-2xl p-3 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 transition-all resize-none font-sans"
+                placeholder={isSwapMode 
+                  ? "Describe which object to replace and how Image 1 should be integrated... Type @ to tag media" 
+                  : "e.g. Extract the character from Image 1 and clothing styling from Image 2 while preserving exact motion... Type @ to tag media"}
+                className={`w-full bg-white/[0.03] border border-white/10 rounded-2xl p-3 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none ${isSwapMode ? 'focus:border-cyan-500/60 focus:ring-cyan-500/30' : 'focus:border-amber-500/60 focus:ring-amber-500/30'} focus:ring-1 transition-all resize-none font-sans`}
               />
             </div>
           </div>
@@ -993,7 +1122,7 @@ export default function RemixStudio() {
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center justify-between">
               <span>Resolution Quality</span>
-              <span className="text-xs font-bold text-amber-400">{costAmount} Shorts</span>
+              <span className={`text-xs font-bold ${isSwapMode ? 'text-cyan-400' : 'text-amber-400'}`}>{costAmount} Shorts</span>
             </label>
             <div className="grid grid-cols-3 gap-2 bg-white/[0.02] p-1 rounded-xl border border-white/10">
               {[
@@ -1007,7 +1136,7 @@ export default function RemixStudio() {
                   onClick={() => setResolution(res.id)}
                   className={`py-2 px-1 text-center rounded-lg transition-all ${
                     resolution === res.id
-                      ? 'bg-amber-400 text-black font-black shadow-[0_0_12px_rgba(251,191,36,0.35)]'
+                      ? (isSwapMode ? 'bg-cyan-400 text-black font-black shadow-[0_0_12px_rgba(6,182,212,0.35)]' : 'bg-amber-400 text-black font-black shadow-[0_0_12px_rgba(251,191,36,0.35)]')
                       : 'text-zinc-400 hover:text-white'
                   }`}
                 >
@@ -1029,23 +1158,29 @@ export default function RemixStudio() {
           {/* Synthesize Button */}
           <div className="pt-2">
             <button
-              onClick={handleStartRemix}
+              onClick={handleStartGeneration}
               disabled={isGenerating}
               className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-sm flex items-center justify-center gap-2.5 transition-all ${
                 isGenerating
-                  ? 'bg-amber-500/30 text-amber-200 cursor-not-allowed border border-amber-500/40'
+                  ? (isSwapMode ? 'bg-cyan-500/30 text-cyan-200 border-cyan-500/40' : 'bg-amber-500/30 text-amber-200 border-amber-500/40') + ' cursor-not-allowed border'
+                  : isSwapMode
+                  ? 'bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-black shadow-[0_0_25px_rgba(6,182,212,0.4)] active:scale-[0.98]'
                   : 'bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 text-black shadow-[0_0_25px_rgba(251,191,36,0.4)] active:scale-[0.98]'
               }`}
             >
               {isGenerating ? (
                 <>
                   <ArrowsClockwise size={20} className="animate-spin" />
-                  <span>Processing Motion Transfer ({generationProgress}%)</span>
+                  <span>Processing {isSwapMode ? 'Object Swap' : 'Motion Remix'} ({generationProgress}%)</span>
                 </>
               ) : (
                 <>
-                  <Lightning size={20} weight="fill" />
-                  <span>Generate Motion Remix ({costAmount} Shorts)</span>
+                  {isSwapMode ? (
+                    <MagicWand size={20} weight="fill" />
+                  ) : (
+                    <Lightning size={20} weight="fill" />
+                  )}
+                  <span>Generate {isSwapMode ? 'Object Swap' : 'Motion Remix'} ({costAmount} Shorts)</span>
                 </>
               )}
             </button>
@@ -1061,15 +1196,19 @@ export default function RemixStudio() {
             {isGenerating ? (
               <div className="flex flex-col items-center gap-4 text-center p-6 z-10">
                 <div className="relative w-24 h-24">
-                  <div className="absolute inset-0 rounded-full border-4 border-amber-500/20" />
-                  <div className="absolute inset-0 rounded-full border-4 border-amber-400 border-t-transparent animate-spin" />
-                  <div className="absolute inset-0 flex items-center justify-center text-sm font-black text-amber-400">
+                  <div className={`absolute inset-0 rounded-full border-4 ${isSwapMode ? 'border-cyan-500/20' : 'border-amber-500/20'}`} />
+                  <div className={`absolute inset-0 rounded-full border-4 ${isSwapMode ? 'border-cyan-400' : 'border-amber-400'} border-t-transparent animate-spin`} />
+                  <div className={`absolute inset-0 flex items-center justify-center text-sm font-black ${isSwapMode ? 'text-cyan-400' : 'text-amber-400'}`}>
                     {generationProgress}%
                   </div>
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white uppercase tracking-wider">{statusMessage}</h3>
-                  <p className="text-xs text-zinc-400 mt-1">Preserving actor motion, camera trajectory, and frame timing...</p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    {isSwapMode 
+                      ? 'Replacing object geometry while preserving lighting & reflections...' 
+                      : 'Preserving actor motion, camera trajectory, and frame timing...'}
+                  </p>
                 </div>
               </div>
             ) : generatedResult ? (
@@ -1094,10 +1233,10 @@ export default function RemixStudio() {
                   </button>
                   <a
                     href={generatedResult.url}
-                    download="remix-motion-transfer.mp4"
+                    download={isSwapMode ? "genjutsu-object-swap.mp4" : "remix-motion-transfer.mp4"}
                     target="_blank"
                     rel="noreferrer"
-                    className="p-2.5 rounded-xl bg-amber-400 text-black font-bold hover:bg-amber-300 transition-all flex items-center gap-1.5 text-xs"
+                    className={`p-2.5 rounded-xl ${isSwapMode ? 'bg-cyan-400 hover:bg-cyan-300' : 'bg-amber-400 hover:bg-amber-300'} text-black font-bold transition-all flex items-center gap-1.5 text-xs`}
                   >
                     <DownloadSimple size={16} weight="bold" />
                     <span>Download MP4</span>
@@ -1107,43 +1246,54 @@ export default function RemixStudio() {
             ) : (
               <div className="flex flex-col items-center gap-3 text-center p-6 text-zinc-500 max-w-md">
                 <div className="w-16 h-16 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-center text-zinc-600">
-                  <FilmSlate size={32} />
+                  {isSwapMode ? (
+                    <Cube size={32} />
+                  ) : (
+                    <FilmSlate size={32} />
+                  )}
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider">Ready for Motion Transfer Synthesis</h3>
+                  <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider">
+                    Ready for {isSwapMode ? 'Object Swap Synthesis' : 'Motion Transfer Synthesis'}
+                  </h3>
                   <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
-                    Upload your source video on the left, add 1-8 reference images of your desired character or art style, and click Generate Motion Remix.
+                    {isSwapMode 
+                      ? 'Upload your scene video on the left, add 1-8 reference images of your desired replacement object, and click Generate Object Swap.' 
+                      : 'Upload your source video on the left, add 1-8 reference images of your desired character or art style, and click Generate Motion Remix.'}
                   </p>
                 </div>
               </div>
             )}
           </div>
 
-          {/* History / Recent Remixes Carousel */}
-          {remixHistory.length > 0 && (
+          {/* History / Recent Generations Carousel */}
+          {historyList.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
                 <Clock size={16} />
-                <span>Recent Motion Transfer Generations ({remixHistory.length})</span>
+                <span>Recent Studio Generations ({historyList.length})</span>
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {remixHistory.map((item) => (
+                {historyList.map((item) => (
                   <div
                     key={item.id}
                     onClick={() => setGeneratedResult(item)}
-                    className="group relative rounded-2xl border border-white/10 hover:border-amber-400/50 bg-white/[0.02] p-2.5 cursor-pointer transition-all overflow-hidden"
+                    className={`group relative rounded-2xl border border-white/10 ${item.mode === 'object-swap' ? 'hover:border-cyan-400/50' : 'hover:border-amber-400/50'} bg-white/[0.02] p-2.5 cursor-pointer transition-all overflow-hidden`}
                   >
                     <div className="w-full h-28 rounded-xl bg-black overflow-hidden relative">
                       <video src={item.url} className="w-full h-full object-cover" muted />
                       <div className="absolute inset-0 bg-black/40 group-hover:opacity-0 transition-opacity flex items-center justify-center">
                         <Play size={22} className="text-white opacity-80" />
                       </div>
+                      <div className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${item.mode === 'object-swap' ? 'bg-cyan-500 text-black' : 'bg-amber-400 text-black'}`}>
+                        {item.mode === 'object-swap' ? 'Swap' : 'Remix'}
+                      </div>
                     </div>
                     <div className="p-1 mt-1">
                       <p className="text-[11px] text-zinc-200 truncate font-medium">{item.prompt}</p>
                       <div className="flex items-center justify-between text-[9px] text-zinc-500 mt-0.5">
                         <span>{item.createdAt}</span>
-                        <span className="font-bold text-amber-400/80">{item.resolution}</span>
+                        <span className={`font-bold ${item.mode === 'object-swap' ? 'text-cyan-400/80' : 'text-amber-400/80'}`}>{item.resolution}</span>
                       </div>
                     </div>
                   </div>
@@ -1166,14 +1316,14 @@ export default function RemixStudio() {
             >
               <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-black/40">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center">
+                  <div className={`w-8 h-8 rounded-xl ${isSwapMode ? 'bg-cyan-400/20 text-cyan-400' : 'bg-amber-400/20 text-amber-400'} flex items-center justify-center`}>
                     <FolderOpen size={18} />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-white">
-                      Select Asset from Studio Library ({galleryTarget === 'video' ? 'Driving Video' : galleryTarget === 'audio' ? 'Audio Track' : galleryTarget === 'startFrame' ? 'Start Frame' : galleryTarget === 'endFrame' ? 'End Frame' : 'Reference Image'})
+                      Select Asset from Studio Library ({galleryTarget === 'video' ? (isSwapMode ? 'Scene Video' : 'Driving Video') : galleryTarget === 'audio' ? 'Audio Track' : galleryTarget === 'startFrame' ? 'Start Frame' : galleryTarget === 'endFrame' ? 'End Frame' : 'Reference Image'})
                     </h3>
-                    <p className="text-[11px] text-zinc-400">Click any media item to select and attach to your motion remix</p>
+                    <p className="text-[11px] text-zinc-400">Click any media item to select and attach to your studio synthesis</p>
                   </div>
                 </div>
                 <button
@@ -1199,4 +1349,3 @@ export default function RemixStudio() {
     </div>
   );
 }
-
