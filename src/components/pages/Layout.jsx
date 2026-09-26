@@ -29,6 +29,7 @@ const FULL_BLEED_TABS = new Set([
     'mcp-connection',
     'storyboard',
     'remix',
+    'object-swap',
 ]);
 
 export function Layout({ children, activeTab, setActiveTab }) {

@@ -72,6 +72,7 @@ const YourVoice = lazyWithRetry(() => import('./components/pages/YourVoice'));
 const McpConnectionPage = lazyWithRetry(() => import('./components/pages/McpConnectionPage'));
 const StoryboardStudio = lazyWithRetry(() => import('./components/pages/StoryboardStudio'));
 const RemixStudio = lazyWithRetry(() => import('./components/pages/RemixStudio'));
+const ObjectSwapStudio = lazyWithRetry(() => import('./components/pages/ObjectSwapStudio'));
 
 
 // Beautiful, futuristic stand-by placeholder for the new Avatar Studio
@@ -157,6 +158,7 @@ const FULL_HEIGHT_TABS = new Set([
   'storyboard',
   'design',
   'remix',
+  'object-swap',
 ])
 
 function App() {
@@ -390,6 +392,8 @@ function App() {
         return <StoryboardStudio />;
       case 'remix':
         return <RemixStudio />;
+      case 'object-swap':
+        return <ObjectSwapStudio />;
       case 'design':
         return null;
       default:

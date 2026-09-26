@@ -42,5 +42,10 @@ export const SHORTS_COST = {
     remix_motion_transfer_480p: 5,
     remix_motion_transfer_720p: 8,
     remix_motion_transfer_1080p: 12,
+
+    // Object Swap Studio (Higgsfield Genjutsu Object Swap)
+    object_swap_480p: 5,
+    object_swap_720p: 8,
+    object_swap_1080p: 12,
 };
 
