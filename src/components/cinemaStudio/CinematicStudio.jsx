@@ -440,27 +440,31 @@ function UpwardDropdown({ children, icon, label, badge, accentColor = 'fuchsia' 
       {createPortal(
         <AnimatePresence>
           {open && (
-            <motion.div
-              ref={panelRef}
-              initial={{ opacity: 0, y: 12, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 12, scale: 0.95 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-              style={{
-                position: 'fixed',
-                bottom: pos.bottom,
-                left: pos.left,
-                transform: 'translateX(-50%)',
-                zIndex: 9999,
-              }}
-              className={cn(
-                "min-w-[260px] max-w-[320px] max-h-[340px] overflow-y-auto custom-scrollbar",
-                "bg-[#0a0a0a]/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 shadow-2xl",
-                `shadow-lg ${c.ring}`
-              )}
-            >
-              {typeof children === 'function' ? children(() => setOpen(false)) : children}
-            </motion.div>
+            <>
+              <div className="fixed inset-0 z-[9998] bg-black/40" onClick={() => setOpen(false)} />
+              <motion.div
+                ref={panelRef}
+                initial={{ opacity: 0, y: 12, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.95 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                style={{
+                  position: 'fixed',
+                  bottom: pos.bottom,
+                  left: Math.max(160, Math.min(window.innerWidth - 160, pos.left)),
+                  transform: 'translateX(-50%)',
+                  zIndex: 9999,
+                  backgroundColor: '#12141d'
+                }}
+                className={cn(
+                  "min-w-[260px] max-w-[320px] max-h-[340px] overflow-y-auto custom-scrollbar",
+                  "bg-[#12141d] border border-zinc-700/90 rounded-2xl p-2 shadow-[0_25px_80px_rgba(0,0,0,1)]",
+                  `shadow-lg ${c.ring}`
+                )}
+              >
+                {typeof children === 'function' ? children(() => setOpen(false)) : children}
+              </motion.div>
+            </>
           )}
         </AnimatePresence>,
         document.body

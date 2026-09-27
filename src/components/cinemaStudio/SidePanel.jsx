@@ -51,7 +51,7 @@ const SegmentedControl = React.memo(({ options, value, onChange, label, icon: Ic
   </div>
 ));
 
-// Refined Glassmorphic Dropdown for denser menus
+// Solid High-Contrast Dropdown for Rock-Solid Readability on Mobile & Desktop
 const GlassSelect = React.memo(({ value, onChange, options = [], label, icon: Icon, align = 'up', badge }) => {
   const [open, setOpen] = useState(false);
   const selectedOption = (options && options.find(o => String(o.value) === String(value))) || (options && options[0]) || { label: '', value: '' };
@@ -73,8 +73,8 @@ const GlassSelect = React.memo(({ value, onChange, options = [], label, icon: Ic
         type="button"
         onClick={() => setOpen(!open)}
         className={cn(
-          "w-full h-[38px] flex items-center justify-between bg-black/40 border border-white/[0.08] hover:border-white/20 rounded-xl px-3 text-xs text-white backdrop-blur-xl transition-all select-none cursor-pointer",
-          open && "border-[#c8f135]/60 shadow-[0_0_20px_rgba(200,241,53,0.15)]"
+          "w-full h-[38px] flex items-center justify-between bg-zinc-900 border border-white/10 hover:border-white/20 rounded-xl px-3 text-xs text-white transition-all select-none cursor-pointer",
+          open && "border-[#c8f135]/80 shadow-[0_0_20px_rgba(200,241,53,0.2)] bg-zinc-800"
         )}
       >
         <span className="truncate font-semibold flex items-center gap-2">
@@ -86,11 +86,14 @@ const GlassSelect = React.memo(({ value, onChange, options = [], label, icon: Ic
 
       {open && (
         <>
-          <div className="fixed inset-0 z-[140]" onClick={() => setOpen(false)} />
-          <div className={cn(
-            "absolute left-0 right-0 z-[150] bg-[#0c0c14]/98 border border-white/15 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.95)] backdrop-blur-3xl py-1 overflow-hidden max-h-60 overflow-y-auto custom-scrollbar",
-            align === 'down' ? "top-full mt-1.5" : "bottom-full mb-1.5"
-          )}>
+          <div className="fixed inset-0 z-[240] bg-black/40" onClick={() => setOpen(false)} />
+          <div 
+            className={cn(
+              "absolute left-0 right-0 z-[250] bg-[#12141d] border border-zinc-700/90 rounded-2xl shadow-[0_25px_80px_rgba(0,0,0,1)] py-1.5 overflow-hidden max-h-64 overflow-y-auto custom-scrollbar",
+              align === 'down' ? "top-full mt-1.5" : "bottom-full mb-1.5"
+            )}
+            style={{ backgroundColor: '#12141d' }}
+          >
             {options.map((opt) => (
               <button
                 key={opt.value}
@@ -100,17 +103,17 @@ const GlassSelect = React.memo(({ value, onChange, options = [], label, icon: Ic
                   setOpen(false);
                 }}
                 className={cn(
-                  "w-full text-left px-3 py-2 text-xs font-semibold flex items-center justify-between transition-all border-b border-white/[0.04] last:border-0 cursor-pointer select-none",
+                  "w-full text-left px-3.5 py-2.5 text-xs font-semibold flex items-center justify-between transition-all border-b border-white/[0.04] last:border-0 cursor-pointer select-none bg-[#12141d]",
                   String(opt.value) === String(value)
-                    ? "bg-[#c8f135]/15 text-[#c8f135] font-bold"
-                    : "text-zinc-300 hover:bg-white/[0.06] hover:text-white"
+                    ? "bg-[#c8f135]/20 text-[#c8f135] font-bold"
+                    : "text-zinc-200 hover:bg-zinc-800 hover:text-white"
                 )}
               >
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   {opt.icon && <span className="text-sm shrink-0">{opt.icon}</span>}
                   <div className="flex flex-col min-w-0">
-                    <span className="truncate">{opt.label}</span>
-                    {opt.desc && <span className="text-[10px] text-zinc-500 font-normal truncate mt-0.5">{opt.desc}</span>}
+                    <span className="truncate text-white font-medium">{opt.label}</span>
+                    {opt.desc && <span className="text-[10px] text-zinc-400 font-normal truncate mt-0.5">{opt.desc}</span>}
                   </div>
                 </div>
                 {String(opt.value) === String(value) && (
@@ -2623,7 +2626,10 @@ export const SidePanel = React.memo(({
 
         {/* Autocomplete Popup */}
         {mentionSearch !== null && (
-          <div className="bg-[#0e0e18]/98 border border-white/20 rounded-2xl p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.9)] backdrop-blur-3xl max-h-56 overflow-y-auto custom-scrollbar z-30">
+          <div 
+            className="bg-[#12141d] border border-zinc-700 rounded-2xl p-1.5 shadow-[0_25px_80px_rgba(0,0,0,1)] max-h-56 overflow-y-auto custom-scrollbar z-[250]"
+            style={{ backgroundColor: '#12141d' }}
+          >
             {(() => {
               const query = (mentionSearch || '').trim().toLowerCase();
               const matched = availableMentionItems.filter(item => 
@@ -3158,10 +3164,13 @@ export const SidePanel = React.memo(({
                             {seedanceAddMenuOpen && (
                               <>
                                 <div
-                                  className="fixed inset-0 z-40"
+                                  className="fixed inset-0 z-[240] bg-black/40"
                                   onClick={() => setSeedanceAddMenuOpen(false)}
                                 />
-                                <div className="absolute left-0 top-full mt-2 z-50 w-64 max-w-[calc(100vw-32px)] bg-[#0d0d16] border border-white/20 rounded-2xl p-1.5 shadow-[0_20px_60px_rgba(0,0,0,0.95)] backdrop-blur-2xl space-y-1">
+                                <div 
+                                  className="absolute left-0 top-full mt-2 z-[250] w-64 max-w-[calc(100vw-32px)] bg-[#12141d] border border-zinc-700 rounded-2xl p-1.5 shadow-[0_25px_80px_rgba(0,0,0,1)] space-y-1"
+                                  style={{ backgroundColor: '#12141d' }}
+                                >
                                   <button
                                     type="button"
                                     onClick={() => {
