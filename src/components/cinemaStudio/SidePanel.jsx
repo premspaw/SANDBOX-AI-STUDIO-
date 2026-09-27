@@ -1120,11 +1120,16 @@ export const SidePanel = React.memo(({
   const [mentionSearch, setMentionSearch] = useState(null);
   const [mentionCursorPos, setMentionCursorPos] = useState(0);
   const [localPrompt, setLocalPrompt] = useState(promptText || '');
+  const localPromptRef = useRef(promptText || '');
   const [isAstraWriting, setIsAstraWriting] = useState(false);
   const debounceTimerRef = useRef(null);
 
   useEffect(() => {
-    setLocalPrompt(promptText || '');
+    // Only synchronize if the incoming prop is genuinely different from local state
+    if (promptText !== undefined && promptText !== localPromptRef.current) {
+      localPromptRef.current = promptText || '';
+      setLocalPrompt(promptText || '');
+    }
   }, [promptText]);
 
   // Astra (ChatGPT 6) Scenario & Prompt Writer (with Vertex AI Gemini MCP Fallback)
@@ -1156,6 +1161,7 @@ export const SidePanel = React.memo(({
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.refinedPrompt) {
+        localPromptRef.current = data.refinedPrompt;
         setLocalPrompt(data.refinedPrompt);
         setPromptText(data.refinedPrompt);
         const isGemini = data.model && (data.model.toLowerCase().includes('gemini') || data.model.includes('MCP'));
@@ -1177,6 +1183,7 @@ export const SidePanel = React.memo(({
         if (res.ok) {
           const data = await res.json();
           if (data.enhancedPrompt) {
+            localPromptRef.current = data.enhancedPrompt;
             setLocalPrompt(data.enhancedPrompt);
             setPromptText(data.enhancedPrompt);
             if (showToast) showToast("Prompt enhanced with Vertex AI Gemini MCP (Fallback)!", "success");
@@ -1213,6 +1220,7 @@ export const SidePanel = React.memo(({
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.enhancedPrompt) {
+        localPromptRef.current = data.enhancedPrompt;
         setLocalPrompt(data.enhancedPrompt);
         setPromptText(data.enhancedPrompt);
         if (showToast) showToast("Prompt enhanced with Vertex AI Gemini MCP!", "success");
@@ -1251,6 +1259,7 @@ export const SidePanel = React.memo(({
     const newPos = textBefore.length + tagText.length;
     const savedScroll = textarea ? textarea.scrollTop : lastCursorRef.current.scrollTop;
 
+    localPromptRef.current = updated;
     setLocalPrompt(updated);
     setPromptText(updated);
 
@@ -1268,6 +1277,7 @@ export const SidePanel = React.memo(({
     const current = localPrompt || '';
     if (!current.includes(tag)) {
       const updated = current.trim() ? `${current.trim()} ${tag}` : tag;
+      localPromptRef.current = updated;
       setLocalPrompt(updated);
       if (setPromptText) setPromptText(updated);
       requestAnimationFrame(() => {
@@ -2071,11 +2081,14 @@ export const SidePanel = React.memo(({
   const handlePromptChange = useCallback((e) => {
     const val = e.target.value;
     const cursorPos = e.target.selectionStart;
+    localPromptRef.current = val;
     setLocalPrompt(val);
 
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
-      React.startTransition(() => setPromptText(val));
+      React.startTransition(() => {
+        if (setPromptText) setPromptText(val);
+      });
     }, 250);
 
     const textBeforeCursor = val.slice(0, cursorPos);
@@ -2103,6 +2116,7 @@ export const SidePanel = React.memo(({
     const nextPos = textBefore.length + tagText.length;
     const savedScroll = textarea ? textarea.scrollTop : 0;
 
+    localPromptRef.current = updated;
     setLocalPrompt(updated);
     setPromptText(updated);
     setMentionSearch(null);
