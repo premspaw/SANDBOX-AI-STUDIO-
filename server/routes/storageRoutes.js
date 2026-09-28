@@ -176,7 +176,7 @@ export default function createRouter(deps) {
                 return res.status(400).json({ error: "Invalid request: missing JSON body or Content-Type header." });
             }
 
-            const { imageData } = req.body;
+            const imageData = req.body.imageData || req.body.url || req.body.imageUrl;
             const userId = req.body.userId || req.body.user_id;
             const type = req.body.type || 'image';
             const fileName = req.body.fileName || `asset_${Date.now()}.png`;

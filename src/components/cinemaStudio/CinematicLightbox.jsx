@@ -38,6 +38,10 @@ export function CinematicLightbox({
   handleUseAsMultiRefVideo,
   handleUseAsMotionSubject,
   handleUseAsMotionVideo,
+  handleUseAsRemixVideo,
+  setMotionRefVideo,
+  setMotionRefVideoPreview,
+  setRemixEngine,
   omniRefImages,
   setOmniRefImages,
   omniRefPreviews,
@@ -513,11 +517,53 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
 
   // Extend Video using Omni Flash Extension (+4s / +8s)
   const handleExtendScene = () => {
+    // 1. Immediately sync source video into global store
+    try {
+      useAppStore.getState().setExtensionSourceVideo?.(lightboxItem);
+    } catch (_) {
+      // Ignore store write fallback
+    }
+
+    // 2. Call parent callback if provided
     if (handleExtendVideo) {
       handleExtendVideo(lightboxItem);
+    }
+
+    // 3. Switch panel tab to dedicated multi-reference / extension mode
+    if (setPanelTab) {
+      setPanelTab('omni-multi');
+    }
+
+    // 4. Ensure SidePanel drawer is open
+    if (setShowSidePanel) {
+      setShowSidePanel(true);
+    }
+
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) {
+      showToast("Loaded clip into Extension Panel (+4s / +8s)", "info");
+    }
+    setLightboxItem(null);
+  };
+
+  // Remix & Edit Video with Omni 1.1 / Jitsu
+  const handleRemixScene = () => {
+    if (handleUseAsRemixVideo) {
+      handleUseAsRemixVideo(lightboxItem);
     } else {
-      if (setPanelTab) setPanelTab('omni-multi');
+      if (setMotionRefVideo) setMotionRefVideo(lightboxItem.url);
+      if (setMotionRefVideoPreview) setMotionRefVideoPreview(lightboxItem.url);
+      if (setOmniRefVideoPreview) setOmniRefVideoPreview(lightboxItem.url);
+      if (setRemixEngine) setRemixEngine('omni');
+      try {
+        useAppStore.getState().setRemixEngine?.('omni');
+      } catch (_) {
+        void 0;
+      }
+      if (setPanelTab) setPanelTab('remix');
       if (setShowSidePanel) setShowSidePanel(true);
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast("Loaded video into Omni 1.1 Video Edit (@video1)!", "success");
     }
     setLightboxItem(null);
   };
@@ -806,6 +852,16 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                   >
                     <Zap size={12} className="fill-current text-[#c8f135]" />
                     <span className="text-[8.5px] font-black uppercase tracking-wider">⚡ Extend Video (+4s / +8s)</span>
+                  </button>
+
+                  {/* 🎨 Edit / Remix Video (Omni 1.1 / Jitsu) */}
+                  <button
+                    onClick={handleRemixScene}
+                    className="col-span-2 flex items-center justify-center gap-2 p-2 rounded-xl border border-purple-500/40 bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 transition-all group cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.15)] active:scale-95"
+                    title="Edit any element, replace objects with image references, or transfer motion with Omni 1.1 / Jitsu"
+                  >
+                    <Sparkles size={12} className="text-purple-400" />
+                    <span className="text-[8.5px] font-black uppercase tracking-wider">🎨 Edit / Remix Video (Omni 1.1)</span>
                   </button>
 
                   <button

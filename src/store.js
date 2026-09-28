@@ -67,6 +67,18 @@ export const useAppStore = create((set, get) => ({
     setIsAdmin: (val) => set({ isAdmin: val }),
     setShowAdminLogin: (val) => set({ showAdminLogin: val }),
 
+    // Video Extension Global State (Gemini Omni 1.1 Flash)
+    extensionSourceVideo: null,
+    setExtensionSourceVideo: (video) => set({ extensionSourceVideo: video }),
+    extensionDuration: 4,
+    setExtensionDuration: (duration) => set({ extensionDuration: duration }),
+    extensionPrompt: '',
+    setExtensionPrompt: (prompt) => set({ extensionPrompt: prompt }),
+
+    // Video Remix / Edit Engine ('jitsu' | 'omni')
+    remixEngine: 'jitsu',
+    setRemixEngine: (engine) => set({ remixEngine: engine }),
+
     clearSession: () => {
         set({
             userProfile: null,

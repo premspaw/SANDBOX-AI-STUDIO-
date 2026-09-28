@@ -593,6 +593,7 @@ app.use('/assets', express.static(path.join(__dirname, 'public', 'assets'), {
     setHeaders: (res) => {
         res.set('Access-Control-Allow-Origin', '*');
         res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.set('Accept-Ranges', 'bytes');
     }
 }));
 

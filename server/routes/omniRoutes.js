@@ -314,8 +314,9 @@ export default function createRouter(deps) {
             }
 
             const { image, motionPrompt, prompt, duration = 8, aspectRatio = '16:9', nodeId, userId, generateAudio, resolution = '720p', model } = req.body;
-            const requestedTask = req.body.task && req.body.task !== 'auto' ? req.body.task : null;
-            if (!motionPrompt && !prompt && requestedTask !== 'extension') throw new Error('No motion prompt provided');
+            const rawTask = req.body.task && req.body.task !== 'auto' ? req.body.task : null;
+            const requestedTask = (rawTask === 'extension' || rawTask === 'extend') ? 'extend' : rawTask;
+            if (!motionPrompt && !prompt && requestedTask !== 'extend') throw new Error('No motion prompt provided');
 
             const targetUserId = user ? user.id : userId;
 
@@ -323,11 +324,14 @@ export default function createRouter(deps) {
             const rawRes = (resolution || '720p').toLowerCase();
             const validResolution = ['360p', '720p', '1080p', '4k'].includes(rawRes) ? rawRes : '720p';
             console.log(`[OMNI-I2V] Resolution: ${validResolution} (requested: ${resolution}) | Duration: ${validDuration}s | Audio: ${!!generateAudio}`);
+            console.log(`[OMNI-I2V] Task: ${requestedTask || 'auto'} | CreditReason: ${req.body.creditReason || 'default'} | HasVideo: ${!!(req.body.video || req.body.sourceVideo || req.body.refVideo)} | RefImages: ${(req.body.ref_images || []).length}`);
 
             // Deduct credits: omni/omni-flash are cost-per-second
             let requiredCredits = 10; // Default
             const modelLower = (model || '').toLowerCase();
-            if (modelLower.includes('omni-flash') || modelLower.includes('flash')) {
+            if (requestedTask === 'extend' || requestedTask === 'edit') {
+                requiredCredits = validDuration * 5;
+            } else if (modelLower.includes('omni-flash') || modelLower.includes('flash')) {
                 let costPerSec = 5; // default 720p
                 if (validResolution === '4k') {
                     costPerSec = generateAudio ? 19 : 15;
@@ -435,13 +439,14 @@ export default function createRouter(deps) {
                 }
                 const trimmedBase64 = buffer.toString('base64');
 
+                let uri = null;
                 // Priority 1 for Vertex AI: Upload directly to GCS so Vertex AI Interactions API gets native gs:// URI!
                 if (token || VERTEX_PROJECT_ID) {
                     try {
                         console.log(`[OMNI-I2V] Uploading reference video (${buffer.length} bytes) to GCS for Vertex AI...`);
                         const gsUri = await uploadToGcs(buffer, mimeType);
                         if (gsUri) {
-                            return gsUri;
+                            uri = gsUri;
                         }
                     } catch (gcsErr) {
                         console.warn(`[OMNI-I2V] GCS upload failed (${gcsErr.message}), falling back to Google File API...`);
@@ -449,13 +454,13 @@ export default function createRouter(deps) {
                 }
 
                 // Priority 2: Google File API via API key (for Google AI Studio)
-                if (apiKey) {
+                if (!uri && apiKey) {
                     try {
                         console.log(`[OMNI-I2V] Uploading reference video (${buffer.length} bytes) to Google File API...`);
                         const fileApiUri = await uploadToGoogleFileApi(trimmedBase64, mimeType || 'video/mp4', apiKey, null);
                         if (fileApiUri) {
                             console.log(`[OMNI-I2V] ✅ Reference video uploaded to Google File API: ${fileApiUri}`);
-                            return fileApiUri;
+                            uri = fileApiUri;
                         }
                     } catch (fileErr) {
                         console.warn(`[OMNI-I2V] Google File API upload failed (${fileErr.message}), falling back to Cloudflare R2...`);
@@ -463,25 +468,20 @@ export default function createRouter(deps) {
                 }
 
                 // Priority 3: Cloudflare R2 (for non-Vertex engines or storage)
-                if (uploadVideoToSupabase) {
+                if (!uri && uploadVideoToSupabase) {
                     try {
                         console.log(`[OMNI-I2V] Uploading reference video (${buffer.length} bytes) to Cloudflare R2...`);
                         const r2Url = await uploadVideoToSupabase(buffer, targetUserId || 'anon', validAspectRatio, 'reference', 'Omni Reference Video', 'Omni Flash');
                         if (r2Url) {
                             console.log(`[OMNI-I2V] ✅ Reference video uploaded to Cloudflare R2: ${r2Url}`);
-                            return r2Url;
+                            uri = r2Url;
                         }
                     } catch (r2Err) {
                         console.warn(`[OMNI-I2V] Cloudflare R2 upload failed (${r2Err.message})`);
                     }
                 }
 
-                // Fallback
-                try {
-                    return await uploadToGcs(buffer, mimeType);
-                } catch (_) {
-                    return await uploadToGoogleFileApi(trimmedBase64, mimeType, apiKey, token);
-                }
+                return { uri, data: trimmedBase64 };
             }
 
             broadcastProgress(taskId, 1, 3, 'Preparing video scene...');
@@ -495,7 +495,9 @@ export default function createRouter(deps) {
             
             // Construct input parts for Gemini Omni Flash (multimodal)
             let inputParts = [];
-            const inputImage = image || req.body.firstFrameImage || req.body.firstFrame || req.body.video || req.body.sourceVideo || req.body.refVideo;
+            const isExtendOrEdit = requestedTask === 'extend' || requestedTask === 'edit';
+            // In multi-reference / i2v, inputImage must ONLY be an actual image, NEVER fall back to refVideo!
+            const inputImage = image || req.body.firstFrameImage || req.body.firstFrame || (isExtendOrEdit ? (req.body.video || req.body.sourceVideo || req.body.refVideo) : null);
             const endImage = req.body.lastFrameImage || req.body.imageEnd || req.body.lastFrame;
 
             // 1. Primary image (Start Frame): only include if not doing pure text_to_video
@@ -517,15 +519,17 @@ export default function createRouter(deps) {
             }
 
             // Reference media arrays from payload
-            const rawRefImages = req.body.ref_images || req.body.refImages || [];
-            const rawRefVideos = req.body.ref_videos || req.body.refVideos || (req.body.refVideo ? [{ url: req.body.refVideo }] : []);
+            const rawRefImages = req.body.ref_images || req.body.refImages || req.body.omniMultiImages || [];
+            const rawSlotVideos = req.body.multiVideoSlots || req.body.omniMultiVideos;
+            const rawRefVideos = req.body.ref_videos || req.body.refVideos || req.body.reference_video_urls || (req.body.refVideo ? [{ url: req.body.refVideo }] : []);
 
-            // If primary image was not explicitly provided but ref_images exist, use first reference image as primary
+            // If primary image was not explicitly provided but ref_images exist, use first reference image as primary (only if image)
             if (!primaryImageResolved && rawRefImages.length > 0 && requestedTask !== 'text_to_video') {
                 const firstRef = typeof rawRefImages[0] === 'string' ? rawRefImages[0] : (rawRefImages[0].url || rawRefImages[0].imageUrl);
                 if (firstRef) {
-                    primaryImageResolved = await resolveMediaToBase64(firstRef);
-                    if (primaryImageResolved) {
+                    const candidate = await resolveMediaToBase64(firstRef);
+                    if (candidate && !candidate.mimeType?.startsWith('video/')) {
+                        primaryImageResolved = candidate;
                         console.log(`[OMNI-I2V] ✅ Promoted ref_images[0] to Start Frame image (${primaryImageResolved.mimeType})`);
                     }
                 }
@@ -533,35 +537,58 @@ export default function createRouter(deps) {
 
             // Tag mapping: translate @image1..4 and @video1..3 to Google Omni Flash <IMAGE_REF_N> & <VIDEO_REF_N>
             let compiledPrompt = rawTextPrompt || '';
-            compiledPrompt = compiledPrompt
-                .replace(/@image1\b/gi, '<START_FRAME>')
-                .replace(/@image2\b/gi, '<IMAGE_REF_0>')
-                .replace(/@image3\b/gi, '<IMAGE_REF_1>')
-                .replace(/@image4\b/gi, '<IMAGE_REF_2>')
-                .replace(/@video1\b/gi, '<VIDEO_REF_0>')
-                .replace(/@video2\b/gi, '<VIDEO_REF_1>')
-                .replace(/@video3\b/gi, '<VIDEO_REF_2>');
+            if (requestedTask === 'extend' || requestedTask === 'edit') {
+                compiledPrompt = compiledPrompt
+                    .replace(/@image1\b/gi, '<IMAGE_REF_0>')
+                    .replace(/@image2\b/gi, '<IMAGE_REF_1>')
+                    .replace(/@image3\b/gi, '<IMAGE_REF_2>')
+                    .replace(/@image4\b/gi, '<IMAGE_REF_3>')
+                    .replace(/@video1\b/gi, '<VIDEO_REF_0>')
+                    .replace(/@ref_video\b/gi, '<VIDEO_REF_0>')
+                    .replace(/@video\b(?![\d])/gi, '<VIDEO_REF_0>');
+            } else {
+                compiledPrompt = compiledPrompt
+                    .replace(/@image1\b/gi, '<START_FRAME>')
+                    .replace(/@image2\b/gi, '<IMAGE_REF_0>')
+                    .replace(/@image3\b/gi, '<IMAGE_REF_1>')
+                    .replace(/@image4\b/gi, '<IMAGE_REF_2>')
+                    .replace(/@video1\b/gi, '<VIDEO_REF_0>')
+                    .replace(/@video2\b/gi, '<VIDEO_REF_1>')
+                    .replace(/@video3\b/gi, '<VIDEO_REF_2>')
+                    .replace(/@ref_video\b/gi, '<VIDEO_REF_0>')
+                    .replace(/@video\b(?![\d])/gi, '<VIDEO_REF_0>');
+            }
 
             // 1. Start Frame with explicit placeholder
             if (primaryImageResolved) {
                 const isVideo = primaryImageResolved.mimeType && primaryImageResolved.mimeType.startsWith('video/');
                 if (isVideo) {
                     broadcastProgress(taskId, 1.5, 3, 'Uploading reference video...');
+                    let videoRefObj = null;
                     try {
-                        const fileUri = await uploadVideoReference(
+                        videoRefObj = await uploadVideoReference(
                             primaryImageResolved.data,
                             sanitizeMime(primaryImageResolved.mimeType, 'video/mp4')
                         );
-                        if (requestedTask === 'extension') {
-                            inputParts.push({ type: 'text', text: '<VIDEO_REF_0>\n[Source Video to Extend]:\n' });
-                        } else {
-                            inputParts.push({ type: 'text', text: '<START_FRAME>\n[Video reference at 00:00]:\n' });
-                        }
-                        inputParts.push({ type: 'video', uri: fileUri });
-                        console.log(`[OMNI-I2V] Reference video uploaded (${requestedTask === 'extension' ? 'extension' : 'reference'}): ${fileUri}`);
                     } catch (fileApiErr) {
-                        console.warn(`[OMNI-I2V] Reference video upload failed, skipping: ${fileApiErr.message}`);
+                        console.warn(`[OMNI-I2V] Reference video upload failed, falling back to inline data: ${fileApiErr.message}`);
                     }
+                    const finalVideoData = videoRefObj?.data || primaryImageResolved.data;
+                    const finalVideoUri = videoRefObj?.uri || undefined;
+                    if (requestedTask === 'extend') {
+                        inputParts.push({ type: 'text', text: '<VIDEO_REF_0>\n[Source Video to Extend]:\n' });
+                    } else if (requestedTask === 'edit') {
+                        inputParts.push({ type: 'text', text: '<VIDEO_REF_0>\n[Source Video to Edit]:\n' });
+                    } else {
+                        inputParts.push({ type: 'text', text: '<START_FRAME>\n[Video reference at 00:00]:\n' });
+                    }
+                    inputParts.push({
+                        type: 'video',
+                        uri: finalVideoUri,
+                        data: finalVideoData,
+                        mime_type: sanitizeMime(primaryImageResolved.mimeType, 'video/mp4')
+                    });
+                    console.log(`[OMNI-I2V] ✅ Added reference video to inputParts (${requestedTask || 'reference'}, uri=${finalVideoUri || 'inline-base64'})`);
                 } else {
                     inputParts.push({
                         type: 'text',
@@ -582,11 +609,22 @@ export default function createRouter(deps) {
                 ? ' [Audio: Realistic synchronized environmental sound effects, natural foley, and ambient room tones ONLY. Strictly NO background music, NO BGM, NO soundtrack, NO musical instruments, NO melody, NO singing. High-fidelity diegetic sound effects only.]'
                 : '';
             let middlePromptText = '';
-            if (requestedTask === 'extension') {
+            if (requestedTask === 'extend') {
                 const actionPart = compiledPrompt?.trim()
                     ? `Continuation action and progression: ${compiledPrompt}.`
                     : 'Continue the natural action, character performance, and camera movement forward smoothly and naturally.';
-                middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] SCENE EXTENSION & CONTINUATION DIRECTIVE: Seamlessly extend and continue the scene from the exact final frame of the preceding source video without any visual discontinuity or jump cuts. Preserve 100% strict consistency with the original clip: maintain identical character identity and facial features, identical costumes and wardrobe textures, identical environment and location geometry, lighting direction, color grading, and physical dynamics. ${actionPart}${sfxDirective} Generate a single continuous ${validDuration}-second extension shot.\n`;
+                const refLockingDirective = rawRefImages.length > 0
+                    ? ` Strictly preserve character appearance, facial likeness, clothing/wardrobe, and environmental location style matching the attached reference images (<IMAGE_REF_0>${rawRefImages.length > 1 ? ` through <IMAGE_REF_${rawRefImages.length - 1}>` : ''}).`
+                    : '';
+                middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] SCENE EXTENSION & CONTINUATION DIRECTIVE: Seamlessly extend and continue the scene from the exact final frame of the preceding source video without any visual discontinuity or jump cuts. Preserve 100% strict consistency with the original clip: maintain identical character identity and facial features, identical costumes and wardrobe textures, identical environment and location geometry, lighting direction, color grading, and physical dynamics.${refLockingDirective} ${actionPart}${sfxDirective} Generate a single continuous ${validDuration}-second extension shot.\n`;
+            } else if (requestedTask === 'edit') {
+                const editActionPart = compiledPrompt?.trim()
+                    ? `Modification and editing instructions: ${compiledPrompt}.`
+                    : 'Modify the video as instructed while maintaining overall motion flow, camera movement, composition, and scene continuity.';
+                const refLockingDirective = rawRefImages.length > 0
+                    ? ` Incorporate, align, or replace target elements using the attached visual reference images (<IMAGE_REF_0>${rawRefImages.length > 1 ? ` through <IMAGE_REF_${rawRefImages.length - 1}>` : ''}).`
+                    : '';
+                middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] VIDEO EDIT & REPLACEMENT DIRECTIVE: Precisely edit the source video <VIDEO_REF_0>. Maintain identical composition, perspective, camera motion, and unedited elements of the original clip. Apply the requested edits seamlessly across all frames without flickering or artifacts.${refLockingDirective} ${editActionPart}${sfxDirective} Generate the edited video.\n`;
             } else if (primaryImageResolved && endImageResolved) {
                 middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] The video MUST begin at timestamp 00:00 directly with the exact subject, composition, and initial pose shown in <START_FRAME>. Scene motion and action: ${compiledPrompt}${sfxDirective}. The video MUST transition smoothly and continuously throughout the ${validDuration} seconds so the action finishes seamlessly into <END_FRAME> at 00:${secFormatted}. Generate a single continuous shot with no scene cuts.\n`;
             } else if (primaryImageResolved) {
@@ -631,15 +669,20 @@ export default function createRouter(deps) {
                     const isVid = resolved.mimeType && resolved.mimeType.startsWith('video/');
                     if (isVid) {
                         try {
-                            const fileUri = await uploadVideoReference(
+                            const videoRef = await uploadVideoReference(
                                 resolved.data,
                                 sanitizeMime(resolved.mimeType, 'video/mp4')
                             );
                             inputParts.push({ type: 'text', text: `\n<VIDEO_REF_${refImageCounter}>:\n[Driving Video Reference]:\n` });
-                            inputParts.push({ type: 'video', uri: fileUri });
-                            console.log(`[OMNI-I2V] ✅ Uploaded video ref from ref_images[${i}] to File API: ${fileUri}`);
+                            inputParts.push({
+                                type: 'video',
+                                uri: videoRef?.uri || undefined,
+                                data: videoRef?.data || resolved.data,
+                                mime_type: sanitizeMime(resolved.mimeType, 'video/mp4')
+                            });
+                            console.log(`[OMNI-I2V] ✅ Uploaded video ref from ref_images[${i}] (${videoRef?.uri || 'inline-base64'})`);
                         } catch (fileApiErr) {
-                            console.warn(`[OMNI-I2V] File API upload failed for ref_images[${i}]: ${fileApiErr.message}`);
+                            console.warn(`[OMNI-I2V] Upload failed for ref_images[${i}]: ${fileApiErr.message}`);
                         }
                     } else {
                         // Skip if duplicate of primary image data
@@ -660,30 +703,55 @@ export default function createRouter(deps) {
                 }
             }
 
-            // 5. Reference Videos (Slots 1, 2, 3)
-            let refVideoCounter = 0;
-            for (let i = 0; i < rawRefVideos.length; i++) {
-                const refVid = rawRefVideos[i];
-                const vidUrl = typeof refVid === 'string' ? refVid : (refVid.url || refVid.imageUrl || refVid);
-                if (!vidUrl) continue;
+            // 5. Reference Videos (Slots 1, 2, 3: @video1, @video2, @video3)
+            let videoSlotsToProcess = [];
+            if (Array.isArray(rawSlotVideos) && rawSlotVideos.some(v => v)) {
+                for (let s = 0; s < 3; s++) {
+                    const item = rawSlotVideos.find(v => v && v.slot === s) || rawSlotVideos[s];
+                    if (item) {
+                        const url = typeof item === 'string' ? item : (item.url || item.imageUrl || item.data);
+                        if (url) {
+                            videoSlotsToProcess.push({ slot: s, url });
+                        }
+                    }
+                }
+            } else if (Array.isArray(rawRefVideos) && rawRefVideos.length > 0) {
+                for (let s = 0; s < rawRefVideos.length; s++) {
+                    const item = rawRefVideos[s];
+                    const url = typeof item === 'string' ? item : (item.url || item.imageUrl || item.data);
+                    if (url) {
+                        videoSlotsToProcess.push({ slot: s, url });
+                    }
+                }
+            }
+
+            for (const { slot, url } of videoSlotsToProcess) {
+                if (!url) continue;
+                if (isExtendOrEdit && (url === inputImage || (primaryImageResolved && url === primaryImageResolved.data))) {
+                    continue;
+                }
 
                 try {
-                    const resolved = await resolveMediaToBase64(vidUrl);
+                    const resolved = await resolveMediaToBase64(url);
                     if (resolved && resolved.data) {
-                        const fileUri = await uploadVideoReference(
+                        const videoRef = await uploadVideoReference(
                             resolved.data,
                             sanitizeMime(resolved.mimeType, 'video/mp4')
                         );
                         inputParts.push({
                             type: 'text',
-                            text: `\n<VIDEO_REF_${refVideoCounter}>:\n[Driving Motion Video Reference ${refVideoCounter + 1}]:\n`
+                            text: `\n<VIDEO_REF_${slot}>:\n[Driving Motion Video Reference ${slot + 1}]:\n`
                         });
-                        inputParts.push({ type: 'video', uri: fileUri });
-                        console.log(`[OMNI-I2V] ✅ Added <VIDEO_REF_${refVideoCounter}> from ref_videos[${i}] (File API: ${fileUri})`);
-                        refVideoCounter++;
+                        inputParts.push({
+                            type: 'video',
+                            uri: videoRef?.uri || undefined,
+                            data: videoRef?.data || resolved.data,
+                            mime_type: sanitizeMime(resolved.mimeType, 'video/mp4')
+                        });
+                        console.log(`[OMNI-I2V] ✅ Added <VIDEO_REF_${slot}> for slot ${slot + 1} (${videoRef?.uri || 'inline-base64'})`);
                     }
                 } catch (fileApiErr) {
-                    console.warn(`[OMNI-I2V] File API upload failed for ref_videos[${i}], skipping: ${fileApiErr.message}`);
+                    console.warn(`[OMNI-I2V] Upload failed for reference video slot ${slot + 1}: ${fileApiErr.message}`);
                 }
             }
 
@@ -730,10 +798,13 @@ export default function createRouter(deps) {
             }
 
             let finalTaskType = req.body.task && req.body.task !== 'auto' ? req.body.task : taskType;
+            if (finalTaskType === 'extension') {
+                finalTaskType = 'extend';
+            }
 
             // When multiple images are provided (e.g. Start Frame + End Frame, or multi-reference images),
             // task MUST be 'reference_to_video' because Google Omni's 'image_to_video' only animates 1 image!
-            if (finalImageCount > 1) {
+            if (finalImageCount > 1 && finalTaskType !== 'extend' && finalTaskType !== 'edit') {
                 console.log(`[OMNI-I2V] Multi-frame input detected (${finalImageCount} images). Enforcing task: reference_to_video.`);
                 finalTaskType = 'reference_to_video';
             }
@@ -755,9 +826,9 @@ export default function createRouter(deps) {
                 finalTaskType = finalImageCount > 0 ? 'reference_to_video' : 'text_to_video';
             }
 
-            // 4. 'extension' requires at least 1 input video
-            if (finalTaskType === 'extension' && finalVideoCount === 0) {
-                console.warn(`[OMNI-I2V] Task 'extension' requested but finalVideoCount is 0. Falling back to reference_to_video or text_to_video.`);
+            // 4. 'extend' requires at least 1 input video
+            if (finalTaskType === 'extend' && finalVideoCount === 0) {
+                console.warn(`[OMNI-I2V] Task 'extend' requested but finalVideoCount is 0. Falling back to reference_to_video or text_to_video.`);
                 finalTaskType = finalImageCount > 0 ? 'reference_to_video' : 'text_to_video';
             }
 
@@ -769,7 +840,7 @@ export default function createRouter(deps) {
                 delivery: token ? "inline" : "uri"
             };
 
-            if (finalTaskType !== 'edit' && finalTaskType !== 'extension') {
+            if (finalTaskType !== 'edit' && finalTaskType !== 'extend') {
                 responseFormat.aspect_ratio = validAspectRatio;
             }
             if (validResolution) {
@@ -809,13 +880,14 @@ export default function createRouter(deps) {
                             if (part.type === 'text') return { type: 'text', text: part.text };
                             if (part.type === 'image') return { type: 'image', data: part.data, mime_type: part.mime_type };
                             if (part.type === 'video') {
-                                const vObj = { type: 'video' };
-                                if (part.uri) vObj.uri = part.uri;
-                                if (part.data) {
-                                    vObj.data = part.data;
-                                    vObj.mime_type = part.mime_type || 'video/mp4';
+                                if (part.uri && (part.uri.startsWith('gs://') || part.uri.startsWith('https://generativelanguage.googleapis.com'))) {
+                                    return { type: 'video', uri: part.uri };
                                 }
-                                return vObj;
+                                return {
+                                    type: 'video',
+                                    data: part.data,
+                                    mime_type: part.mime_type || 'video/mp4'
+                                };
                             }
                             if (part.type === 'document') {
                                 if (part.data) return { type: 'document', data: part.data };
@@ -1146,7 +1218,9 @@ export default function createRouter(deps) {
             }
 
             let msg = error.message || 'Video generation failed';
-            if (msg.includes('Responsible AI') || msg.includes('violates Google') || msg.includes('prominent individuals') || msg.includes('prohibited_content') || msg.includes('prohibited content') || msg.includes('content_blocked') || msg.includes('policy') || msg.includes('Policy') || msg.includes('Safety') || msg.includes('safety') || msg.includes('reputational harms') || msg.includes('photorealistic individuals')) {
+            if (msg.includes('speech edits')) {
+                msg = "Google's video edit model currently cannot edit audio/speech tracks. The audio track has been automatically stripped. Please try again. Your credits have been refunded.";
+            } else if (msg.includes('Responsible AI') || msg.includes('violates Google') || msg.includes('prominent individuals') || msg.includes('prohibited_content') || msg.includes('prohibited content') || msg.includes('content_blocked') || msg.includes('policy') || msg.includes('Policy') || msg.includes('Safety') || msg.includes('safety') || msg.includes('reputational harms') || msg.includes('photorealistic individuals')) {
                 msg = "Google's Responsible AI policy blocked this generation (detected recognizable persons or prohibited content). Please use a different reference image/video or adjust your prompt and try again. Your credits have been refunded.";
             } else if (msg.includes('prepayment credits are depleted')) {
                 msg = "Google AI Studio API key prepayment credits are depleted. Please add credits at https://ai.studio/projects or wait for Vertex AI quota to reset. Credits refunded.";

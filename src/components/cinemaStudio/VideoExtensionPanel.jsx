@@ -14,6 +14,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { resolveUrl } from '../../config/apiConfig';
 
 export const VideoExtensionPanel = ({
   sourceVideo, // { url, prompt, aspect } or string URL
@@ -32,9 +33,12 @@ export const VideoExtensionPanel = ({
 }) => {
   const [showContinuityInfo, setShowContinuityInfo] = useState(false);
 
-  const videoUrl = typeof sourceVideo === 'string' ? sourceVideo : sourceVideo?.url;
-  const originalPrompt = typeof sourceVideo === 'object' ? sourceVideo?.prompt : '';
-  const videoAspect = typeof sourceVideo === 'object' ? sourceVideo?.aspect : '16:9';
+  const rawUrl = typeof sourceVideo === 'string' 
+    ? sourceVideo 
+    : (sourceVideo?.url || sourceVideo?.videoUrl || sourceVideo?.src || sourceVideo?.data);
+  const videoUrl = rawUrl ? resolveUrl(rawUrl) : '';
+  const originalPrompt = typeof sourceVideo === 'object' ? (sourceVideo?.prompt || sourceVideo?.name || '') : '';
+  const videoAspect = typeof sourceVideo === 'object' ? (sourceVideo?.aspect || '16:9') : '16:9';
 
   const quickContinuationSuggestions = [
     "Continue camera moving forward smoothly",
@@ -88,14 +92,11 @@ export const VideoExtensionPanel = ({
           <span className="text-[8px] text-zinc-500">End frame locked</span>
         </div>
 
-        <div className={cn(
-          "w-full rounded-xl overflow-hidden bg-black/80 border border-[#c8f135]/40 relative group shadow-lg flex items-center justify-center",
-          videoAspect === '9:16' ? 'aspect-[9/16] max-h-[220px]' : videoAspect === '1:1' ? 'aspect-square max-h-[180px]' : 'aspect-video'
-        )}>
+        <div className="w-full rounded-xl overflow-hidden bg-black/90 border border-[#c8f135]/40 relative group shadow-md flex items-center justify-center h-32 sm:h-36">
           {videoUrl ? (
             <video
               src={videoUrl}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain bg-black"
               controls
               autoPlay
               loop
@@ -103,15 +104,19 @@ export const VideoExtensionPanel = ({
               playsInline
             />
           ) : (
-            <div className="p-4 text-center text-zinc-500 text-xs">No video loaded</div>
+            <div className="p-4 text-center text-zinc-500 text-xs flex flex-col items-center gap-1">
+              <Film size={18} className="text-zinc-600" />
+              <span>Video clip ready for extension</span>
+            </div>
           )}
 
-          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-md border border-[#c8f135]/40 text-[8.5px] font-mono font-bold text-[#c8f135] shadow">
+          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md border border-[#c8f135]/40 text-[8px] font-mono font-bold text-[#c8f135] shadow flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#c8f135] animate-pulse" />
             @source_clip
           </div>
 
-          <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-md border border-white/10 text-[8px] font-mono text-zinc-300 flex items-center gap-1">
-            <Clock size={9} className="text-[#c8f135]" />
+          <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md border border-white/10 text-[7.5px] font-mono text-zinc-300 flex items-center gap-1">
+            <Clock size={8} className="text-[#c8f135]" />
             <span>Continuity Active</span>
           </div>
         </div>

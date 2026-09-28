@@ -7,7 +7,7 @@ import {
   Clock, ImagePlus, Wand2, AlertCircle, Music, Plus, Edit3
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { getApiUrl } from '../../config/apiConfig';
+import { getApiUrl, resolveUrl } from '../../config/apiConfig';
 import { useAppStore } from '../../store';
 import { resolveBlobToBase64 } from './SeedanceEngine';
 import VideoExtensionPanel from './VideoExtensionPanel';
@@ -214,13 +214,14 @@ export const SidePanel = React.memo(({
   backgroundSource: propBackgroundSource = 'input_video',
   setBackgroundSource: propSetBackgroundSource,
   // Video Extension Props
-  extensionSourceVideo,
-  setExtensionSourceVideo,
-  extensionDuration = 4,
-  setExtensionDuration,
-  extensionPrompt = '',
-  setExtensionPrompt,
-  handleExtensionGenerate
+  extensionSourceVideo: propExtensionSourceVideo,
+  setExtensionSourceVideo: propSetExtensionSourceVideo,
+  extensionDuration: propExtensionDuration = 4,
+  setExtensionDuration: propSetExtensionDuration,
+  extensionPrompt: propExtensionPrompt = '',
+  setExtensionPrompt: propSetExtensionPrompt,
+  handleExtensionGenerate: propHandleExtensionGenerate,
+  handleOmniEditGenerate: propHandleOmniEditGenerate
 }) => {
   // Video File Input Ref & State for Omni Flash Reference Video
   const videoInputRef = useRef(null);
@@ -291,6 +292,39 @@ export const SidePanel = React.memo(({
   const omniRefVideoPreview = propOmniRefVideoPreview !== undefined ? propOmniRefVideoPreview : localVideoPreview;
   const setOmniRefVideoPreview = propSetOmniRefVideoPreview || setLocalVideoPreview;
 
+  // Video Extension State (Supports prop injection or global store sync)
+  const storeExtensionSourceVideo = useAppStore(state => state.extensionSourceVideo);
+  const storeSetExtensionSourceVideo = useAppStore(state => state.setExtensionSourceVideo);
+  const storeExtensionDuration = useAppStore(state => state.extensionDuration);
+  const storeSetExtensionDuration = useAppStore(state => state.setExtensionDuration);
+  const storeExtensionPrompt = useAppStore(state => state.extensionPrompt);
+  const storeSetExtensionPrompt = useAppStore(state => state.setExtensionPrompt);
+
+  const extensionSourceVideo = (propExtensionSourceVideo !== undefined && propExtensionSourceVideo !== null)
+    ? propExtensionSourceVideo
+    : storeExtensionSourceVideo;
+  const setExtensionSourceVideo = useCallback((val) => {
+    if (propSetExtensionSourceVideo) propSetExtensionSourceVideo(val);
+    if (storeSetExtensionSourceVideo) storeSetExtensionSourceVideo(val);
+  }, [propSetExtensionSourceVideo, storeSetExtensionSourceVideo]);
+
+  const extensionDuration = propExtensionDuration || storeExtensionDuration || 4;
+  const setExtensionDuration = propSetExtensionDuration || storeSetExtensionDuration;
+  const extensionPrompt = propExtensionPrompt !== undefined ? propExtensionPrompt : (storeExtensionPrompt || '');
+  const setExtensionPrompt = propSetExtensionPrompt || storeSetExtensionPrompt;
+  const handleExtensionGenerate = propHandleExtensionGenerate;
+  const handleOmniEditGenerate = propHandleOmniEditGenerate;
+
+  // Remix Engine State ('jitsu' | 'omni')
+  const storeRemixEngine = useAppStore(state => state.remixEngine);
+  const storeSetRemixEngine = useAppStore(state => state.setRemixEngine);
+  const [localRemixEngine, setLocalRemixEngine] = useState('jitsu');
+  const remixEngine = storeRemixEngine || localRemixEngine;
+  const setRemixEngine = useCallback((val) => {
+    setLocalRemixEngine(val);
+    if (storeSetRemixEngine) storeSetRemixEngine(val);
+  }, [storeSetRemixEngine]);
+
   // ── SEEDANCE MULTIMODAL STATES (Supports up to 30 Images, 3 Videos, 3 Audios, First/Last Frame) ──
   const [seedanceSubModel, setSeedanceSubModel] = useState('seedance-fast');
   const [seedanceImages, setSeedanceImages] = useState(Array(30).fill(''));
@@ -299,6 +333,8 @@ export const SidePanel = React.memo(({
   const [seedanceFirstFrame, setSeedanceFirstFrame] = useState('');
   const [seedanceLastFrame, setSeedanceLastFrame] = useState('');
   const [seedanceAddMenuOpen, setSeedanceAddMenuOpen] = useState(false);
+  // Sub-tab state for the Transition main tab
+  const [transitionSubTab, setTransitionSubTab] = useState('sequence'); // 'sequence' | 'omni-keyframe'
 
   const handlePickSeedanceImage = (item, slotIdx) => {
     const next = [...seedanceImages];
@@ -1437,6 +1473,14 @@ export const SidePanel = React.memo(({
       return rate * dur;
     }
     if (panelTab === 'transition') {
+      const isOmniKeyframe = transitionSubTab === 'omni-keyframe';
+      if (isOmniKeyframe) {
+        let costPerSec = 5;
+        const resLower = (resolution || '720p').toLowerCase();
+        if (resLower === '1080p') costPerSec = generateAudio ? 8 : 6;
+        else costPerSec = generateAudio ? 6 : 5;
+        return Math.ceil(costPerSec * 1.1 * duration);
+      }
       const resLower = (resolution || '720p').toLowerCase();
       const isMini = activeEngine === 'seedance-mini';
       const costPerSec = isMini
@@ -1444,7 +1488,12 @@ export const SidePanel = React.memo(({
         : (resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30));
       return Math.ceil(costPerSec * (Number(duration) || 5));
     }
+
     if (panelTab === 'remix' || activeEngine === 'remix-motion-transfer') {
+      if (remixEngine === 'omni') {
+        const dur = Math.max(4, Math.min(10, Math.round(Number(motionRefVideoDuration) || 5)));
+        return dur * 5;
+      }
       const resLower = (resolution || '720p').toLowerCase();
       if (resLower === '1080p') return 12;
       if (resLower === '480p') return 5;
@@ -1475,6 +1524,9 @@ export const SidePanel = React.memo(({
       return Math.ceil(costPerSec * (Number(duration) || 5));
     }
     if (panelTab === 'omni' || panelTab === 'omni-multi' || isOmniEngine) {
+      if (panelTab === 'omni-multi' && extensionSourceVideo) {
+        return (Number(extensionDuration) || 4) * 5;
+      }
       let costPerSec = 5;
       const resLower = (resolution || '720p').toLowerCase();
       if (resLower === '4k') costPerSec = generateAudio ? 19 : 15;
@@ -1484,7 +1536,7 @@ export const SidePanel = React.memo(({
       return Math.ceil(costPerSec * 1.1 * duration);
     }
     return Math.round(duration * 2.5 * (generateAudio ? 1.5 : 1));
-  }, [panelTab, activeEngine, seedanceSubModel, motionMode, motionRefVideoDuration, isOmniEngine, isSeedanceEngine, resolution, generateAudio, duration]);
+  }, [panelTab, transitionSubTab, remixEngine, activeEngine, seedanceSubModel, motionMode, motionRefVideoDuration, isOmniEngine, isSeedanceEngine, resolution, generateAudio, duration, extensionSourceVideo, extensionDuration]);
 
   const triggerGenerateVeo = async () => {
     if (isCooldown || isBusy) return;
@@ -1519,6 +1571,23 @@ export const SidePanel = React.memo(({
   const triggerGenerateOmni = async () => {
     if (isCooldown || isBusy) return;
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+    const activeExtSource = extensionSourceVideo || useAppStore.getState().extensionSourceVideo;
+    if (activeExtSource) {
+      if (handleExtensionGenerate) {
+        startCooldown(8);
+        const finalPrompt = localPrompt || extensionPrompt || '';
+        setPromptText(finalPrompt);
+        if (setExtensionPrompt) setExtensionPrompt(finalPrompt);
+        return handleExtensionGenerate({
+          sourceVideo: activeExtSource,
+          prompt: finalPrompt,
+          images: omniMultiImages,
+          duration: extensionDuration || useAppStore.getState().extensionDuration
+        });
+      }
+    }
+
     startCooldown(8);
     const engineToUse = 'gemini-omni-1.1-flash-preview';
     setPromptText(localPrompt);
@@ -1538,23 +1607,29 @@ export const SidePanel = React.memo(({
       (omniMultiImages || []).filter(Boolean).map(img => resolveBlobToBase64(img))
     )).filter(Boolean);
 
-    const resolvedMultiVids = (await Promise.all(
-      (omniMultiVideos || []).filter(Boolean).map(async (vid) => {
+    const resolvedMultiVids = await Promise.all(
+      [0, 1, 2].map(async (slotIdx) => {
+        const vid = omniMultiVideos?.[slotIdx];
+        if (!vid) return null;
         const url = typeof vid === 'string' ? vid : (vid.url || vid.imageUrl || vid.data);
+        if (!url) return null;
         const resolvedUrl = await resolveBlobToBase64(url);
-        return resolvedUrl ? { url: resolvedUrl, duration: vid.duration || 10 } : null;
+        return resolvedUrl ? { slot: slotIdx, tag: `@video${slotIdx + 1}`, url: resolvedUrl, duration: vid.duration || 10 } : null;
       })
-    )).filter(Boolean);
+    );
 
-    const resolvedRefVid = omniRefVideoPreview ? await resolveBlobToBase64(omniRefVideoPreview) : null;
+    const activeRefVideoUrls = resolvedMultiVids.filter(Boolean).map(v => v.url);
+    const resolvedRefVid = omniRefVideoPreview ? await resolveBlobToBase64(omniRefVideoPreview) : (activeRefVideoUrls[0] || null);
 
     handleGenerate(localPrompt, engineToUse, {
       firstFrame: resolvedStart,
       lastFrame: resolvedEnd,
       reference_image_urls: [...resolvedOmniRefs, ...resolvedMultiImgs],
+      reference_video_urls: activeRefVideoUrls,
       omniRefImages: resolvedOmniRefs,
       omniMultiImages: resolvedMultiImgs,
       omniMultiVideos: resolvedMultiVids,
+      multiVideoSlots: resolvedMultiVids,
       omniRefVideoPreview: resolvedRefVid,
       duration,
       resolution,
@@ -1732,9 +1807,65 @@ export const SidePanel = React.memo(({
 
     const rawVid = motionRefVideo || motionRefVideoPreview || videoPreview || (seedanceVideos && seedanceVideos[0]);
     if (!rawVid) {
-      const msg = "Please upload or select a Driving Source Motion Video for Remix.";
+      const msg = remixEngine === 'omni'
+        ? "Please upload or select a Source Video to Edit with Omni 1.1."
+        : "Please upload or select a Driving Source Motion Video for Remix.";
       if (showToast) showToast(msg, "error");
       else alert(msg);
+      return;
+    }
+
+    if (remixEngine === 'omni') {
+      const finalPrompt = (localPrompt || promptText || '').trim();
+      if (!finalPrompt) {
+        const msg = "Please enter instructions for what to edit or replace in the video.";
+        if (showToast) showToast(msg, "error");
+        else alert(msg);
+        return;
+      }
+
+      const rawImgs = [
+        motionSubjectImage || motionSubjectPreview,
+        ...(seedanceImages || []).slice(0, 3)
+      ].filter(Boolean);
+
+      startCooldown(8);
+      setPromptText(finalPrompt);
+
+      if (handleOmniEditGenerate) {
+        return handleOmniEditGenerate({
+          sourceVideo: rawVid,
+          prompt: finalPrompt,
+          images: rawImgs,
+          duration: motionRefVideoDuration ? Math.max(4, Math.min(10, Math.round(motionRefVideoDuration))) : 5,
+          resolution: resolution === '4k' ? '1080p' : (resolution || '720p'),
+          aspectRatio,
+          generateAudio
+        });
+      }
+
+      // Direct fallback
+      const [resolvedVid, resolvedImgs] = await Promise.all([
+        resolveBlobToBase64(rawVid),
+        Promise.all(rawImgs.map(img => resolveBlobToBase64(img)))
+      ]);
+
+      const engineToUse = 'gemini-omni-1.1-flash-preview';
+      setActiveTab('video');
+      setActiveEngine(engineToUse);
+      handleGenerate(finalPrompt, engineToUse, {
+        video: resolvedVid || rawVid,
+        sourceVideo: resolvedVid || rawVid,
+        task: 'edit',
+        prompt: finalPrompt,
+        motionPrompt: finalPrompt,
+        ref_images: (resolvedImgs || []).filter(Boolean),
+        duration: duration || 5,
+        resolution: (resolution === '4k') ? '1080p' : (resolution || '720p'),
+        aspectRatio,
+        generateAudio,
+        creditReason: 'omni_video_edit'
+      });
       return;
     }
 
@@ -2848,29 +2979,16 @@ export const SidePanel = React.memo(({
           <button
             type="button"
             onClick={() => {
-              setPanelTab('omni');
-              setActiveTab('video');
-              setActiveEngine('gemini-omni-1.1-flash-preview');
-            }}
-            className={cn(
-              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
-              panelTab === 'omni'
-                ? "bg-gradient-to-r from-[#c8f135]/20 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
-                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
-            )}
-          >
-            Omni
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
               setPanelTab('transition');
               setActiveTab('video');
-              setActiveEngine('seedance-2.5');
-              setDuration(5);
-              setAspectRatio('adaptive');
-              if (resolution === '4k') setResolution('1080p');
+              if (transitionSubTab === 'omni-keyframe') {
+                setActiveEngine('gemini-omni-1.1-flash-preview');
+              } else {
+                setActiveEngine('seedance-2.5');
+                setDuration(5);
+                setAspectRatio('adaptive');
+                if (resolution === '4k') setResolution('1080p');
+              }
             }}
             className={cn(
               "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
@@ -3088,7 +3206,49 @@ export const SidePanel = React.memo(({
                 </motion.div>
               )}
 
+              {/* TRANSITION SUB-TAB SWITCHER */}
+              {panelTab === 'transition' && (
+                <div className="flex items-center gap-1 p-1 bg-black/50 rounded-xl border border-white/[0.08] backdrop-blur-xl shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTransitionSubTab('sequence');
+                      setActiveEngine('seedance-2.5');
+                      setDuration(5);
+                      setAspectRatio('adaptive');
+                      if (resolution === '4k') setResolution('1080p');
+                    }}
+                    className={cn(
+                      "flex-1 py-1.5 px-2.5 rounded-lg text-[10.5px] font-black uppercase tracking-wide transition-all text-center select-none cursor-pointer whitespace-nowrap flex items-center justify-center gap-1.5",
+                      transitionSubTab === 'sequence'
+                        ? "bg-gradient-to-r from-[#c8f135]/20 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_12px_rgba(200,241,53,0.15)]"
+                        : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+                    )}
+                  >
+                    <Sparkles size={11} className={transitionSubTab === 'sequence' ? 'text-[#c8f135]' : 'text-zinc-500'} />
+                    Sequence 2.5
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTransitionSubTab('omni-keyframe');
+                      setActiveEngine('gemini-omni-1.1-flash-preview');
+                    }}
+                    className={cn(
+                      "flex-1 py-1.5 px-2.5 rounded-lg text-[10.5px] font-black uppercase tracking-wide transition-all text-center select-none cursor-pointer whitespace-nowrap flex items-center justify-center gap-1.5",
+                      transitionSubTab === 'omni-keyframe'
+                        ? "bg-gradient-to-r from-violet-500/20 to-transparent text-violet-300 border border-violet-400/40 shadow-[0_0_12px_rgba(139,92,246,0.15)]"
+                        : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+                    )}
+                  >
+                    <Zap size={11} className={transitionSubTab === 'omni-keyframe' ? 'text-violet-400' : 'text-zinc-500'} />
+                    Omni Keyframe
+                  </button>
+                </div>
+              )}
+
               {/* SECTION A: MEDIA CONDITIONING & SCENE DIRECTING */}
+
               <div className="space-y-3">
                 {(panelTab === 'seedance' || panelTab === 'seedance-2.5') ? (
                   /* ── SLEEK SEEDANCE 2.0 / 2.5 INTERFACE (Dynamic Multimodal Dock + Direct Prompt Box) ── */
@@ -3406,41 +3566,8 @@ export const SidePanel = React.memo(({
                     </div>
                   </div>
                 ) : panelTab === 'omni-multi' ? (
-                  /* DEDICATED MULTI-REFERENCE INTERFACE (Extension Mode OR 4 Image Slots + 3 Video Slots) */
-                  extensionSourceVideo ? (
-                    <VideoExtensionPanel
-                      sourceVideo={extensionSourceVideo}
-                      onCancel={() => setExtensionSourceVideo && setExtensionSourceVideo(null)}
-                      extensionDuration={extensionDuration}
-                      setExtensionDuration={setExtensionDuration}
-                      extensionPrompt={extensionPrompt}
-                      setExtensionPrompt={setExtensionPrompt}
-                      generateAudio={generateAudio}
-                      setGenerateAudio={setGenerateAudio}
-                      resolution={resolution}
-                      setResolution={setResolution}
-                      onGenerate={handleExtensionGenerate}
-                      isGenerating={isBusy}
-                      requiredCredits={extensionDuration === 8 ? 40 : 20}
-                    />
-                  ) : (
+                  /* DEDICATED MULTI-REFERENCE INTERFACE (Always retains Image Slots, and swaps Video Slots for Extension when active) */
                   <div className="space-y-3">
-                    {/* Top Quick Extension Pill */}
-                    {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-[#c8f135]/5 border border-[#c8f135]/20 text-[9px]">
-                        <div className="flex items-center gap-1.5 text-zinc-300">
-                          <Zap size={11} className="text-[#c8f135] fill-current" />
-                          <span className="font-bold">Extend an existing video?</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setGalleryPickerSlot({ type: 'extend_video' })}
-                          className="px-2 py-0.5 rounded-lg bg-[#c8f135] text-black font-black uppercase tracking-wider text-[8px] hover:bg-[#d8ff43] transition-all cursor-pointer shadow-sm active:scale-95"
-                        >
-                          + Select Video (+4s/+8s)
-                        </button>
-                      </div>
-                    )}
                     {/* 4 Image Reference Slots - Sleek Single-Row Cards */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
@@ -3529,114 +3656,287 @@ export const SidePanel = React.memo(({
                       </div>
                     </div>
 
-                    {/* 3 Driving Video Reference Slots - Sleek Single-Row Cards */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[9.5px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
-                          <Video className="w-3 h-3 text-[#c8f135]" />
-                          <span>Video References (3 Slots)</span>
-                        </label>
-                        <div className="flex items-center gap-1.5">
-                          {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
+                    {/* Driving Video Section: Shows Video Extension UI when active, else standard 3 Video Reference Slots */}
+                    {extensionSourceVideo ? (
+                      <div className="space-y-2 p-2.5 rounded-2xl bg-black/40 border border-[#c8f135]/25 backdrop-blur-xl">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[9.5px] font-black uppercase tracking-wider text-[#c8f135] flex items-center gap-1.5">
+                            <Video className="w-3 h-3 text-[#c8f135]" />
+                            <span>Source Video to Extend</span>
+                          </label>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[8px] font-mono font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">
+                              Final Frame Locked
+                            </span>
                             <button
                               type="button"
                               onClick={() => {
-                                const emptySlot = omniMultiVideos.findIndex(v => !v);
-                                setGalleryPickerSlot({ type: 'video', slotIdx: emptySlot !== -1 ? emptySlot : 0 });
+                                if (setExtensionSourceVideo) setExtensionSourceVideo(null);
                               }}
-                              className="text-[8px] font-bold text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/25 px-1.5 py-0.2 rounded transition-all cursor-pointer"
+                              className="text-[8px] font-bold text-zinc-400 hover:text-white bg-white/5 hover:bg-rose-500/20 hover:border-rose-500/30 border border-white/10 px-2 py-0.5 rounded transition-all cursor-pointer flex items-center gap-1"
+                              title="Exit extension mode and restore 3 video slots"
                             >
-                              + Gallery
+                              <X size={10} />
+                              <span>Cancel</span>
                             </button>
-                          )}
-                          <span className="text-[8.5px] font-mono text-zinc-500">Max 10s MP4</span>
+                          </div>
+                        </div>
+
+                        {/* Compact Video Preview */}
+                        <div className="relative rounded-xl overflow-hidden border border-[#c8f135]/40 aspect-video max-h-32 bg-black mx-auto w-full group flex items-center justify-center">
+                          {(() => {
+                            const rawVid = typeof extensionSourceVideo === 'string'
+                              ? extensionSourceVideo
+                              : (extensionSourceVideo?.url || extensionSourceVideo?.videoUrl || extensionSourceVideo?.data);
+                            const resolvedSrc = resolveUrl(rawVid);
+                            return (
+                              <video
+                                src={resolvedSrc}
+                                className="w-full h-full object-contain"
+                                muted
+                                autoPlay
+                                loop
+                                playsInline
+                              />
+                            );
+                          })()}
+                          <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/85 border border-[#c8f135]/50 text-[7.5px] font-mono font-black text-[#c8f135] shadow-sm">
+                            @source_clip
+                          </div>
+                          <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/80 text-[7.5px] font-mono text-zinc-300">
+                            Scene Continuation
+                          </div>
+                        </div>
+
+                        {/* Extension Duration Options: +4s, +6s, +8s, +10s (5⚡/sec) */}
+                        <div className="space-y-1 pt-1 border-t border-white/5">
+                          <div className="flex items-center justify-between text-[9px] font-semibold text-zinc-300">
+                            <span>Extension Length</span>
+                            <span className="font-mono text-[#c8f135] font-black">
+                              {(Number(extensionDuration) || 4) * 5}⚡ Shorts
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-4 gap-1.5">
+                            {[4, 6, 8, 10].map((dur) => {
+                              const isSelected = (Number(extensionDuration) || 4) === dur;
+                              return (
+                                <button
+                                  key={dur}
+                                  type="button"
+                                  onClick={() => {
+                                    if (setExtensionDuration) setExtensionDuration(dur);
+                                  }}
+                                  className={cn(
+                                    "py-1.5 px-1 rounded-lg text-center font-mono text-[9px] font-black border transition-all cursor-pointer",
+                                    isSelected
+                                      ? "bg-[#c8f135] text-black border-[#c8f135] shadow-[0_0_12px_rgba(200,241,53,0.35)]"
+                                      : "bg-white/[0.03] text-zinc-400 hover:text-white border-white/10 hover:border-white/20"
+                                  )}
+                                >
+                                  <div>+{dur}s</div>
+                                  <div className={cn("text-[7.5px]", isSelected ? "text-black/80 font-bold" : "text-zinc-500")}>
+                                    {dur * 5}⚡
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Continuation Suggestion Chips */}
+                        <div className="space-y-1 pt-1">
+                          <span className="text-[8.5px] font-mono text-zinc-400 uppercase tracking-wider">
+                            Continuation Ideas:
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {[
+                              "Continue camera moving forward seamlessly",
+                              "Smooth cinematic pan around character",
+                              "Slow-motion emotional reaction shot",
+                              "Subject turns around and begins running"
+                            ].map((idea, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setLocalPrompt(prev => prev ? `${prev}, ${idea}` : idea);
+                                  if (setExtensionPrompt) {
+                                    setExtensionPrompt(prev => prev ? `${prev}, ${idea}` : idea);
+                                  }
+                                }}
+                                className="text-[8px] text-zinc-300 hover:text-[#c8f135] bg-white/[0.03] hover:bg-[#c8f135]/10 border border-white/10 hover:border-[#c8f135]/40 px-1.5 py-0.5 rounded transition-all cursor-pointer text-left truncate max-w-full"
+                              >
+                                + {idea}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {[0, 1, 2].map((slotIdx) => {
-                          const vidUrl = omniMultiVideos[slotIdx];
-                          const tag = `@video${slotIdx + 1}`;
-                          return (
-                            <div key={slotIdx} className="space-y-0.5">
-                              {vidUrl ? (
-                                <div className="relative group rounded-xl overflow-hidden border border-[#c8f135]/50 aspect-[4/3] bg-black/60 shadow-inner flex items-center justify-center">
-                                  <video src={vidUrl} className="w-full h-full object-cover" muted loop playsInline />
-                                  <button
-                                    type="button"
-                                    onClick={() => handleClearMultiVideo(slotIdx)}
-                                    className="absolute top-0.5 right-0.5 p-0.5 rounded-md bg-black/80 text-white hover:bg-rose-600 transition-all cursor-pointer opacity-0 group-hover:opacity-100 z-10 shadow-sm"
-                                    title={`Remove ${tag}`}
-                                  >
-                                    <Trash2 size={9} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => insertTagAtCursor(tag)}
-                                    className="absolute bottom-0.5 inset-x-0.5 py-0.2 px-0.5 rounded bg-black/85 text-[#c8f135] hover:bg-[#c8f135] hover:text-black transition-all border border-[#c8f135]/30 text-[7.5px] font-mono font-black text-center truncate cursor-pointer shadow-sm"
-                                    title={`Click to insert ${tag} into prompt`}
-                                  >
-                                    {tag}
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="w-full aspect-[4/3] rounded-xl border border-dashed border-white/15 hover:border-[#c8f135]/60 bg-white/[0.02] hover:bg-[#c8f135]/[0.04] transition-all flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-white p-0.5 relative group">
-                                  <button
-                                    type="button"
-                                    onClick={() => multiVideoRefs[slotIdx]?.current?.click()}
-                                    className="flex flex-col items-center justify-center gap-0.5 w-full h-full cursor-pointer"
-                                  >
-                                    <div className="w-4 h-4 rounded-md bg-white/[0.04] group-hover:bg-[#c8f135]/15 border border-white/10 group-hover:border-[#c8f135]/30 flex items-center justify-center transition-all">
-                                      <Video size={9} className="text-zinc-400 group-hover:text-[#c8f135]" />
-                                    </div>
-                                    <span className="text-[7.5px] font-mono font-bold text-zinc-400 group-hover:text-[#c8f135] truncate">
-                                      {tag}
-                                    </span>
-                                  </button>
-                                  {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
+                    ) : (
+                      /* 3 Driving Video Reference Slots - Sleek Single-Row Cards */
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[9.5px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+                            <Video className="w-3 h-3 text-[#c8f135]" />
+                            <span>Video References (3 Slots)</span>
+                          </label>
+                          <div className="flex items-center gap-1.5">
+                            {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setGalleryPickerSlot({ type: 'extend_video' });
+                                }}
+                                className="text-[8px] font-bold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 px-1.5 py-0.2 rounded transition-all cursor-pointer"
+                                title="Pick a video from gallery to extend scene by +4s..+10s"
+                              >
+                                + Extend
+                              </button>
+                            )}
+                            {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const emptySlot = omniMultiVideos.findIndex(v => !v);
+                                  setGalleryPickerSlot({ type: 'video', slotIdx: emptySlot !== -1 ? emptySlot : 0 });
+                                }}
+                                className="text-[8px] font-bold text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/25 px-1.5 py-0.2 rounded transition-all cursor-pointer"
+                              >
+                                + Gallery
+                              </button>
+                            )}
+                            <span className="text-[8.5px] font-mono text-zinc-500">Max 10s MP4</span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {[0, 1, 2].map((slotIdx) => {
+                            const vidUrl = omniMultiVideos[slotIdx];
+                            const tag = `@video${slotIdx + 1}`;
+                            return (
+                              <div key={slotIdx} className="space-y-0.5">
+                                {vidUrl ? (
+                                  <div className="relative group rounded-xl overflow-hidden border border-[#c8f135]/50 aspect-[4/3] bg-black/60 shadow-inner flex items-center justify-center">
+                                    <video src={vidUrl} className="w-full h-full object-cover" muted loop playsInline />
                                     <button
                                       type="button"
-                                      onClick={() => setGalleryPickerSlot({ type: 'video', slotIdx })}
-                                      className="absolute top-0.5 right-0.5 px-0.5 py-0.2 rounded bg-black/80 hover:bg-cyan-400 text-zinc-400 hover:text-black border border-white/10 text-[6.5px] font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-sm"
-                                      title="Pick from Studio Gallery"
+                                      onClick={() => handleClearMultiVideo(slotIdx)}
+                                      className="absolute top-0.5 right-0.5 p-0.5 rounded-md bg-black/80 text-white hover:bg-rose-600 transition-all cursor-pointer opacity-0 group-hover:opacity-100 z-10 shadow-sm"
+                                      title={`Remove ${tag}`}
                                     >
-                                      Gal
+                                      <Trash2 size={9} />
                                     </button>
-                                  )}
-                                </div>
-                              )}
-                              <input
-                                type="file"
-                                ref={multiVideoRefs[slotIdx]}
-                                accept="video/mp4,video/webm,video/quicktime"
-                                className="hidden"
-                                onChange={(e) => handleMultiVideoSelect(e, slotIdx)}
-                              />
-                            </div>
-                          );
-                        })}
+                                    <button
+                                      type="button"
+                                      onClick={() => insertTagAtCursor(tag)}
+                                      className="absolute bottom-0.5 inset-x-0.5 py-0.2 px-0.5 rounded bg-black/85 text-[#c8f135] hover:bg-[#c8f135] hover:text-black transition-all border border-[#c8f135]/30 text-[7.5px] font-mono font-black text-center truncate cursor-pointer shadow-sm"
+                                      title={`Click to insert ${tag} into prompt`}
+                                    >
+                                      {tag}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="w-full aspect-[4/3] rounded-xl border border-dashed border-white/15 hover:border-[#c8f135]/60 bg-white/[0.02] hover:bg-[#c8f135]/[0.04] transition-all flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-white p-0.5 relative group">
+                                    <button
+                                      type="button"
+                                      onClick={() => multiVideoRefs[slotIdx]?.current?.click()}
+                                      className="flex flex-col items-center justify-center gap-0.5 w-full h-full cursor-pointer"
+                                    >
+                                      <div className="w-4 h-4 rounded-md bg-white/[0.04] group-hover:bg-[#c8f135]/15 border border-white/10 group-hover:border-[#c8f135]/30 flex items-center justify-center transition-all">
+                                        <Video size={9} className="text-zinc-400 group-hover:text-[#c8f135]" />
+                                      </div>
+                                      <span className="text-[7.5px] font-mono font-bold text-zinc-400 group-hover:text-[#c8f135] truncate">
+                                        {tag}
+                                      </span>
+                                    </button>
+                                    {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setGalleryPickerSlot({ type: 'video', slotIdx })}
+                                        className="absolute top-0.5 right-0.5 px-0.5 py-0.2 rounded bg-black/80 hover:bg-cyan-400 text-zinc-400 hover:text-black border border-white/10 text-[6.5px] font-bold opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-sm"
+                                        title="Pick from Studio Gallery"
+                                      >
+                                        Gal
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                                <input
+                                  type="file"
+                                  ref={multiVideoRefs[slotIdx]}
+                                  accept="video/mp4,video/webm,video/quicktime"
+                                  className="hidden"
+                                  onChange={(e) => handleMultiVideoSelect(e, slotIdx)}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Multi-Ref Prompt Studio */}
                     {renderPromptStudio("Direct with references! E.g.: '@image1 character walks past @image2 while matching camera motion of @video1, 4k 60fps'")}
                   </div>
-                  )
                 ) : panelTab === 'remix' ? (
-                  /* ── REMIX (GENJUTSU MOTION TRANSFER) FLOW ── */
+                  /* ── REMIX & VIDEO EDIT FLOW (JITSU + OMNI 1.1) ── */
                   <div className="space-y-3">
-                    {/* Source Driving Video Card */}
+                    {/* 0. Top Dual Engine Switcher */}
+                    <div className="p-1 bg-black/60 rounded-2xl border border-white/[0.08] flex items-center gap-1 shadow-inner">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRemixEngine('jitsu');
+                          setActiveEngine('remix-motion-transfer');
+                        }}
+                        className={cn(
+                          "flex-1 py-1.5 px-2.5 rounded-xl text-[10.5px] sm:text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer",
+                          remixEngine === 'jitsu'
+                            ? "bg-gradient-to-r from-amber-400/25 via-yellow-400/20 to-transparent text-amber-300 border border-amber-400/50 shadow-[0_0_12px_rgba(251,191,36,0.25)] font-black"
+                            : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+                        )}
+                      >
+                        <Zap size={11} className={remixEngine === 'jitsu' ? "text-amber-400 fill-current" : "text-zinc-500"} />
+                        <span>Jitsu (Motion)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRemixEngine('omni');
+                          setActiveEngine('gemini-omni-1.1-flash-preview');
+                        }}
+                        className={cn(
+                          "flex-1 py-1.5 px-2.5 rounded-xl text-[10.5px] sm:text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer",
+                          remixEngine === 'omni'
+                            ? "bg-gradient-to-r from-[#c8f135]/25 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/50 shadow-[0_0_12px_rgba(200,241,53,0.25)] font-black"
+                            : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+                        )}
+                      >
+                        <Sparkles size={11} className={remixEngine === 'omni' ? "text-[#c8f135] fill-current" : "text-zinc-500"} />
+                        <span>Omni 1.1 (Video Edit)</span>
+                      </button>
+                    </div>
+
+                    {/* Source Video Card */}
                     <div className="space-y-1.5 p-2.5 rounded-2xl bg-black/40 border border-white/[0.08] backdrop-blur-xl">
                       <div className="flex items-center justify-between pb-1 border-b border-white/5">
-                        <span className="text-[9.5px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
-                          <Video className="w-3 h-3 text-amber-400" />
-                          <span>1. Driving Source Video (@video1)</span>
+                        <span className={cn(
+                          "text-[9.5px] font-black uppercase tracking-wider flex items-center gap-1.5",
+                          remixEngine === 'omni' ? "text-[#c8f135]" : "text-amber-300"
+                        )}>
+                          <Video className={cn("w-3 h-3", remixEngine === 'omni' ? "text-[#c8f135]" : "text-amber-400")} />
+                          <span>1. {remixEngine === 'omni' ? 'Source Video to Edit (@video1)' : 'Driving Source Video (@video1)'}</span>
                         </span>
                         <div className="flex items-center gap-1">
                           {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
                             <button
                               type="button"
                               onClick={() => setGalleryPickerSlot({ type: 'motion_video' })}
-                              className="text-[7.5px] font-bold text-amber-400 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/25 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                              className={cn(
+                                "text-[7.5px] font-bold px-1.5 py-0.5 rounded transition-all cursor-pointer border",
+                                remixEngine === 'omni'
+                                  ? "text-[#c8f135] bg-[#c8f135]/10 hover:bg-[#c8f135]/20 border-[#c8f135]/30"
+                                  : "text-amber-400 bg-amber-400/10 hover:bg-amber-400/20 border-amber-400/25"
+                              )}
                               title="Pick Driving Video from Studio Gallery"
                             >
                               + Gal
@@ -3647,7 +3947,7 @@ export const SidePanel = React.memo(({
                               type="button"
                               onClick={handleClearMotionVideo}
                               className="p-0.5 hover:bg-rose-500/20 text-rose-400 rounded transition-colors cursor-pointer"
-                              title="Clear Driving Video"
+                              title="Clear Video"
                             >
                               <Trash2 size={10} />
                             </button>
@@ -3656,9 +3956,15 @@ export const SidePanel = React.memo(({
                       </div>
 
                       {(motionRefVideoPreview || motionRefVideo) ? (
-                        <div className="aspect-video w-full rounded-xl overflow-hidden bg-black/70 border border-amber-500/40 relative group shadow-md flex items-center justify-center">
+                        <div className={cn(
+                          "aspect-video w-full rounded-xl overflow-hidden bg-black/70 border relative group shadow-md flex items-center justify-center",
+                          remixEngine === 'omni' ? "border-[#c8f135]/40" : "border-amber-500/40"
+                        )}>
                           <video src={motionRefVideoPreview || motionRefVideo} className="w-full h-full object-cover" muted loop autoPlay playsInline />
-                          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 border border-amber-400/40 text-[9px] font-mono font-bold text-amber-300">
+                          <div className={cn(
+                            "absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 border text-[9px] font-mono font-bold",
+                            remixEngine === 'omni' ? "border-[#c8f135]/40 text-[#c8f135]" : "border-amber-400/40 text-amber-300"
+                          )}>
                             @video1
                           </div>
                           <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all gap-1.5 backdrop-blur-[2px]">
@@ -3675,98 +3981,244 @@ export const SidePanel = React.memo(({
                         <button
                           type="button"
                           onClick={() => motionVideoInputRef.current?.click()}
-                          className="aspect-video w-full rounded-xl border border-dashed border-white/15 hover:border-amber-400/60 bg-white/[0.01] hover:bg-amber-500/[0.04] transition-all flex flex-col items-center justify-center gap-1 text-zinc-400 hover:text-amber-300 cursor-pointer p-2"
+                          className={cn(
+                            "aspect-video w-full rounded-xl border border-dashed border-white/15 bg-white/[0.01] transition-all flex flex-col items-center justify-center gap-1 text-zinc-400 cursor-pointer p-2",
+                            remixEngine === 'omni'
+                              ? "hover:border-[#c8f135]/60 hover:bg-[#c8f135]/[0.04] hover:text-[#c8f135]"
+                              : "hover:border-amber-400/60 hover:bg-amber-500/[0.04] hover:text-amber-300"
+                          )}
                         >
-                          <Upload size={16} className="text-amber-400/80" />
-                          <span className="text-[9px] font-bold uppercase tracking-wider">Upload Source Motion Video</span>
-                          <span className="text-[7.5px] text-zinc-500 font-mono">MP4, MOV (Motion & timing transferred)</span>
+                          <Upload size={16} className={remixEngine === 'omni' ? "text-[#c8f135]/80" : "text-amber-400/80"} />
+                          <span className="text-[9px] font-bold uppercase tracking-wider">
+                            {remixEngine === 'omni' ? 'Upload Video to Edit (4s-10s)' : 'Upload Source Motion Video'}
+                          </span>
+                          <span className="text-[7.5px] text-zinc-500 font-mono">
+                            {remixEngine === 'omni' ? 'MP4, MOV (Edit characters, objects, lighting or scene)' : 'MP4, MOV (Motion & timing transferred)'}
+                          </span>
                         </button>
                       )}
                     </div>
 
-                    {/* Character / Style Reference Images Gallery (1 to 8 images) */}
-                    <div className="space-y-1.5 p-2.5 rounded-2xl bg-black/40 border border-white/[0.08] backdrop-blur-xl">
-                      <div className="flex items-center justify-between pb-1 border-b border-white/5">
-                        <span className="text-[9.5px] font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
-                          <Sparkles className="w-3 h-3 text-purple-400" />
-                          <span>2. Character / Style References (1-8)</span>
-                        </span>
-                        <div className="flex items-center gap-1">
-                          {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
+                    {/* Reference Images Card */}
+                    {remixEngine === 'omni' ? (
+                      /* ── OMNI 1.1: 4 Reference Image Slots (@image1 - @image4) ── */
+                      <div className="space-y-1.5 p-2.5 rounded-2xl bg-black/40 border border-white/[0.08] backdrop-blur-xl">
+                        <div className="flex items-center justify-between pb-1 border-b border-white/5">
+                          <span className="text-[9.5px] font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+                            <Sparkles className="w-3 h-3 text-cyan-400" />
+                            <span>2. Visual References (@image1 – @image4)</span>
+                          </span>
+                          <div className="flex items-center gap-1">
+                            {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const hasSubject = Boolean(motionSubjectPreview || motionSubjectImage);
+                                  if (!hasSubject) {
+                                    setGalleryPickerSlot({ type: 'remix_image', slotIdx: 0 });
+                                  } else {
+                                    const emptyIdx = seedanceImages.slice(0, 3).findIndex(i => !i);
+                                    setGalleryPickerSlot({ type: 'remix_image', slotIdx: emptyIdx !== -1 ? emptyIdx + 1 : 1 });
+                                  }
+                                }}
+                                className="text-[7.5px] font-bold text-cyan-400 bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-400/25 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                                title="Pick Reference Image from Studio Gallery"
+                              >
+                                + Gal
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => remixImageInputRef.current?.click()}
+                              className="text-[7.5px] font-bold text-cyan-400 bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-400/25 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                            >
+                              + Upload
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="text-[8px] text-zinc-400 leading-tight">
+                          Attach reference images to guide replacements, character locking, or visual aesthetics.
+                        </div>
+
+                        {/* 4 Dedicated Slots */}
+                        <div className="grid grid-cols-4 gap-1.5 pt-1">
+                          {/* Slot 0: @image1 */}
+                          {(motionSubjectPreview || motionSubjectImage) ? (
+                            <div className="relative group aspect-square rounded-xl overflow-hidden border border-cyan-400/60 bg-black shadow-md">
+                              <img src={motionSubjectPreview || motionSubjectImage} alt="Image 1" className="w-full h-full object-cover" />
+                              <div className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-black/80 border border-cyan-400/40 text-[8px] font-mono font-bold text-cyan-300">
+                                @image1
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleClearMotionSubject}
+                                className="absolute top-0.5 right-0.5 p-0.5 bg-rose-600/80 rounded opacity-0 group-hover:opacity-100 text-white transition-opacity cursor-pointer"
+                              >
+                                <Trash2 size={8} />
+                              </button>
+                            </div>
+                          ) : (
                             <button
                               type="button"
                               onClick={() => {
-                                const hasSubject = Boolean(motionSubjectPreview || motionSubjectImage);
-                                if (!hasSubject) {
-                                  setGalleryPickerSlot({ type: 'remix_image', slotIdx: 0 });
-                                } else {
-                                  const emptyIdx = seedanceImages.findIndex(i => !i);
-                                  setGalleryPickerSlot({ type: 'remix_image', slotIdx: emptyIdx !== -1 ? emptyIdx + 1 : 1 });
-                                }
+                                setGalleryPickerSlot({ type: 'remix_image', slotIdx: 0 });
                               }}
-                              className="text-[7.5px] font-bold text-purple-400 bg-purple-400/10 hover:bg-purple-400/20 border border-purple-400/25 px-1.5 py-0.5 rounded transition-all cursor-pointer"
-                              title="Pick Reference Image from Studio Gallery"
+                              className="aspect-square rounded-xl border border-dashed border-white/15 hover:border-cyan-400/60 bg-white/[0.02] hover:bg-cyan-500/[0.04] flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-cyan-300 transition-all cursor-pointer"
                             >
-                              + Gal
+                              <Plus size={12} />
+                              <span className="text-[7.5px] font-mono font-bold">@image1</span>
                             </button>
                           )}
+
+                          {/* Slots 1-3: @image2 - @image4 */}
+                          {[0, 1, 2].map((slotIdx) => {
+                            const img = seedanceImages[slotIdx];
+                            const tag = `@image${slotIdx + 2}`;
+                            return img ? (
+                              <div key={slotIdx} className="relative group aspect-square rounded-xl overflow-hidden border border-cyan-400/50 bg-black shadow-md">
+                                <img src={img} alt={`Image ${slotIdx + 2}`} className="w-full h-full object-cover" />
+                                <div className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-black/80 border border-cyan-400/40 text-[8px] font-mono font-bold text-cyan-300">
+                                  {tag}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleClearSeedanceImage(slotIdx)}
+                                  className="absolute top-0.5 right-0.5 p-0.5 bg-rose-600/80 rounded opacity-0 group-hover:opacity-100 text-white transition-opacity cursor-pointer"
+                                >
+                                  <Trash2 size={8} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                key={slotIdx}
+                                type="button"
+                                onClick={() => {
+                                  setGalleryPickerSlot({ type: 'remix_image', slotIdx: slotIdx + 1 });
+                                }}
+                                className="aspect-square rounded-xl border border-dashed border-white/15 hover:border-cyan-400/60 bg-white/[0.02] hover:bg-cyan-500/[0.04] flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-cyan-300 transition-all cursor-pointer"
+                              >
+                                <Plus size={12} />
+                                <span className="text-[7.5px] font-mono font-bold">{tag}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      /* ── JITSU: 1 to 8 Character / Style References ── */
+                      <div className="space-y-1.5 p-2.5 rounded-2xl bg-black/40 border border-white/[0.08] backdrop-blur-xl">
+                        <div className="flex items-center justify-between pb-1 border-b border-white/5">
+                          <span className="text-[9.5px] font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                            <Sparkles className="w-3 h-3 text-purple-400" />
+                            <span>2. Character / Style References (1-8)</span>
+                          </span>
+                          <div className="flex items-center gap-1">
+                            {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const hasSubject = Boolean(motionSubjectPreview || motionSubjectImage);
+                                  if (!hasSubject) {
+                                    setGalleryPickerSlot({ type: 'remix_image', slotIdx: 0 });
+                                  } else {
+                                    const emptyIdx = seedanceImages.findIndex(i => !i);
+                                    setGalleryPickerSlot({ type: 'remix_image', slotIdx: emptyIdx !== -1 ? emptyIdx + 1 : 1 });
+                                  }
+                                }}
+                                className="text-[7.5px] font-bold text-purple-400 bg-purple-400/10 hover:bg-purple-400/20 border border-purple-400/25 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                                title="Pick Reference Image from Studio Gallery"
+                              >
+                                + Gal
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => remixImageInputRef.current?.click()}
+                              className="text-[7.5px] font-bold text-purple-400 bg-purple-400/10 hover:bg-purple-400/20 border border-purple-400/25 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                            >
+                              + Upload
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Display Selected Subject Image & Seedance Image Slots */}
+                        <div className="grid grid-cols-4 gap-1.5 pt-1">
+                          {(motionSubjectPreview || motionSubjectImage) && (
+                            <div className="relative group aspect-square rounded-xl overflow-hidden border border-purple-400/60 bg-black shadow-md">
+                              <img src={motionSubjectPreview || motionSubjectImage} alt="Image 1" className="w-full h-full object-cover" />
+                              <div className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-black/80 border border-purple-400/40 text-[8px] font-mono font-bold text-purple-300">
+                                @image1
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleClearMotionSubject}
+                                className="absolute top-0.5 right-0.5 p-0.5 bg-rose-600/80 rounded opacity-0 group-hover:opacity-100 text-white transition-opacity"
+                              >
+                                <Trash2 size={8} />
+                              </button>
+                            </div>
+                          )}
+                          {seedanceImages.slice(0, 7).map((img, idx) => img ? (
+                            <div key={idx} className="relative group aspect-square rounded-xl overflow-hidden border border-purple-400/50 bg-black shadow-md">
+                              <img src={img} alt={`Image ${idx + 2}`} className="w-full h-full object-cover" />
+                              <div className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-black/80 border border-purple-400/40 text-[8px] font-mono font-bold text-purple-300">
+                                {`@image${idx + 2}`}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleClearSeedanceImage(idx)}
+                                className="absolute top-0.5 right-0.5 p-0.5 bg-rose-600/80 rounded opacity-0 group-hover:opacity-100 text-white transition-opacity"
+                              >
+                                <Trash2 size={8} />
+                              </button>
+                            </div>
+                          ) : null)}
+
+                          {/* Add Button */}
                           <button
                             type="button"
                             onClick={() => remixImageInputRef.current?.click()}
-                            className="text-[7.5px] font-bold text-purple-400 bg-purple-400/10 hover:bg-purple-400/20 border border-purple-400/25 px-1.5 py-0.5 rounded transition-all cursor-pointer"
+                            className="aspect-square rounded-xl border border-dashed border-white/15 hover:border-purple-400/60 bg-white/[0.02] hover:bg-purple-500/[0.04] flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-purple-300 transition-all cursor-pointer"
                           >
-                            + Upload
+                            <Plus size={14} />
+                            <span className="text-[7.5px] font-bold">Add Ref</span>
                           </button>
                         </div>
                       </div>
-
-                      {/* Display Selected Subject Image & Seedance Image Slots */}
-                      <div className="grid grid-cols-4 gap-1.5 pt-1">
-                        {(motionSubjectPreview || motionSubjectImage) && (
-                          <div className="relative group aspect-square rounded-xl overflow-hidden border border-purple-400/60 bg-black shadow-md">
-                            <img src={motionSubjectPreview || motionSubjectImage} alt="Image 1" className="w-full h-full object-cover" />
-                            <div className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-black/80 border border-purple-400/40 text-[8px] font-mono font-bold text-purple-300">
-                              @image1
-                            </div>
-                            <button
-                              type="button"
-                              onClick={handleClearMotionSubject}
-                              className="absolute top-0.5 right-0.5 p-0.5 bg-rose-600/80 rounded opacity-0 group-hover:opacity-100 text-white transition-opacity"
-                            >
-                              <Trash2 size={8} />
-                            </button>
-                          </div>
-                        )}
-                        {seedanceImages.slice(0, 7).map((img, idx) => img ? (
-                          <div key={idx} className="relative group aspect-square rounded-xl overflow-hidden border border-purple-400/50 bg-black shadow-md">
-                            <img src={img} alt={`Image ${idx + 2}`} className="w-full h-full object-cover" />
-                            <div className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-black/80 border border-purple-400/40 text-[8px] font-mono font-bold text-purple-300">
-                              {`@image${idx + 2}`}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleClearSeedanceImage(idx)}
-                              className="absolute top-0.5 right-0.5 p-0.5 bg-rose-600/80 rounded opacity-0 group-hover:opacity-100 text-white transition-opacity"
-                            >
-                              <Trash2 size={8} />
-                            </button>
-                          </div>
-                        ) : null)}
-
-                        {/* Add Button */}
-                        <button
-                          type="button"
-                          onClick={() => remixImageInputRef.current?.click()}
-                          className="aspect-square rounded-xl border border-dashed border-white/15 hover:border-purple-400/60 bg-white/[0.02] hover:bg-purple-500/[0.04] flex flex-col items-center justify-center gap-0.5 text-zinc-500 hover:text-purple-300 transition-all cursor-pointer"
-                        >
-                          <Plus size={14} />
-                          <span className="text-[7.5px] font-bold">Add Ref</span>
-                        </button>
-                      </div>
-                    </div>
+                    )}
 
                     {/* Prompt Studio */}
-                    {renderPromptStudio("Describe character appearance, lighting, style, scene ambiance for Genjutsu Motion Transfer...")}
+                    {remixEngine === 'omni' ? (
+                      <div className="space-y-2">
+                        {renderPromptStudio("Describe video edits! E.g.: 'Replace the jacket on character with @image1, keep scene motion identical' or 'Remove the sunglasses and change weather to rain'")}
+                        {/* Quick Edit Idea Chips */}
+                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                          <span className="text-[8.5px] font-black uppercase tracking-wider text-zinc-500">Edit Ideas:</span>
+                          {[
+                            { label: "Replace with @image1", text: "Replace the primary subject with @image1, preserving exact camera motion, lighting, and physics." },
+                            { label: "Style from @image1", text: "Transform the visual style, color grading, and cinematic aesthetic of the scene to match @image1." },
+                            { label: "Remove Object", text: "Seamlessly remove the selected object from the video and inpaint the background naturally." },
+                            { label: "Cyberpunk Night", text: "Transform the scene setting into a cyberpunk night city with glowing neon lights and reflective wet streets." },
+                            { label: "Rainy Weather", text: "Change the environment weather to cinematic heavy rainfall with puddles and overcast mood." }
+                          ].map((chip) => (
+                            <button
+                              key={chip.label}
+                              type="button"
+                              onClick={() => {
+                                setPromptText(chip.text);
+                                if (setOmniPromptText) setOmniPromptText(chip.text);
+                              }}
+                              className="px-2 py-0.5 rounded-lg text-[8.5px] font-medium bg-white/[0.03] hover:bg-[#c8f135]/15 text-zinc-400 hover:text-[#c8f135] border border-white/10 hover:border-[#c8f135]/30 transition-all cursor-pointer"
+                            >
+                              {chip.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      renderPromptStudio("Describe character appearance, lighting, style, scene ambiance for Genjutsu Motion Transfer...")
+                    )}
                   </div>
                 ) : panelTab === 'motion' ? (
                   /* ── MOTION CONTROL FLOW ── */
@@ -4037,7 +4489,7 @@ export const SidePanel = React.memo(({
                         <div className="flex items-center justify-between">
                           <label className="text-[9.5px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
                             <ImageIcon className="w-3 h-3 text-[#c8f135]" />
-                            <span>{panelTab === 'transition' ? 'Seedance 2.5 Transition Keyframes' : 'Keyframe Conditioning'}</span>
+                            <span>{panelTab === 'transition' && transitionSubTab === 'omni-keyframe' ? 'Omni Keyframe Conditioning' : panelTab === 'transition' ? 'Seedance 2.5 Transition Keyframes' : 'Keyframe Conditioning'}</span>
                           </label>
                           <span className="text-[8.5px] font-mono text-[#c8f135]/90 bg-[#c8f135]/10 px-1.5 py-0.2 rounded border border-[#c8f135]/20 font-bold">
                             Start (0s) → End ({duration}s)
@@ -4184,17 +4636,17 @@ export const SidePanel = React.memo(({
 
                     {/* 1. PROMPT STUDIO */}
                     {renderPromptStudio(
-                      panelTab === 'transition'
+                      panelTab === 'transition' && transitionSubTab === 'sequence'
                         ? "Reference @Image1 for start frame, @Image2 for end frame. Describe character action, martial arts, camera transitions..."
-                        : panelTab === 'omni'
+                        : (panelTab === 'transition' && transitionSubTab === 'omni-keyframe') || panelTab === 'omni'
                         ? "Describe scene composition, dynamic movement, camera transitions, and lighting..."
                         : panelTab === 'veo'
                         ? "Describe cinematic scene, character actions, camera motion, and atmosphere for Veo 3.1..."
                         : "Describe scene action, motion intensity, and cinematic atmosphere..."
                     )}
 
-                    {/* 4. DRIVING REFERENCE VIDEO (Omni 1.1 Only) */}
-                    {panelTab === 'omni' && (
+                    {/* 4. DRIVING REFERENCE VIDEO (Omni 1.1 Only + Omni Keyframe sub-tab) */}
+                    {(panelTab === 'omni' || (panelTab === 'transition' && transitionSubTab === 'omni-keyframe')) && (
                       <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.08] backdrop-blur-xl space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[9.5px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
@@ -4268,7 +4720,60 @@ export const SidePanel = React.memo(({
 
               {/* SECTION B: ZERO-LENS CINEMA PARAMETER CONTROLS */}
               <div className="space-y-3 pt-2.5 border-t border-white/[0.08]">
-                {panelTab === 'transition' ? (
+                {panelTab === 'transition' && transitionSubTab === 'omni-keyframe' ? (
+                  /* Omni Keyframe Parameters (Duration, Resolution, Audio) */
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <GlassSelect
+                        label="Resolution"
+                        value={resolution === '4k' ? '1080p' : (resolution || '720p')}
+                        onChange={setResolution}
+                        options={resolutionOptions}
+                        align="up"
+                      />
+                      <GlassSelect
+                        label="Duration"
+                        value={duration}
+                        onChange={(val) => setDuration(Number(val))}
+                        options={[
+                          { value: 4, label: '4s' },
+                          { value: 5, label: '5s' },
+                          { value: 6, label: '6s' },
+                          { value: 8, label: '8s' },
+                          { value: 10, label: '10s' }
+                        ]}
+                        align="up"
+                      />
+                    </div>
+                    <div className="space-y-1.5 w-full">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[9.5px] font-black uppercase tracking-[0.16em] text-zinc-400 flex items-center gap-1">
+                          <Volume2 className="w-3 h-3 text-zinc-400" />
+                          <span>Sound Effects (SFX)</span>
+                        </label>
+                        <span className="text-[8.5px] font-mono text-zinc-500">Native Audio</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setGenerateAudio(!generateAudio)}
+                        className={cn(
+                          "w-full h-[38px] px-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all cursor-pointer select-none",
+                          generateAudio
+                            ? "bg-[#c8f135]/15 border-[#c8f135]/50 text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.15)] font-extrabold"
+                            : "bg-black/40 border-white/[0.08] text-zinc-400 hover:text-white hover:border-white/20"
+                        )}
+                      >
+                        <div className="flex items-center gap-1.5 truncate">
+                          {generateAudio ? <Volume2 size={13} className="text-[#c8f135] shrink-0" /> : <VolumeX size={13} className="text-zinc-500 shrink-0" />}
+                          <span className="text-[10.5px] font-bold truncate">{generateAudio ? 'SFX ON' : 'Muted'}</span>
+                        </div>
+                        <span className={cn("text-[8.5px] font-mono font-bold px-1 py-0.2 rounded border shrink-0", generateAudio ? "bg-[#c8f135]/20 text-[#c8f135] border-[#c8f135]/30" : "bg-white/[0.04] text-zinc-500 border-white/[0.06]")}>
+                          {generateAudio ? 'SFX ON' : 'OFF'}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                ) : panelTab === 'transition' ? (
                   /* Dedicated Parameters for Transition (Seedance 2.5 & Seedance Mini) */
                   <div className="space-y-3">
                     {/* Model + Resolution Side by Side */}
@@ -4489,9 +4994,22 @@ export const SidePanel = React.memo(({
                     </div>
                   </div>
                 ) : panelTab === 'remix' ? (
-                  /* Dedicated Parameters for Remix (Resolution Quality + Aspect Ratio) */
+                  /* Dedicated Parameters for Remix / Edit (Engine + Resolution + Aspect Ratio + SFX) */
                   <div className="space-y-3">
+                    {/* Engine + Resolution */}
                     <div className="grid grid-cols-2 gap-2">
+                      <GlassSelect
+                        label="Engine"
+                        icon={Sparkles}
+                        value={remixEngine}
+                        onChange={setRemixEngine}
+                        options={[
+                          { value: 'jitsu', label: 'Jitsu (Default)' },
+                          { value: 'omni', label: 'Omni 1.1' }
+                        ]}
+                        align="up"
+                      />
+
                       <GlassSelect
                         label="Resolution"
                         value={resolution === '4k' ? '1080p' : (resolution || '720p')}
@@ -4499,7 +5017,10 @@ export const SidePanel = React.memo(({
                         options={resolutionOptions}
                         align="up"
                       />
+                    </div>
 
+                    {/* Aspect Ratio + Duration Synced from Video */}
+                    <div className="grid grid-cols-2 gap-2">
                       <GlassSelect
                         label="Aspect Ratio"
                         value={aspectRatio}
@@ -4507,7 +5028,57 @@ export const SidePanel = React.memo(({
                         options={aspectOptions}
                         align="up"
                       />
+
+                      <div className="flex flex-col justify-center px-2.5 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+                        <span className="text-[8.5px] font-black uppercase tracking-wider text-zinc-400">Duration</span>
+                        <span className="text-[9.5px] font-mono text-[#c8f135] font-semibold mt-0.5 truncate">
+                          {remixEngine === 'omni'
+                            ? (motionRefVideoDuration ? `${motionRefVideoDuration}s (from video)` : '4s–10s (Auto-synced)')
+                            : 'Synced to video'}
+                        </span>
+                      </div>
                     </div>
+
+                    {/* Sound Effects Toggle (Omni 1.1) */}
+                    {remixEngine === 'omni' && (
+                      <div className="space-y-1.5 w-full">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[9.5px] font-black uppercase tracking-[0.16em] text-zinc-400 flex items-center gap-1">
+                            <Volume2 className="w-3 h-3 text-zinc-400" />
+                            <span>Sound Effects (SFX)</span>
+                          </label>
+                          <span className="text-[8.5px] font-mono text-zinc-500">Native Audio</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setGenerateAudio(!generateAudio)}
+                          className={cn(
+                            "w-full h-[38px] px-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all cursor-pointer select-none",
+                            generateAudio
+                              ? "bg-[#c8f135]/15 border-[#c8f135]/50 text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.15)] font-extrabold"
+                              : "bg-black/40 border-white/[0.08] text-zinc-400 hover:text-white hover:border-white/20"
+                          )}
+                          title={generateAudio ? "Sound Effects ON (Realistic audio generated with video edit)" : "Audio Muted"}
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            {generateAudio ? (
+                              <Volume2 size={13} className="text-[#c8f135] shrink-0" />
+                            ) : (
+                              <VolumeX size={13} className="text-zinc-500 shrink-0" />
+                            )}
+                            <span className="text-[10.5px] font-bold truncate">{generateAudio ? 'SFX ON' : 'Muted'}</span>
+                          </div>
+                          <span className={cn(
+                            "text-[8.5px] font-mono font-bold px-1 py-0.2 rounded border shrink-0",
+                            generateAudio
+                              ? "bg-[#c8f135]/20 text-[#c8f135] border-[#c8f135]/30"
+                              : "bg-white/[0.04] text-zinc-500 border-white/[0.06]"
+                          )}>
+                            {generateAudio ? 'SFX ON' : 'OFF'}
+                          </span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : panelTab === 'motion' ? (
                   /* ONLY Aspect Ratio for Motion Tab (duration from driving video, resolution from Quality Mode, audio not applicable) */
@@ -4602,14 +5173,16 @@ export const SidePanel = React.memo(({
                 <div className="flex items-center gap-1">
                   <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse shrink-0", (panelTab === 'seedance' || panelTab === 'seedance-2.5' || panelTab === 'remix') ? "bg-amber-400" : "bg-[#c8f135]")} />
                   <span className="text-[9px] sm:text-[9.5px] font-black text-zinc-300 uppercase tracking-widest truncate">
-                    {panelTab === 'transition'
+                    {panelTab === 'transition' && transitionSubTab === 'omni-keyframe'
+                      ? 'Omni Keyframe Ready'
+                      : panelTab === 'transition'
                       ? `${activeEngine === 'seedance-mini' ? 'Seedance Mini' : 'Seedance 2.5'} Transition Ready`
                       : panelTab === 'seedance-2.5'
                       ? 'Seedance 2.5 Pro Ready'
                       : panelTab === 'seedance'
                       ? `${activeEngine === 'seedace' ? 'Seedance 2.0 Pro' : activeEngine === 'seedance-mini' ? 'Seedance Mini' : 'Seedance Fast'} Ready`
                       : panelTab === 'remix'
-                      ? 'Genjutsu Motion Transfer Ready'
+                      ? (remixEngine === 'omni' ? 'Omni 1.1 Video Edit Ready' : 'Genjutsu Motion Transfer Ready')
                       : panelTab === 'omni'
                       ? 'Omni Ready'
                       : panelTab === 'omni-multi'
@@ -4629,8 +5202,12 @@ export const SidePanel = React.memo(({
                 onClick={
                   isCooldown || isBusy
                     ? undefined
+                    : (extensionSourceVideo || useAppStore.getState().extensionSourceVideo)
+                    ? triggerGenerateOmni
                     : panelTab === 'remix'
                     ? triggerGenerateRemix
+                    : (panelTab === 'transition' && transitionSubTab === 'omni-keyframe')
+                    ? triggerGenerateOmni
                     : (panelTab === 'transition' || panelTab === 'seedance' || panelTab === 'seedance-2.5')
                     ? triggerGenerateSeedance
                     : panelTab === 'omni' || panelTab === 'omni-multi'
@@ -4639,10 +5216,30 @@ export const SidePanel = React.memo(({
                     ? triggerGenerateMotion
                     : triggerGenerateVeo
                 }
-                disabled={isCooldown || isBusy || (panelTab === 'remix' ? (!motionRefVideoPreview && !motionRefVideo && !videoPreview) || (!motionSubjectPreview && !motionSubjectImage && seedanceImages.every(i => !i)) : panelTab === 'motion' ? (!motionSubjectPreview && !motionSubjectImage) || (!motionRefVideoPreview && !motionRefVideo) : !canGenerate)}
+                disabled={
+                  isCooldown || isBusy || (
+                    panelTab === 'remix'
+                      ? (remixEngine === 'omni'
+                          ? (!motionRefVideoPreview && !motionRefVideo && !videoPreview) || (!promptText && !omniPromptText && !localPrompt)
+                          : (!motionRefVideoPreview && !motionRefVideo && !videoPreview) || (!motionSubjectPreview && !motionSubjectImage && seedanceImages.every(i => !i))
+                        )
+                      : panelTab === 'motion'
+                      ? (!motionSubjectPreview && !motionSubjectImage) || (!motionRefVideoPreview && !motionRefVideo)
+                      : !canGenerate
+                  )
+                }
                 className={cn(
                   "h-10 sm:h-11 px-3.5 sm:px-5 rounded-xl sm:rounded-2xl text-[10.5px] sm:text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-[0_0_30px_rgba(200,241,53,0.3)] border shrink-0 active:scale-95 select-none",
-                  (!isCooldown && (panelTab === 'remix' ? ((motionRefVideoPreview || motionRefVideo || videoPreview) && (motionSubjectPreview || motionSubjectImage || seedanceImages.some(Boolean))) : panelTab === 'motion' ? (!!(motionSubjectPreview || motionSubjectImage) && !!(motionRefVideoPreview || motionRefVideo)) : canGenerate && !isBusy))
+                  (!isCooldown && (
+                    panelTab === 'remix'
+                      ? (remixEngine === 'omni'
+                          ? (!!(motionRefVideoPreview || motionRefVideo || videoPreview) && !!(promptText || omniPromptText || localPrompt))
+                          : ((motionRefVideoPreview || motionRefVideo || videoPreview) && (motionSubjectPreview || motionSubjectImage || seedanceImages.some(Boolean)))
+                        )
+                      : panelTab === 'motion'
+                      ? (!!(motionSubjectPreview || motionSubjectImage) && !!(motionRefVideoPreview || motionRefVideo))
+                      : canGenerate && !isBusy
+                  ))
                     ? (panelTab === 'seedance' || panelTab === 'seedance-2.5' || panelTab === 'remix')
                       ? "bg-gradient-to-r from-amber-400 to-[#c8f135] hover:brightness-110 text-black border-amber-400/60 hover:shadow-[0_0_40px_rgba(251,191,36,0.6)] cursor-pointer"
                       : "bg-[#c8f135] hover:bg-[#d8ff43] text-black border-[#d4ff00]/60 hover:shadow-[0_0_40px_rgba(200,241,53,0.6)] cursor-pointer"
@@ -4662,7 +5259,13 @@ export const SidePanel = React.memo(({
                 ) : (
                   <>
                     <Sparkles className="w-3.5 h-3.5 fill-current text-black" />
-                    <span>Generate Video</span>
+                    <span>
+                      {panelTab === 'omni-multi' && extensionSourceVideo
+                        ? `Extend Video (+${extensionDuration || 4}s)`
+                        : panelTab === 'remix' && remixEngine === 'omni'
+                        ? '⚡ Edit Video (Omni 1.1)'
+                        : 'Generate Video'}
+                    </span>
                   </>
                 )}
               </button>

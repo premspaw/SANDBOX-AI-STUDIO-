@@ -606,8 +606,16 @@ export default function CinematicStudio() {
   const [characterOrientation, setCharacterOrientation] = useState('video');
   const [backgroundSource, setBackgroundSource] = useState('input_video');
 
-  // Video Extension States (Gemini Omni 1.1 Flash)
-  const [extensionSourceVideo, setExtensionSourceVideo] = useState(null);
+  // Video Extension States (Gemini Omni 1.1 Flash) - linked to global store so Lightbox trigger always syncs
+  const storeExtensionSourceVideo = useAppStore(state => state.extensionSourceVideo);
+  const storeSetExtensionSourceVideo = useAppStore(state => state.setExtensionSourceVideo);
+  const [localExtensionSourceVideo, setLocalExtensionSourceVideo] = useState(null);
+  const extensionSourceVideo = storeExtensionSourceVideo || localExtensionSourceVideo;
+  const setExtensionSourceVideo = useCallback((video) => {
+    setLocalExtensionSourceVideo(video);
+    if (storeSetExtensionSourceVideo) storeSetExtensionSourceVideo(video);
+  }, [storeSetExtensionSourceVideo]);
+
   const [extensionDuration, setExtensionDuration] = useState(4); // 4 or 8 seconds
   const [extensionPrompt, setExtensionPrompt] = useState('');
 
@@ -2451,6 +2459,34 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   /* ─── GENERATE ───────────────────────────────────────────── */
   const handleGenerate = async (overridePrompt, overrideEngine, overrideOptions = {}) => {
     if (isSubmittingRef.current) return;
+
+    if (overrideOptions?.task === 'edit' || (panelTab === 'remix' && overrideOptions?.engine === 'omni')) {
+      console.log('[CinematicStudio] Video edit task detected — delegating generation to handleOmniEditGenerate');
+      return handleOmniEditGenerate(overrideOptions);
+    }
+
+    // Seamlessly route to handleExtensionGenerate if video extension mode is active
+    const activeExtensionSource = overrideOptions?.extensionSourceVideo 
+      || overrideOptions?.sourceVideo 
+      || extensionSourceVideo 
+      || useAppStore.getState().extensionSourceVideo;
+
+    if (activeExtensionSource && panelTab !== 'remix' && overrideOptions?.task !== 'edit') {
+      console.log('[CinematicStudio] Video extension source detected — delegating generation to handleExtensionGenerate');
+      const domVal = textareaRef?.current?.value;
+      const basePrompt = overridePrompt
+        ? overridePrompt.trim()
+        : (domVal !== undefined && domVal !== '')
+          ? domVal.trim()
+          : (extensionPrompt || promptText || '').trim();
+      return handleExtensionGenerate({
+        sourceVideo: activeExtensionSource,
+        prompt: basePrompt,
+        duration: overrideOptions?.duration || extensionDuration || useAppStore.getState().extensionDuration,
+        images: overrideOptions?.omniMultiImages || overrideOptions?.reference_image_urls || overrideOptions?.images || []
+      });
+    }
+
     if (isMaxConcurrentReached) {
       const showToast = useAppStore.getState().showToast;
       const msg = `Maximum concurrent job limit reached (${maxConcurrent} active). Please wait for a video to complete.`;
@@ -2746,6 +2782,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   referenceImages: resolvedOmniImgs,
                   ref_images: resolvedOmniImgs.map(url => ({ url })),
                   ref_videos: resolvedOmniVids,
+                  refVideos: resolvedOmniVids,
+                  multiVideoSlots: overrideOptions?.multiVideoSlots || overrideOptions?.omniMultiVideos,
+                  omniMultiVideos: overrideOptions?.multiVideoSlots || overrideOptions?.omniMultiVideos,
                   refVideo: resolvedOmniVids[0]?.url || undefined,
                   ref_audios: resolvedOmniAuds,
                   task: (primaryImg && secondaryImg) ? 'reference_to_video' : (resolvedOmniImgs.length > 0 ? 'multi_reference' : omniTask),
@@ -3151,19 +3190,20 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     if (showToast) {
       showToast("Loaded clip into Video Extension Panel (+4s / +8s)", "info");
     }
-  }, []);
+  }, [setExtensionSourceVideo]);
 
   // Omni Flash Video Extension Handler (+4s = 20⚡, +8s = 40⚡)
-  const handleExtensionGenerate = useCallback(async () => {
-    if (!extensionSourceVideo) {
+  const handleExtensionGenerate = useCallback(async (overrideOpts = {}) => {
+    const targetSource = overrideOpts?.sourceVideo || extensionSourceVideo;
+    if (!targetSource) {
       const showToast = useAppStore.getState().showToast;
       if (showToast) showToast("Please select a source video to extend.", "error");
       return;
     }
 
-    const rawVideo = typeof extensionSourceVideo === 'string'
-      ? extensionSourceVideo
-      : (extensionSourceVideo?.url || extensionSourceVideo?.videoUrl || extensionSourceVideo?.data);
+    const rawVideo = typeof targetSource === 'string'
+      ? targetSource
+      : (targetSource?.url || targetSource?.videoUrl || targetSource?.data || targetSource?.imageUrl);
 
     if (!rawVideo) {
       const showToast = useAppStore.getState().showToast;
@@ -3171,7 +3211,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       return;
     }
 
-    const requiredCredits = extensionDuration === 8 ? 40 : 20;
+    const resolvedVideoSrc = resolveUrl(rawVideo);
+
+    const durSec = Number(overrideOpts?.duration || extensionDuration) || 4;
+    const requiredCredits = durSec * 5;
     if (userCredits < requiredCredits) {
       const showToast = useAppStore.getState().showToast;
       if (showToast) {
@@ -3189,15 +3232,16 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     setIsSubmitting(true);
     isSubmittingRef.current = true;
     setStatus('generating');
-    setPollMsg(`Extending video by +${extensionDuration}s with Omni Flash...`);
+    setPollMsg(`Extending video by +${durSec}s with Omni Flash...`);
 
+    const finalPrompt = (overrideOpts?.prompt !== undefined ? overrideOpts.prompt : (extensionPrompt || promptText || ''))?.trim();
     const tempId = `temp-extension-${Date.now()}`;
     const tempItem = {
       id: tempId,
       type: 'video',
       loading: true,
-      prompt: extensionPrompt ? `Extension (+${extensionDuration}s): ${extensionPrompt}` : `Extension (+${extensionDuration}s) Continuous Scene`,
-      aspect: extensionSourceVideo?.aspect || aspectRatio || '16:9',
+      prompt: finalPrompt ? `Extension (+${durSec}s): ${finalPrompt}` : `Extension (+${durSec}s) Continuous Scene`,
+      aspect: targetSource?.aspect || aspectRatio || '16:9',
       ts: Date.now(),
       projectId: activeProjectId
     };
@@ -3209,10 +3253,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         throw new Error('Failed to authorize credit deduction.');
       }
 
-      const resolvedVideo = await resolveBlobToBase64(rawVideo);
+      const resolvedVideo = await resolveBlobToBase64(resolvedVideoSrc || rawVideo);
       if (!resolvedVideo) {
         throw new Error('Failed to resolve source video file for extension.');
       }
+
+      const rawImgs = overrideOpts?.images || [];
+      const resolvedOmniImgs = (await Promise.all(
+        (rawImgs || []).filter(Boolean).map(img => resolveBlobToBase64(resolveUrl(img)))
+      )).filter(Boolean);
 
       const resp = await fetch(getApiUrl('/api/omni-i2v'), {
         method: 'POST',
@@ -3220,11 +3269,11 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         body: JSON.stringify({
           video: resolvedVideo,
           sourceVideo: resolvedVideo,
-          refVideo: resolvedVideo,
-          task: 'extension',
-          duration: extensionDuration,
-          prompt: extensionPrompt?.trim() || '',
-          motionPrompt: extensionPrompt?.trim() || '',
+          task: 'extend',
+          duration: durSec,
+          prompt: finalPrompt,
+          motionPrompt: finalPrompt,
+          ref_images: resolvedOmniImgs,
           resolution: resolution === '4k' ? '1080p' : resolution,
           generateAudio: generateAudio,
           model: 'gemini-omni-1.1-flash-preview',
@@ -3253,9 +3302,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         id: Date.now() + Math.random(),
         type: 'video',
         url: data.videoUrl,
-        prompt: extensionPrompt ? `Extended (+${extensionDuration}s): ${extensionPrompt}` : `Extended Scene (+${extensionDuration}s)`,
+        prompt: finalPrompt ? `Extended (+${durSec}s): ${finalPrompt}` : `Extended Scene (+${durSec}s)`,
         engine: 'Omni Flash Extension',
-        aspect: extensionSourceVideo?.aspect || aspectRatio || '16:9',
+        aspect: targetSource?.aspect || aspectRatio || '16:9',
         ts: Date.now(),
         projectId: activeProjectId
       };
@@ -3266,7 +3315,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       setPollMsg('');
       refreshShorts();
       const showToast = useAppStore.getState().showToast;
-      if (showToast) showToast(`Video successfully extended by +${extensionDuration}s!`, "success");
+      if (showToast) showToast(`Video successfully extended by +${durSec}s!`, "success");
     } catch (err) {
       console.error('[CinematicStudio] Extension error:', err);
       setGallery(prev => prev.filter(item => item.id !== tempId));
@@ -3290,6 +3339,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     extensionSourceVideo,
     extensionDuration,
     extensionPrompt,
+    promptText,
     userCredits,
     aspectRatio,
     activeProjectId,
@@ -3298,7 +3348,172 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     generateAudio,
     spendShorts,
     refundShorts,
-    refreshShorts
+    refreshShorts,
+    setExtensionSourceVideo
+  ]);
+
+  // Omni Flash Video Edit Handler (Gemini Omni Flash 1.1 Preview - task: 'edit')
+  const handleOmniEditGenerate = useCallback(async (overrideOpts = {}) => {
+    const targetSource = overrideOpts?.sourceVideo || motionRefVideo || motionRefVideoPreview;
+    if (!targetSource) {
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast("Please select a source video to edit.", "error");
+      return;
+    }
+
+    const rawVideo = typeof targetSource === 'string'
+      ? targetSource
+      : (targetSource?.url || targetSource?.videoUrl || targetSource?.data || targetSource?.imageUrl);
+
+    if (!rawVideo) {
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast("Source video URL not found.", "error");
+      return;
+    }
+
+    const durSec = Number(overrideOpts?.duration || duration || 5);
+    const requiredCredits = durSec * 5;
+
+    if (userCredits < requiredCredits) {
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) {
+        showToast(`Insufficient credits. Video Edit requires ${requiredCredits}⚡.`, "error", {
+          label: "⚡ Top Up Credits",
+          onClick: () => {
+            const setTab = useAppStore.getState().setActiveTab;
+            if (setTab) setTab('pricing');
+          }
+        });
+      }
+      return;
+    }
+
+    const finalPrompt = (overrideOpts?.prompt !== undefined ? overrideOpts.prompt : promptText)?.trim();
+    if (!finalPrompt) {
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast("Please describe what to edit or replace in the video.", "error");
+      return;
+    }
+
+    const tempId = `temp-edit-${Date.now()}`;
+    const tempItem = {
+      id: tempId,
+      type: 'video',
+      status: 'generating',
+      loading: true,
+      prompt: `Omni 1.1 Edit: ${finalPrompt}`,
+      aspect: targetSource?.aspect || targetSource?.aspectRatio || aspectRatio || '16:9',
+      aspectRatio: targetSource?.aspect || targetSource?.aspectRatio || aspectRatio || '16:9',
+      timestamp: Date.now(),
+      projectId: activeProjectId
+    };
+
+    setGallery(prev => [tempItem, ...prev]);
+
+    try {
+      const spendResult = await spendShorts(userId, requiredCredits, 'omni_video_edit');
+      if (!spendResult?.success) {
+        throw new Error('Failed to authorize credit deduction.');
+      }
+
+      const resolvedVideo = await resolveBlobToBase64(rawVideo);
+      if (!resolvedVideo) {
+        throw new Error('Failed to resolve source video file for editing.');
+      }
+
+      const rawImgs = overrideOpts?.images || [];
+      const resolvedOmniImgs = (await Promise.all(
+        (rawImgs || []).filter(Boolean).map(img => resolveBlobToBase64(img))
+      )).filter(Boolean);
+
+      const resp = await fetch(getApiUrl('/api/omni-i2v'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          video: resolvedVideo,
+          sourceVideo: resolvedVideo,
+          task: 'edit',
+          duration: durSec,
+          prompt: finalPrompt,
+          motionPrompt: finalPrompt,
+          ref_images: resolvedOmniImgs,
+          resolution: resolution === '4k' ? '1080p' : resolution,
+          generateAudio: generateAudio,
+          model: 'gemini-omni-1.1-flash-preview',
+          userId,
+          projectId: activeProjectId,
+          creditReason: 'omni_video_edit'
+        })
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text();
+        let parsedError = `Video Edit failed (${resp.status})`;
+        try {
+          const parsed = JSON.parse(errText);
+          if (parsed.error) parsedError = parsed.error;
+        } catch (_) {
+          // Ignore
+        }
+        throw new Error(parsedError);
+      }
+
+      const data = await resp.json();
+      if (!data.videoUrl) throw new Error('Omni Video Edit returned no videoUrl.');
+
+      const finishedItem = {
+        ...tempItem,
+        id: data.videoId || tempId,
+        url: data.videoUrl,
+        videoUrl: data.videoUrl,
+        status: 'completed',
+        loading: false
+      };
+
+      setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
+
+      // Save to Supabase assets
+      try {
+        fetch(getApiUrl('/api/save-asset'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: data.videoUrl,
+            type: 'video',
+            prompt: finalPrompt,
+            aspect: tempItem.aspectRatio,
+            engine: 'gemini-omni-1.1-flash-preview',
+            userId,
+            projectId: activeProjectId
+          })
+        }).catch(e => console.debug('[CinematicStudio] Save asset fallback:', e));
+      } catch (saveErr) {
+        console.warn('[CinematicStudio] Save asset error:', saveErr);
+      }
+
+      if (refreshShorts) refreshShorts();
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast("Omni 1.1 Video Edit finished successfully!", "success");
+    } catch (err) {
+      console.error('[CinematicStudio] Video Edit error:', err);
+      if (refreshShorts) refreshShorts();
+      setGallery(prev => prev.filter(item => item.id !== tempId));
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast(`Video Edit failed: ${err.message}`, "error");
+    }
+  }, [
+    motionRefVideo,
+    motionRefVideoPreview,
+    duration,
+    userCredits,
+    promptText,
+    aspectRatio,
+    activeProjectId,
+    userId,
+    spendShorts,
+    refreshShorts,
+    resolution,
+    generateAudio
   ]);
 
   /* ─── RENDER ─────────────────────────────────────────────── */
@@ -5014,6 +5229,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         extensionPrompt={extensionPrompt}
         setExtensionPrompt={setExtensionPrompt}
         handleExtensionGenerate={handleExtensionGenerate}
+        handleOmniEditGenerate={handleOmniEditGenerate}
       />
 
       {/* PERSPECTIVE & FRAMING VISUAL MODAL */}
