@@ -47,20 +47,20 @@ export default function SettingsPage() {
     const [showApiKey, setShowApiKey] = useState(false);
 
     // Top-up packs specification
-    // Top-up packs specification (Calculated vs baseline rate of ₹5.98 / credit)
+    // Top-up packs specification (1 Short credit ≈ ₹1 base ratio with volume bonuses)
     const creditPacks = [
         {
             id: 'pack_starter',
             name: 'Starter Fuel',
-            credits: 50,
+            credits: 250,
             price: '₹299',
             originalPrice: '₹299',
-            perCredit: '₹5.98 / cr',
+            perCredit: '₹1.20 / cr',
             discount: null,
             savings: null,
             popular: false,
             badge: 'Quick Boost',
-            description: 'Ideal for 5–7 high-fidelity video renders or 50 rapid image concepts.',
+            description: 'Ideal for 4–5 full AI video renders or 250 image concepts.',
             color: 'from-blue-500/20 to-transparent',
             borderColor: 'border-blue-500/30',
             buttonClass: 'bg-white/10 hover:bg-white/20 text-white'
@@ -68,12 +68,12 @@ export default function SettingsPage() {
         {
             id: 'pack_creator',
             name: 'Creator Pro',
-            credits: 250,
+            credits: 1000,
             price: '₹999',
-            originalPrice: '₹1,495',
-            perCredit: '₹3.99 / cr',
-            discount: '33% OFF',
-            savings: 'Save ₹496',
+            originalPrice: '₹1,000',
+            perCredit: '₹1.00 / cr',
+            discount: null,
+            savings: null,
             popular: true,
             badge: 'MOST POPULAR',
             description: 'Best for creators producing daily UGC, Cinema 4K shots & motion drivers.',
@@ -84,14 +84,14 @@ export default function SettingsPage() {
         {
             id: 'pack_studio',
             name: 'Studio Master',
-            credits: 1000,
+            credits: 2500,
             price: '₹2,499',
-            originalPrice: '₹5,980',
-            perCredit: '₹2.49 / cr',
-            discount: '58% OFF',
-            savings: 'Save ₹3,481',
+            originalPrice: '₹2,500',
+            perCredit: '₹1.00 / cr',
+            discount: null,
+            savings: null,
             popular: false,
-            badge: 'BEST VALUE',
+            badge: 'PRO STUDIO',
             description: 'Massive capacity for production studios, commercial campaigns & agency workflows.',
             color: 'from-purple-500/20 via-fuchsia-500/10 to-transparent',
             borderColor: 'border-purple-500/40',
@@ -100,18 +100,34 @@ export default function SettingsPage() {
         {
             id: 'pack_enterprise',
             name: 'Enterprise Bulk',
-            credits: 2500,
+            credits: 5500,
             price: '₹4,999',
-            originalPrice: '₹14,950',
-            perCredit: '₹1.99 / cr',
-            discount: '67% OFF',
-            savings: 'Save ₹9,951',
+            originalPrice: '₹5,500',
+            perCredit: '₹0.91 / cr',
+            discount: '+500 Free Shorts',
+            savings: '+500 BONUS SHORTS',
             popular: false,
-            badge: 'MAX VOLUME',
-            description: 'Dedicated multi-seat bulk capacity with high-speed GPU queues and VIP rendering.',
+            badge: 'BEST VALUE · +500 BONUS',
+            description: 'High-volume power pack with +500 bonus Shorts, multi-seat capacity and priority queues.',
             color: 'from-cyan-500/20 via-blue-500/10 to-transparent',
             borderColor: 'border-cyan-500/40',
             buttonClass: 'bg-cyan-400 hover:bg-cyan-300 text-black shadow-[0_0_20px_rgba(34,211,238,0.3)]'
+        },
+        {
+            id: 'pack_agency',
+            name: 'Agency Max',
+            credits: 11000,
+            price: '₹9,999',
+            originalPrice: '₹11,000',
+            perCredit: '₹0.91 / cr',
+            discount: '+1,000 Free Shorts',
+            savings: '+1,000 BONUS SHORTS',
+            popular: false,
+            badge: 'MAX VOLUME · +1,000 BONUS',
+            description: 'Maximum agency horsepower with +1,000 bonus Shorts, dedicated GPU lanes and VIP rendering.',
+            color: 'from-amber-500/20 via-orange-500/10 to-transparent',
+            borderColor: 'border-amber-500/40',
+            buttonClass: 'bg-amber-400 hover:bg-amber-300 text-black shadow-[0_0_20px_rgba(251,191,36,0.3)]'
         }
     ];
 
@@ -510,7 +526,7 @@ export default function SettingsPage() {
                                     </p>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4">
                                     {creditPacks.map((pack) => (
                                         <div
                                             key={pack.id}
