@@ -3240,7 +3240,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         try {
           const parsed = JSON.parse(errText);
           if (parsed.error) parsedError = parsed.error;
-        } catch (_) {}
+        } catch (_) {
+          // Ignore non-JSON text body error
+        }
         throw new Error(parsedError);
       }
 
