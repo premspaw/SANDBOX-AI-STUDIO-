@@ -1729,7 +1729,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-2.5 sm:p-4 custom-scrollbar">
                         {templateTab === 'video' ? (
                             <>
                                 {/* Video category chips */}
@@ -1743,8 +1743,8 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                         </button>
                                     ))}
                                 </div>
-                                {/* Video template grid */}
-                                <div className="columns-1 sm:columns-2 gap-3 space-y-3">
+                                {/* Video template grid - 2 columns on mobile for compact previews */}
+                                <div className="columns-2 sm:columns-2 gap-2 sm:gap-3 space-y-2 sm:space-y-3">
                                     {(VIDEO_TEMPLATES[activeVideoCategory] || []).map(template => (
                                         <motion.div
                                             key={template.id}
@@ -1752,7 +1752,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                             whileTap={{ scale: 0.98 }}
                                             onClick={() => handleTemplateSelect(template)}
                                             className={cn(
-                                                'break-inside-avoid cursor-pointer rounded-xl overflow-hidden border transition-all duration-500 relative group',
+                                                'break-inside-avoid cursor-pointer rounded-lg sm:rounded-xl overflow-hidden border transition-all duration-500 relative group',
                                                 selectedTemplate?.id === template.id
                                                     ? 'border-lime-500 shadow-[0_0_20px_rgba(132,204,22,0.2)]'
                                                     : 'border-white/5 hover:border-white/20'
@@ -1762,18 +1762,18 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                                 <img src={template.imageUrl} alt={template.name}
                                                     className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
                                                 {selectedTemplate?.id === template.id && (
-                                                    <div className="absolute top-2 right-2 bg-lime-500 text-black p-1 rounded-full shadow-xl">
+                                                    <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 bg-lime-500 text-black p-0.5 sm:p-1 rounded-full shadow-xl">
                                                         <Check className="w-2.5 h-2.5" />
                                                     </div>
                                                 )}
                                                 {/* Video badge */}
-                                                <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/70 px-1.5 py-0.5 rounded-md">
+                                                <div className="absolute bottom-1.5 left-1.5 sm:bottom-2 sm:left-2 flex items-center gap-1 bg-black/70 px-1.5 py-0.5 rounded-md">
                                                     <Video className="w-2.5 h-2.5 text-lime-400" />
-                                                    <span className="text-[8px] text-lime-300 font-black uppercase">Video</span>
+                                                    <span className="text-[7.5px] sm:text-[8px] text-lime-300 font-black uppercase">Video</span>
                                                 </div>
                                             </div>
-                                            <div className="px-2 py-1.5 bg-black/40">
-                                                <p className="text-[10px] font-black text-white/80 truncate">{template.name}</p>
+                                            <div className="px-1.5 py-1 sm:px-2 sm:py-1.5 bg-black/40">
+                                                <p className="text-[9px] sm:text-[10px] font-black text-white/80 truncate">{template.name}</p>
                                             </div>
                                         </motion.div>
                                     ))}
@@ -1835,7 +1835,8 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                 <Loader2 className="w-5 h-5 animate-spin text-white/30" />
                             </div>
                         )}
-                        <div className="columns-1 sm:columns-2 gap-3 space-y-3">
+                        {/* Image template grid - 2 columns on mobile for compact previews */}
+                        <div className="columns-2 sm:columns-2 gap-2 sm:gap-3 space-y-2 sm:space-y-3">
                             {filteredTemplates.map(template => (
                                 <motion.div
                                     key={template.id}
@@ -1843,7 +1844,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                     whileTap={{ scale: 0.98 }}
                                     onClick={() => handleTemplateSelect(template)}
                                     className={cn(
-                                        "break-inside-avoid cursor-pointer rounded-xl overflow-hidden border transition-all duration-500 relative group",
+                                        "break-inside-avoid cursor-pointer rounded-lg sm:rounded-xl overflow-hidden border transition-all duration-500 relative group",
                                         selectedTemplate?.id === template.id
                                             ? "border-lime-500 shadow-[0_0_20px_rgba(132,204,22,0.2)]"
                                             : "border-white/5 hover:border-white/20"
@@ -1860,16 +1861,16 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                             onError={(e) => { console.error('[IMG FAIL]', template.name, template.imageUrl?.slice(0, 80)); e.target.style.opacity = '0.3'; }}
                                         />
                                         {selectedTemplate?.id === template.id && (
-                                            <div className="absolute top-2 right-2 bg-lime-500 text-black p-1 rounded-full shadow-xl">
+                                            <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 bg-lime-500 text-black p-0.5 sm:p-1 rounded-full shadow-xl">
                                                 <Check className="w-2.5 h-2.5" />
                                             </div>
                                         )}
                                         {/* Expand preview button */}
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setPreviewTemplateIdx(filteredTemplates.indexOf(template)); }}
-                                            className="absolute bottom-2 right-2 bg-black/70 hover:bg-black/90 px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all z-10 flex items-center gap-1">
-                                            <Expand className="w-3 h-3 text-white" />
-                                            <span className="text-[9px] text-white font-bold">Expand</span>
+                                            className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2 bg-black/70 hover:bg-black/90 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md sm:rounded-lg opacity-0 group-hover:opacity-100 transition-all z-10 flex items-center gap-1">
+                                            <Expand className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+                                            <span className="text-[8px] sm:text-[9px] text-white font-bold">Expand</span>
                                         </button>
 
                                         {template.isCustom && isAdmin && (
@@ -1881,12 +1882,15 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                                     }
                                                 }}
                                                 title="Delete template"
-                                                className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-lg bg-black/70 border border-red-500/40 opacity-0 group-hover:opacity-100 hover:bg-red-500 transition-all duration-200 z-10"
+                                                className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 flex items-center gap-1 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md sm:rounded-lg bg-black/70 border border-red-500/40 opacity-0 group-hover:opacity-100 hover:bg-red-500 transition-all duration-200 z-10"
                                             >
-                                                <Trash2 className="w-3 h-3 text-red-400 group-hover:text-white" />
-                                                <span className="text-[9px] font-black uppercase tracking-wider text-red-400 hover:text-white">Delete</span>
+                                                <Trash2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-red-400 group-hover:text-white" />
+                                                <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-red-400 hover:text-white">Delete</span>
                                             </button>
                                         )}
+                                    </div>
+                                    <div className="px-1.5 py-1 sm:px-2 sm:py-1.5 bg-black/40">
+                                        <p className="text-[9px] sm:text-[10px] font-black text-white/80 truncate">{template.name}</p>
                                     </div>
                                 </motion.div>
                             ))}
@@ -1900,7 +1904,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                 <div className="flex-1 flex flex-col bg-[#0f0f11] relative">
                     <div className="flex-1 flex flex-col h-full overflow-hidden relative">
 
-                        {/* Floating Right-Edge Side Drawer Pull Tab */}
+                        {/* Floating Right-Edge Side Drawer Pull Tab (Desktop/Tablet only) */}
                         <motion.button
                             type="button"
                             onClick={() => setShowSidePanel(prev => !prev)}
@@ -1909,7 +1913,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                             animate={{ right: showSidePanel ? '36rem' : '0rem' }}
                             transition={{ type: 'spring', damping: 28, stiffness: 260 }}
                             className={cn(
-                                "fixed top-1/2 -translate-y-1/2 z-[130] py-6 px-2.5 rounded-l-2xl border-l border-y shadow-2xl flex flex-col items-center gap-2 cursor-pointer transition-colors backdrop-blur-2xl",
+                                "hidden md:flex fixed top-1/2 -translate-y-1/2 z-[130] py-6 px-2.5 rounded-l-2xl border-l border-y shadow-2xl flex-col items-center gap-2 cursor-pointer transition-colors backdrop-blur-2xl",
                                 showSidePanel
                                     ? "bg-[#c8f135] text-black border-[#c8f135] shadow-[0_0_20px_rgba(200,241,53,0.85)]"
                                     : "bg-[#0b0b12]/95 border-violet-500/40 text-violet-300 hover:bg-violet-600/30 hover:text-white"

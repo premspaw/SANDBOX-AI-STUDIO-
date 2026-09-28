@@ -285,59 +285,61 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="w-full h-full overflow-y-auto custom-scrollbar bg-[#050508] text-white relative select-none font-sans">
-            {/* Ambient Background Neon Glows */}
-            <div className="absolute top-0 left-1/4 w-[600px] h-[350px] bg-gradient-to-b from-[#c8f135]/10 via-emerald-500/5 to-transparent blur-[140px] pointer-events-none" />
-            <div className="absolute bottom-10 right-10 w-[400px] h-[400px] bg-purple-600/10 blur-[130px] pointer-events-none" />
+        <div className="w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#050508] text-white relative select-none font-sans">
+            {/* Ambient Background Neon Glows (clamped to prevent horizontal sliding) */}
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                <div className="absolute top-0 left-1/4 w-[600px] max-w-full h-[350px] bg-gradient-to-b from-[#c8f135]/10 via-emerald-500/5 to-transparent blur-[140px]" />
+                <div className="absolute bottom-10 right-0 w-[400px] max-w-full h-[400px] bg-purple-600/10 blur-[130px]" />
+            </div>
 
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-24 relative z-10 space-y-6">
+            <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-24 relative z-10 space-y-4 sm:space-y-6">
                 
                 {/* 1. TOP HERO PROFILE & CREDIT STATUS BANNER */}
-                <div className="relative rounded-3xl bg-gradient-to-br from-white/[0.05] via-[#0b0b12] to-black border border-white/10 p-4 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden">
+                <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-br from-white/[0.05] via-[#0b0b12] to-black border border-white/10 p-3.5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden">
                     <div className="absolute top-0 right-0 w-96 h-full bg-gradient-to-l from-[#c8f135]/10 to-transparent pointer-events-none" />
                     
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 relative z-10">
                         {/* User Identity Info */}
-                        <div className="flex items-center gap-4 sm:gap-5 min-w-0">
+                        <div className="flex items-center gap-3 sm:gap-5 min-w-0">
                             <div className="relative shrink-0">
-                                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-[#c8f135] via-emerald-500 to-teal-600 p-[2px] shadow-[0_0_25px_rgba(200,241,53,0.3)]">
-                                    <div className="w-full h-full rounded-[14px] bg-[#0c0c14] flex items-center justify-center overflow-hidden">
+                                <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#c8f135] via-emerald-500 to-teal-600 p-[2px] shadow-[0_0_25px_rgba(200,241,53,0.3)]">
+                                    <div className="w-full h-full rounded-[10px] sm:rounded-[14px] bg-[#0c0c14] flex items-center justify-center overflow-hidden">
                                         {profile?.avatar_url ? (
                                             <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                                         ) : (
-                                            <span className="text-2xl sm:text-3xl font-black text-[#c8f135] uppercase">
+                                            <span className="text-xl sm:text-3xl font-black text-[#c8f135] uppercase">
                                                 {firstWord.charAt(0)}
                                             </span>
                                         )}
                                     </div>
                                 </div>
-                                <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#c8f135] border-2 border-black animate-pulse" />
+                                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-[#c8f135] border-2 border-black animate-pulse" />
                             </div>
 
-                            <div className="space-y-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase truncate">
+                            <div className="space-y-0.5 sm:space-y-1 min-w-0">
+                                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                    <h1 className="text-base sm:text-2xl font-black text-white tracking-tight uppercase truncate">
                                         {displayName || 'ZeroLens Creator'}
                                     </h1>
-                                    <span className="text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full bg-[#c8f135]/15 text-[#c8f135] border border-[#c8f135]/30">
+                                    <span className="text-[9px] sm:text-[10px] font-mono font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full bg-[#c8f135]/15 text-[#c8f135] border border-[#c8f135]/30">
                                         {currentTier} PLAN
                                     </span>
                                     {isAdmin && (
-                                        <span className="text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/40">
+                                        <span className="text-[9px] sm:text-[10px] font-mono font-extrabold px-1.5 sm:px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/40">
                                             ADMIN
                                         </span>
                                     )}
                                 </div>
-                                <p className="text-xs text-zinc-400 font-mono truncate">{displayEmail}</p>
+                                <p className="text-[11px] sm:text-xs text-zinc-400 font-mono truncate">{displayEmail}</p>
                                 
-                                <div className="flex items-center gap-3 pt-1 text-[11px] text-zinc-500 font-mono">
+                                <div className="flex items-center gap-2 sm:gap-3 pt-0.5 text-[10px] sm:text-[11px] text-zinc-500 font-mono">
                                     <span>ID: {(profile?.id || authUser?.id || '').slice(0, 8)}...</span>
                                     <button
                                         type="button"
                                         onClick={handleCopyUserId}
-                                        className="text-zinc-400 hover:text-white flex items-center gap-1 cursor-pointer transition-colors py-1 px-2 -ml-2 rounded-lg active:bg-white/5"
+                                        className="text-zinc-400 hover:text-white flex items-center gap-1 cursor-pointer transition-colors py-0.5 px-1.5 -ml-1.5 rounded-md active:bg-white/5"
                                     >
-                                        {copiedId ? <Check size={12} className="text-[#c8f135]" /> : <Copy size={12} />}
+                                        {copiedId ? <Check size={11} className="text-[#c8f135]" /> : <Copy size={11} />}
                                         <span>{copiedId ? 'Copied' : 'Copy'}</span>
                                     </button>
                                 </div>
@@ -345,46 +347,46 @@ export default function SettingsPage() {
                         </div>
 
                         {/* High-Energy Shorts Wallet & Plan Action */}
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-black/60 border border-white/10 p-3.5 sm:p-4 rounded-2xl shadow-inner shrink-0">
-                            <div className="flex items-center gap-3 px-2">
-                                <div className="w-10 h-10 rounded-xl bg-[#c8f135]/15 border border-[#c8f135]/40 flex items-center justify-center text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.25)] shrink-0">
-                                    <Coins className="w-5 h-5" />
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 bg-black/60 border border-white/10 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-inner shrink-0">
+                            <div className="flex items-center gap-3 px-1 sm:px-2">
+                                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#c8f135]/15 border border-[#c8f135]/40 flex items-center justify-center text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.25)] shrink-0">
+                                    <Coins className="w-4 h-4 sm:w-5 sm:h-5" />
                                 </div>
                                 <div className="flex-1">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
+                                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-zinc-400 block">
                                         Shorts Balance
                                     </span>
                                     <div className="flex items-baseline gap-1.5">
-                                        <span className="text-2xl font-black text-[#c8f135] tracking-tight">{userCredits}</span>
-                                        <span className="text-[10px] font-mono font-bold text-zinc-400">⚡ Available</span>
+                                        <span className="text-xl sm:text-2xl font-black text-[#c8f135] tracking-tight">{userCredits}</span>
+                                        <span className="text-[9px] sm:text-[10px] font-mono font-bold text-zinc-400">⚡ Available</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-2 pt-2 sm:pt-0 sm:border-l sm:border-white/10 sm:pl-3">
+                            <div className="flex items-center gap-2 pt-1.5 sm:pt-0 sm:border-l sm:border-white/10 sm:pl-3">
                                 <button
                                     type="button"
                                     onClick={() => setActiveTab('credits')}
-                                    className="flex-1 sm:flex-none px-4 py-3 sm:py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(200,241,53,0.3)] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                                    className="flex-1 sm:flex-none px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-[11px] sm:text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(200,241,53,0.3)] active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
                                 >
-                                    <Zap size={14} className="fill-black" />
+                                    <Zap size={13} className="fill-black" />
                                     <span>Top Up / Renew</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setActiveTabGlobal('pricing')}
-                                    className="px-3 py-3 sm:py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer flex items-center justify-center"
+                                    className="px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-[11px] sm:text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer flex items-center justify-center"
                                     title="View All Studio Plans"
                                 >
-                                    <ExternalLink size={14} />
+                                    <ExternalLink size={13} />
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* 2. NAVIGATION SEGMENTED TABS */}
-                <div className="grid grid-cols-2 lg:flex lg:items-center gap-1.5 p-1.5 bg-[#0a0a12]/90 border border-white/[0.08] rounded-2xl shrink-0">
+                {/* 2. NAVIGATION SEGMENTED TABS (Smooth horizontal swipe on mobile) */}
+                <div className="flex items-center overflow-x-auto no-scrollbar gap-1.5 p-1 sm:p-1.5 bg-[#0a0a12]/90 border border-white/[0.08] rounded-xl sm:rounded-2xl shrink-0">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
                         const isSelected = activeTab === tab.id;
@@ -394,17 +396,17 @@ export default function SettingsPage() {
                                 type="button"
                                 onClick={() => setActiveTab(tab.id)}
                                 className={cn(
-                                    "flex items-center justify-center lg:justify-start gap-2 px-3.5 py-3 lg:py-2.5 rounded-xl text-[11px] lg:text-xs font-black uppercase tracking-wider transition-all cursor-pointer select-none active:scale-95 shrink-0",
+                                    "flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer select-none active:scale-95 shrink-0 whitespace-nowrap",
                                     isSelected
                                         ? "bg-[#c8f135] text-black shadow-[0_0_20px_rgba(200,241,53,0.3)] font-black"
                                         : "text-zinc-400 hover:text-white hover:bg-white/5"
                                 )}
                             >
-                                <Icon size={14} className={isSelected ? "text-black" : "text-zinc-400"} />
-                                <span className="truncate">{tab.label}</span>
+                                <Icon size={13} className={isSelected ? "text-black" : "text-zinc-400"} />
+                                <span>{tab.label}</span>
                                 {tab.badge && (
                                     <span className={cn(
-                                        "text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-md hidden sm:inline-block",
+                                        "text-[8px] sm:text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-md hidden sm:inline-block",
                                         isSelected ? "bg-black/20 text-black font-extrabold" : "bg-white/10 text-[#c8f135]"
                                     )}>
                                         {tab.badge}
@@ -416,22 +418,22 @@ export default function SettingsPage() {
                 </div>
 
                 {/* 3. ACTIVE TAB CONTENT VIEW */}
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
 
                     {/* ═════════ TAB 1: SHORTS & SUBSCRIPTION PACKS ═════════ */}
                     {activeTab === 'credits' && (
-                        <div className="space-y-6">
+                        <div className="space-y-4 sm:space-y-6">
                             
                             {/* Current Subscription Card */}
-                            <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-white/[0.03] to-[#0a0a12] border border-white/[0.08] backdrop-blur-xl space-y-4">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
+                            <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-white/[0.03] to-[#0a0a12] border border-white/[0.08] backdrop-blur-xl space-y-3 sm:space-y-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-white/[0.08] pb-3 sm:pb-4">
                                     <div>
-                                        <span className="text-[10px] font-mono text-[#c8f135] font-extrabold uppercase tracking-widest block mb-0.5">
+                                        <span className="text-[9px] sm:text-[10px] font-mono text-[#c8f135] font-extrabold uppercase tracking-widest block mb-0.5">
                                             ACTIVE MEMBERSHIP
                                         </span>
-                                        <h3 className="text-lg sm:text-xl font-black uppercase text-white tracking-tight flex items-center gap-2">
+                                        <h3 className="text-base sm:text-xl font-black uppercase text-white tracking-tight flex items-center gap-2 flex-wrap">
                                             <span>{currentTier} Creator Tier</span>
-                                            <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                                            <span className="text-[9px] sm:text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
                                                 Active · No Recurring Bill
                                             </span>
                                         </h3>
@@ -441,9 +443,9 @@ export default function SettingsPage() {
                                         <button
                                             type="button"
                                             onClick={() => setActiveTabGlobal('pricing')}
-                                            className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white text-xs font-black uppercase tracking-wider border border-white/15 transition-all cursor-pointer flex items-center gap-1.5"
+                                            className="px-3.5 sm:px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white text-[11px] sm:text-xs font-black uppercase tracking-wider border border-white/15 transition-all cursor-pointer flex items-center gap-1.5"
                                         >
-                                            <Sparkles size={13} className="text-[#c8f135]" />
+                                            <Sparkles size={12} className="text-[#c8f135]" />
                                             <span>Upgrade Plan</span>
                                         </button>
                                     </div>
@@ -597,7 +599,7 @@ export default function SettingsPage() {
 
                     {/* ═════════ TAB 2: ACCOUNT & IDENTITY ═════════ */}
                     {activeTab === 'profile' && (
-                        <div className="p-5 sm:p-6 rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-6">
+                        <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-4 sm:space-y-6">
                             <div>
                                 <h3 className="text-sm font-black uppercase tracking-wider text-white">Account Profile</h3>
                                 <p className="text-xs text-zinc-400 font-mono mt-0.5">Manage your display name and public creator identity.</p>
@@ -645,7 +647,7 @@ export default function SettingsPage() {
                                     <button
                                         type="submit"
                                         disabled={saving}
-                                        className="px-6 py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(200,241,53,0.3)] transition-all cursor-pointer flex items-center gap-2 active:scale-95 disabled:opacity-50"
+                                        className="px-5 sm:px-6 py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(200,241,53,0.3)] transition-all cursor-pointer flex items-center gap-2 active:scale-95 disabled:opacity-50"
                                     >
                                         {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                                         <span>Save Profile Changes</span>
@@ -657,7 +659,7 @@ export default function SettingsPage() {
 
                     {/* ═════════ TAB 3: STUDIO & AI ENGINE PREFERENCES ═════════ */}
                     {activeTab === 'preferences' && (
-                        <div className="p-5 sm:p-6 rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-6">
+                        <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-4 sm:space-y-6">
                             <div>
                                 <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
                                     <Sliders className="w-4 h-4 text-[#c8f135]" />
@@ -699,7 +701,7 @@ export default function SettingsPage() {
                                                 type="button"
                                                 onClick={() => setDefaultAspect(opt.val)}
                                                 className={cn(
-                                                    "py-2.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer select-none",
+                                                    "py-2.5 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold border transition-all cursor-pointer select-none truncate text-center",
                                                     defaultAspect === opt.val
                                                         ? "bg-[#c8f135]/15 border-[#c8f135]/60 text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
                                                         : "bg-black/50 border-white/10 text-zinc-400 hover:text-white"
@@ -712,10 +714,10 @@ export default function SettingsPage() {
                                 </div>
 
                                 {/* Auto Prompt Enhancer */}
-                                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08]">
+                                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08] gap-3">
                                     <div className="space-y-0.5">
                                         <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                                            <Wand2 size={13} className="text-[#c8f135]" /> Auto-Enhance Prompts with Vertex AI MCP
+                                            <Wand2 size={13} className="text-[#c8f135] shrink-0" /> Auto-Enhance Prompts with Vertex AI MCP
                                         </span>
                                         <p className="text-[11px] text-zinc-400">
                                             Expands prompts with cinematic camera direction and lighting keywords.
@@ -725,15 +727,15 @@ export default function SettingsPage() {
                                         type="checkbox"
                                         checked={autoMcpEnhance}
                                         onChange={(e) => setAutoMcpEnhance(e.target.checked)}
-                                        className="w-4 h-4 accent-[#c8f135] cursor-pointer"
+                                        className="w-4 h-4 accent-[#c8f135] cursor-pointer shrink-0"
                                     />
                                 </div>
 
                                 {/* Audio Auto-Gen */}
-                                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08]">
+                                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08] gap-3">
                                     <div className="space-y-0.5">
                                         <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                                            <Volume2 size={13} className="text-cyan-400" /> Default Synchronized Sound Audio Track
+                                            <Volume2 size={13} className="text-cyan-400 shrink-0" /> Default Synchronized Sound Audio Track
                                         </span>
                                         <p className="text-[11px] text-zinc-400">
                                             Automatically produces native sound design for generated video clips.
@@ -743,7 +745,7 @@ export default function SettingsPage() {
                                         type="checkbox"
                                         checked={autoAudio}
                                         onChange={(e) => setAutoAudio(e.target.checked)}
-                                        className="w-4 h-4 accent-[#c8f135] cursor-pointer"
+                                        className="w-4 h-4 accent-[#c8f135] cursor-pointer shrink-0"
                                     />
                                 </div>
 
@@ -751,7 +753,7 @@ export default function SettingsPage() {
                                     <button
                                         type="button"
                                         onClick={handleSavePreferences}
-                                        className="px-6 py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(200,241,53,0.3)] transition-all cursor-pointer active:scale-95"
+                                        className="px-5 sm:px-6 py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(200,241,53,0.3)] transition-all cursor-pointer active:scale-95"
                                     >
                                         Save Studio Preferences
                                     </button>
@@ -762,9 +764,9 @@ export default function SettingsPage() {
 
                     {/* ═════════ TAB 4: SECURITY & API KEYS ═════════ */}
                     {activeTab === 'security' && (
-                        <div className="space-y-6">
+                        <div className="space-y-4 sm:space-y-6">
                             {/* Password & Authentication */}
-                            <div className="p-5 sm:p-6 rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-4">
+                            <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-4">
                                 <div>
                                     <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
                                         <KeyRound className="w-4 h-4 text-[#c8f135]" />
@@ -775,7 +777,7 @@ export default function SettingsPage() {
                                     </p>
                                 </div>
 
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white/[0.02] border border-white/5">
                                     <div>
                                         <span className="text-xs font-bold text-white block">Reset Account Password</span>
                                         <p className="text-[11px] text-zinc-400">
@@ -786,7 +788,7 @@ export default function SettingsPage() {
                                         type="button"
                                         onClick={handleSendResetEmail}
                                         disabled={sendingReset || resetEmailSent}
-                                        className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer shrink-0 disabled:opacity-50"
+                                        className="px-3.5 sm:px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider border border-white/10 transition-all cursor-pointer shrink-0 disabled:opacity-50"
                                     >
                                         {sendingReset ? 'Sending...' : resetEmailSent ? 'Link Sent ✓' : 'Send Reset Link'}
                                     </button>
@@ -797,7 +799,7 @@ export default function SettingsPage() {
                                     <button
                                         type="button"
                                         onClick={handleSignOut}
-                                        className="px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                                        className="px-3.5 sm:px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                                     >
                                         <LogOut size={13} />
                                         <span>Sign Out</span>
@@ -806,7 +808,7 @@ export default function SettingsPage() {
                             </div>
 
                             {/* Developer & Admin API Configuration */}
-                            <div className="p-5 sm:p-6 rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-4">
+                            <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-4">
                                 <div>
                                     <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
                                         <Cpu className="w-4 h-4 text-cyan-400" />
@@ -827,7 +829,7 @@ export default function SettingsPage() {
                                             type="checkbox"
                                             checked={useAdminTrialKey}
                                             onChange={(e) => setUseAdminTrialKey(e.target.checked)}
-                                            className="w-4 h-4 accent-[#c8f135] cursor-pointer"
+                                            className="w-4 h-4 accent-[#c8f135] cursor-pointer shrink-0"
                                         />
                                     </div>
 
@@ -871,7 +873,7 @@ export default function SettingsPage() {
 
                     {/* ═════════ TAB 5: ALERTS & NOTIFICATIONS ═════════ */}
                     {activeTab === 'notifications' && (
-                        <div className="p-5 sm:p-6 rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-6">
+                        <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-4 sm:space-y-6">
                             <div>
                                 <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
                                     <Bell className="w-4 h-4 text-[#c8f135]" />
@@ -881,7 +883,7 @@ export default function SettingsPage() {
                             </div>
 
                             <div className="space-y-3 max-w-xl">
-                                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08]">
+                                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08] gap-3">
                                     <div className="space-y-0.5">
                                         <span className="text-xs font-bold text-white block">Security & Authentication Alerts</span>
                                         <p className="text-[11px] text-zinc-400">Instant notification when a new device signs in.</p>
@@ -890,11 +892,11 @@ export default function SettingsPage() {
                                         type="checkbox"
                                         checked={securityAlerts}
                                         onChange={(e) => setSecurityAlerts(e.target.checked)}
-                                        className="w-4 h-4 accent-[#c8f135] cursor-pointer"
+                                        className="w-4 h-4 accent-[#c8f135] cursor-pointer shrink-0"
                                     />
                                 </div>
 
-                                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08]">
+                                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08] gap-3">
                                     <div className="space-y-0.5">
                                         <span className="text-xs font-bold text-white block">Low Shorts Balance Warning</span>
                                         <p className="text-[11px] text-zinc-400">Alerts you when your balance drops below 20⚡.</p>
@@ -903,11 +905,11 @@ export default function SettingsPage() {
                                         type="checkbox"
                                         checked={true}
                                         disabled
-                                        className="w-4 h-4 accent-[#c8f135] opacity-60"
+                                        className="w-4 h-4 accent-[#c8f135] opacity-60 shrink-0"
                                     />
                                 </div>
 
-                                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08]">
+                                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08] gap-3">
                                     <div className="space-y-0.5">
                                         <span className="text-xs font-bold text-white block">Product Updates & Model Releases</span>
                                         <p className="text-[11px] text-zinc-400">Be first to test new Omni & Veo checkpoints.</p>
@@ -916,7 +918,7 @@ export default function SettingsPage() {
                                         type="checkbox"
                                         checked={marketingEmails}
                                         onChange={(e) => setMarketingEmails(e.target.checked)}
-                                        className="w-4 h-4 accent-[#c8f135] cursor-pointer"
+                                        className="w-4 h-4 accent-[#c8f135] cursor-pointer shrink-0"
                                     />
                                 </div>
 
@@ -924,7 +926,7 @@ export default function SettingsPage() {
                                     <button
                                         type="button"
                                         onClick={handleUpdateProfile}
-                                        className="px-6 py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(200,241,53,0.3)] transition-all cursor-pointer active:scale-95"
+                                        className="px-5 sm:px-6 py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(200,241,53,0.3)] transition-all cursor-pointer active:scale-95"
                                     >
                                         Save Notification Settings
                                     </button>
