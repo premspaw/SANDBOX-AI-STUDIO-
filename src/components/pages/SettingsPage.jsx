@@ -47,13 +47,17 @@ export default function SettingsPage() {
     const [showApiKey, setShowApiKey] = useState(false);
 
     // Top-up packs specification
+    // Top-up packs specification (Calculated vs baseline rate of ₹5.98 / credit)
     const creditPacks = [
         {
             id: 'pack_starter',
             name: 'Starter Fuel',
             credits: 50,
             price: '₹299',
+            originalPrice: '₹299',
             perCredit: '₹5.98 / cr',
+            discount: null,
+            savings: null,
             popular: false,
             badge: 'Quick Boost',
             description: 'Ideal for 5–7 high-fidelity video renders or 50 rapid image concepts.',
@@ -66,7 +70,10 @@ export default function SettingsPage() {
             name: 'Creator Pro',
             credits: 250,
             price: '₹999',
+            originalPrice: '₹1,495',
             perCredit: '₹3.99 / cr',
+            discount: '33% OFF',
+            savings: 'Save ₹496',
             popular: true,
             badge: 'MOST POPULAR',
             description: 'Best for creators producing daily UGC, Cinema 4K shots & motion drivers.',
@@ -79,7 +86,10 @@ export default function SettingsPage() {
             name: 'Studio Master',
             credits: 1000,
             price: '₹2,499',
+            originalPrice: '₹5,980',
             perCredit: '₹2.49 / cr',
+            discount: '58% OFF',
+            savings: 'Save ₹3,481',
             popular: false,
             badge: 'BEST VALUE',
             description: 'Massive capacity for production studios, commercial campaigns & agency workflows.',
@@ -90,15 +100,18 @@ export default function SettingsPage() {
         {
             id: 'pack_enterprise',
             name: 'Enterprise Bulk',
-            credits: 5000,
-            price: '₹7,999',
-            perCredit: '₹1.59 / cr',
+            credits: 2500,
+            price: '₹4,999',
+            originalPrice: '₹14,950',
+            perCredit: '₹1.99 / cr',
+            discount: '67% OFF',
+            savings: 'Save ₹9,951',
             popular: false,
             badge: 'MAX VOLUME',
-            description: 'Dedicated multi-seat capacity with high-speed GPU queues and VIP rendering.',
+            description: 'Dedicated multi-seat bulk capacity with high-speed GPU queues and VIP rendering.',
             color: 'from-cyan-500/20 via-blue-500/10 to-transparent',
             borderColor: 'border-cyan-500/40',
-            buttonClass: 'bg-cyan-400 hover:cyan-300 text-black shadow-[0_0_20px_rgba(34,211,238,0.3)]'
+            buttonClass: 'bg-cyan-400 hover:bg-cyan-300 text-black shadow-[0_0_20px_rgba(34,211,238,0.3)]'
         }
     ];
 
@@ -502,7 +515,7 @@ export default function SettingsPage() {
                                         <div
                                             key={pack.id}
                                             className={cn(
-                                                "relative rounded-3xl p-5 border flex flex-col justify-between transition-all bg-gradient-to-b shadow-xl overflow-hidden group hover:scale-[1.02]",
+                                                "relative rounded-2xl sm:rounded-3xl p-4 sm:p-5 border flex flex-col justify-between transition-all bg-gradient-to-b shadow-xl overflow-hidden group hover:scale-[1.02]",
                                                 pack.color,
                                                 pack.borderColor
                                             )}
@@ -518,22 +531,43 @@ export default function SettingsPage() {
                                                 </div>
                                             )}
 
-                                            <div className="space-y-2 pt-2">
-                                                <span className="text-xs font-bold text-zinc-300 block">{pack.name}</span>
-                                                <div className="flex items-baseline gap-1">
-                                                    <span className="text-3xl font-black text-white">{pack.credits}</span>
-                                                    <span className="text-xs font-black text-[#c8f135]">⚡ Shorts</span>
+                                            <div className="space-y-2.5 pt-2">
+                                                <div>
+                                                    <span className="text-xs font-bold text-zinc-300 block">{pack.name}</span>
+                                                    <div className="flex items-baseline gap-1 mt-0.5">
+                                                        <span className="text-2xl sm:text-3xl font-black text-white">{pack.credits.toLocaleString()}</span>
+                                                        <span className="text-xs font-black text-[#c8f135]">⚡ Shorts</span>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center justify-between text-xs font-mono border-b border-white/10 pb-2 text-zinc-400">
-                                                    <span className="text-base font-black text-white">{pack.price}</span>
-                                                    <span className="text-[10px]">{pack.perCredit}</span>
+
+                                                <div className="border-y border-white/10 py-2 space-y-1">
+                                                    <div className="flex items-baseline justify-between">
+                                                        <div className="flex items-baseline gap-1.5">
+                                                            <span className="text-lg font-black text-white">{pack.price}</span>
+                                                            {pack.originalPrice && pack.originalPrice !== pack.price && (
+                                                                <span className="text-xs text-zinc-500 line-through font-mono font-medium">
+                                                                    {pack.originalPrice}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-[10px] font-mono font-bold text-zinc-400">{pack.perCredit}</span>
+                                                    </div>
+
+                                                    {pack.savings && (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-[9px] font-mono font-extrabold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded-md">
+                                                                {pack.savings} ({pack.discount})
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <p className="text-[11px] text-zinc-400 leading-relaxed min-h-[44px]">
+
+                                                <p className="text-[11px] text-zinc-400 leading-relaxed min-h-[40px]">
                                                     {pack.description}
                                                 </p>
                                             </div>
 
-                                            <div className="pt-4">
+                                            <div className="pt-3">
                                                 <button
                                                     type="button"
                                                     onClick={() => setActiveTabGlobal('pricing')}
@@ -543,7 +577,7 @@ export default function SettingsPage() {
                                                     )}
                                                 >
                                                     <Zap size={13} className="fill-current" />
-                                                    <span>Get {pack.credits}⚡</span>
+                                                    <span>Get {pack.credits.toLocaleString()}⚡</span>
                                                 </button>
                                             </div>
                                         </div>
