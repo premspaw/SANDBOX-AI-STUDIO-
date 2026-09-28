@@ -606,6 +606,11 @@ export default function CinematicStudio() {
   const [characterOrientation, setCharacterOrientation] = useState('video');
   const [backgroundSource, setBackgroundSource] = useState('input_video');
 
+  // Video Extension States (Gemini Omni 1.1 Flash)
+  const [extensionSourceVideo, setExtensionSourceVideo] = useState(null);
+  const [extensionDuration, setExtensionDuration] = useState(4); // 4 or 8 seconds
+  const [extensionPrompt, setExtensionPrompt] = useState('');
+
   const [uploadTarget, setUploadTargetState] = useState('first'); // 'first' | 'last'
   const uploadTargetRef = useRef('first');
   const setUploadTarget = useCallback((t) => {
@@ -3136,6 +3141,164 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     return cols;
   }, [filteredGallery, isBusy]);
 
+  // Extend an existing video clip with Omni 1.1 Flash
+  const handleExtendVideo = useCallback((item) => {
+    if (!item) return;
+    setExtensionSourceVideo(item);
+    setPanelTab('omni-multi');
+    setShowSidePanel(true);
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) {
+      showToast("Loaded clip into Video Extension Panel (+4s / +8s)", "info");
+    }
+  }, []);
+
+  // Omni Flash Video Extension Handler (+4s = 20⚡, +8s = 40⚡)
+  const handleExtensionGenerate = useCallback(async () => {
+    if (!extensionSourceVideo) {
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast("Please select a source video to extend.", "error");
+      return;
+    }
+
+    const rawVideo = typeof extensionSourceVideo === 'string'
+      ? extensionSourceVideo
+      : (extensionSourceVideo?.url || extensionSourceVideo?.videoUrl || extensionSourceVideo?.data);
+
+    if (!rawVideo) {
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast("Source video URL not found.", "error");
+      return;
+    }
+
+    const requiredCredits = extensionDuration === 8 ? 40 : 20;
+    if (userCredits < requiredCredits) {
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) {
+        showToast(`Insufficient credits. Extension requires ${requiredCredits}⚡.`, "error", {
+          label: "⚡ Top Up Credits",
+          onClick: () => {
+            const setTab = useAppStore.getState().setActiveTab;
+            if (setTab) setTab('pricing');
+          }
+        });
+      }
+      return;
+    }
+
+    setIsSubmitting(true);
+    isSubmittingRef.current = true;
+    setStatus('generating');
+    setPollMsg(`Extending video by +${extensionDuration}s with Omni Flash...`);
+
+    const tempId = `temp-extension-${Date.now()}`;
+    const tempItem = {
+      id: tempId,
+      type: 'video',
+      loading: true,
+      prompt: extensionPrompt ? `Extension (+${extensionDuration}s): ${extensionPrompt}` : `Extension (+${extensionDuration}s) Continuous Scene`,
+      aspect: extensionSourceVideo?.aspect || aspectRatio || '16:9',
+      ts: Date.now(),
+      projectId: activeProjectId
+    };
+    setGallery(prev => [tempItem, ...prev]);
+
+    try {
+      const spendResult = await spendShorts(userId, requiredCredits, 'omni_video_extension');
+      if (!spendResult?.success) {
+        throw new Error('Failed to authorize credit deduction.');
+      }
+
+      const resolvedVideo = await resolveBlobToBase64(rawVideo);
+      if (!resolvedVideo) {
+        throw new Error('Failed to resolve source video file for extension.');
+      }
+
+      const resp = await fetch(getApiUrl('/api/omni-i2v'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          video: resolvedVideo,
+          sourceVideo: resolvedVideo,
+          refVideo: resolvedVideo,
+          task: 'extension',
+          duration: extensionDuration,
+          prompt: extensionPrompt?.trim() || '',
+          motionPrompt: extensionPrompt?.trim() || '',
+          resolution: resolution === '4k' ? '1080p' : resolution,
+          generateAudio: generateAudio,
+          model: 'gemini-omni-1.1-flash-preview',
+          userId,
+          projectId: activeProjectId,
+          creditReason: 'omni_video_extension'
+        })
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text();
+        let parsedError = `Extension failed (${resp.status})`;
+        try {
+          const parsed = JSON.parse(errText);
+          if (parsed.error) parsedError = parsed.error;
+        } catch (_) {}
+        throw new Error(parsedError);
+      }
+
+      const data = await resp.json();
+      if (!data.videoUrl) throw new Error('Omni Extension returned no videoUrl.');
+
+      const finishedItem = {
+        id: Date.now() + Math.random(),
+        type: 'video',
+        url: data.videoUrl,
+        prompt: extensionPrompt ? `Extended (+${extensionDuration}s): ${extensionPrompt}` : `Extended Scene (+${extensionDuration}s)`,
+        engine: 'Omni Flash Extension',
+        aspect: extensionSourceVideo?.aspect || aspectRatio || '16:9',
+        ts: Date.now(),
+        projectId: activeProjectId
+      };
+
+      setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
+      setExtensionSourceVideo(finishedItem);
+      setStatus('idle');
+      setPollMsg('');
+      refreshShorts();
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast(`Video successfully extended by +${extensionDuration}s!`, "success");
+    } catch (err) {
+      console.error('[CinematicStudio] Extension error:', err);
+      setGallery(prev => prev.filter(item => item.id !== tempId));
+      setStatus('error');
+      setPollMsg('');
+      const cleanErr = err.message || 'Video extension failed.';
+      setErrorMsg(cleanErr);
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast(cleanErr, "error");
+      try {
+        await refundShorts(userId, requiredCredits, 'omni_video_extension_failed');
+        refreshShorts();
+      } catch (refErr) {
+        console.warn('[CinematicStudio] Refund error:', refErr);
+      }
+    } finally {
+      setIsSubmitting(false);
+      isSubmittingRef.current = false;
+    }
+  }, [
+    extensionSourceVideo,
+    extensionDuration,
+    extensionPrompt,
+    userCredits,
+    aspectRatio,
+    activeProjectId,
+    userId,
+    resolution,
+    generateAudio,
+    spendShorts,
+    refundShorts,
+    refreshShorts
+  ]);
+
   /* ─── RENDER ─────────────────────────────────────────────── */
   return (
     <div className="h-full flex flex-col bg-[#020202] text-white overflow-hidden relative font-sans">
@@ -3491,6 +3654,18 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                                     <Video size={7} className="text-current" /> LF
                                   </button>
                                 </>
+                              )}
+                              {item.type === 'video' && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleExtendVideo(item);
+                                  }}
+                                  className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#c8f135]/10 border border-[#c8f135]/30 text-[7px] font-black uppercase tracking-wider text-[#c8f135] hover:bg-[#c8f135]/25 hover:border-[#c8f135]/50 transition-all active:scale-95 shrink-0"
+                                  title="Extend video length with Omni 1.1 Flash (+4s / +8s)"
+                                >
+                                  <Zap size={7} className="fill-current text-[#c8f135]" /> Extend
+                                </button>
                               )}
                               <button
                                 onClick={(e) => {
@@ -4734,6 +4909,14 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             setFirstFramePreview={setFirstFramePreview}
             setLastFrameImage={setLastFrameImage}
             setLastFramePreview={setLastFramePreview}
+            setOmniFirstFrameImage={setOmniFirstFrameImage}
+            setOmniFirstFramePreview={setOmniFirstFramePreview}
+            setOmniLastFrameImage={setOmniLastFrameImage}
+            setOmniLastFramePreview={setOmniLastFramePreview}
+            setOmniRefVideoPreview={setOmniRefVideoPreview}
+            setPanelTab={setPanelTab}
+            handleExtendVideo={handleExtendVideo}
+            setShowSidePanel={setShowSidePanel}
             userId={userId}
           />
         )}
@@ -4822,6 +5005,13 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         canGenerate={canGenerate}
         allRefItems={allRefItems}
         gallery={gallery}
+        extensionSourceVideo={extensionSourceVideo}
+        setExtensionSourceVideo={setExtensionSourceVideo}
+        extensionDuration={extensionDuration}
+        setExtensionDuration={setExtensionDuration}
+        extensionPrompt={extensionPrompt}
+        setExtensionPrompt={setExtensionPrompt}
+        handleExtensionGenerate={handleExtensionGenerate}
       />
 
       {/* PERSPECTIVE & FRAMING VISUAL MODAL */}

@@ -314,7 +314,8 @@ export default function createRouter(deps) {
             }
 
             const { image, motionPrompt, prompt, duration = 8, aspectRatio = '16:9', nodeId, userId, generateAudio, resolution = '720p', model } = req.body;
-            if (!motionPrompt && !prompt) throw new Error('No motion prompt provided');
+            const requestedTask = req.body.task && req.body.task !== 'auto' ? req.body.task : null;
+            if (!motionPrompt && !prompt && requestedTask !== 'extension') throw new Error('No motion prompt provided');
 
             const targetUserId = user ? user.id : userId;
 
@@ -494,9 +495,8 @@ export default function createRouter(deps) {
             
             // Construct input parts for Gemini Omni Flash (multimodal)
             let inputParts = [];
-            const inputImage = image || req.body.firstFrameImage || req.body.firstFrame;
+            const inputImage = image || req.body.firstFrameImage || req.body.firstFrame || req.body.video || req.body.sourceVideo || req.body.refVideo;
             const endImage = req.body.lastFrameImage || req.body.imageEnd || req.body.lastFrame;
-            const requestedTask = req.body.task && req.body.task !== 'auto' ? req.body.task : null;
 
             // 1. Primary image (Start Frame): only include if not doing pure text_to_video
             let primaryImageResolved = null;
@@ -552,9 +552,13 @@ export default function createRouter(deps) {
                             primaryImageResolved.data,
                             sanitizeMime(primaryImageResolved.mimeType, 'video/mp4')
                         );
-                        inputParts.push({ type: 'text', text: '<START_FRAME>\n[Video reference at 00:00]:\n' });
+                        if (requestedTask === 'extension') {
+                            inputParts.push({ type: 'text', text: '<VIDEO_REF_0>\n[Source Video to Extend]:\n' });
+                        } else {
+                            inputParts.push({ type: 'text', text: '<START_FRAME>\n[Video reference at 00:00]:\n' });
+                        }
                         inputParts.push({ type: 'video', uri: fileUri });
-                        console.log(`[OMNI-I2V] Reference video uploaded: ${fileUri}`);
+                        console.log(`[OMNI-I2V] Reference video uploaded (${requestedTask === 'extension' ? 'extension' : 'reference'}): ${fileUri}`);
                     } catch (fileApiErr) {
                         console.warn(`[OMNI-I2V] Reference video upload failed, skipping: ${fileApiErr.message}`);
                     }
@@ -578,7 +582,12 @@ export default function createRouter(deps) {
                 ? ' [Audio: Realistic synchronized environmental sound effects, natural foley, and ambient room tones ONLY. Strictly NO background music, NO BGM, NO soundtrack, NO musical instruments, NO melody, NO singing. High-fidelity diegetic sound effects only.]'
                 : '';
             let middlePromptText = '';
-            if (primaryImageResolved && endImageResolved) {
+            if (requestedTask === 'extension') {
+                const actionPart = compiledPrompt?.trim()
+                    ? `Continuation action and progression: ${compiledPrompt}.`
+                    : 'Continue the natural action, character performance, and camera movement forward smoothly and naturally.';
+                middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] SCENE EXTENSION & CONTINUATION DIRECTIVE: Seamlessly extend and continue the scene from the exact final frame of the preceding source video without any visual discontinuity or jump cuts. Preserve 100% strict consistency with the original clip: maintain identical character identity and facial features, identical costumes and wardrobe textures, identical environment and location geometry, lighting direction, color grading, and physical dynamics. ${actionPart}${sfxDirective} Generate a single continuous ${validDuration}-second extension shot.\n`;
+            } else if (primaryImageResolved && endImageResolved) {
                 middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] The video MUST begin at timestamp 00:00 directly with the exact subject, composition, and initial pose shown in <START_FRAME>. Scene motion and action: ${compiledPrompt}${sfxDirective}. The video MUST transition smoothly and continuously throughout the ${validDuration} seconds so the action finishes seamlessly into <END_FRAME> at 00:${secFormatted}. Generate a single continuous shot with no scene cuts.\n`;
             } else if (primaryImageResolved) {
                 middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] The video MUST begin at timestamp 00:00 directly using the initial frame <START_FRAME>. Scene motion and action: ${compiledPrompt}${sfxDirective}. Generate a single continuous ${validDuration}-second shot starting from this frame.\n`;

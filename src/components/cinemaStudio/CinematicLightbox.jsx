@@ -45,6 +45,8 @@ export function CinematicLightbox({
   setPromptText,
   setOmniPromptText,
   setPanelTab,
+  handleExtendVideo,
+  setShowSidePanel,
   userId
 }) {
   // 3x3 Grid Overlay & Crop Interactive States
@@ -509,6 +511,17 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
     setLightboxItem(null);
   };
 
+  // Extend Video using Omni Flash Extension (+4s / +8s)
+  const handleExtendScene = () => {
+    if (handleExtendVideo) {
+      handleExtendVideo(lightboxItem);
+    } else {
+      if (setPanelTab) setPanelTab('omni-multi');
+      if (setShowSidePanel) setShowSidePanel(true);
+    }
+    setLightboxItem(null);
+  };
+
   // Add Generation Prompt to Studio Input Textarea
   const handleAddPromptToStudio = () => {
     const showToast = useAppStore.getState().showToast;
@@ -784,6 +797,16 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                       ))}
                     </div>
                   </div>
+
+                  {/* ⚡ Extend Scene with Omni Flash (+4s / +8s) */}
+                  <button
+                    onClick={handleExtendScene}
+                    className="col-span-2 flex items-center justify-center gap-2 p-2.5 rounded-xl border border-[#c8f135]/40 bg-[#c8f135]/15 hover:bg-[#c8f135]/25 text-[#c8f135] transition-all group cursor-pointer shadow-[0_0_15px_rgba(200,241,53,0.15)] active:scale-95"
+                    title="Seamlessly extend this scene by +4s or +8s with Omni Flash"
+                  >
+                    <Zap size={12} className="fill-current text-[#c8f135]" />
+                    <span className="text-[8.5px] font-black uppercase tracking-wider">⚡ Extend Video (+4s / +8s)</span>
+                  </button>
 
                   <button
                     onClick={handleUseAsOmniRefVideo}

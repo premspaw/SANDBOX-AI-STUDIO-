@@ -10,6 +10,7 @@ import { cn } from '../../lib/utils';
 import { getApiUrl } from '../../config/apiConfig';
 import { useAppStore } from '../../store';
 import { resolveBlobToBase64 } from './SeedanceEngine';
+import VideoExtensionPanel from './VideoExtensionPanel';
 
 // Modern Higgsfield-style Segmented Chip Selector
 const SegmentedControl = React.memo(({ options, value, onChange, label, icon: Icon, badge }) => (
@@ -211,7 +212,15 @@ export const SidePanel = React.memo(({
   characterOrientation: propCharacterOrientation = 'video',
   setCharacterOrientation: propSetCharacterOrientation,
   backgroundSource: propBackgroundSource = 'input_video',
-  setBackgroundSource: propSetBackgroundSource
+  setBackgroundSource: propSetBackgroundSource,
+  // Video Extension Props
+  extensionSourceVideo,
+  setExtensionSourceVideo,
+  extensionDuration = 4,
+  setExtensionDuration,
+  extensionPrompt = '',
+  setExtensionPrompt,
+  handleExtensionGenerate
 }) => {
   // Video File Input Ref & State for Omni Flash Reference Video
   const videoInputRef = useRef(null);
@@ -3397,8 +3406,41 @@ export const SidePanel = React.memo(({
                     </div>
                   </div>
                 ) : panelTab === 'omni-multi' ? (
-                  /* DEDICATED MULTI-REFERENCE INTERFACE (4 Image Slots + 3 Video Slots) */
+                  /* DEDICATED MULTI-REFERENCE INTERFACE (Extension Mode OR 4 Image Slots + 3 Video Slots) */
+                  extensionSourceVideo ? (
+                    <VideoExtensionPanel
+                      sourceVideo={extensionSourceVideo}
+                      onCancel={() => setExtensionSourceVideo && setExtensionSourceVideo(null)}
+                      extensionDuration={extensionDuration}
+                      setExtensionDuration={setExtensionDuration}
+                      extensionPrompt={extensionPrompt}
+                      setExtensionPrompt={setExtensionPrompt}
+                      generateAudio={generateAudio}
+                      setGenerateAudio={setGenerateAudio}
+                      resolution={resolution}
+                      setResolution={setResolution}
+                      onGenerate={handleExtensionGenerate}
+                      isGenerating={isBusy}
+                      requiredCredits={extensionDuration === 8 ? 40 : 20}
+                    />
+                  ) : (
                   <div className="space-y-3">
+                    {/* Top Quick Extension Pill */}
+                    {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-[#c8f135]/5 border border-[#c8f135]/20 text-[9px]">
+                        <div className="flex items-center gap-1.5 text-zinc-300">
+                          <Zap size={11} className="text-[#c8f135] fill-current" />
+                          <span className="font-bold">Extend an existing video?</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setGalleryPickerSlot({ type: 'extend_video' })}
+                          className="px-2 py-0.5 rounded-lg bg-[#c8f135] text-black font-black uppercase tracking-wider text-[8px] hover:bg-[#d8ff43] transition-all cursor-pointer shadow-sm active:scale-95"
+                        >
+                          + Select Video (+4s/+8s)
+                        </button>
+                      </div>
+                    )}
                     {/* 4 Image Reference Slots - Sleek Single-Row Cards */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
@@ -3578,6 +3620,7 @@ export const SidePanel = React.memo(({
                     {/* Multi-Ref Prompt Studio */}
                     {renderPromptStudio("Direct with references! E.g.: '@image1 character walks past @image2 while matching camera motion of @video1, 4k 60fps'")}
                   </div>
+                  )
                 ) : panelTab === 'remix' ? (
                   /* ── REMIX (GENJUTSU MOTION TRANSFER) FLOW ── */
                   <div className="space-y-3">
@@ -4644,7 +4687,9 @@ export const SidePanel = React.memo(({
                             <Video className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400 shrink-0" />
                           )}
                           <span className="truncate">
-                            {galleryPickerSlot.type === 'first' || galleryPickerSlot.type === 'seedance_first'
+                            {galleryPickerSlot.type === 'extend_video'
+                              ? 'Select Video to Extend (+4s / +8s)'
+                              : galleryPickerSlot.type === 'first' || galleryPickerSlot.type === 'seedance_first'
                               ? 'Select Start Frame'
                               : galleryPickerSlot.type === 'last' || galleryPickerSlot.type === 'seedance_last'
                               ? 'Select End Frame'
@@ -4662,7 +4707,9 @@ export const SidePanel = React.memo(({
                           </span>
                         </h3>
                         <p className="text-[9px] sm:text-[10px] text-zinc-400 font-mono mt-0.5 truncate">
-                          {(galleryPickerSlot.type === 'image' || galleryPickerSlot.type === 'seedance_image' || galleryPickerSlot.type === 'first' || galleryPickerSlot.type === 'seedance_first' || galleryPickerSlot.type === 'last' || galleryPickerSlot.type === 'seedance_last' || galleryPickerSlot.type === 'motion_subject')
+                          {galleryPickerSlot.type === 'extend_video'
+                            ? 'Pick a video to continue scene seamlessly from its ending frame'
+                            : (galleryPickerSlot.type === 'image' || galleryPickerSlot.type === 'seedance_image' || galleryPickerSlot.type === 'first' || galleryPickerSlot.type === 'seedance_first' || galleryPickerSlot.type === 'last' || galleryPickerSlot.type === 'seedance_last' || galleryPickerSlot.type === 'motion_subject')
                             ? 'Pick generated image or extracted frame'
                             : galleryPickerSlot.type === 'motion_video'
                             ? 'Pick driving video (3–30s)'
@@ -4700,7 +4747,7 @@ export const SidePanel = React.memo(({
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
                             {items.map(item => {
                               const dur = Number(item.duration) || 0;
-                              const isTooLong = !isImg && (isMotionVideo ? dur > 30.5 : isSeedanceVid ? dur > 15.05 : dur > 10.05);
+                              const isTooLong = !isImg && (isMotionVideo ? dur > 30.5 : (isSeedanceVid || galleryPickerSlot.type === 'extend_video') ? dur > 15.05 : dur > 10.05);
 
                               return (
                                 <div
@@ -4708,11 +4755,14 @@ export const SidePanel = React.memo(({
                                   onClick={() => {
                                     if (isTooLong) {
                                       const showToast = useAppStore.getState().showToast;
-                                      const maxLimit = isMotionVideo ? '30s' : isSeedanceVid ? '15s' : '10s';
+                                      const maxLimit = isMotionVideo ? '30s' : '15s';
                                       if (showToast) showToast(`Video exceeds ${maxLimit} limit (${dur}s).`, "error");
                                       return;
                                     }
-                                    if (galleryPickerSlot.type === 'first') {
+                                    if (galleryPickerSlot.type === 'extend_video') {
+                                      if (setExtensionSourceVideo) setExtensionSourceVideo(item);
+                                      setGalleryPickerSlot(null);
+                                    } else if (galleryPickerSlot.type === 'first') {
                                       handlePickFirstFrame(item);
                                     } else if (galleryPickerSlot.type === 'last') {
                                       handlePickLastFrame(item);
