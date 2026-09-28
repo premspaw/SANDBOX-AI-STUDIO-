@@ -388,49 +388,76 @@ const PricingPage = () => {
             </div>
 
             {/* Top-Up Credits Section */}
-            <div id="top-up" className="mt-2 sm:mt-4 bg-white/[0.01] border border-white/5 rounded-2xl p-3.5 sm:p-4 backdrop-blur-md shrink-0 w-full max-w-full box-border">
-                <div className="flex items-center gap-2 mb-3">
-                    <h2 className="text-[11px] md:text-xs font-black uppercase tracking-widest text-white/80">Need a Quick Top-Up? <span className="text-white/30">(One-time Credits)</span></h2>
+            <div id="top-up" className="mt-2 sm:mt-4 bg-white/[0.01] border border-white/5 rounded-2xl p-3.5 sm:p-5 backdrop-blur-md shrink-0 w-full max-w-full box-border">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4">
+                    <div className="flex items-center gap-2">
+                        <Coins className="w-4 h-4 text-[#D4FF00]" />
+                        <h2 className="text-xs md:text-sm font-black uppercase tracking-widest text-white/90">Instant Shorts Top-Up Packs <span className="text-white/40 font-mono text-[10px]">(One-time · Never Expire)</span></h2>
+                    </div>
+                    <span className="text-[10px] font-mono text-zinc-400">1 Short ⚡ ≈ ₹1 Base Ratio + Volume Bonuses</span>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full max-w-full py-1 box-border">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 w-full max-w-full py-1 box-border">
                     {[
-                        { price: 2000, credits: "2000 Credits", desc: "Standard Top-Up", link: "https://rzp.io/rzp/4U0cJGRV" },
-                        { price: 4000, originalCredits: "4000", credits: "4200 Credits", desc: "+5% Bonus Credits", link: "https://rzp.io/rzp/bcCR05bt", popular: true },
-                        { price: 9000, originalCredits: "9000", credits: "9900 Credits", desc: "+10% Bonus Credits", link: "https://rzp.io/rzp/fLdtNkEx" }
+                        { id: 'pack_starter', name: 'Starter Fuel', price: '₹299', credits: 250, originalCredits: null, desc: 'Quick Boost', link: 'https://rzp.io/rzp/WhaNtMa', popular: false, badge: 'Quick Boost' },
+                        { id: 'pack_creator', name: 'Creator Pro', price: '₹999', credits: 1000, originalCredits: null, desc: '1:1 Standard', link: 'https://rzp.io/rzp/4U0cJGRV', popular: true, badge: 'MOST POPULAR' },
+                        { id: 'pack_studio', name: 'Studio Master', price: '₹2,499', credits: 2500, originalCredits: null, desc: 'Studio Pro', link: 'https://rzp.io/rzp/nM3CK28p', popular: false, badge: 'PRO STUDIO' },
+                        { id: 'pack_enterprise', name: 'Enterprise Bulk', price: '₹4,999', credits: 5500, originalCredits: 5000, desc: '+500 Bonus Shorts', bonus: '+500 BONUS', link: 'https://rzp.io/rzp/bcCR05bt', popular: false, badge: 'BEST VALUE' },
+                        { id: 'pack_agency', name: 'Agency Max', price: '₹9,999', credits: 11000, originalCredits: 10000, desc: '+1,000 Bonus Shorts', bonus: '+1,000 BONUS', link: 'https://rzp.io/rzp/fLdtNkEx', popular: false, badge: 'MAX VOLUME' }
                     ].map((topup) => (
-                        <div key={topup.credits} className={cn(
-                            "w-full max-w-full p-3.5 sm:p-4 rounded-xl border flex items-center justify-between transition-all duration-300 box-border gap-2",
-                            topup.popular ? "bg-[#D4FF00]/[0.05] border-[#D4FF00]/40 shadow-[0_0_20px_rgba(212,255,0,0.05)]" : "bg-white/[0.02] border-white/5"
+                        <div key={topup.id} className={cn(
+                            "w-full max-w-full p-3.5 sm:p-4 rounded-xl border flex flex-col justify-between transition-all duration-300 box-border gap-3 group hover:scale-[1.02]",
+                            topup.popular ? "bg-[#D4FF00]/[0.06] border-[#D4FF00]/50 shadow-[0_0_25px_rgba(212,255,0,0.08)]" : "bg-white/[0.02] border-white/10 hover:border-white/20"
                         )}>
-                            <div className="flex flex-col gap-0.5 sm:gap-1 min-w-0">
-                                <div className="text-white font-black italic text-base sm:text-lg md:text-base tracking-tight leading-none">₹{topup.price}</div>
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                    <div className="text-[#D4FF00] font-black text-sm md:text-base tracking-tight uppercase truncate">{topup.credits}</div>
-                                    {topup.originalCredits && <div className="text-zinc-500 font-medium italic text-xs line-through uppercase">{topup.originalCredits}</div>}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{topup.name}</span>
+                                    <span className={cn(
+                                        "text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full",
+                                        topup.popular ? "bg-[#D4FF00] text-black" : "bg-white/10 text-zinc-300"
+                                    )}>
+                                        {topup.badge}
+                                    </span>
                                 </div>
-                                <div className="mt-0.5">
-                                    {topup.desc.includes('Bonus') ? (
-                                        <span className="inline-flex items-center gap-1 bg-gradient-to-r from-[#D4FF00] to-yellow-500 text-black font-black text-[8.5px] sm:text-[9px] uppercase tracking-widest px-1.5 sm:px-2 py-0.5 rounded shadow-[0_0_10px_rgba(212,255,0,0.4)]">
-                                            <Sparkles size={10} /> {topup.desc}
-                                        </span>
-                                    ) : (
-                                        <span className="text-[8.5px] sm:text-[9px] text-zinc-500 font-medium uppercase tracking-wider">{topup.desc}</span>
-                                    )}
+
+                                <div>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-xl sm:text-2xl font-black text-white">{topup.credits.toLocaleString()}</span>
+                                        <span className="text-xs font-black text-[#D4FF00]">⚡ Shorts</span>
+                                    </div>
+                                    <div className="flex items-baseline gap-2 mt-0.5">
+                                        <span className="text-base font-black text-white">{topup.price}</span>
+                                        {topup.bonus && (
+                                            <span className="text-[9px] font-mono font-black text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                                                {topup.bonus}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
+
+                                <p className="text-[10px] text-zinc-400 font-medium">
+                                    {topup.desc}
+                                </p>
                             </div>
                             
                             <button 
                                 onClick={() => {
-                                    const userIdLink = userProfile?.id ? `?client_id=${userProfile.id}` : "";
-                                    window.open(`${topup.link}${userIdLink}`, "_blank");
+                                    if (topup.link) {
+                                        const userIdLink = userProfile?.id ? `?client_id=${userProfile.id}` : "";
+                                        window.open(`${topup.link}${userIdLink}`, "_blank");
+                                    } else {
+                                        alert("Purchasing: " + topup.name);
+                                    }
                                 }}
                                 className={cn(
-                                    "text-[9.5px] sm:text-[10px] font-black uppercase tracking-widest px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg transition-all shrink-0 cursor-pointer",
-                                    topup.popular ? "bg-[#D4FF00] text-black shadow-[0_0_15px_rgba(212,255,0,0.3)]" : "bg-white/10 text-white hover:bg-white/20 border border-white/10"
+                                    "w-full text-[10px] font-black uppercase tracking-widest py-2 rounded-lg transition-all shrink-0 cursor-pointer flex items-center justify-center gap-1 active:scale-95",
+                                    topup.popular 
+                                        ? "bg-[#D4FF00] text-black hover:bg-[#e6ff00] shadow-[0_0_15px_rgba(212,255,0,0.3)]" 
+                                        : "bg-white/10 text-white hover:bg-white/20 border border-white/10"
                                 )}
                             >
-                                Buy Now
+                                <Zap size={11} className="fill-current" />
+                                <span>Get {topup.credits.toLocaleString()}⚡</span>
                             </button>
                         </div>
                     ))}
