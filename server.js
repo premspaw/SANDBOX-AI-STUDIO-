@@ -2070,22 +2070,25 @@ app.post('/api/webhook/razorpay',
                 let targetTier = null;
                 let planName = 'TOP-UP';
 
-                // Exact Match Checks (Plans & Top-Ups)
-                if (amount_in_rs === 9999 || amount_in_rs === 7999) { creditsToAdd = 11000; targetTier = 'ENTERPRISE'; planName = 'Enterprise'; }
-                else if (amount_in_rs === 4999 || amount_in_rs === 3999) { creditsToAdd = 5500; targetTier = 'DIRECTOR'; planName = 'Director'; }
-                else if (amount_in_rs === 2499 || amount_in_rs === 1999) { creditsToAdd = 2500; targetTier = 'INFLUENCER'; planName = 'Influencer'; }
-                else if (amount_in_rs === 399 || amount_in_rs === 319) { creditsToAdd = 400; targetTier = 'STARTER'; planName = 'Starter'; }
+                // Exact Match Checks (Plans & Top-Ups) - 1 Short ≈ ₹1 ratio with volume bonuses
+                if (amount_in_rs === 9999 || amount_in_rs === 10000 || amount_in_rs === 7999) {
+                    creditsToAdd = 11000; targetTier = 'ENTERPRISE'; planName = 'Agency Max';
+                } else if (amount_in_rs === 4999 || amount_in_rs === 5000 || amount_in_rs === 3999) {
+                    creditsToAdd = 5500; targetTier = 'DIRECTOR'; planName = 'Enterprise Bulk';
+                } else if (amount_in_rs === 2499 || amount_in_rs === 2500 || amount_in_rs === 1999) {
+                    creditsToAdd = 2500; targetTier = 'INFLUENCER'; planName = 'Studio Master';
+                } else if (amount_in_rs === 999 || amount_in_rs === 1000) {
+                    creditsToAdd = 1000; targetTier = null; planName = 'Creator Pro';
+                } else if (amount_in_rs === 299 || amount_in_rs === 300 || amount_in_rs === 399 || amount_in_rs === 319) {
+                    creditsToAdd = 250; targetTier = 'STARTER'; planName = 'Starter Fuel';
+                }
                 
-                // Top-Up Packs (No Tier updates)
-                else if (amount_in_rs === 900) { creditsToAdd = 2000; targetTier = null; planName = '1000-Credits Pack'; }
-                else if (amount_in_rs === 4000) { creditsToAdd = 9000; targetTier = null; planName = '4500-Credits Pack'; }
-                else if (amount_in_rs === 9000) { creditsToAdd = 20000; targetTier = null; planName = '10000-Credits Pack'; }
-                
-                // Fallback Legacy range checks
-                else if (amount_in_rs >= 7000) { creditsToAdd = 11000; targetTier = 'ENTERPRISE'; planName = 'Enterprise'; }
-                else if (amount_in_rs >= 3500) { creditsToAdd = 5500; targetTier = 'DIRECTOR'; planName = 'Director'; }
-                else if (amount_in_rs >= 1500) { creditsToAdd = 2500; targetTier = 'INFLUENCER'; planName = 'Influencer'; }
-                else if (amount_in_rs >= 300) { creditsToAdd = 400; targetTier = 'STARTER'; planName = 'Starter'; }
+                // Fallback Range Checks
+                else if (amount_in_rs >= 7500) { creditsToAdd = 11000; targetTier = 'ENTERPRISE'; planName = 'Agency Max'; }
+                else if (amount_in_rs >= 3500) { creditsToAdd = 5500; targetTier = 'DIRECTOR'; planName = 'Enterprise Bulk'; }
+                else if (amount_in_rs >= 1500) { creditsToAdd = 2500; targetTier = 'INFLUENCER'; planName = 'Studio Master'; }
+                else if (amount_in_rs >= 700)  { creditsToAdd = 1000; targetTier = null; planName = 'Creator Pro'; }
+                else if (amount_in_rs >= 200)  { creditsToAdd = 250;  targetTier = 'STARTER'; planName = 'Starter Fuel'; }
 
                 if (creditsToAdd > 0 && supabaseAdmin) {
                     const { data: existingPayment } = await supabaseAdmin

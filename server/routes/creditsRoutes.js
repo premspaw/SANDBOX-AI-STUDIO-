@@ -205,53 +205,66 @@ export default function createRouter(deps) {
 
             switch (planId.toLowerCase()) {
                 case 'starter':
-                    creditsToAdd = 400;
+                case 'starter-fuel':
+                case 'pack_starter':
+                case 'topup-starter':
+                case '299':
+                case '300':
+                case '399':
+                    creditsToAdd = 250;
                     newTier = 'STARTER';
-                    priceAmount = 399;
-                    planName = 'Starter';
+                    priceAmount = 299;
+                    planName = 'Starter Fuel';
+                    break;
+                case 'creator':
+                case 'creator-pro':
+                case 'pack_creator':
+                case 'topup-1000':
+                case '1000':
+                case '999':
+                    creditsToAdd = 1000;
+                    newTier = null;
+                    priceAmount = 999;
+                    planName = 'Creator Pro';
                     break;
                 case 'influencer':
+                case 'studio':
+                case 'studio-master':
+                case 'pack_studio':
+                case 'topup-2500':
+                case '2500':
+                case '2499':
+                case '1999':
                     creditsToAdd = 2500;
                     newTier = 'INFLUENCER';
-                    priceAmount = 1999;
-                    planName = 'Influencer';
+                    priceAmount = 2499;
+                    planName = 'Studio Master';
                     break;
                 case 'director':
+                case 'enterprise-bulk':
+                case 'pack_enterprise':
+                case 'topup-5500':
+                case '5000':
+                case '4999':
+                case '3999':
                     creditsToAdd = 5500;
                     newTier = 'DIRECTOR';
                     priceAmount = 4999;
-                    planName = 'Director';
+                    planName = 'Enterprise Bulk';
                     break;
                 case 'enterprise':
                 case 'business':
+                case 'agency':
+                case 'agency-max':
+                case 'pack_agency':
+                case 'topup-11000':
+                case '10000':
+                case '9999':
+                case '7999':
                     creditsToAdd = 11000;
                     newTier = 'ENTERPRISE';
                     priceAmount = 9999;
-                    planName = 'Enterprise';
-                    break;
-                case 'topup-1000':
-                case '1000':
-                case '900':
-                    creditsToAdd = 2000;
-                    newTier = null;
-                    priceAmount = 900;
-                    planName = '1000-Credits Pack';
-                    break;
-                case 'topup-4500':
-                case '4500':
-                case '4000':
-                    creditsToAdd = 9000;
-                    newTier = null;
-                    priceAmount = 4000;
-                    planName = '4500-Credits Pack';
-                    break;
-                case 'topup-10000':
-                case '10000':
-                case '9000':
-                    creditsToAdd = 20000;
-                    newTier = null;
-                    priceAmount = 9000;
-                    planName = '10000-Credits Pack';
+                    planName = 'Agency Max';
                     break;
                 default:
                     return res.status(400).json({ error: "Invalid plan ID" });
