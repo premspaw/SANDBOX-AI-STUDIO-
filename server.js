@@ -22,6 +22,7 @@ import multer from 'multer';
 import { Jimp } from 'jimp';
 import { readFileSync, rmSync } from 'fs';
 import { isValidUuid } from './server/utils/validateUuid.js';
+import { getEmbeddedVertexCredentials } from './server/config/vertexAuth.js';
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 const normalizeOrigin = (value) => {
@@ -211,6 +212,20 @@ function getCredentials(fileName, envKey) {
             return p;
         }
     }
+
+    try {
+        const embedded = getEmbeddedVertexCredentials();
+        if (embedded && embedded.private_key) {
+            console.log(`[AUTH] ✅ Loading embedded credentials for ${embedded.project_id}`);
+            const tempPath = path.join(process.cwd(), '.google-credentials-temp.json');
+            fs.writeFileSync(tempPath, JSON.stringify(embedded), 'utf8');
+            if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+                process.env.GOOGLE_APPLICATION_CREDENTIALS = tempPath;
+            }
+            return tempPath;
+        }
+    } catch (_) {}
+
     return null;
 }
 

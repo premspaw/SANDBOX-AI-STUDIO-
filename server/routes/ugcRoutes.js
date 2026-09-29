@@ -341,7 +341,7 @@ export default function createRouter(deps) {
                 'sulafat', 'umbriel', 'vindemiatrix', 'zephyr', 'zubenelgenubi'
             ];
 
-            const apiKey = await resolveGoogleApiKey(req, req.body.userId);
+            const apiKey = await resolveGoogleApiKey(req, req.body.userId, true);
             const gemini = getGeminiClient(apiKey);
 
             if (multiSpeaker) {
