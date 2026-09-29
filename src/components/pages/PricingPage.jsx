@@ -215,7 +215,7 @@ const PricingPage = () => {
                             transition={{ delay: 0.08 * idx, type: "spring", stiffness: 300, damping: 20 }}
                             className={cn(
                                 "relative flex flex-col p-4 sm:p-5 md:p-6 rounded-2xl transition-all duration-300 overflow-hidden shadow-2xl w-full max-w-full min-w-0 box-border",
-                                "backdrop-blur-2xl border flex-1 h-full min-h-[440px] flex flex-col justify-between",
+                                "backdrop-blur-2xl border flex-1 flex flex-col",
                                 plan.popular
                                     ? "bg-gradient-to-b from-[#D4FF00]/[0.05] via-white/[0.02] to-black/80 border-[#D4FF00]/40 shadow-[0_0_40px_rgba(212,255,0,0.08)]"
                                     : "bg-gradient-to-b from-white/[0.03] via-white/[0.01] to-black/80 border-white/10 hover:border-white/20"
@@ -299,7 +299,7 @@ const PricingPage = () => {
                                 </div>
                             )}
 
-                            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2 max-h-[220px] sm:max-h-[300px]">
+                            <div className="flex-1 pr-1 space-y-2">
                                 {plan.features.map((feature, fIdx) => (
                                     <div key={fIdx} className="flex items-start gap-2.5 group/feat min-w-0">
                                         <div className={cn("p-1 rounded-full mt-0.5 border shrink-0 transition-colors", plan.popular ? "text-[#D4FF00] border-[#D4FF00]/20 bg-[#D4FF00]/5" : "text-white/40 border-white/10 bg-white/[0.02]")}>
