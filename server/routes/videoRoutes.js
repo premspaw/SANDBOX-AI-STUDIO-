@@ -194,6 +194,7 @@ export default function createRouter(deps) {
 
             let videoBuffer = null;
             let success = false;
+            let lastVertexErr = null;
 
             // --- Option A: Vertex AI (First Preference) ---
             if (token) {
@@ -349,6 +350,7 @@ export default function createRouter(deps) {
                         }
                     }
                 } catch (vertexErr) {
+                    lastVertexErr = vertexErr.message;
                     console.warn(`[VEO-I2V] [Vertex AI] Failed. Error: ${vertexErr.message}. Falling back to Google AI Studio...`);
                 }
             }
@@ -453,13 +455,16 @@ export default function createRouter(deps) {
                     }
                 } catch (studioErr) {
                     console.error(`[VEO-I2V] [AI Studio] Failed. Error: ${studioErr.message}`);
-                    throw new Error(`Video generation failed on both Vertex AI and Google AI Studio: ${studioErr.message}`);
+                    if (studioErr.message.includes('prepayment credits are depleted')) {
+                        throw new Error(lastVertexErr ? `[Vertex AI Video Error]: ${lastVertexErr}` : 'Google AI Studio prepayment credits are depleted. Please ensure Vertex AI credentials are active.');
+                    }
+                    throw new Error(lastVertexErr ? `[Vertex AI]: ${lastVertexErr} | [AI Studio]: ${studioErr.message}` : studioErr.message);
                 }
             }
         }
 
             if (!success || !videoBuffer) {
-                throw new Error('Video generation failed to return valid video buffer.');
+                throw new Error(lastVertexErr ? `[Vertex AI Video Error]: ${lastVertexErr}` : 'Video generation failed to return valid video buffer.');
             }
 
             if (generateAudio === false) {

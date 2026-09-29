@@ -279,8 +279,22 @@ export default function createRouter(deps) {
     // Build a dedicated Vertex AI client for the Interactions API (Omni Flash)
     // Must use location='global' and Api-Revision: 2026-05-20 as per the Python SDK reference.
     function createVertexOmniClient() {
-        const vertexKey = deps.VERTEX_KEY;
-        const authOptions = {};
+        let vertexKey = deps.VERTEX_KEY;
+        if (!vertexKey) {
+            const fallbackPath = path.join(process.cwd(), 'server', 'config', 'vertexKey.json');
+            if (fs.existsSync(fallbackPath)) {
+                vertexKey = fallbackPath;
+            } else {
+                const localPath = path.join(process.cwd(), 'new-zerolens-api.json');
+                if (fs.existsSync(localPath)) vertexKey = localPath;
+            }
+        }
+        const authOptions = {
+            scopes: [
+                'https://www.googleapis.com/auth/cloud-platform',
+                'https://www.googleapis.com/auth/generative-language'
+            ]
+        };
         if (vertexKey) {
             if (typeof vertexKey === 'string') {
                 authOptions.keyFilename = vertexKey;
@@ -1037,6 +1051,86 @@ export default function createRouter(deps) {
                 lastOmniError.includes('violates Google')
             );
 
+            // --- Option A.2: Vertex AI Veo Fast Fallback (Keeps video rendering 100% on Vertex AI) ---
+            if (!success && !isVertexPolicyViolation && token) {
+                try {
+                    console.log(`[OMNI-I2V] Attempting Vertex AI Veo Fast fallback on model veo-3.1-fast-generate-001 (location: ${VERTEX_LOCATION || 'us-central1'})...`);
+                    const veoModel = 'veo-3.1-fast-generate-001';
+                    const veoEndpoint = `https://${VERTEX_LOCATION || 'us-central1'}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION || 'us-central1'}/publishers/google/models/${veoModel}:predictLongRunning`;
+                    
+                    const veoInstance = { prompt: rawTextPrompt || compiledPrompt };
+                    if (primaryImageResolved) {
+                        veoInstance.image = {
+                            bytesBase64Encoded: primaryImageResolved.data,
+                            mimeType: primaryImageResolved.mimeType || 'image/png'
+                        };
+                    }
+                    if (endImageResolved) {
+                        veoInstance.lastImage = {
+                            bytesBase64Encoded: endImageResolved.data,
+                            mimeType: endImageResolved.mimeType || 'image/png'
+                        };
+                    }
+
+                    const veoResp = await fetch(veoEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            instances: [veoInstance],
+                            parameters: {
+                                sampleCount: 1,
+                                aspectRatio: validAspectRatio,
+                                durationSeconds: Math.min(validDuration, 8),
+                                resolution: validResolution
+                            }
+                        })
+                    });
+
+                    if (veoResp.ok) {
+                        const initData = await veoResp.json();
+                        const opName = initData.name;
+                        if (opName) {
+                            console.log(`[OMNI-I2V] [Vertex AI Veo Fallback] Operation started: ${opName}`);
+                            broadcastProgress(taskId, 2, 3, 'Rendering video sequence (Vertex AI)...');
+                            const fetchOpUrl = `https://${VERTEX_LOCATION || 'us-central1'}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION || 'us-central1'}/publishers/google/models/${veoModel}:fetchPredictOperation`;
+                            let done = false;
+                            let pollCount = 0;
+                            while (!done && pollCount < 36) {
+                                await new Promise(r => setTimeout(r, 8000));
+                                pollCount++;
+                                const pollResp = await fetch(fetchOpUrl, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                                    body: JSON.stringify({ operationName: opName })
+                                });
+                                if (pollResp.ok) {
+                                    const pollData = await pollResp.json();
+                                    if (pollData.done) {
+                                        done = true;
+                                        const b64 = pollData.response?.videos?.[0]?.bytesBase64Encoded ||
+                                                    pollData.response?.predictions?.[0]?.bytesBase64Encoded ||
+                                                    pollData.response?.generatedVideos?.[0]?.video?.bytesBase64Encoded;
+                                        if (b64) {
+                                            videoBuffer = Buffer.from(b64, 'base64');
+                                            success = true;
+                                            console.log(`[OMNI-I2V] [Vertex AI Veo Fallback] ✅ Video generated successfully (${videoBuffer.length} bytes)`);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        const errTxt = await veoResp.text().catch(() => '');
+                        console.warn(`[OMNI-I2V] [Vertex AI Veo Fallback] Failed (${veoResp.status}): ${errTxt.substring(0, 200)}`);
+                    }
+                } catch (vFallbackErr) {
+                    console.warn(`[OMNI-I2V] [Vertex AI Veo Fallback] Error: ${vFallbackErr.message}`);
+                }
+            }
+
             // --- Option B: Multi-Key Google AI Studio Fallback (Only if not a policy block) ---
             if (!success && !isVertexPolicyViolation) {
                 const candidateKeys = [
@@ -1072,10 +1166,12 @@ export default function createRouter(deps) {
                         if (interactionResult.error) {
                             const errMessage = interactionResult.error.message || JSON.stringify(interactionResult.error);
                             console.warn(`[OMNI-I2V] [AI Studio Fallback] Key ${studioKey.substring(0, 10)} failed: ${errMessage}`);
-                            // If key is depleted, don't overwrite a meaningful Vertex error with "prepayment credits depleted"
-                            if (!errMessage.includes('prepayment credits are depleted')) {
-                                lastOmniError = errMessage;
+                            // If key is depleted, skip and do not overwrite Vertex error
+                            if (errMessage.includes('prepayment credits are depleted')) {
+                                console.warn(`[OMNI-I2V] [AI Studio Fallback] Key has depleted credits, skipping AI Studio.`);
+                                continue;
                             }
+                            lastOmniError = errMessage;
                             if (errMessage.includes('content_blocked') || errMessage.includes('policy') || errMessage.includes('Responsible AI') || errMessage.includes('prohibited') || errMessage.includes('prominent individuals')) {
                                 lastOmniError = errMessage;
                                 break;
@@ -1163,7 +1259,10 @@ export default function createRouter(deps) {
             }
 
             if (!success || !videoBuffer) {
-                throw new Error(lastOmniError || 'Video generation failed to return valid video buffer.');
+                const finalErrMsg = lastOmniError 
+                    ? `[Vertex AI Video Error]: ${lastOmniError}`
+                    : 'Video generation failed on Vertex AI without valid video buffer output.';
+                throw new Error(finalErrMsg);
             }
 
             if (generateAudio === false) {

@@ -155,7 +155,10 @@ function getCredentials(fileName, envKey) {
         'GOOGLE_SERVICE_ACCOUNT',
         'GCS_CREDENTIALS_JSON',
         'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON',
-        'GOOGLE_APPLICATION_CREDENTIALS'
+        'GOOGLE_APPLICATION_CREDENTIALS',
+        'VERTEX_KEY',
+        'GCP_SA_KEY',
+        'GOOGLE_KEY'
     ].filter(Boolean);
 
     for (const key of keysToCheck) {
@@ -197,6 +200,8 @@ function getCredentials(fileName, envKey) {
 
     const paths = [
         path.join(__dirname, fileName),
+        path.join(__dirname, 'server', 'config', 'vertexKey.json'),
+        path.join(__dirname, 'server', 'config', fileName),
         path.join(__dirname, 'src', 'components', 'canvas', fileName)
     ];
 
