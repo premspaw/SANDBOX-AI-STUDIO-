@@ -109,8 +109,10 @@ export default function createRouter(deps) {
                 return res.status(400).json({ error: 'Board type is required.' });
             }
 
-            // 1. Charge credits conditionally (5 credits for Nano Banana Pro, 3 for GPT Image 2)
-            const requiredCredits = model === 'banana' ? 5 : 3;
+            // 1. Charge credits conditionally (5 credits for Nano Banana Pro, 2 for Nano Banana 2, 3 for GPT Image 2)
+            const isBananaPro = model === 'banana' || model === 'banana-pro';
+            const isBanana2 = model === 'banana2' || model === 'banana-2' || model === 'nb2';
+            const requiredCredits = isBananaPro ? 5 : isBanana2 ? 2 : 3;
             console.log(`[Avatar Board] Consuming ${requiredCredits} credits for user: ${userId} using engine: ${model}`);
             await consumeCredits(userId, requiredCredits);
 
@@ -163,16 +165,16 @@ export default function createRouter(deps) {
 
             let r2Url = '';
 
-            if (model === 'banana') {
+            if (isBananaPro || isBanana2) {
                 const apiKey = await resolveGoogleApiKey(req, userId, true);
-                const activeModel = 'gemini-3-pro-image-preview';
+                const activeModel = isBananaPro ? 'gemini-3-pro-image-preview' : 'gemini-3.1-flash-image';
 
                 const imageParts = [];
                 const urlsToFetch = [];
-                if (refImageUrl) urlsToFetch.push({ type: 'character likeness', url: refImageUrl });
-                if (leftProfileRefUrl) urlsToFetch.push({ type: 'left profile likeness', url: leftProfileRefUrl });
-                if (rightProfileRefUrl) urlsToFetch.push({ type: 'right profile likeness', url: rightProfileRefUrl });
-                if (wardrobeRefUrl) urlsToFetch.push({ type: 'wardrobe reference', url: wardrobeRefUrl });
+                if (refImageUrl) urlsToFetch.push({ type: boardType === 'LOCATION' ? 'location atmosphere' : boardType === 'OBJECT' ? 'prop reference' : 'character likeness', url: refImageUrl });
+                if (leftProfileRefUrl && boardType === 'CHARACTER') urlsToFetch.push({ type: 'left profile likeness', url: leftProfileRefUrl });
+                if (rightProfileRefUrl && boardType === 'CHARACTER') urlsToFetch.push({ type: 'right profile likeness', url: rightProfileRefUrl });
+                if (wardrobeRefUrl && boardType === 'CHARACTER') urlsToFetch.push({ type: 'wardrobe reference', url: wardrobeRefUrl });
                 if (propRefUrl) urlsToFetch.push({ type: 'prop reference', url: propRefUrl });
 
                 await Promise.all(urlsToFetch.map(async (item) => {
@@ -194,16 +196,28 @@ export default function createRouter(deps) {
                     }
                 }));
 
-                // Prepend visual anchoring guidelines to help Gemini synthesize them visually
+                // Prepend visual anchoring guidelines tailored to the active production mode
                 let multiRefNotes = '';
-                if (refImageUrl) multiRefNotes += `- The main face image represents the character's facial likeness, identity, and features from the front.\n`;
-                if (leftProfileRefUrl) multiRefNotes += `- The left profile image represents the character's facial likeness and features from the left profile side.\n`;
-                if (rightProfileRefUrl) multiRefNotes += `- The right profile image represents the character's facial likeness and features from the right profile side.\n`;
-                if (wardrobeRefUrl) multiRefNotes += `- The wardrobe reference image represents the wardrobe/outfit styling, garments, and details.\n`;
-                if (propRefUrl) multiRefNotes += `- The prop reference image represents key prop/accessory design and detailing.\n`;
+                if (boardType === 'LOCATION') {
+                    if (refImageUrl) multiRefNotes += `- The reference image represents the architectural style, environmental atmosphere, lighting mood, and color grade of the location.\n`;
+                } else if (boardType === 'OBJECT') {
+                    if (propRefUrl || refImageUrl) multiRefNotes += `- The reference image represents the product prop design, materials, geometry, and surface finishes.\n`;
+                } else {
+                    if (refImageUrl) multiRefNotes += `- The main face image represents the character's facial likeness, identity, and features from the front.\n`;
+                    if (leftProfileRefUrl) multiRefNotes += `- The left profile image represents the character's facial likeness and features from the left profile side.\n`;
+                    if (rightProfileRefUrl) multiRefNotes += `- The right profile image represents the character's facial likeness and features from the right profile side.\n`;
+                    if (wardrobeRefUrl) multiRefNotes += `- The wardrobe reference image represents the wardrobe/outfit styling, garments, and details.\n`;
+                    if (propRefUrl) multiRefNotes += `- The prop reference image represents key prop/accessory design and detailing.\n`;
+                }
 
                 if (multiRefNotes) {
-                    prompt = `[Dynamic Visual Source Anchoring Guidelines:\n${multiRefNotes}Please visually synthesize all provided reference images seamlessly while maintaining the character identity (matching profile angles if provided), outfit, and prop aesthetics exactly as pictured in the respective reference images across all storyboard panels.]\n\n${prompt}`;
+                    if (boardType === 'LOCATION') {
+                        prompt = `[Visual Atmosphere Reference Notes:\n${multiRefNotes}Match the environmental lighting and aesthetic mood of the reference image for this cinematic location scene. Remember: completely empty, no people.]\n\n${prompt}`;
+                    } else if (boardType === 'OBJECT') {
+                        prompt = `[Visual Prop Reference Notes:\n${multiRefNotes}Match the prop design, materials, and form factor of the reference image. Remember: isolated on a neutral light gray studio background, no text, no hands.]\n\n${prompt}`;
+                    } else {
+                        prompt = `[Dynamic Visual Source Anchoring Guidelines:\n${multiRefNotes}Please visually synthesize all provided reference images seamlessly while maintaining the character identity (matching profile angles if provided), outfit, and prop aesthetics exactly as pictured in the respective reference images across all turnaround panels.]\n\n${prompt}`;
+                    }
                 }
 
                 const parts = [...imageParts, { text: prompt }];
@@ -226,7 +240,7 @@ export default function createRouter(deps) {
                         responseModalities: ["IMAGE", "TEXT"],
                         imageConfig: {
                             aspectRatio: aspectRatio === '1:1' ? '1:1' : aspectRatio === '16:9' ? '16:9' : aspectRatio === '9:16' ? '9:16' : '1:1',
-                            imageSize: '2K',
+                            imageSize: isBananaPro ? '2K' : '1K',
                             outputMimeType: 'image/png'
                         },
                         thinkingConfig: {
@@ -337,10 +351,10 @@ export default function createRouter(deps) {
                 // Trigger GPT Image 2 image generation (Force official client to prevent OpenRouter proxying)
                 const openai = getOpenAIClient(true);
                 
-                // Prepend visual likeness/subject description for GPT Image 2 if any reference photo is provided
-                 if (refImageUrl || leftProfileRefUrl || rightProfileRefUrl || wardrobeRefUrl || propRefUrl) {
+                 // Prepend visual likeness/subject description for GPT Image 2 if any reference photo is provided
+                 if (boardType === 'CHARACTER' && (refImageUrl || leftProfileRefUrl || rightProfileRefUrl || wardrobeRefUrl || propRefUrl)) {
                     try {
-                        console.log('[Avatar Board] Intercepting gpt-image-2 request to extract visual details using gpt-4o vision...');
+                        console.log('[Avatar Board] Intercepting gpt-image-2 request to extract character visual details using gpt-4o vision...');
                         
                         const visionPrompt = `Analyze the provided reference images in detail.
 - The main face likeness image (and profile images if provided) represents the character's facial likeness, features, and shape.
@@ -385,6 +399,10 @@ Limit the entire description to under 300 words. Do not refer to the images as "
                     } catch (visionErr) {
                         console.warn('[Avatar Board] Warning: Failed to extract visual likeness via OpenAI Vision:', visionErr.message);
                     }
+                } else if (boardType === 'LOCATION' && refImageUrl) {
+                    prompt = `[Atmosphere Reference Guidance: Use the architectural mood, lighting, and environmental tone of the attached image as inspiration for the cinematic location. Maintain an empty environment with no people.]\n\n${prompt}`;
+                } else if (boardType === 'OBJECT' && (propRefUrl || refImageUrl)) {
+                    prompt = `[Prop Reference Guidance: Use the prop design, materials, and form factor of the attached image. Present isolated on a seamless neutral light gray background with soft floor shadow, no text.]\n\n${prompt}`;
                 }
 
                 const sizeMap = {

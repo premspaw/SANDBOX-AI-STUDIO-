@@ -145,29 +145,40 @@ export function useAvatarStudio(userId = 'anon') {
     };
 
     // --- GENERATE BOARD ---
-    const generateBoard = async () => {
+    const generateBoard = async (overrideOptions = {}) => {
         setGenerating(true);
         setError('');
         setGeneratedImage('');
         setActivePrompt('');
 
+        const targetBoard = overrideOptions.boardType || activeBoard;
+        const targetModel = overrideOptions.model || activeModel;
+        const targetAspect = overrideOptions.aspectRatio || aspectRatio;
+        const targetContext = overrideOptions.additionalContext !== undefined ? overrideOptions.additionalContext : additionalContext;
+        const targetMeta = overrideOptions.boardMeta || boardMeta;
+        const targetRefUrl = overrideOptions.refImageUrl !== undefined ? overrideOptions.refImageUrl : refImageUrl;
+        const targetLeftProfile = overrideOptions.leftProfileRefUrl !== undefined ? overrideOptions.leftProfileRefUrl : leftProfileRefUrl;
+        const targetRightProfile = overrideOptions.rightProfileRefUrl !== undefined ? overrideOptions.rightProfileRefUrl : rightProfileRefUrl;
+        const targetWardrobe = overrideOptions.wardrobeRefUrl !== undefined ? overrideOptions.wardrobeRefUrl : wardrobeRefUrl;
+        const targetProp = overrideOptions.propRefUrl !== undefined ? overrideOptions.propRefUrl : propRefUrl;
+
         try {
-            console.log(`[Avatar Studio] Generating ${activeBoard} BOARD using model: ${activeModel}...`);
+            console.log(`[Avatar Studio] Generating ${targetBoard} BOARD using model: ${targetModel}...`);
             const resp = await fetch(getApiUrl('/api/avatar/generate-board'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    refImageUrl,
-                    leftProfileRefUrl,
-                    rightProfileRefUrl,
-                    wardrobeRefUrl,
-                    propRefUrl,
-                    boardType: activeBoard,
-                    boardMeta,
-                    additionalContext,
+                    refImageUrl: targetRefUrl,
+                    leftProfileRefUrl: targetLeftProfile,
+                    rightProfileRefUrl: targetRightProfile,
+                    wardrobeRefUrl: targetWardrobe,
+                    propRefUrl: targetProp,
+                    boardType: targetBoard,
+                    boardMeta: targetMeta,
+                    additionalContext: targetContext,
                     userId,
-                    model: activeModel,
-                    aspectRatio
+                    model: targetModel,
+                    aspectRatio: targetAspect
                 })
             });
 
@@ -187,10 +198,15 @@ export function useAvatarStudio(userId = 'anon') {
                         CREATURE: 'character',
                         LOCATION: 'location',
                         SHOT: 'location',
-                        OBJECT: 'prop'
+                        OBJECT: 'prop',
+                        PROP: 'prop'
                     };
-                    const targetCategory = catMap[activeBoard] || 'character';
-                    const sheetName = (boardMeta.name || '').trim() || (activeBoard === 'CHARACTER' ? 'Character Turnaround' : `${activeBoard} Board`);
+                    const targetCategory = catMap[targetBoard] || 'character';
+                    const sheetName = (targetMeta.name || '').trim() || (
+                        targetBoard === 'CHARACTER' ? 'Character Turnaround' :
+                        targetBoard === 'LOCATION' ? 'Cinematic Location' :
+                        (targetBoard === 'OBJECT' || targetBoard === 'PROP') ? 'Studio Prop' : `${targetBoard} Board`
+                    );
 
                     useAppStore.getState().addProjectAsset({
                         type: 'image',
@@ -198,10 +214,10 @@ export function useAvatarStudio(userId = 'anon') {
                         url: result.outputUrl,
                         name: sheetName,
                         prompt: result.prompt,
-                        boardType: activeBoard,
+                        boardType: targetBoard,
                         metadata: {
-                            boardType: activeBoard,
-                            boardMeta
+                            boardType: targetBoard,
+                            boardMeta: targetMeta
                         }
                     });
                 } catch (syncErr) {

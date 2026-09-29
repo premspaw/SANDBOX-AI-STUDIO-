@@ -212,30 +212,34 @@ export function buildBoardPrompt(boardType, additionalContext = '', model = 'gpt
             shotMetadata
         );
     } else if (boardType === 'OBJECT') {
-        const name = boardMeta.name || 'Prop Object';
-        const material = boardMeta.material || 'Premium Materials';
-        const colors = boardMeta.colorPalette || 'Cohesive Palette';
-        const style = boardMeta.brandStyle || 'Industrial Design';
+        const name = boardMeta.name || 'Production Prop';
+        const material = boardMeta.material || 'High-fidelity materials';
+        const desc = boardMeta.brandStyle || 'Detailed prop asset';
         
-        const objectMetadata = `NAME: "${name}" · ERA: 'Contemporary' · ORIGIN: 'Design Studio' · MATERIAL: "${material}" · DIMENSIONS: 'Standard' · WEIGHT: 'Standard' · DESCRIPTION: "${style}" · KEY FEATURES: "${colors}" · CONDITION: 'New' · PURPOSE: 'Product design reference'`;
-        
-        compiledPrompt = compiledPrompt.replace(
-            `NAME · ERA · ORIGIN · MATERIAL · DIMENSIONS · WEIGHT · DESCRIPTION · KEY FEATURES · CONDITION · PURPOSE`,
-            objectMetadata
-        );
+        return (additionalContext && additionalContext.trim().length > 0)
+            ? additionalContext.trim()
+            : `Photorealistic production studio prop photography of ${name}.
+Isolated entirely on a seamless neutral light gray studio background.
+Materials & Finish: ${material}.
+Details: ${desc}.
+Lighting: Professional soft studio key-light and rim-lighting with soft gentle floor shadow. Complete profile clearly visible with extreme surface micro-texture fidelity.
+STRICT NEGATIVE/EXCLUSIONS: Absolutely NO text, NO labels, NO logos, NO watermarks, NO human hands, NO person, NO character turnaround, NO multiple panels, clean pristine isolated studio prop asset on seamless neutral light gray background.`;
     } else if (boardType === 'LOCATION') {
-        const name = boardMeta.name || 'Scenic Location';
-        const type = boardMeta.setting || 'Environment';
-        const era = boardMeta.era || 'Contemporary';
+        const name = boardMeta.name || 'Cinematic Location';
+        const type = boardMeta.setting || 'Cinematic Environment';
         const time = boardMeta.timeOfDay || 'Golden hour';
-        const weather = boardMeta.weather || 'Clear';
+        const weather = boardMeta.weather || '35mm fine grain';
+        const palette = boardMeta.colorPalette || 'Cinematic Grade';
         
-        const locationMetadata = `NAME: "${name}" · TYPE: "${type}" · ERA: "${era}" · SCALE: 'Epic Scale' · ARCHITECTURE: 'Detailed' · MATERIALS: 'Realistic Materials' · ATMOSPHERE: 'Cohesive' · DEFAULT TIME: "${time}" · DEFAULT WEATHER: "${weather}" · PURPOSE: 'Consistent environment reference'`;
-        
-        compiledPrompt = compiledPrompt.replace(
-            `NAME · TYPE · ERA · SCALE · ARCHITECTURE · MATERIALS · ATMOSPHERE · DEFAULT TIME · DEFAULT WEATHER · PURPOSE`,
-            locationMetadata
-        );
+        return (additionalContext && additionalContext.trim().length > 0)
+            ? additionalContext.trim()
+            : `Real · Raw · 8K cinematic widescreen establishing location photography.
+Master wide panoramic shot of ${name}: ${type}.
+Atmospheric Lighting & Mood: ${time}.
+Film Stock & Camera: Shot on Panavision 35mm anamorphic prime lens, ${weather}.
+Color Palette & Grade: ${palette}.
+Hyperrealistic architectural scale, rich atmospheric depth, fine cinematic grain, photorealistic materials and textures. Single unified cinematic widescreen composition.
+STRICT NEGATIVE/EXCLUSIONS: Absolutely NO people, NO characters, NO humans, NO person present, NO crowds, NO pedestrians, completely empty and deserted cinematic location. NO text, NO watermarks, NO logos, NO character turnaround sheet, NO split panels.`;
     } else if (boardType === 'POSE') {
         const name = boardMeta.name || 'Character';
         const action = boardMeta.action || 'Dynamic movement';
