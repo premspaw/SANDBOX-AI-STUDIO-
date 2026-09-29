@@ -7,51 +7,35 @@ import {
 } from 'lucide-react';
 import { InpaintEditor } from '../common/InpaintEditor';
 
-// Real sample character turnaround sheets provided by user (3-panel: close-up, front, back)
+// Real sample character turnaround sheets (16:9 3-panel: close-up, front, back on grey background)
 const SHOWCASE_CHARACTERS = [
   {
-    id: 'char-1',
-    name: 'Ananya Sharma',
-    role: 'Real · Raw · Original Studio',
-    archetype: 'CHARACTER SHEET',
-    image: '/assets/characters/sheet_female_maroon.jpg',
-    age: '23',
-    build: 'Burgundy ruched dress, white sneakers',
-    style: 'Real · Raw Studio',
-    prompt: 'Young Indian woman with natural wavy dark hair, wearing a fitted burgundy ruched cocktail dress and clean white sneakers. Neutral studio grey background, 3-panel character turnaround sheet with close-up face portrait, full front view, and full back view. Authentic natural lighting.'
+    id: 'sheet-1',
+    name: '16:9 Character Sheet',
+    role: 'Real · Raw Minimalist (Tank Top)',
+    archetype: '3-PANEL',
+    image: '/assets/characters/sheet_male_tank.jpg'
   },
   {
-    id: 'char-2',
-    name: 'Kabir Verma',
-    role: 'Night · Ambient Studio',
-    archetype: 'NIGHT SHEET',
-    image: '/assets/characters/sheet_male_plaid.jpg',
-    age: '27',
-    build: 'Green plaid shirt over black tee, relaxed jeans',
-    style: 'Night · Ambient',
-    prompt: 'Young South Asian man with short dark textured hair and trimmed beard, wearing an open green plaid flannel shirt over a black t-shirt, loose black denim pants, and skate shoes. Night studio grey background, 3-panel turnaround sheet with detailed facial close-up, full-length front view, and full-length back view.'
+    id: 'sheet-2',
+    name: '16:9 Character Sheet',
+    role: 'Night · Ambient (Plaid Flannel)',
+    archetype: '3-PANEL',
+    image: '/assets/characters/sheet_male_plaid.jpg'
   },
   {
-    id: 'char-3',
-    name: 'Rohan Mehra',
-    role: 'Real · Raw Minimalist',
-    archetype: 'STUDIO RAW',
-    image: '/assets/characters/sheet_male_tank.jpg',
-    age: '26',
-    build: 'White ribbed tank top, black pleated trousers',
-    style: 'Real · Raw Studio',
-    prompt: 'Athletic Indian man with trimmed beard and dark hair, wearing a classic white ribbed tank top, black pleated trousers, and black sneakers. Real raw studio setting, 3-panel character sheet with extreme face portrait close-up, front full body stance, and back full body view.'
+    id: 'sheet-3',
+    name: '16:9 Character Sheet',
+    role: 'Real · Raw Studio (Cocktail Dress)',
+    archetype: '3-PANEL',
+    image: '/assets/characters/sheet_female_maroon.jpg'
   },
   {
-    id: 'char-4',
-    name: 'Costume Companion Matrix',
-    role: 'Multi-View Turnarounds',
-    archetype: 'PETS & PROPS',
-    image: '/assets/characters/sheet_pets_costumes.png',
-    age: 'All',
-    build: 'Costumed dogs and cats (front, side, back)',
-    style: 'Character & Pets',
-    prompt: 'Studio turnaround sheet for pets and characters, multi-angle rows featuring front view, side view, and back view in creative outfits on a clean neutral grey backdrop.'
+    id: 'sheet-4',
+    name: '16:9 Character Matrix',
+    role: 'Multi-View Studio Turnarounds',
+    archetype: '3-PANEL',
+    image: '/assets/characters/sheet_pets_costumes.png'
   }
 ];
 
@@ -457,26 +441,10 @@ export default function HolographicTurntable({
                           </p>
                         </div>
 
-                        {/* Quick Action Button on card */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (onApplyPreset) {
-                              onApplyPreset({
-                                name: char.name,
-                                age: char.age,
-                                outfit: char.build,
-                                style: char.style,
-                                prompt: char.prompt
-                              });
-                            }
-                          }}
-                          className="shrink-0 py-1 px-2.5 rounded-lg bg-white/5 hover:bg-[#C8F135] text-white/80 hover:text-black border border-white/10 hover:border-[#C8F135] text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1 shadow-sm"
-                        >
-                          <Sparkles className="w-2.5 h-2.5" />
-                          <span>Use Preset</span>
-                        </button>
+                        {/* Format Indicator */}
+                        <span className="shrink-0 px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[8px] font-mono uppercase text-[#C8F135]">
+                          16:9 RAW
+                        </span>
                       </div>
                     </div>
                   );

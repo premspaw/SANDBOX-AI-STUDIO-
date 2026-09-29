@@ -4,68 +4,13 @@ import { useAvatarStudio } from '../../hooks/useAvatarStudio';
 import {
   History, Sparkles, UploadCloud, Trash2, Camera,
   CheckCircle2, Sliders, ArrowRight, Zap, RefreshCw,
-  Image as ImageIcon, Check, SlidersHorizontal
+  Image as ImageIcon, Check, SlidersHorizontal, User,
+  Ruler, Calendar, Shirt, Cpu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import HolographicTurntable from '../avatar/HolographicTurntable';
 import AvatarGallery from '../avatar/AvatarGallery';
-
-// Clean, simple character sheet presets inspired by real studio turnarounds
-const SHEET_PRESETS = [
-  {
-    id: 'maroon-female',
-    name: 'Ananya Sharma',
-    tag: 'Real · Raw',
-    icon: '👩',
-    image: '/assets/characters/sheet_female_maroon.jpg',
-    style: 'Real · Raw Studio',
-    prompt: 'Young Indian woman with natural wavy dark hair, wearing a fitted burgundy ruched cocktail dress and clean white sneakers. Neutral studio grey background, 3-panel character turnaround sheet with close-up face portrait, full front view, and full back view. Authentic natural lighting.'
-  },
-  {
-    id: 'plaid-male',
-    name: 'Kabir Verma',
-    tag: 'Night · Ambient',
-    icon: '🧔',
-    image: '/assets/characters/sheet_male_plaid.jpg',
-    style: 'Night · Ambient',
-    prompt: 'Young South Asian man with short dark textured hair and trimmed beard, wearing an open green plaid flannel shirt over a black t-shirt, loose black denim pants, and skate shoes. Night studio grey background, 3-panel turnaround sheet with detailed facial close-up, full-length front view, and full-length back view.'
-  },
-  {
-    id: 'tank-male',
-    name: 'Rohan Mehra',
-    tag: 'Minimalist Raw',
-    icon: '💪',
-    image: '/assets/characters/sheet_male_tank.jpg',
-    style: 'Real · Raw Studio',
-    prompt: 'Athletic Indian man with trimmed beard and dark hair, wearing a classic white ribbed tank top, black pleated trousers, and black sneakers. Real raw studio setting, 3-panel character sheet with extreme face portrait close-up, front full body stance, and back full body view.'
-  },
-  {
-    id: 'pets-matrix',
-    name: 'Companion Matrix',
-    tag: 'Pets & Outfits',
-    icon: '🐾',
-    image: '/assets/characters/sheet_pets_costumes.png',
-    style: 'Character & Pets',
-    prompt: 'Studio turnaround sheet for pets and characters, multi-angle rows featuring front view, side view, and back view in creative outfits on a clean neutral grey backdrop.'
-  }
-];
-
-const STYLE_OPTIONS = [
-  { id: 'raw', label: 'Real · Raw Studio', desc: 'Neutral grey studio, authentic skin & 3-panel turnaround', icon: '🏛️' },
-  { id: 'night', label: 'Night · Ambient', desc: 'Evening ambient studio lighting, moody shadows', icon: '🌃' },
-  { id: 'fashion', label: 'Editorial Fashion', desc: 'High-fashion minimalist studio, pristine lighting', icon: '📸' },
-  { id: 'creative', label: 'Creative & Pets', desc: 'Multi-view characters, companions & costumes', icon: '🐾' }
-];
-
-const SUGGESTIONS = [
-  '+ Burgundy Dress',
-  '+ Plaid Flannel',
-  '+ White Tank Top',
-  '+ Clean Sneakers',
-  '+ 3-Panel Turnaround',
-  '+ Natural Studio Lighting'
-];
 
 export default function AvatarStudio() {
   const userProfile = useAppStore(state => state.userProfile);
@@ -77,67 +22,52 @@ export default function AvatarStudio() {
   const studio = useAvatarStudio(userId);
 
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
-  const [characterPrompt, setCharacterPrompt] = useState(
-    'Young Indian woman with natural wavy dark hair, wearing a fitted burgundy ruched cocktail dress and clean white sneakers. Neutral studio grey background, 3-panel character turnaround sheet with close-up face portrait, full front view, and full back view. Authentic natural lighting.'
-  );
-  const [selectedStyle, setSelectedStyle] = useState('raw');
-  const [activePresetId, setActivePresetId] = useState('maroon-female');
 
-  // Apply a preset from cards or turntable
-  const handleApplyPreset = (preset) => {
-    if (preset.prompt) {
-      setCharacterPrompt(preset.prompt);
-    } else {
-      const parts = [
-        preset.name ? `Character: ${preset.name}.` : '',
-        preset.outfit ? `Wearing ${preset.outfit}.` : '',
-        `Neutral studio grey background, 3-panel character turnaround sheet with close-up face portrait, full front view, and full back view. Real · Raw · Original studio photography.`
-      ];
-      setCharacterPrompt(parts.filter(Boolean).join(' '));
-    }
+  // Form State according to user requirements:
+  // - Front Profile (handled by studio.refPreview / studio.uploadRef(file, 'character'))
+  // - Side Profile (handled by studio.leftProfileRefPreview / studio.uploadRef(file, 'left_profile'))
+  // - Wardrobe (handled by studio.wardrobeRefPreview / studio.uploadRef(file, 'wardrobe'))
+  // - Name, Age, Height
+  // - Engine: Nano Banana 2 Pro or ChatGPT Image 2.5
+  const [characterName, setCharacterName] = useState('Rohan Mehra');
+  const [characterAge, setCharacterAge] = useState('26');
+  const [characterHeight, setCharacterHeight] = useState("5'9\"");
+  const [wardrobeNotes, setWardrobeNotes] = useState('White ribbed tank top, black pleated wide trousers, sneakers, silver pendant chain');
 
-    if (preset.name) studio.setBoardMetaField('name', preset.name);
-    if (preset.age) studio.setBoardMetaField('age', preset.age);
-    if (preset.outfit) studio.setBoardMetaField('outfit', preset.outfit);
-    studio.setBoardMetaField('style', 'Ultra Realistic');
-  };
+  // Engine selection: 'banana' = Nano Banana 2 Pro, 'gpt2' = ChatGPT Image 2.5
+  const [selectedEngine, setSelectedEngine] = useState('banana'); // 'banana' | 'gpt2'
 
-  const handleSelectPresetCard = (preset) => {
-    setActivePresetId(preset.id);
-    handleApplyPreset(preset);
-  };
+  const requiredCredits = selectedEngine === 'banana' ? 5 : 3;
 
-  const addSuggestion = (tag) => {
-    const cleanTag = tag.replace(/^\+\s*/, '');
-    setCharacterPrompt(prev => prev ? `${prev.trim()}, ${cleanTag}` : cleanTag);
-  };
-
-  // Generate character sheet
+  // Generate 16:9 3-Panel Character Sheet
   const handleGenerate = () => {
-    if (!characterPrompt.trim()) {
-      studio.setError('Please enter a description for your character.');
-      return;
-    }
-
-    // Set 3-panel character turnaround parameters
     studio.setActiveBoard('CHARACTER');
-    studio.setAspectRatio('16:9');
-    studio.setActiveModel('banana'); // Always use Vertex 2K Pro
+    studio.setAspectRatio('16:9'); // 16:9 widescreen rectangle sheet
+    studio.setActiveModel(selectedEngine);
 
-    studio.setBoardMetaField('name', 'Character');
-    studio.setBoardMetaField('age', '24');
+    const name = characterName.trim() || 'Character';
+    const age = characterAge.trim() || '26';
+    const height = characterHeight.trim() || "5'9\"";
+    const outfit = wardrobeNotes.trim() || 'Neutral studio outfit';
+
+    studio.setBoardMetaField('name', name);
+    studio.setBoardMetaField('age', age);
+    studio.setBoardMetaField('height', height);
+    studio.setBoardMetaField('outfit', outfit);
     studio.setBoardMetaField('style', 'Ultra Realistic');
-    studio.setBoardMetaField('outfit', characterPrompt);
 
-    // Build the master context
-    const fullContext = `${characterPrompt.trim()} Three clean vertical panels on a seamless light gray studio background. Left Panel: Large close-up portrait (head and shoulders only). Center Panel: Full-body front view. Right Panel: Full-body back view. Real · Raw · Original studio photography.`;
-    studio.setAdditionalContext(fullContext);
+    // Master 16:9 rectangular 3-panel turnaround prompt
+    const masterTurnaroundContext = `Three clean vertical panels on a seamless neutral light gray studio background. 16:9 rectangular format.
+Panel 1 (Left, Close-up): Large extreme close-up headshot portrait looking directly at the camera with a neutral, relaxed expression. Natural authentic skin texture, realistic facial features, and soft flattering studio lighting.
+Panel 2 (Center, Front View): Full-body front view of the character (${name}, Age ${age}, Height ${height}) standing upright in a neutral relaxed pose with hands at sides or relaxed in pockets. Full body from head to footwear, showing full ${outfit}.
+Panel 3 (Right, Back View): Full-body back view of the character standing upright facing away from the camera, showing back of hairstyle, posture, and the complete back of the outfit, trousers, and shoes.
+Real · Raw · Original studio photography. 8K resolution, 85mm portrait lens, photorealistic studio lighting, identical character identity across all three views. No watermarks, no logos, clean seamless light gray studio backdrop.`;
 
+    studio.setAdditionalContext(masterTurnaroundContext);
     studio.generateBoard();
   };
 
-  const requiredCredits = 5;
-  const canGenerate = userCredits >= requiredCredits && !studio.generating && characterPrompt.trim().length > 0;
+  const canGenerate = userCredits >= requiredCredits && !studio.generating;
 
   return (
     <div className="h-full flex flex-col bg-[#050608] text-white overflow-hidden relative font-sans">
@@ -145,9 +75,9 @@ export default function AvatarStudio() {
       {/* Background ambient lighting */}
       <div className="absolute top-0 right-1/4 w-[600px] h-[300px] bg-gradient-to-b from-[#C8F135]/5 via-cyan-500/5 to-transparent rounded-full blur-[140px] pointer-events-none -z-10" />
 
-      {/* ── Lightweight Top Header (Clean, slim, minimal) ────────────────────── */}
-      <header className="border-b border-white/10 px-6 py-2.5 flex items-center justify-between shrink-0 bg-black/50 backdrop-blur-xl z-20">
-        <div className="flex items-center gap-3">
+      {/* ── Lightweight Top Header (Clean, slim, lightweight) ────────────────── */}
+      <header className="border-b border-white/10 px-6 py-2.5 flex items-center justify-between shrink-0 bg-black/60 backdrop-blur-xl z-20">
+        <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-[#C8F135] flex items-center justify-center shadow-[0_0_15px_rgba(200,241,53,0.3)]">
             <Sparkles className="w-4 h-4 text-black" />
           </div>
@@ -155,7 +85,7 @@ export default function AvatarStudio() {
             <h1 className="text-sm font-black tracking-wider uppercase flex items-center gap-2 text-white">
               Avatar Studio
               <span className="text-[9px] font-bold text-[#C8F135] bg-[#C8F135]/15 border border-[#C8F135]/30 px-1.5 py-0.2 rounded">
-                Character Sheet
+                16:9 Character Sheet
               </span>
             </h1>
           </div>
@@ -189,195 +119,326 @@ export default function AvatarStudio() {
       {/* ── Main Studio Layout ──────────────────────────────────────────────── */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         
-        {/* Left Side: Completely Revamped Simple Side Panel */}
-        <aside className="w-[420px] border-r border-white/10 bg-black/50 backdrop-blur-xl flex flex-col min-h-0 shrink-0 select-none">
+        {/* Left Side: Streamlined Side Panel */}
+        <aside className="w-[430px] border-r border-white/10 bg-black/50 backdrop-blur-xl flex flex-col min-h-0 shrink-0 select-none">
           <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
             
-            {/* 1. Quick Inspiration Presets (matching the uploaded real turnaround sheets) */}
+            {/* 1. Engine Selection (Nano Banana 2 Pro vs ChatGPT Image 2.5) */}
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-wider text-white/50 flex items-center justify-between">
-                <span>1. Character Presets</span>
-                <span className="text-[8px] font-mono text-[#C8F135]">3-PANEL TURNAROUND</span>
+                <span className="flex items-center gap-1.5">
+                  <Cpu className="w-3.5 h-3.5 text-[#C8F135]" />
+                  Engine Model
+                </span>
+                <span className="text-[8px] font-mono text-[#C8F135]">SELECT GENERATOR</span>
               </label>
 
-              <div className="grid grid-cols-2 gap-2">
-                {SHEET_PRESETS.map((preset) => {
-                  const isSelected = activePresetId === preset.id;
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => handleSelectPresetCard(preset)}
-                      className={`relative p-2 rounded-xl border text-left transition-all duration-200 overflow-hidden group flex flex-col justify-between ${
-                        isSelected
-                          ? 'border-[#C8F135] bg-[#C8F135]/10 shadow-[0_0_20px_rgba(200,241,53,0.15)] ring-1 ring-[#C8F135]/40'
-                          : 'border-white/10 bg-zinc-950/60 hover:border-white/20 hover:bg-white/[0.03]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-base">{preset.icon}</span>
-                        <div className="min-w-0 flex-1">
-                          <h4 className={`text-xs font-black truncate ${isSelected ? 'text-[#C8F135]' : 'text-white'}`}>
-                            {preset.name}
-                          </h4>
-                          <span className="text-[8px] font-mono text-white/40 block truncate">
-                            {preset.tag}
-                          </span>
-                        </div>
-                      </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* Engine 1: Nano Banana 2 Pro */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedEngine('banana')}
+                  className={`p-3 rounded-xl border text-left transition-all duration-200 relative overflow-hidden group ${
+                    selectedEngine === 'banana'
+                      ? 'border-[#C8F135] bg-[#C8F135]/10 shadow-[0_0_20px_rgba(200,241,53,0.15)] ring-1 ring-[#C8F135]/50'
+                      : 'border-white/10 bg-zinc-950/60 hover:border-white/20 hover:bg-white/[0.02]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-xs font-black uppercase tracking-wider ${
+                      selectedEngine === 'banana' ? 'text-[#C8F135]' : 'text-white'
+                    }`}>
+                      Nano Banana 2 Pro
+                    </span>
+                    <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-[#C8F135] text-black uppercase">
+                      2K Ultra-HD
+                    </span>
+                  </div>
+                  <p className="text-[9px] text-white/50 leading-snug">
+                    Google 2048px character synthesis with likeness lock.
+                  </p>
+                  <div className="mt-2 text-[8px] font-mono text-[#C8F135] font-bold">
+                    5 Credits
+                  </div>
+                </button>
 
-                      {/* Micro Preview of the 3-panel sheet */}
-                      <div className="w-full h-11 rounded-md overflow-hidden bg-black/50 border border-white/5 relative">
-                        <img 
-                          src={preset.image} 
-                          alt={preset.name}
-                          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
-                        />
-                      </div>
-                    </button>
-                  );
-                })}
+                {/* Engine 2: ChatGPT Image 2.5 */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedEngine('gpt2')}
+                  className={`p-3 rounded-xl border text-left transition-all duration-200 relative overflow-hidden group ${
+                    selectedEngine === 'gpt2'
+                      ? 'border-[#C8F135] bg-[#C8F135]/10 shadow-[0_0_20px_rgba(200,241,53,0.15)] ring-1 ring-[#C8F135]/50'
+                      : 'border-white/10 bg-zinc-950/60 hover:border-white/20 hover:bg-white/[0.02]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-xs font-black uppercase tracking-wider ${
+                      selectedEngine === 'gpt2' ? 'text-[#C8F135]' : 'text-white'
+                    }`}>
+                      ChatGPT Image 2.5
+                    </span>
+                    <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-white/10 text-white uppercase">
+                      Image 2.5
+                    </span>
+                  </div>
+                  <p className="text-[9px] text-white/50 leading-snug">
+                    OpenAI visual model with detailed styling continuity.
+                  </p>
+                  <div className="mt-2 text-[8px] font-mono text-cyan-400 font-bold">
+                    3 Credits
+                  </div>
+                </button>
               </div>
             </div>
 
-            {/* 2. Character Description / Prompt */}
+            {/* 2. Photo Placeholders (Front Profile, Side Profile, Wardrobe) */}
             <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-wider text-white/50 flex items-center justify-between">
+                <span>Identity & Wardrobe Placeholders</span>
+                <span className="text-[8px] font-mono text-white/40">ATTACH PHOTOS</span>
+              </label>
+
+              <div className="grid grid-cols-3 gap-2">
+                {/* Placeholder 1: Front Profile */}
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-bold text-white/70 flex items-center justify-between">
+                    <span>Front Profile</span>
+                    {studio.refPreview && <CheckCircle2 className="w-2.5 h-2.5 text-[#C8F135]" />}
+                  </span>
+
+                  {studio.refPreview ? (
+                    <div className="relative w-full h-28 rounded-xl border border-[#C8F135] bg-black overflow-hidden group">
+                      <img 
+                        src={studio.refPreview} 
+                        alt="Front Profile" 
+                        className="w-full h-full object-cover" 
+                      />
+                      <button
+                        type="button"
+                        onClick={() => studio.uploadRef(null, 'character')}
+                        className="absolute top-1 right-1 p-1 rounded-md bg-black/80 hover:bg-red-500/80 text-white/70 hover:text-white transition-all"
+                        title="Remove"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="w-full h-28 border border-dashed border-white/20 hover:border-[#C8F135]/60 bg-zinc-950/60 hover:bg-[#C8F135]/5 rounded-xl flex flex-col items-center justify-center p-2 cursor-pointer transition-all text-center group">
+                      <UploadCloud className="w-5 h-5 text-white/30 group-hover:text-[#C8F135] transition-colors mb-1" />
+                      <span className="text-[9px] font-bold text-white/70 group-hover:text-white">
+                        Upload Front
+                      </span>
+                      <span className="text-[7px] text-white/30 font-mono mt-0.5">Face Close-up</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) studio.uploadRef(file, 'character');
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {/* Placeholder 2: Side Profile */}
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-bold text-white/70 flex items-center justify-between">
+                    <span>Side Profile</span>
+                    {studio.leftProfileRefPreview && <CheckCircle2 className="w-2.5 h-2.5 text-[#C8F135]" />}
+                  </span>
+
+                  {studio.leftProfileRefPreview ? (
+                    <div className="relative w-full h-28 rounded-xl border border-[#C8F135] bg-black overflow-hidden group">
+                      <img 
+                        src={studio.leftProfileRefPreview} 
+                        alt="Side Profile" 
+                        className="w-full h-full object-cover" 
+                      />
+                      <button
+                        type="button"
+                        onClick={() => studio.uploadRef(null, 'left_profile')}
+                        className="absolute top-1 right-1 p-1 rounded-md bg-black/80 hover:bg-red-500/80 text-white/70 hover:text-white transition-all"
+                        title="Remove"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="w-full h-28 border border-dashed border-white/20 hover:border-[#C8F135]/60 bg-zinc-950/60 hover:bg-[#C8F135]/5 rounded-xl flex flex-col items-center justify-center p-2 cursor-pointer transition-all text-center group">
+                      <UploadCloud className="w-5 h-5 text-white/30 group-hover:text-[#C8F135] transition-colors mb-1" />
+                      <span className="text-[9px] font-bold text-white/70 group-hover:text-white">
+                        Upload Side
+                      </span>
+                      <span className="text-[7px] text-white/30 font-mono mt-0.5">90° Profile</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) studio.uploadRef(file, 'left_profile');
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {/* Placeholder 3: Wardrobe */}
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-bold text-white/70 flex items-center justify-between">
+                    <span>Wardrobe</span>
+                    {studio.wardrobeRefPreview && <CheckCircle2 className="w-2.5 h-2.5 text-[#C8F135]" />}
+                  </span>
+
+                  {studio.wardrobeRefPreview ? (
+                    <div className="relative w-full h-28 rounded-xl border border-[#C8F135] bg-black overflow-hidden group">
+                      <img 
+                        src={studio.wardrobeRefPreview} 
+                        alt="Wardrobe" 
+                        className="w-full h-full object-cover" 
+                      />
+                      <button
+                        type="button"
+                        onClick={() => studio.uploadRef(null, 'wardrobe')}
+                        className="absolute top-1 right-1 p-1 rounded-md bg-black/80 hover:bg-red-500/80 text-white/70 hover:text-white transition-all"
+                        title="Remove"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="w-full h-28 border border-dashed border-white/20 hover:border-[#C8F135]/60 bg-zinc-950/60 hover:bg-[#C8F135]/5 rounded-xl flex flex-col items-center justify-center p-2 cursor-pointer transition-all text-center group">
+                      <Shirt className="w-5 h-5 text-white/30 group-hover:text-[#C8F135] transition-colors mb-1" />
+                      <span className="text-[9px] font-bold text-white/70 group-hover:text-white">
+                        Upload Outfit
+                      </span>
+                      <span className="text-[7px] text-white/30 font-mono mt-0.5">Clothes / Style</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) studio.uploadRef(file, 'wardrobe');
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Character Details (Name, Age, Height) */}
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase tracking-wider text-white/50">
+                Character Specs
+              </label>
+
+              <div className="grid grid-cols-3 gap-2.5">
+                {/* Name */}
+                <div className="space-y-1">
+                  <span className="text-[9px] font-bold text-white/60 flex items-center gap-1">
+                    <User className="w-2.5 h-2.5 text-[#C8F135]" /> Name
+                  </span>
+                  <input
+                    type="text"
+                    value={characterName}
+                    onChange={(e) => setCharacterName(e.target.value)}
+                    placeholder="e.g. Rohan Mehra"
+                    className="w-full bg-zinc-950/80 border border-white/10 rounded-xl px-2.5 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#C8F135]/60 focus:ring-1 focus:ring-[#C8F135]/40 transition-all font-medium"
+                  />
+                </div>
+
+                {/* Age */}
+                <div className="space-y-1">
+                  <span className="text-[9px] font-bold text-white/60 flex items-center gap-1">
+                    <Calendar className="w-2.5 h-2.5 text-[#C8F135]" /> Age
+                  </span>
+                  <input
+                    type="text"
+                    value={characterAge}
+                    onChange={(e) => setCharacterAge(e.target.value)}
+                    placeholder="e.g. 26"
+                    className="w-full bg-zinc-950/80 border border-white/10 rounded-xl px-2.5 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#C8F135]/60 focus:ring-1 focus:ring-[#C8F135]/40 transition-all font-medium"
+                  />
+                </div>
+
+                {/* Height */}
+                <div className="space-y-1">
+                  <span className="text-[9px] font-bold text-white/60 flex items-center gap-1">
+                    <Ruler className="w-2.5 h-2.5 text-[#C8F135]" /> Height
+                  </span>
+                  <input
+                    type="text"
+                    value={characterHeight}
+                    onChange={(e) => setCharacterHeight(e.target.value)}
+                    placeholder="e.g. 5'9&quot; / 175cm"
+                    className="w-full bg-zinc-950/80 border border-white/10 rounded-xl px-2.5 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#C8F135]/60 focus:ring-1 focus:ring-[#C8F135]/40 transition-all font-medium"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Wardrobe & Appearance Description */}
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-[10px] font-black uppercase tracking-wider text-white/50">
-                  2. Character Description
+                  Wardrobe & Style Details
                 </label>
                 <button
                   type="button"
-                  onClick={() => setCharacterPrompt('')}
+                  onClick={() => setWardrobeNotes('')}
                   className="text-[9px] text-white/40 hover:text-white transition-colors"
                 >
                   Clear
                 </button>
               </div>
 
-              <div className="relative">
-                <textarea
-                  value={characterPrompt}
-                  onChange={(e) => setCharacterPrompt(e.target.value)}
-                  placeholder="Describe your character, clothing, hairstyle, facial appearance, and accessories..."
-                  rows={4}
-                  className="w-full bg-zinc-950/80 border border-white/10 rounded-xl p-3 text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#C8F135]/60 focus:ring-1 focus:ring-[#C8F135]/40 transition-all resize-none leading-relaxed"
-                />
-              </div>
+              <textarea
+                value={wardrobeNotes}
+                onChange={(e) => setWardrobeNotes(e.target.value)}
+                placeholder="Describe clothing, shoes, hairstyle, or accessory specifics (e.g. White ribbed tank top, black pleated wide trousers, skate sneakers)..."
+                rows={3}
+                className="w-full bg-zinc-950/80 border border-white/10 rounded-xl p-3 text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#C8F135]/60 focus:ring-1 focus:ring-[#C8F135]/40 transition-all resize-none leading-relaxed font-sans"
+              />
 
-              {/* Quick suggestion tags */}
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {SUGGESTIONS.map((tag) => (
+              <div className="flex flex-wrap gap-1 pt-0.5">
+                {[
+                  'White Tank Top',
+                  'Burgundy Dress',
+                  'Plaid Flannel',
+                  'Wide Black Trousers',
+                  'Sneakers'
+                ].map((tag) => (
                   <button
                     key={tag}
                     type="button"
-                    onClick={() => addSuggestion(tag)}
+                    onClick={() => {
+                      setWardrobeNotes(prev => prev ? `${prev.trim()}, ${tag}` : tag);
+                    }}
                     className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-white/5 hover:bg-[#C8F135]/15 hover:text-[#C8F135] text-white/60 border border-white/5 hover:border-[#C8F135]/30 transition-all"
                   >
-                    {tag}
+                    + {tag}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* 3. Studio Lighting / Sheet Style */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-wider text-white/50">
-                3. Studio Style
-              </label>
-
-              <div className="grid grid-cols-2 gap-2">
-                {STYLE_OPTIONS.map((opt) => {
-                  const isSelected = selectedStyle === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedStyle(opt.id);
-                        if (opt.id === 'night') {
-                          addSuggestion('Night studio ambient lighting');
-                        } else if (opt.id === 'fashion') {
-                          addSuggestion('High-fashion editorial lighting');
-                        }
-                      }}
-                      className={`p-2.5 rounded-xl border text-left transition-all ${
-                        isSelected
-                          ? 'border-[#C8F135] bg-[#C8F135]/10 text-[#C8F135]'
-                          : 'border-white/10 bg-zinc-950/60 hover:border-white/20 text-white/80'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span>{opt.icon}</span>
-                        <span className="text-[10px] font-black uppercase truncate">{opt.label}</span>
-                      </div>
-                      <p className="text-[8px] text-white/40 line-clamp-1 leading-tight">
-                        {opt.desc}
-                      </p>
-                    </button>
-                  );
-                })}
+            {/* 5. Sheet Format Specs Summary */}
+            <div className="p-3 rounded-xl border border-white/10 bg-zinc-950/60 flex items-center justify-between text-[9px] font-mono">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#C8F135] animate-pulse" />
+                <span className="text-white/80 font-bold uppercase">Format: 16:9 Rectangle Sheet</span>
               </div>
-            </div>
-
-            {/* 4. Reference Photo (Optional) */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-wider text-white/50 flex items-center justify-between">
-                <span>4. Reference Photo (Optional)</span>
-                {studio.refPreview && (
-                  <span className="text-[8px] font-mono text-[#C8F135]">PHOTO ATTACHED</span>
-                )}
-              </label>
-
-              {studio.refPreview ? (
-                <div className="relative rounded-xl border border-[#C8F135]/40 bg-zinc-950/80 p-2 flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg overflow-hidden border border-white/10 bg-black shrink-0">
-                    <img 
-                      src={studio.refPreview} 
-                      alt="Reference" 
-                      className="w-full h-full object-cover" 
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-white truncate">Face Reference Locked</p>
-                    <p className="text-[9px] text-[#C8F135] font-mono">100% Likeness Lock Active</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => studio.uploadRef(null, 'character')}
-                    className="p-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/50 hover:text-red-400 border border-white/5 transition-all"
-                    title="Remove Photo"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <label className="border border-dashed border-white/15 hover:border-[#C8F135]/50 bg-zinc-950/40 hover:bg-[#C8F135]/5 rounded-xl p-3.5 flex items-center justify-center gap-3 cursor-pointer transition-all group">
-                  <UploadCloud className="w-5 h-5 text-white/40 group-hover:text-[#C8F135] transition-colors" />
-                  <div className="text-left">
-                    <p className="text-[10px] font-bold text-white group-hover:text-[#C8F135] transition-colors">
-                      Drop face or outfit photo
-                    </p>
-                    <p className="text-[8px] text-white/40 font-mono">
-                      JPG or PNG • Locks exact identity
-                    </p>
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) studio.uploadRef(file, 'character');
-                    }}
-                  />
-                </label>
-              )}
+              <span className="text-white/40">Close-up · Front · Back</span>
             </div>
 
           </div>
 
-          {/* 5. Sticky Bottom Action Trigger */}
+          {/* Sticky Bottom Action Trigger */}
           <div className="p-4 border-t border-white/10 bg-black/80 backdrop-blur-xl">
             <button
               type="button"
@@ -392,14 +453,14 @@ export default function AvatarStudio() {
               {studio.generating ? (
                 <>
                   <div className="w-4 h-4 rounded-full border-2 border-black border-t-transparent animate-spin" />
-                  <span>Generating Sheet...</span>
+                  <span>Synthesizing Character Sheet...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 text-black" />
                   <span>Generate Character Sheet</span>
                   <span className="px-2 py-0.5 rounded-md bg-black/20 text-black text-[9px] font-black tracking-wider ml-1">
-                    5 Credits
+                    {requiredCredits} Credits
                   </span>
                 </>
               )}
@@ -419,7 +480,6 @@ export default function AvatarStudio() {
             saving={studio.saving}
             savedOk={studio.savedOk}
             setGeneratedImage={studio.setGeneratedImage}
-            onApplyPreset={handleApplyPreset}
             userId={userId}
           />
         </main>
@@ -433,7 +493,6 @@ export default function AvatarStudio() {
         onSelect={(item) => {
           studio.setGeneratedImage(item.output_url);
           studio.setActivePrompt(item.prompt);
-          if (item.prompt) setCharacterPrompt(item.prompt);
           setIsGalleryOpen(false);
         }}
       />

@@ -262,11 +262,15 @@ export function buildBoardPrompt(boardType, additionalContext = '', model = 'gpt
         if (ethnicity) featuresParts.push(`Ethnicity/Skin: ${ethnicity}`);
         const featuresStr = featuresParts.length > 0 ? featuresParts.join(' · ') : 'Natural';
 
-        const charMetadata = `NAME: "${name}"${age ? ` · AGE: "${age}"` : ''} · HEIGHT: '1.75m'${build ? ` · BUILD: "${build}"` : ''}${hair ? ` · HAIR: "${hair}"` : ''} · EYES: 'Matching' · FEATURES: "${featuresStr}"${outfit ? ` · OUTFIT: "${outfit}"` : ''}${vibe ? ` · CHARACTER: "${vibe}"` : ''} · MOOD: 'Consistent'`;
+        const height = boardMeta.height || "5'9\"";
+        const charMetadata = `NAME: "${name}"${age ? ` · AGE: "${age}"` : ''} · HEIGHT: "${height}"${build ? ` · BUILD: "${build}"` : ''}${hair ? ` · HAIR: "${hair}"` : ''} · EYES: 'Matching' · FEATURES: "${featuresStr}"${outfit ? ` · OUTFIT: "${outfit}"` : ''}${vibe ? ` · CHARACTER: "${vibe}"` : ''} · MOOD: 'Consistent'`;
         
         compiledPrompt = compiledPrompt.replace(
             `NAME · AGE · HEIGHT · BUILD · HAIR · EYES · FEATURES · OUTFIT · CHARACTER · MOOD`,
             charMetadata
+        ).replace(
+            `Approximately 5'9" tall.`,
+            `Approximately ${height} tall.`
         );
 
         // Dynamic Style Substitution
