@@ -209,6 +209,10 @@ export default function createRouter(deps) {
                 const parts = [...imageParts, { text: prompt }];
 
                 const safetySettings = [
+                    { category: "HARM_CATEGORY_IMAGE_HATE", threshold: "OFF" },
+                    { category: "HARM_CATEGORY_IMAGE_DANGEROUS_CONTENT", threshold: "OFF" },
+                    { category: "HARM_CATEGORY_IMAGE_HARASSMENT", threshold: "OFF" },
+                    { category: "HARM_CATEGORY_IMAGE_SEXUALLY_EXPLICIT", threshold: "OFF" },
                     { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
                     { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
                     { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
@@ -219,10 +223,14 @@ export default function createRouter(deps) {
                     contents: [{ role: 'user', parts }],
                     safetySettings,
                     generationConfig: { 
-                        responseModalities: ["IMAGE"],
+                        responseModalities: ["IMAGE", "TEXT"],
                         imageConfig: {
                             aspectRatio: aspectRatio === '1:1' ? '1:1' : aspectRatio === '16:9' ? '16:9' : aspectRatio === '9:16' ? '9:16' : '1:1',
-                            imageSize: '2K'
+                            imageSize: '2K',
+                            outputMimeType: 'image/png'
+                        },
+                        thinkingConfig: {
+                            thinkingLevel: "MINIMAL"
                         }
                     }
                 });
@@ -234,18 +242,16 @@ export default function createRouter(deps) {
                     if (useVertex) {
                         const token = await getVertexToken();
                         if (!token) throw new Error('Vertex AI authentication token could not be acquired.');
-                        const targetLocation = VERTEX_LOCATION || 'us-central1';
-                        const apiVersion = 'v1';
-                        // Vertex AI image generation model (gemini-2.5-flash-image)
-                        const vertexImageModel = 'gemini-2.5-flash-image';
-                        ep = `https://${targetLocation}-aiplatform.googleapis.com/${apiVersion}/projects/${VERTEX_PROJECT_ID}/locations/${targetLocation}/publishers/google/models/${vertexImageModel}:generateContent`;
+                        // Vertex AI hosts gemini-3.1-flash-image at location: global
+                        const vertexModel = 'gemini-3.1-flash-image';
+                        ep = `https://aiplatform.googleapis.com/v1beta1/projects/${VERTEX_PROJECT_ID}/locations/global/publishers/google/models/${vertexModel}:generateContent`;
                         hdrs['Authorization'] = `Bearer ${token}`;
-                        console.log(`[Avatar Board] [Vertex AI PRIMARY] Calling model ${vertexImageModel} via Service Account token (location: ${targetLocation})`);
+                        console.log(`[Avatar Board] [Vertex AI PRIMARY] Calling model ${vertexModel} (location: global, 2K)`);
                     } else {
                         const studioKey = (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : (process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GOOGLE_API_KEY);
                         if (!studioKey) throw new Error('No Google AI Studio API key configured.');
-                        ep = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${studioKey}`;
-                        console.log(`[Avatar Board] [AI Studio FALLBACK] Calling model ${activeModel} via API Key`);
+                        ep = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${studioKey}`;
+                        console.log(`[Avatar Board] [AI Studio FALLBACK] Calling model gemini-3.1-flash-image via API Key`);
                     }
 
                     const resp = await fetch(ep, {

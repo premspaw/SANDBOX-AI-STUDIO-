@@ -1508,6 +1508,19 @@ async function handleGoogle(req, res) {
                 promptWithHint = `${compiledPrompt}. Compose image in ${ratioHint}.`;
             }
 
+            let outputMimeType = isLiteOrOpenModel ? 'image/jpeg' : 'image/png';
+
+            const safetyConfig = [
+                { category: "HARM_CATEGORY_IMAGE_HATE", threshold: "OFF" },
+                { category: "HARM_CATEGORY_IMAGE_DANGEROUS_CONTENT", threshold: "OFF" },
+                { category: "HARM_CATEGORY_IMAGE_HARASSMENT", threshold: "OFF" },
+                { category: "HARM_CATEGORY_IMAGE_SEXUALLY_EXPLICIT", threshold: "OFF" },
+                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+            ];
+
             let b64 = null;
             let success = false;
 
@@ -1516,10 +1529,7 @@ async function handleGoogle(req, res) {
             let lastVertexError = null;
             let lastStudioError = null;
 
-            // Primary image model on Vertex AI (us-central1)
-            const vertexImageModel = 'gemini-2.5-flash-image';
-
-            // --- Option A: Vertex AI SDK as PRIMARY (Supported on Vertex with gemini-2.5-flash-image) ---
+            // --- Option A: Vertex AI SDK as PRIMARY (global location for gemini-3.1-flash-image & lite) ---
             if (VERTEX_KEY || apiKey === 'VERTEX_AI_CLIENT' || token) {
                 try {
                     const authOptions = {};
@@ -1530,13 +1540,15 @@ async function handleGoogle(req, res) {
                             authOptions.credentials = VERTEX_KEY;
                         }
                     }
+                    // Vertex AI hosts gemini-3.1-flash-image and gemini-3.1-flash-lite-image at location: global
+                    const vertexLoc = 'global';
                     const ai = new GoogleGenAI({
                         vertexai: true,
                         project: VERTEX_PROJECT_ID,
-                        location: VERTEX_LOCATION,
+                        location: vertexLoc,
                         googleAuthOptions: authOptions
                     });
-                    console.log(`[handleGoogle] [Vertex AI SDK PRIMARY] Calling model ${vertexImageModel} (project: ${VERTEX_PROJECT_ID}, location: ${VERTEX_LOCATION})`);
+                    console.log(`[handleGoogle] [Vertex AI SDK PRIMARY] Calling model ${activeModel} (project: ${VERTEX_PROJECT_ID}, location: ${vertexLoc}, size: ${finalImageSize})`);
 
                     const parts = [];
                     if (referenceImages && referenceImages.length > 0) {
@@ -1559,19 +1571,20 @@ async function handleGoogle(req, res) {
                     parts.push({ text: promptWithHint });
 
                     const response = await ai.models.generateContent({
-                        model: vertexImageModel,
+                        model: activeModel,
                         contents: [{ role: 'user', parts }],
                         config: {
-                            safetySettings: [
-                                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-                            ],
-                            responseModalities: ["IMAGE", "TEXT"],
+                            temperature: 1,
+                            topP: 0.95,
+                            safetySettings: safetyConfig,
+                            responseModalities: ["TEXT", "IMAGE"],
                             imageConfig: {
                                 aspectRatio: mappedRatio,
-                                imageSize: finalImageSize
+                                imageSize: finalImageSize,
+                                outputMimeType: outputMimeType
+                            },
+                            thinkingConfig: {
+                                thinkingLevel: "MINIMAL"
                             }
                         }
                     });
@@ -1588,7 +1601,7 @@ async function handleGoogle(req, res) {
 
                     b64 = fallbackB64;
                     success = true;
-                    console.log(`[handleGoogle] [Vertex AI SDK PRIMARY] Image generated successfully (${b64.length} base64 chars)`);
+                    console.log(`[handleGoogle] [Vertex AI SDK PRIMARY] Image generated successfully (${b64.length} base64 chars, resolution: ${finalImageSize})`);
                 } catch (vErr) {
                     lastVertexError = vErr.message;
                     console.warn(`[handleGoogle] [Vertex AI SDK] Failed: ${vErr.message}. Trying direct REST generateContent fallback...`);
@@ -1614,17 +1627,13 @@ async function handleGoogle(req, res) {
 
                     const restPayload = {
                         contents: [{ role: 'user', parts }],
-                        safetySettings: [
-                            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-                        ],
+                        safetySettings: safetyConfig,
                         generationConfig: { 
                             responseModalities: ["IMAGE", "TEXT"],
                             imageConfig: {
                                 aspectRatio: mappedRatio,
-                                imageSize: finalImageSize
+                                imageSize: finalImageSize,
+                                outputMimeType: outputMimeType
                             }
                         }
                     };
@@ -1632,12 +1641,10 @@ async function handleGoogle(req, res) {
                     let restResp = null;
                     const systemKey = process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
 
-                    // 1. Try Vertex AI REST endpoint if token is present
+                    // 1. Try Vertex AI REST endpoint (global first, then us-central1 gemini-2.5-flash-image)
                     if (token) {
                         try {
-                            const targetLocation = VERTEX_LOCATION || 'us-central1';
-                            const apiVersion = 'v1';
-                            const vertexUrl = `https://${targetLocation}-aiplatform.googleapis.com/${apiVersion}/projects/${VERTEX_PROJECT_ID}/locations/${targetLocation}/publishers/google/models/${vertexImageModel}:generateContent`;
+                            const vertexUrl = `https://aiplatform.googleapis.com/v1beta1/projects/${VERTEX_PROJECT_ID}/locations/global/publishers/google/models/${activeModel}:generateContent`;
 
                             console.log(`[handleGoogle] [REST Vertex PRIMARY] Calling ${vertexUrl}`);
                             restResp = await fetch(vertexUrl, {
@@ -1663,7 +1670,32 @@ async function handleGoogle(req, res) {
                             console.warn('[handleGoogle] [REST Vertex PRIMARY] Failed:', vRestErr.message);
                         }
 
-                        // 1b. Try Vertex AI native Imagen 3 Predict endpoint if generateContent didn't return an image
+                        // 1b. If global failed, try us-central1 with gemini-2.5-flash-image on Vertex
+                        if (!success) {
+                            try {
+                                const fallbackVertexUrl = `https://us-central1-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/us-central1/publishers/google/models/gemini-2.5-flash-image:generateContent`;
+                                console.log(`[handleGoogle] [REST Vertex Regional Fallback] Calling ${fallbackVertexUrl}`);
+                                const regResp = await fetch(fallbackVertexUrl, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                                    body: JSON.stringify(restPayload)
+                                });
+                                if (regResp.ok) {
+                                    const regData = await regResp.json();
+                                    const candidate = regData.candidates?.[0];
+                                    const inlineData = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData;
+                                    if (inlineData && inlineData.data) {
+                                        b64 = inlineData.data;
+                                        success = true;
+                                        console.log(`[handleGoogle] [REST Vertex Regional Fallback] Image generated successfully (${b64.length} base64 chars)`);
+                                    }
+                                }
+                            } catch (regErr) {
+                                console.warn('[handleGoogle] [REST Vertex Regional Fallback] Failed:', regErr.message);
+                            }
+                        }
+
+                        // 1c. Try Vertex AI native Imagen 3 Predict endpoint if generateContent didn't return an image
                         if (!success) {
                             try {
                                 const targetLocation = VERTEX_LOCATION || 'us-central1';
