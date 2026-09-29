@@ -6,8 +6,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '.env.local'), override: true });
 console.log(`[STARTUP-ENV-CHECK] GOOGLE_API_KEY configured: ${Boolean(process.env.GOOGLE_API_KEY)}`);
 console.log(`[STARTUP-ENV-CHECK] ADMIN_GOOGLE_API_KEY configured: ${Boolean(process.env.ADMIN_GOOGLE_API_KEY)}`);
+console.log(`[STARTUP-ENV-CHECK] HF_CREDENTIALS configured: ${Boolean(process.env.HF_CREDENTIALS || process.env.HF_KEY)}`);
 import dns from 'dns';
 import net from 'net';
 dns.setDefaultResultOrder('ipv4first');
