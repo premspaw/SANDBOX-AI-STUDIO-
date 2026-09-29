@@ -157,8 +157,6 @@ const PricingPage = () => {
                 { label: "Commercial Video Ads", count: "~229 HD Ads", icon: "🎬", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/25" },
                 { label: "AI Master Photos", count: "~11,000 Photos", icon: "📸", color: "text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/25" }
             ],
-                { label: "AI Master Photos", count: "~11,000 Photos", icon: "📸", color: "text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/25" }
-            ],
             features: [
                 "11,000 High-Speed Renders (Credits)",
                 "Up to 5,500 Standard Images",
