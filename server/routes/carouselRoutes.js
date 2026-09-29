@@ -84,28 +84,7 @@ export default function createRouter(deps) {
                 try {
                     if (isNanoBanana) {
                         const apiKey = await resolveGoogleApiKey(req, targetUserId, false);
-                        const geminiModel = 'models/gemini-3.1-flash-image'; // preview name retired, use GA
-                        
-                        let endpoint = '';
-                        const headers = { 'Content-Type': 'application/json' };
-                        if (apiKey === 'VERTEX_AI_CLIENT') {
-                            const token = await getVertexToken();
-                            const activeModelLower = geminiModel.toLowerCase();
-                            const needsGlobal = activeModelLower.includes('gemini') || activeModelLower.includes('banana') || activeModelLower.includes('omni');
-                            const targetLocation = needsGlobal ? 'global' : (VERTEX_LOCATION || 'us-central1');
-                            const apiVersion = needsGlobal ? 'v1beta1' : 'v1';
-                            // Remove models/ prefix if present to format consistently
-                            const activeModel = geminiModel.startsWith('models/') ? geminiModel.replace('models/', '') : geminiModel;
-                            endpoint = `https://${VERTEX_LOCATION || 'us-central1'}-aiplatform.googleapis.com/${apiVersion}/projects/${VERTEX_PROJECT_ID}/locations/${targetLocation}/publishers/google/models/${activeModel}:generateContent`;
-                            headers['Authorization'] = `Bearer ${token}`;
-                            console.log(`[Carousel-NB2] [Vertex AI] Calling model gemini-3.1-flash-image via Service Account token (location: ${targetLocation})`);
-                        } else {
-                            endpoint = `https://generativelanguage.googleapis.com/v1beta/${geminiModel}:generateContent?key=${apiKey}`;
-                            console.log(`[Carousel-NB2] [AI Studio] Calling model ${geminiModel} via API Key`);
-                        }
-
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), IMAGE_GEN_TIMEOUT);
+                        const token = await getVertexToken().catch(() => null);
                         
                         const safetySettings = [
                             { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -114,26 +93,68 @@ export default function createRouter(deps) {
                             { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
                         ];
 
-                        const resp = await fetch(
-                            endpoint,
-                            {
-                                method: 'POST',
-                                headers,
-                                body: JSON.stringify({
-                                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                                    safetySettings,
-                                    generationConfig: {
-                                        responseModalities: ['TEXT', 'IMAGE']
-                                    }
-                                }),
-                                signal: controller.signal
+                        const reqPayload = {
+                            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                            safetySettings,
+                            generationConfig: {
+                                responseModalities: ['TEXT', 'IMAGE']
                             }
-                        );
-                        clearTimeout(timeoutId);
-                        
-                        const data = await resp.json();
-                        if (!resp.ok) {
-                            throw new Error(data.error?.message || `Gemini API error: ${resp.status}`);
+                        };
+
+                        let data = null;
+                        let lastErr = null;
+
+                        // 1. Primary: Vertex AI with gemini-2.5-flash-image
+                        if (token) {
+                            try {
+                                const targetLocation = VERTEX_LOCATION || 'us-central1';
+                                const vertexModel = 'gemini-2.5-flash-image';
+                                const endpoint = `https://${targetLocation}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${targetLocation}/publishers/google/models/${vertexModel}:generateContent`;
+                                console.log(`[Carousel-NB2] [Vertex AI PRIMARY] Calling model ${vertexModel} via Service Account token (location: ${targetLocation})`);
+                                const controller = new AbortController();
+                                const timeoutId = setTimeout(() => controller.abort(), IMAGE_GEN_TIMEOUT);
+                                const resp = await fetch(endpoint, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                                    body: JSON.stringify(reqPayload),
+                                    signal: controller.signal
+                                });
+                                clearTimeout(timeoutId);
+                                if (resp.ok) {
+                                    const json = await resp.json();
+                                    if (json.candidates?.[0]?.content?.parts?.some(p => p.inlineData)) {
+                                        data = json;
+                                    }
+                                } else {
+                                    const errTxt = await resp.text().catch(() => '');
+                                    lastErr = new Error(`Vertex AI error: ${resp.status} ${errTxt}`);
+                                    console.warn('[Carousel-NB2] Vertex AI error:', lastErr.message);
+                                }
+                            } catch (vErr) {
+                                lastErr = vErr;
+                                console.warn('[Carousel-NB2] Vertex AI exception:', vErr.message);
+                            }
+                        }
+
+                        // 2. Fallback: Google AI Studio
+                        if (!data) {
+                            const studioKey = (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : (process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY);
+                            if (!studioKey) throw lastErr || new Error('No Google credentials or API key available');
+                            console.log(`[Carousel-NB2] [AI Studio FALLBACK] Calling model gemini-3.1-flash-image via API Key`);
+                            const controller = new AbortController();
+                            const timeoutId = setTimeout(() => controller.abort(), IMAGE_GEN_TIMEOUT);
+                            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${studioKey}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(reqPayload),
+                                signal: controller.signal
+                            });
+                            clearTimeout(timeoutId);
+                            const json = await resp.json();
+                            if (!resp.ok) {
+                                throw new Error(json.error?.message || `Gemini API error: ${resp.status}`);
+                            }
+                            data = json;
                         }
 
                         if (data.promptFeedback?.blockReason) {

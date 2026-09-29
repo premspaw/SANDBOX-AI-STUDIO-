@@ -1516,7 +1516,10 @@ async function handleGoogle(req, res) {
             let lastVertexError = null;
             let lastStudioError = null;
 
-            // --- Option A: Vertex AI SDK as PRIMARY (Directly supported on Vertex with gemini-2.5-flash-image) ---
+            // Primary image model on Vertex AI (us-central1)
+            const vertexImageModel = 'gemini-2.5-flash-image';
+
+            // --- Option A: Vertex AI SDK as PRIMARY (Supported on Vertex with gemini-2.5-flash-image) ---
             if (VERTEX_KEY || apiKey === 'VERTEX_AI_CLIENT' || token) {
                 try {
                     const authOptions = {};
@@ -1533,7 +1536,7 @@ async function handleGoogle(req, res) {
                         location: VERTEX_LOCATION,
                         googleAuthOptions: authOptions
                     });
-                    console.log(`[handleGoogle] [Vertex AI SDK PRIMARY] Calling model ${activeModel} (project: ${VERTEX_PROJECT_ID}, location: ${VERTEX_LOCATION})`);
+                    console.log(`[handleGoogle] [Vertex AI SDK PRIMARY] Calling model ${vertexImageModel} (project: ${VERTEX_PROJECT_ID}, location: ${VERTEX_LOCATION})`);
 
                     const parts = [];
                     if (referenceImages && referenceImages.length > 0) {
@@ -1556,7 +1559,7 @@ async function handleGoogle(req, res) {
                     parts.push({ text: promptWithHint });
 
                     const response = await ai.models.generateContent({
-                        model: activeModel,
+                        model: vertexImageModel,
                         contents: [{ role: 'user', parts }],
                         config: {
                             safetySettings: [
@@ -1585,14 +1588,14 @@ async function handleGoogle(req, res) {
 
                     b64 = fallbackB64;
                     success = true;
-                    console.log(`[handleGoogle] [Vertex AI SDK] Image generated successfully (${b64.length} base64 chars)`);
+                    console.log(`[handleGoogle] [Vertex AI SDK PRIMARY] Image generated successfully (${b64.length} base64 chars)`);
                 } catch (vErr) {
                     lastVertexError = vErr.message;
                     console.warn(`[handleGoogle] [Vertex AI SDK] Failed: ${vErr.message}. Trying direct REST generateContent fallback...`);
                 }
             }
 
-            // --- Option B: Direct REST Fallback (Vertex AI REST, then AI Studio REST if needed) ---
+            // --- Option B: Direct REST (Vertex AI REST first, then AI Studio REST fallback) ---
             if (!success) {
                 try {
                     const parts = [];
@@ -1617,7 +1620,13 @@ async function handleGoogle(req, res) {
                             { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
                             { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
                         ],
-                        generationConfig: { responseModalities: ["IMAGE", "TEXT"] }
+                        generationConfig: { 
+                            responseModalities: ["IMAGE", "TEXT"],
+                            imageConfig: {
+                                aspectRatio: mappedRatio,
+                                imageSize: finalImageSize
+                            }
+                        }
                     };
 
                     let restResp = null;
@@ -1628,10 +1637,9 @@ async function handleGoogle(req, res) {
                         try {
                             const targetLocation = VERTEX_LOCATION || 'us-central1';
                             const apiVersion = 'v1';
-                            const cleanModel = activeModel.startsWith('models/') ? activeModel.replace('models/', '') : activeModel;
-                            const vertexUrl = `https://${targetLocation}-aiplatform.googleapis.com/${apiVersion}/projects/${VERTEX_PROJECT_ID}/locations/${targetLocation}/publishers/google/models/${cleanModel}:generateContent`;
+                            const vertexUrl = `https://${targetLocation}-aiplatform.googleapis.com/${apiVersion}/projects/${VERTEX_PROJECT_ID}/locations/${targetLocation}/publishers/google/models/${vertexImageModel}:generateContent`;
 
-                            console.log(`[handleGoogle] [REST Fallback Vertex] Calling ${vertexUrl}`);
+                            console.log(`[handleGoogle] [REST Vertex PRIMARY] Calling ${vertexUrl}`);
                             restResp = await fetch(vertexUrl, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -1647,12 +1655,12 @@ async function handleGoogle(req, res) {
                                 if (inlineData && inlineData.data) {
                                     b64 = inlineData.data;
                                     success = true;
-                                    console.log(`[handleGoogle] [REST Vertex] Image generated successfully (${b64.length} base64 chars)`);
+                                    console.log(`[handleGoogle] [REST Vertex PRIMARY] Image generated successfully (${b64.length} base64 chars)`);
                                 }
                             }
                         } catch (vRestErr) {
                             lastVertexError = vRestErr.message;
-                            console.warn('[handleGoogle] [REST Fallback Vertex] Failed:', vRestErr.message);
+                            console.warn('[handleGoogle] [REST Vertex PRIMARY] Failed:', vRestErr.message);
                         }
 
                         // 1b. Try Vertex AI native Imagen 3 Predict endpoint if generateContent didn't return an image
@@ -1697,12 +1705,14 @@ async function handleGoogle(req, res) {
                         }
                     }
 
-                    // 2. Try Google AI Studio REST endpoints if systemKey is present and not yet successful
-                    if (!success && systemKey) {
-                        const studioCandidateModels = [activeModel, 'gemini-2.5-flash-image', 'gemini-2.0-flash-exp'];
+                    // 2. Try Google AI Studio REST endpoints as FALLBACK if Vertex AI failed
+                    const studioKey = (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : systemKey;
+                    if (!success && studioKey) {
+                        console.log(`[handleGoogle] [AI Studio FALLBACK] Vertex AI did not produce an image. Falling back to Google AI Studio...`);
+                        const studioCandidateModels = [activeModel, 'gemini-3.1-flash-image', 'gemini-2.5-flash-image'];
                         for (const studioModel of studioCandidateModels) {
                             try {
-                                const studioUrl = `https://generativelanguage.googleapis.com/v1beta/models/${studioModel}:generateContent?key=${systemKey}`;
+                                const studioUrl = `https://generativelanguage.googleapis.com/v1beta/models/${studioModel}:generateContent?key=${studioKey}`;
                                 console.log(`[handleGoogle] [REST Fallback AI Studio] Calling ${studioUrl}`);
                                 const sResp = await fetch(studioUrl, {
                                     method: 'POST',
@@ -1719,7 +1729,7 @@ async function handleGoogle(req, res) {
                                     if (inlineData && inlineData.data) {
                                         b64 = inlineData.data;
                                         success = true;
-                                        console.log(`[handleGoogle] [REST AI Studio (${studioModel})] Image generated successfully (${b64.length} base64 chars)`);
+                                        console.log(`[handleGoogle] [REST AI Studio FALLBACK (${studioModel})] Image generated successfully (${b64.length} base64 chars)`);
                                         break;
                                     }
                                 }
@@ -1732,7 +1742,7 @@ async function handleGoogle(req, res) {
                         // 3. Try Imagen 3 Predict on Google AI Studio as secondary Google fallback
                         if (!success) {
                             try {
-                                const imagenUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${systemKey}`;
+                                const imagenUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${studioKey}`;
                                 console.log(`[handleGoogle] [REST Fallback Imagen 3] Calling ${imagenUrl}`);
                                 const imgResp = await fetch(imagenUrl, {
                                     method: 'POST',

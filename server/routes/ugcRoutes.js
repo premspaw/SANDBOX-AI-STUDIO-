@@ -945,20 +945,51 @@ Return ONLY valid JSON.`
                 }
             };
 
-            const keyframeResult = await withRetry(() => client.models.generateContent({
-                model: 'gemini-3.1-flash-image',
-                config: { responseModalities: ['IMAGE', 'TEXT'] },
-                contents: [{
-                    role: 'user',
-                    parts: [
-                        { text: keyframePrompt },
-                        ...imageParts
-                    ]
-                }]
-            }));
+            let keyframeUrl = null;
+            try {
+                // Primary: Vertex AI with gemini-2.5-flash-image
+                const keyframeResult = await withRetry(() => client.models.generateContent({
+                    model: 'gemini-2.5-flash-image',
+                    config: { responseModalities: ['IMAGE', 'TEXT'] },
+                    contents: [{
+                        role: 'user',
+                        parts: [
+                            { text: keyframePrompt },
+                            ...imageParts
+                        ]
+                    }]
+                }));
 
-            const imgPart = keyframeResult.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-            const keyframeUrl = imgPart ? `data:image/png;base64,${imgPart.inlineData.data}` : null;
+                const imgPart = keyframeResult.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+                if (imgPart?.inlineData?.data) {
+                    keyframeUrl = `data:image/png;base64,${imgPart.inlineData.data}`;
+                }
+            } catch (vKeyErr) {
+                console.warn('[UGC-PREVIEW] Vertex keyframe generation failed, trying AI Studio fallback:', vKeyErr.message);
+                const studioKey = process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+                if (studioKey) {
+                    try {
+                        const studioAi = new GoogleGenAI({ apiKey: studioKey });
+                        const fallbackRes = await studioAi.models.generateContent({
+                            model: 'gemini-3.1-flash-image',
+                            config: { responseModalities: ['IMAGE', 'TEXT'] },
+                            contents: [{
+                                role: 'user',
+                                parts: [
+                                    { text: keyframePrompt },
+                                    ...imageParts
+                                ]
+                            }]
+                        });
+                        const imgPart = fallbackRes.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+                        if (imgPart?.inlineData?.data) {
+                            keyframeUrl = `data:image/png;base64,${imgPart.inlineData.data}`;
+                        }
+                    } catch (sErr) {
+                        console.warn('[UGC-PREVIEW] AI Studio keyframe fallback failed:', sErr.message);
+                    }
+                }
+            }
 
             if (!keyframeUrl) throw new Error('Keyframe generation failed — Gemini returned no image.');
 
