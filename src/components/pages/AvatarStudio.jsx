@@ -123,76 +123,7 @@ Real · Raw · Original studio photography. 8K resolution, 85mm portrait lens, p
         <aside className="w-[430px] border-r border-white/10 bg-black/50 backdrop-blur-xl flex flex-col min-h-0 shrink-0 select-none">
           <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
             
-            {/* 1. Engine Selection (Nano Banana 2 Pro vs ChatGPT Image 2.5) */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-wider text-white/50 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Cpu className="w-3.5 h-3.5 text-[#C8F135]" />
-                  Engine Model
-                </span>
-                <span className="text-[8px] font-mono text-[#C8F135]">SELECT GENERATOR</span>
-              </label>
-
-              <div className="grid grid-cols-2 gap-2.5">
-                {/* Engine 1: Nano Banana 2 Pro */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedEngine('banana')}
-                  className={`p-3 rounded-xl border text-left transition-all duration-200 relative overflow-hidden group ${
-                    selectedEngine === 'banana'
-                      ? 'border-[#C8F135] bg-[#C8F135]/10 shadow-[0_0_20px_rgba(200,241,53,0.15)] ring-1 ring-[#C8F135]/50'
-                      : 'border-white/10 bg-zinc-950/60 hover:border-white/20 hover:bg-white/[0.02]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`text-xs font-black uppercase tracking-wider ${
-                      selectedEngine === 'banana' ? 'text-[#C8F135]' : 'text-white'
-                    }`}>
-                      Nano Banana 2 Pro
-                    </span>
-                    <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-[#C8F135] text-black uppercase">
-                      2K Ultra-HD
-                    </span>
-                  </div>
-                  <p className="text-[9px] text-white/50 leading-snug">
-                    Google 2048px character synthesis with likeness lock.
-                  </p>
-                  <div className="mt-2 text-[8px] font-mono text-[#C8F135] font-bold">
-                    5 Credits
-                  </div>
-                </button>
-
-                {/* Engine 2: ChatGPT Image 2.5 */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedEngine('gpt2')}
-                  className={`p-3 rounded-xl border text-left transition-all duration-200 relative overflow-hidden group ${
-                    selectedEngine === 'gpt2'
-                      ? 'border-[#C8F135] bg-[#C8F135]/10 shadow-[0_0_20px_rgba(200,241,53,0.15)] ring-1 ring-[#C8F135]/50'
-                      : 'border-white/10 bg-zinc-950/60 hover:border-white/20 hover:bg-white/[0.02]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`text-xs font-black uppercase tracking-wider ${
-                      selectedEngine === 'gpt2' ? 'text-[#C8F135]' : 'text-white'
-                    }`}>
-                      ChatGPT Image 2.5
-                    </span>
-                    <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-white/10 text-white uppercase">
-                      Image 2.5
-                    </span>
-                  </div>
-                  <p className="text-[9px] text-white/50 leading-snug">
-                    OpenAI visual model with detailed styling continuity.
-                  </p>
-                  <div className="mt-2 text-[8px] font-mono text-cyan-400 font-bold">
-                    3 Credits
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* 2. Photo Placeholders (Front Profile, Side Profile, Wardrobe) */}
+            {/* 1. Photo Placeholders (Front Profile, Side Profile, Wardrobe) */}
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-wider text-white/50 flex items-center justify-between">
                 <span>Identity & Wardrobe Placeholders</span>
@@ -438,13 +369,53 @@ Real · Raw · Original studio photography. 8K resolution, 85mm portrait lens, p
 
           </div>
 
-          {/* Sticky Bottom Action Trigger */}
-          <div className="p-4 border-t border-white/10 bg-black/80 backdrop-blur-xl">
+          {/* Sticky Bottom Action Trigger & Compact Engine Selector */}
+          <div className="p-3.5 border-t border-white/10 bg-black/80 backdrop-blur-xl space-y-2">
+            
+            {/* Small Compact Engine Selector */}
+            <div className="flex items-center justify-between bg-zinc-950 border border-white/10 rounded-xl p-1 gap-1">
+              <button
+                type="button"
+                onClick={() => setSelectedEngine('banana')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[10px] transition-all ${
+                  selectedEngine === 'banana'
+                    ? 'bg-[#C8F135] text-black shadow-sm font-black'
+                    : 'text-white/60 hover:text-white hover:bg-white/5 font-semibold'
+                }`}
+              >
+                <Cpu className="w-3 h-3" />
+                <span>Nano Banana 2 Pro</span>
+                <span className={`text-[8px] font-mono px-1 py-0.2 rounded font-black ${
+                  selectedEngine === 'banana' ? 'bg-black/20 text-black' : 'bg-white/10 text-[#C8F135]'
+                }`}>
+                  5 cr
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedEngine('gpt2')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[10px] transition-all ${
+                  selectedEngine === 'gpt2'
+                    ? 'bg-[#C8F135] text-black shadow-sm font-black'
+                    : 'text-white/60 hover:text-white hover:bg-white/5 font-semibold'
+                }`}
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>ChatGPT 2.5</span>
+                <span className={`text-[8px] font-mono px-1 py-0.2 rounded font-black ${
+                  selectedEngine === 'gpt2' ? 'bg-black/20 text-black' : 'bg-white/10 text-cyan-400'
+                }`}>
+                  3 cr
+                </span>
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={handleGenerate}
               disabled={!canGenerate}
-              className={`w-full py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden shadow-xl active:scale-[0.98] ${
+              className={`w-full py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden shadow-xl active:scale-[0.98] ${
                 canGenerate
                   ? 'bg-[#C8F135] hover:bg-[#b8e028] text-black shadow-[0_0_25px_rgba(200,241,53,0.3)] cursor-pointer'
                   : 'bg-zinc-900 border border-white/10 text-white/30 cursor-not-allowed'
