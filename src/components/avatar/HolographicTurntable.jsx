@@ -6,6 +6,7 @@ import {
   ChevronUp, RefreshCw, ShieldCheck, Zap
 } from 'lucide-react';
 import { InpaintEditor } from '../common/InpaintEditor';
+import { resolveUrl } from '../../config/apiConfig';
 
 // Real sample character turnaround sheets (16:9 3-panel: close-up, front, back on grey background)
 const SHOWCASE_CHARACTERS = [
@@ -269,7 +270,7 @@ export default function HolographicTurntable({
               />
 
               <img
-                src={generatedImage}
+                src={resolveUrl(generatedImage)}
                 alt="Synthesized Character Sheet"
                 className="max-w-full max-h-[58vh] w-auto h-auto object-contain object-center transition-transform duration-700 group-hover:scale-[1.01]"
               />
@@ -544,7 +545,7 @@ export default function HolographicTurntable({
 
             <div className="relative max-w-7xl max-h-full flex items-center justify-center">
               <img
-                src={generatedImage}
+                src={resolveUrl(generatedImage)}
                 alt="Full resolution generated character sheet"
                 className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-2xl border border-white/20 shadow-[0_0_100px_rgba(200,241,53,0.15)]"
               />

@@ -1,16 +1,24 @@
 import React, { useState } from 'react';
 import { X, Film, Sparkles, Download, ArrowUpRight, Clock, User } from 'lucide-react';
+import { resolveUrl, getApiUrl } from '../../config/apiConfig';
 
 export default function AvatarGallery({
   isOpen,
   onClose,
   gallery = [],
-  onLoadGeneration
+  onLoadGeneration,
+  onSelect
 }) {
   const [filterType, setFilterType] = useState('all'); // 'all' | 'sheet' | 'scene'
   const [brokenIds, setBrokenIds] = useState(new Set());
 
   if (!isOpen) return null;
+
+  const handleSelect = (item) => {
+    if (onLoadGeneration) onLoadGeneration(item);
+    else if (onSelect) onSelect(item);
+    onClose();
+  };
 
   const filteredGallery = gallery.filter(item => {
     if (brokenIds.has(item.id)) return false;
@@ -27,33 +35,29 @@ export default function AvatarGallery({
     }
   };
 
-  const handleDownloadDirect = async (e, url, name) => {
+  const handleDownloadDirect = (e, url, name) => {
     e.stopPropagation();
     const filename = `zerolens-${name || 'avatar'}.png`;
     
-    try {
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error('Response was not OK');
-      const blob = await resp.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-    } catch (err) {
-      console.warn('[AvatarGallery] Blob download failed, falling back to direct link:', err);
+    // For base64 or blob URLs, download directly in the client browser
+    if (url.startsWith('data:') || url.startsWith('blob:')) {
       const a = document.createElement('a');
       a.href = url;
       a.download = filename;
-      a.target = '_blank';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      return;
     }
+
+    // For external URLs, route through backend proxy with 'download' query parameter to force direct download and bypass CORS
+    const downloadUrl = getApiUrl(`/api/proxy-image?url=${encodeURIComponent(url)}&download=${encodeURIComponent(filename)}`);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (
@@ -130,17 +134,14 @@ export default function AvatarGallery({
               {filteredGallery.map((item) => (
                 <div
                   key={item.id}
-                  onClick={() => {
-                    onLoadGeneration(item);
-                    onClose();
-                  }}
+                  onClick={() => handleSelect(item)}
                   className="group bg-zinc-950 border border-white/5 hover:border-white/10 rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col"
                 >
                   {/* Thumbnail */}
                   <div className="aspect-square bg-zinc-900 overflow-hidden relative border-b border-white/5 flex items-center justify-center">
                     <img
-                      src={item.output_url}
-                      alt={item.character_name}
+                      src={resolveUrl(item.output_url)}
+                      alt={item.character_name || 'Character Sheet'}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       loading="lazy"
                       onError={() => setBrokenIds(prev => { const next = new Set(prev); next.add(item.id); return next; })}
@@ -154,7 +155,7 @@ export default function AvatarGallery({
                         ) : (
                           <Film className="w-2.5 h-2.5 text-[#C8F135]" />
                         )}
-                        {item.type}
+                        {item.type || 'sheet'}
                       </span>
                     </div>
 
@@ -166,6 +167,7 @@ export default function AvatarGallery({
                       <button
                         onClick={(e) => handleDownloadDirect(e, item.output_url, item.character_name)}
                         className="p-2 rounded-xl bg-zinc-900 border border-white/15 text-white hover:text-[#C8F135] transition-all"
+                        title="Download"
                       >
                         <Download className="w-4 h-4" />
                       </button>
@@ -176,10 +178,10 @@ export default function AvatarGallery({
                   <div className="p-3 space-y-1.5">
                     <h4 className="text-[11px] font-black uppercase tracking-tight text-white line-clamp-1 flex items-center gap-1">
                       <User className="w-3 h-3 text-[#C8F135] shrink-0" />
-                      {item.character_name}
+                      {item.character_name || 'Character Sheet'}
                     </h4>
                     <div className="flex justify-between items-center text-[9px] text-white/35 font-bold uppercase tracking-wider">
-                      <span>{item.style}</span>
+                      <span>{item.style || 'Ultra Realistic'}</span>
                       <span className="text-right text-[8px] font-medium">{formatDate(item.created_at)}</span>
                     </div>
                   </div>

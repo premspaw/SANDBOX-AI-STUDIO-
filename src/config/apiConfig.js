@@ -71,7 +71,7 @@ export const getWsUrl = () => {
  * @param {string} url - The URL or base64 string
  * @returns {string} - The resolved URL
  */
-export const resolveUrl = (url) => {
+export const resolveUrl = (url, options = {}) => {
     if (!url) return '';
     if (typeof url !== 'string') return url;
     
@@ -80,20 +80,17 @@ export const resolveUrl = (url) => {
                     url.toLowerCase().split('?')[0].endsWith('.webm') ||
                     url.toLowerCase().split('?')[0].endsWith('.mov');
 
-    // ✅ FIX: Route ALL external video URLs through the backend proxy.
-    // This prevents ERR_CACHE_OPERATION_NOT_SUPPORTED in Chrome for GCS/Supabase
+    // Route videos, explicit CORS/proxy requests, or cdn.zerolens.in on local dev through the backend proxy
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const isCdn = url.includes('cdn.zerolens.in') || url.includes('.r2.dev');
+
     if (
-        isVideo &&
+        (isVideo || options?.cors || options?.proxy || (isLocal && isCdn)) &&
         url.startsWith('http') &&
-        !url.includes('localhost') &&
-        !url.includes('127.0.0.1') &&
         !url.includes('/api/proxy-image')
     ) {
         return getApiUrl(`/api/proxy-image?url=${encodeURIComponent(url)}&cors=1`);
     }
-
-    // ✅ Public Cloudflare R2 images (r2.dev) load directly from CDN without backend proxy bottlenecks.
-    // Proxy is only needed for video stream range queries or cross-origin canvas manipulation.
 
     // 2. Already fully qualified or data/blob
     if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:'))
