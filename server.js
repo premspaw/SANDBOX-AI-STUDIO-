@@ -2533,7 +2533,7 @@ async function cleanupOldUploadedReferenceAssets() {
     }
 }
 
-httpServer.listen(port, '0.0.0.0', () => {
+httpServer.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
     
     // Run cleanup on startup (deferred by 10s to let server stabilize)

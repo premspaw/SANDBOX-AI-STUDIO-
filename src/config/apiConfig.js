@@ -45,6 +45,13 @@ export const API_BASE = API_BASE_URL;
 export const getApiUrl = (endpoint = '') => {
     if (!endpoint) return API_BASE_URL;
     const path = String(endpoint).startsWith('/') ? endpoint : `/${endpoint}`;
+
+    // When running in the browser on local dev (localhost / 127.0.0.1), use relative paths
+    // so Vite's dev proxy forwards /api cleanly without cross-origin port refusal or loopback issues
+    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        return path;
+    }
+
     return `${API_BASE_URL}${path}`;
 };
 

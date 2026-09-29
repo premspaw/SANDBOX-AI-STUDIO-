@@ -132,7 +132,7 @@ const ImageEditorModal = ({ imageUrl, onClose, onSubmitSuccess }) => {
             }
         } catch (err) {
             console.error(err);
-            window.toast("Vertex AI Edit failed: " + err.message);
+            window.toast("Edit failed: " + err.message);
         } finally {
             setIsSubmitting(false);
         }
