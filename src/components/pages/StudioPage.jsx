@@ -488,7 +488,7 @@ export default function StudioPage() {
   const { userProfile, updateShortsBalance } = useAppStore();
   const setShowingAuthModal = useAppStore(state => state.setShowingAuthModal);
   const userId = userProfile?.id || null;
-  const userCredits = userProfile?.shorts_balance ?? 100;
+  const userCredits = useAppStore(state => state.userShorts) ?? 100;
   const spendShorts = useAppStore(state => state.spendShorts);
   const refreshShorts = useAppStore(state => state.fetchBalance);
 
