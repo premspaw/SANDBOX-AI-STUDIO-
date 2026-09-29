@@ -44,7 +44,7 @@ export function InpaintEditor({ imageUrl, userId, onClose, onDone }: InpaintEdit
     if (!canvas || !img) return;
     canvas.width = img.naturalWidth || img.width;
     canvas.height = img.naturalHeight || img.height;
-    canvas.getContext('2d')!.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.getContext('2d', { willReadFrequently: true })!.clearRect(0, 0, canvas.width, canvas.height);
     saveHistory();
   };
 
@@ -54,7 +54,7 @@ export function InpaintEditor({ imageUrl, userId, onClose, onDone }: InpaintEdit
     const prev = history[history.length - 2];
     const i = new window.Image();
     i.onload = () => {
-      const ctx = canvas.getContext('2d')!;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(i, 0, 0);
     };
@@ -65,7 +65,7 @@ export function InpaintEditor({ imageUrl, userId, onClose, onDone }: InpaintEdit
   const clearMask = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    canvas.getContext('2d')!.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.getContext('2d', { willReadFrequently: true })!.clearRect(0, 0, canvas.width, canvas.height);
     setHistory([]);
   };
 
@@ -82,7 +82,7 @@ export function InpaintEditor({ imageUrl, userId, onClose, onDone }: InpaintEdit
     e.preventDefault();
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
     const pos = getPos(e, canvas);
     ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
     ctx.strokeStyle = 'rgba(168,85,247,0.85)';
@@ -118,10 +118,10 @@ export function InpaintEditor({ imageUrl, userId, onClose, onDone }: InpaintEdit
     const mask = document.createElement('canvas');
     mask.width = canvas.width;
     mask.height = canvas.height;
-    const mctx = mask.getContext('2d')!;
+    const mctx = mask.getContext('2d', { willReadFrequently: true })!;
     mctx.fillStyle = 'black';
     mctx.fillRect(0, 0, mask.width, mask.height);
-    const paintData = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height);
+    const paintData = canvas.getContext('2d', { willReadFrequently: true })!.getImageData(0, 0, canvas.width, canvas.height);
     const out = mctx.getImageData(0, 0, mask.width, mask.height);
     for (let i = 0; i < paintData.data.length; i += 4) {
       if (paintData.data[i + 3] > 10) {

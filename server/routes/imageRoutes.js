@@ -382,7 +382,7 @@ export default function createRouter(deps) {
             // Save to standard R2 storage
             const { v4: uuidv4 } = await import('uuid');
             const uuid = uuidv4();
-            const outputFileName = `outputs/edits/${userId}/${uuid}.png`;
+            const outputFileName = `outputs/edits/${targetUserId || userId || 'anon'}/${uuid}.png`;
             console.log(`[Inpaint] Transferring edited image to Cloudflare R2: ${outputFileName}`);
             
             const storageService = await import('../../services/storageService.js');
