@@ -143,8 +143,36 @@ import crypto from 'crypto'; // For Razorpay webhook HMAC-SHA256 verification
 
 // Helper to load credentials from Env or File (Root then Nested)
 function getCredentials(fileName, envKey) {
+    // 0. Auto-discover ANY env var containing service_account JSON (catches GOOGLE_APPLICATION_CREDENTIALS_J, custom names, etc.)
+    for (const [k, v] of Object.entries(process.env)) {
+        if (typeof v === 'string') {
+            const trimmed = v.trim();
+            if ((trimmed.startsWith('{') || trimmed.startsWith('"{') || trimmed.startsWith("'{")) && trimmed.includes('service_account') && (trimmed.includes('private_key') || trimmed.includes('project_id'))) {
+                let cleanStr = trimmed;
+                if (cleanStr.startsWith('"') && cleanStr.endsWith('"')) cleanStr = cleanStr.slice(1, -1).trim();
+                if (cleanStr.startsWith("'") && cleanStr.endsWith("'")) cleanStr = cleanStr.slice(1, -1).trim();
+                try {
+                    const parsed = JSON.parse(cleanStr);
+                    if (parsed.private_key) {
+                        parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
+                    }
+                    const tempPath = path.join(process.cwd(), '.google-credentials-temp.json');
+                    fs.writeFileSync(tempPath, JSON.stringify(parsed), 'utf8');
+                    console.log(`[AUTH] ✅ Auto-discovered service_account credentials in env var: ${k}`);
+                    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+                        process.env.GOOGLE_APPLICATION_CREDENTIALS = tempPath;
+                    }
+                    return tempPath;
+                } catch (e) {
+                    console.error(`[AUTH] Failed to parse auto-discovered JSON in ${k}:`, e.message);
+                }
+            }
+        }
+    }
+
     const keysToCheck = [
         envKey,
+        'GOOGLE_APPLICATION_CREDENTIALS_J',
         'GOOGLE_APPLICATION_CREDENTIALS_JSON',
         'VERTEX_CREDENTIALS_JSON',
         'VERTEX_AI_CREDENTIALS',
