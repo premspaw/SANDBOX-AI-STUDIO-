@@ -16,7 +16,8 @@ export default function createRouter(deps) {
         resolveGoogleApiKey,
         getVertexToken,
         VERTEX_PROJECT_ID,
-        VERTEX_LOCATION
+        VERTEX_LOCATION,
+        VERTEX_KEY
     } = deps;
 
     // Helper to secure base64 decoding
@@ -163,24 +164,8 @@ export default function createRouter(deps) {
             let r2Url = '';
 
             if (model === 'banana') {
-                const apiKey = await resolveGoogleApiKey(req, userId, false);
+                const apiKey = await resolveGoogleApiKey(req, userId, true);
                 const activeModel = 'gemini-3-pro-image-preview';
-                
-                let endpoint = '';
-                const headers = { 'Content-Type': 'application/json' };
-                if (apiKey === 'VERTEX_AI_CLIENT') {
-                    const token = await getVertexToken();
-                    const activeModelLower = activeModel.toLowerCase();
-                    const needsGlobal = activeModelLower.includes('gemini') || activeModelLower.includes('banana') || activeModelLower.includes('omni');
-                    const targetLocation = needsGlobal ? 'global' : (VERTEX_LOCATION || 'us-central1');
-                    const apiVersion = needsGlobal ? 'v1beta1' : 'v1';
-                    endpoint = `https://${VERTEX_LOCATION || 'us-central1'}-aiplatform.googleapis.com/${apiVersion}/projects/${VERTEX_PROJECT_ID}/locations/${targetLocation}/publishers/google/models/${activeModel}:generateContent`;
-                    headers['Authorization'] = `Bearer ${token}`;
-                    console.log(`[Avatar Board] [Vertex AI] Calling model ${activeModel} via Service Account token (location: ${targetLocation})`);
-                } else {
-                    endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
-                    console.log(`[Avatar Board] [AI Studio] Calling model ${activeModel} via API Key`);
-                }
 
                 const imageParts = [];
                 const urlsToFetch = [];
@@ -230,24 +215,90 @@ export default function createRouter(deps) {
                     { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
                 ];
 
-                console.log('[Avatar Board] Querying Google Gemini Imagen...');
-                const geminiResp = await fetch(endpoint, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({
-                        contents: [{ role: 'user', parts }],
-                        safetySettings,
-                        generationConfig: { 
-                            responseModalities: ["IMAGE"],
-                            imageConfig: {
-                                aspectRatio: aspectRatio === '1:1' ? '1:1' : aspectRatio === '16:9' ? '16:9' : aspectRatio === '9:16' ? '9:16' : '1:1',
-                                imageSize: '2K'
-                            }
+                const generationBody = JSON.stringify({
+                    contents: [{ role: 'user', parts }],
+                    safetySettings,
+                    generationConfig: { 
+                        responseModalities: ["IMAGE"],
+                        imageConfig: {
+                            aspectRatio: aspectRatio === '1:1' ? '1:1' : aspectRatio === '16:9' ? '16:9' : aspectRatio === '9:16' ? '9:16' : '1:1',
+                            imageSize: '2K'
                         }
-                    })
+                    }
                 });
 
-                const result = await geminiResp.json();
+                // Helper to perform the call against Vertex AI or AI Studio
+                const executeGeneration = async (useVertex) => {
+                    let ep = '';
+                    const hdrs = { 'Content-Type': 'application/json' };
+                    if (useVertex) {
+                        const token = await getVertexToken();
+                        if (!token) throw new Error('Vertex AI authentication token could not be acquired.');
+                        const activeModelLower = activeModel.toLowerCase();
+                        const needsGlobal = activeModelLower.includes('gemini') || activeModelLower.includes('banana') || activeModelLower.includes('omni');
+                        const targetLocation = needsGlobal ? 'global' : (VERTEX_LOCATION || 'us-central1');
+                        const apiVersion = needsGlobal ? 'v1beta1' : 'v1';
+                        const host = targetLocation === 'global' ? 'aiplatform.googleapis.com' : `${VERTEX_LOCATION || 'us-central1'}-aiplatform.googleapis.com`;
+                        ep = `https://${host}/${apiVersion}/projects/${VERTEX_PROJECT_ID}/locations/${targetLocation}/publishers/google/models/${activeModel}:generateContent`;
+                        hdrs['Authorization'] = `Bearer ${token}`;
+                        console.log(`[Avatar Board] [Vertex AI PRIMARY] Calling model ${activeModel} via Service Account token (location: ${targetLocation})`);
+                    } else {
+                        const studioKey = (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : (process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GOOGLE_API_KEY);
+                        if (!studioKey) throw new Error('No Google AI Studio API key configured.');
+                        ep = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${studioKey}`;
+                        console.log(`[Avatar Board] [AI Studio FALLBACK] Calling model ${activeModel} via API Key`);
+                    }
+
+                    const resp = await fetch(ep, {
+                        method: 'POST',
+                        headers: hdrs,
+                        body: generationBody
+                    });
+                    const resJson = await resp.json().catch(() => ({}));
+                    return { ok: resp.ok, status: resp.status, data: resJson };
+                };
+
+                let result = null;
+                const canUseVertex = Boolean(VERTEX_KEY || apiKey === 'VERTEX_AI_CLIENT');
+
+                // 1. Try Vertex AI first whenever credentials exist
+                if (canUseVertex) {
+                    try {
+                        const res = await executeGeneration(true);
+                        if (res.ok && res.data?.candidates?.[0]?.content?.parts?.some(p => p.inlineData)) {
+                            result = res.data;
+                        } else {
+                            console.warn('[Avatar Board] Vertex AI generation response not successful:', JSON.stringify(res.data).slice(0, 300));
+                            // Fallback to AI Studio if available
+                            if (process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY) {
+                                console.log('[Avatar Board] Attempting fallback to AI Studio...');
+                                const studioRes = await executeGeneration(false);
+                                if (studioRes.ok) result = studioRes.data;
+                                else result = res.data; // keep vertex error if both fail
+                            } else {
+                                result = res.data;
+                            }
+                        }
+                    } catch (vertexErr) {
+                        console.warn('[Avatar Board] Vertex AI invocation error:', vertexErr.message);
+                        if (process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY) {
+                            console.log('[Avatar Board] Falling back to AI Studio after Vertex exception...');
+                            const studioRes = await executeGeneration(false);
+                            result = studioRes.data;
+                        } else {
+                            throw vertexErr;
+                        }
+                    }
+                } else {
+                    // 2. Vertex credentials not found on this server, try AI Studio
+                    console.log('[Avatar Board] Vertex credentials not found in env, attempting Google AI Studio...');
+                    const studioRes = await executeGeneration(false);
+                    result = studioRes.data;
+                }
+
+                if (!result) {
+                    throw new Error("Failed to receive generation response from either Vertex AI or AI Studio.");
+                }
 
                 if (result.promptFeedback?.blockReason) {
                     const reason = result.promptFeedback.blockReason;

@@ -145,9 +145,16 @@ function getCredentials(fileName, envKey) {
     const keysToCheck = [
         envKey,
         'GOOGLE_APPLICATION_CREDENTIALS_JSON',
+        'VERTEX_CREDENTIALS_JSON',
+        'VERTEX_AI_CREDENTIALS',
+        'VERTEX_AI_CREDENTIALS_JSON',
+        'GCP_CREDENTIALS',
+        'GCP_CREDENTIALS_JSON',
+        'GCP_SERVICE_ACCOUNT',
+        'GOOGLE_SERVICE_ACCOUNT_JSON',
+        'GOOGLE_SERVICE_ACCOUNT',
         'GCS_CREDENTIALS_JSON',
         'NEW_GOOGLE_APPLICATION_CREDENTIALS_JSON',
-        'VERTEX_CREDENTIALS_JSON',
         'GOOGLE_APPLICATION_CREDENTIALS'
     ].filter(Boolean);
 
@@ -696,10 +703,12 @@ async function requireAuth(req) {
 }
 
 async function resolveGoogleApiKey(req, userId, forceVertex = false) {
-    if (forceVertex && VERTEX_KEY) {
+    // 1. If VERTEX_KEY is configured on the backend or forceVertex is true, ALWAYS prioritize Vertex AI
+    if (VERTEX_KEY) {
         return 'VERTEX_AI_CLIENT';
     }
-    return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.ADMIN_GOOGLE_API_KEY || (VERTEX_KEY ? 'VERTEX_AI_CLIENT' : null);
+    // 2. Fall back to Google AI Studio API keys
+    return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.ADMIN_GOOGLE_API_KEY || null;
 }
 
 async function consumeCredits(userId, cost, reason = 'generation') {
