@@ -751,8 +751,8 @@ async function requireAuth(req) {
 }
 
 async function resolveGoogleApiKey(req, userId, forceVertex = false) {
-    // 1. If VERTEX_KEY is configured on the backend or forceVertex is true, ALWAYS prioritize Vertex AI
-    if (VERTEX_KEY) {
+    // 1. If forceVertex is true or VERTEX_KEY is configured on the backend, ALWAYS prioritize Vertex AI
+    if (forceVertex || VERTEX_KEY) {
         return 'VERTEX_AI_CLIENT';
     }
     // 2. Fall back to Google AI Studio API keys

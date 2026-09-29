@@ -172,7 +172,11 @@ export default function createRouter(deps) {
                     if (!response.ok) {
                         throw new Error(`Failed to fetch remote image from URL: ${str}`);
                     }
-                    return await response.buffer();
+                    if (typeof response.buffer === 'function') {
+                        return await response.buffer();
+                    }
+                    const arrayBuf = await response.arrayBuffer();
+                    return Buffer.from(arrayBuf);
                 }
                 if (str.startsWith('data:')) {
                     return Buffer.from(str.split(',')[1], 'base64');
@@ -186,7 +190,7 @@ export default function createRouter(deps) {
             let buffer;
 
             if (model === 'gemini' || model === 'nano-banana-2' || model === 'gemini-3.1-flash-image-preview' || model === 'nano-banana-2-lite' || model === 'nb2-lite' || model === 'gemini-3.1-flash-lite' || model === 'gemini-3.1-flash-lite-image' || model === 'nano-banana-pro' || model === 'gemini-3-pro-image-preview' || model === 'nano-banana-2-open' || model === 'nb2-open' || model === 'gemini-3.1-flash-image') {
-                const apiKey = await resolveGoogleApiKey(req, targetUserId, false);
+                const apiKey = await resolveGoogleApiKey(req, targetUserId, true);
                 let activeModel = 'gemini-3.1-flash-image';
                 if (model === 'nano-banana-2-lite' || model === 'nb2-lite' || model === 'gemini-3.1-flash-lite' || model === 'gemini-3.1-flash-lite-image') {
                     activeModel = 'gemini-3.1-flash-lite-image';
@@ -196,175 +200,132 @@ export default function createRouter(deps) {
                     activeModel = 'gemini-3.1-flash-image';
                 }
 
-                let endpoint = '';
-                let requestBody = null;
-                const headers = { 'Content-Type': 'application/json' };
-                
-                if (apiKey === 'VERTEX_AI_CLIENT') {
-                    const token = await getVertexToken();
-                    endpoint = `https://${VERTEX_LOCATION || 'us-central1'}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION || 'us-central1'}/publishers/google/models/imagen-3.0-generate-002:predict`;
-                    headers['Authorization'] = `Bearer ${token}`;
-                    
-                    const reference_images = [
-                        {
-                            reference_id: 1,
-                            reference_type: 'REFERENCE_TYPE_RAW',
-                            reference_image: {
-                                image: {
-                                    image_bytes: imageBuffer.toString('base64'),
-                                    mime_type: 'image/png'
-                                }
-                            }
-                        },
-                        {
-                            reference_id: 2,
-                            reference_type: 'REFERENCE_TYPE_MASK',
-                            reference_image: {
-                                image: {
-                                    image_bytes: maskBuffer.toString('base64'),
-                                    mime_type: 'image/png'
-                                }
-                            },
-                            mask_image_config: {
-                                mask_mode: 'MASK_MODE_USER_PROVIDED'
-                            }
+                const parts = [
+                    {
+                        inlineData: {
+                            mimeType: 'image/png',
+                            data: imageBuffer.toString('base64')
                         }
-                    ];
-
-                    if (referenceImage) {
-                        try {
-                            console.log('[Inpaint] Downloading style/guidance reference image for Vertex AI...');
-                            const refBuffer = await toBuffer(referenceImage);
-                            if (refBuffer) {
-                                reference_images.push({
-                                    reference_id: 3,
-                                    reference_type: 'REFERENCE_TYPE_STYLE',
-                                    reference_image: {
-                                        image: {
-                                            image_bytes: refBuffer.toString('base64'),
-                                            mime_type: 'image/png'
-                                        }
-                                    }
-                                });
-                                console.log('[Inpaint] Style reference image loaded successfully for Vertex AI.');
-                            }
-                        } catch (refErr) {
-                            console.warn('[Inpaint] Warning: Failed to download style reference image for Vertex AI:', refErr.message);
+                    },
+                    {
+                        inlineData: {
+                            mimeType: 'image/png',
+                            data: maskBuffer.toString('base64')
                         }
                     }
+                ];
 
-                    requestBody = {
-                        instances: [
-                            {
-                                prompt,
-                                reference_images
-                            }
-                        ],
-                        parameters: {
-                            edit_mode: 'EDIT_MODE_INPAINT_INSERTION',
-                            aspect_ratio: '1:1',
-                            number_of_images: 1,
-                            output_options: {
-                                mime_type: 'image/png'
-                            }
+                if (referenceImage) {
+                    try {
+                        console.log('[Inpaint] Downloading style/guidance reference image...');
+                        const refBuffer = await toBuffer(referenceImage);
+                        if (refBuffer) {
+                            parts.push({
+                                inlineData: {
+                                    mimeType: 'image/png',
+                                    data: refBuffer.toString('base64')
+                                }
+                            });
+                            console.log('[Inpaint] Style reference image loaded successfully.');
                         }
-                    };
-                    console.log(`[Inpaint] [Vertex AI] Calling Model imagen-3.0-generate-002 on: ${endpoint}`);
-                } else {
-                    endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
-                    console.log(`[Inpaint] [AI Studio] Calling model ${activeModel} via API Key`);
-                    
-                    const parts = [
-                        {
-                            inlineData: {
-                                mimeType: 'image/png',
-                                data: imageBuffer.toString('base64')
-                            }
-                        },
-                        {
-                            inlineData: {
-                                mimeType: 'image/png',
-                                data: maskBuffer.toString('base64')
-                            }
-                        }
-                    ];
-
-                    if (referenceImage) {
-                        try {
-                            console.log('[Inpaint] Downloading style/guidance reference image...');
-                            const refBuffer = await toBuffer(referenceImage);
-                            if (refBuffer) {
-                                parts.push({
-                                    inlineData: {
-                                        mimeType: 'image/png',
-                                        data: refBuffer.toString('base64')
-                                    }
-                                });
-                                console.log('[Inpaint] Style reference image loaded successfully.');
-                            }
-                        } catch (refErr) {
-                            console.warn('[Inpaint] Warning: Failed to download reference image:', refErr.message);
-                        }
+                    } catch (refErr) {
+                        console.warn('[Inpaint] Warning: Failed to download reference image:', refErr.message);
                     }
-
-                    parts.push({
-                        text: `You are an expert image editor. Look at the base image and the mask image. Modify only the region of the base image that is highlighted in white in the mask image, according to this instruction: "${prompt}".${referenceImage ? ' Use the third provided reference image as a strong visual style, detail, and likeness guide for what to draw inside the edited area.' : ''} Keep all other parts of the image exactly the same.`
-                    });
-
-                    const safetySettings = [
-                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-                    ];
-
-                    requestBody = {
-                        contents: [{ role: 'user', parts }],
-                        safetySettings,
-                        generationConfig: { responseModalities: ["IMAGE"] }
-                    };
                 }
 
-                const geminiResp = await fetch(endpoint, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify(requestBody)
+                parts.push({
+                    text: `You are an expert image editor. Look at the base image and the mask image. Modify only the region of the base image that is highlighted in white in the mask image, according to this instruction: "${prompt}".${referenceImage ? ' Use the third provided reference image as a strong visual style, detail, and likeness guide for what to draw inside the edited area.' : ''} Keep all other parts of the image exactly the same.`
                 });
 
-                const result = await geminiResp.json();
+                const safetySettings = [
+                    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                ];
 
-                if (result.error) {
-                    throw new Error(result.error.message || JSON.stringify(result.error));
-                }
+                const requestBody = {
+                    contents: [{ role: 'user', parts }],
+                    safetySettings,
+                    generationConfig: { responseModalities: ["IMAGE"] }
+                };
 
                 let b64 = null;
-                if (apiKey === 'VERTEX_AI_CLIENT') {
-                    b64 = result.predictions?.[0]?.bytesBase64Encoded;
-                    if (!b64) {
-                        console.error('[Inpaint] Vertex API error response:', JSON.stringify(result));
-                        throw new Error("Vertex API returned no image prediction");
-                    }
-                } else {
-                    if (result.promptFeedback?.blockReason) {
-                        const reason = result.promptFeedback.blockReason;
-                        console.error('[Inpaint] Google API prompt feedback block:', JSON.stringify(result.promptFeedback));
-                        if (reason === 'OTHER') {
-                            throw new Error("Google API blocked the request (blockReason: OTHER). This is typically caused by a sensitive reference photo, copyright/trademark restrictions, or a celebrity likeness filter.");
+                let lastError = null;
+
+                // 1. Vertex AI Primary (global location for gemini-3.1-flash-image)
+                const token = await getVertexToken();
+                if (token || apiKey === 'VERTEX_AI_CLIENT') {
+                    try {
+                        const vertexUrl = `https://aiplatform.googleapis.com/v1beta1/projects/${VERTEX_PROJECT_ID}/locations/global/publishers/google/models/${activeModel}:generateContent`;
+                        console.log(`[Inpaint] [Vertex AI PRIMARY] Calling ${vertexUrl} with active model: ${activeModel}`);
+
+                        const vResp = await fetch(vertexUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify(requestBody)
+                        });
+
+                        const vData = await vResp.json();
+                        if (vResp.ok) {
+                            const candidate = vData.candidates?.[0];
+                            if (candidate && candidate.finishReason === 'SAFETY') {
+                                throw new Error("SAFETY_REFUSAL: The edit was blocked by safety filters.");
+                            }
+                            const inlineData = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData;
+                            if (inlineData?.data) {
+                                b64 = inlineData.data;
+                                console.log(`[Inpaint] [Vertex AI PRIMARY] Inpaint succeeded (${b64.length} base64 chars)`);
+                            }
                         } else {
-                            throw new Error(`Google API safety block: ${reason}. Please try a different reference image or prompt.`);
+                            const errMsg = vData.error?.message || JSON.stringify(vData.error || vData);
+                            console.warn(`[Inpaint] [Vertex AI PRIMARY] Error (${vResp.status}):`, errMsg);
+                            lastError = errMsg;
                         }
+                    } catch (vErr) {
+                        console.warn(`[Inpaint] [Vertex AI PRIMARY] Exception:`, vErr.message);
+                        lastError = vErr.message;
                     }
+                }
 
-                    const candidate = result.candidates?.[0];
-                    if (candidate && candidate.finishReason === 'SAFETY') {
-                        throw new Error("SAFETY_REFUSAL: The creative prompt was blocked by safety filters.");
-                    }
+                // 2. Fallback to Google AI Studio REST only if Vertex failed and a valid studio key is present
+                if (!b64 && apiKey && apiKey !== 'VERTEX_AI_CLIENT') {
+                    try {
+                        const studioUrl = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
+                        console.log(`[Inpaint] [AI Studio FALLBACK] Calling model ${activeModel} via API Key`);
 
-                    b64 = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-                    if (!b64) {
-                        console.error('[Inpaint] Google API error response:', JSON.stringify(result));
-                        throw new Error(result.error?.message || "Google API returned no image candidates");
+                        const studioResp = await fetch(studioUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(requestBody)
+                        });
+
+                        const sData = await studioResp.json();
+                        if (studioResp.ok) {
+                            const candidate = sData.candidates?.[0];
+                            if (candidate && candidate.finishReason === 'SAFETY') {
+                                throw new Error("SAFETY_REFUSAL: The creative prompt was blocked by safety filters.");
+                            }
+                            const inlineData = candidate?.content?.parts?.find(p => p.inlineData)?.inlineData;
+                            if (inlineData?.data) {
+                                b64 = inlineData.data;
+                                console.log(`[Inpaint] [AI Studio FALLBACK] Inpaint succeeded (${b64.length} base64 chars)`);
+                            }
+                        } else {
+                            console.warn(`[Inpaint] [AI Studio FALLBACK] Error:`, sData.error?.message);
+                            if (!lastError) lastError = sData.error?.message;
+                        }
+                    } catch (sErr) {
+                        console.warn(`[Inpaint] [AI Studio FALLBACK] Exception:`, sErr.message);
+                        if (!lastError) lastError = sErr.message;
                     }
+                }
+
+                if (!b64) {
+                    throw new Error(lastError || "Failed to generate inpaint edit image via Vertex AI.");
                 }
 
                 buffer = Buffer.from(b64, 'base64');
