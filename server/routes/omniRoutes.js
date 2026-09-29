@@ -926,31 +926,30 @@ export default function createRouter(deps) {
                     const responseFormat = reqBody.response_format;
                     const generationConfig = reqBody.generation_config;
 
-                    console.log(`[OMNI-I2V] [Vertex AI SDK] Calling interactions.create on model ${reqBody.model} via location=global`);
-                    console.log(`[OMNI-I2V] [Vertex AI SDK] sdkInput:`, JSON.stringify(sdkInput, null, 2).substring(0, 1000) + '... (truncated)');
+                    console.log(`[OMNI-I2V] [Vertex AI REST PRIMARY] Calling global interactions API on project ${VERTEX_PROJECT_ID}`);
+                    const interactionRestUrl = `https://aiplatform.googleapis.com/v1beta1/projects/${VERTEX_PROJECT_ID}/locations/global/interactions`;
                     
-                    let interactionResult;
-                    try {
-                        interactionResult = await vertexOmniClient.interactions.create({
-                            model: reqBody.model,
-                            input: sdkInput,
-                            response_format: responseFormat,
-                            generation_config: generationConfig
-                        });
-                    } catch (firstErr) {
-                        const errStr = String(firstErr?.message || firstErr || '');
-                        if (errStr.includes('429') || errStr.includes('Quota exceeded')) {
-                            console.warn(`[OMNI-I2V] Vertex AI 429 rate limit hit. Waiting 4s before single retry...`);
-                            await new Promise(r => setTimeout(r, 4000));
-                            interactionResult = await vertexOmniClient.interactions.create({
-                                model: reqBody.model,
-                                input: sdkInput,
-                                response_format: responseFormat,
-                                generation_config: generationConfig
-                            });
-                        } else {
-                            throw firstErr;
-                        }
+                    const interactionReqBody = {
+                        model: reqBody.model,
+                        input: sdkInput,
+                        response_format: responseFormat,
+                        generation_config: generationConfig
+                    };
+
+                    const restResp = await fetch(interactionRestUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                            'Api-Revision': '2026-05-20'
+                        },
+                        body: JSON.stringify(interactionReqBody)
+                    });
+
+                    const interactionResult = await restResp.json();
+                    if (!restResp.ok || interactionResult.error) {
+                        const errDetails = interactionResult.error?.message || JSON.stringify(interactionResult.error || interactionResult);
+                        throw new Error(`Vertex AI Interactions error (${restResp.status}): ${errDetails}`);
                     }
 
                     const steps = interactionResult.steps || [];
