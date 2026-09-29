@@ -131,11 +131,12 @@ export function useAvatarStudio(userId = 'anon') {
                 if (result.url) {
                     setUrl(result.url);
                     console.log(`[Avatar Studio] R2 ${type} photo saved:`, result.url);
+                } else {
+                    setUrl(base64);
                 }
             } catch (err) {
-                console.error(`[Avatar upload-ref failed for ${type}]:`, err);
-                setError(`Upload failed: ${err.message}`);
-                setPreview('');
+                console.warn(`[Avatar upload-ref fallback to base64 for ${type}]:`, err);
+                setUrl(base64);
             } finally {
                 setUploading(false);
             }

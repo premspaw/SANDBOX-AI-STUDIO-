@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../../store';
 import { useAvatarStudio } from '../../hooks/useAvatarStudio';
+import { useShorts } from '../../hooks/useShorts';
 import {
   History, Sparkles, UploadCloud, Trash2, Camera,
   CheckCircle2, Sliders, ArrowRight, Zap, RefreshCw,
@@ -15,7 +16,9 @@ import AvatarGallery from '../avatar/AvatarGallery';
 export default function AvatarStudio() {
   const userProfile = useAppStore(state => state.userProfile);
   const userShorts = useAppStore(state => state.userShorts);
-  const userCredits = userShorts ?? 0;
+  const isAdmin = useAppStore(state => state.isAdmin || state.userProfile?.role === 'admin');
+  const { shorts, canAfford, refresh: refreshShorts } = useShorts();
+  const userCredits = shorts ?? userShorts ?? 0;
   const userId = userProfile?.id || 'anon';
 
   // Instantiate master hook
@@ -38,9 +41,27 @@ export default function AvatarStudio() {
   const [selectedEngine, setSelectedEngine] = useState('banana'); // 'banana' | 'gpt2'
 
   const requiredCredits = selectedEngine === 'banana' ? 5 : 3;
+  const isUploading = !!(studio.uploadingRef || studio.uploadingLeftProfile || studio.uploadingWardrobe);
+  const hasUploadedPhoto = !!(studio.refPreview || studio.refImageUrl);
+  const hasCredits = isAdmin || userCredits >= requiredCredits;
+  const canGenerate = !studio.generating && !isUploading;
 
   // Generate 16:9 3-Panel Character Sheet
   const handleGenerate = () => {
+    if (studio.generating || isUploading) return;
+
+    if (!hasUploadedPhoto) {
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast('Please upload at least a Front face photo first.', 'warning');
+      return;
+    }
+
+    if (!hasCredits) {
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast(`Insufficient Credits: Need ${requiredCredits} Shorts (Balance: ${userCredits}).`, 'error');
+      return;
+    }
+
     studio.setActiveBoard('CHARACTER');
     studio.setAspectRatio('16:9'); // 16:9 widescreen rectangle sheet
     studio.setActiveModel(selectedEngine);
@@ -66,8 +87,6 @@ Real · Raw · Original studio photography. 8K resolution, 85mm portrait lens, p
     studio.setAdditionalContext(masterTurnaroundContext);
     studio.generateBoard();
   };
-
-  const canGenerate = userCredits >= requiredCredits && !studio.generating;
 
   return (
     <div className="h-full flex flex-col bg-[#050608] text-white overflow-hidden relative font-sans">
@@ -414,11 +433,13 @@ Real · Raw · Original studio photography. 8K resolution, 85mm portrait lens, p
             <button
               type="button"
               onClick={handleGenerate}
-              disabled={!canGenerate}
+              disabled={studio.generating || isUploading}
               className={`w-full py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden shadow-xl active:scale-[0.98] ${
-                canGenerate
-                  ? 'bg-[#C8F135] hover:bg-[#b8e028] text-black shadow-[0_0_25px_rgba(200,241,53,0.3)] cursor-pointer'
-                  : 'bg-zinc-900 border border-white/10 text-white/30 cursor-not-allowed'
+                studio.generating || isUploading
+                  ? 'bg-zinc-900 border border-white/10 text-white/30 cursor-not-allowed'
+                  : hasUploadedPhoto
+                    ? 'bg-[#C8F135] hover:bg-[#b8e028] text-black shadow-[0_0_25px_rgba(200,241,53,0.3)] cursor-pointer'
+                    : 'bg-white/10 hover:bg-white/15 text-white/80 border border-white/15 cursor-pointer'
               }`}
             >
               {studio.generating ? (
@@ -426,11 +447,18 @@ Real · Raw · Original studio photography. 8K resolution, 85mm portrait lens, p
                   <div className="w-4 h-4 rounded-full border-2 border-black border-t-transparent animate-spin" />
                   <span>Synthesizing Character Sheet...</span>
                 </>
+              ) : isUploading ? (
+                <>
+                  <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  <span>Uploading Reference Photo...</span>
+                </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4 text-black" />
-                  <span>Generate Character Sheet</span>
-                  <span className="px-2 py-0.5 rounded-md bg-black/20 text-black text-[9px] font-black tracking-wider ml-1">
+                  <Sparkles className={`w-4 h-4 ${hasUploadedPhoto ? 'text-black' : 'text-[#C8F135]'}`} />
+                  <span>{hasUploadedPhoto ? 'Generate Character Sheet' : 'Upload Front Photo to Generate'}</span>
+                  <span className={`px-2 py-0.5 rounded-md text-[9px] font-black tracking-wider ml-1 ${
+                    hasUploadedPhoto ? 'bg-black/20 text-black' : 'bg-white/10 text-white/80'
+                  }`}>
                     {requiredCredits} Credits
                   </span>
                 </>

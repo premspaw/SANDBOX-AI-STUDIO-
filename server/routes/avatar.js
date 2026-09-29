@@ -51,7 +51,7 @@ export default function createRouter(deps) {
      * Body: { image: string (base64), userId: string }
      * Uploads the user reference image to Cloudflare R2
      */
-    router.post('/avatar/upload-ref', async (req, res) => {
+    router.post(['/avatar/upload-ref', '/upload-ref'], async (req, res) => {
         try {
             const { image, userId } = req.body;
             if (!image) {
@@ -86,7 +86,7 @@ export default function createRouter(deps) {
      * Body: { boardType: string, refImageUrl: string, additionalContext: string, userId: string }
      * Generates one of the 6 GPT Image 2 Reference Boards
      */
-    router.post('/avatar/generate-board', async (req, res) => {
+    router.post(['/avatar/generate-board', '/generate-board'], async (req, res) => {
         try {
             const {
                 boardType,

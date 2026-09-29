@@ -832,26 +832,29 @@ export default function CinematicStudio() {
     }
   });
 
-  const projectAssets = useAppStore(state => state.projectAssets) || [];
+  const projectAssets = useAppStore(state => state.projectAssets) || {};
   const filteredGallery = useMemo(() => {
     const baseItems = gallery.filter(item => {
       const itemProj = item.projectId || 'default';
       return itemProj === activeProjectId;
     });
 
+    // projectAssets can be an object {[projectId]: Array} or an Array
+    const activeProjectAssetList = Array.isArray(projectAssets)
+      ? projectAssets.filter(a => (a.projectId || 'default') === activeProjectId)
+      : (Array.isArray(projectAssets[activeProjectId]) ? projectAssets[activeProjectId] : []);
+
     // Also pull assets from the active project in Project Box so user sees them in the common gallery
-    const boxItems = projectAssets
-      .filter(a => (a.projectId || 'default') === activeProjectId)
-      .map(a => ({
-        id: a.id,
-        type: a.type || 'image',
-        url: a.url,
-        prompt: a.prompt || a.name || 'Project Asset',
-        engine: a.engine || (a.boardType ? `${a.boardType} Sheet` : 'Project Asset'),
-        aspect: a.aspect || '16:9',
-        ts: a.timestamp || Date.now(),
-        projectId: a.projectId || activeProjectId
-      }));
+    const boxItems = activeProjectAssetList.map(a => ({
+      id: a.id,
+      type: a.type || 'image',
+      url: a.url,
+      prompt: a.prompt || a.name || 'Project Asset',
+      engine: a.engine || (a.boardType ? `${a.boardType} Sheet` : 'Project Asset'),
+      aspect: a.aspect || '16:9',
+      ts: a.timestamp || Date.now(),
+      projectId: a.projectId || activeProjectId
+    }));
 
     const seenUrls = new Set(baseItems.map(i => i.url));
     const merged = [...baseItems];
