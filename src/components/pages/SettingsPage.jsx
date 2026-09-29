@@ -54,10 +54,10 @@ export default function SettingsPage() {
             name: 'Starter Fuel',
             credits: 250,
             price: '₹299',
-            originalPrice: '₹299',
+            originalPrice: '₹399',
             perCredit: '₹1.20 / cr',
-            discount: null,
-            savings: null,
+            discount: '25% OFF',
+            savings: 'Save ₹100',
             popular: false,
             badge: 'Quick Boost',
             description: 'Ideal for 4–5 full AI video renders or 250 image concepts.',
@@ -70,10 +70,10 @@ export default function SettingsPage() {
             name: 'Creator Pro',
             credits: 1000,
             price: '₹999',
-            originalPrice: '₹1,000',
+            originalPrice: '₹1,499',
             perCredit: '₹1.00 / cr',
-            discount: null,
-            savings: null,
+            discount: '33% OFF',
+            savings: 'Save ₹500',
             popular: true,
             badge: 'MOST POPULAR',
             description: 'Best for creators producing daily UGC, Cinema 4K shots & motion drivers.',
@@ -84,15 +84,15 @@ export default function SettingsPage() {
         {
             id: 'pack_studio',
             name: 'Studio Master',
-            credits: 2500,
+            credits: 2600,
             price: '₹2,499',
-            originalPrice: '₹2,500',
-            perCredit: '₹1.00 / cr',
-            discount: null,
-            savings: null,
+            originalPrice: '₹3,499',
+            perCredit: '₹0.96 / cr',
+            discount: '+100 Bonus Shorts',
+            savings: '29% OFF · +100 BONUS',
             popular: false,
-            badge: 'PRO STUDIO',
-            description: 'Massive capacity for production studios, commercial campaigns & agency workflows.',
+            badge: 'PRO STUDIO · 2,600 SHORTS',
+            description: 'Massive capacity with +100 bonus Shorts for production studios, campaigns & workflows.',
             color: 'from-purple-500/20 via-fuchsia-500/10 to-transparent',
             borderColor: 'border-purple-500/40',
             buttonClass: 'bg-purple-500 hover:bg-purple-400 text-white shadow-[0_0_20px_rgba(168,85,247,0.3)]'
@@ -102,10 +102,10 @@ export default function SettingsPage() {
             name: 'Enterprise Bulk',
             credits: 5500,
             price: '₹4,999',
-            originalPrice: '₹5,500',
+            originalPrice: '₹6,999',
             perCredit: '₹0.91 / cr',
-            discount: '+500 Free Shorts',
-            savings: '+500 BONUS SHORTS',
+            discount: '+500 Bonus Shorts',
+            savings: '29% OFF · +500 BONUS',
             popular: false,
             badge: 'BEST VALUE · +500 BONUS',
             description: 'High-volume power pack with +500 bonus Shorts, multi-seat capacity and priority queues.',
@@ -118,10 +118,10 @@ export default function SettingsPage() {
             name: 'Agency Max',
             credits: 11000,
             price: '₹9,999',
-            originalPrice: '₹11,000',
+            originalPrice: '₹14,999',
             perCredit: '₹0.91 / cr',
-            discount: '+1,000 Free Shorts',
-            savings: '+1,000 BONUS SHORTS',
+            discount: '+1,000 Bonus Shorts',
+            savings: '33% OFF · +1,000 BONUS',
             popular: false,
             badge: 'MAX VOLUME · +1,000 BONUS',
             description: 'Maximum agency horsepower with +1,000 bonus Shorts, dedicated GPU lanes and VIP rendering.',
@@ -550,21 +550,28 @@ export default function SettingsPage() {
                                             <div className="space-y-2.5 pt-2">
                                                 <div>
                                                     <span className="text-xs font-bold text-zinc-300 block">{pack.name}</span>
-                                                    <div className="flex items-baseline gap-1 mt-0.5">
-                                                        <span className="text-2xl sm:text-3xl font-black text-white">{pack.credits.toLocaleString()}</span>
-                                                        <span className="text-xs font-black text-[#c8f135]">⚡ Shorts</span>
+                                                    {/* AMOUNT - BIGGER SIZE */}
+                                                    <div className="flex items-baseline gap-2 mt-1 flex-wrap">
+                                                        <span className="text-2xl sm:text-3xl font-black italic tracking-tight text-white">{pack.price}</span>
+                                                        {pack.originalPrice && pack.originalPrice !== pack.price && (
+                                                            <span className="text-xs sm:text-sm text-zinc-500 line-through font-mono font-medium">
+                                                                {pack.originalPrice}
+                                                            </span>
+                                                        )}
+                                                        {pack.discount && (
+                                                            <span className="text-[8.5px] font-black uppercase text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded-full">
+                                                                {pack.discount}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
 
-                                                <div className="border-y border-white/10 py-2 space-y-1">
-                                                    <div className="flex items-baseline justify-between">
-                                                        <div className="flex items-baseline gap-1.5">
-                                                            <span className="text-lg font-black text-white">{pack.price}</span>
-                                                            {pack.originalPrice && pack.originalPrice !== pack.price && (
-                                                                <span className="text-xs text-zinc-500 line-through font-mono font-medium">
-                                                                    {pack.originalPrice}
-                                                                </span>
-                                                            )}
+                                                <div className="border-y border-white/10 py-2 space-y-1.5">
+                                                    {/* SHORTS - SMALLER SIZE */}
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#c8f135]/10 border border-[#c8f135]/25 text-[#c8f135] font-black text-xs sm:text-sm">
+                                                            <Zap size={11} className="fill-current" />
+                                                            <span>{pack.credits.toLocaleString()} Shorts</span>
                                                         </div>
                                                         <span className="text-[10px] font-mono font-bold text-zinc-400">{pack.perCredit}</span>
                                                     </div>
@@ -572,7 +579,7 @@ export default function SettingsPage() {
                                                     {pack.savings && (
                                                         <div className="flex items-center gap-1.5">
                                                             <span className="text-[9px] font-mono font-extrabold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded-md">
-                                                                {pack.savings} ({pack.discount})
+                                                                {pack.savings}
                                                             </span>
                                                         </div>
                                                     )}

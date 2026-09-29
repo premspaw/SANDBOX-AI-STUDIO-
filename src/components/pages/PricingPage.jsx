@@ -13,8 +13,11 @@ const PricingPage = () => {
             name: "Starter",
             monthlyPrice: 399,
             yearlyPrice: 319,
+            originalPrice: 799,
+            discount: "50% OFF",
             period: "/3mo",
             yearlyText: "One-time · No renewal",
+            creditsSummary: "400 Shorts Credits",
             description: "An affordable kickstart with a 6-Month setup value layout!",
             image: "https://jdepbrbujambxvtdiwla.supabase.co/storage/v1/object/public/templates/2a3c4c1e-fd65-4909-bfee-36190c085d94.png",
             outputSummary: [
@@ -52,19 +55,22 @@ const PricingPage = () => {
             name: "Influencer",
             monthlyPrice: 2499,
             yearlyPrice: 1999,
+            originalPrice: 4999,
+            discount: "50% OFF",
             period: "/3mo",
             yearlyText: "One-time · No renewal",
+            creditsSummary: "2,600 Shorts Credits",
             description: "The choice for professional creators and growing visual brands.",
             image: "/pricing/influencer.png",
             outputSummary: [
                 { label: "UGC Video Ads (10s)", count: "~45 Ads", icon: "📱", color: "text-amber-400 bg-amber-500/10 border-amber-500/25" },
                 { label: "Commercial Video Ads", count: "~52 HD Ads", icon: "🎬", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/25" },
-                { label: "AI Master Photos", count: "~2,500 Photos", icon: "📸", color: "text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/25" }
+                { label: "AI Master Photos", count: "~2,600 Photos", icon: "📸", color: "text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/25" }
             ],
             features: [
-                "2,500 High-Speed Renders (Credits)",
-                "Up to 1,250 Standard Images",
-                "Up to 2,500 Nano Banana Images",
+                "2,600 High-Speed Renders (Credits)",
+                "Up to 1,300 Standard Images",
+                "Up to 2,600 Nano Banana Images",
                 "Up to 52 8s Video Renders",
                 "Premium TTS Voice Output",
                 "Standard Motion Control & Presets",
@@ -93,8 +99,11 @@ const PricingPage = () => {
             name: "Director",
             monthlyPrice: 4999,
             yearlyPrice: 3999,
+            originalPrice: 9999,
+            discount: "50% OFF",
             period: "/6mo",
             yearlyText: "One-time · No renewal",
+            creditsSummary: "5,500 Shorts Credits",
             description: "Advanced horsepower for Agencies and Power Users.",
             image: "/pricing/director.png",
             outputSummary: [
@@ -136,13 +145,18 @@ const PricingPage = () => {
             name: "Enterprise",
             monthlyPrice: 9999,
             yearlyPrice: 7999,
+            originalPrice: 19999,
+            discount: "50% OFF",
             period: "/6mo",
             yearlyText: "One-time · No renewal",
+            creditsSummary: "11,000 Shorts Credits",
             description: "Maximum cinematic Enterprise Tier for Commercial workflows and large volumes.",
             image: "/pricing/enterprise.png",
             outputSummary: [
                 { label: "UGC Video Ads (10s)", count: "~200 Ads", icon: "📱", color: "text-amber-400 bg-amber-500/10 border-amber-500/25" },
                 { label: "Commercial Video Ads", count: "~229 HD Ads", icon: "🎬", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/25" },
+                { label: "AI Master Photos", count: "~11,000 Photos", icon: "📸", color: "text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/25" }
+            ],
                 { label: "AI Master Photos", count: "~11,000 Photos", icon: "📸", color: "text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/25" }
             ],
             features: [
@@ -263,11 +277,27 @@ const PricingPage = () => {
                                 </div>
                             )}
 
-                            <div className="space-y-1 mb-4 sm:mb-5 shrink-0 pb-3 sm:pb-4 border-b border-white/5">
-                                <div className="flex items-baseline gap-1">
+                            <div className="space-y-1.5 mb-4 sm:mb-5 shrink-0 pb-3 sm:pb-4 border-b border-white/5">
+                                <div className="flex items-baseline gap-2 flex-wrap">
                                     <span className="text-3xl sm:text-4xl font-black italic tracking-tighter text-white">₹{currentPrice}</span>
+                                    {plan.originalPrice && (
+                                        <span className="text-sm sm:text-base text-zinc-500 line-through font-mono font-medium">
+                                            ₹{plan.originalPrice}
+                                        </span>
+                                    )}
+                                    {plan.discount && (
+                                        <span className="text-[9px] sm:text-[9.5px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full shadow-[0_0_12px_rgba(52,211,153,0.2)]">
+                                            {plan.discount}
+                                        </span>
+                                    )}
                                     <span className="text-white/40 text-xs font-bold uppercase">{plan.period || "/mo"}</span>
                                 </div>
+                                {plan.creditsSummary && (
+                                    <div className="flex items-center gap-1.5 text-[10px] text-[#D4FF00] font-black uppercase tracking-wider">
+                                        <Zap size={11} className="fill-current" />
+                                        <span>Includes {plan.creditsSummary}</span>
+                                    </div>
+                                )}
                                 {isYearly && <p className="text-[9px] text-[#D4FF00]/80 font-bold uppercase tracking-widest leading-none">{plan.yearlyText || `Billed ₹${(plan.yearlyPrice * 12).toLocaleString()} annually`}</p>}
                             </div>
 
@@ -399,17 +429,17 @@ const PricingPage = () => {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 w-full max-w-full py-1 box-border">
                     {[
-                        { id: 'pack_starter', name: 'Starter Fuel', price: '₹299', credits: 250, originalCredits: null, desc: 'Quick Boost', link: 'https://rzp.io/rzp/WhaNtMa', popular: false, badge: 'Quick Boost' },
-                        { id: 'pack_creator', name: 'Creator Pro', price: '₹999', credits: 1000, originalCredits: null, desc: '1:1 Standard', link: 'https://rzp.io/rzp/4U0cJGRV', popular: true, badge: 'MOST POPULAR' },
-                        { id: 'pack_studio', name: 'Studio Master', price: '₹2,499', credits: 2500, originalCredits: null, desc: 'Studio Pro', link: 'https://rzp.io/rzp/nM3CK28p', popular: false, badge: 'PRO STUDIO' },
-                        { id: 'pack_enterprise', name: 'Enterprise Bulk', price: '₹4,999', credits: 5500, originalCredits: 5000, desc: '+500 Bonus Shorts', bonus: '+500 BONUS', link: 'https://rzp.io/rzp/bcCR05bt', popular: false, badge: 'BEST VALUE' },
-                        { id: 'pack_agency', name: 'Agency Max', price: '₹9,999', credits: 11000, originalCredits: 10000, desc: '+1,000 Bonus Shorts', bonus: '+1,000 BONUS', link: 'https://rzp.io/rzp/fLdtNkEx', popular: false, badge: 'MAX VOLUME' }
+                        { id: 'pack_starter', name: 'Starter Fuel', price: '₹299', originalPrice: '₹399', discount: '25% OFF', credits: 250, originalCredits: null, desc: 'Quick Boost · 250 Shorts', link: 'https://rzp.io/rzp/WhaNtMa', popular: false, badge: 'Quick Boost' },
+                        { id: 'pack_creator', name: 'Creator Pro', price: '₹999', originalPrice: '₹1,499', discount: '33% OFF', credits: 1000, originalCredits: null, desc: '1:1 Standard · 1,000 Shorts', link: 'https://rzp.io/rzp/4U0cJGRV', popular: true, badge: 'MOST POPULAR' },
+                        { id: 'pack_studio', name: 'Studio Master', price: '₹2,499', originalPrice: '₹3,499', discount: '29% OFF', credits: 2600, originalCredits: 2500, desc: '+100 Bonus Shorts (2,600 Total)', bonus: '+100 BONUS', link: 'https://rzp.io/rzp/nM3CK28p', popular: false, badge: 'PRO STUDIO · 2,600 SHORTS' },
+                        { id: 'pack_enterprise', name: 'Enterprise Bulk', price: '₹4,999', originalPrice: '₹6,999', discount: '29% OFF', credits: 5500, originalCredits: 5000, desc: '+500 Bonus Shorts (5,500 Total)', bonus: '+500 BONUS', link: 'https://rzp.io/rzp/bcCR05bt', popular: false, badge: 'BEST VALUE · +500 BONUS' },
+                        { id: 'pack_agency', name: 'Agency Max', price: '₹9,999', originalPrice: '₹14,999', discount: '33% OFF', credits: 11000, originalCredits: 10000, desc: '+1,000 Bonus Shorts (11k Total)', bonus: '+1,000 BONUS', link: 'https://rzp.io/rzp/fLdtNkEx', popular: false, badge: 'MAX VOLUME · +1,000 BONUS' }
                     ].map((topup) => (
                         <div key={topup.id} className={cn(
                             "w-full max-w-full p-3.5 sm:p-4 rounded-xl border flex flex-col justify-between transition-all duration-300 box-border gap-3 group hover:scale-[1.02]",
                             topup.popular ? "bg-[#D4FF00]/[0.06] border-[#D4FF00]/50 shadow-[0_0_25px_rgba(212,255,0,0.08)]" : "bg-white/[0.02] border-white/10 hover:border-white/20"
                         )}>
-                            <div className="space-y-2">
+                            <div className="space-y-2.5">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{topup.name}</span>
                                     <span className={cn(
@@ -420,15 +450,30 @@ const PricingPage = () => {
                                     </span>
                                 </div>
 
-                                <div>
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-xl sm:text-2xl font-black text-white">{topup.credits.toLocaleString()}</span>
-                                        <span className="text-xs font-black text-[#D4FF00]">⚡ Shorts</span>
+                                <div className="space-y-1.5">
+                                    {/* AMOUNT - BIGGER SIZE */}
+                                    <div className="flex items-baseline gap-2 flex-wrap">
+                                        <span className="text-2xl sm:text-3xl font-black italic tracking-tight text-white">{topup.price}</span>
+                                        {topup.originalPrice && (
+                                            <span className="text-xs sm:text-sm text-zinc-500 line-through font-mono font-medium">
+                                                {topup.originalPrice}
+                                            </span>
+                                        )}
+                                        {topup.discount && (
+                                            <span className="text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.15)]">
+                                                {topup.discount}
+                                            </span>
+                                        )}
                                     </div>
-                                    <div className="flex items-baseline gap-2 mt-0.5">
-                                        <span className="text-base font-black text-white">{topup.price}</span>
+
+                                    {/* SHORTS - SMALLER SIZE */}
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#D4FF00]/10 border border-[#D4FF00]/25 text-[#D4FF00] font-black text-xs sm:text-sm">
+                                            <Zap size={11} className="fill-current" />
+                                            <span>{topup.credits.toLocaleString()} Shorts</span>
+                                        </div>
                                         {topup.bonus && (
-                                            <span className="text-[9px] font-mono font-black text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                                            <span className="text-[8.5px] font-mono font-black text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded">
                                                 {topup.bonus}
                                             </span>
                                         )}

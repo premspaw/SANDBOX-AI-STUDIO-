@@ -231,11 +231,13 @@ export default function createRouter(deps) {
                 case 'studio':
                 case 'studio-master':
                 case 'pack_studio':
+                case 'topup-2600':
+                case '2600':
                 case 'topup-2500':
                 case '2500':
                 case '2499':
                 case '1999':
-                    creditsToAdd = 2500;
+                    creditsToAdd = 2600;
                     newTier = 'INFLUENCER';
                     priceAmount = 2499;
                     planName = 'Studio Master';
