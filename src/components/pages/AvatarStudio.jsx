@@ -77,8 +77,8 @@ export default function AvatarStudio() {
     studio.setBoardMetaField('outfit', outfit);
     studio.setBoardMetaField('style', 'Ultra Realistic');
 
-    // Master 16:9 rectangular 3-panel turnaround prompt
-    const masterTurnaroundContext = `Three clean vertical panels on a seamless neutral light gray studio background. 16:9 rectangular format.
+    // Master 3-panel turnaround prompt
+    const masterTurnaroundContext = `Three clean vertical panels on a seamless neutral light gray studio background.
 Panel 1 (Left, Close-up): Large extreme close-up headshot portrait looking directly at the camera with a neutral, relaxed expression. Natural authentic skin texture, realistic facial features, and soft flattering studio lighting.
 Panel 2 (Center, Front View): Full-body front view of the character (${name}, Age ${age}, Height ${height}) standing upright in a neutral relaxed pose with hands at sides or relaxed in pockets. Full body from head to footwear, showing full ${outfit}.
 Panel 3 (Right, Back View): Full-body back view of the character standing upright facing away from the camera, showing back of hairstyle, posture, and the complete back of the outfit, trousers, and shoes.
@@ -104,7 +104,7 @@ Real · Raw · Original studio photography. 8K resolution, 85mm portrait lens, p
             <h1 className="text-sm font-black tracking-wider uppercase flex items-center gap-2 text-white">
               Avatar Studio
               <span className="text-[9px] font-bold text-[#C8F135] bg-[#C8F135]/15 border border-[#C8F135]/30 px-1.5 py-0.2 rounded">
-                16:9 Character Sheet
+                Character Sheets
               </span>
             </h1>
           </div>
@@ -377,13 +377,13 @@ Real · Raw · Original studio photography. 8K resolution, 85mm portrait lens, p
               </div>
             </div>
 
-            {/* 5. Sheet Format Specs Summary */}
-            <div className="p-3 rounded-xl border border-white/10 bg-zinc-950/60 flex items-center justify-between text-[9px] font-mono">
+            {/* Character Turnaround Specs Summary */}
+            <div className="p-3 rounded-xl border border-white/10 bg-zinc-950/60 flex items-center justify-between text-[9px]">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-[#C8F135] animate-pulse" />
-                <span className="text-white/80 font-bold uppercase">Format: 16:9 Rectangle Sheet</span>
+                <span className="text-white/80 font-bold uppercase tracking-wider">Create New Character</span>
               </div>
-              <span className="text-white/40">Close-up · Front · Back</span>
+              <span className="text-white/40 font-mono">Close-up · Front · Back</span>
             </div>
 
           </div>

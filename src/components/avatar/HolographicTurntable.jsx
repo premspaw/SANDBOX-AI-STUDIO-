@@ -12,28 +12,28 @@ import { resolveUrl } from '../../config/apiConfig';
 const SHOWCASE_CHARACTERS = [
   {
     id: 'sheet-1',
-    name: '16:9 Character Sheet',
+    name: 'Character Sheet · Minimalist',
     role: 'Real · Raw Minimalist (Tank Top)',
     archetype: '3-PANEL',
     image: '/assets/characters/sheet_male_tank.jpg'
   },
   {
     id: 'sheet-2',
-    name: '16:9 Character Sheet',
+    name: 'Character Sheet · Casual',
     role: 'Night · Ambient (Plaid Flannel)',
     archetype: '3-PANEL',
     image: '/assets/characters/sheet_male_plaid.jpg'
   },
   {
     id: 'sheet-3',
-    name: '16:9 Character Sheet',
+    name: 'Character Sheet · Formal',
     role: 'Real · Raw Studio (Cocktail Dress)',
     archetype: '3-PANEL',
     image: '/assets/characters/sheet_female_maroon.jpg'
   },
   {
     id: 'sheet-4',
-    name: '16:9 Character Matrix',
+    name: 'Character Matrix',
     role: 'Multi-View Studio Turnarounds',
     archetype: '3-PANEL',
     image: '/assets/characters/sheet_pets_costumes.png'
@@ -444,7 +444,7 @@ export default function HolographicTurntable({
 
                         {/* Format Indicator */}
                         <span className="shrink-0 px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[8px] font-mono uppercase text-[#C8F135]">
-                          16:9 RAW
+                          STUDIO SHEET
                         </span>
                       </div>
                     </div>
