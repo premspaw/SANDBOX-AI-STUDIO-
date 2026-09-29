@@ -4,7 +4,7 @@ import {
   Sparkles, Film, Image as ImageIcon, Video, Layers, BookOpen, Clapperboard,
   Upload, Trash2, Check, Zap, Cpu, Code, HelpCircle, RefreshCw, Sliders, Play, Loader2,
   ChevronDown, ChevronLeft, ChevronRight, Users, Tag, Eye, Download, Maximize2, Wand2, Shield, AlertCircle, Camera,
-  Volume2, VolumeX, Copy, CheckCheck
+  Volume2, VolumeX, Copy, CheckCheck, FolderOpen
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getApiUrl, resolveUrl } from '../../config/apiConfig';
@@ -584,9 +584,19 @@ export default function StudioPage() {
       const csG = JSON.parse(localStorage.getItem('cs_gallery') || '[]');
       const ugcG = JSON.parse(localStorage.getItem('ugc_video_gallery') || '[]');
       const marketingG = JSON.parse(localStorage.getItem('marketing_gallery') || '[]');
+      const vaultAssets = JSON.parse(localStorage.getItem('project_vault_assets') || '[]');
+      const formattedVault = vaultAssets.map(a => ({
+        id: a.id,
+        url: a.url,
+        prompt: a.prompt || a.name || 'Project Asset',
+        type: a.type || 'image',
+        engine: a.engine || (a.boardType ? `${a.boardType} Sheet` : 'Project Asset'),
+        timestamp: a.timestamp || Date.now(),
+        projectId: a.projectId
+      }));
 
       const map = new Map();
-      [...userG, ...studioG, ...csG, ...ugcG, ...marketingG].forEach(item => {
+      [...userG, ...studioG, ...csG, ...ugcG, ...marketingG, ...formattedVault].forEach(item => {
         if (!item) return;
         const key = item.id || item.url || item.timestamp;
         if (key && !map.has(key)) {
@@ -1817,6 +1827,21 @@ export default function StudioPage() {
           url: videoUrl
         } : item));
 
+        try {
+          useAppStore.getState().addProjectAsset({
+            type: 'video',
+            category: 'generation',
+            url: videoUrl,
+            prompt: promptToUse,
+            name: promptToUse?.slice(0, 30) || 'Studio Video',
+            engine: engineToUse,
+            aspect: activeRatio,
+            projectId: activeProjectId
+          });
+        } catch (_) {
+          void 0;
+        }
+
         if (data.newCredits !== undefined && typeof updateShortsBalance === 'function') {
           updateShortsBalance(data.newCredits);
         }
@@ -2416,8 +2441,18 @@ export default function StudioPage() {
             </div>
           </div>
 
-          {/* Right: Credits & Clear */}
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Right: Project Box, Credits & Clear */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => useAppStore.getState().openProjectVault('character')}
+              className="flex items-center gap-1.5 bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/30 text-cyan-300 rounded-xl px-2.5 sm:px-3 py-1 sm:py-1.5 shadow-[0_0_15px_rgba(6,182,212,0.15)] active:scale-95 transition-all text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider cursor-pointer select-none"
+              title="Open Universal Project Box (Characters, Props, Locations, Wardrobe)"
+            >
+              <FolderOpen className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-400" />
+              <span>Project Box</span>
+            </button>
+
             <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 bg-[#c8f135]/10 border border-[#c8f135]/30 rounded-xl">
               <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#c8f135]" />
               <span className="text-[11px] sm:text-xs font-black text-[#c8f135]">{userCredits}</span>

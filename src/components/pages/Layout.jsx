@@ -4,6 +4,7 @@ import { Sidebar } from '../panels/Sidebar'
 import { MobileNav } from '../panels/MobileNav'
 import { useAppStore } from '../../store'
 import AdminLoginModal from '../../features/UGCStudio/components/modals/AdminLoginModal'
+import { ProjectVaultModal } from '../common/ProjectVaultModal'
 
 const FULL_BLEED_TABS = new Set([
     'home',
@@ -92,8 +93,23 @@ export function Layout({ children, activeTab, setActiveTab }) {
                 <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} />
             </div>
 
+            {/* Global Liquid Glass Project Vault Floating Trigger */}
+            <button
+                onClick={() => useAppStore.getState().openProjectVault('character')}
+                className="fixed top-3.5 right-4 z-[999] px-3 py-1.5 rounded-full bg-[#0a0a12]/80 hover:bg-[#12121e]/90 backdrop-blur-2xl border border-white/15 hover:border-purple-400/50 text-white flex items-center gap-2 shadow-[0_4px_25px_rgba(0,0,0,0.8)] hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] transition-all duration-300 group cursor-pointer"
+                title="Open Project Vault / Asset Box"
+            >
+                <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-white/90 group-hover:text-purple-200">
+                    Project Box
+                </span>
+            </button>
+
             {/* Admin Security Portal */}
             <AdminLoginModal />
+
+            {/* Universal Project Vault Lightbox */}
+            <ProjectVaultModal />
         </div>
     )
 }

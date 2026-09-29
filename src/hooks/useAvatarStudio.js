@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getApiUrl, resolveUrl } from '../config/apiConfig';
 import { supabase } from '../lib/supabase';
 import { useShorts } from './useShorts';
+import { useAppStore } from '../store';
 
 export function useAvatarStudio(userId = 'anon') {
     const { refresh: refreshShorts } = useShorts() || { refresh: () => {} };
@@ -177,6 +178,35 @@ export function useAvatarStudio(userId = 'anon') {
                 setActivePrompt(result.prompt);
                 console.log('[Avatar Studio] Success! R2 URL:', result.outputUrl);
                 
+                // Auto-sync into Universal Project Box for active project
+                try {
+                    const catMap = {
+                        CHARACTER: 'character',
+                        POSE: 'character',
+                        CREATURE: 'character',
+                        LOCATION: 'location',
+                        SHOT: 'location',
+                        OBJECT: 'prop'
+                    };
+                    const targetCategory = catMap[activeBoard] || 'character';
+                    const sheetName = (boardMeta.name || '').trim() || (activeBoard === 'CHARACTER' ? 'Character Turnaround' : `${activeBoard} Board`);
+
+                    useAppStore.getState().addProjectAsset({
+                        type: 'image',
+                        category: targetCategory,
+                        url: result.outputUrl,
+                        name: sheetName,
+                        prompt: result.prompt,
+                        boardType: activeBoard,
+                        metadata: {
+                            boardType: activeBoard,
+                            boardMeta
+                        }
+                    });
+                } catch (syncErr) {
+                    console.debug('[Avatar Studio] Project Box auto-save fallback:', syncErr);
+                }
+
                 // Refresh credits balance in UI and sync gallery
                 refreshShorts();
                 fetchGallery();
@@ -225,18 +255,13 @@ export function useAvatarStudio(userId = 'anon') {
         setSavedOk(false);
         setError('');
         try {
+            const assetType = isCharBoard ? 'character' : 'image';
+            const age = (boardMeta.age || '').toString().trim();
+            const assetName = isCharBoard
+                ? `NAME: ${name.toUpperCase()}, AGE: ${age}`
+                : `${name.toUpperCase()} — ${activeBoard} Board`;
+
             if (supabase) {
-                const assetType = isCharBoard ? 'character' : 'image';
-
-                // Format the name nicely
-                let assetName = '';
-                if (isCharBoard) {
-                    const age = (boardMeta.age || '').toString().trim();
-                    assetName = `NAME: ${name.toUpperCase()}, AGE: ${age}`;
-                } else {
-                    assetName = `${name.toUpperCase()} — ${activeBoard} Board`;
-                }
-
                 const { error: dbErr } = await supabase
                     .from('assets')
                     .insert({
@@ -258,6 +283,24 @@ export function useAvatarStudio(userId = 'anon') {
                     // Still show success to user — image exists in avatar_generations
                 }
             }
+
+            // Sync to Project Box as well
+            try {
+                useAppStore.getState().addProjectAsset({
+                    type: isCharBoard ? 'character' : 'image',
+                    category: isCharBoard ? 'character' : (activeBoard === 'LOCATION' ? 'location' : (activeBoard === 'OBJECT' ? 'prop' : 'character')),
+                    url: generatedImage,
+                    name: assetName,
+                    prompt: activePrompt,
+                    metadata: {
+                        boardType: activeBoard,
+                        boardMeta
+                    }
+                });
+            } catch (boxErr) {
+                console.debug('[AvatarStudio] Project Box sync fallback:', boxErr);
+            }
+
             fetchGallery();
             setSavedOk(true);
             setTimeout(() => setSavedOk(false), 3000);

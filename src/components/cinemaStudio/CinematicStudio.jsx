@@ -11,7 +11,7 @@ import {
   Sparkles, Video, Trash2, Camera, Film, Play, Loader2, X, Music,
   Clapperboard, Image as ImageIcon, Send, Download, ChevronDown,
   ChevronUp, Settings2, Maximize2, Clock, Ratio, Zap, Eye, Users,
-  Pencil, Grid, Tv, Upload, Sliders
+  Pencil, Grid, Tv, Upload, Sliders, FolderOpen
 } from 'lucide-react';
 import { useShorts } from '../../hooks/useShorts';
 import { useAppStore } from '../../store';
@@ -832,12 +832,38 @@ export default function CinematicStudio() {
     }
   });
 
+  const projectAssets = useAppStore(state => state.projectAssets) || [];
   const filteredGallery = useMemo(() => {
-    return gallery.filter(item => {
+    const baseItems = gallery.filter(item => {
       const itemProj = item.projectId || 'default';
       return itemProj === activeProjectId;
     });
-  }, [gallery, activeProjectId]);
+
+    // Also pull assets from the active project in Project Box so user sees them in the common gallery
+    const boxItems = projectAssets
+      .filter(a => (a.projectId || 'default') === activeProjectId)
+      .map(a => ({
+        id: a.id,
+        type: a.type || 'image',
+        url: a.url,
+        prompt: a.prompt || a.name || 'Project Asset',
+        engine: a.engine || (a.boardType ? `${a.boardType} Sheet` : 'Project Asset'),
+        aspect: a.aspect || '16:9',
+        ts: a.timestamp || Date.now(),
+        projectId: a.projectId || activeProjectId
+      }));
+
+    const seenUrls = new Set(baseItems.map(i => i.url));
+    const merged = [...baseItems];
+    boxItems.forEach(b => {
+      if (b.url && !seenUrls.has(b.url)) {
+        merged.push(b);
+        seenUrls.add(b.url);
+      }
+    });
+
+    return merged.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  }, [gallery, activeProjectId, projectAssets]);
 
   // Fetch previously generated assets from server on mount
   useEffect(() => {
@@ -2662,6 +2688,18 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                 projectId: activeProjectId
               };
               setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
+              try {
+                useAppStore.getState().addProjectAsset({
+                  type: 'image',
+                  category: 'generation',
+                  url: data.url,
+                  prompt: finalPrompt,
+                  name: finalPrompt?.slice(0, 30) || 'Cinema Image',
+                  engine: engineLabel,
+                  aspect: activeRatio,
+                  projectId: activeProjectId
+                });
+              } catch (_) {}
               return data.url;
             } catch (err) {
               // Remove the placeholder if this variation failed
@@ -2822,6 +2860,18 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                 projectId: activeProjectId
               };
               setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
+              try {
+                useAppStore.getState().addProjectAsset({
+                  type: 'video',
+                  category: 'generation',
+                  url: data.videoUrl,
+                  prompt: compiledPrompt,
+                  name: compiledPrompt?.slice(0, 30) || 'Cinema Video',
+                  engine: isOmniEngine ? 'Omni' : engineLabel,
+                  aspect: currentRatio,
+                  projectId: activeProjectId
+                });
+              } catch (_) {}
               return data.videoUrl;
             } catch (err) {
               // Remove the placeholder if this variation failed
@@ -3310,6 +3360,18 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       };
 
       setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
+      try {
+        useAppStore.getState().addProjectAsset({
+          type: 'video',
+          category: 'generation',
+          url: data.videoUrl,
+          prompt: finishedItem.prompt,
+          name: `Extended (+${durSec}s)`,
+          engine: 'Omni Flash Extension',
+          aspect: finishedItem.aspect,
+          projectId: activeProjectId
+        });
+      } catch (_) {}
       setExtensionSourceVideo(finishedItem);
       setStatus('idle');
       setPollMsg('');
@@ -3471,6 +3533,18 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       };
 
       setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
+      try {
+        useAppStore.getState().addProjectAsset({
+          type: 'video',
+          category: 'generation',
+          url: data.videoUrl,
+          prompt: finalPrompt,
+          name: finalPrompt?.slice(0, 30) || 'Omni Video Edit',
+          engine: 'Omni Flash Edit',
+          aspect: tempItem.aspectRatio,
+          projectId: activeProjectId
+        });
+      } catch (_) {}
 
       // Save to Supabase assets
       try {
@@ -3605,6 +3679,17 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             </>
           )}
         </div>
+
+        {/* Universal Project Box / Lightbox Button */}
+        <button
+          type="button"
+          onClick={() => useAppStore.getState().openProjectVault('character')}
+          className="flex items-center gap-1.5 bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/30 text-cyan-300 rounded-xl px-2.5 sm:px-3 py-1.5 shadow-[0_0_15px_rgba(6,182,212,0.15)] active:scale-95 transition-all text-[8px] font-black uppercase tracking-wider cursor-pointer select-none"
+          title="Open Universal Project Box (Characters, Props, Locations, Wardrobe)"
+        >
+          <FolderOpen size={10} className="text-cyan-400" />
+          <span>Project Box</span>
+        </button>
 
 
         {/* Gallery count + clear */}
@@ -3997,6 +4082,29 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                           </span>
                         )}
                       </motion.button>
+
+                      {/* Universal Project Box Quick Pill */}
+                      <motion.button
+                        onClick={() => {
+                          useAppStore.getState().openProjectVault('character', (chosenAsset) => {
+                            if (!chosenAsset?.url) return;
+                            const cleanName = (chosenAsset.name || 'char')
+                              .replace(/^NAME:\s*/i, '')
+                              .replace(/,.*/, '')
+                              .trim()
+                              .replace(/[^a-zA-Z0-9_-]/g, '_');
+                            addRefItem('characters', chosenAsset.url, cleanName);
+                          });
+                        }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[7.5px] font-black uppercase tracking-widest border bg-cyan-500/15 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/25 hover:border-cyan-500/40 transition-all shrink-0 origin-bottom shadow-[0_0_10px_rgba(6,182,212,0.15)]"
+                        title="Universal Project Box (Characters, Props, Locations, Wardrobe)"
+                      >
+                        <FolderOpen size={9} className="text-cyan-400" />
+                        <span>Box</span>
+                      </motion.button>
+
                       {/* Vertical divider line */}
                       <div className="w-px h-3.5 bg-white/10 shrink-0 self-center" />
                     </>

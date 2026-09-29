@@ -2,7 +2,8 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   X, Loader2, Zap, Grid, Video, Image as ImageIcon, Pencil, Download, Trash2,
-  Palette, Sparkles, Film, ChevronRight, Camera, Copy, Play, Maximize2, Layers
+  Palette, Sparkles, Film, ChevronRight, Camera, Copy, Play, Maximize2, Layers,
+  FolderOpen
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAppStore } from '../../store';
@@ -815,6 +816,53 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                 <ImageIcon size={11} className="text-gray-400 group-hover:text-[#c8f135]" />
                 <span className="text-[7.5px] font-black uppercase tracking-wider">Use as Style Reference</span>
               </button>
+
+              {/* Universal Project Box Quick Saver */}
+              <div className="col-span-2 p-2 rounded-xl border border-cyan-500/25 bg-cyan-500/10 flex flex-col gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.12)]">
+                <div className="flex items-center justify-between">
+                  <span className="text-[7.5px] font-black uppercase text-cyan-300 flex items-center gap-1">
+                    <FolderOpen size={10} className="text-cyan-400" /> Save to Project Box
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      useAppStore.getState().openProjectVault();
+                      setLightboxItem(null);
+                    }}
+                    className="text-[7px] text-cyan-400/80 hover:text-cyan-200 underline font-mono cursor-pointer"
+                  >
+                    Open Box ↗
+                  </button>
+                </div>
+                <div className="grid grid-cols-4 gap-1">
+                  {[
+                    { label: 'Char', cat: 'character' },
+                    { label: 'Prop', cat: 'prop' },
+                    { label: 'Loc', cat: 'location' },
+                    { label: 'Wardrobe', cat: 'wardrobe' }
+                  ].map(({ label, cat }) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
+                        const showToast = useAppStore.getState().showToast;
+                        useAppStore.getState().addProjectAsset({
+                          type: lightboxItem.type === 'video' ? 'video' : 'image',
+                          category: cat,
+                          url: lightboxItem.url,
+                          name: lightboxItem.prompt?.slice(0, 30) || `${label} Asset`,
+                          prompt: lightboxItem.prompt,
+                          aspect: lightboxItem.aspect
+                        });
+                        if (showToast) showToast(`Saved to Project Box as ${label}!`, 'success');
+                      }}
+                      className="py-1 px-1 rounded-md bg-black/50 hover:bg-cyan-400 text-cyan-300 hover:text-black border border-cyan-500/30 text-[7px] font-black uppercase transition-all text-center cursor-pointer active:scale-95"
+                    >
+                      +{label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* 2. VIDEO-SPECIFIC WORKFLOWS (MULTI-REF VIDEO, EXTRACT SCREENSHOT, OMNI DRIVING VIDEO, ADD TO PROMPT) */}
               {lightboxItem.type !== 'image' && (

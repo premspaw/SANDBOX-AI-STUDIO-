@@ -43,13 +43,98 @@ export const useAppStore = create((set, get) => ({
         localStorage.setItem('ugc_active_project_id', id);
         return { activeProjectId: id };
     }),
-    deleteProject: (id) => set((state) => {
-        if (id === 'default') return state;
-        const projects = state.projects.filter(p => p.id !== id);
-        const activeProjectId = state.activeProjectId === id ? 'default' : state.activeProjectId;
-        localStorage.setItem('ugc_projects', JSON.stringify(projects));
-        localStorage.setItem('ugc_active_project_id', activeProjectId);
-        return { projects, activeProjectId };
+    createProject: (name, description = '') => set((state) => {
+        const newId = `proj_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+        const newProj = {
+            id: newId,
+            name: (name || '').trim() || 'Untitled Project',
+            description: (description || '').trim(),
+            createdAt: Date.now()
+        };
+        const projects = [...state.projects, newProj];
+        try {
+            localStorage.setItem('ugc_projects', JSON.stringify(projects));
+            localStorage.setItem('ugc_active_project_id', newId);
+        } catch (e) {}
+        return { projects, activeProjectId: newId };
+    }),
+
+    // Project Vault / Asset Box
+    projectAssets: (() => {
+        try {
+            const saved = localStorage.getItem('project_vault_assets');
+            return saved ? JSON.parse(saved) : {};
+        } catch {
+            return {};
+        }
+    })(),
+    isProjectVaultOpen: false,
+    projectVaultInitialCategory: 'character',
+    projectVaultSelectCallback: null,
+    setIsProjectVaultOpen: (isOpen) => set({ isProjectVaultOpen: !!isOpen }),
+    openProjectVault: (initialCategory = 'character', onSelect = null) => set({
+        isProjectVaultOpen: true,
+        projectVaultInitialCategory: initialCategory,
+        projectVaultSelectCallback: typeof onSelect === 'function' ? onSelect : null
+    }),
+    closeProjectVault: () => set({
+        isProjectVaultOpen: false,
+        projectVaultSelectCallback: null
+    }),
+    addProjectAsset: (asset, targetProjectId = null) => set((state) => {
+        if (!asset || !asset.url) return state;
+        const pid = targetProjectId || state.activeProjectId || 'default';
+        const existing = state.projectAssets[pid] || [];
+        // Prevent duplicate URLs within the same project
+        if (existing.some(item => item.url === asset.url)) {
+            return state;
+        }
+        const newAsset = {
+            id: asset.id || `asset_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+            projectId: pid,
+            type: asset.type || 'image',
+            category: asset.category || 'character', // 'character' | 'prop' | 'location' | 'wardrobe' | 'generation'
+            url: asset.url,
+            thumbUrl: asset.thumbUrl || asset.url,
+            name: asset.name || (asset.category ? `${asset.category.toUpperCase()} Asset` : 'Project Asset'),
+            prompt: asset.prompt || '',
+            metadata: asset.metadata || {},
+            createdAt: asset.createdAt || Date.now()
+        };
+        const updated = {
+            ...state.projectAssets,
+            [pid]: [newAsset, ...existing]
+        };
+        try {
+            localStorage.setItem('project_vault_assets', JSON.stringify(updated));
+        } catch (e) {
+            console.warn('[ProjectVault] localStorage error:', e);
+        }
+        return { projectAssets: updated };
+    }),
+    removeProjectAsset: (assetId, targetProjectId = null) => set((state) => {
+        const pid = targetProjectId || state.activeProjectId || 'default';
+        const existing = state.projectAssets[pid] || [];
+        const updated = {
+            ...state.projectAssets,
+            [pid]: existing.filter(item => item.id !== assetId)
+        };
+        try {
+            localStorage.setItem('project_vault_assets', JSON.stringify(updated));
+        } catch (e) {}
+        return { projectAssets: updated };
+    }),
+    updateProjectAssetCategory: (assetId, newCategory, targetProjectId = null) => set((state) => {
+        const pid = targetProjectId || state.activeProjectId || 'default';
+        const existing = state.projectAssets[pid] || [];
+        const updated = {
+            ...state.projectAssets,
+            [pid]: existing.map(item => item.id === assetId ? { ...item, category: newCategory } : item)
+        };
+        try {
+            localStorage.setItem('project_vault_assets', JSON.stringify(updated));
+        } catch (e) {}
+        return { projectAssets: updated };
     }),
 
     cachedAssets: null,

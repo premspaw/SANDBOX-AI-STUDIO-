@@ -1,9 +1,10 @@
 import React, { useRef } from 'react';
-import { Sparkles, X, Upload, ImagePlus, Save, Video, Music, Film, Info, Zap } from 'lucide-react';
+import { Sparkles, X, Upload, ImagePlus, Save, Video, Music, Film, Info, Zap, FolderOpen } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { AssetsLibrary } from '../panels/AssetsLibrary';
 import { REF_CATEGORIES, SEEDANCE_REF_CATEGORIES, OMNI_REF_CATEGORIES } from './constants';
 import { resolveUrl } from '../../config/apiConfig';
+import { useAppStore } from '../../store';
 
 export const ReferencePanel = ({
     showRefBoard,
@@ -151,12 +152,28 @@ export const ReferencePanel = ({
                                     <Upload className="w-2.5 h-2.5" /> {atLimit ? 'Full' : 'Upload'}
                                 </button>
                                 {!isVideo && !atLimit && (
-                                    <button
-                                        onClick={() => { setLibPickerTarget(cat.id); setShowLibPicker(true); }}
-                                        className="flex items-center gap-1 px-2 py-1 h-6 rounded-md border border-[#c8f135]/25 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 text-[#c8f135] transition-all text-[8px] font-bold uppercase"
-                                    >
-                                        <ImagePlus className="w-2.5 h-2.5" /> Library
-                                    </button>
+                                    <>
+                                        <button
+                                            onClick={() => { setLibPickerTarget(cat.id); setShowLibPicker(true); }}
+                                            className="flex items-center gap-1 px-2 py-1 h-6 rounded-md border border-[#c8f135]/25 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 text-[#c8f135] transition-all text-[8px] font-bold uppercase"
+                                        >
+                                            <ImagePlus className="w-2.5 h-2.5" /> Library
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                useAppStore.getState().openProjectVault('character', (chosenAsset) => {
+                                                    if (!chosenAsset?.url) return;
+                                                    const cleanName = (chosenAsset.name || 'Omni Ref').replace(/[^a-zA-Z0-9_-]/g, '_');
+                                                    if (addRefItem) addRefItem(cat.id, chosenAsset.url, cleanName);
+                                                });
+                                            }}
+                                            className="flex items-center gap-1 px-2 py-1 h-6 rounded-md border border-cyan-400/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 transition-all text-[8px] font-bold uppercase shadow-[0_0_8px_rgba(6,182,212,0.15)] active:scale-95"
+                                            title="Pick from Universal Project Box"
+                                        >
+                                            <FolderOpen className="w-2.5 h-2.5" /> Box
+                                        </button>
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -268,12 +285,28 @@ export const ReferencePanel = ({
                                     <Upload className="w-2.5 h-2.5" /> {atLimit ? 'Full' : 'Upload'}
                                 </button>
                                 {cat.id === 'ref_images' && !atLimit && (
-                                    <button
-                                        onClick={() => { setLibPickerTarget(cat.id); setShowLibPicker(true); }}
-                                        className="flex items-center gap-1 px-2 py-1 h-6 rounded-md border border-[#c8f135]/25 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 text-[#c8f135] transition-all text-[8px] font-bold uppercase"
-                                    >
-                                        <ImagePlus className="w-2.5 h-2.5" /> Library
-                                    </button>
+                                    <>
+                                        <button
+                                            onClick={() => { setLibPickerTarget(cat.id); setShowLibPicker(true); }}
+                                            className="flex items-center gap-1 px-2 py-1 h-6 rounded-md border border-[#c8f135]/25 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 text-[#c8f135] transition-all text-[8px] font-bold uppercase"
+                                        >
+                                            <ImagePlus className="w-2.5 h-2.5" /> Library
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                useAppStore.getState().openProjectVault('character', (chosenAsset) => {
+                                                    if (!chosenAsset?.url) return;
+                                                    const cleanName = (chosenAsset.name || 'Seedance Ref').replace(/[^a-zA-Z0-9_-]/g, '_');
+                                                    if (addRefItem) addRefItem(cat.id, chosenAsset.url, cleanName);
+                                                });
+                                            }}
+                                            className="flex items-center gap-1 px-2 py-1 h-6 rounded-md border border-cyan-400/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 transition-all text-[8px] font-bold uppercase shadow-[0_0_8px_rgba(6,182,212,0.15)] active:scale-95"
+                                            title="Pick from Universal Project Box"
+                                        >
+                                            <FolderOpen className="w-2.5 h-2.5" /> Box
+                                        </button>
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -385,6 +418,31 @@ export const ReferencePanel = ({
                                         className="flex items-center gap-1 px-2 py-1 h-6 rounded-md border border-[#c8f135]/25 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 text-[#c8f135] transition-all text-[8px] font-bold uppercase"
                                     >
                                         <ImagePlus className="w-2.5 h-2.5" /> Library
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const catMap = {
+                                                characters: 'character',
+                                                locations: 'location',
+                                                wardrobe: 'wardrobe',
+                                                props: 'prop'
+                                            };
+                                            const vaultCategory = catMap[category.id] || 'character';
+                                            useAppStore.getState().openProjectVault(vaultCategory, (chosenAsset) => {
+                                                if (!chosenAsset?.url) return;
+                                                const cleanName = (chosenAsset.name || 'Asset')
+                                                    .replace(/^NAME:\s*/i, '')
+                                                    .replace(/,.*/, '')
+                                                    .trim()
+                                                    .replace(/[^a-zA-Z0-9_-]/g, '_');
+                                                addRefItem(category.id, chosenAsset.url, cleanName);
+                                            });
+                                        }}
+                                        className="flex items-center gap-1 px-2 py-1 h-6 rounded-md border border-cyan-400/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 transition-all text-[8px] font-bold uppercase shadow-[0_0_8px_rgba(6,182,212,0.15)] active:scale-95"
+                                        title="Pick from Universal Project Box"
+                                    >
+                                        <FolderOpen className="w-2.5 h-2.5" /> Box
                                     </button>
                                 </div>
                             </div>
