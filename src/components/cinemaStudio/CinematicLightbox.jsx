@@ -458,6 +458,10 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
 
     const newId = 'frame_' + Date.now();
     const cleanPrompt = lightboxItem.prompt ? lightboxItem.prompt.replace(/^Screenshot:\s*/i, '').trim() : 'Studio Video Screenshot';
+    const storeState = useAppStore.getState();
+    const activeProj = lightboxItem.projectId || storeState.activeProjectId || 'default';
+    const activeUserId = userId || storeState.userProfile?.id || 'anon';
+
     const newImageItem = {
       id: newId,
       type: 'image',
@@ -466,11 +470,30 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
       engine: 'Screenshot',
       aspect: lightboxItem.aspect || '16:9',
       ts: Date.now(),
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      projectId: activeProj
     };
 
-    setGallery(prev => [newImageItem, ...prev]);
-    if (showToast) showToast("Screenshot added to your Studio Gallery!", "success");
+    if (setGallery) {
+      setGallery(prev => [newImageItem, ...prev]);
+    }
+
+    // Sync to local storage for Cinema Studio and Studio Generator
+    try {
+      if (activeUserId && activeUserId !== 'anon') {
+        const csUserKey = `cinematic_studio_gallery_${activeUserId}`;
+        const existing = JSON.parse(localStorage.getItem(csUserKey) || '[]');
+        localStorage.setItem(csUserKey, JSON.stringify([newImageItem, ...existing]));
+      }
+      const csStudioG = JSON.parse(localStorage.getItem('cs_studio_gallery') || '[]');
+      localStorage.setItem('cs_studio_gallery', JSON.stringify([newImageItem, ...csStudioG]));
+      const csG = JSON.parse(localStorage.getItem('cs_gallery') || '[]');
+      localStorage.setItem('cs_gallery', JSON.stringify([newImageItem, ...csG]));
+    } catch (e) {
+      console.debug("[Lightbox] LocalStorage sync:", e);
+    }
+
+    if (showToast) showToast("Screenshot captured and added to your project gallery!", "success");
 
     // Persist via save-asset in background
     try {
@@ -480,15 +503,32 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
         body: JSON.stringify({
           imageData: frame,
           fileName: `screenshot_${Date.now()}.png`,
-          userId: userId,
+          userId: activeUserId,
           type: 'image',
           aspect: lightboxItem.aspect || '16:9',
           prompt: cleanPrompt,
-          engine: 'Screenshot'
+          engine: 'Screenshot',
+          projectId: activeProj,
+          metadata: {
+            aspect: lightboxItem.aspect || '16:9',
+            projectId: activeProj,
+            engine: 'Screenshot',
+            prompt: cleanPrompt
+          }
         })
       }).then(r => r.json()).then(data => {
-        if (data.url || data.path) {
-          setGallery(prev => prev.map(item => item.id === newId ? { ...item, url: data.url || data.path } : item));
+        const savedUrl = data.url || data.path;
+        if (savedUrl) {
+          if (setGallery) {
+            setGallery(prev => prev.map(item => item.id === newId ? { ...item, url: savedUrl } : item));
+          }
+          try {
+            if (activeUserId && activeUserId !== 'anon') {
+              const csUserKey = `cinematic_studio_gallery_${activeUserId}`;
+              const existing = JSON.parse(localStorage.getItem(csUserKey) || '[]');
+              localStorage.setItem(csUserKey, JSON.stringify(existing.map(item => item.id === newId ? { ...item, url: savedUrl } : item)));
+            }
+          } catch (_) {}
         }
       }).catch(err => console.debug("[Lightbox] Cloud save fallback:", err));
     } catch (saveErr) {

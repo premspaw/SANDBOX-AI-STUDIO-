@@ -2015,6 +2015,8 @@ export default function StudioPage() {
       const frameDataUrl = await extractVideoFrame(item.url, 0);
       const newId = 'frame_' + Date.now();
       const cleanPrompt = item.prompt ? item.prompt.replace(/^Screenshot:\s*/i, '').trim() : 'Studio Video Screenshot';
+      const activeProj = item.projectId || activeProjectId || 'default';
+      const activeUserId = userId || useAppStore.getState().userProfile?.id || 'anon';
       const newImageItem = {
         id: newId,
         type: 'image',
@@ -2022,9 +2024,23 @@ export default function StudioPage() {
         prompt: cleanPrompt,
         engine: 'Screenshot',
         aspect: item.aspectRatio || item.aspect || '16:9',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        ts: Date.now(),
+        projectId: activeProj
       };
       setGallery(prev => [newImageItem, ...prev]);
+
+      // Sync across local storage keys
+      try {
+        if (activeUserId && activeUserId !== 'anon') {
+          const csUserKey = `cinematic_studio_gallery_${activeUserId}`;
+          const existing = JSON.parse(localStorage.getItem(csUserKey) || '[]');
+          localStorage.setItem(csUserKey, JSON.stringify([newImageItem, ...existing]));
+        }
+        const csStudioG = JSON.parse(localStorage.getItem('cs_studio_gallery') || '[]');
+        localStorage.setItem('cs_studio_gallery', JSON.stringify([newImageItem, ...csStudioG]));
+      } catch (_) {}
+
       if (showToast) showToast("Screenshot added to gallery!", "success");
 
       fetch(getApiUrl('/api/save-asset'), {
@@ -2033,15 +2049,30 @@ export default function StudioPage() {
         body: JSON.stringify({
           imageData: frameDataUrl,
           fileName: `screenshot_${Date.now()}.png`,
-          userId: userId,
+          userId: activeUserId,
           type: 'image',
           aspect: item.aspectRatio || item.aspect || '16:9',
           prompt: cleanPrompt,
-          engine: 'Screenshot'
+          engine: 'Screenshot',
+          projectId: activeProj,
+          metadata: {
+            aspect: item.aspectRatio || item.aspect || '16:9',
+            projectId: activeProj,
+            engine: 'Screenshot',
+            prompt: cleanPrompt
+          }
         })
       }).then(r => r.json()).then(data => {
-        if (data.url || data.path) {
-          setGallery(prev => prev.map(i => i.id === newId ? { ...i, url: data.url || data.path } : i));
+        const savedUrl = data.url || data.path;
+        if (savedUrl) {
+          setGallery(prev => prev.map(i => i.id === newId ? { ...i, url: savedUrl } : i));
+          try {
+            if (activeUserId && activeUserId !== 'anon') {
+              const csUserKey = `cinematic_studio_gallery_${activeUserId}`;
+              const existing = JSON.parse(localStorage.getItem(csUserKey) || '[]');
+              localStorage.setItem(csUserKey, JSON.stringify(existing.map(i => i.id === newId ? { ...i, url: savedUrl } : i)));
+            }
+          } catch (_) {}
         }
       }).catch(err => console.debug("[StudioPage] Save asset fallback:", err));
     } catch (err) {

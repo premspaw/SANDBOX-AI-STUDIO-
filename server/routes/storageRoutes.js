@@ -184,8 +184,13 @@ export default function createRouter(deps) {
             const aspect = req.body.aspect || req.body.aspectRatio || req.body.aspect_ratio || '16:9';
             const prompt = req.body.prompt || req.body.promptText || '';
             const engine = req.body.engine || req.body.model || '';
+            const projectId = req.body.projectId || req.body.metadata?.projectId || 'default';
             const isGrid = !!req.body.isGrid;
-            const extraMetadata = isGrid ? { isGrid: true } : {};
+            const extraMetadata = {
+                ...(req.body.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : {}),
+                ...(isGrid ? { isGrid: true } : {}),
+                projectId
+            };
             
             if (!imageData) throw new Error("No asset data provided");
 
@@ -203,7 +208,7 @@ export default function createRouter(deps) {
                     url: imageData,
                     user_id: userId || 'local_user',
                     aspect: aspect,
-                    metadata: { aspect, ...extraMetadata },
+                    metadata: { aspect, ...extraMetadata, projectId },
                     prompt,
                     engine
                 });
@@ -218,7 +223,7 @@ export default function createRouter(deps) {
                         url: imageData,
                         user_id: userId,
                         created_at: new Date().toISOString(),
-                        metadata: { aspect, engine, prompt, ...extraMetadata }
+                        metadata: { aspect, engine, prompt, ...extraMetadata, projectId }
                     }]).select();
 
                     if (dbError) {
