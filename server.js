@@ -932,40 +932,68 @@ function findVideoInResponse(obj) {
 }
 
 async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9', folder = 'generated', prompt = '', engine = '', extraMetadata = {}) {
-    const name = `veo_${userId || 'anon'}_${Date.now()}.mp4`;
+    let resolvedBuffer = videoBuffer;
+    let targetUserId = userId;
+    let targetAspect = aspectRatio;
+    let customName = null;
+
+    // Handle flexible caller signature where (videoUrl, fileName, userId) was passed
+    if (typeof targetUserId === 'string' && (targetUserId.endsWith('.mp4') || targetUserId.endsWith('.mov') || targetUserId.endsWith('.webm'))) {
+        customName = targetUserId;
+        targetUserId = (typeof targetAspect === 'string' && !targetAspect.includes(':')) ? targetAspect : 'anon';
+        targetAspect = '16:9';
+    }
+
+    if (typeof resolvedBuffer === 'string' && (resolvedBuffer.startsWith('http://') || resolvedBuffer.startsWith('https://'))) {
+        try {
+            console.log(`[STORAGE-VIDEO] Fetching binary video buffer from URL: ${resolvedBuffer}`);
+            const vResp = await fetch(resolvedBuffer);
+            if (!vResp.ok) throw new Error(`HTTP ${vResp.status} ${vResp.statusText}`);
+            const arrayBuf = await vResp.arrayBuffer();
+            resolvedBuffer = Buffer.from(arrayBuf);
+            console.log(`[STORAGE-VIDEO] ✅ Downloaded ${resolvedBuffer.length} bytes for video upload`);
+        } catch (fetchErr) {
+            console.warn(`[STORAGE-VIDEO] Warning: could not download remote video (${fetchErr.message}), returning direct URL`);
+            return resolvedBuffer;
+        }
+    } else if (typeof resolvedBuffer === 'string' && resolvedBuffer.startsWith('data:')) {
+        resolvedBuffer = Buffer.from(resolvedBuffer.split(',')[1], 'base64');
+    }
+
+    const name = customName || `veo_${targetUserId || 'anon'}_${Date.now()}.mp4`;
     const cleanFolder = folder || 'generated';
-    const filePath = `users/${userId || 'anon'}/${cleanFolder}/${name}`;
+    const filePath = `users/${targetUserId || 'anon'}/${cleanFolder}/${name}`;
     const projectId = extraMetadata.projectId || extraMetadata.project_id || (cleanFolder !== 'generated' ? cleanFolder : 'default');
 
     try {
-        console.log(`[STORAGE-VIDEO] Uploading video ${name} via storageService...`);
-        const publicUrl = await storageService.uploadToGCS(videoBuffer, filePath, 'video/mp4', BUCKET_NAME);
+        console.log(`[STORAGE-VIDEO] Uploading video ${name} via storageService (${resolvedBuffer?.length || 0} bytes)...`);
+        const publicUrl = await storageService.uploadToGCS(resolvedBuffer, filePath, 'video/mp4', BUCKET_NAME);
         
         // Save to local fallback database
         saveLocalAsset({
             name,
             type: 'video',
             url: publicUrl,
-            user_id: userId || 'local_user',
+            user_id: targetUserId || 'local_user',
             project_id: projectId,
-            aspect: aspectRatio,
+            aspect: targetAspect,
             metadata: { folder: cleanFolder, projectId, project_id: projectId, prompt, engine, ...extraMetadata },
             prompt: prompt,
             engine: engine
         });
 
         const dbClient = supabaseAdmin || supabase;
-        if (dbClient && isValidUuid(userId)) {
+        if (dbClient && isValidUuid(targetUserId)) {
             try {
                 await dbClient.from('assets').insert([{
                     name,
                     type: 'video',
                     url: publicUrl,
-                    user_id: userId,
+                    user_id: targetUserId,
                     created_at: new Date().toISOString(),
                     model: engine || null,
                     metadata: {
-                        aspect: aspectRatio,
+                        aspect: targetAspect,
                         folder: cleanFolder,
                         projectId,
                         project_id: projectId,
@@ -982,7 +1010,7 @@ async function uploadVideoToSupabase(videoBuffer, userId, aspectRatio = '16:9', 
         return publicUrl;
     } catch (err) {
         console.error('[GCS-VIDEO-ERR]', err.message);
-        return `data:video/mp4;base64,${videoBuffer.toString('base64')}`;
+        return Buffer.isBuffer(resolvedBuffer) ? `data:video/mp4;base64,${resolvedBuffer.toString('base64')}` : resolvedBuffer;
     }
 }
 

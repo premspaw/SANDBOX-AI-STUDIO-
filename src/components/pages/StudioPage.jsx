@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getApiUrl, resolveUrl } from '../../config/apiConfig';
+import { SHORTS_COST } from '../../config/shortsConfig';
 import { useAppStore } from '../../store';
 import { extractVideoFrame, downloadDirect, getVideoDuration } from '../../lib/videoUtils';
 import { SidePanel } from '../cinemaStudio/SidePanel';
@@ -356,6 +357,14 @@ function StudioGalleryCard({
 
       {/* Badges Top-Left */}
       <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-20 pointer-events-none">
+        {/* 1080p HD Upscaled Badge */}
+        {(item.resolution === '1080p' || item.quality?.includes('1080p') || item.prompt?.includes('1080p') || item.engine?.includes('1080p')) && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-fuchsia-500/90 text-white text-[9px] font-black tracking-wider uppercase backdrop-blur-md border border-fuchsia-400 shadow-[0_0_10px_rgba(217,70,239,0.5)]">
+            <Zap size={9} className="fill-white" />
+            1080p HD
+          </span>
+        )}
+
         {/* Aspect Ratio Pill */}
         <span className={cn(
           "px-1.5 py-0.5 rounded-md text-[9px] font-mono font-black tracking-wider backdrop-blur-md shadow-md border",
@@ -629,7 +638,7 @@ export default function StudioPage() {
   const [showStoryboard, setShowStoryboard] = useState(false);
   const [showAnglesModal, setShowAnglesModal] = useState(false);
   const [angle, setAngle] = useState('eye-level');
-  const [upscalingItems, setUpscalingItems] = useState(new Set());
+  const [upscalingItems, setUpscalingItems] = useState({});
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   const [windowWidth, setWindowWidth] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1200);
@@ -2196,15 +2205,144 @@ export default function StudioPage() {
     if (showToast) showToast(`Set as Motion Reference Video (${roundedDur}s)!`, "success");
   };
 
-  const handleUpscale = (item) => {
-    setUpscalingItems(prev => new Set(prev).add(item.id));
-    setTimeout(() => {
-      setUpscalingItems(prev => {
-        const next = new Set(prev);
-        next.delete(item.id);
-        return next;
-      });
-    }, 3000);
+  const handleUpscale = async (item) => {
+    const showToast = useAppStore.getState().showToast;
+    const user = useAppStore.getState().user;
+    const userId = user?.id;
+    const spendShorts = useAppStore.getState().spendShorts;
+
+    setUpscalingItems(prev => ({ ...prev, [item.id]: true }));
+    
+    try {
+      if (item.type === 'video') {
+        const durationSec = Math.max(1, Math.round(Number(item.duration) || 5));
+        const creditCost = durationSec * (SHORTS_COST.video_upscale_per_second || 5);
+
+        if (spendShorts && userId) {
+          const spendResult = await spendShorts(userId, creditCost, 'video_upscale_1080p');
+          if (!spendResult.success) {
+            if (showToast) showToast(`Insufficient Shorts! Video upscale requires ${creditCost} Shorts.`, "error");
+            return;
+          }
+        }
+
+        const tempId = `upscale_${Date.now()}`;
+        const placeholderItem = {
+          id: tempId,
+          status: 'generating',
+          loading: true,
+          type: 'video',
+          resolution: '1080p',
+          prompt: `${item.prompt || 'Cinematic video'} [1080p HD Upscaling]`,
+          engine: '1080p HD Upscaler',
+          aspect: item.aspect || '16:9',
+          duration: durationSec,
+          ts: Date.now(),
+          projectId: activeProjectId
+        };
+
+        // Insert new generating card at top of gallery immediately
+        setGallery(prev => [placeholderItem, ...prev]);
+
+        if (showToast) showToast(`Compiling 1080p HD video in gallery (${durationSec}s · ${creditCost} Shorts)...`, "info");
+
+        const resp = await fetch(getApiUrl('/api/video/upscale'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            videoUrl: item.url,
+            video: item.url,
+            duration: durationSec,
+            aspectRatio: item.aspect || '16:9',
+            resolution: '1080p',
+            prompt: item.prompt || 'Cinematic video',
+            userId,
+            creditReason: 'video_upscale_1080p'
+          })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) {
+          setGallery(prev => prev.filter(g => g.id !== tempId));
+          throw new Error(data.error || 'Video upscale request failed.');
+        }
+
+        const upscaledUrl = data.url || data.videoUrl;
+        if (upscaledUrl) {
+          const newItem = {
+            id: tempId,
+            status: 'completed',
+            loading: false,
+            type: 'video',
+            url: upscaledUrl,
+            resolution: '1080p',
+            quality: '1080p Full HD',
+            prompt: `${item.prompt || 'Cinematic video'} (1080p HD Upscaled)`,
+            engine: '1080p HD Upscaler',
+            aspect: item.aspect || "16:9",
+            duration: durationSec,
+            ts: Date.now(),
+            projectId: activeProjectId
+          };
+
+          setGallery(prev => prev.map(g => g.id === tempId ? newItem : g));
+          if (showToast) showToast("1080p HD Upscaled video ready in gallery!", "success");
+        } else {
+          setGallery(prev => prev.filter(g => g.id !== tempId));
+          throw new Error("Video upscale API returned no URL.");
+        }
+      } else {
+        if (spendShorts && userId) {
+          const spendResult = await spendShorts(userId, 2, 'image_upscale_4k');
+          if (!spendResult.success) {
+            if (showToast) showToast("Insufficient Shorts for 2K upscale.", "error");
+            return;
+          }
+        }
+        if (showToast) showToast("Initiating 2K image refinement...", "info");
+
+        const resp = await fetch(getApiUrl('/api/generate-image'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'gemini-3.1-flash-image',
+            prompt: `REFINE TO 2K: Upscale this image to high resolution. [Semantic Context: ${item.prompt || 'Cinematic portrait'}]`,
+            aspect_ratio: item.aspect || '16:9',
+            quality: '2k',
+            imageSize: '2K',
+            resolution: '2K',
+            referenceImages: [item.url],
+            userId,
+            creditReason: 'image_upscale_4k'
+          })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Upscale request failed.');
+
+        if (data.url) {
+          const newItem = {
+            id: Date.now(),
+            type: 'image',
+            url: data.url,
+            prompt: `${item.prompt || 'Generated image'} (2K Upscaled)`,
+            engine: `${item.engine || 'Image'} (2K)`,
+            aspect: item.aspect || "16:9",
+            ts: Date.now(),
+            projectId: activeProjectId
+          };
+
+          setGallery(prev => [newItem, ...prev]);
+          setLightboxItem(newItem);
+          if (showToast) showToast("Image successfully upscaled to 2K!", "success");
+        }
+      }
+    } catch (err) {
+      console.error("[Upscale Error]:", err);
+      if (showToast) showToast(`Upscale failed: ${err.message}`, "error");
+    } finally {
+      setUpscalingItems(prev => ({ ...prev, [item.id]: false }));
+    }
   };
 
   const handleGenerateAnglesGrid = () => {

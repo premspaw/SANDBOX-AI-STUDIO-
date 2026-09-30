@@ -55,7 +55,9 @@ export const useAppStore = create((set, get) => ({
         try {
             localStorage.setItem('ugc_projects', JSON.stringify(projects));
             localStorage.setItem('ugc_active_project_id', newId);
-        } catch (e) {}
+        } catch (e) {
+            console.warn('[Store] localStorage write failed:', e);
+        }
         return { projects, activeProjectId: newId };
     }),
 
@@ -121,7 +123,9 @@ export const useAppStore = create((set, get) => ({
         };
         try {
             localStorage.setItem('project_vault_assets', JSON.stringify(updated));
-        } catch (e) {}
+        } catch (e) {
+            console.warn('[ProjectVault] localStorage remove error:', e);
+        }
         return { projectAssets: updated };
     }),
     updateProjectAssetCategory: (assetId, newCategory, targetProjectId = null) => set((state) => {
@@ -133,7 +137,9 @@ export const useAppStore = create((set, get) => ({
         };
         try {
             localStorage.setItem('project_vault_assets', JSON.stringify(updated));
-        } catch (e) {}
+        } catch (e) {
+            console.warn('[ProjectVault] localStorage update error:', e);
+        }
         return { projectAssets: updated };
     }),
 

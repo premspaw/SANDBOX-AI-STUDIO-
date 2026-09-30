@@ -1749,7 +1749,7 @@ export const SidePanel = React.memo(({
       reference_audio_urls: resolvedAudios,
       duration: Number(duration) || ((panelTab === 'seedance-2.5' && duration >= 10) ? 10 : 5),
       resolution: ((panelTab === 'seedance-2.5' || panelTab === 'transition') && resolution === '4k') ? '1080p' : resolution,
-      aspectRatio: aspectRatio || 'adaptive',
+      aspectRatio: aspectRatio || '16:9',
       generateAudio,
       output_format: 'mp4',
       web_search: false,
@@ -2986,7 +2986,6 @@ export const SidePanel = React.memo(({
               } else {
                 setActiveEngine('seedance-2.5');
                 setDuration(5);
-                setAspectRatio('adaptive');
                 if (resolution === '4k') setResolution('1080p');
               }
             }}
@@ -3215,7 +3214,6 @@ export const SidePanel = React.memo(({
                       setTransitionSubTab('sequence');
                       setActiveEngine('seedance-2.5');
                       setDuration(5);
-                      setAspectRatio('adaptive');
                       if (resolution === '4k') setResolution('1080p');
                     }}
                     className={cn(

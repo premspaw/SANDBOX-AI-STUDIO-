@@ -14,6 +14,7 @@ import {
   Pencil, Grid, Tv, Upload, Sliders, FolderOpen
 } from 'lucide-react';
 import { useShorts } from '../../hooks/useShorts';
+import { SHORTS_COST } from '../../config/shortsConfig';
 import { useAppStore } from '../../store';
 import { supabase } from '../../lib/supabase';
 import { getApiUrl, resolveUrl } from '../../config/apiConfig';
@@ -832,17 +833,18 @@ export default function CinematicStudio() {
     }
   });
 
-  const projectAssets = useAppStore(state => state.projectAssets) || {};
+  const projectAssets = useAppStore(state => state.projectAssets);
   const filteredGallery = useMemo(() => {
+    const assets = projectAssets || {};
     const baseItems = gallery.filter(item => {
       const itemProj = item.projectId || 'default';
       return itemProj === activeProjectId;
     });
 
     // projectAssets can be an object {[projectId]: Array} or an Array
-    const activeProjectAssetList = Array.isArray(projectAssets)
-      ? projectAssets.filter(a => (a.projectId || 'default') === activeProjectId)
-      : (Array.isArray(projectAssets[activeProjectId]) ? projectAssets[activeProjectId] : []);
+    const activeProjectAssetList = Array.isArray(assets)
+      ? assets.filter(a => (a.projectId || 'default') === activeProjectId)
+      : (Array.isArray(assets[activeProjectId]) ? assets[activeProjectId] : []);
 
     // Also pull assets from the active project in Project Box so user sees them in the common gallery
     const boxItems = activeProjectAssetList.map(a => ({
@@ -989,77 +991,160 @@ export default function CinematicStudio() {
     
     const showToast = useAppStore.getState().showToast;
     
-    if (item.type !== 'image') {
-      if (showToast) showToast("Only images can be upscaled.", "error");
-      return;
-    }
-
     setUpscalingItems(prev => ({ ...prev, [item.id]: true }));
     
     try {
-      const spendResult = await spendShorts(userId, 2, 'image_upscale_4k');
-      if (!spendResult.success) {
-        if (spendResult.reason === 'unauthenticated') {
-          useAppStore.getState().setShowingAuthModal(true);
-        } else if (spendResult.reason === 'insufficient_funds' || userCredits < 2) {
-          if (showToast) showToast("Insufficient Shorts! Redirecting to pricing...", "info");
-          useAppStore.getState().setActiveTab('pricing');
-        } else {
-          throw new Error(spendResult.reason || 'Failed to authorize credit deduction.');
+      if (item.type === 'video') {
+        const durationSec = Math.max(1, Math.round(Number(item.duration) || 5));
+        const creditCost = durationSec * (SHORTS_COST.video_upscale_per_second || 5);
+
+        const spendResult = await spendShorts(userId, creditCost, 'video_upscale_1080p');
+        if (!spendResult.success) {
+          if (spendResult.reason === 'unauthenticated') {
+            useAppStore.getState().setShowingAuthModal(true);
+          } else if (spendResult.reason === 'insufficient_funds' || userCredits < creditCost) {
+            if (showToast) showToast(`Insufficient Shorts! Video upscale requires ${creditCost} Shorts (${durationSec}s).`, "info");
+            useAppStore.getState().setActiveTab('pricing');
+          } else {
+            throw new Error(spendResult.reason || 'Failed to authorize credit deduction.');
+          }
+          setUpscalingItems(prev => ({ ...prev, [item.id]: false }));
+          return;
         }
-        setUpscalingItems(prev => ({ ...prev, [item.id]: false }));
-        return;
-      }
 
-      if (showToast) showToast("Initiating 2K refinement using Nano Banana...", "info");
-
-      const prompt = `REFINE TO 2K: Upscale this image to high resolution. 
-STRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. 
-DO NOT add new objects or change the scene. Enhance only.
-[Semantic Context: ${item.prompt || 'Cinematic portrait'}]`;
-
-      const payload = {
-        model: 'gemini-3.1-flash-image', // GA model name (preview name retired)
-        prompt,
-        aspect_ratio: item.aspect || '16:9',
-        quality: '2k',
-        imageSize: '2K',
-        resolution: '2K',
-        referenceImages: [item.url], // Pass URL directly — let backend download to escape browser CORS limitations!
-        userId,
-        creditReason: 'image_upscale_4k'
-      };
-
-      const resp = await fetch(getApiUrl('/api/generate-image'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Upscale request failed.');
-
-      if (data.url) {
-        const newItem = {
-          id: Date.now(),
-          type: 'image',
-          url: data.url,
-          prompt: `${item.prompt} (Upscaled)`,
-          engine: `${item.engine} (2K)`,
+        const tempId = `upscale_${Date.now()}`;
+        const placeholderItem = {
+          id: tempId,
+          status: 'generating',
+          loading: true,
+          type: 'video',
+          resolution: '1080p',
+          prompt: `${item.prompt || 'Cinematic video'} [1080p HD Upscaling]`,
+          engine: '1080p HD Upscaler',
           aspect: item.aspect || "16:9",
+          duration: durationSec,
           ts: Date.now(),
           projectId: activeProjectId
         };
 
-        // Add the new 2K upscaled image to the top of the gallery, preserving the original image
-        setGallery(prev => [newItem, ...prev]);
+        // Insert new generating card at top of gallery immediately
+        setGallery(prev => [placeholderItem, ...prev]);
 
-        // Automatically focus the Lightbox Modal on the newly generated 2K upscaled image
-        setLightboxItem(newItem);
+        if (showToast) showToast(`Compiling 1080p HD video in gallery (${durationSec}s · ${creditCost} Shorts)...`, "info");
 
-        if (showToast) showToast("Image successfully upscaled to 2K!", "success");
+        const payload = {
+          videoUrl: item.url,
+          video: item.url,
+          duration: durationSec,
+          aspectRatio: item.aspect || '16:9',
+          resolution: '1080p',
+          prompt: item.prompt || 'Cinematic video',
+          userId,
+          creditReason: 'video_upscale_1080p'
+        };
+
+        const resp = await fetch(getApiUrl('/api/video/upscale'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) {
+          setGallery(prev => prev.filter(g => g.id !== tempId));
+          throw new Error(data.error || 'Video upscale request failed.');
+        }
+
+        const upscaledUrl = data.url || data.videoUrl;
+        if (upscaledUrl) {
+          const newItem = {
+            id: tempId,
+            status: 'completed',
+            loading: false,
+            type: 'video',
+            url: upscaledUrl,
+            resolution: '1080p',
+            quality: '1080p Full HD',
+            prompt: `${item.prompt || 'Cinematic video'} (1080p HD Upscaled)`,
+            engine: '1080p HD Upscaler',
+            aspect: item.aspect || "16:9",
+            duration: durationSec,
+            ts: Date.now(),
+            projectId: activeProjectId
+          };
+
+          setGallery(prev => prev.map(g => g.id === tempId ? newItem : g));
+
+          if (showToast) showToast("1080p HD Upscaled video ready in gallery!", "success");
+        } else {
+          setGallery(prev => prev.filter(g => g.id !== tempId));
+          throw new Error("Video upscale API returned no URL.");
+        }
       } else {
-        throw new Error("Upscale API returned no URL.");
+        const spendResult = await spendShorts(userId, 2, 'image_upscale_4k');
+        if (!spendResult.success) {
+          if (spendResult.reason === 'unauthenticated') {
+            useAppStore.getState().setShowingAuthModal(true);
+          } else if (spendResult.reason === 'insufficient_funds' || userCredits < 2) {
+            if (showToast) showToast("Insufficient Shorts! Redirecting to pricing...", "info");
+            useAppStore.getState().setActiveTab('pricing');
+          } else {
+            throw new Error(spendResult.reason || 'Failed to authorize credit deduction.');
+          }
+          setUpscalingItems(prev => ({ ...prev, [item.id]: false }));
+          return;
+        }
+
+        if (showToast) showToast("Initiating 2K refinement using Nano Banana...", "info");
+
+        const prompt = `REFINE TO 2K: Upscale this image to high resolution. 
+STRICT RULE: Maintain 100% pixel-perfect fidelity to the original subject, lighting, and composition. 
+DO NOT add new objects or change the scene. Enhance only.
+[Semantic Context: ${item.prompt || 'Cinematic portrait'}]`;
+
+        const payload = {
+          model: 'gemini-3.1-flash-image', // GA model name (preview name retired)
+          prompt,
+          aspect_ratio: item.aspect || '16:9',
+          quality: '2k',
+          imageSize: '2K',
+          resolution: '2K',
+          referenceImages: [item.url], // Pass URL directly — let backend download to escape browser CORS limitations!
+          userId,
+          creditReason: 'image_upscale_4k'
+        };
+
+        const resp = await fetch(getApiUrl('/api/generate-image'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Upscale request failed.');
+
+        if (data.url) {
+          const newItem = {
+            id: Date.now(),
+            type: 'image',
+            url: data.url,
+            prompt: `${item.prompt} (Upscaled)`,
+            engine: `${item.engine} (2K)`,
+            aspect: item.aspect || "16:9",
+            ts: Date.now(),
+            projectId: activeProjectId
+          };
+
+          // Add the new 2K upscaled image to the top of the gallery, preserving the original image
+          setGallery(prev => [newItem, ...prev]);
+
+          // Automatically focus the Lightbox Modal on the newly generated 2K upscaled image
+          setLightboxItem(newItem);
+
+          if (showToast) showToast("Image successfully upscaled to 2K!", "success");
+        } else {
+          throw new Error("Upscale API returned no URL.");
+        }
       }
     } catch (err) {
       console.error("[Upscale Error]:", err);
@@ -2702,7 +2787,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   aspect: activeRatio,
                   projectId: activeProjectId
                 });
-              } catch (_) {}
+              } catch (_) {
+                /* ignore */
+              }
               return data.url;
             } catch (err) {
               // Remove the placeholder if this variation failed
@@ -2874,7 +2961,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   aspect: currentRatio,
                   projectId: activeProjectId
                 });
-              } catch (_) {}
+              } catch (_) {
+                /* ignore */
+              }
               return data.videoUrl;
             } catch (err) {
               // Remove the placeholder if this variation failed
@@ -3374,7 +3463,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           aspect: finishedItem.aspect,
           projectId: activeProjectId
         });
-      } catch (_) {}
+      } catch (_) {
+        /* ignore */
+      }
       setExtensionSourceVideo(finishedItem);
       setStatus('idle');
       setPollMsg('');
@@ -3547,7 +3638,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           aspect: tempItem.aspectRatio,
           projectId: activeProjectId
         });
-      } catch (_) {}
+      } catch (_) {
+        /* ignore */
+      }
 
       // Save to Supabase assets
       try {
@@ -3791,28 +3884,39 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               {columnsData.map((colItems, colIdx) => (
                 <div key={colIdx} className="flex flex-col gap-3">
                   {colItems.map((item, itemIdx) => {
-                    if (item.isLoader || item.loading) {
-                      const isImageLoader = item.type === 'image' || (item.isLoader && activeTab === 'image');
+                    if (item.isLoader || item.loading || item.status === 'generating') {
+                      const isUpscaleLoader = item.engine === '1080p HD Upscaler' || item.prompt?.includes('1080p HD Upscal');
+                      const isImageLoader = !isUpscaleLoader && (item.type === 'image' || (item.isLoader && activeTab === 'image'));
                       return (
-                        <div key={item.id || "loader"} className="rounded-2xl border border-fuchsia-500/15 bg-black/60 backdrop-blur-lg overflow-hidden">
+                        <div key={item.id || "loader"} className="rounded-2xl border border-fuchsia-500/25 bg-black/70 backdrop-blur-lg overflow-hidden shadow-[0_0_25px_rgba(217,70,239,0.15)] relative">
+                          <div
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-fuchsia-500/10 to-transparent pointer-events-none"
+                            style={{ animation: 'shimmer 1.8s infinite', transform: 'translateX(-100%)' }}
+                          />
                           <div className={cn(
-                            "flex flex-col items-center justify-center p-6 space-y-4",
+                            "flex flex-col items-center justify-center p-6 space-y-4 relative z-10",
                             item.aspect === '9:16' ? 'aspect-[9/16]' : item.aspect === '1:1' ? 'aspect-square' : 'aspect-video'
                           )}>
                             <div className="relative w-14 h-14">
-                              <div className="absolute inset-0 rounded-full border-2 border-white/5" />
+                              <div className="absolute inset-0 rounded-full border-2 border-fuchsia-500/20 animate-ping" />
                               <div className="absolute inset-0 rounded-full border-2 border-t-fuchsia-400 border-r-transparent border-b-transparent border-l-transparent animate-spin" />
-                              {isImageLoader ? (
+                              {isUpscaleLoader ? (
+                                <Zap className="absolute inset-0 m-auto w-5 h-5 text-fuchsia-400 fill-fuchsia-400" />
+                              ) : isImageLoader ? (
                                 <ImageIcon className="absolute inset-0 m-auto w-5 h-5 text-fuchsia-400" />
                               ) : (
                                 <Film className="absolute inset-0 m-auto w-5 h-5 text-fuchsia-400" />
                               )}
                             </div>
-                            <div className="text-center space-y-1.5">
-                              <span className="text-[8px] font-black uppercase text-fuchsia-400/80 tracking-[0.2em] block">
-                                {item.loading ? (item.type === 'image' ? 'Developing canvas' : 'Compiling frames') : (pollMsg || (activeTab === 'image' ? 'Developing canvas' : 'Compiling frames'))}
+                            <div className="text-center space-y-1.5 max-w-[200px]">
+                              <span className="text-[8px] font-black uppercase text-fuchsia-400 tracking-[0.2em] block">
+                                {isUpscaleLoader ? '✨ 1080p HD Upscaler' : item.loading ? (item.type === 'image' ? 'Developing canvas' : 'Compiling frames') : (pollMsg || (activeTab === 'image' ? 'Developing canvas' : 'Compiling frames'))}
                               </span>
-                              {isImageLoader ? (
+                              {isUpscaleLoader ? (
+                                <p className="text-white/80 text-[10px] font-black uppercase tracking-wider text-center animate-pulse">
+                                  Refining to 1080p HD...
+                                </p>
+                              ) : isImageLoader ? (
                                 <p className="text-white/60 text-xs font-black uppercase tracking-widest text-center max-w-xs animate-pulse">
                                   🎨 Sketching fine details...
                                 </p>
@@ -3865,6 +3969,14 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                               )}
                             </div>
                           </div>
+                          {/* Top Left Badges Group */}
+                          <div className="absolute top-2 left-2 flex items-center gap-1.5 z-20 pointer-events-none">
+                            {(item.resolution === '1080p' || item.quality?.includes('1080p') || item.prompt?.includes('1080p') || item.engine?.includes('1080p')) && (
+                              <div className="px-1.5 py-0.5 rounded-md text-[7.5px] font-black tracking-wider uppercase bg-fuchsia-500/90 text-white border border-fuchsia-400 shadow-[0_0_10px_rgba(217,70,239,0.5)] flex items-center gap-1 backdrop-blur-md">
+                                <Zap size={8} className="fill-white text-white" /> 1080p HD
+                              </div>
+                            )}
+                          </div>
                           {/* Top Right Controls Group */}
                           <div className="absolute top-2 right-2 flex items-center gap-1.5 z-20">
                             <div className="px-1.5 py-0.5 rounded-md text-[7px] font-mono bg-black/70 backdrop-blur-md border border-white/10 text-white/50">
@@ -3907,71 +4019,137 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                               )}
                             </div>
                             <div className="flex items-center gap-2">
-                              {item.type === 'image' && (
-                                <>
-                                  <button
-                                    onClick={(e) => handleUpscale(item, e)}
-                                    disabled={upscalingItems[item.id]}
-                                    className={cn(
-                                      "flex items-center gap-0.5 text-[7px] font-black uppercase tracking-wider transition-colors",
-                                      upscalingItems[item.id]
-                                        ? "text-fuchsia-400 animate-pulse"
-                                        : "text-gray-500 hover:text-fuchsia-400"
-                                    )}
-                                    title="Upscale image to 2K (2 Credits)"
-                                  >
-                                    {upscalingItems[item.id] ? (
-                                      <>
-                                        <Loader2 size={7} className="animate-spin text-fuchsia-400" />
-                                        <span>2K...</span>
-                                      </>
+                              {item.type === 'image' && (() => {
+                                const isAlreadyUpscaled = Boolean(
+                                  item.resolution === '2K' ||
+                                  item.resolution === '4K' ||
+                                  item.quality === '2K QHD' ||
+                                  item.quality === '4K UHD' ||
+                                  item.engine === 'HD Upscaler' ||
+                                  item.isUpscaled === true ||
+                                  item.prompt?.includes('(2K Upscaled)') ||
+                                  item.prompt?.includes('(Upscaled)')
+                                );
+
+                                return (
+                                  <>
+                                    {!isAlreadyUpscaled ? (
+                                      <button
+                                        onClick={(e) => handleUpscale(item, e)}
+                                        disabled={upscalingItems[item.id]}
+                                        className={cn(
+                                          "flex items-center gap-0.5 text-[7px] font-black uppercase tracking-wider transition-colors",
+                                          upscalingItems[item.id]
+                                            ? "text-fuchsia-400 animate-pulse"
+                                            : "text-gray-500 hover:text-fuchsia-400"
+                                        )}
+                                        title="Upscale image to 2K (2 Credits)"
+                                      >
+                                        {upscalingItems[item.id] ? (
+                                          <>
+                                            <Loader2 size={7} className="animate-spin text-fuchsia-400" />
+                                            <span>2K...</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Zap size={7} className="text-current" />
+                                            <span>2K</span>
+                                          </>
+                                        )}
+                                      </button>
                                     ) : (
-                                      <>
-                                        <Zap size={7} className="text-current" />
-                                        <span>2K</span>
-                                      </>
+                                      <span className="flex items-center gap-0.5 text-[7px] font-black uppercase tracking-wider text-emerald-400/90" title="2K QHD Master">
+                                        ✨ 2K
+                                      </span>
                                     )}
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setFirstFrameImage(item.url);
-                                      setFirstFramePreview(item.url);
-                                      const showToast = useAppStore.getState().showToast;
-                                      if (showToast) showToast("Set as First Frame (FF)!", "success");
-                                    }}
-                                    className="flex items-center gap-0.5 text-[7px] font-black uppercase tracking-wider text-gray-500 hover:text-[#c8f135] transition-colors"
-                                    title="Set as First Frame (FF) of video"
-                                  >
-                                    <Video size={7} className="text-current" /> FF
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setLastFrameImage(item.url);
-                                      setLastFramePreview(item.url);
-                                      const showToast = useAppStore.getState().showToast;
-                                      if (showToast) showToast("Set as Last Frame (LF)!", "success");
-                                    }}
-                                    className="flex items-center gap-0.5 text-[7px] font-black uppercase tracking-wider text-gray-500 hover:text-fuchsia-400 transition-colors"
-                                    title="Set as Last Frame (LF) of video"
-                                  >
-                                    <Video size={7} className="text-current" /> LF
-                                  </button>
-                                </>
-                              )}
-                              {item.type === 'video' && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleExtendVideo(item);
-                                  }}
-                                  className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#c8f135]/10 border border-[#c8f135]/30 text-[7px] font-black uppercase tracking-wider text-[#c8f135] hover:bg-[#c8f135]/25 hover:border-[#c8f135]/50 transition-all active:scale-95 shrink-0"
-                                  title="Extend video length with Omni 1.1 Flash (+4s / +8s)"
-                                >
-                                  <Zap size={7} className="fill-current text-[#c8f135]" /> Extend
-                                </button>
-                              )}
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setFirstFrameImage(item.url);
+                                        setFirstFramePreview(item.url);
+                                        const showToast = useAppStore.getState().showToast;
+                                        if (showToast) showToast("Set as First Frame (FF)!", "success");
+                                      }}
+                                      className="flex items-center gap-0.5 text-[7px] font-black uppercase tracking-wider text-gray-500 hover:text-[#c8f135] transition-colors"
+                                      title="Set as First Frame (FF) of video"
+                                    >
+                                      <Video size={7} className="text-current" /> FF
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setLastFrameImage(item.url);
+                                        setLastFramePreview(item.url);
+                                        const showToast = useAppStore.getState().showToast;
+                                        if (showToast) showToast("Set as Last Frame (LF)!", "success");
+                                      }}
+                                      className="flex items-center gap-0.5 text-[7px] font-black uppercase tracking-wider text-gray-500 hover:text-fuchsia-400 transition-colors"
+                                      title="Set as Last Frame (LF) of video"
+                                    >
+                                      <Video size={7} className="text-current" /> LF
+                                    </button>
+                                  </>
+                                );
+                              })()}
+                              {item.type === 'video' && (() => {
+                                const isAlreadyUpscaled = Boolean(
+                                  item.resolution === '1080p' ||
+                                  item.resolution === '2K' ||
+                                  item.resolution === '4K' ||
+                                  item.quality === '1080p Full HD' ||
+                                  item.quality === '2K QHD' ||
+                                  item.quality === '4K UHD' ||
+                                  item.engine === '1080p HD Upscaler' ||
+                                  item.engine === 'HD Upscaler' ||
+                                  item.isUpscaled === true ||
+                                  item.prompt?.includes('[1080p HD') ||
+                                  item.prompt?.includes('(1080p HD')
+                                );
+
+                                return (
+                                  <>
+                                    {!isAlreadyUpscaled ? (
+                                      <button
+                                        onClick={(e) => handleUpscale(item, e)}
+                                        disabled={upscalingItems[item.id]}
+                                        className={cn(
+                                          "flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-fuchsia-500/10 border border-fuchsia-500/30 text-[7px] font-black uppercase tracking-wider transition-all active:scale-95 shrink-0 cursor-pointer",
+                                          upscalingItems[item.id]
+                                            ? "text-fuchsia-400 animate-pulse bg-fuchsia-500/20"
+                                            : "text-fuchsia-400 hover:bg-fuchsia-500/25 hover:border-fuchsia-500/50"
+                                        )}
+                                        title={`Upscale video to 1080p HD (${Math.max(1, Math.round(Number(item.duration) || 5)) * 5} Shorts)`}
+                                      >
+                                        {upscalingItems[item.id] ? (
+                                          <>
+                                            <Loader2 size={7} className="animate-spin text-fuchsia-400" />
+                                            <span>1080p...</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Zap size={7} className="text-fuchsia-400" />
+                                            <span>1080p</span>
+                                          </>
+                                        )}
+                                      </button>
+                                    ) : (
+                                      <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-[7px] font-black uppercase tracking-wider text-emerald-400 shrink-0 select-none" title="1080p Full HD Master">
+                                        ✨ 1080p
+                                      </span>
+                                    )}
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleExtendVideo(item);
+                                      }}
+                                      className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#c8f135]/10 border border-[#c8f135]/30 text-[7px] font-black uppercase tracking-wider text-[#c8f135] hover:bg-[#c8f135]/25 hover:border-[#c8f135]/50 transition-all active:scale-95 shrink-0"
+                                      title="Extend video length with Omni 1.1 Flash (+4s / +8s)"
+                                    >
+                                      <Zap size={7} className="fill-current text-[#c8f135]" /> Extend
+                                    </button>
+                                  </>
+                                );
+                              })()}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();

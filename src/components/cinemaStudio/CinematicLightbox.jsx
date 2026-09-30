@@ -714,6 +714,7 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                 autoPlay
                 loop
                 playsInline
+                preload="auto"
                 crossOrigin="anonymous"
                 className={cn(
                   "max-h-[82vh] object-contain shadow-2xl rounded-2xl",
@@ -781,345 +782,508 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
 
           {/* Actions Button List */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between border-b border-white/5 pb-1">
-              <span className="text-[8px] font-black text-white/40 uppercase tracking-widest block">Studio Controls</span>
-              <span className="text-[8px] font-mono text-white/20">Production Suite v1.2</span>
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <span className="text-[9px] font-black text-white/60 uppercase tracking-widest flex items-center gap-1.5">
+                <Sparkles size={11} className="text-fuchsia-400" /> Studio Controls & AI Suites
+              </span>
+              <span className="text-[8px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/40">
+                HD Studio Suite
+              </span>
             </div>
 
-            {/* COMPACT BUTTON GRID */}
-            <div className="grid grid-cols-2 gap-1.5">
-              
-              {/* 1. DIRECTOR TIMELINE SETUP (WORKS FOR BOTH IMAGE & VIDEO) */}
-              <button
-                onClick={handleSetAsStartFrame}
-                className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-fuchsia-500/10 hover:border-fuchsia-500/30 text-white/70 hover:text-white transition-all group"
-                title={lightboxItem.type === 'image' ? "Set as Start Keyframe" : "Extract Current Frame and Set as Start Keyframe"}
-              >
-                <Video size={11} className="mb-0.5 text-gray-400 group-hover:text-fuchsia-400" />
-                <span className="text-[7.5px] font-black uppercase tracking-wider">Set as FF</span>
-              </button>
+            {/* COMPACT SIDE-BY-SIDE BUTTON GRID */}
+            {(() => {
+              const isAlreadyUpscaled = Boolean(
+                lightboxItem.resolution === '1080p' ||
+                lightboxItem.resolution === '2K' ||
+                lightboxItem.resolution === '4K' ||
+                lightboxItem.quality === '1080p Full HD' ||
+                lightboxItem.quality === '2K QHD' ||
+                lightboxItem.quality === '4K UHD' ||
+                lightboxItem.engine === '1080p HD Upscaler' ||
+                lightboxItem.engine === 'HD Upscaler' ||
+                lightboxItem.isUpscaled === true ||
+                lightboxItem.prompt?.includes('[1080p HD') ||
+                lightboxItem.prompt?.includes('(1080p HD') ||
+                lightboxItem.prompt?.includes('(2K Upscaled)') ||
+                lightboxItem.prompt?.includes('(Upscaled)')
+              );
 
-              <button
-                onClick={handleSetAsEndFrame}
-                className="col-span-1 flex flex-col items-center justify-center p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-cyan-500/10 hover:border-cyan-500/30 text-white/70 hover:text-white transition-all group"
-                title={lightboxItem.type === 'image' ? "Set as End Keyframe" : "Extract Current Frame and Set as End Keyframe"}
-              >
-                <Video size={11} className="mb-0.5 text-gray-400 group-hover:text-cyan-400" />
-                <span className="text-[7.5px] font-black uppercase tracking-wider">Set as LF</span>
-              </button>
+              return (
+                <div className="grid grid-cols-2 gap-2">
+                  
+                  {/* 1. HERO UPSCALE TO HD (FOR VIDEO) - ONLY IF NOT ALREADY UPSCALED */}
+                  {lightboxItem.type !== 'image' && (
+                    isAlreadyUpscaled ? (
+                      <div className="col-span-2 flex items-center justify-between p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 backdrop-blur-md text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.12)] select-none">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300">
+                            <Sparkles size={12} />
+                          </div>
+                          <div className="text-left">
+                            <span className="text-[9px] font-black uppercase tracking-wider block leading-tight text-white">1080p Full HD Master</span>
+                            <span className="text-[7px] text-emerald-300/70 block">Highest resolution generated · Ready for export</span>
+                          </div>
+                        </div>
+                        <span className="text-[7.5px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 font-bold">
+                          1080p HD
+                        </span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          let dur = 5;
+                          if (videoElRef.current && videoElRef.current.duration) {
+                            dur = Math.round(videoElRef.current.duration);
+                          }
+                          handleUpscale({ ...lightboxItem, duration: dur });
+                          setLightboxItem(null);
+                        }}
+                        disabled={upscalingItems[lightboxItem.id]}
+                        className={cn(
+                          "col-span-2 relative overflow-hidden flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer group select-none backdrop-blur-md",
+                          upscalingItems[lightboxItem.id]
+                            ? "bg-fuchsia-600/30 border-fuchsia-400/50 shadow-[0_0_25px_rgba(217,70,239,0.35)] animate-pulse"
+                            : "bg-gradient-to-r from-fuchsia-600/20 via-purple-600/20 to-pink-600/20 hover:from-fuchsia-600/35 hover:via-purple-600/35 hover:to-pink-600/35 border-fuchsia-500/40 hover:border-fuchsia-400/80 shadow-[0_0_20px_rgba(217,70,239,0.2)] hover:shadow-[0_0_30px_rgba(217,70,239,0.45)] transform hover:-translate-y-0.5 active:scale-[0.98]"
+                        )}
+                        title="Upscale video to 1080p Full HD (5 Shorts/sec)"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.08] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-fuchsia-500/20 border border-fuchsia-400/40 flex items-center justify-center text-fuchsia-300 shadow-[0_0_12px_rgba(217,70,239,0.4)] group-hover:scale-110 transition-transform">
+                            {upscalingItems[lightboxItem.id] ? (
+                              <Loader2 size={15} className="animate-spin text-fuchsia-300" />
+                            ) : (
+                              <Zap size={15} className="fill-fuchsia-400 text-fuchsia-300" />
+                            )}
+                          </div>
+                          <div className="text-left">
+                            <div className="text-[10px] font-black text-white tracking-wider uppercase flex items-center gap-1.5">
+                              {upscalingItems[lightboxItem.id] ? 'Refining to HD...' : '✨ Upscale to HD'}
+                              <span className="text-[7px] px-1.5 py-0.2 rounded bg-fuchsia-500/30 border border-fuchsia-400/40 text-fuchsia-200 font-bold">1080p</span>
+                            </div>
+                            <div className="text-[8px] text-fuchsia-200/70 font-medium">
+                              Enhance clarity, sharpness & 1080p details
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="px-2.5 py-1 rounded-lg bg-black/60 border border-fuchsia-400/30 text-[8.5px] font-mono font-black text-fuchsia-300 shadow-inner">
+                            {Math.max(1, Math.round(Number(lightboxItem.duration) || 5)) * 5} Shorts
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  )}
 
-              <button
-                onClick={handleUseAsStyleReference}
-                className="col-span-2 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-[#c8f135]/10 hover:border-[#c8f135]/30 text-white/70 hover:text-white transition-all group"
-                title="Use as Style Reference Image"
-              >
-                <ImageIcon size={11} className="text-gray-400 group-hover:text-[#c8f135]" />
-                <span className="text-[7.5px] font-black uppercase tracking-wider">Use as Style Reference</span>
-              </button>
-
-              {/* Universal Project Box Quick Saver */}
-              <div className="col-span-2 p-2 rounded-xl border border-cyan-500/25 bg-cyan-500/10 flex flex-col gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.12)]">
-                <div className="flex items-center justify-between">
-                  <span className="text-[7.5px] font-black uppercase text-cyan-300 flex items-center gap-1">
-                    <FolderOpen size={10} className="text-cyan-400" /> Save to Project Box
-                  </span>
+                  {/* 2. DIRECTOR TIMELINE SETUP (SIDE-BY-SIDE: FF & LF) */}
                   <button
                     type="button"
-                    onClick={() => {
-                      useAppStore.getState().openProjectVault();
-                      setLightboxItem(null);
-                    }}
-                    className="text-[7px] text-cyan-400/80 hover:text-cyan-200 underline font-mono cursor-pointer"
+                    onClick={handleSetAsStartFrame}
+                    className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-fuchsia-500/15 hover:border-fuchsia-500/40 backdrop-blur-md text-white/80 hover:text-white transition-all group shadow-sm cursor-pointer active:scale-95"
+                    title={lightboxItem.type === 'image' ? "Set as Start Keyframe" : "Extract Current Frame and Set as Start Keyframe"}
                   >
-                    Open Box ↗
-                  </button>
-                </div>
-                <div className="grid grid-cols-4 gap-1">
-                  {[
-                    { label: 'Char', cat: 'character' },
-                    { label: 'Prop', cat: 'prop' },
-                    { label: 'Loc', cat: 'location' },
-                    { label: 'Wardrobe', cat: 'wardrobe' }
-                  ].map(({ label, cat }) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => {
-                        const showToast = useAppStore.getState().showToast;
-                        useAppStore.getState().addProjectAsset({
-                          type: lightboxItem.type === 'video' ? 'video' : 'image',
-                          category: cat,
-                          url: lightboxItem.url,
-                          name: lightboxItem.prompt?.slice(0, 30) || `${label} Asset`,
-                          prompt: lightboxItem.prompt,
-                          aspect: lightboxItem.aspect
-                        });
-                        if (showToast) showToast(`Saved to Project Box as ${label}!`, 'success');
-                      }}
-                      className="py-1 px-1 rounded-md bg-black/50 hover:bg-cyan-400 text-cyan-300 hover:text-black border border-cyan-500/30 text-[7px] font-black uppercase transition-all text-center cursor-pointer active:scale-95"
-                    >
-                      +{label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 2. VIDEO-SPECIFIC WORKFLOWS (MULTI-REF VIDEO, EXTRACT SCREENSHOT, OMNI DRIVING VIDEO, ADD TO PROMPT) */}
-              {lightboxItem.type !== 'image' && (
-                <>
-                  {/* Send to Multi-Ref Video Slot (@video1..3) with 10s validation */}
-                  <div className="col-span-2 flex flex-col gap-1 p-2 rounded-lg border border-cyan-500/20 bg-cyan-500/5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[7.5px] font-black uppercase text-cyan-300 flex items-center gap-1">
-                        <Layers size={10} className="text-cyan-400" /> Send to Multi-Ref Video
-                      </span>
-                      <span className="text-[7px] font-mono text-cyan-400/60">Max 10s</span>
+                    <div className="p-1.5 rounded-lg bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-400 group-hover:scale-110 transition-transform">
+                      <Video size={12} />
                     </div>
-                    <div className="grid grid-cols-3 gap-1">
-                      {[0, 1, 2].map((slot) => (
+                    <div className="text-left">
+                      <span className="text-[8px] font-black uppercase tracking-wider block">Set as FF</span>
+                      <span className="text-[6.5px] text-white/40 block">Start Frame</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSetAsEndFrame}
+                    className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-cyan-500/15 hover:border-cyan-500/40 backdrop-blur-md text-white/80 hover:text-white transition-all group shadow-sm cursor-pointer active:scale-95"
+                    title={lightboxItem.type === 'image' ? "Set as End Keyframe" : "Extract Current Frame and Set as End Keyframe"}
+                  >
+                    <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 group-hover:scale-110 transition-transform">
+                      <Video size={12} />
+                    </div>
+                    <div className="text-left">
+                      <span className="text-[8px] font-black uppercase tracking-wider block">Set as LF</span>
+                      <span className="text-[6.5px] text-white/40 block">End Frame</span>
+                    </div>
+                  </button>
+
+                  {/* 3. VIDEO WORKFLOWS (SIDE-BY-SIDE PAIRS) */}
+                  {lightboxItem.type !== 'image' && (
+                    <>
+                      {/* Pair: ⚡ Extend Scene & 🎨 Edit / Remix */}
+                      <button
+                        type="button"
+                        onClick={handleExtendScene}
+                        className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-[#c8f135]/35 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 backdrop-blur-md text-[#c8f135] transition-all group cursor-pointer shadow-[0_0_15px_rgba(200,241,53,0.12)] active:scale-95"
+                        title="Seamlessly extend this scene by +4s or +8s"
+                      >
+                        <Zap size={13} className="fill-current text-[#c8f135] group-hover:scale-110 transition-transform shrink-0" />
+                        <div className="text-left">
+                          <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Extend Video</span>
+                          <span className="text-[6.5px] text-[#c8f135]/70 block">+4s / +8s</span>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleRemixScene}
+                        className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-purple-500/35 bg-purple-600/15 hover:bg-purple-600/25 backdrop-blur-md text-purple-200 transition-all group cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.15)] active:scale-95"
+                        title="Edit any element, replace objects, or transfer motion"
+                      >
+                        <Sparkles size={13} className="text-purple-300 group-hover:scale-110 transition-transform shrink-0" />
+                        <div className="text-left">
+                          <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Edit / Remix</span>
+                          <span className="text-[6.5px] text-purple-300/70 block">Modify Scene</span>
+                        </div>
+                      </button>
+
+                      {/* Pair: Use as Ref Video & Motion Driving Video */}
+                      <button
+                        type="button"
+                        onClick={handleUseAsOmniRefVideo}
+                        className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 hover:bg-emerald-500/20 backdrop-blur-md text-emerald-300 transition-all group cursor-pointer active:scale-95"
+                        title="Use video as driving reference for motion generation"
+                      >
+                        <Film size={12} className="text-emerald-400 group-hover:scale-110 transition-transform shrink-0" />
+                        <div className="text-left">
+                          <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Ref Video</span>
+                          <span className="text-[6.5px] text-emerald-300/70 block">Driving Ref</span>
+                        </div>
+                      </button>
+
+                      {handleUseAsMotionVideo && (
                         <button
-                          key={slot}
                           type="button"
                           onClick={async () => {
-                            if (handleUseAsMultiRefVideo) await handleUseAsMultiRefVideo(lightboxItem, slot);
+                            let dur = 5;
+                            if (videoElRef.current && videoElRef.current.duration) {
+                              dur = Math.round(videoElRef.current.duration);
+                            }
+                            await handleUseAsMotionVideo(lightboxItem, dur);
                             setLightboxItem(null);
                           }}
-                          className="py-1 px-1 rounded bg-black/60 hover:bg-cyan-400 text-cyan-300 hover:text-black border border-cyan-400/30 text-[8px] font-mono font-bold transition-all text-center cursor-pointer"
+                          className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-[#c8f135]/25 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 backdrop-blur-md text-[#c8f135] transition-all group cursor-pointer active:scale-95"
+                          title="Use this video as the driving motion pattern (3s-30s)"
                         >
-                          @video{slot + 1}
+                          <Film size={12} className="text-[#c8f135] group-hover:scale-110 transition-transform shrink-0" />
+                          <div className="text-left">
+                            <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Motion Pattern</span>
+                            <span className="text-[6.5px] text-[#c8f135]/70 block">Drive Motion</span>
+                          </div>
                         </button>
-                      ))}
-                    </div>
-                  </div>
+                      )}
 
-                  {/* ⚡ Extend Scene with Omni Flash (+4s / +8s) */}
-                  <button
-                    onClick={handleExtendScene}
-                    className="col-span-2 flex items-center justify-center gap-2 p-2.5 rounded-xl border border-[#c8f135]/40 bg-[#c8f135]/15 hover:bg-[#c8f135]/25 text-[#c8f135] transition-all group cursor-pointer shadow-[0_0_15px_rgba(200,241,53,0.15)] active:scale-95"
-                    title="Seamlessly extend this scene by +4s or +8s with Omni Flash"
-                  >
-                    <Zap size={12} className="fill-current text-[#c8f135]" />
-                    <span className="text-[8.5px] font-black uppercase tracking-wider">⚡ Extend Video (+4s / +8s)</span>
-                  </button>
+                      {/* Pair: Screenshot & Frame → @image */}
+                      <button
+                        type="button"
+                        onClick={handleExtractScreenshotToGallery}
+                        className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-[#c8f135]/15 hover:border-[#c8f135]/40 backdrop-blur-md text-white/80 hover:text-white transition-all group cursor-pointer active:scale-95"
+                        title="Extract current video frame as high-res screenshot image to gallery"
+                      >
+                        <Camera size={12} className="text-gray-400 group-hover:text-[#c8f135] transition-colors shrink-0" />
+                        <div className="text-left">
+                          <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Screenshot</span>
+                          <span className="text-[6.5px] text-white/40 block">Save to Gallery</span>
+                        </div>
+                      </button>
 
-                  {/* 🎨 Edit / Remix Video (Omni 1.1 / Jitsu) */}
-                  <button
-                    onClick={handleRemixScene}
-                    className="col-span-2 flex items-center justify-center gap-2 p-2 rounded-xl border border-purple-500/40 bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 transition-all group cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.15)] active:scale-95"
-                    title="Edit any element, replace objects with image references, or transfer motion with Omni 1.1 / Jitsu"
-                  >
-                    <Sparkles size={12} className="text-purple-400" />
-                    <span className="text-[8.5px] font-black uppercase tracking-wider">🎨 Edit / Remix Video (Omni 1.1)</span>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const frame = await captureFrameFromVideo();
+                          if (frame && handleUseAsMultiRefImage) {
+                            handleUseAsMultiRefImage({ url: frame, type: 'image' });
+                            setLightboxItem(null);
+                          }
+                        }}
+                        className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-[#c8f135]/15 hover:border-[#c8f135]/40 backdrop-blur-md text-white/80 hover:text-[#c8f135] transition-all group cursor-pointer active:scale-95"
+                        title="Extract video frame screenshot and load into next Multi-Ref @image slot"
+                      >
+                        <Layers size={12} className="text-gray-400 group-hover:text-[#c8f135] transition-colors shrink-0" />
+                        <div className="text-left">
+                          <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Frame → Slot</span>
+                          <span className="text-[6.5px] text-white/40 block">Load to @image</span>
+                        </div>
+                      </button>
 
-                  <button
-                    onClick={handleUseAsOmniRefVideo}
-                    className="col-span-2 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 transition-all group cursor-pointer"
-                    title="Send video into Omni driving reference video payload for multi-ref motion generation"
-                  >
-                    <Film size={11} className="text-emerald-400" />
-                    <span className="text-[7.5px] font-black uppercase tracking-wider">Use as Omni Reference Video</span>
-                  </button>
-
-                  {/* Motion Pattern Driving Video */}
-                  {handleUseAsMotionVideo && (
-                    <button
-                      onClick={async () => {
-                        let dur = 5;
-                        if (videoElRef.current && videoElRef.current.duration) {
-                          dur = Math.round(videoElRef.current.duration);
-                        }
-                        await handleUseAsMotionVideo(lightboxItem, dur);
-                        setLightboxItem(null);
-                      }}
-                      className="col-span-2 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-[#c8f135]/25 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 text-[#c8f135] transition-all group cursor-pointer"
-                      title="Use this video as the driving motion pattern (3s-30s)"
-                    >
-                      <Film size={11} className="text-[#c8f135]" />
-                      <span className="text-[7.5px] font-black uppercase tracking-wider">Use as Motion Video</span>
-                    </button>
-                  )}
-
-                  <button
-                    onClick={handleExtractScreenshotToGallery}
-                    className="col-span-1 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-[#c8f135]/10 hover:border-[#c8f135]/30 text-white/70 hover:text-white transition-all group cursor-pointer"
-                    title="Extract current video frame as high-res screenshot image to gallery"
-                  >
-                    <Camera size={11} className="text-gray-400 group-hover:text-[#c8f135]" />
-                    <span className="text-[7.5px] font-black uppercase tracking-wider">Screenshot Frame</span>
-                  </button>
-
-                  {/* Extract frame directly into Multi-Ref @image slot */}
-                  <button
-                    onClick={async () => {
-                      const frame = await captureFrameFromVideo();
-                      if (frame && handleUseAsMultiRefImage) {
-                        handleUseAsMultiRefImage({ url: frame, type: 'image' });
-                        setLightboxItem(null);
-                      }
-                    }}
-                    className="col-span-1 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-[#c8f135]/10 hover:border-[#c8f135]/30 text-white/70 hover:text-[#c8f135] transition-all group cursor-pointer"
-                    title="Extract video frame screenshot and load into next Multi-Ref @image slot"
-                  >
-                    <Layers size={11} className="text-gray-400 group-hover:text-[#c8f135]" />
-                    <span className="text-[7.5px] font-black uppercase tracking-wider">Frame → @image</span>
-                  </button>
-
-                  {/* Extract frame directly into Motion Subject */}
-                  {handleUseAsMotionSubject && (
-                    <button
-                      onClick={async () => {
-                        const frame = await captureFrameFromVideo();
-                        if (frame) {
-                          await handleUseAsMotionSubject({ url: frame, type: 'image' });
-                          setLightboxItem(null);
-                        }
-                      }}
-                      className="col-span-2 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-[#c8f135]/20 bg-[#c8f135]/5 hover:bg-[#c8f135]/15 text-[#c8f135] transition-all group cursor-pointer"
-                      title="Extract current frame and set as Motion Subject Image"
-                    >
-                      <Sparkles size={11} className="text-[#c8f135]" />
-                      <span className="text-[7.5px] font-black uppercase tracking-wider">Extract Frame → Motion Subject</span>
-                    </button>
-                  )}
-
-                  <button
-                    onClick={handleAddPromptToStudio}
-                    className="col-span-2 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-blue-500/10 hover:border-blue-500/30 text-white/70 hover:text-white transition-all group cursor-pointer"
-                    title="Load this generation prompt into the Studio prompt input"
-                  >
-                    <Copy size={11} className="text-gray-400 group-hover:text-blue-400" />
-                    <span className="text-[7.5px] font-black uppercase tracking-wider">Add to Prompt</span>
-                  </button>
-                </>
-              )}
-
-              {/* 3. GENERATIVE REFINEMENTS & MULTI-REF FOR IMAGES */}
-              {lightboxItem.type === 'image' && (
-                <>
-                  {/* Send Image to Multi-Ref Image Slot (@image1..4) */}
-                  <div className="col-span-2 flex flex-col gap-1 p-2 rounded-lg border border-[#c8f135]/20 bg-[#c8f135]/5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[7.5px] font-black uppercase text-[#c8f135] flex items-center gap-1">
-                        <Layers size={10} className="text-[#c8f135]" /> Send to Multi-Ref Image
-                      </span>
-                      <span className="text-[7px] font-mono text-zinc-400">Pick slot</span>
-                    </div>
-                    <div className="grid grid-cols-4 gap-1">
-                      {[0, 1, 2, 3].map((slot) => (
+                      {/* Pair: Extract Frame → Motion Subject & Add to Prompt */}
+                      {handleUseAsMotionSubject && (
                         <button
-                          key={slot}
+                          type="button"
+                          onClick={async () => {
+                            const frame = await captureFrameFromVideo();
+                            if (frame) {
+                              await handleUseAsMotionSubject({ url: frame, type: 'image' });
+                              setLightboxItem(null);
+                            }
+                          }}
+                          className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-[#c8f135]/20 bg-[#c8f135]/5 hover:bg-[#c8f135]/15 backdrop-blur-md text-[#c8f135] transition-all group cursor-pointer active:scale-95"
+                          title="Extract current frame and set as Motion Subject Image"
+                        >
+                          <Sparkles size={12} className="text-[#c8f135] group-hover:scale-110 transition-transform shrink-0" />
+                          <div className="text-left">
+                            <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Motion Subject</span>
+                            <span className="text-[6.5px] text-[#c8f135]/60 block">Extract Frame</span>
+                          </div>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleAddPromptToStudio}
+                        className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-blue-500/15 hover:border-blue-500/40 backdrop-blur-md text-white/80 hover:text-white transition-all group cursor-pointer active:scale-95"
+                        title="Load this generation prompt into the Studio prompt input"
+                      >
+                        <Copy size={12} className="text-gray-400 group-hover:text-blue-400 transition-colors shrink-0" />
+                        <div className="text-left">
+                          <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Copy Prompt</span>
+                          <span className="text-[6.5px] text-white/40 block">To Studio Input</span>
+                        </div>
+                      </button>
+
+                      {/* Send to Multi-Ref Video Slot (@video1..3) */}
+                      <div className="col-span-2 flex flex-col gap-1.5 p-2.5 rounded-xl border border-cyan-500/25 bg-cyan-500/5 backdrop-blur-md">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[8px] font-black uppercase text-cyan-300 flex items-center gap-1.5">
+                            <Layers size={11} className="text-cyan-400" /> Send to Multi-Ref Video
+                          </span>
+                          <span className="text-[7.5px] font-mono text-cyan-400/60">Max 10s</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {[0, 1, 2].map((slot) => (
+                            <button
+                              key={slot}
+                              type="button"
+                              onClick={async () => {
+                                if (handleUseAsMultiRefVideo) await handleUseAsMultiRefVideo(lightboxItem, slot);
+                                setLightboxItem(null);
+                              }}
+                              className="py-1.5 px-2 rounded-lg bg-black/60 hover:bg-cyan-400 text-cyan-300 hover:text-black border border-cyan-400/30 text-[8.5px] font-mono font-bold transition-all text-center cursor-pointer shadow-sm active:scale-95"
+                            >
+                              @video{slot + 1}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* 4. IMAGE-SPECIFIC WORKFLOWS (SIDE-BY-SIDE PAIRS) */}
+                  {lightboxItem.type === 'image' && (
+                    <>
+                      {/* Pair: Upscale or Master Badge & 9-Angles Sheet */}
+                      {!isAlreadyUpscaled && (
+                        <button
+                          type="button"
+                          onClick={() => handleUpscale(lightboxItem)}
+                          disabled={upscalingItems[lightboxItem.id]}
+                          className={cn(
+                            "col-span-1 flex items-center gap-2 p-2.5 rounded-xl text-[8px] font-black uppercase border backdrop-blur-md transition-all cursor-pointer active:scale-95 shadow-sm",
+                            upscalingItems[lightboxItem.id]
+                              ? "bg-fuchsia-500/20 border-fuchsia-500/40 text-fuchsia-300 animate-pulse"
+                              : "bg-fuchsia-500/10 hover:bg-fuchsia-500/20 border-fuchsia-500/30 text-fuchsia-300 hover:text-white"
+                          )}
+                        >
+                          {upscalingItems[lightboxItem.id] ? (
+                            <><Loader2 size={13} className="animate-spin text-fuchsia-400 shrink-0" /><span className="leading-tight">Refining...</span></>
+                          ) : (
+                            <>
+                              <Zap size={13} className="fill-fuchsia-400 text-fuchsia-400 shrink-0" />
+                              <div className="text-left">
+                                <span className="block leading-tight">Upscale to HD</span>
+                                <span className="text-[6.5px] text-fuchsia-300/70 font-mono block">2 Shorts</span>
+                              </div>
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleGenerateAnglesGrid(lightboxItem)}
+                        className={cn(
+                          "flex items-center gap-2 p-2.5 rounded-xl text-[8px] font-black uppercase bg-[#c8f135]/10 hover:bg-[#c8f135]/20 border border-[#c8f135]/30 text-[#c8f135] backdrop-blur-md transition-all cursor-pointer active:scale-95 shadow-sm",
+                          isAlreadyUpscaled ? "col-span-2" : "col-span-1"
+                        )}
+                      >
+                        <Grid size={13} className="shrink-0" />
+                        <div className="text-left">
+                          <span className="block leading-tight">9-Angles Sheet</span>
+                          <span className="text-[6.5px] text-[#c8f135]/70 block">Multi-View Grid</span>
+                        </div>
+                      </button>
+
+                      {/* Pair: Style Reference & Motion Subject */}
+                      <button
+                        type="button"
+                        onClick={handleUseAsStyleReference}
+                        className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-[#c8f135]/15 hover:border-[#c8f135]/40 backdrop-blur-md text-white/80 hover:text-white transition-all group shadow-sm cursor-pointer active:scale-95"
+                        title="Use as Style Reference Image"
+                      >
+                        <ImageIcon size={13} className="text-[#c8f135] group-hover:scale-110 transition-transform shrink-0" />
+                        <div className="text-left">
+                          <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Style Ref</span>
+                          <span className="text-[6.5px] text-white/40 block">Visual Style</span>
+                        </div>
+                      </button>
+
+                      {handleUseAsMotionSubject && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await handleUseAsMotionSubject(lightboxItem);
+                            setLightboxItem(null);
+                          }}
+                          className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-[#c8f135]/25 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 backdrop-blur-md text-[#c8f135] transition-all group cursor-pointer active:scale-95"
+                          title="Set this image as the Motion Subject reference"
+                        >
+                          <Sparkles size={13} className="text-[#c8f135] group-hover:scale-110 transition-transform shrink-0" />
+                          <div className="text-left">
+                            <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Motion Subject</span>
+                            <span className="text-[6.5px] text-[#c8f135]/70 block">Animate Image</span>
+                          </div>
+                        </button>
+                      )}
+
+                      {/* Pair: Copy Prompt to Studio */}
+                      <button
+                        type="button"
+                        onClick={handleAddPromptToStudio}
+                        className="col-span-2 flex items-center justify-center gap-2 p-2.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-blue-500/15 hover:border-blue-500/40 backdrop-blur-md text-white/80 hover:text-white transition-all group cursor-pointer active:scale-95"
+                        title="Load this generation prompt into the Studio prompt input"
+                      >
+                        <Copy size={12} className="text-gray-400 group-hover:text-blue-400 transition-colors" />
+                        <span className="text-[8px] font-black uppercase tracking-wider">Copy Prompt to Studio</span>
+                      </button>
+
+                      {/* Send Image to Multi-Ref Image Slot (@image1..4) */}
+                      <div className="col-span-2 flex flex-col gap-1.5 p-2.5 rounded-xl border border-[#c8f135]/25 bg-[#c8f135]/5 backdrop-blur-md">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[8px] font-black uppercase text-[#c8f135] flex items-center gap-1.5">
+                            <Layers size={11} className="text-[#c8f135]" /> Send to Multi-Ref Image
+                          </span>
+                          <span className="text-[7.5px] font-mono text-zinc-400">Pick slot</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {[0, 1, 2, 3].map((slot) => (
+                            <button
+                              key={slot}
+                              type="button"
+                              onClick={() => {
+                                if (handleUseAsMultiRefImage) handleUseAsMultiRefImage(lightboxItem, slot);
+                                setLightboxItem(null);
+                              }}
+                              className="py-1.5 px-2 rounded-lg bg-black/60 hover:bg-[#c8f135] text-[#c8f135] hover:text-black border border-[#c8f135]/30 text-[8.5px] font-mono font-bold transition-all text-center cursor-pointer shadow-sm active:scale-95"
+                            >
+                              @image{slot + 1}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Production Suites (Storyboard, Narrative Edit, Brush Editor) */}
+                      <div className="col-span-2 grid grid-cols-3 gap-1.5 mt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setShowStoryboard(true)}
+                          className="flex flex-col items-center justify-center p-2.5 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-emerald-500/15 hover:border-emerald-500/40 backdrop-blur-md text-emerald-400/80 hover:text-emerald-300 transition-all group cursor-pointer active:scale-95"
+                        >
+                          <Film size={14} className="mb-1 text-emerald-400 group-hover:scale-110 transition-transform" />
+                          <span className="text-[7px] font-black uppercase text-center leading-tight">Storyboard</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setStoryEditInstruction(''); setShowEditStoryModal(true); }}
+                          className="flex flex-col items-center justify-center p-2.5 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-blue-500/15 hover:border-blue-500/40 backdrop-blur-md text-blue-400/80 hover:text-blue-300 transition-all group cursor-pointer active:scale-95"
+                        >
+                          <Palette size={14} className="mb-1 text-blue-400 group-hover:scale-110 transition-transform" />
+                          <span className="text-[7px] font-black uppercase text-center leading-tight">Narrative Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowInpaint(true)}
+                          className="flex flex-col items-center justify-center p-2.5 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-purple-500/15 hover:border-purple-500/40 backdrop-blur-md text-purple-400/80 hover:text-purple-300 transition-all group cursor-pointer active:scale-95"
+                        >
+                          <Pencil size={14} className="mb-1 text-purple-400 group-hover:scale-110 transition-transform" />
+                          <span className="text-[7px] font-black uppercase text-center leading-tight">Brush Editor</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {/* 5. UNIVERSAL PROJECT BOX QUICK SAVER */}
+                  <div className="col-span-2 p-2.5 rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/40 via-cyan-900/20 to-cyan-950/40 backdrop-blur-md flex flex-col gap-2 shadow-[0_0_20px_rgba(6,182,212,0.12)]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[8px] font-black uppercase text-cyan-300 flex items-center gap-1.5">
+                        <FolderOpen size={12} className="text-cyan-400" /> Save to Project Box
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          useAppStore.getState().openProjectVault();
+                          setLightboxItem(null);
+                        }}
+                        className="text-[7.5px] text-cyan-400 hover:text-cyan-200 underline font-mono cursor-pointer transition-colors"
+                      >
+                        Open Box ↗
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {[
+                        { label: 'Char', cat: 'character' },
+                        { label: 'Prop', cat: 'prop' },
+                        { label: 'Loc', cat: 'location' },
+                        { label: 'Wardrobe', cat: 'wardrobe' }
+                      ].map(({ label, cat }) => (
+                        <button
+                          key={cat}
                           type="button"
                           onClick={() => {
-                            if (handleUseAsMultiRefImage) handleUseAsMultiRefImage(lightboxItem, slot);
-                            setLightboxItem(null);
+                            const showToast = useAppStore.getState().showToast;
+                            useAppStore.getState().addProjectAsset({
+                              type: lightboxItem.type === 'video' ? 'video' : 'image',
+                              category: cat,
+                              url: lightboxItem.url,
+                              name: lightboxItem.prompt?.slice(0, 30) || `${label} Asset`,
+                              prompt: lightboxItem.prompt,
+                              aspect: lightboxItem.aspect
+                            });
+                            if (showToast) showToast(`Saved to Project Box as ${label}!`, 'success');
                           }}
-                          className="py-1 px-1 rounded bg-black/60 hover:bg-[#c8f135] text-[#c8f135] hover:text-black border border-[#c8f135]/30 text-[8px] font-mono font-bold transition-all text-center cursor-pointer"
+                          className="py-1.5 px-2 rounded-lg bg-black/60 hover:bg-cyan-400 text-cyan-300 hover:text-black border border-cyan-500/30 hover:border-cyan-300 text-[8px] font-black uppercase transition-all text-center cursor-pointer active:scale-95 shadow-sm"
                         >
-                          @image{slot + 1}
+                          +{label}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  {/* Send Image to Motion Subject */}
-                  {handleUseAsMotionSubject && (
+                  {/* 6. BOTTOM UTILITIES (SIDE-BY-SIDE: DOWNLOAD & DELETE) */}
+                  <div className="col-span-2 grid grid-cols-2 gap-2 mt-1 pt-2 border-t border-white/10">
                     <button
-                      onClick={async () => {
-                        await handleUseAsMotionSubject(lightboxItem);
+                      type="button"
+                      onClick={() => handleDownload(resolveUrl(lightboxItem.url), lightboxItem.type, lightboxItem.id)}
+                      className="flex items-center justify-center gap-2 p-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 backdrop-blur-md text-white/90 hover:text-white transition-all cursor-pointer active:scale-95 shadow-sm"
+                      title="Direct download to your computer or phone"
+                    >
+                      <Download size={12} /> Download
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        handleDeleteItem(lightboxItem.id, e);
                         setLightboxItem(null);
                       }}
-                      className="col-span-2 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-[#c8f135]/25 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 text-[#c8f135] transition-all group cursor-pointer"
-                      title="Set this image as the Motion Subject reference"
+                      className="flex items-center justify-center gap-2 p-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 backdrop-blur-md text-red-400 hover:text-red-300 transition-all cursor-pointer active:scale-95 shadow-sm"
+                      title="Delete asset from gallery"
                     >
-                      <Sparkles size={11} className="text-[#c8f135]" />
-                      <span className="text-[7.5px] font-black uppercase tracking-wider">Use as Motion Subject</span>
+                      <Trash2 size={12} /> Delete
                     </button>
-                  )}
-
-                  <button
-                    onClick={() => handleUpscale(lightboxItem)}
-                    disabled={upscalingItems[lightboxItem.id]}
-                    className={cn(
-                      "col-span-1 flex items-center justify-center gap-1.5 p-2 rounded-lg text-[7.5px] font-black uppercase border transition-all cursor-pointer",
-                      upscalingItems[lightboxItem.id]
-                        ? "bg-fuchsia-500/10 border-fuchsia-500/25 text-fuchsia-400 animate-pulse"
-                        : "bg-fuchsia-500/5 hover:bg-fuchsia-500/15 border-fuchsia-500/20 text-fuchsia-300 hover:text-fuchsia-200"
-                    )}
-                  >
-                    {upscalingItems[lightboxItem.id] ? (
-                      <><Loader2 size={10} className="animate-spin text-fuchsia-400" /> Refining...</>
-                    ) : (
-                      <><Zap size={10} className="fill-fuchsia-400/20" /> Upscale 2K</>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => handleGenerateAnglesGrid(lightboxItem)}
-                    className="col-span-1 flex items-center justify-center gap-1.5 p-2 rounded-lg text-[7.5px] font-black uppercase bg-[#c8f135]/5 hover:bg-[#c8f135]/15 border border-[#c8f135]/20 text-[#c8f135] transition-all cursor-pointer"
-                  >
-                    <Grid size={10} /> 9-Angles
-                  </button>
-
-                  <button
-                    onClick={handleAddPromptToStudio}
-                    className="col-span-2 flex items-center justify-center gap-1.5 p-2 rounded-lg border border-white/5 bg-zinc-900/40 hover:bg-blue-500/10 hover:border-blue-500/30 text-white/70 hover:text-white transition-all group cursor-pointer"
-                    title="Load this generation prompt into the Studio prompt input"
-                  >
-                    <Copy size={11} className="text-gray-400 group-hover:text-blue-400" />
-                    <span className="text-[7.5px] font-black uppercase tracking-wider">Add to Prompt</span>
-                  </button>
-                </>
-              )}
-
-              {/* 4. ADVANCED PRODUCTION SUITES FOR IMAGES */}
-              {lightboxItem.type === 'image' && (
-                <div className="col-span-2 grid grid-cols-3 gap-1.5 mt-1 pt-1.5 border-t border-white/5">
-                  <button
-                    onClick={() => setShowStoryboard(true)}
-                    className="flex flex-col items-center justify-center p-2 rounded-lg border border-white/5 bg-zinc-900/30 hover:bg-emerald-500/10 hover:border-emerald-500/30 text-emerald-400/70 hover:text-emerald-400 transition-all group"
-                  >
-                    <Film size={12} className="mb-1" />
-                    <span className="text-[6.5px] font-black uppercase text-center leading-tight">Storyboard</span>
-                  </button>
-                  <button
-                    onClick={() => { setStoryEditInstruction(''); setShowEditStoryModal(true); }}
-                    className="flex flex-col items-center justify-center p-2 rounded-lg border border-white/5 bg-zinc-900/30 hover:bg-blue-500/10 hover:border-blue-500/30 text-blue-400/70 hover:text-blue-400 transition-all group"
-                  >
-                    <Palette size={12} className="mb-1" />
-                    <span className="text-[6.5px] font-black uppercase text-center leading-tight">Narrative Edit</span>
-                  </button>
-                  <button
-                    onClick={() => setShowInpaint(true)}
-                    className="flex flex-col items-center justify-center p-2 rounded-lg border border-white/5 bg-zinc-900/30 hover:bg-purple-500/10 hover:border-purple-500/30 text-purple-400/70 hover:text-purple-400 transition-all group"
-                  >
-                    <Pencil size={12} className="mb-1" />
-                    <span className="text-[6.5px] font-black uppercase text-center leading-tight">Brush Editor</span>
-                  </button>
+                  </div>
                 </div>
-              )}
-
-              {/* 5. FILE UTILITIES (DIRECT DOWNLOAD & IMMEDIATE CLEAN DELETE) */}
-              <div className="col-span-2 grid grid-cols-2 gap-1.5 mt-1 pt-1.5 border-t border-white/5">
-                <button
-                  onClick={() => handleDownload(resolveUrl(lightboxItem.url), lightboxItem.type, lightboxItem.id)}
-                  className="flex items-center justify-center gap-1.5 p-2 rounded-lg text-[7.5px] font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white transition-all cursor-pointer"
-                  title="Direct download to your computer or phone"
-                >
-                  <Download size={10} /> Download
-                </button>
-                <button
-                  onClick={(e) => {
-                    handleDeleteItem(lightboxItem.id, e);
-                    setLightboxItem(null);
-                  }}
-                  className="flex items-center justify-center gap-1.5 p-2 rounded-lg text-[7.5px] font-black uppercase tracking-widest bg-red-500/5 hover:bg-red-500/15 border border-red-500/20 text-red-400 hover:text-red-300 transition-all cursor-pointer"
-                  title="Delete asset from gallery"
-                >
-                  <Trash2 size={10} /> Delete
-                </button>
-              </div>
-
-            </div>
+              );
+            })()}
           </div>
         </div>
       </motion.div>

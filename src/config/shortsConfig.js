@@ -23,6 +23,7 @@ export const SHORTS_COST = {
     kling: 7,
     kling_motion_std: 7,
     kling_motion_pro: 9,
+    video_upscale_per_second: 5,
 
     // Seedance (Base Cost Per Second)
     seedance_fast: 6,

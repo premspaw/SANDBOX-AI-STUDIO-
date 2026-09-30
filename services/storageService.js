@@ -99,8 +99,15 @@ const toPublicUrl = (fileName, bucketName) => {
 };
 
 // ── toBuffer helper ───────────────────────────────────────────────────────────
-const toBuffer = (data) => {
+const toBuffer = async (data) => {
+    if (Buffer.isBuffer(data)) return data;
     if (typeof data === 'string' && data.startsWith('data:')) return Buffer.from(data.split(',')[1], 'base64');
+    if (typeof data === 'string' && (data.startsWith('http://') || data.startsWith('https://'))) {
+        const resp = await fetch(data);
+        if (!resp.ok) throw new Error(`Failed to fetch media from URL: ${data} (${resp.status})`);
+        const ab = await resp.arrayBuffer();
+        return Buffer.from(ab);
+    }
     if (typeof data === 'string') return Buffer.from(data, 'base64');
     return data;
 };
@@ -136,7 +143,7 @@ const uploadToSupabase = async (buffer, fileName, contentType) => {
  * @param {string} targetBucket  - ignored when R2 is active (uses R2_BUCKET)
  */
 export const uploadToGCS = async (data, fileName, contentType = 'image/png', targetBucket) => {
-    const buffer = toBuffer(data);
+    const buffer = await toBuffer(data);
 
     if (r2Client) {
         try {

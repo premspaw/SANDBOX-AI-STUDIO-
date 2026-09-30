@@ -1,5 +1,12 @@
 import express from 'express';
 import { createHiggsfieldClient } from '@higgsfield/client/v2';
+import ffmpeg from 'fluent-ffmpeg';
+import ffmpegStatic from 'ffmpeg-static';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
+ffmpeg.setFfmpegPath(ffmpegStatic);
 
 function normalizeHfAspectRatio(ratio) {
     if (!ratio) return '16:9';
@@ -13,6 +20,76 @@ function normalizeHfAspectRatio(ratio) {
     return '16:9';
 }
 
+async function conformImageToAspectRatio(imageSource, targetAspectRatio, targetUserId) {
+    if (!imageSource || !targetAspectRatio || targetAspectRatio === 'adaptive') return imageSource;
+
+    const r = String(targetAspectRatio).toLowerCase().trim();
+    let filter = null;
+    if (r === '9:16' || r === 'portrait' || r === 'vertical' || r === 'reels' || r === 'tiktok') {
+        filter = 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920';
+    } else if (r === '16:9' || r === 'landscape' || r === 'horizontal' || r === 'wide') {
+        filter = 'scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080';
+    } else if (r === '1:1' || r === 'square') {
+        filter = 'scale=1080:1080:force_original_aspect_ratio=increase,crop=1080:1080';
+    } else if (r === '4:3') {
+        filter = 'scale=1440:1080:force_original_aspect_ratio=increase,crop=1440:1080';
+    } else if (r === '3:4') {
+        filter = 'scale=1080:1440:force_original_aspect_ratio=increase,crop=1080:1440';
+    } else if (r === '21:9' || r === 'cinematic' || r === 'ultrawide') {
+        filter = 'scale=2560:1080:force_original_aspect_ratio=increase,crop=2560:1080';
+    } else {
+        return imageSource;
+    }
+
+    const tempDir = os.tmpdir();
+    const inPath = path.join(tempDir, `img_in_${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`);
+    const outPath = path.join(tempDir, `img_out_${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`);
+
+    try {
+        let inputBuffer;
+        if (typeof imageSource === 'string' && imageSource.startsWith('data:')) {
+            inputBuffer = Buffer.from(imageSource.split(',')[1], 'base64');
+        } else if (typeof imageSource === 'string' && (imageSource.startsWith('http://') || imageSource.startsWith('https://'))) {
+            const resp = await fetch(imageSource);
+            if (!resp.ok) return imageSource;
+            const ab = await resp.arrayBuffer();
+            inputBuffer = Buffer.from(ab);
+        } else if (Buffer.isBuffer(imageSource)) {
+            inputBuffer = imageSource;
+        } else {
+            return imageSource;
+        }
+
+        await fs.promises.writeFile(inPath, inputBuffer);
+
+        await new Promise((resolve, reject) => {
+            ffmpeg(inPath)
+                .videoFilters(filter)
+                .outputOptions(['-q:v 2'])
+                .output(outPath)
+                .on('end', resolve)
+                .on('error', (err) => {
+                    console.warn('[IMG-CONFORM-WARN]', err.message);
+                    reject(err);
+                })
+                .run();
+        });
+
+        const conformedBuffer = await fs.promises.readFile(outPath);
+        const fileName = `users/${targetUserId || 'anon'}/conformed/frame_${Date.now()}_${r.replace(':', 'x')}.jpg`;
+        const { uploadToGCS } = await import('../../services/storageService.js');
+        const publicUrl = await uploadToGCS(conformedBuffer, fileName, 'image/jpeg');
+        console.log(`[SEEDANCE-CONFORM] ✅ Conformed input image to ${r}: ${publicUrl}`);
+        return publicUrl || imageSource;
+    } catch (e) {
+        console.warn(`[SEEDANCE-CONFORM-ERR] Failed to conform image to ${targetAspectRatio}:`, e.message);
+        return imageSource;
+    } finally {
+        fs.promises.unlink(inPath).catch(() => {});
+        fs.promises.unlink(outPath).catch(() => {});
+    }
+}
+
 const getHfClient = (credentials) => {
     return createHiggsfieldClient({
         credentials: credentials.trim(),
@@ -24,7 +101,7 @@ const getHfClient = (credentials) => {
 
 export default function createRouter(deps) {
     const router = express.Router();
-    const { uploadVideoToSupabase, resolveToPublicUrl, requireAuth, consumeCredits, claimOrCreateSpend } = deps;
+    const { uploadVideoToSupabase, resolveToPublicUrl, requireAuth, consumeCredits, claimOrCreateSpend, supabase, supabaseAdmin } = deps;
 
     // Configure Higgsfield credentials
     const hfCredentials = process.env.HF_CREDENTIALS || process.env.HF_KEY;
@@ -548,67 +625,106 @@ export default function createRouter(deps) {
                 return res.json({ success: true, requestId: taskId, engine: 'seedance-mini' });
             }
 
-            // Handle seedance-2.5 model — supports Higgsfield and Kie.ai with auto-fallback
+            // Handle seedance-2.5 model — supports Higgsfield (Official/Xfield) and Kie.ai
             if (
                 engine === 'seedance-2.5' || 
                 engine === 'seedance-2-5' || 
                 engine === 'bytedance/seedance-2-5' || 
                 engine === 'bytedance/seedance-2.5/text-to-video' ||
+                engine === 'bytedance/seedance-2.5/image-to-video' ||
                 engine === 'seedance-2.5-higgsfield'
             ) {
-                const requestedProvider = (
+                const rawRequestedProvider = (
                     req.body.provider || 
                     req.body.seedanceProvider || 
                     req.body.provider25 || 
                     (engine === 'seedance-2.5-higgsfield' ? 'higgsfield' : 'auto')
-                ).toLowerCase();
+                ).toString().toLowerCase().trim();
+
+                const isHiggsfieldRequested = (
+                    rawRequestedProvider === 'higgsfield' ||
+                    rawRequestedProvider === 'xfield' ||
+                    rawRequestedProvider === 'xfield-official' ||
+                    rawRequestedProvider === 'official' ||
+                    rawRequestedProvider === 'hf' ||
+                    rawRequestedProvider.includes('higgs') ||
+                    rawRequestedProvider.includes('xfield')
+                );
+                const isKieExplicit = (
+                    rawRequestedProvider === 'kie' || 
+                    rawRequestedProvider === 'kie.ai' || 
+                    rawRequestedProvider === 'legacy'
+                );
 
                 const resolution25 = resolution === '4k' ? '1080p' : (resolution || '720p');
                 const durationClamped = Math.min(30, Math.max(4, Number(duration) || 5));
                 const hfRatio = normalizeHfAspectRatio(aspectRatio);
 
-                const activeHfKey = process.env.HF_CREDENTIALS || process.env.HF_KEY;
-                const activeKieKey = process.env.KIE_API_KEY;
+                const activeHfKey = (process.env.HF_CREDENTIALS || process.env.HF_KEY || '').trim();
+                const activeKieKey = (process.env.KIE_API_KEY || '').trim();
 
-                // 1. Try Higgsfield if provider is 'higgsfield' or 'auto' (with HF credentials present)
-                if ((requestedProvider === 'higgsfield' || requestedProvider === 'auto') && activeHfKey) {
+                // 1. Try Higgsfield if provider is 'higgsfield' / 'xfield' or 'auto' (and not explicitly 'kie')
+                if (!isKieExplicit && (isHiggsfieldRequested || !isKieExplicit) && activeHfKey) {
                     try {
                         const hfClient = getHfClient(activeHfKey);
 
-                        console.log(`[SEEDANCE-2.5-HIGGSFIELD] Submitting job to Higgsfield:`, {
-                            model: "bytedance/seedance-2.5/text-to-video",
-                            prompt: finalPrompt.substring(0, 50) + "...",
+                        // Select appropriate endpoint: image-to-video if initial frame / reference image present, else text-to-video
+                        const hasReferenceMedia = Boolean(resolvedFirstFrame || (resolvedIdentity && resolvedIdentity.length > 0));
+                        const targetEndpoint = hasReferenceMedia 
+                            ? "bytedance/seedance-2.5/image-to-video"
+                            : "bytedance/seedance-2.5/text-to-video";
+
+                        const hfInputPayload = {
+                            prompt: finalPrompt,
                             duration: durationClamped,
                             resolution: resolution25 === '1080p' ? '1080p' : (resolution25 === '480p' ? '480p' : '720p'),
                             aspect_ratio: hfRatio,
                             bitrate_mode: req.body.bitrate_mode || 'high',
                             output_format: output_format || req.body.output_format || 'mp4',
                             generate_audio: generateAudio !== undefined ? !!generateAudio : true
+                        };
+
+                        if (hasReferenceMedia) {
+                            const rawInputImage = resolvedFirstFrame || resolvedIdentity[0];
+                            const conformedImage = await conformImageToAspectRatio(rawInputImage, hfRatio, targetUserId);
+                            hfInputPayload.image_url = conformedImage;
+                            delete hfInputPayload.aspect_ratio; // image-to-video derives aspect ratio directly from image_url
+                        }
+
+                        console.log(`[SEEDANCE-2.5-HIGGSFIELD] Submitting job to Higgsfield (${targetEndpoint}):`, {
+                            model: targetEndpoint,
+                            prompt: finalPrompt.substring(0, 50) + "...",
+                            hasImage: !!hfInputPayload.image_url,
+                            duration: durationClamped,
+                            resolution: hfInputPayload.resolution,
+                            aspect_ratio: hfRatio,
+                            bitrate_mode: hfInputPayload.bitrate_mode,
+                            output_format: hfInputPayload.output_format,
+                            generate_audio: hfInputPayload.generate_audio
                         });
 
                         const hfResult = await hfClient.subscribe(
-                            "bytedance/seedance-2.5/text-to-video",
+                            targetEndpoint,
                             {
-                                input: {
-                                    prompt: finalPrompt,
-                                    duration: durationClamped,
-                                    resolution: resolution25 === '1080p' ? '1080p' : (resolution25 === '480p' ? '480p' : '720p'),
-                                    aspect_ratio: hfRatio,
-                                    bitrate_mode: req.body.bitrate_mode || 'high',
-                                    output_format: output_format || req.body.output_format || 'mp4',
-                                    generate_audio: generateAudio !== undefined ? !!generateAudio : true
-                                },
+                                input: hfInputPayload,
                                 withPolling: true
                             }
                         );
 
                         console.log(`[SEEDANCE-2.5-HIGGSFIELD] Result status:`, hfResult.status);
 
-                        if (hfResult.status === 'completed' && hfResult.video?.url) {
-                            let finalVideoUrl = hfResult.video.url;
+                        if (hfResult.status === 'completed' && (hfResult.video?.url || hfResult.videos?.[0]?.url || hfResult.url)) {
+                            let finalVideoUrl = hfResult.video?.url || hfResult.videos?.[0]?.url || hfResult.url;
                             if (typeof uploadVideoToSupabase === 'function') {
                                 try {
-                                    const saved = await uploadVideoToSupabase(finalVideoUrl, `seedance25_${Date.now()}.mp4`, targetUserId);
+                                    const saved = await uploadVideoToSupabase(
+                                        finalVideoUrl,
+                                        targetUserId,
+                                        hfRatio,
+                                        'generated',
+                                        finalPrompt,
+                                        'seedance-2.5-higgsfield'
+                                    );
                                     if (saved) finalVideoUrl = saved;
                                 } catch (saveErr) {
                                     console.warn('[SEEDANCE-2.5-HIGGSFIELD] Notice: fallback direct CDN url:', saveErr.message);
@@ -633,26 +749,39 @@ export default function createRouter(deps) {
                                     provider: 'higgsfield'
                                 }
                             });
+                        } else if (hfResult.status === 'nsfw') {
+                            throw new Error("Higgsfield Safety / Policy Filter: The generation was flagged by Higgsfield safety policy (status: nsfw). Please adjust prompt or reference images and try again.");
                         } else if (hfResult.status === 'failed') {
                             throw new Error(hfResult.error || 'Higgsfield Seedance 2.5 generation returned failed state.');
+                        } else if (hfResult.status === 'canceled') {
+                            throw new Error("Higgsfield generation was canceled.");
+                        } else {
+                            throw new Error(`Higgsfield Seedance 2.5 returned status: ${hfResult.status}`);
                         }
                     } catch (hfErr) {
                         console.warn(`[SEEDANCE-2.5-HIGGSFIELD] Request failed: ${hfErr.message}`);
-                        if (requestedProvider === 'higgsfield') {
-                            throw new Error(`Higgsfield Seedance 2.5 Error: ${hfErr.message}`);
+                        // If the user explicitly requested Higgsfield / Xfield, NEVER fallback to Kie.ai silently
+                        if (isHiggsfieldRequested) {
+                            throw new Error(`Higgsfield (Xfield) Seedance 2.5 Error: ${hfErr.message}`);
+                        }
+                        // If it's a safety / policy block, do not fallback to another provider to avoid wasting balance
+                        if (hfErr.message.includes('Safety') || hfErr.message.includes('nsfw') || hfErr.message.includes('policy')) {
+                            throw hfErr;
                         }
                         console.log(`[SEEDANCE-2.5-FALLBACK] Falling back to Kie.ai provider...`);
                     }
+                } else if (isHiggsfieldRequested && !activeHfKey) {
+                    throw new Error("Higgsfield credentials (HF_CREDENTIALS / HF_KEY) are not configured on the server.");
                 }
 
-                // 2. KIE API Provider (or Fallback from Higgsfield)
+                // 2. KIE API Provider (for explicit Kie selection or graceful fallback if configured)
                 if (!activeKieKey) {
                     throw new Error("Neither Higgsfield credentials nor KIE_API_KEY is available for Seedance 2.5.");
                 }
 
                 const seedance25Input = {
                     prompt: finalPrompt,
-                    aspect_ratio: (aspectRatio || "adaptive"),
+                    aspect_ratio: (aspectRatio || "16:9"),
                     duration: durationClamped,
                     generate_audio: !!generateAudio,
                     resolution: resolution25,
@@ -709,6 +838,27 @@ export default function createRouter(deps) {
             throw new Error(`Unsupported engine: ${engine}`);
         } catch (error) {
             console.error('[SEEDANCE-GEN-ERR]', error);
+            // Refund credits if deduct happened and generation failed
+            if (targetUserId && requiredCredits > 0) {
+                try {
+                    const dbClient = supabaseAdmin || supabase;
+                    if (dbClient) {
+                        const { data: prof } = await dbClient.from('profiles').select('shorts_balance').eq('id', targetUserId).maybeSingle();
+                        if (prof) {
+                            await dbClient.from('profiles').update({ shorts_balance: (prof.shorts_balance || 0) + requiredCredits }).eq('id', targetUserId);
+                            await dbClient.from('shorts_transactions').insert({
+                                user_id: targetUserId,
+                                amount: requiredCredits,
+                                action_type: 'refund_seedance_generation',
+                                reason: `Refund: ${error.message?.substring(0, 100)}`
+                            });
+                            console.log(`[SEEDANCE-GEN] 🔄 Refunded ${requiredCredits} credits to user ${targetUserId}`);
+                        }
+                    }
+                } catch (rErr) {
+                    console.warn('[SEEDANCE-REFUND] Notice:', rErr.message);
+                }
+            }
             res.status(500).json({ error: error.message });
         }
     });

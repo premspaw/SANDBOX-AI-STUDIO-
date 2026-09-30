@@ -864,5 +864,205 @@ export default function createRouter(deps) {
         }
     });
 
+    // ─────────────────────────────────────────────────────────────
+    // POST /video/upscale, /upscale, /veo/upscale — Video Upscale to 1080p HD
+    // Cost: 5 Shorts per second
+    // ─────────────────────────────────────────────────────────────
+    const handleVideoUpscale = async (req, res) => {
+        const tempDir = os.tmpdir();
+        const inputPath = path.join(tempDir, `upscale_in_${Date.now()}_${Math.random().toString(36).substring(7)}.mp4`);
+        const outputPath = path.join(tempDir, `upscale_out_${Date.now()}_${Math.random().toString(36).substring(7)}.mp4`);
+        let targetUserId = null;
+        let requiredCredits = 0;
+
+        try {
+            let user;
+            try {
+                user = await requireAuth(req);
+            } catch (authErr) {
+                if (process.env.NODE_ENV === 'production') {
+                    return res.status(401).json({ error: 'Authentication required to upscale video.' });
+                }
+            }
+
+            const {
+                videoUrl,
+                video,
+                duration = 5,
+                aspectRatio = '16:9',
+                resolution = '1080p',
+                prompt = '',
+                userId
+            } = req.body;
+
+            targetUserId = user ? user.id : userId;
+            const srcUrl = videoUrl || video;
+
+            if (!srcUrl) {
+                return res.status(400).json({ error: 'Missing videoUrl or video parameter.' });
+            }
+
+            const durationSec = Math.max(1, Math.round(Number(duration) || 5));
+            requiredCredits = durationSec * 5; // 5 Shorts per second
+
+            if (targetUserId) {
+                const creditReason = req.body.creditReason || 'video_upscale_1080p';
+                console.log(`[VIDEO-UPSCALE] Consuming/Claiming ${requiredCredits} credits | user: ${targetUserId} | duration: ${durationSec}s`);
+                await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
+            }
+
+            // Resolve source video URL
+            let fullUrl = srcUrl;
+            if (typeof srcUrl === 'string' && (srcUrl.startsWith('http') || srcUrl.startsWith('//') || srcUrl.startsWith('/'))) {
+                fullUrl = srcUrl.startsWith('//') ? `https:${srcUrl}` : srcUrl;
+                if (typeof resolveToPublicUrl === 'function') {
+                    fullUrl = await resolveToPublicUrl(fullUrl, targetUserId);
+                }
+                if (typeof fullUrl === 'string' && fullUrl.startsWith('/')) {
+                    const port = process.env.PORT || 3002;
+                    fullUrl = `http://localhost:${port}${fullUrl}`;
+                }
+            }
+
+            console.log(`[VIDEO-UPSCALE] Dispatching 1080p upscale payload to Google Omni Flash 1.1 | video: ${fullUrl}`);
+
+            let upscaledVideoUrl = null;
+
+            // ── Primary Stage: Google Gemini Omni Flash 1.1 (Neural 1080p Detail Refinement) ──
+            let rawRefinedUrl = null;
+            try {
+                const port = process.env.PORT || 3002;
+                const upscalePrompt = prompt
+                    ? `REFINE AND UPSCALE TO 1080p FULL HD: Enhance fine textures, cinematic sharpness, clean edges, facial details, and lighting to crystal-clear 1080p resolution. Maintain 100% motion consistency. [Context: ${prompt}]`
+                    : 'Refine and upscale this video to 1080p HD quality with crisp textures, cinematic lighting, and sharp high-definition details.';
+
+                const omniResp = await fetch(`http://localhost:${port}/api/omni-i2v`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        video: fullUrl,
+                        sourceVideo: fullUrl,
+                        task: 'edit',
+                        duration: durationSec,
+                        prompt: upscalePrompt,
+                        motionPrompt: upscalePrompt,
+                        resolution: '1080p',
+                        aspectRatio: aspectRatio || '16:9',
+                        generateAudio: true,
+                        model: 'gemini-omni-1.1-flash-preview',
+                        userId: targetUserId,
+                        creditReason: 'video_upscale_1080p'
+                    })
+                });
+
+                if (omniResp.ok) {
+                    const omniData = await omniResp.json();
+                    if (omniData.videoUrl || omniData.url) {
+                        rawRefinedUrl = omniData.videoUrl || omniData.url;
+                        console.log(`[VIDEO-UPSCALE] ✅ Google Omni Flash 1.1 completed detail refinement: ${rawRefinedUrl}`);
+                    }
+                } else {
+                    const errTxt = await omniResp.text();
+                    console.warn(`[VIDEO-UPSCALE] Omni Flash 1.1 returned ${omniResp.status}: ${errTxt}. Continuing with direct Lanczos 1080p master pipeline...`);
+                }
+            } catch (omniErr) {
+                console.warn(`[VIDEO-UPSCALE] Omni Flash 1.1 invocation note: ${omniErr.message}. Continuing with direct Lanczos 1080p master pipeline...`);
+            }
+
+            // ── Final Master Stage: Hardware 1080p Lanczos Upscaler & Unsharp Detail Enhancement ──
+            // Guarantee 100% true 1080p dimensions (1920x1080 / 1080x1920) and high-bitrate clarity
+            const sourceForScaling = rawRefinedUrl || fullUrl || srcUrl;
+            console.log(`[VIDEO-UPSCALE] Fetching video buffer for 1080p hardware encoding from: ${sourceForScaling}`);
+
+            let videoBuffer;
+            if (typeof sourceForScaling === 'string' && sourceForScaling.startsWith('data:')) {
+                const base64Data = sourceForScaling.split(',')[1];
+                videoBuffer = Buffer.from(base64Data, 'base64');
+            } else {
+                const vResp = await fetch(sourceForScaling);
+                if (!vResp.ok) throw new Error(`Failed to fetch source video for 1080p encoding: ${vResp.statusText} (${sourceForScaling})`);
+                const ab = await vResp.arrayBuffer();
+                videoBuffer = Buffer.from(ab);
+            }
+
+            await fs.promises.writeFile(inputPath, videoBuffer);
+
+            const isVertical = aspectRatio === '9:16' || aspectRatio === 'portrait' || aspectRatio === 'vertical';
+            const isSquare = aspectRatio === '1:1' || aspectRatio === 'square';
+            const scaleFilter = isVertical
+                ? 'scale=1080:1920:force_original_aspect_ratio=decrease:flags=lanczos,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.0'
+                : isSquare
+                ? 'scale=1080:1080:force_original_aspect_ratio=decrease:flags=lanczos,pad=1080:1080:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.0'
+                : 'scale=1920:1080:force_original_aspect_ratio=decrease:flags=lanczos,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:5:5:0.0';
+
+            console.log(`[VIDEO-UPSCALE] 🚀 Encoding true 1080p Full HD video (${isVertical ? '1080x1920' : (isSquare ? '1080x1080' : '1920x1080')}) at CRF 18...`);
+
+            await new Promise((resolvePromise, rejectPromise) => {
+                ffmpeg(inputPath)
+                    .videoFilters(scaleFilter)
+                    .outputOptions([
+                        '-c:v libx264',
+                        '-preset fast',
+                        '-crf 18',
+                        '-pix_fmt yuv420p',
+                        '-movflags +faststart'
+                    ])
+                    .output(outputPath)
+                    .on('end', () => {
+                        console.log('[VIDEO-UPSCALE] ✅ 1080p Full HD encoding complete.');
+                        resolvePromise();
+                    })
+                    .on('error', (err) => {
+                        console.error('[VIDEO-UPSCALE-ERR] FFmpeg encoding error:', err);
+                        rejectPromise(err);
+                    })
+                    .run();
+            });
+
+            const outputBuffer = await fs.promises.readFile(outputPath);
+
+            const promptTag = prompt ? `${prompt} [1080p HD Upscaled]` : '1080p HD Upscaled Video';
+            upscaledVideoUrl = await uploadVideoToSupabase(
+                outputBuffer,
+                targetUserId,
+                aspectRatio,
+                'generated',
+                promptTag,
+                '1080p HD Upscaler'
+            );
+
+            console.log(`[VIDEO-UPSCALE] 🏆 True 1080p Full HD Master uploaded: ${upscaledVideoUrl}`);
+
+            res.json({
+                success: true,
+                url: upscaledVideoUrl,
+                videoUrl: upscaledVideoUrl,
+                resolution: '1080p',
+                duration: durationSec,
+                creditsSpent: requiredCredits,
+                aspectRatio
+            });
+        } catch (error) {
+            console.error('[VIDEO-UPSCALE-FAIL]', error);
+            // Refund credits if deducted
+            if (targetUserId && requiredCredits > 0) {
+                try {
+                    const { refundCredits } = await import('../../services/creditService.js');
+                    if (refundCredits) await refundCredits(targetUserId, requiredCredits, 'video_upscale_refund');
+                } catch (rErr) {
+                    console.error('[VIDEO-UPSCALE] Refund error:', rErr);
+                }
+            }
+            res.status(error.status || 500).json({ error: error.message || 'Video upscale failed.' });
+        } finally {
+            fs.promises.unlink(inputPath).catch(() => {});
+            fs.promises.unlink(outputPath).catch(() => {});
+        }
+    };
+
+    router.post('/upscale', handleVideoUpscale);
+    router.post('/video/upscale', handleVideoUpscale);
+    router.post('/veo/upscale', handleVideoUpscale);
+
     return router;
 }
