@@ -815,19 +815,12 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                   {/* 1. HERO UPSCALE TO HD (FOR VIDEO) - ONLY IF NOT ALREADY UPSCALED */}
                   {lightboxItem.type !== 'image' && (
                     isAlreadyUpscaled ? (
-                      <div className="col-span-2 flex items-center justify-between p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 backdrop-blur-md text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.12)] select-none">
+                      <div className="col-span-2 flex items-center justify-between px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 backdrop-blur-md text-emerald-300 select-none">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300">
-                            <Sparkles size={12} />
-                          </div>
-                          <div className="text-left">
-                            <span className="text-[9px] font-black uppercase tracking-wider block leading-tight text-white">1080p Full HD Master</span>
-                            <span className="text-[7px] text-emerald-300/70 block">Highest resolution generated · Ready for export</span>
-                          </div>
+                          <Sparkles size={13} className="text-emerald-400 shrink-0" />
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-white">1080p Full HD Master</span>
                         </div>
-                        <span className="text-[7.5px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 font-bold">
-                          1080p HD
-                        </span>
+                        <span className="text-[8px] font-mono text-emerald-300 font-bold">Ready</span>
                       </div>
                     ) : (
                       <button
@@ -842,131 +835,71 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                         }}
                         disabled={upscalingItems[lightboxItem.id]}
                         className={cn(
-                          "col-span-2 relative overflow-hidden flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer group select-none backdrop-blur-md",
+                          "col-span-2 flex items-center justify-between px-3 py-1.5 rounded-lg border transition-all cursor-pointer group select-none backdrop-blur-md",
                           upscalingItems[lightboxItem.id]
-                            ? "bg-fuchsia-600/30 border-fuchsia-400/50 shadow-[0_0_25px_rgba(217,70,239,0.35)] animate-pulse"
-                            : "bg-gradient-to-r from-fuchsia-600/20 via-purple-600/20 to-pink-600/20 hover:from-fuchsia-600/35 hover:via-purple-600/35 hover:to-pink-600/35 border-fuchsia-500/40 hover:border-fuchsia-400/80 shadow-[0_0_20px_rgba(217,70,239,0.2)] hover:shadow-[0_0_30px_rgba(217,70,239,0.45)] transform hover:-translate-y-0.5 active:scale-[0.98]"
+                            ? "bg-fuchsia-600/30 border-fuchsia-400/50 shadow-[0_0_15px_rgba(217,70,239,0.3)] animate-pulse text-fuchsia-300"
+                            : "bg-fuchsia-600/15 hover:bg-fuchsia-600/25 border-fuchsia-500/35 hover:border-fuchsia-400/70 shadow-sm text-fuchsia-200 hover:text-white active:scale-[0.98]"
                         )}
-                        title="Upscale video to 1080p Full HD (5 Shorts/sec)"
+                        title="Upscale video to 1080p Full HD"
                       >
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.08] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-fuchsia-500/20 border border-fuchsia-400/40 flex items-center justify-center text-fuchsia-300 shadow-[0_0_12px_rgba(217,70,239,0.4)] group-hover:scale-110 transition-transform">
-                            {upscalingItems[lightboxItem.id] ? (
-                              <Loader2 size={15} className="animate-spin text-fuchsia-300" />
-                            ) : (
-                              <Zap size={15} className="fill-fuchsia-400 text-fuchsia-300" />
-                            )}
-                          </div>
-                          <div className="text-left">
-                            <div className="text-[10px] font-black text-white tracking-wider uppercase flex items-center gap-1.5">
-                              {upscalingItems[lightboxItem.id] ? 'Refining to HD...' : '✨ Upscale to HD'}
-                              <span className="text-[7px] px-1.5 py-0.2 rounded bg-fuchsia-500/30 border border-fuchsia-400/40 text-fuchsia-200 font-bold">1080p</span>
-                            </div>
-                            <div className="text-[8px] text-fuchsia-200/70 font-medium">
-                              Enhance clarity, sharpness & 1080p details
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <span className="px-2.5 py-1 rounded-lg bg-black/60 border border-fuchsia-400/30 text-[8.5px] font-mono font-black text-fuchsia-300 shadow-inner">
-                            {Math.max(1, Math.round(Number(lightboxItem.duration) || 5)) * 5} Shorts
+                        <div className="flex items-center gap-2">
+                          {upscalingItems[lightboxItem.id] ? (
+                            <Loader2 size={13} className="animate-spin text-fuchsia-300 shrink-0" />
+                          ) : (
+                            <Zap size={13} className="fill-fuchsia-400 text-fuchsia-300 shrink-0" />
+                          )}
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-white">
+                            {upscalingItems[lightboxItem.id] ? 'Refining to HD...' : '✨ Upscale to 1080p'}
                           </span>
                         </div>
+                        <span className="text-[8.5px] font-mono font-bold text-fuchsia-300">
+                          {Math.max(1, Math.round(Number(lightboxItem.duration) || 5)) * 5} Shorts
+                        </span>
                       </button>
                     )
                   )}
 
-                  {/* 2. BIG HERO BUTTON: VIDEO EXTENSION / EXTEND SCENE */}
+                  {/* 2. VIDEO EXTENSION */}
                   {lightboxItem.type !== 'image' && (
                     <button
                       type="button"
                       onClick={handleExtendScene}
-                      className="col-span-2 relative overflow-hidden flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer group select-none backdrop-blur-md bg-gradient-to-r from-[#c8f135]/20 via-emerald-600/20 to-teal-600/20 hover:from-[#c8f135]/35 hover:via-emerald-600/35 hover:to-teal-600/35 border-[#c8f135]/40 hover:border-[#c8f135]/80 shadow-[0_0_20px_rgba(200,241,53,0.18)] hover:shadow-[0_0_30px_rgba(200,241,53,0.4)] transform hover:-translate-y-0.5 active:scale-[0.98]"
-                      title="Seamlessly extend this scene by +4s or +8s"
+                      className="col-span-2 flex items-center justify-between px-3 py-1.5 rounded-lg border border-[#c8f135]/35 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 backdrop-blur-md text-[#c8f135] transition-all group cursor-pointer shadow-sm active:scale-[0.98]"
+                      title="Extend this scene (+4s / +5s)"
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.08] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-[#c8f135]/20 border border-[#c8f135]/40 flex items-center justify-center text-[#c8f135] shadow-[0_0_12px_rgba(200,241,53,0.35)] group-hover:scale-110 transition-transform">
-                          <Zap size={15} className="fill-[#c8f135] text-[#c8f135]" />
-                        </div>
-                        <div className="text-left">
-                          <div className="text-[10px] font-black text-white tracking-wider uppercase flex items-center gap-1.5">
-                            ⚡ Video Extension
-                            <span className="text-[7px] px-1.5 py-0.2 rounded bg-[#c8f135]/30 border border-[#c8f135]/40 text-[#c8f135] font-bold">+4s / +8s</span>
-                          </div>
-                          <div className="text-[8px] text-[#c8f135]/80 font-medium">
-                            Extend temporal continuity with matching motion
-                          </div>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <Zap size={13} className="fill-[#c8f135] text-[#c8f135] shrink-0" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-white">⚡ Video Extension</span>
                       </div>
-                      <div className="text-right">
-                        <span className="px-2.5 py-1 rounded-lg bg-black/60 border border-[#c8f135]/30 text-[8.5px] font-mono font-black text-[#c8f135] shadow-inner">
-                          AI Extend
-                        </span>
-                      </div>
+                      <span className="text-[8.5px] font-mono font-bold text-[#c8f135]">
+                        +4s / +5s
+                      </span>
                     </button>
                   )}
 
-                  {/* 3. BIG HERO BUTTON: SCREENSHOT / FRAME CAPTURE */}
+                  {/* 3. SCREENSHOT */}
                   {lightboxItem.type !== 'image' && (
                     <button
                       type="button"
                       onClick={handleExtractScreenshotToGallery}
-                      className="col-span-2 relative overflow-hidden flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer group select-none backdrop-blur-md bg-gradient-to-r from-sky-600/20 via-cyan-600/20 to-blue-600/20 hover:from-sky-600/35 hover:via-cyan-600/35 hover:to-blue-600/35 border-sky-500/40 hover:border-sky-400/80 shadow-[0_0_20px_rgba(56,189,248,0.18)] hover:shadow-[0_0_30px_rgba(56,189,248,0.4)] transform hover:-translate-y-0.5 active:scale-[0.98]"
-                      title="Extract current video frame as high-res screenshot image to gallery"
+                      className="col-span-2 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-sky-500/35 bg-sky-600/10 hover:bg-sky-600/20 backdrop-blur-md text-sky-200 hover:text-white transition-all group cursor-pointer shadow-sm active:scale-[0.98]"
+                      title="Save current video frame screenshot"
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.08] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.35)] group-hover:scale-110 transition-transform">
-                          <Camera size={15} className="text-sky-300" />
-                        </div>
-                        <div className="text-left">
-                          <div className="text-[10px] font-black text-white tracking-wider uppercase flex items-center gap-1.5">
-                            📸 Capture Screenshot
-                            <span className="text-[7px] px-1.5 py-0.2 rounded bg-sky-500/30 border border-sky-400/40 text-sky-200 font-bold">Gallery PNG</span>
-                          </div>
-                          <div className="text-[8px] text-sky-200/80 font-medium">
-                            Extract exact video frame as standalone high-res image
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="px-2.5 py-1 rounded-lg bg-black/60 border border-sky-400/30 text-[8.5px] font-mono font-black text-sky-300 shadow-inner">
-                          Save Image
-                        </span>
-                      </div>
+                      <Camera size={13} className="text-sky-300 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-white">📸 Screenshot</span>
                     </button>
                   )}
 
-                  {/* 4. BIG HERO BUTTON: EDIT / REMIX SCENE */}
+                  {/* 4. EDIT / REMIX SCENE */}
                   {lightboxItem.type !== 'image' && (
                     <button
                       type="button"
                       onClick={handleRemixScene}
-                      className="col-span-2 relative overflow-hidden flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer group select-none backdrop-blur-md bg-gradient-to-r from-purple-600/20 via-violet-600/20 to-indigo-600/20 hover:from-purple-600/35 hover:via-violet-600/35 hover:to-indigo-600/35 border-purple-500/40 hover:border-purple-400/80 shadow-[0_0_20px_rgba(168,85,247,0.2)] hover:shadow-[0_0_30px_rgba(168,85,247,0.45)] transform hover:-translate-y-0.5 active:scale-[0.98]"
-                      title="Edit any element, replace objects, or transfer motion"
+                      className="col-span-2 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-purple-500/35 bg-purple-600/15 hover:bg-purple-600/25 backdrop-blur-md text-purple-200 hover:text-white transition-all group cursor-pointer shadow-sm active:scale-[0.98]"
+                      title="Edit & Remix scene"
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.08] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.35)] group-hover:scale-110 transition-transform">
-                          <Sparkles size={15} className="text-purple-300" />
-                        </div>
-                        <div className="text-left">
-                          <div className="text-[10px] font-black text-white tracking-wider uppercase flex items-center gap-1.5">
-                            🎨 Edit / Remix Scene
-                            <span className="text-[7px] px-1.5 py-0.2 rounded bg-purple-500/30 border border-purple-400/40 text-purple-200 font-bold">AI Studio</span>
-                          </div>
-                          <div className="text-[8px] text-purple-200/80 font-medium">
-                            Modify elements, transfer motion, or swap scene objects
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="px-2.5 py-1 rounded-lg bg-black/60 border border-purple-400/30 text-[8.5px] font-mono font-black text-purple-300 shadow-inner">
-                          Remix Mode
-                        </span>
-                      </div>
+                      <Sparkles size={13} className="text-purple-300 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-white">🎨 Edit & Remix</span>
                     </button>
                   )}
 
@@ -974,14 +907,14 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                   <button
                     type="button"
                     onClick={handleSetAsStartFrame}
-                    className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-fuchsia-500/15 hover:border-fuchsia-500/40 backdrop-blur-md text-white/80 hover:text-white transition-all group shadow-sm cursor-pointer active:scale-95"
+                    className="col-span-1 flex items-center gap-2 p-2 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-fuchsia-500/15 hover:border-fuchsia-500/40 backdrop-blur-md text-white/80 hover:text-white transition-all group shadow-sm cursor-pointer active:scale-95"
                     title={lightboxItem.type === 'image' ? "Set as Start Keyframe" : "Extract Current Frame and Set as Start Keyframe"}
                   >
-                    <div className="p-1.5 rounded-lg bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-400 group-hover:scale-110 transition-transform">
+                    <div className="p-1 rounded-md bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-400 group-hover:scale-110 transition-transform">
                       <Video size={12} />
                     </div>
                     <div className="text-left">
-                      <span className="text-[8px] font-black uppercase tracking-wider block">Set as FF</span>
+                      <span className="text-[8.5px] font-black uppercase tracking-wider block">Set as FF</span>
                       <span className="text-[6.5px] text-white/40 block">Start Frame</span>
                     </div>
                   </button>
@@ -989,14 +922,14 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                   <button
                     type="button"
                     onClick={handleSetAsEndFrame}
-                    className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-cyan-500/15 hover:border-cyan-500/40 backdrop-blur-md text-white/80 hover:text-white transition-all group shadow-sm cursor-pointer active:scale-95"
+                    className="col-span-1 flex items-center gap-2 p-2 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-cyan-500/15 hover:border-cyan-500/40 backdrop-blur-md text-white/80 hover:text-white transition-all group shadow-sm cursor-pointer active:scale-95"
                     title={lightboxItem.type === 'image' ? "Set as End Keyframe" : "Extract Current Frame and Set as End Keyframe"}
                   >
-                    <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 group-hover:scale-110 transition-transform">
+                    <div className="p-1 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 group-hover:scale-110 transition-transform">
                       <Video size={12} />
                     </div>
                     <div className="text-left">
-                      <span className="text-[8px] font-black uppercase tracking-wider block">Set as LF</span>
+                      <span className="text-[8.5px] font-black uppercase tracking-wider block">Set as LF</span>
                       <span className="text-[6.5px] text-white/40 block">End Frame</span>
                     </div>
                   </button>
@@ -1007,12 +940,12 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                       <button
                         type="button"
                         onClick={handleUseAsOmniRefVideo}
-                        className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 hover:bg-emerald-500/20 backdrop-blur-md text-emerald-300 transition-all group cursor-pointer active:scale-95"
+                        className="col-span-1 flex items-center gap-2 p-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 hover:bg-emerald-500/20 backdrop-blur-md text-emerald-300 transition-all group cursor-pointer active:scale-95"
                         title="Use video as driving reference for motion generation"
                       >
                         <Film size={12} className="text-emerald-400 group-hover:scale-110 transition-transform shrink-0" />
                         <div className="text-left">
-                          <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Ref Video</span>
+                          <span className="text-[8.5px] font-black uppercase tracking-wider block leading-tight">Ref Video</span>
                           <span className="text-[6.5px] text-emerald-300/70 block">Driving Ref</span>
                         </div>
                       </button>
@@ -1028,12 +961,12 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                             await handleUseAsMotionVideo(lightboxItem, dur);
                             setLightboxItem(null);
                           }}
-                          className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-[#c8f135]/25 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 backdrop-blur-md text-[#c8f135] transition-all group cursor-pointer active:scale-95"
+                          className="col-span-1 flex items-center gap-2 p-2 rounded-lg border border-[#c8f135]/25 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 backdrop-blur-md text-[#c8f135] transition-all group cursor-pointer active:scale-95"
                           title="Use this video as the driving motion pattern (3s-30s)"
                         >
                           <Film size={12} className="text-[#c8f135] group-hover:scale-110 transition-transform shrink-0" />
                           <div className="text-left">
-                            <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Motion Pattern</span>
+                            <span className="text-[8.5px] font-black uppercase tracking-wider block leading-tight">Motion Pattern</span>
                             <span className="text-[6.5px] text-[#c8f135]/70 block">Drive Motion</span>
                           </div>
                         </button>
@@ -1049,12 +982,12 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                             setLightboxItem(null);
                           }
                         }}
-                        className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-[#c8f135]/15 hover:border-[#c8f135]/40 backdrop-blur-md text-white/80 hover:text-[#c8f135] transition-all group cursor-pointer active:scale-95"
+                        className="col-span-1 flex items-center gap-2 p-2 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-[#c8f135]/15 hover:border-[#c8f135]/40 backdrop-blur-md text-white/80 hover:text-[#c8f135] transition-all group cursor-pointer active:scale-95"
                         title="Extract video frame screenshot and load into next Multi-Ref @image slot"
                       >
                         <Layers size={12} className="text-gray-400 group-hover:text-[#c8f135] transition-colors shrink-0" />
                         <div className="text-left">
-                          <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Frame → Slot</span>
+                          <span className="text-[8.5px] font-black uppercase tracking-wider block leading-tight">Frame → Slot</span>
                           <span className="text-[6.5px] text-white/40 block">Load to @image</span>
                         </div>
                       </button>
@@ -1069,12 +1002,12 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                               setLightboxItem(null);
                             }
                           }}
-                          className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-[#c8f135]/20 bg-[#c8f135]/5 hover:bg-[#c8f135]/15 backdrop-blur-md text-[#c8f135] transition-all group cursor-pointer active:scale-95"
+                          className="col-span-1 flex items-center gap-2 p-2 rounded-lg border border-[#c8f135]/20 bg-[#c8f135]/5 hover:bg-[#c8f135]/15 backdrop-blur-md text-[#c8f135] transition-all group cursor-pointer active:scale-95"
                           title="Extract current frame and set as Motion Subject Image"
                         >
                           <Sparkles size={12} className="text-[#c8f135] group-hover:scale-110 transition-transform shrink-0" />
                           <div className="text-left">
-                            <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Motion Subject</span>
+                            <span className="text-[8.5px] font-black uppercase tracking-wider block leading-tight">Motion Subject</span>
                             <span className="text-[6.5px] text-[#c8f135]/60 block">Extract Frame</span>
                           </div>
                         </button>
@@ -1083,11 +1016,11 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                       <button
                         type="button"
                         onClick={handleAddPromptToStudio}
-                        className="col-span-2 flex items-center justify-center gap-2 p-2.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-blue-500/15 hover:border-blue-500/40 backdrop-blur-md text-white/80 hover:text-white transition-all group cursor-pointer active:scale-95"
+                        className="col-span-2 flex items-center justify-center gap-2 py-2 px-3 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-blue-500/15 hover:border-blue-500/40 backdrop-blur-md text-white/80 hover:text-white transition-all group cursor-pointer active:scale-95"
                         title="Load this generation prompt into the Studio prompt input"
                       >
                         <Copy size={12} className="text-gray-400 group-hover:text-blue-400 transition-colors shrink-0" />
-                        <span className="text-[8.5px] font-black uppercase tracking-wider">Copy Prompt to Studio</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider">Copy Prompt to Studio</span>
                       </button>
 
                       {/* Send to Multi-Ref Video Slot (@video1..3) */}
