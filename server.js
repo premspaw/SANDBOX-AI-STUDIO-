@@ -2535,6 +2535,10 @@ async function cleanupOldUploadedReferenceAssets() {
     }
 }
 
+httpServer.setTimeout(900000); // 15 minutes timeout for long-running video generations
+httpServer.keepAliveTimeout = 900000;
+httpServer.headersTimeout = 905000;
+
 httpServer.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
     

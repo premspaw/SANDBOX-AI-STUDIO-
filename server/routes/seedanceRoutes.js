@@ -1,5 +1,5 @@
 import express from 'express';
-import { config as configHiggsfield, higgsfield } from '@higgsfield/client/v2';
+import { createHiggsfieldClient } from '@higgsfield/client/v2';
 
 function normalizeHfAspectRatio(ratio) {
     if (!ratio) return '16:9';
@@ -13,6 +13,15 @@ function normalizeHfAspectRatio(ratio) {
     return '16:9';
 }
 
+const getHfClient = (credentials) => {
+    return createHiggsfieldClient({
+        credentials: credentials.trim(),
+        timeout: 900000,
+        maxPollTime: 900000,
+        pollInterval: 3000
+    });
+};
+
 export default function createRouter(deps) {
     const router = express.Router();
     const { uploadVideoToSupabase, resolveToPublicUrl, requireAuth, consumeCredits, claimOrCreateSpend } = deps;
@@ -20,10 +29,7 @@ export default function createRouter(deps) {
     // Configure Higgsfield credentials
     const hfCredentials = process.env.HF_CREDENTIALS || process.env.HF_KEY;
     if (hfCredentials) {
-        configHiggsfield({
-            credentials: hfCredentials.trim(),
-        });
-        console.log('[SEEDANCE] ✅ Higgsfield client initialized for Seedance 2.5');
+        console.log('[SEEDANCE] ✅ Higgsfield client configured for Seedance 2.5 (15m polling timeout)');
     }
 
     const generateKieTask = async ({
@@ -567,9 +573,7 @@ export default function createRouter(deps) {
                 // 1. Try Higgsfield if provider is 'higgsfield' or 'auto' (with HF credentials present)
                 if ((requestedProvider === 'higgsfield' || requestedProvider === 'auto') && activeHfKey) {
                     try {
-                        configHiggsfield({
-                            credentials: activeHfKey.trim(),
-                        });
+                        const hfClient = getHfClient(activeHfKey);
 
                         console.log(`[SEEDANCE-2.5-HIGGSFIELD] Submitting job to Higgsfield:`, {
                             model: "bytedance/seedance-2.5/text-to-video",
@@ -582,7 +586,7 @@ export default function createRouter(deps) {
                             generate_audio: generateAudio !== undefined ? !!generateAudio : true
                         });
 
-                        const hfResult = await higgsfield.subscribe(
+                        const hfResult = await hfClient.subscribe(
                             "bytedance/seedance-2.5/text-to-video",
                             {
                                 input: {
@@ -594,7 +598,7 @@ export default function createRouter(deps) {
                                     output_format: output_format || req.body.output_format || 'mp4',
                                     generate_audio: generateAudio !== undefined ? !!generateAudio : true
                                 },
-                                withPolling: true,
+                                withPolling: true
                             }
                         );
 

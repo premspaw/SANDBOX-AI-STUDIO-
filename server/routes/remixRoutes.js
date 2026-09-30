@@ -1,17 +1,23 @@
 import express from 'express';
-import { config as configHiggsfield, higgsfield } from '@higgsfield/client/v2';
+import { createHiggsfieldClient } from '@higgsfield/client/v2';
 
 export default function createRouter(deps) {
     const router = express.Router();
     const { uploadVideoToSupabase, resolveToPublicUrl, requireAuth, consumeCredits } = deps;
 
+    const getHfClient = (credentials) => {
+        return createHiggsfieldClient({
+            credentials: credentials.trim(),
+            timeout: 900000,
+            maxPollTime: 900000,
+            pollInterval: 3000
+        });
+    };
+
     // Configure Higgsfield credentials from environment
     const hfCredentials = process.env.HF_CREDENTIALS || process.env.HF_KEY;
     if (hfCredentials) {
-        configHiggsfield({
-            credentials: hfCredentials.trim(),
-        });
-        console.log('[REMIX] ✅ Higgsfield client initialized successfully');
+        console.log('[REMIX] ✅ Higgsfield client configured (15m polling timeout)');
     } else {
         console.warn('[REMIX] ⚠️ HF_CREDENTIALS not found in environment');
     }
@@ -76,9 +82,7 @@ export default function createRouter(deps) {
                 });
             }
 
-            configHiggsfield({
-                credentials: activeCredentials.trim(),
-            });
+            const client = getHfClient(activeCredentials);
 
             console.log(`[REMIX] Submitting Motion Transfer job to Higgsfield:`, {
                 model: 'higgsfield/genjutsu/motion-transfer/v1.0',
@@ -88,7 +92,7 @@ export default function createRouter(deps) {
                 prompt: prompt.substring(0, 40)
             });
 
-            const result = await higgsfield.subscribe(
+            const result = await client.subscribe(
                 'higgsfield/genjutsu/motion-transfer/v1.0',
                 {
                     input: {
@@ -97,7 +101,7 @@ export default function createRouter(deps) {
                         image_urls: resolvedImageUrls,
                         resolution: chosenResolution
                     },
-                    withPolling: true,
+                    withPolling: true
                 }
             );
 
@@ -218,9 +222,7 @@ export default function createRouter(deps) {
                 });
             }
 
-            configHiggsfield({
-                credentials: activeCredentials.trim(),
-            });
+            const client = getHfClient(activeCredentials);
 
             console.log(`[OBJECT-SWAP] Submitting Object Swap job to Higgsfield:`, {
                 model: 'higgsfield/genjutsu/object-swap/v1.0',
@@ -230,7 +232,7 @@ export default function createRouter(deps) {
                 prompt: prompt.substring(0, 40)
             });
 
-            const result = await higgsfield.subscribe(
+            const result = await client.subscribe(
                 'higgsfield/genjutsu/object-swap/v1.0',
                 {
                     input: {
@@ -239,7 +241,7 @@ export default function createRouter(deps) {
                         image_urls: resolvedImageUrls,
                         resolution: chosenResolution
                     },
-                    withPolling: true,
+                    withPolling: true
                 }
             );
 
