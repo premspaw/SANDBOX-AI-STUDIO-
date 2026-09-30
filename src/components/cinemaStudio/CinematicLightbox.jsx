@@ -877,7 +877,100 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                     )
                   )}
 
-                  {/* 2. DIRECTOR TIMELINE SETUP (SIDE-BY-SIDE: FF & LF) */}
+                  {/* 2. BIG HERO BUTTON: VIDEO EXTENSION / EXTEND SCENE */}
+                  {lightboxItem.type !== 'image' && (
+                    <button
+                      type="button"
+                      onClick={handleExtendScene}
+                      className="col-span-2 relative overflow-hidden flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer group select-none backdrop-blur-md bg-gradient-to-r from-[#c8f135]/20 via-emerald-600/20 to-teal-600/20 hover:from-[#c8f135]/35 hover:via-emerald-600/35 hover:to-teal-600/35 border-[#c8f135]/40 hover:border-[#c8f135]/80 shadow-[0_0_20px_rgba(200,241,53,0.18)] hover:shadow-[0_0_30px_rgba(200,241,53,0.4)] transform hover:-translate-y-0.5 active:scale-[0.98]"
+                      title="Seamlessly extend this scene by +4s or +8s"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.08] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-[#c8f135]/20 border border-[#c8f135]/40 flex items-center justify-center text-[#c8f135] shadow-[0_0_12px_rgba(200,241,53,0.35)] group-hover:scale-110 transition-transform">
+                          <Zap size={15} className="fill-[#c8f135] text-[#c8f135]" />
+                        </div>
+                        <div className="text-left">
+                          <div className="text-[10px] font-black text-white tracking-wider uppercase flex items-center gap-1.5">
+                            ⚡ Video Extension
+                            <span className="text-[7px] px-1.5 py-0.2 rounded bg-[#c8f135]/30 border border-[#c8f135]/40 text-[#c8f135] font-bold">+4s / +8s</span>
+                          </div>
+                          <div className="text-[8px] text-[#c8f135]/80 font-medium">
+                            Extend temporal continuity with matching motion
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="px-2.5 py-1 rounded-lg bg-black/60 border border-[#c8f135]/30 text-[8.5px] font-mono font-black text-[#c8f135] shadow-inner">
+                          AI Extend
+                        </span>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* 3. BIG HERO BUTTON: SCREENSHOT / FRAME CAPTURE */}
+                  {lightboxItem.type !== 'image' && (
+                    <button
+                      type="button"
+                      onClick={handleExtractScreenshotToGallery}
+                      className="col-span-2 relative overflow-hidden flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer group select-none backdrop-blur-md bg-gradient-to-r from-sky-600/20 via-cyan-600/20 to-blue-600/20 hover:from-sky-600/35 hover:via-cyan-600/35 hover:to-blue-600/35 border-sky-500/40 hover:border-sky-400/80 shadow-[0_0_20px_rgba(56,189,248,0.18)] hover:shadow-[0_0_30px_rgba(56,189,248,0.4)] transform hover:-translate-y-0.5 active:scale-[0.98]"
+                      title="Extract current video frame as high-res screenshot image to gallery"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.08] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.35)] group-hover:scale-110 transition-transform">
+                          <Camera size={15} className="text-sky-300" />
+                        </div>
+                        <div className="text-left">
+                          <div className="text-[10px] font-black text-white tracking-wider uppercase flex items-center gap-1.5">
+                            📸 Capture Screenshot
+                            <span className="text-[7px] px-1.5 py-0.2 rounded bg-sky-500/30 border border-sky-400/40 text-sky-200 font-bold">Gallery PNG</span>
+                          </div>
+                          <div className="text-[8px] text-sky-200/80 font-medium">
+                            Extract exact video frame as standalone high-res image
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="px-2.5 py-1 rounded-lg bg-black/60 border border-sky-400/30 text-[8.5px] font-mono font-black text-sky-300 shadow-inner">
+                          Save Image
+                        </span>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* 4. BIG HERO BUTTON: EDIT / REMIX SCENE */}
+                  {lightboxItem.type !== 'image' && (
+                    <button
+                      type="button"
+                      onClick={handleRemixScene}
+                      className="col-span-2 relative overflow-hidden flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer group select-none backdrop-blur-md bg-gradient-to-r from-purple-600/20 via-violet-600/20 to-indigo-600/20 hover:from-purple-600/35 hover:via-violet-600/35 hover:to-indigo-600/35 border-purple-500/40 hover:border-purple-400/80 shadow-[0_0_20px_rgba(168,85,247,0.2)] hover:shadow-[0_0_30px_rgba(168,85,247,0.45)] transform hover:-translate-y-0.5 active:scale-[0.98]"
+                      title="Edit any element, replace objects, or transfer motion"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.08] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.35)] group-hover:scale-110 transition-transform">
+                          <Sparkles size={15} className="text-purple-300" />
+                        </div>
+                        <div className="text-left">
+                          <div className="text-[10px] font-black text-white tracking-wider uppercase flex items-center gap-1.5">
+                            🎨 Edit / Remix Scene
+                            <span className="text-[7px] px-1.5 py-0.2 rounded bg-purple-500/30 border border-purple-400/40 text-purple-200 font-bold">AI Studio</span>
+                          </div>
+                          <div className="text-[8px] text-purple-200/80 font-medium">
+                            Modify elements, transfer motion, or swap scene objects
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="px-2.5 py-1 rounded-lg bg-black/60 border border-purple-400/30 text-[8.5px] font-mono font-black text-purple-300 shadow-inner">
+                          Remix Mode
+                        </span>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* 5. DIRECTOR TIMELINE SETUP (SIDE-BY-SIDE: FF & LF) */}
                   <button
                     type="button"
                     onClick={handleSetAsStartFrame}
@@ -908,37 +1001,9 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                     </div>
                   </button>
 
-                  {/* 3. VIDEO WORKFLOWS (SIDE-BY-SIDE PAIRS) */}
+                  {/* 6. REFERENCE VIDEO & MOTION PATTERN (SIDE-BY-SIDE) */}
                   {lightboxItem.type !== 'image' && (
                     <>
-                      {/* Pair: ⚡ Extend Scene & 🎨 Edit / Remix */}
-                      <button
-                        type="button"
-                        onClick={handleExtendScene}
-                        className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-[#c8f135]/35 bg-[#c8f135]/10 hover:bg-[#c8f135]/20 backdrop-blur-md text-[#c8f135] transition-all group cursor-pointer shadow-[0_0_15px_rgba(200,241,53,0.12)] active:scale-95"
-                        title="Seamlessly extend this scene by +4s or +8s"
-                      >
-                        <Zap size={13} className="fill-current text-[#c8f135] group-hover:scale-110 transition-transform shrink-0" />
-                        <div className="text-left">
-                          <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Extend Video</span>
-                          <span className="text-[6.5px] text-[#c8f135]/70 block">+4s / +8s</span>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleRemixScene}
-                        className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-purple-500/35 bg-purple-600/15 hover:bg-purple-600/25 backdrop-blur-md text-purple-200 transition-all group cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.15)] active:scale-95"
-                        title="Edit any element, replace objects, or transfer motion"
-                      >
-                        <Sparkles size={13} className="text-purple-300 group-hover:scale-110 transition-transform shrink-0" />
-                        <div className="text-left">
-                          <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Edit / Remix</span>
-                          <span className="text-[6.5px] text-purple-300/70 block">Modify Scene</span>
-                        </div>
-                      </button>
-
-                      {/* Pair: Use as Ref Video & Motion Driving Video */}
                       <button
                         type="button"
                         onClick={handleUseAsOmniRefVideo}
@@ -974,20 +1039,7 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                         </button>
                       )}
 
-                      {/* Pair: Screenshot & Frame → @image */}
-                      <button
-                        type="button"
-                        onClick={handleExtractScreenshotToGallery}
-                        className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-[#c8f135]/15 hover:border-[#c8f135]/40 backdrop-blur-md text-white/80 hover:text-white transition-all group cursor-pointer active:scale-95"
-                        title="Extract current video frame as high-res screenshot image to gallery"
-                      >
-                        <Camera size={12} className="text-gray-400 group-hover:text-[#c8f135] transition-colors shrink-0" />
-                        <div className="text-left">
-                          <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Screenshot</span>
-                          <span className="text-[6.5px] text-white/40 block">Save to Gallery</span>
-                        </div>
-                      </button>
-
+                      {/* Frame → Slot & Motion Subject */}
                       <button
                         type="button"
                         onClick={async () => {
@@ -1007,7 +1059,6 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                         </div>
                       </button>
 
-                      {/* Pair: Extract Frame → Motion Subject & Add to Prompt */}
                       {handleUseAsMotionSubject && (
                         <button
                           type="button"
@@ -1032,14 +1083,11 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                       <button
                         type="button"
                         onClick={handleAddPromptToStudio}
-                        className="col-span-1 flex items-center gap-2 p-2.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-blue-500/15 hover:border-blue-500/40 backdrop-blur-md text-white/80 hover:text-white transition-all group cursor-pointer active:scale-95"
+                        className="col-span-2 flex items-center justify-center gap-2 p-2.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-blue-500/15 hover:border-blue-500/40 backdrop-blur-md text-white/80 hover:text-white transition-all group cursor-pointer active:scale-95"
                         title="Load this generation prompt into the Studio prompt input"
                       >
                         <Copy size={12} className="text-gray-400 group-hover:text-blue-400 transition-colors shrink-0" />
-                        <div className="text-left">
-                          <span className="text-[8px] font-black uppercase tracking-wider block leading-tight">Copy Prompt</span>
-                          <span className="text-[6.5px] text-white/40 block">To Studio Input</span>
-                        </div>
+                        <span className="text-[8.5px] font-black uppercase tracking-wider">Copy Prompt to Studio</span>
                       </button>
 
                       {/* Send to Multi-Ref Video Slot (@video1..3) */}
