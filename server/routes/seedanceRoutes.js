@@ -673,12 +673,11 @@ export default function createRouter(deps) {
                     try {
                         const hfClient = getHfClient(activeHfKey);
 
-                        // Select appropriate endpoint: image-to-video if initial frame / reference image present, else text-to-video
-                        const hasReferenceMedia = Boolean(resolvedFirstFrame || (resolvedIdentity && resolvedIdentity.length > 0));
-                        const targetEndpoint = hasReferenceMedia 
-                            ? "bytedance/seedance-2.5/image-to-video"
-                            : "bytedance/seedance-2.5/text-to-video";
-
+                        // Select appropriate endpoint based on input modality:
+                        // 1. explicit first frame -> image-to-video (takes image_url)
+                        // 2. reference images/identity -> reference-to-video (takes image_urls)
+                        // 3. text only -> text-to-video
+                        let targetEndpoint = "bytedance/seedance-2.5/text-to-video";
                         const hfInputPayload = {
                             prompt: finalPrompt,
                             duration: durationClamped,
@@ -689,17 +688,22 @@ export default function createRouter(deps) {
                             generate_audio: generateAudio !== undefined ? !!generateAudio : true
                         };
 
-                        if (hasReferenceMedia) {
-                            const rawInputImage = resolvedFirstFrame || resolvedIdentity[0];
-                            const conformedImage = await conformImageToAspectRatio(rawInputImage, hfRatio, targetUserId);
+                        if (resolvedFirstFrame) {
+                            targetEndpoint = "bytedance/seedance-2.5/image-to-video";
+                            const conformedImage = await conformImageToAspectRatio(resolvedFirstFrame, hfRatio, targetUserId);
                             hfInputPayload.image_url = conformedImage;
                             delete hfInputPayload.aspect_ratio; // image-to-video derives aspect ratio directly from image_url
+                        } else if (resolvedIdentity && resolvedIdentity.length > 0) {
+                            targetEndpoint = "bytedance/seedance-2.5/reference-to-video";
+                            hfInputPayload.image_urls = resolvedIdentity;
+                            hfInputPayload.aspect_ratio = hfRatio;
                         }
 
                         console.log(`[SEEDANCE-2.5-HIGGSFIELD] Submitting job to Higgsfield (${targetEndpoint}):`, {
                             model: targetEndpoint,
                             prompt: finalPrompt.substring(0, 50) + "...",
-                            hasImage: !!hfInputPayload.image_url,
+                            hasImageUrl: !!hfInputPayload.image_url,
+                            referenceImagesCount: hfInputPayload.image_urls?.length || 0,
                             duration: durationClamped,
                             resolution: hfInputPayload.resolution,
                             aspect_ratio: hfRatio,
