@@ -241,9 +241,9 @@ export function createZeroLensMcpServer(userContext = null, deps = {}) {
               text: `I want to generate a video for: "${promptText}". 
 DO NOT generate immediately. Please ask me to confirm:
 1. Video Engine:
-   - "Seedance 2.5" (High-fidelity cinematic motion, default 480p or 720p)
-   - "Seedance 2 Fast" (Budget-friendly fast rendering, default 720p)
-   - "Omni Flash 1.1" (Ultra-fast dynamic action video, default 720p)
+   - "Omni Flash 1.1" (Google Gemini Omni Flash 1.1 — Default Google model, 5⚡/s, 6⚡/s audio, 720p)
+   - "Seedance 2.5" (ByteDance Seedance 2.5 — Cinematic fidelity, 8⚡/s at 480p, 10⚡/s at 720p)
+   - "Seedance Fast" (ByteDance Seedance Fast — Ultra-fast 720p rendering, 5⚡/s)
 2. Aspect Ratio: "16:9" (Landscape/YouTube), "9:16" (Vertical/Instagram Reels/TikTok), or "1:1" (Square)?
 3. Resolution: "720p" (default for Omni Flash & Seedance Fast) or "480p" (default for Seedance 2.5)?
 4. Duration: Default is 10 seconds (or 5s).
