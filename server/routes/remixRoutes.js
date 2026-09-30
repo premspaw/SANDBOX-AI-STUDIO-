@@ -304,5 +304,37 @@ export default function createRouter(deps) {
         }
     });
 
+    // ── Check Higgsfield Job Status by Request ID ────────────────────────────
+    router.get(['/status/:requestId', '/api/remix/status/:requestId'], async (req, res) => {
+        const { requestId } = req.params;
+        const activeCredentials = process.env.HF_CREDENTIALS || process.env.HF_KEY;
+        if (!activeCredentials) {
+            return res.status(500).json({ error: 'HF_CREDENTIALS not configured on the server.' });
+        }
+        try {
+            const parts = activeCredentials.trim().split(':');
+            if (parts.length !== 2) {
+                return res.status(500).json({ error: 'Invalid HF_CREDENTIALS format.' });
+            }
+            const authHeader = `Key ${parts[0]}:${parts[1]}`;
+            const ep = `https://api.higgsfield.ai/v1/requests/${requestId}/status`;
+            const resp = await fetch(ep, {
+                headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' }
+            });
+            const data = await resp.json();
+            return res.json({
+                success: true,
+                status: data.status,
+                requestId,
+                videoUrl: data.video?.url || null,
+                zipUrl: data.zip?.url || null,
+                movUrl: data.mov?.url || null,
+                raw: data
+            });
+        } catch (err) {
+            return res.status(500).json({ error: err.message || 'Failed to query Higgsfield status.' });
+        }
+    });
+
     return router;
 }
