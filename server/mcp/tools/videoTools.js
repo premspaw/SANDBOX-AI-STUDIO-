@@ -59,6 +59,11 @@ export function getVideoToolDefinitions() {
           }
         },
         required: ['prompt']
+      },
+      _meta: {
+        ui: {
+          resourceUri: 'ui://zerolens/video-result.html'
+        }
       }
     }
   ];

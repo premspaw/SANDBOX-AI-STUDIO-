@@ -52,23 +52,49 @@ export default function createMcpRouter(deps = {}) {
   // ─────────────────────────────────────────────────────────────
   // 1. STREAMABLE HTTP ENDPOINT (ChatGPT Connectors / OpenAI Apps)
   // ─────────────────────────────────────────────────────────────
-  router.post('/', async (req, res) => {
-    try {
-      // ChatGPT Connectors send only Accept: application/json.
-      // @modelcontextprotocol/sdk StreamableHTTPServerTransport requires
-      // both application/json AND text/event-stream in the Accept header or
-      // it returns 406 Not Acceptable, which causes ChatGPT backend to return
-      // 500 to the user. We patch the header here before the SDK checks it.
-      if (!req.headers['accept'] || !req.headers['accept'].includes('text/event-stream')) {
-        req.headers['accept'] = 'application/json, text/event-stream';
+  const patchAcceptHeader = (req) => {
+    req.headers['accept'] = 'application/json, text/event-stream';
+    if (req.rawHeaders && Array.isArray(req.rawHeaders)) {
+      let found = false;
+      for (let i = 0; i < req.rawHeaders.length; i += 2) {
+        if (req.rawHeaders[i] && req.rawHeaders[i].toLowerCase() === 'accept') {
+          req.rawHeaders[i + 1] = 'application/json, text/event-stream';
+          found = true;
+          break;
+        }
       }
+      if (!found) {
+        req.rawHeaders.push('Accept', 'application/json, text/event-stream');
+      }
+    }
+  };
+
+  router.get(['/', '/streamable'], (req, res) => {
+    res.json({
+      status: 'active',
+      name: 'zerolens-mcp',
+      version: '2.0.0',
+      transport: 'streamable-http',
+      endpoints: {
+        streamableHttp: '/api/mcp',
+        sse: '/api/mcp/sse',
+        openapi: '/api/mcp/openapi.json',
+        tools: '/api/mcp/tools'
+      }
+    });
+  });
+
+  router.post(['/', '/streamable'], async (req, res) => {
+    try {
+      patchAcceptHeader(req);
 
       const user = await resolveMcpUser(req, deps);
 
       // Create an MCP server instance scoped to this authenticated user
       const server = createZeroLensMcpServer(user, deps);
       const transport = new StreamableHTTPServerTransport({
-        endpoint: '/api/mcp'
+        endpoint: '/api/mcp',
+        sessionIdGenerator: undefined // Stateless mode for ChatGPT Connectors
       });
 
       await server.connect(transport);
@@ -83,12 +109,6 @@ export default function createMcpRouter(deps = {}) {
         });
       }
     }
-  });
-
-  // Alias for clients explicitly asking for /streamable
-  router.post('/streamable', async (req, res) => {
-    req.url = '/';
-    return router.handle(req, res);
   });
 
   // ─────────────────────────────────────────────────────────────

@@ -8,8 +8,14 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   ListPromptsRequestSchema,
-  GetPromptRequestSchema
+  GetPromptRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
+
+import { getImageResultHtml } from './ui/imageResultHtml.js';
+import { getVideoResultHtml } from './ui/videoResultHtml.js';
+import { renderWidgetHtml } from './ui/widgetRenderer.js';
 
 import { getImageToolDefinitions, executeGenerateImage } from './tools/imageTools.js';
 import { getVideoToolDefinitions, executeGenerateVideo } from './tools/videoTools.js';
@@ -91,10 +97,59 @@ export function createZeroLensMcpServer(userContext = null, deps = {}) {
     {
       capabilities: {
         tools: {},
-        prompts: {}
+        prompts: {},
+        resources: {}
       }
     }
   );
+
+  // List all registered UI and data resources (MCP Apps standard)
+  server.setRequestHandler(ListResourcesRequestSchema, async () => {
+    return {
+      resources: [
+        {
+          uri: 'ui://zerolens/image-result.html',
+          name: 'ZeroLens Image Preview Widget',
+          description: 'Interactive high-resolution image preview widget with ZeroLens Studio actions',
+          mimeType: 'text/html'
+        },
+        {
+          uri: 'ui://zerolens/video-result.html',
+          name: 'ZeroLens Video Player Widget',
+          description: 'Interactive high-definition video player widget with ZeroLens Studio controls',
+          mimeType: 'text/html'
+        }
+      ]
+    };
+  });
+
+  // Read resource content
+  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    const { uri } = request.params;
+    if (uri === 'ui://zerolens/image-result.html') {
+      return {
+        contents: [
+          {
+            uri,
+            mimeType: 'text/html',
+            text: getImageResultHtml({})
+          }
+        ]
+      };
+    }
+    if (uri === 'ui://zerolens/video-result.html') {
+      return {
+        contents: [
+          {
+            uri,
+            mimeType: 'text/html',
+            text: getVideoResultHtml({})
+          }
+        ]
+      };
+    }
+    throw new Error(`Resource not found: ${uri}`);
+  });
 
   // List all registered tools
   server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -286,10 +341,27 @@ Then plan the title, slide content, and invoke ZeroLens generate_image for each 
         }
       ];
 
-      return {
+      const response = {
         structuredContent: result,
         content
       };
+
+      // Attach UI resource metadata according to OpenAI MCP Apps standard
+      if (name === 'generate_image') {
+        response._meta = {
+          ui: {
+            resourceUri: 'ui://zerolens/image-result.html'
+          }
+        };
+      } else if (name === 'generate_video') {
+        response._meta = {
+          ui: {
+            resourceUri: 'ui://zerolens/video-result.html'
+          }
+        };
+      }
+
+      return response;
     } catch (err) {
       console.error(`[MCP Tool Error] ${name}:`, err);
       return {

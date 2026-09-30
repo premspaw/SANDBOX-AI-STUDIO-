@@ -49,6 +49,11 @@ export function getImageToolDefinitions() {
           }
         },
         required: ['prompt']
+      },
+      _meta: {
+        ui: {
+          resourceUri: 'ui://zerolens/image-result.html'
+        }
       }
     }
   ];
