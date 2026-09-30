@@ -36,7 +36,7 @@ export const buildSeedanceMiniPayload = ({
 }) => {
     const input = {
         prompt: compiledPrompt?.trim() || '',
-        aspect_ratio: (aspectRatio || '16:9').replace(':', '/'),
+        aspect_ratio: (aspectRatio || '16:9').replace('/', ':'),
         duration: Number(duration) || 5,
         generate_audio: generateAudio !== false,
         web_search: false

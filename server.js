@@ -2053,7 +2053,7 @@ async function handleSeedanceJob(reqBody) {
     if (!taskId && kieApiKey) {
         const input = {
             prompt,
-            aspect_ratio: aspectRatio.replace(':', '/'),
+            aspect_ratio: (aspectRatio || '16:9').replace('/', ':'),
             duration: Number(duration) || 5,
             resolution: resolution === '4k' ? '1080p' : (resolution || '720p'),
             generate_audio: !!generateAudio,

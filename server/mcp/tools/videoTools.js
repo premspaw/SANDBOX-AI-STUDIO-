@@ -238,6 +238,17 @@ export async function executeGenerateVideo(args, user, deps) {
   };
 }
 
+function normalizeAspectRatio(ratio) {
+  if (!ratio) return '16:9';
+  const r = String(ratio).trim().replace('/', ':');
+  if (['16:9', '9:16', '1:1', '4:3', '3:4', '21:9'].includes(r)) return r;
+  if (r === 'landscape' || r === 'horizontal' || r === 'wide') return '16:9';
+  if (r === 'portrait' || r === 'vertical' || r === 'reels' || r === 'tiktok') return '9:16';
+  if (r === 'square') return '1:1';
+  if (r === 'cinematic' || r === 'ultrawide') return '21:9';
+  return '16:9';
+}
+
 /**
  * Fallback background runner when Redis/BullMQ worker is not running in separate process
  */
@@ -262,7 +273,7 @@ async function launchBackgroundVideoWorker(jobPayload, generationId, cost, user,
         if (kieApiKey) {
           const input = {
             prompt: jobPayload.prompt,
-            aspect_ratio: jobPayload.aspectRatio.replace(':', '/'),
+            aspect_ratio: normalizeAspectRatio(jobPayload.aspectRatio || jobPayload.aspect_ratio),
             duration: Number(jobPayload.duration) || 5,
             resolution: jobPayload.resolution || '720p',
             generate_audio: Boolean(jobPayload.generateAudio)
@@ -275,7 +286,10 @@ async function launchBackgroundVideoWorker(jobPayload, generationId, cost, user,
             body: JSON.stringify({ model: jobPayload.targetModel || 'bytedance/seedance-2-5', input })
           });
           const d = await resp.json();
-          const taskId = d.data?.taskId;
+          if (d.code !== 200 || !d.data?.taskId) {
+            throw new Error(`Kie.ai task creation failed: ${d.msg || JSON.stringify(d)}`);
+          }
+          const taskId = d.data.taskId;
 
           if (taskId) {
             // Poll Kie.ai
