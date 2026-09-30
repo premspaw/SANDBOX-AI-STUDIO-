@@ -169,6 +169,10 @@ export default function createRouter(deps) {
 
     // POST /api/seedance/generate
     router.post('/seedance/generate', async (req, res) => {
+        let targetUserId = null;
+        let requiredCredits = 0;
+        let creditsClaimed = false;
+
         try {
             let user;
             try {
@@ -204,10 +208,10 @@ export default function createRouter(deps) {
                 nsfw_checker
             } = req.body;
 
-            const targetUserId = user ? user.id : userId;
+            targetUserId = user ? user.id : userId;
 
             // Deduct credits: dynamic duration-based cost with 30% margin (same as veo-3.1 style, rounded off)
-            let requiredCredits = 20; // fallback default
+            requiredCredits = 20; // fallback default
             const durationNum = Number(duration) || 5;
             const resLower = (resolution || '720p').toLowerCase();
 
@@ -229,6 +233,7 @@ export default function createRouter(deps) {
                 const creditReason = req.body.creditReason || 'cinematic_video_generation';
                 console.log(`[SEEDANCE-GEN] Consuming/Claiming ${requiredCredits} credits for user: ${targetUserId} (duration: ${durationNum}s, res: ${resLower}, reason: ${creditReason})`);
                 await claimOrCreateSpend(targetUserId, requiredCredits, creditReason);
+                creditsClaimed = true;
             }
 
             console.log(`[SEEDANCE-GEN] Initiating generation | engine: ${engine} | duration: ${duration}s | ratio: ${aspectRatio} | audio: ${generateAudio}`);
@@ -760,13 +765,14 @@ export default function createRouter(deps) {
                         }
                     } catch (hfErr) {
                         console.warn(`[SEEDANCE-2.5-HIGGSFIELD] Request failed: ${hfErr.message}`);
-                        // If the user explicitly requested Higgsfield / Xfield, NEVER fallback to Kie.ai silently
-                        if (isHiggsfieldRequested) {
-                            throw new Error(`Higgsfield (Xfield) Seedance 2.5 Error: ${hfErr.message}`);
-                        }
                         // If it's a safety / policy block, do not fallback to another provider to avoid wasting balance
                         if (hfErr.message.includes('Safety') || hfErr.message.includes('nsfw') || hfErr.message.includes('policy')) {
                             throw hfErr;
+                        }
+                        // If the user explicitly requested Higgsfield / Xfield, but Higgsfield is out of balance, fallback if Kie is ready
+                        const isCreditError = hfErr.message.toLowerCase().includes('credit balance') || hfErr.message.toLowerCase().includes('balance is too low') || hfErr.message.toLowerCase().includes('payment required');
+                        if (isHiggsfieldRequested && !isCreditError) {
+                            throw new Error(`Higgsfield (Xfield) Seedance 2.5 Error: ${hfErr.message}`);
                         }
                         console.log(`[SEEDANCE-2.5-FALLBACK] Falling back to Kie.ai provider...`);
                     }
@@ -839,7 +845,7 @@ export default function createRouter(deps) {
         } catch (error) {
             console.error('[SEEDANCE-GEN-ERR]', error);
             // Refund credits if deduct happened and generation failed
-            if (targetUserId && requiredCredits > 0) {
+            if (creditsClaimed && targetUserId && requiredCredits > 0) {
                 try {
                     const dbClient = supabaseAdmin || supabase;
                     if (dbClient) {
@@ -859,7 +865,8 @@ export default function createRouter(deps) {
                     console.warn('[SEEDANCE-REFUND] Notice:', rErr.message);
                 }
             }
-            res.status(500).json({ error: error.message });
+            const statusCode = error.status || (error.message?.includes('Insufficient credits') ? 402 : 500);
+            res.status(statusCode).json({ error: error.message });
         }
     });
 
