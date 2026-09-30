@@ -8,7 +8,7 @@ export function registerCinemaTools() {
   return [
     {
       name: 'cinema_generate_video',
-      description: 'Generate high-end AI cinematic videos using Seedance 2.0 (1080p/720p), Seedance Fast (480p/720p), Veo 3.1, or Omni Flash.',
+      description: 'Generate high-end AI cinematic videos using Gemini Omni Flash 1.1 (Google default), Seedance 2.5 (ByteDance), or Seedance Fast.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -18,9 +18,9 @@ export function registerCinemaTools() {
           },
           engine: { 
             type: 'string', 
-            enum: ['seedace', 'seedance-fast', 'veo-3.1-lite-generate-preview', 'omni-flash'],
-            description: 'AI Video engine. "seedace" = Seedance 2.0 (1080p/720p), "seedance-fast" = Seedance Fast (480p/720p), "omni-flash" = Omni Flash.',
-            default: 'seedace'
+            enum: ['omni-flash-1.1', 'omni-flash', 'seedance-2.5', 'seedance-fast', 'seedace'],
+            description: 'AI Video engine. "omni-flash-1.1" = Google Gemini Omni Flash 1.1 (5 credits/sec, 6 with audio), "seedance-2.5" = Seedance 2.5 (10 credits/sec), "seedance-fast" = Seedance Fast (5 credits/sec).',
+            default: 'omni-flash-1.1'
           },
           aspectRatio: { 
             type: 'string', 
@@ -31,13 +31,13 @@ export function registerCinemaTools() {
           resolution: { 
             type: 'string', 
             enum: ['480p', '720p', '1080p'], 
-            description: 'Video resolution. Note: Seedance 2.0 supports 720p & 1080p; Seedance Fast supports 480p & 720p.',
+            description: 'Video resolution. Default: 720p.',
             default: '720p' 
           },
           duration: { 
             type: 'number', 
             description: 'Duration in seconds (e.g. 4, 5, 6, 8, 10)', 
-            default: 5 
+            default: 10 
           },
           generateAudio: {
             type: 'boolean',
@@ -111,22 +111,24 @@ export async function handleCinemaToolCall(name, args) {
   const API_BASE = (process.env.API_BASE_URL || process.env.PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://zerolens.in' : `http://localhost:${process.env.PORT || 3002}`)).replace(/\/+$/, '');
   
   if (name === 'cinema_generate_video') {
-    const engine = args.engine || 'seedace';
+    const engine = args.engine || 'omni-flash-1.1';
     const isSeedance = engine.startsWith('seedance') || engine === 'seedace';
-    const endpoint = isSeedance ? '/api/seedance/generate' : '/api/omni/generate-video';
+    const endpoint = isSeedance ? '/api/seedance/generate' : '/api/omni-i2v';
 
     const resp = await fetch(`${API_BASE}${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         engine,
-        model: engine === 'seedance-fast' ? 'dreamina-seedance-2-0-fast-260128' : 'dreamina-seedance-2-0-260128',
+        model: isSeedance ? (engine === 'seedance-fast' ? 'dreamina-seedance-2-0-fast-260128' : 'bytedance/seedance-2-5') : 'gemini-omni-1.1-flash-preview',
         prompt: args.prompt,
         seedanceContentArray: [{ type: 'text', text: args.prompt }],
         aspectRatio: args.aspectRatio || '16:9',
+        aspect_ratio: args.aspectRatio || '16:9',
         resolution: args.resolution || '720p',
-        duration: args.duration || 5,
+        duration: args.duration || 6,
         generateAudio: Boolean(args.generateAudio),
+        generate_audio: Boolean(args.generateAudio),
         userId: args.userId || 'mcp-agent'
       })
     });

@@ -13,12 +13,10 @@ import { AddTemplateModal } from './AddTemplateModal';
 import { SidePanel } from '../cinemaStudio/SidePanel';
 
 const ENGINES = [
-  { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — 2.5⚡/s (4.5⚡/s audio)', cost: 2.5 },
-  { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3.1 Fast',     icon: '⚡', desc: 'Google Fast — 1.5⚡/s (2.5⚡/s audio)',         cost: 1.5 },
-  { id: 'veo-3.1-lite-generate-preview', label: 'Veo 3.1 Lite',     icon: '🍃', desc: 'Google Lite — 1⚡/s (1.5⚡/s audio)',           cost: 1 },
-  { id: 'omni-flash',                    label: 'Omni Flash',      icon: '✨', desc: 'Omni fast — 1.6⚡/s (2.75⚡/s audio)',                           cost: 1.6 },
-  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 6⚡/s (480p/1080p)',          cost: 6 },
-  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 8⚡/s (480p/1080p)', cost: 8 },
+  { id: 'omni-flash',                    label: 'Omni Flash 1.1',  icon: '✨', desc: 'Google Gemini Omni Flash 1.1 — Multimodal Camera & Voice (5⚡/s)', cost: 5 },
+  { id: 'seedance-2.5',                  label: 'Seedance 2.5',    icon: '⚡', desc: 'ByteDance — 8⚡/s (480p) / 10⚡/s (720p)', cost: 10 },
+  { id: 'seedance-fast',                 label: 'Seedance Fast',   icon: '🚀', desc: 'ByteDance — 5⚡/s (480p/720p)', cost: 5 },
+  { id: 'seedace',                       label: 'Seedance 2.0',    icon: '🎯', desc: 'ByteDance — 15⚡/s (720p) / 35⚡/s (1080p)', cost: 15 },
 ];
 
 const IMAGE_ENGINES = [

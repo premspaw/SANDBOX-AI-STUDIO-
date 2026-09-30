@@ -140,14 +140,12 @@ function CyclingLoadingText() {
 }
 
 const ENGINES = [
-  { id: 'veo-3.1-generate-preview',      label: 'Veo 3.1 Standard', icon: '🎬', desc: 'Google Standard — 2.5⚡/s (4.5⚡/s audio)', cost: 2.5 },
-  { id: 'veo-3.1-fast-generate-preview', label: 'Veo 3.1 Fast',     icon: '⚡', desc: 'Google Fast — 1.5⚡/s (2.5⚡/s audio)',         cost: 1.5 },
-  { id: 'veo-3.1-lite-generate-preview', label: 'Veo 3.1 Lite',     icon: '🍃', desc: 'Google Lite — 1⚡/s (1.5⚡/s audio)',           cost: 1 },
-  { id: 'seedance-fast',                 label: 'Seedance Fast',    icon: '🚀', desc: 'ByteDance — 7⚡/s (480p) / 12⚡/s (720p)',          cost: 12 },
-  { id: 'seedace',                       label: 'Seedance 2.0',     icon: '🎯', desc: 'ByteDance — 15⚡/s (720p) / 35⚡/s (1080p)',        cost: 15 },
-  { id: 'seedance-mini',                 label: 'Seedance Mini',    icon: '🧊', desc: 'ByteDance — 5⚡/s (480p) / 7⚡/s (720p)',          cost: 7 },
-  { id: 'kling/v3-turbo-image-to-video', label: 'Kling V3 Turbo',   icon: '🔥', desc: 'Kling — 9.8⚡/s (720p) / 12.3⚡/s (1080p) (V3 Turbo high fidelity)', cost: 9.8 },
-  { id: 'omni-flash',                    label: 'Omni Flash',      icon: '✨', desc: 'Omni fast — 1.6⚡/s (2.75⚡/s audio)',           cost: 1.6 },
+  { id: 'omni-flash',                    label: 'Omni Flash 1.1',  icon: '✨', desc: 'Google Gemini Omni Flash 1.1 — Multimodal Camera & Voice (5⚡/s)', cost: 5 },
+  { id: 'seedance-2.5',                  label: 'Seedance 2.5',    icon: '⚡', desc: 'ByteDance — 8⚡/s (480p) / 10⚡/s (720p)', cost: 10 },
+  { id: 'seedance-fast',                 label: 'Seedance Fast',   icon: '🚀', desc: 'ByteDance — 5⚡/s (480p) / 12⚡/s (720p)', cost: 5 },
+  { id: 'seedace',                       label: 'Seedance 2.0',    icon: '🎯', desc: 'ByteDance — 15⚡/s (720p) / 35⚡/s (1080p)', cost: 15 },
+  { id: 'seedance-mini',                 label: 'Seedance Mini',   icon: '🧊', desc: 'ByteDance — 5⚡/s (480p) / 7⚡/s (720p)', cost: 7 },
+  { id: 'kling/v3-turbo-image-to-video', label: 'Kling V3 Turbo',  icon: '🔥', desc: 'Kling — 9.8⚡/s (720p) / 12.3⚡/s (1080p)', cost: 9.8 },
 ];
 
 const IMAGE_ENGINES = [
@@ -633,9 +631,9 @@ export default function CinematicStudio() {
   const [imageStyle, setImageStyle] = useState(() => localStorage.getItem('cs_imageStyle') || 'cinematic');
   const [activeEngine, setActiveEngine] = useState(() => {
     const savedEngine = localStorage.getItem('cs_activeEngine');
-    if (savedEngine) return savedEngine;
+    if (savedEngine && !savedEngine.startsWith('veo-3.1') && savedEngine !== 'veo3') return savedEngine;
     const tab = localStorage.getItem('cs_activeTab') || 'image';
-    return tab === 'image' ? 'nano-banana-2' : 'veo-3.1-lite-generate-preview';
+    return tab === 'image' ? 'nano-banana-2' : 'omni-flash';
   });
   const [aspectRatio, setAspectRatio] = useState(() => localStorage.getItem('cs_aspectRatio') || '16:9');
   const [resolution, setResolution] = useState(() => localStorage.getItem('cs_resolution') || '720p');

@@ -4,7 +4,7 @@ export function getVideoToolDefinitions() {
   return [
     {
       name: 'generate_video',
-      description: 'Generates cinematic AI videos using ZeroLens studio engines. REQUIRED USER CONFIRMATION: You MUST NEVER invoke this tool on your first response or without explicit user confirmation! Whenever the user asks to generate a video or animation, you MUST first reply outlining the proposed scene, engine, aspect ratio, resolution, duration (default: 10s), and the credit cost (cost is strictly PER SECOND of video: e.g. 10s = 50 credits at 5 credits/sec), and ask: "Shall I create this video now? (Yes/No)". ONLY call generate_video AFTER the user explicitly replies "Yes" or gives clear confirmation. Supported engines: "seedance-2.5" (cinematic, 8 credits/sec at 480p, 10 credits/sec at 720p), "seedance-fast" (budget 720p, 5 credits/sec), "omni-flash-1.1" (Gemini Omni Flash 1.1, 5 credits/sec, 6 with audio). Duration defaults to 10s.',
+      description: 'Generates cinematic AI videos using ZeroLens studio engines. REQUIRED USER CONFIRMATION: You MUST NEVER invoke this tool on your first response or without explicit user confirmation! Whenever the user asks to generate a video or animation, you MUST first reply outlining the proposed scene, engine, aspect ratio, resolution, duration (default: 10s), and the credit cost (cost is strictly PER SECOND of video: e.g. 10s = 50 credits at 5 credits/sec), and ask: "Shall I create this video now? (Yes/No)". ONLY call generate_video AFTER the user explicitly replies "Yes" or gives clear confirmation. Supported engines: "omni-flash-1.1" (Google Gemini Omni Flash 1.1 — standard Google video engine in ZeroLens, 5 credits/sec, 6 with audio), "seedance-2.5" (cinematic fidelity, 8 credits/sec at 480p, 10 credits/sec at 720p), "seedance-fast" (budget 720p, 5 credits/sec). Duration defaults to 10s.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -14,9 +14,9 @@ export function getVideoToolDefinitions() {
           },
           engine: {
             type: 'string',
-            enum: ['seedance-2.5', 'seedance-fast', 'omni-flash-1.1'],
-            description: 'Video generation engine. "seedance-2.5" = Seedance 2.5 (cinematic fidelity), "seedance-fast" = Seedance 2 Fast (budget-friendly high-quality 720p), "omni-flash-1.1" = Gemini Omni Flash 1.1.',
-            default: 'seedance-2.5'
+            enum: ['omni-flash-1.1', 'seedance-2.5', 'seedance-fast'],
+            description: 'Video generation engine. "omni-flash-1.1" = Google Gemini Omni Flash 1.1 (primary Google video engine), "seedance-2.5" = ByteDance Seedance 2.5 (cinematic fidelity), "seedance-fast" = ByteDance Seedance Fast (budget 720p). Default: "omni-flash-1.1"',
+            default: 'omni-flash-1.1'
           },
           aspect_ratio: {
             type: 'string',
@@ -79,7 +79,7 @@ export async function executeGenerateVideo(args, user, deps) {
 
   const {
     prompt,
-    engine = 'seedance-2.5',
+    engine = 'omni-flash-1.1',
     aspect_ratio = '16:9',
     duration = 10,
     first_frame_url,
@@ -115,8 +115,6 @@ export async function executeGenerateVideo(args, user, deps) {
     costPerSec = (resolution === '480p' ? 8 : 10);
   } else if (engine === 'seedace') {
     costPerSec = 15;
-  } else if (engine === 'veo-3.1-generate-preview' || engine.includes('veo')) {
-    costPerSec = 20;
   }
 
   // Total cost = costPerSec * durationSec
@@ -265,8 +263,38 @@ async function launchBackgroundVideoWorker(jobPayload, generationId, cost, user,
 
       let finalVideoUrl = null;
 
-      // Seedance path via existing API / routes
-      if (jobPayload.provider === 'seedance') {
+      // 1. Omni Flash 1.1 path (Google Gemini Omni Flash 1.1)
+      if (jobPayload.provider === 'omni' || jobPayload.engine.toLowerCase().includes('omni')) {
+        const port = process.env.PORT || 3002;
+        console.log(`[MCP Video Worker] Generating video with Google Gemini Omni Flash 1.1 on port ${port}...`);
+
+        const omniPayload = {
+          prompt: jobPayload.prompt,
+          image: jobPayload.firstFrame || null,
+          lastFrame: jobPayload.lastFrame || null,
+          duration: Number(jobPayload.duration) || 6,
+          aspect_ratio: normalizeAspectRatio(jobPayload.aspectRatio || jobPayload.aspect_ratio),
+          resolution: jobPayload.resolution || '720p',
+          generate_audio: Boolean(jobPayload.generateAudio),
+          userId: user.id
+        };
+
+        const resp = await fetch(`http://127.0.0.1:${port}/api/omni-i2v`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(omniPayload)
+        });
+
+        const data = await resp.json();
+        if (!resp.ok || !data.url) {
+          throw new Error(data.error || data.message || `Omni Flash 1.1 generation failed with status ${resp.status}`);
+        }
+        finalVideoUrl = data.url;
+        console.log(`[MCP Video Worker] ✅ Omni Flash 1.1 render finished: ${finalVideoUrl}`);
+      }
+
+      // 2. Seedance path via Kie.ai
+      else if (jobPayload.provider === 'seedance') {
         const arkApiKey = process.env.ARK_API_KEY;
         const kieApiKey = process.env.KIE_API_KEY;
 
@@ -325,7 +353,7 @@ async function launchBackgroundVideoWorker(jobPayload, generationId, cost, user,
               url: finalVideoUrl,
               user_id: user.id,
               created_at: new Date().toISOString(),
-              model: jobPayload.engine || 'veo-3.1',
+              model: jobPayload.engine || 'omni-flash-1.1',
               metadata: {
                 prompt: jobPayload.prompt,
                 engine: jobPayload.engine,
