@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     User, Mail, CreditCard, Shield, Bell, LogOut, Save, Loader2, Coins, CheckSquare,
-    Square, Zap, ChevronRight, Key, Sparkles, TrendingUp, Clock, Gem, Fingerprint,
+    Square, Zap, ChevronRight, ChevronDown, ChevronUp, Key, Sparkles, TrendingUp, Clock, Gem, Fingerprint,
     ShieldCheck, BellRing, KeyRound, Copy, Check, Sliders, Cpu, ArrowUpRight,
     ExternalLink, RefreshCw, Layers, Film, Volume2, Wand2, Eye, EyeOff, AlertCircle
 } from 'lucide-react';
@@ -19,6 +19,8 @@ export default function SettingsPage() {
 
     const [authUser, setAuthUser] = useState(null);
     const [activeTab, setActiveTab] = useState('credits'); // Default to credits & subscription
+    const [expandedPacks, setExpandedPacks] = useState({});
+    const togglePack = (id) => setExpandedPacks(prev => ({ ...prev, [id]: !prev[id] }));
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
@@ -71,7 +73,15 @@ export default function SettingsPage() {
             description: 'Ideal for 4–5 full AI video renders or 250 image concepts.',
             color: 'from-blue-500/20 to-transparent',
             borderColor: 'border-blue-500/30',
-            buttonClass: 'bg-white/10 hover:bg-white/20 text-white'
+            buttonClass: 'bg-white/10 hover:bg-white/20 text-white',
+            deliverables: [
+                { icon: '📱', label: '10s UGC Video Ads', value: '~8 Ads' },
+                { icon: '📸', label: 'AI Master Images', value: '~250 - 500 Photos' },
+                { icon: '✨', label: 'Remix Studio', value: 'Remix Any Video or Style' },
+                { icon: '🔄', label: 'Object Swap Studio', value: 'Instant Object Replacement' },
+                { icon: '🎨', label: 'Highest Quality Editing', value: 'GPT 2.5 Available' },
+                { icon: '⚡', label: 'Credits Validity', value: 'Never Expires' }
+            ]
         },
         {
             id: 'pack_creator',
@@ -87,7 +97,15 @@ export default function SettingsPage() {
             description: 'Best for creators producing daily UGC, Cinema 4K shots & motion drivers.',
             color: 'from-[#c8f135]/20 via-[#c8f135]/10 to-transparent',
             borderColor: 'border-[#c8f135]/60',
-            buttonClass: 'bg-[#c8f135] hover:bg-[#d8ff43] text-black shadow-[0_0_20px_rgba(200,241,53,0.3)]'
+            buttonClass: 'bg-[#c8f135] hover:bg-[#d8ff43] text-black shadow-[0_0_20px_rgba(200,241,53,0.3)]',
+            deliverables: [
+                { icon: '📱', label: '10s UGC Video Ads', value: '~33 Ads' },
+                { icon: '📸', label: 'AI Master Images', value: '~1,000 - 2,000 Photos' },
+                { icon: '✨', label: 'Remix Studio', value: 'Remix Any Video or Style' },
+                { icon: '🔄', label: 'Object Swap Studio', value: 'Instant Object Replacement' },
+                { icon: '🎨', label: 'Highest Quality Editing', value: 'GPT 2.5 Available' },
+                { icon: '⚡', label: 'Credits Validity', value: 'Never Expires' }
+            ]
         },
         {
             id: 'pack_studio',
@@ -103,7 +121,16 @@ export default function SettingsPage() {
             description: 'Massive capacity with +100 bonus Shorts for production studios, campaigns & workflows.',
             color: 'from-purple-500/20 via-fuchsia-500/10 to-transparent',
             borderColor: 'border-purple-500/40',
-            buttonClass: 'bg-purple-500 hover:bg-purple-400 text-white shadow-[0_0_20px_rgba(168,85,247,0.3)]'
+            buttonClass: 'bg-purple-500 hover:bg-purple-400 text-white shadow-[0_0_20px_rgba(168,85,247,0.3)]',
+            deliverables: [
+                { icon: '📱', label: '10s UGC Video Ads', value: '~86 Ads' },
+                { icon: '🎁', label: 'Nano Banana Lite', value: 'UNLIMITED 7 Days', highlight: true },
+                { icon: '📸', label: 'AI Master Images', value: '~2,600 - 5,200 Photos' },
+                { icon: '✨', label: 'Remix Studio', value: 'Remix Any Video or Scene' },
+                { icon: '🔄', label: 'Object Swap Studio', value: 'AI Object Replacement' },
+                { icon: '🎨', label: 'Highest Quality Editing', value: 'GPT 2.5 Available' },
+                { icon: '⚡', label: 'Bonus Shorts', value: '+100 Extra Included' }
+            ]
         },
         {
             id: 'pack_enterprise',
@@ -119,7 +146,16 @@ export default function SettingsPage() {
             description: 'High-volume power pack with +500 bonus Shorts, multi-seat capacity and priority queues.',
             color: 'from-cyan-500/20 via-blue-500/10 to-transparent',
             borderColor: 'border-cyan-500/40',
-            buttonClass: 'bg-cyan-400 hover:bg-cyan-300 text-black shadow-[0_0_20px_rgba(34,211,238,0.3)]'
+            buttonClass: 'bg-cyan-400 hover:bg-cyan-300 text-black shadow-[0_0_20px_rgba(34,211,238,0.3)]',
+            deliverables: [
+                { icon: '📱', label: '10s UGC Video Ads', value: '~183 Ads' },
+                { icon: '🎁', label: 'Nano Banana Lite', value: 'UNLIMITED 7 Days', highlight: true },
+                { icon: '📸', label: 'AI Master Images', value: '~5,500 - 11,000 Photos' },
+                { icon: '✨', label: 'Remix Studio', value: 'Full Remix Engine' },
+                { icon: '🔄', label: 'Object Swap Studio', value: 'Full Object Replacement' },
+                { icon: '🎨', label: 'Highest Quality Editing', value: 'GPT 2.5 Available' },
+                { icon: '⚡', label: 'Bonus Shorts', value: '+500 Extra Included' }
+            ]
         },
         {
             id: 'pack_agency',
@@ -135,7 +171,16 @@ export default function SettingsPage() {
             description: 'Maximum agency horsepower with +1,000 bonus Shorts, dedicated GPU lanes and VIP rendering.',
             color: 'from-amber-500/20 via-orange-500/10 to-transparent',
             borderColor: 'border-amber-500/40',
-            buttonClass: 'bg-amber-400 hover:bg-amber-300 text-black shadow-[0_0_20px_rgba(251,191,36,0.3)]'
+            buttonClass: 'bg-amber-400 hover:bg-amber-300 text-black shadow-[0_0_20px_rgba(251,191,36,0.3)]',
+            deliverables: [
+                { icon: '📱', label: '10s UGC Video Ads', value: '~366 Ads' },
+                { icon: '🎁', label: 'Nano Banana Lite', value: 'UNLIMITED 7 Days', highlight: true },
+                { icon: '📸', label: 'AI Master Images', value: '~11,000 - 22,000 Photos' },
+                { icon: '✨', label: 'Remix Studio', value: 'Agency Remix Engine' },
+                { icon: '🔄', label: 'Object Swap Studio', value: 'Agency Object Swap' },
+                { icon: '🎨', label: 'Highest Quality Editing', value: 'GPT 2.5 Available' },
+                { icon: '⚡', label: 'Bonus Shorts', value: '+1,000 Extra Included' }
+            ]
         }
     ];
 
@@ -536,7 +581,9 @@ export default function SettingsPage() {
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4">
-                                    {creditPacks.map((pack) => (
+                                    {creditPacks.map((pack) => {
+                                        const isExpanded = !!expandedPacks[pack.id];
+                                        return (
                                         <div
                                             key={pack.id}
                                             className={cn(
@@ -597,6 +644,66 @@ export default function SettingsPage() {
                                                 <p className="text-[11px] text-zinc-400 leading-relaxed min-h-[40px]">
                                                     {pack.description}
                                                 </p>
+
+                                                {/* Desktop Deliverables Header */}
+                                                <div className="hidden sm:flex items-center justify-between pt-2 border-t border-white/10 text-[10px] font-bold text-[#c8f135]">
+                                                    <span className="flex items-center gap-1.5">
+                                                        <Sparkles size={11} className="text-[#c8f135]" />
+                                                        <span>What You Get</span>
+                                                    </span>
+                                                    <span className="text-[9px] font-mono text-zinc-400 font-normal">
+                                                        {pack.deliverables?.length || 0} items
+                                                    </span>
+                                                </div>
+
+                                                {/* Mobile Dropdown Toggle Button */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => togglePack(pack.id)}
+                                                    className={cn(
+                                                        "sm:hidden w-full py-2 px-3 rounded-lg border text-[11px] font-bold flex items-center justify-between transition-all cursor-pointer shadow-sm active:scale-98",
+                                                        isExpanded
+                                                            ? "bg-[#c8f135]/15 border-[#c8f135]/50 text-white shadow-[0_0_12px_rgba(200,241,53,0.15)]"
+                                                            : "bg-white/5 hover:bg-white/10 border-white/10 text-white"
+                                                    )}
+                                                >
+                                                    <span className="flex items-center gap-1.5 text-[#c8f135]">
+                                                        <Sparkles size={12} className="text-[#c8f135]" />
+                                                        <span>{isExpanded ? "Hide Deliverables" : `What You Get (${pack.deliverables?.length || 0} Items)`}</span>
+                                                    </span>
+                                                    <span className="flex items-center gap-1 text-[10px] font-mono text-zinc-400">
+                                                        <span>{isExpanded ? "Close" : "View"}</span>
+                                                        {isExpanded ? <ChevronUp size={14} className="text-[#c8f135]" /> : <ChevronDown size={14} className="text-[#c8f135]" />}
+                                                    </span>
+                                                </button>
+
+                                                {/* Deliverables List: Always visible length-by-length on Desktop; Toggled on Mobile */}
+                                                {pack.deliverables && (
+                                                    <div className={cn("space-y-1.5 pt-1", !isExpanded && "hidden sm:block")}>
+                                                        {pack.deliverables.map((item, dIdx) => (
+                                                            <div
+                                                                key={dIdx}
+                                                                className={cn(
+                                                                    "flex items-center justify-between p-1.5 rounded-md text-[9.5px] border gap-1.5",
+                                                                    item.highlight
+                                                                        ? "bg-[#c8f135]/10 border-[#c8f135]/30 text-white"
+                                                                        : "bg-black/40 border-white/5 text-zinc-300"
+                                                                )}
+                                                            >
+                                                                <span className="flex items-center gap-1 min-w-0 font-medium truncate">
+                                                                    <span>{item.icon}</span>
+                                                                    <span className="truncate">{item.label}</span>
+                                                                </span>
+                                                                <span className={cn(
+                                                                    "font-bold shrink-0 text-[9px] uppercase",
+                                                                    item.highlight ? "text-[#c8f135] font-black" : "text-white"
+                                                                )}>
+                                                                    {item.value}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <div className="pt-3">
@@ -613,7 +720,7 @@ export default function SettingsPage() {
                                                 </button>
                                             </div>
                                         </div>
-                                    ))}
+                                    ); })}
                                 </div>
                             </div>
 

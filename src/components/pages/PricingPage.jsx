@@ -469,20 +469,39 @@ const PricingPage = () => {
                                 </div>
                             )}
 
-                            {/* Mobile Toggle Button for Features List */}
+                            {/* Desktop Features Header */}
+                            <div className="hidden sm:flex items-center justify-between pb-1 border-b border-white/10 mb-2 text-[10px] font-bold text-[#D4FF00]">
+                                <span className="flex items-center gap-1.5">
+                                    <Sparkles size={11} className="text-[#D4FF00]" />
+                                    <span>Included Features</span>
+                                </span>
+                                <span className="text-[9px] font-mono text-zinc-400 font-normal">
+                                    {plan.features.length} features
+                                </span>
+                            </div>
+
+                            {/* Mobile Dropdown Toggle Button for Features List */}
                             <button
                                 type="button"
                                 onClick={() => togglePlan(plan.name)}
-                                className="sm:hidden w-full py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-[11px] flex items-center justify-between mb-3 transition-colors cursor-pointer"
+                                className={cn(
+                                    "sm:hidden w-full py-2.5 px-3 rounded-xl border text-[11px] font-black flex items-center justify-between mb-3 transition-all cursor-pointer shadow-md active:scale-98",
+                                    isPlanExpanded
+                                        ? "bg-[#D4FF00]/15 border-[#D4FF00]/50 text-white shadow-[0_0_15px_rgba(212,255,0,0.15)]"
+                                        : "bg-white/5 hover:bg-white/10 border-[#D4FF00]/30 text-white"
+                                )}
                             >
-                                <span className="flex items-center gap-1.5 text-[#D4FF00]">
-                                    <Sparkles size={12} />
-                                    <span>{isPlanExpanded ? "Hide Plan Features" : `What You Get (${plan.features.length} Features)`}</span>
+                                <span className="flex items-center gap-2 text-[#D4FF00]">
+                                    <Sparkles size={13} className="text-[#D4FF00]" />
+                                    <span>{isPlanExpanded ? "Hide What You Get" : `What You Get (${plan.features.length} Features)`}</span>
                                 </span>
-                                {isPlanExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                <span className="flex items-center gap-1 text-[10px] font-mono text-zinc-400">
+                                    <span>{isPlanExpanded ? "Close" : "View"}</span>
+                                    {isPlanExpanded ? <ChevronUp size={15} className="text-[#D4FF00]" /> : <ChevronDown size={15} className="text-[#D4FF00]" />}
+                                </span>
                             </button>
 
-                            {/* Feature List (Always visible on Desktop; toggled or default on Mobile) */}
+                            {/* Feature List (Always visible on Desktop; toggled on Mobile) */}
                             <div className={cn("flex-1 pr-1 space-y-2", !isPlanExpanded && "hidden sm:block")}>
                                 {plan.features.map((feature, fIdx) => (
                                     <div key={fIdx} className="flex items-start gap-2.5 group/feat min-w-0">
@@ -635,54 +654,63 @@ const PricingPage = () => {
                                         {topup.desc}
                                     </p>
 
-                                    {/* Dropdown Toggle: What You Get */}
+                                    {/* Desktop Deliverables Header */}
+                                    <div className="hidden sm:flex items-center justify-between pt-2 border-t border-white/10 text-[10px] font-bold text-[#D4FF00]">
+                                        <span className="flex items-center gap-1.5">
+                                            <Sparkles size={11} className="text-[#D4FF00]" />
+                                            <span>What You Get</span>
+                                        </span>
+                                        <span className="text-[9px] font-mono text-zinc-400 font-normal">
+                                            {topup.deliverables.length} items
+                                        </span>
+                                    </div>
+
+                                    {/* Mobile Dropdown Toggle Button */}
                                     <button
                                         type="button"
                                         onClick={() => togglePack(topup.id)}
-                                        className="w-full py-1.5 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[10px] font-bold flex items-center justify-between transition-colors cursor-pointer group/btn"
+                                        className={cn(
+                                            "sm:hidden w-full py-2 px-3 rounded-lg border text-[11px] font-bold flex items-center justify-between transition-all cursor-pointer shadow-sm active:scale-98",
+                                            isExpanded
+                                                ? "bg-[#D4FF00]/15 border-[#D4FF00]/50 text-white shadow-[0_0_12px_rgba(212,255,0,0.15)]"
+                                                : "bg-white/5 hover:bg-white/10 border-white/10 text-white"
+                                        )}
                                     >
                                         <span className="flex items-center gap-1.5 text-[#D4FF00]">
-                                            <Sparkles size={11} />
-                                            <span>{isExpanded ? "Hide What's Included" : "What You Get (Deliverables)"}</span>
+                                            <Sparkles size={12} className="text-[#D4FF00]" />
+                                            <span>{isExpanded ? "Hide Deliverables" : `What You Get (${topup.deliverables.length} Items)`}</span>
                                         </span>
-                                        {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                        <span className="flex items-center gap-1 text-[10px] font-mono text-zinc-400">
+                                            <span>{isExpanded ? "Close" : "View"}</span>
+                                            {isExpanded ? <ChevronUp size={14} className="text-[#D4FF00]" /> : <ChevronDown size={14} className="text-[#D4FF00]" />}
+                                        </span>
                                     </button>
 
-                                    {/* Expandable Deliverables List */}
-                                    <AnimatePresence>
-                                        {isExpanded && (
-                                            <motion.div
-                                                initial={{ opacity: 0, height: 0 }}
-                                                animate={{ opacity: 1, height: 'auto' }}
-                                                exit={{ opacity: 0, height: 0 }}
-                                                transition={{ duration: 0.25, ease: 'easeInOut' }}
-                                                className="overflow-hidden space-y-1.5 pt-1 border-t border-white/5"
+                                    {/* Deliverables List: Always visible length-by-length on Desktop; Toggled on Mobile */}
+                                    <div className={cn("space-y-1.5 pt-1", !isExpanded && "hidden sm:block")}>
+                                        {topup.deliverables.map((item, dIdx) => (
+                                            <div
+                                                key={dIdx}
+                                                className={cn(
+                                                    "flex items-center justify-between p-1.5 rounded-md text-[9.5px] border gap-1.5",
+                                                    item.highlight
+                                                        ? "bg-[#D4FF00]/10 border-[#D4FF00]/30 text-white"
+                                                        : "bg-black/40 border-white/5 text-zinc-300"
+                                                )}
                                             >
-                                                {topup.deliverables.map((item, dIdx) => (
-                                                    <div
-                                                        key={dIdx}
-                                                        className={cn(
-                                                            "flex items-center justify-between p-1.5 rounded-md text-[9.5px] border gap-1.5",
-                                                            item.highlight
-                                                                ? "bg-[#D4FF00]/10 border-[#D4FF00]/30 text-white"
-                                                                : "bg-black/40 border-white/5 text-zinc-300"
-                                                        )}
-                                                    >
-                                                        <span className="flex items-center gap-1 min-w-0 font-medium truncate">
-                                                            <span>{item.icon}</span>
-                                                            <span className="truncate">{item.label}</span>
-                                                        </span>
-                                                        <span className={cn(
-                                                            "font-bold shrink-0 text-[9px] uppercase",
-                                                            item.highlight ? "text-[#D4FF00] font-black" : "text-white"
-                                                        )}>
-                                                            {item.value}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                                                <span className="flex items-center gap-1 min-w-0 font-medium truncate">
+                                                    <span>{item.icon}</span>
+                                                    <span className="truncate">{item.label}</span>
+                                                </span>
+                                                <span className={cn(
+                                                    "font-bold shrink-0 text-[9px] uppercase",
+                                                    item.highlight ? "text-[#D4FF00] font-black" : "text-white"
+                                                )}>
+                                                    {item.value}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                                 
                                 <button 
