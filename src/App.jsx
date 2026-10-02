@@ -169,9 +169,21 @@ function App() {
   const [isRecoveringPassword, setIsRecoveringPassword] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const userProfile = useAppStore(state => state.userProfile)
-  const isAdmin = userProfile?.role === 'admin'
+  const isGlobalAdmin = useAppStore(state => state.isAdmin)
+  const isAdmin = userProfile?.role === 'admin' || userProfile?.email === 'premspaw@gmail.com' || isGlobalAdmin
   const isShowingAuthModal = useAppStore(state => state.isShowingAuthModal);
   const setShowingAuthModal = useAppStore(state => state.setShowingAuthModal);
+
+  // Guard: If non-admin user is on a restricted tab, bounce to ugc
+  useEffect(() => {
+    if (!isAdmin) {
+      const allowedForRegular = new Set(['ugc', 'avatar', 'pricing', 'settings', 'auth', 'home']);
+      if (activeTab && !allowedForRegular.has(activeTab)) {
+        console.log(`[RoleGuard] Redirecting regular user from '${activeTab}' to 'ugc'`);
+        setActiveTab('ugc');
+      }
+    }
+  }, [activeTab, isAdmin, setActiveTab]);
 
   // 1. Sync URL path -> activeTab on mount (initial load)
   useEffect(() => {

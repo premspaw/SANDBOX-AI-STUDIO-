@@ -87,13 +87,14 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
     const mouseY = useMotionValue(Infinity);
     const { runtimeMode, apiKey, setApiKey, checkRuntimeMode, userProfile } = useAppStore();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    const isAdmin = userProfile?.role === 'admin';
+    const isAdmin = userProfile?.role === 'admin' || userProfile?.email === 'premspaw@gmail.com' || useAppStore.getState().isAdmin;
 
     useEffect(() => {
         checkRuntimeMode();
     }, [checkRuntimeMode]);
 
     const navItems = [
+        { id: 'ugc', label: 'UGC Engine', icon: UsersThree, color: 'text-amber-400', bgColor: 'bg-amber-400', hoverColor: 'group-hover/navitem:text-amber-400', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.1)]' },
         { id: 'avatar', label: 'Avatar Studio', icon: UserFocus, color: 'text-emerald-400', bgColor: 'bg-emerald-400', hoverColor: 'group-hover/navitem:text-emerald-400', glow: 'shadow-[0_0_15px_rgba(52,211,153,0.1)]' },
         { id: 'living-avatar', label: 'Living Avatar', icon: ChatCircle, color: 'text-[#00FFFF]', bgColor: 'bg-[#00FFFF]', hoverColor: 'group-hover/navitem:text-[#00FFFF]', glow: 'shadow-[0_0_15px_rgba(0,255,255,0.15)]' },
         { id: 'marketing', label: 'Marketing', icon: Megaphone, color: 'text-rose-400', bgColor: 'bg-rose-400', hoverColor: 'group-hover/navitem:text-rose-400', glow: 'shadow-[0_0_15px_rgba(251,113,133,0.1)]' },
@@ -102,7 +103,6 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
 
         { id: 'remix', label: 'Remix Studio', icon: ArrowsClockwise, color: 'text-amber-400', bgColor: 'bg-amber-400', hoverColor: 'group-hover/navitem:text-amber-400', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.25)]' },
         { id: 'carousel', label: 'Carousel Studio', icon: SquaresFour, color: 'text-pink-400', bgColor: 'bg-pink-400', hoverColor: 'group-hover/navitem:text-pink-400', glow: 'shadow-[0_0_15px_rgba(236,72,153,0.15)]' },
-        { id: 'ugc', label: 'UGC Engine', icon: UsersThree, color: 'text-amber-400', bgColor: 'bg-amber-400', hoverColor: 'group-hover/navitem:text-amber-400', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.1)]' },
         { id: 'storyboard', label: 'Storyboard', icon: Kanban, color: 'text-amber-400', bgColor: 'bg-amber-400', hoverColor: 'group-hover/navitem:text-amber-400', glow: 'shadow-[0_0_15px_rgba(251,191,36,0.25)]' },
         { id: 'mcp-connection', label: 'MCP Connection', icon: Cpu, color: 'text-[#c8f135]', bgColor: 'bg-[#c8f135]', hoverColor: 'group-hover/navitem:text-[#c8f135]', glow: 'shadow-[0_0_15px_rgba(200,241,53,0.25)]' },
         { id: 'brand-voice', label: 'Brand Voice', icon: MicrophoneStage, color: 'text-[#D4FF00]', bgColor: 'bg-[#D4FF00]', hoverColor: 'group-hover/navitem:text-[#D4FF00]', glow: 'shadow-[0_0_15px_rgba(212,255,0,0.15)]' },
@@ -143,7 +143,7 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
                 "pt-1.5 pb-1 px-4 flex items-center transition-all duration-300 shrink-0",
                 isCollapsed ? "justify-center" : "justify-between"
             )}>
-                <button onClick={() => setActiveTab('home')} className="flex items-center gap-2 hover:opacity-80 transition-opacity focus:outline-none group">
+                <button onClick={() => setActiveTab(isAdmin ? 'home' : 'ugc')} className="flex items-center gap-2 hover:opacity-80 transition-opacity focus:outline-none group">
                     <BrandLogo
                         size={isCollapsed ? 28 : 42}
                         className={cn("transition-all duration-300 drop-shadow-[0_0_12px_rgba(212,255,0,0.4)]", isCollapsed ? "w-7 h-7" : "w-11 h-11")}
@@ -170,8 +170,9 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
             >
                 {navItems.filter(item => {
                     if (isAdmin) return true;
-                    const hiddenForRegular = new Set(['admin', 'design', 'mcp-connection', 'storyboard', 'carousel']);
-                    return !hiddenForRegular.has(item.id);
+                    // Regular users see ONLY UGC Engine and Avatar Studio
+                    const allowedForRegular = new Set(['ugc', 'avatar']);
+                    return allowedForRegular.has(item.id);
                 }).map((item) => (
                     <SidebarNavItem
                         key={item.id}

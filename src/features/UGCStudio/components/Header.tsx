@@ -1,6 +1,7 @@
 import React from 'react';
 import { useUGC } from '../context/UGCContext';
 import { Film, Volume2, User, Loader2, Wand2, MapPin, Sparkles } from 'lucide-react';
+import { hasFreeVideoAvailable } from '../../../utils/freeTierTracker';
 
 export default function Header() {
   const {
@@ -11,14 +12,24 @@ export default function Header() {
     isGeneratingVideo,
     videoProgressMsg,
     isGeneratingScript,
+    currentUserId,
+    isAdmin,
+    isGlobalAdmin
   } = useUGC();
+
+  const isFreeVideo = !isAdmin && !isGlobalAdmin && hasFreeVideoAvailable(currentUserId);
 
   return (
     <div className="flex-none py-2 px-4 border-b border-white/10 flex items-center gap-3 z-10 bg-black/40 backdrop-blur-md shrink-0">
-      <div className="flex items-baseline gap-2 flex-shrink-0">
+      <div className="flex items-center gap-2 flex-shrink-0">
         <h1 className="text-base font-black italic uppercase tracking-tighter bg-gradient-to-r from-[#c8f135] via-lime-300 to-emerald-400 bg-clip-text text-transparent whitespace-nowrap">
           Influencer Studio
         </h1>
+        {isFreeVideo && (
+          <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[8px] font-black uppercase tracking-wider shadow-sm">
+            🎁 1 Free Video Active
+          </span>
+        )}
       </div>
       <div className="w-px h-5 bg-white/10 flex-shrink-0" />
       {/* Mode Filter Tabs */}

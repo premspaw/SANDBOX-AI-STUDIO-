@@ -82,6 +82,14 @@ import SceneTemplatesAside from './components/SceneTemplatesAside';
 import Toast from './components/Toast';
 import Header from './components/Header';
 import GalleryGrid from './components/GalleryGrid';
+import MarketingPromoBanner from '../../components/common/MarketingPromoBanner';
+import {
+  hasFreeVideoAvailable,
+  consumeFreeVideo,
+  getFreeImagesRemaining,
+  consumeFreeImage,
+  isGptImageModel
+} from '../../utils/freeTierTracker';
 
 import { useUGCAssets } from './hooks/useUGCAssets';
 import { useUGCAudio } from './hooks/useUGCAudio';
@@ -104,7 +112,8 @@ export default function UGC() {
   const { spend, refund, canAfford } = useShorts();
   const userProfile = useAppStore(state => state.userProfile as { id?: string; role?: string } | null);
   const currentUserId = userProfile?.id || 'local_user';
-  const isGlobalAdmin = userProfile?.role === 'admin';
+  const isAdmin = useAppStore(state => state.isAdmin);
+  const isGlobalAdmin = Boolean((userProfile as any)?.role === 'admin' || (userProfile as any)?.email === 'premspaw@gmail.com' || isAdmin);
 
   const [activeTab, setActiveTab] = useState<'ugc' | 'podcast' | 'talking-head' | 'ai-avatar' | 'home-tour' | 'edit'>('ugc');
 
@@ -483,12 +492,23 @@ export default function UGC() {
     addToGallery,
     updateGalleryItem,
   } = useUGCGallery(currentUserId);
-  const isAdmin = useAppStore(state => state.isAdmin);
   const setIsAdmin = useAppStore(state => state.setIsAdmin);
   const showAdminLogin = useAppStore(state => state.showAdminLogin);
   const setShowAdminLogin = useAppStore(state => state.setShowAdminLogin);
   const setUserShorts = useAppStore(state => state.setUserShorts);
   const [adminPassword, setAdminPassword] = useState('');
+
+  const [freeVideoActive, setFreeVideoActive] = useState(() => hasFreeVideoAvailable(currentUserId));
+  const [freeImagesLeft, setFreeImagesLeft] = useState(() => getFreeImagesRemaining(currentUserId));
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setFreeVideoActive(hasFreeVideoAvailable(currentUserId));
+      setFreeImagesLeft(getFreeImagesRemaining(currentUserId));
+    };
+    window.addEventListener('zerolens_freetier_updated', handleUpdate);
+    return () => window.removeEventListener('zerolens_freetier_updated', handleUpdate);
+  }, [currentUserId]);
 
   const [trainedStrategy, setTrainedStrategy] = useState<string>(() => {
     return localStorage.getItem('ugc_trained_strategy') || '';
@@ -2646,12 +2666,23 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
 
   const generateImage = async (overridePrompt?: string | React.MouseEvent | any): Promise<string> => {
     const imgCost = getImageCost();
+    const isFreeEligible = !isAdmin && !isGlobalAdmin && (imgEngine === 'nb2' || imgEngine === 'nb2-lite') && getFreeImagesRemaining(currentUserId) > 0;
     if (!isAdmin && !isGlobalAdmin) {
-      const spendRes = await spend('veo_fast', imgCost as any);
-      if (!spendRes || !spendRes.success) {
-        showToast(`Insufficient Credits: You need ${imgCost} Shorts to generate an image.`, 'error');
+      if (isGptImageModel(imgEngine)) {
+        showToast('ChatGPT Image is a Pro feature. Upgrade to unlock!', 'info');
         useAppStore.getState().setActiveTab('pricing');
         return '';
+      }
+      if (isFreeEligible) {
+        consumeFreeImage(currentUserId);
+        showToast(`🎁 Free Image Generated (${getFreeImagesRemaining(currentUserId)} free remaining)!`, 'success');
+      } else {
+        const spendRes = await spend('veo_fast', imgCost as any);
+        if (!spendRes || !spendRes.success) {
+          showToast(`Insufficient Credits: You need ${imgCost} Shorts to generate an image.`, 'error');
+          useAppStore.getState().setActiveTab('pricing');
+          return '';
+        }
       }
     }
     setIsGeneratingImage(true);
@@ -3013,11 +3044,23 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
   // ── TALKING HEAD — generate reference image ────────────────────────────────
   const generateTalkingHeadImage = async () => {
     const imgCost = getImageCost();
+    const isFreeEligible = !isAdmin && !isGlobalAdmin && (imgEngine === 'nb2' || imgEngine === 'nb2-lite') && getFreeImagesRemaining(currentUserId) > 0;
     if (!isAdmin && !isGlobalAdmin) {
-      const spendRes = await spend('veo_fast', imgCost as any);
-      if (!spendRes || !spendRes.success) {
-        showToast(`Insufficient Credits: You need ${imgCost} Shorts to generate reference image.`, 'error');
+      if (isGptImageModel(imgEngine)) {
+        showToast('ChatGPT Image is a Pro feature. Upgrade to unlock!', 'info');
+        useAppStore.getState().setActiveTab('pricing');
         return;
+      }
+      if (isFreeEligible) {
+        consumeFreeImage(currentUserId);
+        showToast(`🎁 Free Image Generated (${getFreeImagesRemaining(currentUserId)} free remaining)!`, 'success');
+      } else {
+        const spendRes = await spend('veo_fast', imgCost as any);
+        if (!spendRes || !spendRes.success) {
+          showToast(`Insufficient Credits: You need ${imgCost} Shorts to generate reference image.`, 'error');
+          useAppStore.getState().setActiveTab('pricing');
+          return;
+        }
       }
     }
     setThIsGeneratingImg(true);
@@ -3130,12 +3173,19 @@ Return ONLY the final prompt text. No preamble, no explanation, no markdown quot
     if (!thScript.trim()) { showToast('Add a script / hook for the talking head.', 'error'); return; }
 
     const unitCost = getCurrentCost(false);
+    const isFreeVideoEligible = !isAdmin && !isGlobalAdmin && hasFreeVideoAvailable(currentUserId);
     if (!isAdmin && !isGlobalAdmin) {
-      const spendRes = await spend('veo_fast', unitCost as any);
-      if (!spendRes || !spendRes.success) {
-        showToast(`Insufficient Credits: You need ${unitCost} Shorts to generate video.`, 'error');
-        useAppStore.getState().setActiveTab('pricing');
-        return;
+      if (isFreeVideoEligible) {
+        consumeFreeVideo(currentUserId);
+        setFreeVideoActive(false);
+        showToast('🎁 Free 10s UGC Video Trial Active! Enjoy your free render without any credit deduction.', 'success');
+      } else {
+        const spendRes = await spend('veo_fast', unitCost as any);
+        if (!spendRes || !spendRes.success) {
+          showToast(`Insufficient Credits: You need ${unitCost} Shorts to generate video.`, 'error');
+          useAppStore.getState().setActiveTab('pricing');
+          return;
+        }
       }
     }
 
@@ -3846,12 +3896,19 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
 
   const generateVideo = async (overridePrompt?: string, referenceImageUrl?: string, targetDuration?: number) => {
     const unitCost = getCurrentCost(false);
+    const isFreeVideoEligible = !isAdmin && !isGlobalAdmin && hasFreeVideoAvailable(currentUserId);
     if (!isAdmin && !isGlobalAdmin) {
-      const spendRes = await spend('veo_fast', unitCost as any);
-      if (!spendRes || !spendRes.success) {
-        showToast(`Insufficient Credits: You need ${unitCost} Shorts to generate video.`, 'error');
-        useAppStore.getState().setActiveTab('pricing');
-        return;
+      if (isFreeVideoEligible) {
+        consumeFreeVideo(currentUserId);
+        setFreeVideoActive(false);
+        showToast('🎁 Free 10s UGC Video Trial Active! Enjoy your free render without any credit deduction.', 'success');
+      } else {
+        const spendRes = await spend('veo_fast', unitCost as any);
+        if (!spendRes || !spendRes.success) {
+          showToast(`Insufficient Credits: You need ${unitCost} Shorts to generate video.`, 'error');
+          useAppStore.getState().setActiveTab('pricing');
+          return;
+        }
       }
     }
 
@@ -4451,6 +4508,11 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         {/* Center Column — Gallery / Editor */}
         <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden relative">
           <Header />
+
+          {/* Promotional Marketing Banner */}
+          <div className="px-3 sm:px-4 pt-2 pb-1 shrink-0">
+            <MarketingPromoBanner />
+          </div>
 
           {activeTab === 'edit' ? (
             <div className="flex-1 min-h-0 p-4 bg-[#050506] flex flex-col">

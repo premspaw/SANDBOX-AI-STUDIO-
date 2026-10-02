@@ -1492,13 +1492,21 @@ export default function LeftSidebar() {
                 <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.15em] mb-1 block">Engine</span>
                 <select
                   value={imgEngine}
-                  onChange={e => setImgEngine(e.target.value as any)}
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (!hasAdminAccess && (val.startsWith('gpt') || val.includes('sunburst') || val.includes('flare'))) {
+                      showToast?.('ChatGPT Image is a Pro feature. Upgrade to unlock!', 'info');
+                      useAppStore.getState().setActiveTab('pricing');
+                      return;
+                    }
+                    setImgEngine(val as any);
+                  }}
                   className="w-full bg-[#111113] border border-[#1e1e24] px-3 py-2 rounded-full text-[9px] font-black uppercase text-white/80 outline-none cursor-pointer hover:border-white/20 transition-colors"
                 >
-                  <option value="nb2-lite" className="bg-[#111113]">Nano Banana Lite ⚡ (0.5 cr)</option>
-                  <option value="nb2" className="bg-[#111113]">Nano Banana 2 (1 cr)</option>
-                  <option value="gpt-image-2.5-flare" className="bg-[#111113]">GPT 2.5 Flare ⚡ (1.5 cr)</option>
-                  <option value="gpt-image-2.5-sunburst" className="bg-[#111113]">GPT 2.5 Sunburst ⚡ (2.5 cr)</option>
+                  <option value="nb2-lite" className="bg-[#111113]">Nano Banana Lite ⚡ (0.5 cr / Free)</option>
+                  <option value="nb2" className="bg-[#111113]">Nano Banana 2 (1 cr / Free)</option>
+                  <option value="gpt-image-2.5-flare" className="bg-[#111113]">{!hasAdminAccess ? '🔒 GPT 2.5 Flare (Pro Plan)' : 'GPT 2.5 Flare ⚡ (1.5 cr)'}</option>
+                  <option value="gpt-image-2.5-sunburst" className="bg-[#111113]">{!hasAdminAccess ? '🔒 GPT 2.5 Sunburst (Pro Plan)' : 'GPT 2.5 Sunburst ⚡ (2.5 cr)'}</option>
                 </select>
               </div>
               {(imgEngine.startsWith('gpt') || imgEngine.includes('sunburst') || imgEngine.includes('flare')) && (

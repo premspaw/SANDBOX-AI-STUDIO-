@@ -111,10 +111,16 @@ export default function createRouter(deps) {
 
             // 1. Charge credits conditionally (5 credits for Nano Banana Pro, 2 for Nano Banana 2, 3 for GPT Image 2)
             const isBananaPro = model === 'banana' || model === 'banana-pro';
-            const isBanana2 = model === 'banana2' || model === 'banana-2' || model === 'nb2';
+            const isBanana2 = model === 'banana2' || model === 'banana-2' || model === 'nb2' || model === 'nano-banana-2-lite';
             const requiredCredits = isBananaPro ? 5 : isBanana2 ? 2 : 3;
-            console.log(`[Avatar Board] Consuming ${requiredCredits} credits for user: ${userId} using engine: ${model}`);
-            await consumeCredits(userId, requiredCredits);
+
+            const isFreeTier = Boolean(req.body.isFreeTier && isBanana2 && !isBananaPro);
+            if (isFreeTier) {
+                console.log(`[Avatar Board] 🎁 Free tier image generation granted for user: ${userId} using engine: ${model}`);
+            } else {
+                console.log(`[Avatar Board] Consuming ${requiredCredits} credits for user: ${userId} using engine: ${model}`);
+                await consumeCredits(userId, requiredCredits);
+            }
 
             const isValidImageUrl = (url) => {
                 if (!url) return false;

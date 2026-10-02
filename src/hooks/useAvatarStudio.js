@@ -3,6 +3,7 @@ import { getApiUrl, resolveUrl } from '../config/apiConfig';
 import { supabase } from '../lib/supabase';
 import { useShorts } from './useShorts';
 import { useAppStore } from '../store';
+import { consumeFreeImage } from '../utils/freeTierTracker';
 
 export function useAvatarStudio(userId = 'anon') {
     const { refresh: refreshShorts } = useShorts() || { refresh: () => {} };
@@ -178,7 +179,8 @@ export function useAvatarStudio(userId = 'anon') {
                     additionalContext: targetContext,
                     userId,
                     model: targetModel,
-                    aspectRatio: targetAspect
+                    aspectRatio: targetAspect,
+                    isFreeTier: !!overrideOptions.isFreeTier
                 })
             });
 
@@ -186,6 +188,10 @@ export function useAvatarStudio(userId = 'anon') {
             if (!resp.ok) throw new Error(result.error || 'Failed to generate reference board.');
 
             if (result.outputUrl) {
+                if (overrideOptions.isFreeTier) {
+                    consumeFreeImage(userId);
+                    console.log('[Avatar Studio] 🎁 Consumed 1 free Nano Banana 2 image credit');
+                }
                 setGeneratedImage(result.outputUrl);
                 setActivePrompt(result.prompt);
                 console.log('[Avatar Studio] Success! R2 URL:', result.outputUrl);

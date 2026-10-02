@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Check, Shield, Zap, Sparkles, Coins, ArrowRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAppStore } from '../../store';
+import MarketingPromoBanner from '../common/MarketingPromoBanner';
 
 const PricingPage = () => {
     const [isYearly] = useState(false);
@@ -213,6 +214,12 @@ const PricingPage = () => {
                     ⚡ One-Time Payments Only • No Auto-Renewal Subscriptions
                 </div>
             </div>
+
+            {/* Special Season Promotional Marketing Banner */}
+            <MarketingPromoBanner
+                className="mb-5 shrink-0"
+                onCtaClick={() => document.getElementById('top-up')?.scrollIntoView({ behavior: 'smooth' })}
+            />
 
             {/* Main Content Layout Grid - Stagger Layouts */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pb-6 shrink-0 w-full max-w-full box-border">

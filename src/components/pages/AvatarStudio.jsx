@@ -7,9 +7,10 @@ import {
   CheckCircle2, Sliders, ArrowRight, Zap, RefreshCw,
   Image as ImageIcon, Check, SlidersHorizontal, User,
   Ruler, Calendar, Shirt, Cpu, FolderKanban, Compass,
-  Sword, Film, Palette, Sun, Eye, Layers, ChevronDown
+  Sword, Film, Palette, Sun, Eye, Layers, ChevronDown, Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getFreeImagesRemaining } from '../../utils/freeTierTracker';
 
 import HolographicTurntable from '../avatar/HolographicTurntable';
 import AvatarGallery from '../avatar/AvatarGallery';
@@ -241,10 +242,20 @@ const PROP_SUGGESTIONS = [
 export default function AvatarStudio() {
   const userProfile = useAppStore(state => state.userProfile);
   const userShorts = useAppStore(state => state.userShorts);
-  const isAdmin = useAppStore(state => state.isAdmin || state.userProfile?.role === 'admin');
+  const isGlobalAdmin = useAppStore(state => state.isAdmin);
+  const isAdmin = isGlobalAdmin || userProfile?.role === 'admin' || userProfile?.email === 'premspaw@gmail.com';
   const { shorts, canAfford, refresh: refreshShorts } = useShorts();
   const userCredits = shorts ?? userShorts ?? 0;
   const userId = userProfile?.id || 'anon';
+
+  // Free Tier Tracker: 3 Free Images for Regular Users with Nano Banana 2
+  const [freeImagesRemaining, setFreeImagesRemaining] = useState(() => getFreeImagesRemaining(userId));
+
+  useEffect(() => {
+    const handleUpdate = () => setFreeImagesRemaining(getFreeImagesRemaining(userId));
+    window.addEventListener('zerolens_freetier_updated', handleUpdate);
+    return () => window.removeEventListener('zerolens_freetier_updated', handleUpdate);
+  }, [userId]);
 
   // Project Vault / Box state
   const activeProjectId = useAppStore(state => state.activeProjectId || 'default');
@@ -284,10 +295,11 @@ export default function AvatarStudio() {
   const [propRefUrl, setPropRefUrl] = useState('');
   const [isUploadingPropRef, setIsUploadingPropRef] = useState(false);
 
-  // Engine selection: 'banana' = Nano Banana 2 Pro (5 cr), 'banana2' = Nano Banana 2 (2 cr), 'gpt2' = ChatGPT Image 2.5 (3 cr)
-  const [selectedEngine, setSelectedEngine] = useState('banana'); // 'banana' | 'banana2' | 'gpt2'
+  // Engine selection: 'banana' = Nano Banana 2 Pro (5 cr), 'banana2' = Nano Banana 2 (2 cr / FREE for first 3), 'gpt2' = ChatGPT Image 2.5 (3 cr)
+  const [selectedEngine, setSelectedEngine] = useState(() => (!isAdmin ? 'banana2' : 'banana'));
 
-  const requiredCredits = selectedEngine === 'banana' ? 5 : selectedEngine === 'banana2' ? 2 : 3;
+  const isFreeEligible = !isAdmin && selectedEngine === 'banana2' && freeImagesRemaining > 0;
+  const requiredCredits = isFreeEligible ? 0 : (selectedEngine === 'banana' ? 5 : selectedEngine === 'banana2' ? 2 : 3);
   const isUploading = !!(
     studio.uploadingRef ||
     studio.uploadingLeftProfile ||
@@ -296,8 +308,18 @@ export default function AvatarStudio() {
     isUploadingPropRef
   );
   const hasUploadedPhoto = !!(studio.refPreview || studio.refImageUrl);
-  const hasCredits = isAdmin || userCredits >= requiredCredits;
+  const hasCredits = isAdmin || isFreeEligible || userCredits >= requiredCredits;
   const canGenerate = !studio.generating && !isUploading;
+
+  const handleSelectEngine = (engine) => {
+    if (engine === 'gpt2' && !isAdmin) {
+      const showToast = useAppStore.getState().showToast;
+      if (showToast) showToast('ChatGPT 2.5 is a Pro feature. Upgrade to unlock!', 'info');
+      useAppStore.getState().setActiveTab('pricing');
+      return;
+    }
+    setSelectedEngine(engine);
+  };
 
   // Handle Location Reference Upload
   const handleLocationRefUpload = (e) => {
@@ -368,6 +390,7 @@ Real · Raw · Original studio photography. 8K resolution, 85mm portrait lens, p
       boardType: 'CHARACTER',
       model: selectedEngine,
       aspectRatio: '16:9',
+      isFreeTier: isFreeEligible,
       additionalContext: masterTurnaroundContext,
       boardMeta: {
         name,
@@ -415,6 +438,7 @@ STRICT NEGATIVE/EXCLUSIONS: Absolutely NO people, NO characters, NO humans, NO p
       boardType: 'LOCATION',
       model: selectedEngine,
       aspectRatio: '16:9',
+      isFreeTier: isFreeEligible,
       additionalContext: masterLocationPrompt,
       boardMeta: {
         name,
@@ -456,6 +480,7 @@ STRICT NEGATIVE/EXCLUSIONS: Absolutely NO text, NO labels, NO logos, NO watermar
       boardType: 'OBJECT',
       model: selectedEngine,
       aspectRatio: '16:9',
+      isFreeTier: isFreeEligible,
       additionalContext: masterPropPrompt,
       boardMeta: {
         name,
@@ -1178,11 +1203,26 @@ STRICT NEGATIVE/EXCLUSIONS: Absolutely NO text, NO labels, NO logos, NO watermar
           {/* Sticky Bottom Action Trigger & Compact Engine Selector */}
           <div className="p-3.5 border-t border-white/10 bg-black/80 backdrop-blur-xl space-y-2">
             
+            {/* Free Tier Announcement Banner for Regular Users */}
+            {!isAdmin && (
+              <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-[10px] shadow-sm">
+                <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                  <span>🎁</span>
+                  <span>{freeImagesRemaining > 0 ? (
+                    <>Free Trial: <strong className="text-white">{freeImagesRemaining}/3 free images</strong> left</>
+                  ) : (
+                    <span className="text-zinc-300">Free trial completed • 2 cr / image</span>
+                  )}</span>
+                </span>
+                <span className="text-[9px] font-mono text-zinc-400 uppercase tracking-wider">Nano Banana 2</span>
+              </div>
+            )}
+
             {/* Compact 3-Engine Selector */}
             <div className="flex items-center justify-between bg-zinc-950 border border-white/10 rounded-xl p-1 gap-1">
               <button
                 type="button"
-                onClick={() => setSelectedEngine('banana')}
+                onClick={() => handleSelectEngine('banana')}
                 className={`flex-1 flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-lg text-[9.5px] transition-all cursor-pointer ${
                   selectedEngine === 'banana'
                     ? 'bg-[#C8F135] text-black shadow-sm font-black'
@@ -1201,39 +1241,53 @@ STRICT NEGATIVE/EXCLUSIONS: Absolutely NO text, NO labels, NO logos, NO watermar
 
               <button
                 type="button"
-                onClick={() => setSelectedEngine('banana2')}
+                onClick={() => handleSelectEngine('banana2')}
                 className={`flex-1 flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-lg text-[9.5px] transition-all cursor-pointer ${
                   selectedEngine === 'banana2'
                     ? 'bg-[#C8F135] text-black shadow-sm font-black'
                     : 'text-white/60 hover:text-white hover:bg-white/5 font-semibold'
                 }`}
-                title="Nano Banana 2 (Standard)"
+                title={isFreeEligible ? "Nano Banana 2 (Free Trial Active)" : "Nano Banana 2 (Standard)"}
               >
                 <Zap className="w-3 h-3 shrink-0" />
                 <span className="truncate">Nano Banana 2</span>
                 <span className={`text-[8px] font-mono px-1 py-0.2 rounded font-black ${
-                  selectedEngine === 'banana2' ? 'bg-black/20 text-black' : 'bg-white/10 text-emerald-400'
+                  selectedEngine === 'banana2'
+                    ? 'bg-black/20 text-black'
+                    : isFreeEligible
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                    : 'bg-white/10 text-emerald-400'
                 }`}>
-                  2 cr
+                  {isFreeEligible ? 'FREE' : '2 cr'}
                 </span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setSelectedEngine('gpt2')}
+                onClick={() => handleSelectEngine('gpt2')}
                 className={`flex-1 flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-lg text-[9.5px] transition-all cursor-pointer ${
                   selectedEngine === 'gpt2'
                     ? 'bg-[#C8F135] text-black shadow-sm font-black'
+                    : !isAdmin
+                    ? 'text-amber-400/80 hover:text-amber-300 hover:bg-amber-400/10 font-semibold'
                     : 'text-white/60 hover:text-white hover:bg-white/5 font-semibold'
                 }`}
-                title="ChatGPT 2.5"
+                title={!isAdmin ? "ChatGPT 2.5 (Pro Plan — Click to upgrade)" : "ChatGPT 2.5"}
               >
-                <Sparkles className="w-3 h-3 shrink-0" />
+                {!isAdmin ? (
+                  <Lock className="w-3 h-3 shrink-0 text-amber-400" />
+                ) : (
+                  <Sparkles className="w-3 h-3 shrink-0" />
+                )}
                 <span className="truncate">ChatGPT 2.5</span>
                 <span className={`text-[8px] font-mono px-1 py-0.2 rounded font-black ${
-                  selectedEngine === 'gpt2' ? 'bg-black/20 text-black' : 'bg-white/10 text-cyan-400'
+                  selectedEngine === 'gpt2'
+                    ? 'bg-black/20 text-black'
+                    : !isAdmin
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                    : 'bg-white/10 text-cyan-400'
                 }`}>
-                  3 cr
+                  {!isAdmin ? 'PRO' : '3 cr'}
                 </span>
               </button>
             </div>
