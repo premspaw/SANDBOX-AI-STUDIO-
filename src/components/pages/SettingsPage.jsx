@@ -21,8 +21,15 @@ export default function SettingsPage() {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
-    const [authUser, setAuthUser] = useState(null);
     const [copiedId, setCopiedId] = useState(false);
+    const [copiedMcpKey, setCopiedMcpKey] = useState(null);
+
+    const handleCopyMcp = (text, key) => {
+        navigator.clipboard.writeText(text);
+        setCopiedMcpKey(key);
+        if (showToast) showToast('Link copied to clipboard!', 'success');
+        setTimeout(() => setCopiedMcpKey(null), 2500);
+    };
 
     // Profile form states
     const [fullName, setFullName] = useState('');
@@ -296,6 +303,7 @@ export default function SettingsPage() {
 
     const tabs = [
         { id: 'credits', label: 'Shorts & Subscription', icon: Coins, badge: `${userCredits}⚡` },
+        { id: 'mcp', label: 'MCP & ChatGPT Connectors', icon: Cpu, badge: 'Live' },
         { id: 'profile', label: 'Account & Identity', icon: User },
         { id: 'preferences', label: 'Studio & AI Preferences', icon: Sliders },
         { id: 'security', label: 'Security & API Keys', icon: ShieldCheck },
@@ -650,6 +658,155 @@ export default function SettingsPage() {
                                         </table>
                                     </div>
                                 )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ═════════ TAB: MCP & CHATGPT CONNECTORS ═════════ */}
+                    {activeTab === 'mcp' && (
+                        <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-black/40 border border-white/[0.08] backdrop-blur-xl space-y-5 sm:space-y-6">
+                            {/* Header */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-[9px] sm:text-[10px] font-mono text-[#c8f135] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full bg-[#c8f135]/10 border border-[#c8f135]/30">
+                                            Model Context Protocol v2.0
+                                        </span>
+                                        <span className="text-[9px] sm:text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                                            Live & Active
+                                        </span>
+                                    </div>
+                                    <h3 className="text-base sm:text-xl font-black uppercase text-white tracking-tight flex items-center gap-2">
+                                        <Cpu className="w-5 h-5 text-[#c8f135]" />
+                                        <span>MCP &amp; ChatGPT Connectors</span>
+                                    </h3>
+                                    <p className="text-xs text-zinc-400 mt-1 max-w-2xl leading-relaxed">
+                                        Connect ZeroLens Studio tools directly to <strong className="text-white">ChatGPT Custom GPTs</strong>, <strong className="text-white">Claude Desktop</strong>, and <strong className="text-white">Cursor</strong> to trigger video generation, UGC scripts, and master image editing via natural conversation.
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => handleCopyMcp(`${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://zerolens.in' : window.location.origin}/api/mcp/openapi.json`, 'all_openapi')}
+                                    className="px-4 py-2.5 rounded-xl bg-[#c8f135] hover:bg-[#d8ff43] text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(200,241,53,0.3)] active:scale-95 cursor-pointer flex items-center gap-2 shrink-0"
+                                >
+                                    {copiedMcpKey === 'all_openapi' ? <Check size={14} /> : <Copy size={14} />}
+                                    <span>{copiedMcpKey === 'all_openapi' ? 'Copied Link!' : 'Copy ChatGPT Link'}</span>
+                                </button>
+                            </div>
+
+                            {/* Public Links Cards */}
+                            <div className="space-y-3">
+                                <h4 className="text-xs font-black uppercase tracking-wider text-white">Public Connection Links</h4>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {/* 1. ChatGPT OpenAPI Link */}
+                                    <div className="p-3.5 sm:p-4 rounded-2xl bg-white/[0.02] border border-white/[0.08] space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                                                <span>🌐</span> ChatGPT Custom GPT (OpenAPI Actions)
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleCopyMcp(`${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://zerolens.in' : window.location.origin}/api/mcp/openapi.json`, 'openapi_spec')}
+                                                className="text-[10px] font-bold text-[#c8f135] hover:underline flex items-center gap-1 cursor-pointer"
+                                            >
+                                                {copiedMcpKey === 'openapi_spec' ? <Check size={11} /> : <Copy size={11} />}
+                                                <span>{copiedMcpKey === 'openapi_spec' ? 'Copied' : 'Copy URL'}</span>
+                                            </button>
+                                        </div>
+                                        <code className="block p-2 rounded-lg bg-black/60 text-emerald-300 font-mono text-[10px] sm:text-[11px] truncate select-all">
+                                            {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://zerolens.in' : window.location.origin)}/api/mcp/openapi.json
+                                        </code>
+                                        <p className="text-[10px] text-zinc-400">Paste this URL into ChatGPT &gt; Custom GPT &gt; Actions &gt; Import from URL.</p>
+                                    </div>
+
+                                    {/* 2. Claude Desktop Remote SSE */}
+                                    <div className="p-3.5 sm:p-4 rounded-2xl bg-white/[0.02] border border-white/[0.08] space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                                                <span>⚡</span> Claude Desktop (Remote SSE)
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleCopyMcp(`${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://zerolens.in' : window.location.origin}/api/mcp/sse`, 'sse_url')}
+                                                className="text-[10px] font-bold text-[#c8f135] hover:underline flex items-center gap-1 cursor-pointer"
+                                            >
+                                                {copiedMcpKey === 'sse_url' ? <Check size={11} /> : <Copy size={11} />}
+                                                <span>{copiedMcpKey === 'sse_url' ? 'Copied' : 'Copy URL'}</span>
+                                            </button>
+                                        </div>
+                                        <code className="block p-2 rounded-lg bg-black/60 text-amber-300 font-mono text-[10px] sm:text-[11px] truncate select-all">
+                                            {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://zerolens.in' : window.location.origin)}/api/mcp/sse
+                                        </code>
+                                        <p className="text-[10px] text-zinc-400">Use in Claude Desktop claude_desktop_config.json under mcpServers url.</p>
+                                    </div>
+
+                                    {/* 3. Streamable HTTP MCP (MCP 2.0) */}
+                                    <div className="p-3.5 sm:p-4 rounded-2xl bg-white/[0.02] border border-white/[0.08] space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                                                <span>🚀</span> Streamable HTTP MCP Endpoint
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleCopyMcp(`${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://zerolens.in' : window.location.origin}/api/mcp`, 'streamable_url')}
+                                                className="text-[10px] font-bold text-[#c8f135] hover:underline flex items-center gap-1 cursor-pointer"
+                                            >
+                                                {copiedMcpKey === 'streamable_url' ? <Check size={11} /> : <Copy size={11} />}
+                                                <span>{copiedMcpKey === 'streamable_url' ? 'Copied' : 'Copy URL'}</span>
+                                            </button>
+                                        </div>
+                                        <code className="block p-2 rounded-lg bg-black/60 text-cyan-300 font-mono text-[10px] sm:text-[11px] truncate select-all">
+                                            {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://zerolens.in' : window.location.origin)}/api/mcp
+                                        </code>
+                                        <p className="text-[10px] text-zinc-400">Standard MCP 2.0 streamable endpoint for OpenAI Apps and modern MCP clients.</p>
+                                    </div>
+
+                                    {/* 4. Direct REST Action API */}
+                                    <div className="p-3.5 sm:p-4 rounded-2xl bg-white/[0.02] border border-white/[0.08] space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-fuchsia-400 flex items-center gap-1.5">
+                                                <span>🛠️</span> Direct Tool Execution API
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleCopyMcp(`${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://zerolens.in' : window.location.origin}/api/mcp/action/`, 'action_url')}
+                                                className="text-[10px] font-bold text-[#c8f135] hover:underline flex items-center gap-1 cursor-pointer"
+                                            >
+                                                {copiedMcpKey === 'action_url' ? <Check size={11} /> : <Copy size={11} />}
+                                                <span>{copiedMcpKey === 'action_url' ? 'Copied' : 'Copy URL'}</span>
+                                            </button>
+                                        </div>
+                                        <code className="block p-2 rounded-lg bg-black/60 text-fuchsia-300 font-mono text-[10px] sm:text-[11px] truncate select-all">
+                                            {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://zerolens.in' : window.location.origin)}/api/mcp/action/:toolName
+                                        </code>
+                                        <p className="text-[10px] text-zinc-400">Trigger any studio tool via standard JSON POST from your scripts or n8n.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Step-by-Step Instructions */}
+                            <div className="space-y-3">
+                                <h4 className="text-xs font-black uppercase tracking-wider text-white">How Users Connect with ChatGPT in 3 Steps</h4>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                                    <div className="p-3.5 rounded-xl bg-black/50 border border-white/5 space-y-1.5">
+                                        <span className="text-[10px] font-mono font-bold text-[#c8f135] uppercase tracking-wider">Step 1</span>
+                                        <p className="font-bold text-white">Create or Edit a Custom GPT</p>
+                                        <p className="text-[11px] text-zinc-400">In ChatGPT, navigate to <strong>Explore GPTs</strong> &gt; <strong>Create</strong> &gt; <strong>Configure</strong>.</p>
+                                    </div>
+                                    <div className="p-3.5 rounded-xl bg-black/50 border border-white/5 space-y-1.5">
+                                        <span className="text-[10px] font-mono font-bold text-[#c8f135] uppercase tracking-wider">Step 2</span>
+                                        <p className="font-bold text-white">Add OpenAPI Action</p>
+                                        <p className="text-[11px] text-zinc-400">Scroll down to <strong>Actions</strong> &gt; click <strong>Create new action</strong> &gt; click <strong>Import from URL</strong>.</p>
+                                    </div>
+                                    <div className="p-3.5 rounded-xl bg-black/50 border border-white/5 space-y-1.5">
+                                        <span className="text-[10px] font-mono font-bold text-[#c8f135] uppercase tracking-wider">Step 3</span>
+                                        <p className="font-bold text-white">Paste Link &amp; Import</p>
+                                        <p className="text-[11px] text-zinc-400">Paste the OpenAPI URL and tap Import. All 10 studio tools will populate instantly!</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
