@@ -312,6 +312,40 @@ export function getVideoResultHtml(data = {}) {
       clearInterval(timer);
     }
   }, 250);
+
+  // 5. Active server-side status polling if generation_id is provided without video URL
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const genId = params.get('id') || params.get('generation_id');
+    const existingUrl = params.get('url') || params.get('videoUrl');
+    if (genId && !existingUrl) {
+      let attempts = 0;
+      const pollServer = setInterval(async () => {
+        attempts++;
+        try {
+          const resp = await fetch('${appBaseUrl}/api/mcp/ui/status/' + encodeURIComponent(genId));
+          if (resp.ok) {
+            const data = await resp.json();
+            const finUrl = data.result_url || data.videoUrl || data.url;
+            if (data.status === 'completed' && finUrl) {
+              clearInterval(pollServer);
+              render({
+                url: finUrl,
+                status: 'completed',
+                prompt: data.details?.prompt,
+                engine: data.details?.engine,
+                aspectRatio: data.details?.aspectRatio,
+                generation_id: genId
+              });
+            } else if (data.status === 'failed') {
+              clearInterval(pollServer);
+            }
+          }
+        } catch (_) {}
+        if (attempts >= 120) clearInterval(pollServer);
+      }, 3000);
+    }
+  } catch (_) {}
 </script>
 
 </body>

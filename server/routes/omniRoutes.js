@@ -1302,7 +1302,7 @@ export default function createRouter(deps) {
             broadcastComplete(taskId);
             console.log(`[OMNI-I2V] ✅ [${taskId}] Success`);
 
-            res.json({ videoUrl: publicUrl });
+            res.json({ videoUrl: publicUrl, url: publicUrl, status: 'completed' });
         } catch (error) {
             console.error('[OMNI-I2V] Error:', error);
             const taskId = req.body.nodeId ? `veo-${req.body.nodeId}` : 'veo-default';

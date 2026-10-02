@@ -279,17 +279,29 @@ async function launchBackgroundVideoWorker(jobPayload, generationId, cost, user,
           userId: user.id
         };
 
-        const resp = await fetch(`http://127.0.0.1:${port}/api/omni-i2v`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(omniPayload)
-        });
+        let resp;
+        const localUrl = `http://127.0.0.1:${port}/api/omni-i2v`;
+        try {
+          resp = await fetch(localUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(omniPayload)
+          });
+        } catch (fetchErr) {
+          console.warn(`[MCP Video Worker] Local loopback failed (${localUrl}): ${fetchErr.message}, falling back to ${appBaseUrl}`);
+          resp = await fetch(`${appBaseUrl}/api/omni-i2v`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(omniPayload)
+          });
+        }
 
         const data = await resp.json();
-        if (!resp.ok || !data.url) {
+        const videoOutputUrl = data.videoUrl || data.url || data.resultUrl;
+        if (!resp.ok || !videoOutputUrl) {
           throw new Error(data.error || data.message || `Omni Flash 1.1 generation failed with status ${resp.status}`);
         }
-        finalVideoUrl = data.url;
+        finalVideoUrl = videoOutputUrl;
         console.log(`[MCP Video Worker] ✅ Omni Flash 1.1 render finished: ${finalVideoUrl}`);
       }
 

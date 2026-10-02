@@ -227,6 +227,18 @@ export default function createMcpRouter(deps = {}) {
     res.send(html);
   });
 
+  router.get('/ui/status/:generationId', async (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    try {
+      const { generationId } = req.params;
+      const statusResult = await dispatchMcpToolCall('check_generation', { generation_id: generationId }, null, deps);
+      res.json(statusResult);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // ─────────────────────────────────────────────────────────────
   // 5. OPENAPI SPEC & TOOL LIST (For ChatGPT Custom GPT Actions)
   // ─────────────────────────────────────────────────────────────

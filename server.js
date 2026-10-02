@@ -568,6 +568,28 @@ if (await isRedisAvailable()) {
                 let videoUrl = null;
                 if (provider === 'seedance') {
                     videoUrl = await handleSeedanceJob(reqBody);
+                } else if (provider === 'omni' || (reqBody.engine && reqBody.engine.toLowerCase().includes('omni'))) {
+                    const port = process.env.PORT || 3002;
+                    const omniPayload = {
+                        prompt: reqBody.prompt,
+                        image: reqBody.firstFrame || null,
+                        lastFrame: reqBody.lastFrame || null,
+                        duration: Number(reqBody.duration) || 6,
+                        aspect_ratio: reqBody.aspectRatio || reqBody.aspect_ratio || '16:9',
+                        resolution: reqBody.resolution || '720p',
+                        generate_audio: Boolean(reqBody.generateAudio),
+                        userId: reqBody.userId
+                    };
+                    const resp = await fetch(`http://127.0.0.1:${port}/api/omni-i2v`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(omniPayload)
+                    });
+                    const d = await resp.json();
+                    videoUrl = d.videoUrl || d.url;
+                    if (!resp.ok || !videoUrl) {
+                        throw new Error(d.error || d.message || `Omni generation failed with status ${resp.status}`);
+                    }
                 } else if (provider === 'openai') {
                     // OpenAI image generation via queue
                     let finalUrl = null;
@@ -578,7 +600,7 @@ if (await isRedisAvailable()) {
                     // Default: Google Veo 3.1 (full polling loop in worker)
                     videoUrl = await handleVeoJob(reqBody);
                 }
-                await updateJobStatus(job.id, 'completed', { videoUrl });
+                await updateJobStatus(job.id, 'completed', { videoUrl, url: videoUrl });
                 console.log(`[WORKER] ✅ Video job ${job.id} completed`);
                 return { videoUrl };
             } catch (err) {

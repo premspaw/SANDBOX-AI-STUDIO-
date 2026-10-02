@@ -239,13 +239,13 @@ export function renderWidgetHtml({
         <div class="brand-logo">ZL</div>
         <span>ZeroLens ${type === 'video' ? 'Cinema' : 'Studio'}</span>
       </div>
-      <div class="status-badge">
-        <span class="status-dot"></span>
+      <div class="status-badge" id="status-badge">
+        <span class="status-dot" id="status-dot" style="background:${statusBadgeColor};box-shadow:0 0 8px ${statusBadgeColor};"></span>
         <span>${statusText}</span>
       </div>
     </div>
 
-    <div class="media-area">
+    <div class="media-area" id="media-area">
       ${isCompleted ? (
         isVideo ? `
           <video class="media-content" src="${resultUrl}" poster="${thumbnailUrl || ''}" controls autoplay loop playsinline></video>
@@ -256,7 +256,7 @@ export function renderWidgetHtml({
         <div class="placeholder-state">
           <div style="font-size: 32px; color: #ef4444;">⚠️</div>
           <div style="font-size: 13px; color: #fca5a5;">Generation Failed</div>
-          <div style="font-size: 11px; color: var(--text-muted); max-width: 280px;">${error || 'An error occurred during rendering.'}</div>
+          <div style="font-size: 11px; color: var(--text-muted); max-width: 280px;">${error || 'An error occurred during rendering. Credits refunded.'}</div>
         </div>
       ` : `
         <div class="placeholder-state">
@@ -264,7 +264,7 @@ export function renderWidgetHtml({
           <div style="font-size: 13px; font-weight: 600;">Generating ${isVideo ? 'Video' : 'Image'}...</div>
           <div style="font-size: 11px; color: var(--text-muted);">${status === 'queued' ? 'Waiting in generation queue' : 'Rendering high-fidelity frames'}</div>
           <div class="progress-bar-wrap">
-            <div class="progress-bar-fill"></div>
+            <div class="progress-bar-fill" id="progress-bar-fill"></div>
           </div>
         </div>
       `}
@@ -278,17 +278,90 @@ export function renderWidgetHtml({
       </div>
     </div>
 
-    <div class="actions">
+    <div class="actions" id="widget-actions">
       <a href="${studioUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
         <span>⚡ Open in ZeroLens</span>
       </a>
       ${isCompleted ? `
-        <a href="${resultUrl}" target="_blank" download class="btn btn-secondary">
+        <a href="${resultUrl}" target="_blank" download class="btn btn-secondary" id="btn-auto-download">
           <span>⬇ Download</span>
         </a>
       ` : ''}
     </div>
   </div>
+
+  <script>
+    (function() {
+      const generationId = ${JSON.stringify(generationId)};
+      const isCompletedInitial = ${Boolean(isCompleted)};
+      const appBaseUrl = ${JSON.stringify(appBaseUrl)};
+      const isVideo = ${Boolean(isVideo)};
+
+      if (!generationId || isCompletedInitial) return;
+
+      let pollAttempts = 0;
+      const maxPolls = 120;
+      const pollInterval = setInterval(async () => {
+        pollAttempts++;
+        try {
+          const resp = await fetch(appBaseUrl + '/api/mcp/ui/status/' + encodeURIComponent(generationId));
+          if (resp.ok) {
+            const data = await resp.json();
+            const finalUrl = data.result_url || data.videoUrl || data.url;
+
+            if (data.status === 'completed' && finalUrl) {
+              clearInterval(pollInterval);
+
+              const mediaArea = document.getElementById('media-area');
+              if (mediaArea) {
+                if (isVideo) {
+                  mediaArea.innerHTML = '<video class="media-content" src="' + finalUrl + '" controls autoplay loop playsinline></video>';
+                } else {
+                  mediaArea.innerHTML = '<img class="media-content" src="' + finalUrl + '" alt="ZeroLens AI Image" loading="lazy" />';
+                }
+              }
+
+              const badge = document.getElementById('status-badge');
+              if (badge) {
+                badge.innerHTML = '<span class="status-dot" style="background:#10b981;box-shadow:0 0 8px #10b981;animation:none;"></span><span style="color:#10b981;">Ready</span>';
+              }
+
+              const actions = document.getElementById('widget-actions');
+              if (actions && !document.getElementById('btn-auto-download')) {
+                const dlBtn = document.createElement('a');
+                dlBtn.id = 'btn-auto-download';
+                dlBtn.className = 'btn btn-secondary';
+                dlBtn.href = finalUrl;
+                dlBtn.target = '_blank';
+                dlBtn.download = isVideo ? 'zerolens_video.mp4' : 'zerolens_image.png';
+                dlBtn.innerHTML = '<span>⬇ Download</span>';
+                actions.appendChild(dlBtn);
+              }
+            } else if (data.status === 'failed') {
+              clearInterval(pollInterval);
+              const mediaArea = document.getElementById('media-area');
+              if (mediaArea) {
+                mediaArea.innerHTML = '<div class="placeholder-state"><div style="font-size: 32px; color: #ef4444;">⚠️</div><div style="font-size: 13px; color: #fca5a5;">Generation Failed</div><div style="font-size: 11px; color: var(--text-muted); max-width: 280px;">' + (data.error || 'Generation did not complete. Credits refunded.') + '</div></div>';
+              }
+              const badge = document.getElementById('status-badge');
+              if (badge) {
+                badge.innerHTML = '<span class="status-dot" style="background:#ef4444;box-shadow:0 0 8px #ef4444;animation:none;"></span><span style="color:#ef4444;">Failed</span>';
+              }
+            } else if (data.progress) {
+              const fill = document.getElementById('progress-bar-fill');
+              if (fill) fill.style.width = Math.min(Math.round(data.progress * 100), 95) + '%';
+            }
+          }
+        } catch (err) {
+          console.warn('[ZeroLens Widget] Poll check warning:', err.message);
+        }
+
+        if (pollAttempts >= maxPolls) {
+          clearInterval(pollInterval);
+        }
+      }, 3000);
+    })();
+  </script>
 </body>
 </html>`;
 }
