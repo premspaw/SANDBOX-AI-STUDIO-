@@ -17,6 +17,7 @@ export default function SettingsPage() {
     const setActiveTabGlobal = useAppStore(state => state.setActiveTab);
     const showToast = useAppStore(state => state.showToast);
 
+    const [authUser, setAuthUser] = useState(null);
     const [activeTab, setActiveTab] = useState('credits'); // Default to credits & subscription
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
