@@ -1055,7 +1055,7 @@ export default function UGC() {
             },
             { text: 'Analyze this video reference. Focus EXCLUSIVELY on the main character/person. Ignore the background, environment, and lighting. \n\nTASK:\n1. Extract the EXACT sequence of physical actions and movements (e.g., "points at camera", "smiles", "gestures with left hand").\n2. Transcribe the EXACT dialogue/script being spoken (limit to the first 30 seconds).\n3. Summarize the character\'s tone and personality.\n\nProvide the result in JSON format with "characterActions", "script", and "toneSummary".' }
           ],
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.1-pro-preview',
           generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -1109,7 +1109,7 @@ export default function UGC() {
           },
           { text: 'Analyze this UGC motion reference video. Perform three tasks:\n1. Transcribe the EXACT spoken dialogue/script word-for-word.\n2. Describe the sequence of physical actions, body movements, hand gestures, facial expressions, and camera movements/angles, structured with sequential timecode markers matching the timing of the video (e.g., "[0-4s] Creator smiles, looking at camera... [4-9s] Creator raises hand holding product..."). CRITICAL: Do NOT describe the visual appearance or identity of the person (do NOT mention their hair color/type, gender, clothing/apparel descriptions, age, or ethnicity). Focus ONLY on describing the actions, motions, and expressions so they can be applied to any creator.\n3. Summarize the overall tone.\n\nProvide the result in JSON format matching the schema.' }
         ],
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.1-pro-preview',
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -1263,7 +1263,7 @@ Return a detailed JSON with:
 - "targetAudience": Who this product is ideal for (e.g., "Food lovers seeking authentic regional cuisine", "Health-conscious young adults")
 - "useCases": Array of 3-4 occasions or use cases (e.g., "Weekend family meals", "Restaurant-style home dining")
 - "tags": Array of 6-10 descriptive keywords for search and categorization` }],
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.1-pro-preview',
           userId: currentUserId,
           generationConfig: {
             responseMimeType: "application/json",
@@ -1610,7 +1610,7 @@ Return a detailed JSON with:
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             parts: [{ text: podcastPrompt }],
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.1-pro-preview',
             userId: currentUserId,
             generationConfig: {
               responseMimeType: "application/json",
@@ -1730,7 +1730,7 @@ Return a detailed JSON with:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           parts: [{ text: prompt }],
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.1-pro-preview',
           userId: currentUserId,
           generationConfig: {
             responseMimeType: "application/json",
@@ -1831,7 +1831,7 @@ Return a detailed JSON with:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           parts: [{ text: prompt }],
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.1-pro-preview',
           userId: currentUserId,
           generationConfig: {
             responseMimeType: "application/json",

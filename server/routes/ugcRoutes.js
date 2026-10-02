@@ -1297,12 +1297,14 @@ Return ONLY valid JSON.`
                 console.log(`[UGC AI API] Proxying general content generation: requestedModel=${model}`);
                 
                 // Map custom model tags to a stable, supported model name
-                let mappedModel = 'gemini-2.5-flash';
+                let mappedModel = 'gemini-3.1-pro-preview';
                 if (model) {
                     const cleanModel = String(model).toLowerCase();
-                    if (cleanModel.includes('banana') || cleanModel.includes('3.1-flash') || cleanModel.includes('2.0-flash')) {
-                        mappedModel = 'gemini-2.5-flash';
-                    } else if (cleanModel.includes('3.1-pro') || cleanModel.includes('2.0-pro')) {
+                    if (cleanModel.includes('3.1-pro') || cleanModel.includes('3.1')) {
+                        mappedModel = 'gemini-3.1-pro-preview';
+                    } else if (cleanModel.includes('3.5-flash') || cleanModel.includes('3.5')) {
+                        mappedModel = 'gemini-3.5-flash';
+                    } else if (cleanModel.includes('2.5-flash')) {
                         mappedModel = 'gemini-2.5-flash';
                     } else {
                         mappedModel = model;
@@ -1331,10 +1333,9 @@ Return ONLY valid JSON.`
 
                 const candidateModels = Array.from(new Set([
                     mappedModel,
-                    'gemini-2.5-flash',
-                    'gemini-2.5-flash-lite',
                     'gemini-3.1-pro-preview',
-                    'gemini-2.0-flash'
+                    'gemini-3.5-flash',
+                    'gemini-2.5-flash'
                 ])).filter(Boolean);
 
                 const studioApiKey = process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY;

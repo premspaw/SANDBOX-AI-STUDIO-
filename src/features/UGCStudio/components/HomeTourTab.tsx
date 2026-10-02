@@ -531,7 +531,7 @@ Return a JSON array of objects, each object structured as:
         const serverResp = await fetch(getApiUrl('/api/ugc/generate-text'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: tourScriptPrompt, model: 'gemini-2.5-flash', responseSchema }),
+          body: JSON.stringify({ prompt: tourScriptPrompt, model: 'gemini-3.1-pro-preview', responseSchema }),
         });
         if (serverResp.ok) {
           const serverData = await serverResp.json();
@@ -575,7 +575,7 @@ Return a JSON array of objects, each object structured as:
       }
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.1-pro-preview',
         contents: parts,
         config: {
           responseMimeType: 'application/json',
