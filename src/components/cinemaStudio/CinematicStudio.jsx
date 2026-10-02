@@ -2196,19 +2196,20 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
   const getRequiredCredits = (engineId, opts = {}) => {
+    const storeRemixEngine = typeof useAppStore !== 'undefined' ? useAppStore.getState?.().remixEngine : null;
     return calculateEngineCredits(engineId, {
       duration: opts.duration !== undefined ? opts.duration : duration,
       resolution: opts.resolution || resolution,
       generateAudio: opts.generateAudio !== undefined ? opts.generateAudio : generateAudio,
       activeTab,
       panelTab,
-      transitionSubTab,
-      remixEngine,
+      transitionSubTab: opts.transitionSubTab || 'sequence',
+      remixEngine: opts.remixEngine || storeRemixEngine || 'jitsu',
       motionMode,
       motionRefVideoDuration,
       extensionSourceVideo,
       extensionDuration,
-      seedanceSubModel,
+      seedanceSubModel: opts.seedanceSubModel || 'seedance-fast',
       ...opts
     });
   };
