@@ -217,7 +217,26 @@ export function getVideoResultHtml(data = {}) {
 </div>
 
 <script type="module">
-  function render(data) {
+  // Robust MCP Apps bridge & window.openai data loader for ChatGPT
+  function extractData(source) {
+    if (!source) return null;
+    if (typeof source === 'string') {
+      try { source = JSON.parse(source); } catch (_) { return null; }
+    }
+    if (source.structuredContent && typeof source.structuredContent === 'object') return extractData(source.structuredContent);
+    if (source.toolOutput && typeof source.toolOutput === 'object') return extractData(source.toolOutput);
+    if (source.toolResponse && typeof source.toolResponse === 'object') return extractData(source.toolResponse);
+    if (source.toolResult && typeof source.toolResult === 'object') return extractData(source.toolResult);
+    if (source.data && typeof source.data === 'object') return extractData(source.data);
+    if (source.result && typeof source.result === 'object') return extractData(source.result);
+    if (source.payload && typeof source.payload === 'object') return extractData(source.payload);
+    if (source.state && typeof source.state === 'object') return extractData(source.state);
+    if (source.params && typeof source.params === 'object') return extractData(source.params);
+    return source;
+  }
+
+  function render(raw) {
+    const data = extractData(raw);
     if (!data) return;
     const vid = document.getElementById('generated-video');
     const promptEl = document.getElementById('prompt-display');
@@ -226,28 +245,73 @@ export function getVideoResultHtml(data = {}) {
     const resTag = document.getElementById('res-tag');
     const durationTag = document.getElementById('duration-tag');
     const downloadBtn = document.getElementById('btn-download');
+    const studioBtn = document.getElementById('btn-open-studio');
+    const creditsTag = document.getElementById('credits-tag');
 
-    const url = data.videoUrl || data.url || data.video_url;
+    const url = data.videoUrl || data.url || data.video_url || data.resultUrl || data.result_url || data.output_url;
     if (url && vid) {
       vid.src = url;
-      if (downloadBtn) downloadBtn.href = url;
+      vid.style.display = 'block';
+      if (downloadBtn) {
+        downloadBtn.href = url;
+        downloadBtn.style.pointerEvents = 'auto';
+      }
     }
-    if (data.prompt && promptEl) promptEl.textContent = data.prompt;
-    if (data.engine && modelBadge) modelBadge.textContent = data.engine;
+    if (data.prompt && promptEl) promptEl.textContent = '"' + data.prompt + '"';
+    if ((data.engine || data.model) && modelBadge) modelBadge.textContent = data.engine || data.model;
     if ((data.aspectRatio || data.aspect_ratio) && aspectTag) aspectTag.textContent = data.aspectRatio || data.aspect_ratio;
     if (data.resolution && resTag) resTag.textContent = data.resolution;
     if (data.duration && durationTag) durationTag.textContent = data.duration + 's';
-  }
-
-  if (window.openai?.toolOutput) {
-    render(window.openai.toolOutput);
-  }
-
-  window.addEventListener('message', (event) => {
-    if (event.data?.toolOutput || event.data?.structuredContent) {
-      render(event.data.toolOutput || event.data.structuredContent);
+    if (data.credits_used !== undefined && creditsTag) creditsTag.textContent = 'Shorts Deducted: ' + data.credits_used;
+    if (data.generation_id && studioBtn) {
+      studioBtn.href = '${appBaseUrl}/cinema?assetId=' + encodeURIComponent(data.generation_id) + '&type=video';
     }
+  }
+
+  // 1. URL search params fallback
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const paramUrl = params.get('url') || params.get('videoUrl') || params.get('resultUrl');
+    if (paramUrl) {
+      render({
+        url: paramUrl,
+        prompt: params.get('prompt'),
+        engine: params.get('engine') || params.get('model'),
+        aspectRatio: params.get('aspectRatio') || params.get('aspect_ratio'),
+        resolution: params.get('resolution'),
+        duration: params.get('duration'),
+        generation_id: params.get('id') || params.get('generation_id')
+      });
+    }
+  } catch (_) {}
+
+  // 2. Check window.openai context
+  function checkOpenAi() {
+    if (window.openai) {
+      const d = window.openai.toolOutput || window.openai.toolResponse || window.openai.toolResult || window.openai.structuredContent || window.openai.data || window.openai.context || window.openai;
+      render(d);
+    }
+    if (window.__OPENAI_DATA__) render(window.__OPENAI_DATA__);
+    if (window.__INITIAL_STATE__) render(window.__INITIAL_STATE__);
+  }
+  checkOpenAi();
+
+  // 3. Listen for postMessage events from ChatGPT host
+  window.addEventListener('message', (event) => {
+    if (!event.data) return;
+    render(event.data);
   });
+
+  // 4. Polling check for late-injected host data
+  let checks = 0;
+  const timer = setInterval(() => {
+    checks++;
+    checkOpenAi();
+    const currentSrc = document.getElementById('generated-video')?.getAttribute('src');
+    if (checks > 20 || (currentSrc && currentSrc.length > 5)) {
+      clearInterval(timer);
+    }
+  }, 250);
 </script>
 
 </body>

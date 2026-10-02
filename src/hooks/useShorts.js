@@ -9,18 +9,20 @@ export const useShorts = () => {
     const spend = async (costKey, overrideAmount = null) => {
         const amount = overrideAmount !== null ? overrideAmount : SHORTS_COST[costKey]
         if (!amount) return { success: false, reason: 'unknown_cost' }
-        if (!userProfile?.id) return { success: false, reason: 'unauthenticated' }
+        const targetUserId = userProfile?.id || (isAdmin ? 'admin-user' : null)
+        if (!targetUserId) return { success: false, reason: 'unauthenticated' }
         
+        const isUserAdmin = userProfile?.role === 'admin' || isAdmin
+
         if (userShorts >= amount) {
-            if (isAdmin) {
-                useAppStore.setState({ userShorts: userShorts - amount });
-                return { success: true };
-            }
-            return await spendShorts(userProfile.id, amount, costKey)
+            return await spendShorts(userProfile?.id || 'admin', amount, costKey)
         }
 
-        // If insufficient, but admin/mock-admin, let it slide without deduction
-        if (userProfile?.role === 'admin' || isAdmin) {
+        // If admin with low balance, deduct available and allow generation to proceed
+        if (isUserAdmin) {
+            if (userShorts > 0) {
+                await spendShorts(userProfile?.id || 'admin', userShorts, costKey)
+            }
             return { success: true };
         }
 
@@ -30,12 +32,9 @@ export const useShorts = () => {
     const refund = async (costKey, overrideAmount = null) => {
         const amount = overrideAmount !== null ? overrideAmount : SHORTS_COST[costKey]
         if (!amount) return
-        if (!userProfile?.id) return
-        if (isAdmin) {
-            useAppStore.setState({ userShorts: userShorts + amount });
-            return;
-        }
-        await refundShorts(userProfile.id, amount, costKey)
+        const targetUserId = userProfile?.id || (isAdmin ? 'admin-user' : null)
+        if (!targetUserId) return
+        await refundShorts(userProfile?.id || 'admin', amount, costKey)
     }
 
     const canAfford = (costKey, overrideAmount = null) => {

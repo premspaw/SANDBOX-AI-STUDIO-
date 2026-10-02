@@ -60,6 +60,48 @@ export function CinematicLightbox({
   const videoElRef = useRef(null);
   const [isExtractingFrame, setIsExtractingFrame] = useState(false);
   const [overlayStyle, setOverlayStyle] = useState({});
+  const bufferTimeoutRef = useRef(null);
+  const [isVideoBuffering, setIsVideoBuffering] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(true);
+
+  // When lightboxItem opens, immediately pause background gallery videos to free GPU decoders and network bandwidth
+  useEffect(() => {
+    if (lightboxItem) {
+      setIsVideoBuffering(false);
+      setIsImageLoading(true);
+      if (bufferTimeoutRef.current) clearTimeout(bufferTimeoutRef.current);
+      try {
+        document.querySelectorAll('video').forEach(v => {
+          if (v !== videoElRef.current && !v.paused) {
+            v.pause();
+          }
+        });
+      } catch {
+        // ignore video pause errors
+      }
+
+      // Smooth autoplay initiation
+      if (lightboxItem.type === 'video') {
+        const timer = setTimeout(() => {
+          const v = videoElRef.current;
+          if (v && v.paused) {
+            const p = v.play();
+            if (p !== undefined) {
+              p.catch(() => {
+                // If browser blocks unmuted sound, mute and play smoothly
+                v.muted = true;
+                v.play().catch(() => {});
+              });
+            }
+          }
+        }, 50);
+        return () => clearTimeout(timer);
+      }
+    }
+    return () => {
+      if (bufferTimeoutRef.current) clearTimeout(bufferTimeoutRef.current);
+    };
+  }, [lightboxItem]);
 
   const isGridActive = lightboxItem && (
     lightboxItem.isGrid ||
@@ -528,7 +570,9 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
               const existing = JSON.parse(localStorage.getItem(csUserKey) || '[]');
               localStorage.setItem(csUserKey, JSON.stringify(existing.map(item => item.id === newId ? { ...item, url: savedUrl } : item)));
             }
-          } catch (_) {}
+          } catch (_err) {
+            // Ignore storage write errors in restricted or offline contexts
+          }
         }
       }).catch(err => console.debug("[Lightbox] Cloud save fallback:", err));
     } catch (saveErr) {
@@ -717,12 +761,23 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                 src={resolveUrl(lightboxItem.url)}
                 alt={lightboxItem.prompt}
                 ref={gridImgRef}
-                onLoad={updateOverlay}
+                onLoad={() => {
+                  setIsImageLoading(false);
+                  updateOverlay();
+                }}
+                onError={() => setIsImageLoading(false)}
                 className={cn(
-                  "max-h-[82vh] object-contain shadow-2xl rounded-2xl bg-black/40",
+                  "max-h-[82vh] object-contain shadow-2xl rounded-2xl bg-black/40 transition-opacity duration-200",
+                  isImageLoading ? "opacity-0" : "opacity-100",
                   lightboxItem.aspect === '9:16' ? 'aspect-[9/16]' : lightboxItem.aspect === '1:1' ? 'aspect-square' : 'aspect-video w-full'
                 )}
               />
+              {isImageLoading && !upscalingItems[lightboxItem.id] && (
+                <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-20 flex flex-col items-center justify-center space-y-2 pointer-events-none">
+                  <Loader2 size={32} className="text-white/70 animate-spin" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white/50 animate-pulse">Loading High-Res Master...</span>
+                </div>
+              )}
               {isGridActive && overlayStyle.width && (
                 <div style={overlayStyle} className="z-10 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(200,241,53,0.15)]">
                   <div className="w-full h-full grid grid-cols-3 grid-rows-3" style={{ pointerEvents: 'auto' }}>
@@ -748,6 +803,7 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
           ) : (
             <div className="relative w-full h-full flex items-center justify-center p-4">
               <video
+                key={lightboxItem.id || lightboxItem.url}
                 ref={videoElRef}
                 src={resolveUrl(lightboxItem.url)}
                 controls
@@ -755,12 +811,50 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                 loop
                 playsInline
                 preload="auto"
-                crossOrigin="anonymous"
+                onWaiting={() => {
+                  if (bufferTimeoutRef.current) clearTimeout(bufferTimeoutRef.current);
+                  bufferTimeoutRef.current = setTimeout(() => {
+                    const v = videoElRef.current;
+                    if (v && v.readyState < 3 && !v.paused) {
+                      setIsVideoBuffering(true);
+                    }
+                  }, 400);
+                }}
+                onCanPlay={() => {
+                  if (bufferTimeoutRef.current) clearTimeout(bufferTimeoutRef.current);
+                  setIsVideoBuffering(false);
+                }}
+                onPlaying={() => {
+                  if (bufferTimeoutRef.current) clearTimeout(bufferTimeoutRef.current);
+                  setIsVideoBuffering(false);
+                }}
+                onTimeUpdate={() => {
+                  if (isVideoBuffering) {
+                    if (bufferTimeoutRef.current) clearTimeout(bufferTimeoutRef.current);
+                    setIsVideoBuffering(false);
+                  }
+                }}
+                onLoadedData={() => {
+                  if (bufferTimeoutRef.current) clearTimeout(bufferTimeoutRef.current);
+                  setIsVideoBuffering(false);
+                }}
+                onError={() => {
+                  if (bufferTimeoutRef.current) clearTimeout(bufferTimeoutRef.current);
+                  setIsVideoBuffering(false);
+                }}
                 className={cn(
                   "max-h-[82vh] object-contain shadow-2xl rounded-2xl",
                   lightboxItem.aspect === '9:16' ? 'aspect-[9/16] h-full' : lightboxItem.aspect === '1:1' ? 'aspect-square h-full' : 'aspect-video w-full'
                 )}
               />
+              {isVideoBuffering && !isExtractingFrame && (
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] z-20 flex flex-col items-center justify-center space-y-2 pointer-events-none transition-opacity duration-200">
+                  <div className="w-12 h-12 rounded-full bg-black/70 backdrop-blur-md border border-[#c8f135]/30 flex items-center justify-center shadow-lg">
+                    <Loader2 size={24} className="text-[#c8f135] animate-spin" />
+                  </div>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-[#c8f135] animate-pulse bg-black/70 px-2 py-0.5 rounded-full border border-[#c8f135]/20">Buffering...</span>
+                </div>
+              )}
               {isExtractingFrame && (
                 <div className="absolute inset-0 bg-black/75 backdrop-blur-sm z-30 flex flex-col items-center justify-center space-y-2">
                   <Loader2 size={28} className="text-[#c8f135] animate-spin" />

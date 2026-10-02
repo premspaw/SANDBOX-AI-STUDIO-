@@ -4716,6 +4716,7 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
                       title="Select Active Folder"
                       onChange={(e) => setActiveProjectId(e.target.value)}
                     >
+                      <option value="all" className="bg-[#1e1e24] text-[#c8f135]">📁 All Folders</option>
                       {projects.map((p: any) => (
                         <option key={p.id} value={p.id} className="bg-[#1e1e24] text-white">{p.name}</option>
                       ))}

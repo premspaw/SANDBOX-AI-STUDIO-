@@ -89,17 +89,9 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const isAdmin = userProfile?.role === 'admin';
 
-    // Auto-hide sidebar on all pages after 5 seconds
     useEffect(() => {
         checkRuntimeMode();
-        if (!isCollapsed) {
-            const timer = setTimeout(() => {
-                toggleCollapse();
-            }, 5000);
-            return () => clearTimeout(timer);
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeTab, isCollapsed, toggleCollapse, checkRuntimeMode]);
+    }, [checkRuntimeMode]);
 
     const navItems = [
         { id: 'avatar', label: 'Avatar Studio', icon: UserFocus, color: 'text-emerald-400', bgColor: 'bg-emerald-400', hoverColor: 'group-hover/navitem:text-emerald-400', glow: 'shadow-[0_0_15px_rgba(52,211,153,0.1)]' },

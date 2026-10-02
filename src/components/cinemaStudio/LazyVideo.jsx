@@ -1,13 +1,15 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, memo } from 'react';
 import { resolveUrl } from '../../config/apiConfig';
-import { Play, Pause } from 'lucide-react';
+import { Play, Pause, Loader2 } from 'lucide-react';
 
-export function LazyVideo({ src, aspect, onOpenLightbox }) {
+export const LazyVideo = memo(function LazyVideo({ src, aspect, onOpenLightbox }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const [inView, setInView] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -17,13 +19,14 @@ export function LazyVideo({ src, aspect, onOpenLightbox }) {
           setHasLoaded(true);
         } else {
           setInView(false);
-          if (videoRef.current) {
-            videoRef.current.pause();
+          const v = videoRef.current;
+          if (v && !v.paused) {
+            v.pause();
             setIsPlaying(false);
           }
         }
       },
-      { rootMargin: '100px', threshold: 0.05 }
+      { rootMargin: '300px', threshold: 0.01 }
     );
 
     const el = containerRef.current;
@@ -41,24 +44,37 @@ export function LazyVideo({ src, aspect, onOpenLightbox }) {
     if (!video) return;
 
     if (video.paused) {
+      setIsBuffering(true);
       const p = video.play();
       if (p !== undefined) {
-        p.then(() => setIsPlaying(true)).catch(() => {});
+        p.then(() => {
+          setIsPlaying(true);
+          setIsBuffering(false);
+        }).catch(() => {
+          setIsBuffering(false);
+        });
       }
     } else {
       video.pause();
       setIsPlaying(false);
+      setIsBuffering(false);
     }
   }, []);
 
   const handleMouseEnter = useCallback(() => {
     const video = videoRef.current;
-    if (!video || !hasLoaded) return;
+    if (!video) return;
+    setIsBuffering(true);
     const p = video.play();
     if (p !== undefined) {
-      p.then(() => setIsPlaying(true)).catch(() => {});
+      p.then(() => {
+        setIsPlaying(true);
+        setIsBuffering(false);
+      }).catch(() => {
+        setIsBuffering(false);
+      });
     }
-  }, [hasLoaded]);
+  }, []);
 
   const handleMouseLeave = useCallback(() => {
     const video = videoRef.current;
@@ -66,7 +82,13 @@ export function LazyVideo({ src, aspect, onOpenLightbox }) {
     video.pause();
     video.currentTime = 0;
     setIsPlaying(false);
+    setIsBuffering(false);
   }, []);
+
+  const videoUrl = src ? resolveUrl(src) : '';
+  // Keep video mounted once loaded (never destroy DOM node on offscreen scroll)
+  const shouldRenderVideo = (inView || hasLoaded) && !!videoUrl;
+  const videoSrc = shouldRenderVideo ? `${videoUrl}#t=0.001` : undefined;
 
   return (
     <div
@@ -75,26 +97,38 @@ export function LazyVideo({ src, aspect, onOpenLightbox }) {
       onMouseLeave={handleMouseLeave}
       className="relative w-full h-full overflow-hidden bg-black select-none"
     >
-      <video
-        ref={videoRef}
-        crossOrigin="anonymous"
-        src={hasLoaded ? resolveUrl(src) : undefined}
-        muted
-        loop
-        playsInline
-        preload="auto"
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        className="w-full h-full object-cover"
-        style={{ opacity: inView ? 1 : 0, transition: 'opacity 0.2s' }}
-      />
+      {videoSrc && (
+        <video
+          key={videoUrl}
+          ref={videoRef}
+          src={videoSrc}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          onWaiting={() => setIsBuffering(true)}
+          onCanPlay={() => setIsBuffering(false)}
+          onPlaying={() => { setIsPlaying(true); setIsBuffering(false); }}
+          onPause={() => setIsPlaying(false)}
+          onError={() => { setHasError(true); setIsBuffering(false); }}
+          className="w-full h-full object-cover transition-opacity duration-300"
+          style={{ opacity: 1 }}
+        />
+      )}
+
+      {/* Buffering mini-indicator */}
+      {isBuffering && (
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center pointer-events-none z-10">
+          <Loader2 size={16} className="text-[#c8f135] animate-spin" />
+        </div>
+      )}
 
       {/* Persistent / Hover Play Indicator Button */}
       <div className="absolute bottom-2 left-2 z-20 flex items-center gap-1 pointer-events-auto">
         <button
           type="button"
           onClick={togglePlay}
-          className="w-6 h-6 rounded-full bg-black/60 hover:bg-black/90 border border-white/20 hover:border-[#c8f135] text-white hover:text-[#c8f135] flex items-center justify-center backdrop-blur-md transition-all shadow-md active:scale-95"
+          className="w-6 h-6 rounded-full bg-black/70 hover:bg-black/95 border border-white/20 hover:border-[#c8f135] text-white hover:text-[#c8f135] flex items-center justify-center backdrop-blur-md transition-all shadow-md active:scale-95 cursor-pointer"
           title={isPlaying ? "Pause Preview" : "Play Preview"}
         >
           {isPlaying ? (
@@ -106,6 +140,6 @@ export function LazyVideo({ src, aspect, onOpenLightbox }) {
       </div>
     </div>
   );
-}
+});
 
 export default LazyVideo;

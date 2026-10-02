@@ -14,40 +14,218 @@ import { motion, AnimatePresence } from 'framer-motion';
 import HolographicTurntable from '../avatar/HolographicTurntable';
 import AvatarGallery from '../avatar/AvatarGallery';
 
-const LOCATION_PRESETS = [
-  { id: 'cyberpunk', label: 'Neo-Tokyo Alley', desc: 'Rain-soaked asphalt, high-contrast neon signs, steaming street vents, reflective puddles' },
-  { id: 'forest', label: 'Nordic Pine Forest', desc: 'Dense misty evergreen canopy, mossy boulders, moody atmospheric morning fog, cold crystal air' },
-  { id: 'brutalist', label: 'Brutalist Concrete Hall', desc: 'Monumental raw concrete monoliths, dramatic shafts of sunlight cutting through dusty air' },
-  { id: 'desert', label: 'Golden Hour Dunes', desc: 'Endless rippling desert sand ridges, low raking warm sunlight, fine blowing dust particles' },
-  { id: 'industrial', label: 'Industrial Studio Loft', desc: 'Exposed black steel I-beams, oversized paned windows, polished concrete floors, dramatic afternoon shadows' },
-  { id: 'diner', label: 'Midnight Neon Diner', desc: '1980s retro American diner interior, chrome counter, red leather booths, glowing neon sign reflection' },
-  { id: 'glacier', label: 'Alpine Glacial Lake', desc: 'Pristine mirror reflections, snow-dusted jagged mountain peaks, crystal glacial waters' },
-  { id: 'scifi', label: 'Sci-Fi Megastructure Bay', desc: 'Immense titanium hangar bay, blue atmospheric energy conduits, monumental cinematic scale' }
+const LOCATION_PRESET_GROUPS = [
+  {
+    category: 'Sci-Fi & Cyberpunk',
+    options: [
+      { id: 'neotokyo', label: 'Neo-Tokyo Rain Alley', desc: 'Rain-soaked asphalt, high-contrast neon signs, steaming street vents, reflective puddles, layered holographic billboards' },
+      { id: 'megastructure', label: 'Sci-Fi Megastructure Bay', desc: 'Immense titanium hangar bay, blue atmospheric energy conduits, monumental scale, glowing overhead gantry cranes' },
+      { id: 'orbital', label: 'Orbital Biosphere Dome', desc: 'Futuristic curved glass geodesic dome overlooking Earth horizon, lush zero-gravity hydroponics, clean minimalist architecture' },
+      { id: 'cyber_bazaar', label: 'Cyber Underbelly Market', desc: 'Dense layered cyber bazaar, tangled neon cables, narrow wet alleyways, flickering halogen lanterns, street food steam' }
+    ]
+  },
+  {
+    category: 'Cinematic Noir & Urban Thriller',
+    options: [
+      { id: 'midnight_diner', label: 'Midnight Neon Diner', desc: '1980s retro American diner interior, chrome counter, red leather booths, rain streaked panoramic windows, neon reflection' },
+      { id: 'brutalist_hall', label: 'Brutalist Concrete Hall', desc: 'Monumental raw concrete monoliths, dramatic raking light cutting through dusty air, geometric angular architecture' },
+      { id: 'rainy_soho', label: 'SoHo Cobblestone Rain', desc: 'Wet dark cobblestones reflecting warm streetlamps, cast-iron building facades, foggy midnight mist, moody urban solitude' },
+      { id: 'underground_metro', label: 'Derelict Metro Station', desc: 'Subway tiled walls with faded vintage posters, wet tracks receding into dark tunnel, flickering industrial fluorescents' }
+    ]
+  },
+  {
+    category: 'Horror & Dark Mystery',
+    options: [
+      { id: 'blackwood', label: 'Fog-Shrouded Blackwood Forest', desc: 'Gnarled bare pine trees emerging from heavy white ground fog, cold moonlight piercing damp mist, eerie stillness' },
+      { id: 'gothic_cathedral', label: 'Ruined Gothic Cathedral Crypt', desc: 'Crumbling pointed stone arches, mossy gargoyles, fractured stained glass windows casting crimson shadows' },
+      { id: 'sanatorium', label: 'Abandoned Victorian Sanatorium', desc: 'Peeling lead paint on long vaulted corridor, tilted rusted gurneys, dust motes in cold shafts of moonlight' },
+      { id: 'isolated_cabin', label: 'Isolated Lakeside Cabin', desc: 'Weather-beaten dark timber cabin at the edge of a black motionless mountain lake, ominous fog rolling over water' }
+    ]
+  },
+  {
+    category: 'Action & Adventure',
+    options: [
+      { id: 'sahara_dunes', label: 'Golden Hour Sahara Dunes', desc: 'Endless rippling desert sand ridges, low raking warm sunlight, fine blowing dust particles, vast dramatic horizon' },
+      { id: 'glacial_ridge', label: 'Alpine Glacial Ridge', desc: 'Pristine mirror reflections, snow-dusted jagged mountain peaks, crystal glacial waters, sharp biting wind' },
+      { id: 'jungle_temple', label: 'Overgrown Jungle Temple Ruins', desc: 'Ancient stepped stone ziggurat enveloped in thick vines, sunbeams filtering through dense misty rainforest canopy' },
+      { id: 'carrier_deck', label: 'Stormy Sea Carrier Deck', desc: 'Wet steel flight deck, crashing ocean spray, turbulent dark gray thunderclouds, yellow warning stripes' }
+    ]
+  },
+  {
+    category: 'Romance & Atmospheric Drama',
+    options: [
+      { id: 'tuscany', label: 'Tuscan Sunset Vineyard Terrace', desc: 'Rolling golden hills, cypress trees silhouetted against warm violet-peach sunset, rustic stone terrace with lantern glow' },
+      { id: 'kyoto_grove', label: 'Rainy Kyoto Bamboo Grove', desc: 'Towering green bamboo stalks, stone lantern path glistening with fresh rain, soft tranquil mist, emerald tranquility' },
+      { id: 'amalfi', label: 'Amalfi Coastal Cliffside', desc: 'Pastel cliffside villas cascading into deep sapphire Mediterranean sea, golden afternoon sun, gentle sea breeze' },
+      { id: 'autumn_avenue', label: 'Central Park Autumn Promenade', desc: 'Golden yellow elm trees forming a vibrant canopy, fallen amber leaves, wet park benches, soft romantic light' }
+    ]
+  }
 ];
 
-const FILM_GRAIN_OPTIONS = [
-  '35mm Kodak Vision3 (Fine Organic Grain)',
-  '70mm IMAX (Ultra-sharp, Pristine Dynamic Range)',
-  'Panavision Anamorphic (Gentle Oval Bokeh, Blue Streak)',
-  '16mm Vintage Film (Textured Organic Grain, Warm Roll-off)',
-  'Arri Alexa RAW (Velvety Smooth Contrast, Modern Cinema)'
+const FILM_GRAIN_METADATA = [
+  {
+    id: 'none',
+    label: 'None (Clean Digital Sensor / Zero Grain)',
+    bestFor: 'Modern architectural interiors, sci-fi megastructures, clean tech spaces, pristine renders',
+    characteristics: 'Ultra-clean digital sensor, no grain noise, pristine sharp edge definition, maximum clarity'
+  },
+  {
+    id: 'kodak35',
+    label: '35mm Kodak Vision3 500T (Fine Organic Grain, Warm Shadow Roll-off)',
+    bestFor: 'Night streets, city alleys, moody interiors, neon diners, classic cinematic movies',
+    characteristics: 'Hollywood gold standard; authentic organic fine grain, warm gentle highlight halation, rich shadow depth'
+  },
+  {
+    id: 'imax70',
+    label: '70mm IMAX 15-perf (Monumental Crisp Dynamic Range, Ultra-Detailed)',
+    bestFor: 'Vast outdoor landscapes, epic mountain ranges, desert dunes, grand brutalist architecture',
+    characteristics: 'Gigantic canvas resolution, microscopic micro-detail, razor-sharp edge contrast, virtually imperceptible grain'
+  },
+  {
+    id: 'anamorphic',
+    label: 'Panavision C-Series Anamorphic (Gentle Oval Bokeh, Subtle Blue Streak Flare)',
+    bestFor: 'Widescreen cinematic vistas, cyberpunk highways, action establishing shots, sunsets',
+    characteristics: '2.39:1 widescreen optical personality, oval light bokeh, gentle horizontal blue lens flares, subtle optical barrel distortion'
+  },
+  {
+    id: 'ektachrome16',
+    label: '16mm Vintage Kodak Ektachrome (Textured Organic Grain, Saturated Roll-off)',
+    bestFor: 'Retro 70s/80s locations, sun-drenched beaches, vintage motel courtyards, indie music video vibes',
+    characteristics: 'Reversal film look; prominent organic grain texture, high vibrancy, punchy saturated colors, warm nostalgic roll-off'
+  },
+  {
+    id: 'arri_alexa',
+    label: 'Arri Alexa RAW LogC3 (Velvety Smooth Contrast, Industry Feature Standard)',
+    bestFor: 'Prestige drama locations, foggy forests, rainy European streets, museum galleries',
+    characteristics: 'The most popular modern film sensor; velvety soft highlight rolloff, smooth shadow transitions, natural filmic softness'
+  },
+  {
+    id: 'trix16',
+    label: '16mm Kodak Tri-X B&W (Punchy High-Contrast Analog Monochrome Texture)',
+    bestFor: 'Film Noir crime scenes, dramatic brutalist ruins, gritty industrial warehouses, abandoned sanatoriums',
+    characteristics: 'Iconic monochrome silver-gelatin emulsion; heavy tactile grain, deep inky blacks, stark white highlights'
+  },
+  {
+    id: 'fuji_eterna',
+    label: 'Fujifilm Eterna 250D (Subtle Pastel Tones, Soft Highlight Roll-off)',
+    bestFor: 'Misty bamboo groves, overcast coastal cliffs, dreamlike pastel landscapes, Japanese cinema',
+    characteristics: 'Subdued, gentle Japanese film aesthetic; muted low-contrast shadows, soft pastel colors, ethereal atmospheric haze'
+  },
+  {
+    id: 'technicolor',
+    label: 'Technicolor 3-Strip (Hyper-Stylized Vintage 1950s Color Saturation)',
+    bestFor: 'Golden Hollywood sets, fairy-tale enchanted gardens, retro diners, hyper-vibrant fantasy realms',
+    characteristics: 'Historical 3-strip dye transfer process; extreme rich saturation in reds and greens, deep glossy blacks, vivid hyper-reality'
+  }
 ];
 
-const LIGHTING_OPTIONS = [
-  'Golden Hour Sunset (Low warm raking light, long shadows)',
-  'Overcast Daylight (Soft shadowless studio diffusion)',
-  'Moody Midnight Noir (Deep obsidian shadows, high-contrast key light)',
-  'Volumetric Fog & Sunbeams (Dramatic light shafts through haze)',
-  'Neon Glow & Wet Reflections (Vibrant localized colored light)'
+const FILM_GRAIN_OPTIONS = FILM_GRAIN_METADATA.map(s => s.label);
+
+const LIGHTING_OPTIONS_GROUPED = [
+  {
+    category: 'Natural & Time of Day',
+    options: [
+      'None (Natural Ambient Scene Lighting)',
+      'Golden Hour Sunset (Low warm raking light, long cinematic shadows)',
+      'Blue Hour / Twilight (Crisp pre-dawn cool ambient luminance, deep azure)',
+      'Overcast Daylight (Soft shadowless studio diffusion, ultra-even tones)',
+      'Harsh Midday Desert Sun (Blinding high-noon heat shimmer, crisp hard shadows)',
+      'Moonlit Night (Soft cool silvery illumination, deep obsidian shadow pockets)'
+    ]
+  },
+  {
+    category: 'Dramatic & High Contrast',
+    options: [
+      'Volumetric Fog & Sunbeams (Dramatic atmospheric God rays through haze)',
+      'Moody Midnight Noir (Chiaroscuro high-contrast hard key light, silhouette edge)',
+      'Rim-Lit Silhouette (Powerful golden backlighting, halo edge glow, darkened core)',
+      'Thunderstorm Lightning Flash (Momentary high-voltage stark flash against darkness)'
+    ]
+  },
+  {
+    category: 'Horror & Suspense Lighting',
+    options: [
+      'Sickly Fluorescent (Flickering industrial green-tinted institutional tube lights)',
+      'Ominous Crimson Emergency Beacon (Slow pulsating ruby red warning wash)',
+      'Single Overhead Spotlight (Harsh interrogation downlight, black void surround)',
+      'Flashlight Cone in Darkness (Narrow harsh beam cutting through dense particulate)'
+    ]
+  },
+  {
+    category: 'Stylized, Neon & Practical',
+    options: [
+      'Cyber Neon Glow & Wet Reflections (Vibrant localized cyan & magenta bounce)',
+      'Warm Candlelight & Fireplace (Intimate romantic amber flickering glow, soft shadows)',
+      'Sodium-Vapor Streetlamp (Moody 1970s yellow-orange urban nocturnal glow)',
+      'Bioluminescent Ethereal Glow (Alien luminescent blue-teal organic light)'
+    ]
+  }
 ];
 
-const COLOR_PALETTES = [
-  { id: 'cyber', label: 'Cyber Neon', colors: ['#00FFFF', '#FF007F'], desc: 'Cyan & Hot Magenta' },
-  { id: 'golden', label: 'Golden Ember', colors: ['#F59E0B', '#B45309'], desc: 'Warm Amber & Ochre' },
-  { id: 'nordic', label: 'Nordic Teal', colors: ['#14B8A6', '#475569'], desc: 'Cool Teal & Slate' },
-  { id: 'noir', label: 'Classic Noir', colors: ['#E2E8F0', '#0F172A'], desc: 'High-contrast Monochrome' },
-  { id: 'emerald', label: 'Deep Emerald', colors: ['#10B981', '#064E3B'], desc: 'Forest Green & Moss' },
-  { id: 'crimson', label: 'Crimson Dusk', colors: ['#F43F5E', '#312E81'], desc: 'Burgundy & Deep Indigo' }
+const CINEMATIC_COLOR_GRADES = [
+  {
+    category: 'Default / Natural',
+    grades: [
+      { id: 'none', label: 'None (Natural Unprocessed Grade)', colors: ['#71717A', '#A1A1AA'], mood: 'Pure, true-to-life sensor color balance with zero stylized tint' }
+    ]
+  },
+  {
+    category: 'Director & Auteur Aesthetics',
+    grades: [
+      { id: 'fincher', label: 'David Fincher Noir (Fight Club / Mindhunter)', colors: ['#475569', '#556B2F'], mood: 'Desaturated olive-green tint, clinical cold precision, crushed shadow blacks' },
+      { id: 'nolan', label: 'Christopher Nolan Realism (Oppenheimer / Inception)', colors: ['#38BDF8', '#334155'], mood: 'Cool steel-cyan wash, deep textured shadows, muted filmic earth tones' },
+      { id: 'villeneuve', label: 'Denis Villeneuve & Deakins (Dune / Blade Runner 2049)', colors: ['#F59E0B', '#78350F'], mood: 'Warm ochre & amber haze, desaturated high-contrast minimalist scale' },
+      { id: 'wes_anderson', label: 'Wes Anderson Pastel (Grand Budapest Hotel)', colors: ['#FDE047', '#F472B6'], mood: 'Symmetrical warm custard yellow, dusty rose pink, whimsical vintage saturation' },
+      { id: 'tarantino', label: 'Quentin Tarantino 70s (Once Upon a Time / Pulp Fiction)', colors: ['#EAB308', '#DC2626'], mood: 'Sun-drenched golden warmth, punchy saturated reds, organic Kodak film look' },
+      { id: 'wong_kar_wai', label: 'Wong Kar-wai Melancholy (In the Mood for Love)', colors: ['#059669', '#E11D48'], mood: 'Sultry neon emerald greens, deep romantic ruby red, smoky nostalgic haze' },
+      { id: 'matrix', label: 'Wachowskis Matrix Code (The Matrix)', colors: ['#22C55E', '#064E3B'], mood: 'Stylized monochromatic lime-green tint, crushed midtones, heavy contrast' },
+      { id: 'del_toro', label: "Guillermo del Toro Fairy Tale (Pan's Labyrinth / Shape of Water)", colors: ['#D97706', '#0891B2'], mood: 'Burnished antique gold paired with deep bioluminescent cyan shadows' },
+      { id: 'michael_bay', label: 'Michael Bay Blockbuster (Bad Boys / Transformers)', colors: ['#06B6D4', '#EA580C'], mood: 'Extreme blockbuster cyan shadows and hyper-saturated warm skin tones' }
+    ]
+  },
+  {
+    category: 'Horror & Psychological Thriller',
+    grades: [
+      { id: 'horror_cold', label: 'Horror: Chilling Cold Desaturation', colors: ['#94A3B8', '#0F172A'], mood: 'Muted pale skin tones, eerie ice-blue wash, crushed obsidian blacks' },
+      { id: 'horror_giallo', label: 'Horror: 1970s Italian Giallo', colors: ['#DC2626', '#4338CA'], mood: 'Saturated blood crimson, electric cobalt blue gels, high-contrast nightmare' },
+      { id: 'horror_vhs', label: 'Horror: Found Footage VHS Decay', colors: ['#84CC16', '#1E293B'], mood: 'Greenish phosphor glow, lifted milky blacks, subtle analog video grain' },
+      { id: 'horror_gothic', label: 'Horror: Bleak Gothic Monochrome', colors: ['#E2E8F0', '#020617'], mood: 'Stark silver-black tonal range, mist-veiled highlights, ominous decay' }
+    ]
+  },
+  {
+    category: 'Romance & Emotional Drama',
+    grades: [
+      { id: 'romance_golden', label: 'Romance: Golden Hour Amber Glow', colors: ['#FBBF24', '#FB7185'], mood: 'Dreamy warm diffusion, peachy skin tones, creamy honey highlights' },
+      { id: 'romance_paris', label: 'Romance: Parisian Lavender Melancholy', colors: ['#A78BFA', '#64748B'], mood: 'Soft lavender mist, dusky rose accents, muted cool slate shadows' },
+      { id: 'romance_super8', label: 'Romance: Nostalgic Faded Super-8', colors: ['#FDE68A', '#FCA5A5'], mood: 'Creamy pastel tones, lifted warm blacks, gentle grain halation' },
+      { id: 'romance_midnight', label: 'Romance: Midnight Blue & Champagne', colors: ['#1D4ED8', '#FEF08A'], mood: 'Intimate royal blue ambient with glowing champagne-tinted practicals' }
+    ]
+  },
+  {
+    category: 'Action & High-Octane Thriller',
+    grades: [
+      { id: 'action_teal_orange', label: 'Action: Modern Blockbuster Teal & Orange', colors: ['#06B6D4', '#F97316'], mood: 'Punchy high-contrast cyan shadows paired with warm radiant skin' },
+      { id: 'action_bleach', label: 'Action: Bleach Bypass Silver Halide', colors: ['#CBD5E1', '#334155'], mood: 'Harsh gritty contrast, silver-rich retention, desaturated visceral tones' },
+      { id: 'action_desert', label: 'Action: Sun-Baked Desert Warfare', colors: ['#D97706', '#78350F'], mood: 'High-contrast golden sand, tobacco shadows, blinding heat shimmer' },
+      { id: 'action_cyber', label: 'Action: High-Voltage Cyberpunk', colors: ['#00FFFF', '#EC4899'], mood: 'Electric magenta, hyper-saturated cyan & deep obsidian night reflections' }
+    ]
+  },
+  {
+    category: 'Adventure & Epic Fantasy',
+    grades: [
+      { id: 'adventure_natgeo', label: 'Adventure: Majestic Naturalist', colors: ['#10B981', '#0284C7'], mood: 'Vibrant emerald vegetation, deep sapphire skies, rich earthen soil' },
+      { id: 'adventure_mythic', label: 'Adventure: Ancient Mythic Gold', colors: ['#F59E0B', '#92400E'], mood: 'Burnished bronze highlights, aged parchment midtones, regal warm shadows' },
+      { id: 'adventure_arctic', label: 'Adventure: Arctic Glacial Frost', colors: ['#E0F2FE', '#0369A1'], mood: 'Pure crisp white snow, pale cyan glacial ice, desaturated granite rocks' }
+    ]
+  },
+  {
+    category: 'Classic Cinema & Heritage',
+    grades: [
+      { id: 'noir_classic', label: 'Classic Film Noir (1940s Chiaroscuro)', colors: ['#F8FAFC', '#0F172A'], mood: 'Velvety deep ink blacks, crisp silver highlights, high-contrast shadows' },
+      { id: 'technicolor', label: '1950s 3-Strip Technicolor', colors: ['#EF4444', '#10B981'], mood: 'Hyper-saturated primary colors, vivid scarlet and emerald hues' },
+      { id: 'vintage_sepia', label: 'Vintage Daguerreotype Sepia', colors: ['#D4A373', '#583101'], mood: 'Rich antique brown tonal wash, soft vignette, warm nostalgic roll-off' }
+    ]
+  }
 ];
 
 const PROP_SUGGESTIONS = [
@@ -89,10 +267,11 @@ export default function AvatarStudio() {
 
   // Location Form State
   const [locationName, setLocationName] = useState('Neo-Tokyo Rain Alley');
-  const [locationDesc, setLocationDesc] = useState('Rain-soaked asphalt, high-contrast neon signs, steaming street vents, reflective puddles');
-  const [locationFilmGrain, setLocationFilmGrain] = useState(FILM_GRAIN_OPTIONS[0]);
-  const [locationLighting, setLocationLighting] = useState(LIGHTING_OPTIONS[0]);
-  const [locationPalette, setLocationPalette] = useState('Cyber Neon (Cyan & Hot Magenta)');
+  const [locationDesc, setLocationDesc] = useState('Rain-soaked asphalt, high-contrast neon signs, steaming street vents, reflective puddles, layered holographic billboards');
+  const [selectedLocationPreset, setSelectedLocationPreset] = useState('neotokyo');
+  const [locationFilmGrain, setLocationFilmGrain] = useState(FILM_GRAIN_OPTIONS[1]); // Default to 35mm Kodak Vision3 500T
+  const [locationLighting, setLocationLighting] = useState(LIGHTING_OPTIONS_GROUPED[0].options[0]); // 'None (Natural Ambient Scene Lighting)'
+  const [locationPalette, setLocationPalette] = useState(CINEMATIC_COLOR_GRADES[0].grades[0].label); // 'None (Natural Unprocessed Grade)'
   const [locationRefPreview, setLocationRefPreview] = useState('');
   const [locationRefUrl, setLocationRefUrl] = useState('');
   const [isUploadingLocationRef, setIsUploadingLocationRef] = useState(false);
@@ -217,12 +396,19 @@ Real · Raw · Original studio photography. 8K resolution, 85mm portrait lens, p
     const name = locationName.trim() || 'Cinematic Location';
     const desc = locationDesc.trim() || 'Establishing shot of cinematic environment';
 
+    const lightingPrompt = locationLighting && !locationLighting.toLowerCase().startsWith('none')
+      ? `Atmospheric Lighting & Mood: ${locationLighting}.\n`
+      : '';
+    const filmStockPrompt = locationFilmGrain && !locationFilmGrain.toLowerCase().startsWith('none')
+      ? `Film Stock & Grain: ${locationFilmGrain}.\n`
+      : '';
+    const colorGradePrompt = locationPalette && !locationPalette.toLowerCase().startsWith('none')
+      ? `Color Palette & Cinematic Grade: ${locationPalette}.\n`
+      : '';
+
     const masterLocationPrompt = `Real · Raw · 8K cinematic widescreen establishing location photography.
 Master wide panoramic view of ${name}: ${desc}.
-Atmospheric Lighting & Mood: ${locationLighting}.
-Film Stock & Grain: ${locationFilmGrain}.
-Color Palette & Grade: ${locationPalette}.
-Hyperrealistic architectural scale, rich atmospheric depth, fine cinematic grain, photorealistic materials and textures. Single unified cinematic widescreen composition.
+${lightingPrompt}${filmStockPrompt}${colorGradePrompt}Hyperrealistic architectural scale, rich atmospheric depth, fine cinematic grain, photorealistic materials and textures. Single unified cinematic widescreen composition.
 STRICT NEGATIVE/EXCLUSIONS: Absolutely NO people, NO characters, NO humans, NO person present, NO crowds, NO pedestrians, completely empty and deserted cinematic location. NO text, NO watermarks, NO logos, NO character turnaround sheet, NO split panels.`;
 
     studio.generateBoard({
@@ -667,46 +853,53 @@ STRICT NEGATIVE/EXCLUSIONS: Absolutely NO text, NO labels, NO logos, NO watermar
                   )}
                 </div>
 
-                {/* Location Presets */}
-                <div className="space-y-1.5">
+                {/* 1. Cinematic Location Concept Dropdown */}
+                <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase tracking-wider text-white/50 flex items-center justify-between">
-                    <span>Cinematic Location Presets</span>
+                    <span className="flex items-center gap-1.5">
+                      <Compass className="w-3 h-3 text-[#C8F135]" />
+                      <span>Cinematic Location Presets</span>
+                    </span>
                     <span className="text-[8px] font-mono text-[#C8F135]">QUICK SELECT</span>
                   </label>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {LOCATION_PRESETS.map((p) => {
-                      const isSelected = locationDesc === p.desc;
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => {
-                            setLocationName(p.label);
-                            setLocationDesc(p.desc);
-                          }}
-                          className={`p-2 rounded-xl text-left border transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-[#C8F135]/15 border-[#C8F135] text-white shadow-sm'
-                              : 'bg-zinc-950/60 border-white/10 hover:border-white/20 text-white/70 hover:text-white'
-                          }`}
-                        >
-                          <span className={`text-[10px] font-black block truncate ${isSelected ? 'text-[#C8F135]' : 'text-white'}`}>
-                            {p.label}
-                          </span>
-                          <span className="text-[8px] text-white/40 line-clamp-1 mt-0.5">
-                            {p.desc}
-                          </span>
-                        </button>
-                      );
-                    })}
+                  <div className="relative">
+                    <select
+                      value={selectedLocationPreset}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        setSelectedLocationPreset(id);
+                        const allPresets = LOCATION_PRESET_GROUPS.flatMap(g => g.options);
+                        const p = allPresets.find(x => x.id === id);
+                        if (p) {
+                          setLocationName(p.label);
+                          setLocationDesc(p.desc);
+                        }
+                      }}
+                      className="w-full bg-zinc-950/80 border border-white/10 rounded-xl px-3 py-2 text-[11px] text-white outline-none focus:border-[#C8F135]/60 appearance-none cursor-pointer font-medium"
+                    >
+                      <option value="" className="bg-zinc-950 text-white/50">-- Select a Curated Location Concept --</option>
+                      {LOCATION_PRESET_GROUPS.map((group) => (
+                        <optgroup key={group.category} label={`── ${group.category} ──`} className="bg-zinc-900 text-[#C8F135] font-bold">
+                          {group.options.map((opt) => (
+                            <option key={opt.id} value={opt.id} className="bg-zinc-950 text-white font-normal">
+                              {opt.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-white/40 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
 
-                {/* Atmosphere & Film Grain Dropdown */}
+                {/* 2. Atmosphere & Film Grain Dropdown */}
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-white/50 flex items-center gap-1.5">
-                    <Film className="w-3 h-3 text-[#C8F135]" />
-                    <span>Film Stock & Grain</span>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-white/50 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Film className="w-3 h-3 text-[#C8F135]" />
+                      <span>Film Stock & Grain</span>
+                    </span>
+                    <span className="text-[8px] font-mono text-[#C8F135]">AUTHENTIC EMULSION</span>
                   </label>
                   <div className="relative">
                     <select
@@ -722,13 +915,37 @@ STRICT NEGATIVE/EXCLUSIONS: Absolutely NO text, NO labels, NO logos, NO watermar
                     </select>
                     <ChevronDown className="w-3.5 h-3.5 text-white/40 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
+
+                  {/* Live Film Stock Guide & Best-For Location Badge */}
+                  {(() => {
+                    const activeStock = FILM_GRAIN_METADATA.find(s => s.label === locationFilmGrain) || FILM_GRAIN_METADATA[1];
+                    return (
+                      <div className="p-2 rounded-xl bg-white/[0.04] border border-white/10 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] font-black text-[#C8F135] uppercase tracking-wider">
+                            Best For Location:
+                          </span>
+                          <span className="text-[8px] font-mono text-white/40">OPTICAL CHARACTER</span>
+                        </div>
+                        <p className="text-[10px] text-white/90 font-medium leading-tight">
+                          {activeStock.bestFor}
+                        </p>
+                        <p className="text-[8px] text-white/45 leading-tight italic">
+                          {activeStock.characteristics}
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
 
-                {/* Lighting Mood Dropdown */}
+                {/* 3. Atmospheric Lighting & Mood Dropdown */}
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-white/50 flex items-center gap-1.5">
-                    <Sun className="w-3 h-3 text-[#C8F135]" />
-                    <span>Atmospheric Lighting</span>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-white/50 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Sun className="w-3 h-3 text-[#C8F135]" />
+                      <span>Atmospheric Lighting & Mood</span>
+                    </span>
+                    <span className="text-[8px] font-mono text-white/40">DEFAULT: NONE</span>
                   </label>
                   <div className="relative">
                     <select
@@ -736,45 +953,75 @@ STRICT NEGATIVE/EXCLUSIONS: Absolutely NO text, NO labels, NO logos, NO watermar
                       onChange={(e) => setLocationLighting(e.target.value)}
                       className="w-full bg-zinc-950/80 border border-white/10 rounded-xl px-3 py-2 text-[11px] text-white outline-none focus:border-[#C8F135]/60 appearance-none cursor-pointer font-medium"
                     >
-                      {LIGHTING_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt} className="bg-zinc-950 text-white">
-                          {opt}
-                        </option>
+                      {LIGHTING_OPTIONS_GROUPED.map((group) => (
+                        <optgroup key={group.category} label={`── ${group.category} ──`} className="bg-zinc-900 text-[#C8F135] font-bold">
+                          {group.options.map((opt) => (
+                            <option key={opt} value={opt} className="bg-zinc-950 text-white font-normal">
+                              {opt}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                     <ChevronDown className="w-3.5 h-3.5 text-white/40 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
 
-                {/* Color Palette Swatches */}
+                {/* 4. Cinematic Color Grade & Film Style Dropdown */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-white/50 flex items-center gap-1.5">
-                    <Palette className="w-3 h-3 text-[#C8F135]" />
-                    <span>Cinematic Color Grade Swatches</span>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-white/50 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Palette className="w-3 h-3 text-[#C8F135]" />
+                      <span>Cinematic Color Grade & Film Style</span>
+                    </span>
+                    <span className="text-[8px] font-mono text-white/40">DEFAULT: NONE</span>
                   </label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {COLOR_PALETTES.map((cp) => {
-                      const isSelected = locationPalette.includes(cp.label);
-                      return (
-                        <button
-                          key={cp.id}
-                          type="button"
-                          onClick={() => setLocationPalette(`${cp.label} (${cp.desc})`)}
-                          className={`p-1.5 rounded-lg border flex items-center gap-1.5 transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-white/15 border-[#C8F135] text-white shadow-sm'
-                              : 'bg-zinc-950/60 border-white/10 hover:border-white/20 text-white/60 hover:text-white'
-                          }`}
-                        >
-                          <div className="flex -space-x-1 shrink-0">
-                            <span className="w-2.5 h-2.5 rounded-full border border-black/40" style={{ backgroundColor: cp.colors[0] }} />
-                            <span className="w-2.5 h-2.5 rounded-full border border-black/40" style={{ backgroundColor: cp.colors[1] }} />
-                          </div>
-                          <span className="text-[9px] font-bold truncate">{cp.label}</span>
-                        </button>
-                      );
-                    })}
+                  <div className="relative">
+                    <select
+                      value={locationPalette}
+                      onChange={(e) => setLocationPalette(e.target.value)}
+                      className="w-full bg-zinc-950/80 border border-white/10 rounded-xl px-3 py-2 text-[11px] text-white outline-none focus:border-[#C8F135]/60 appearance-none cursor-pointer font-medium"
+                    >
+                      {CINEMATIC_COLOR_GRADES.map((group) => (
+                        <optgroup key={group.category} label={`── ${group.category} ──`} className="bg-zinc-900 text-[#C8F135] font-bold">
+                          {group.grades.map((grade) => (
+                            <option key={grade.id} value={grade.label} className="bg-zinc-950 text-white font-normal">
+                              {grade.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-white/40 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
+
+                  {/* Live Visual Palette Preview Badge */}
+                  {(() => {
+                    const allGrades = CINEMATIC_COLOR_GRADES.flatMap(g => g.grades);
+                    const activeGrade = allGrades.find(g => g.label === locationPalette) || allGrades[0];
+                    return (
+                      <div className="flex items-center gap-2 p-2 rounded-xl bg-white/[0.04] border border-white/10">
+                        <div className="flex -space-x-1 shrink-0">
+                          <span
+                            className="w-3.5 h-3.5 rounded-full border border-black/50 shadow-sm"
+                            style={{ backgroundColor: activeGrade.colors[0] }}
+                          />
+                          <span
+                            className="w-3.5 h-3.5 rounded-full border border-black/50 shadow-sm"
+                            style={{ backgroundColor: activeGrade.colors[1] }}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[10px] text-white/90 font-bold block truncate">
+                            {activeGrade.label}
+                          </span>
+                          <span className="text-[8px] text-white/45 block truncate">
+                            {activeGrade.mood}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Location Name & Detailed Vision Description */}

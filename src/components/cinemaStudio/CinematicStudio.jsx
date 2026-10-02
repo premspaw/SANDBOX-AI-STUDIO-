@@ -14,7 +14,7 @@ import {
   Pencil, Grid, Tv, Upload, Sliders, FolderOpen
 } from 'lucide-react';
 import { useShorts } from '../../hooks/useShorts';
-import { SHORTS_COST } from '../../config/shortsConfig';
+import { SHORTS_COST, calculateEngineCredits } from '../../config/shortsConfig';
 import { useAppStore } from '../../store';
 import { supabase } from '../../lib/supabase';
 import { getApiUrl, resolveUrl } from '../../config/apiConfig';
@@ -562,6 +562,303 @@ const FastPromptInput = React.memo(({
   );
 });
 
+/* ─── MEMOIZED GALLERY ITEM CARD ───────────────────────────── */
+const GalleryItemCard = React.memo(function GalleryItemCard({
+  item,
+  activeTab,
+  pollMsg,
+  isUpscaling,
+  onOpenLightbox,
+  onDeleteItem,
+  onUpscale,
+  onSetFirstFrame,
+  onSetLastFrame,
+  onExtendVideo,
+  onDownload
+}) {
+  if (item.isLoader || item.loading || item.status === 'generating') {
+    const isUpscaleLoader = item.engine === '1080p HD Upscaler' || item.prompt?.includes('1080p HD Upscal');
+    const isImageLoader = !isUpscaleLoader && (item.type === 'image' || (item.isLoader && activeTab === 'image'));
+    return (
+      <div className="rounded-2xl border border-fuchsia-500/25 bg-black/70 backdrop-blur-lg overflow-hidden shadow-[0_0_25px_rgba(217,70,239,0.15)] relative">
+        <div
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-fuchsia-500/10 to-transparent pointer-events-none"
+          style={{ animation: 'shimmer 1.8s infinite', transform: 'translateX(-100%)' }}
+        />
+        <div className={cn(
+          "flex flex-col items-center justify-center p-6 space-y-4 relative z-10",
+          item.aspect === '9:16' ? 'aspect-[9/16]' : item.aspect === '1:1' ? 'aspect-square' : 'aspect-video'
+        )}>
+          <div className="relative w-14 h-14">
+            <div className="absolute inset-0 rounded-full border-2 border-fuchsia-500/20 animate-ping" />
+            <div className="absolute inset-0 rounded-full border-2 border-t-fuchsia-400 border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+            {isUpscaleLoader ? (
+              <Zap className="absolute inset-0 m-auto w-5 h-5 text-fuchsia-400 fill-fuchsia-400" />
+            ) : isImageLoader ? (
+              <ImageIcon className="absolute inset-0 m-auto w-5 h-5 text-fuchsia-400" />
+            ) : (
+              <Film className="absolute inset-0 m-auto w-5 h-5 text-fuchsia-400" />
+            )}
+          </div>
+          <div className="text-center space-y-1.5 max-w-[200px]">
+            <span className="text-[8px] font-black uppercase text-fuchsia-400 tracking-[0.2em] block">
+              {isUpscaleLoader ? '✨ 1080p HD Upscaler' : item.loading ? (item.type === 'image' ? 'Developing canvas' : 'Compiling frames') : (pollMsg || (activeTab === 'image' ? 'Developing canvas' : 'Compiling frames'))}
+            </span>
+            {isUpscaleLoader ? (
+              <p className="text-white/80 text-[10px] font-black uppercase tracking-wider text-center animate-pulse">
+                Refining to 1080p HD...
+              </p>
+            ) : isImageLoader ? (
+              <p className="text-white/60 text-xs font-black uppercase tracking-widest text-center max-w-xs animate-pulse">
+                🎨 Sketching fine details...
+              </p>
+            ) : (
+              <CyclingLoadingText />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "rounded-2xl border border-white/5 bg-white/[0.02] overflow-hidden group cursor-pointer hover:border-fuchsia-500/20 transition-all",
+        item.isNew && "gallery-item-appear"
+      )}
+      onClick={() => onOpenLightbox(item)}
+    >
+      {/* Media Content */}
+      <div className={cn(
+        "relative overflow-hidden bg-black",
+        item.aspect === '9:16' ? 'aspect-[9/16]' : item.aspect === '1:1' ? 'aspect-square' : 'aspect-video'
+      )}>
+        {item.type === 'image' ? (
+          <>
+            <img
+              src={resolveUrl(item.url)}
+              alt={item.prompt}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+            {isUpscaling && (
+              <div className="absolute inset-0 bg-black/75 backdrop-blur-sm z-30 flex flex-col items-center justify-center space-y-2">
+                <Loader2 size={16} className="text-fuchsia-400 animate-spin" />
+                <span className="text-[7px] font-black uppercase tracking-[0.2em] text-fuchsia-400">Refining 2K...</span>
+              </div>
+            )}
+          </>
+        ) : (
+          <LazyVideo src={item.url} aspect={item.aspect} />
+        )}
+        {/* Play or view overlay */}
+        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20">
+            {item.type === 'image' ? (
+              <Maximize2 size={16} className="text-white" />
+            ) : (
+              <Play size={16} className="text-white ml-0.5" fill="white" />
+            )}
+          </div>
+        </div>
+        {/* Top Left Badges Group */}
+        <div className="absolute top-2 left-2 flex items-center gap-1.5 z-20 pointer-events-none">
+          {(item.resolution === '1080p' || item.quality?.includes('1080p') || item.prompt?.includes('1080p') || item.engine?.includes('1080p')) && (
+            <div className="px-1.5 py-0.5 rounded-md text-[7.5px] font-black tracking-wider uppercase bg-fuchsia-500/90 text-white border border-fuchsia-400 shadow-[0_0_10px_rgba(217,70,239,0.5)] flex items-center gap-1 backdrop-blur-md">
+              <Zap size={8} className="fill-white text-white" /> 1080p HD
+            </div>
+          )}
+        </div>
+        {/* Top Right Controls Group */}
+        <div className="absolute top-2 right-2 flex items-center gap-1.5 z-20">
+          <div className="px-1.5 py-0.5 rounded-md text-[7px] font-mono bg-black/70 backdrop-blur-md border border-white/10 text-white/50">
+            {item.aspect}
+          </div>
+          <button
+            onClick={(e) => onDeleteItem(item.id, e)}
+            className="w-5 h-5 rounded-md bg-red-500/80 hover:bg-red-600 border border-red-500/20 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
+            title="Delete generation"
+          >
+            <Trash2 size={8} className="text-white" />
+          </button>
+        </div>
+      </div>
+
+      {/* Meta */}
+      <div className="p-3 space-y-1.5">
+        <p className="text-[9px] text-white/50 leading-relaxed line-clamp-1 font-medium" title={item.prompt}>
+          {item.prompt}
+        </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-[7px] font-mono text-gray-600">
+              {new Date(item.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+            {item.type === 'image' && onSetFirstFrame && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSetFirstFrame(item.url);
+                }}
+                className="flex items-center gap-0.5 px-1 py-0.5 rounded bg-fuchsia-500/15 border border-fuchsia-500/25 text-[8px] font-black uppercase tracking-wider text-fuchsia-400 hover:bg-fuchsia-500/25 transition-all active:scale-95 shrink-0"
+                title="Set as Style Reference guided image"
+              >
+                <ImageIcon size={8} className="text-fuchsia-400" /> Ref
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {item.type === 'image' && (() => {
+              const isAlreadyUpscaled = Boolean(
+                item.resolution === '2K' ||
+                item.resolution === '4K' ||
+                item.quality === '2K QHD' ||
+                item.quality === '4K UHD' ||
+                item.engine === 'HD Upscaler' ||
+                item.isUpscaled === true ||
+                item.prompt?.includes('(2K Upscaled)') ||
+                item.prompt?.includes('(Upscaled)')
+              );
+
+              return (
+                <>
+                  {!isAlreadyUpscaled ? (
+                    <button
+                      onClick={(e) => onUpscale(item, e)}
+                      disabled={isUpscaling}
+                      className={cn(
+                        "flex items-center gap-0.5 text-[7px] font-black uppercase tracking-wider transition-colors",
+                        isUpscaling
+                          ? "text-fuchsia-400 animate-pulse"
+                          : "text-gray-500 hover:text-fuchsia-400"
+                      )}
+                      title="Upscale image to 2K (2 Credits)"
+                    >
+                      {isUpscaling ? (
+                        <>
+                          <Loader2 size={7} className="animate-spin text-fuchsia-400" />
+                          <span>2K...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap size={7} className="text-current" />
+                          <span>2K</span>
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <span className="flex items-center gap-0.5 text-[7px] font-black uppercase tracking-wider text-emerald-400/90" title="2K QHD Master">
+                      ✨ 2K
+                    </span>
+                  )}
+                  {onSetFirstFrame && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSetFirstFrame(item.url);
+                      }}
+                      className="flex items-center gap-0.5 text-[7px] font-black uppercase tracking-wider text-gray-500 hover:text-[#c8f135] transition-colors"
+                      title="Set as First Frame (FF) of video"
+                    >
+                      <Video size={7} className="text-current" /> FF
+                    </button>
+                  )}
+                  {onSetLastFrame && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSetLastFrame(item.url);
+                      }}
+                      className="flex items-center gap-0.5 text-[7px] font-black uppercase tracking-wider text-gray-500 hover:text-fuchsia-400 transition-colors"
+                      title="Set as Last Frame (LF) of video"
+                    >
+                      <Video size={7} className="text-current" /> LF
+                    </button>
+                  )}
+                </>
+              );
+            })()}
+            {item.type === 'video' && (() => {
+              const isAlreadyUpscaled = Boolean(
+                item.resolution === '1080p' ||
+                item.resolution === '2K' ||
+                item.resolution === '4K' ||
+                item.quality === '1080p Full HD' ||
+                item.quality === '2K QHD' ||
+                item.quality === '4K UHD' ||
+                item.engine === '1080p HD Upscaler' ||
+                item.engine === 'HD Upscaler' ||
+                item.isUpscaled === true ||
+                item.prompt?.includes('[1080p HD') ||
+                item.prompt?.includes('(1080p HD')
+              );
+
+              return (
+                <>
+                  {!isAlreadyUpscaled ? (
+                    <button
+                      onClick={(e) => onUpscale(item, e)}
+                      disabled={isUpscaling}
+                      className={cn(
+                        "flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-fuchsia-500/10 border border-fuchsia-500/30 text-[7px] font-black uppercase tracking-wider transition-all active:scale-95 shrink-0 cursor-pointer",
+                        isUpscaling
+                          ? "text-fuchsia-400 animate-pulse bg-fuchsia-500/20"
+                          : "text-fuchsia-400 hover:bg-fuchsia-500/25 hover:border-fuchsia-500/50"
+                      )}
+                      title={`Upscale video to 1080p HD (${Math.max(1, Math.round(Number(item.duration) || 5)) * 5} Shorts)`}
+                    >
+                      {isUpscaling ? (
+                        <>
+                          <Loader2 size={7} className="animate-spin text-fuchsia-400" />
+                          <span>1080p...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap size={7} className="text-fuchsia-400" />
+                          <span>1080p</span>
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-[7px] font-black uppercase tracking-wider text-emerald-400 shrink-0 select-none" title="1080p Full HD Master">
+                      ✨ 1080p
+                    </span>
+                  )}
+                  {onExtendVideo && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onExtendVideo(item);
+                      }}
+                      className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#c8f135]/10 border border-[#c8f135]/30 text-[7px] font-black uppercase tracking-wider text-[#c8f135] hover:bg-[#c8f135]/25 hover:border-[#c8f135]/50 transition-all active:scale-95 shrink-0"
+                      title="Extend video length with Omni 1.1 Flash (+4s / +8s)"
+                    >
+                      <Zap size={7} className="fill-current text-[#c8f135]" /> Extend
+                    </button>
+                  )}
+                </>
+              );
+            })()}
+            {onDownload && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDownload(item.url, item.type, item.id);
+                }}
+                className="flex items-center gap-1 text-[7px] font-black uppercase tracking-widest text-gray-600 hover:text-[#c8f135] transition-colors"
+              >
+                <Download size={8} /> Save
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 /* ─── MAIN COMPONENT ────────────────────────────────────────── */
 export default function CinematicStudio() {
   const userProfile = useAppStore(state => state.userProfile);
@@ -659,6 +956,7 @@ export default function CinematicStudio() {
   const [omniTask, setOmniTask] = useState(() => localStorage.getItem('cs_omniTask') || 'auto');
   const [showSidePanel, setShowSidePanel] = useState(false);
   const [panelTab, setPanelTab] = useState('veo'); // 'veo' | 'omni'
+  const galleryContainerRef = useRef(null);
 
   const isSeed = useMemo(() => activeEngine === 'seedance-fast' || activeEngine === 'seedace' || activeEngine === 'seedance-mini' || activeEngine === 'seedance-2.5', [activeEngine]);
   const isOmni = useMemo(() => activeEngine === 'omni' || activeEngine === 'omni-flash', [activeEngine]);
@@ -831,18 +1129,48 @@ export default function CinematicStudio() {
     }
   });
 
+  // Instant local cache hydration when userId is resolved
+  useEffect(() => {
+    if (!galleryLSKey) return;
+    try {
+      const cached = localStorage.getItem(galleryLSKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const deduped = deduplicateGallery(parsed);
+          setGallery(prev => {
+            if (prev.length === 0) return deduped;
+            // Retain any items already in prev (especially generating or new items)
+            const existingUrls = new Set(prev.map(i => getNormalizedPath(i.url)).filter(Boolean));
+            const existingIds = new Set(prev.map(i => String(i.id)));
+            const extra = deduped.filter(i => !existingIds.has(String(i.id)) && (!i.url || !existingUrls.has(getNormalizedPath(i.url))));
+            return deduplicateGallery([...prev, ...extra]);
+          });
+        }
+      }
+    } catch (_) {
+      // ignore storage access errors
+    }
+  }, [galleryLSKey]);
+
   const projectAssets = useAppStore(state => state.projectAssets);
   const filteredGallery = useMemo(() => {
     const assets = projectAssets || {};
     const baseItems = gallery.filter(item => {
-      const itemProj = item.projectId || 'default';
-      return itemProj === activeProjectId;
+      if (activeProjectId === 'all') return true;
+      const itemProj = item.projectId || item.folder || 'default';
+      if (activeProjectId === 'default') {
+        return !item.projectId || item.projectId === 'default' || item.projectId === 'proj_default';
+      }
+      return itemProj === activeProjectId || item.projectId === activeProjectId;
     });
 
     // projectAssets can be an object {[projectId]: Array} or an Array
-    const activeProjectAssetList = Array.isArray(assets)
-      ? assets.filter(a => (a.projectId || 'default') === activeProjectId)
-      : (Array.isArray(assets[activeProjectId]) ? assets[activeProjectId] : []);
+    const activeProjectAssetList = activeProjectId === 'all'
+      ? (Array.isArray(assets) ? assets : Object.values(assets).flat())
+      : (Array.isArray(assets)
+          ? assets.filter(a => (a.projectId || 'default') === activeProjectId)
+          : (Array.isArray(assets[activeProjectId]) ? assets[activeProjectId] : []));
 
     // Also pull assets from the active project in Project Box so user sees them in the common gallery
     const boxItems = activeProjectAssetList.map(a => ({
@@ -852,20 +1180,30 @@ export default function CinematicStudio() {
       prompt: a.prompt || a.name || 'Project Asset',
       engine: a.engine || (a.boardType ? `${a.boardType} Sheet` : 'Project Asset'),
       aspect: a.aspect || '16:9',
-      ts: a.timestamp || Date.now(),
-      projectId: a.projectId || activeProjectId
+      ts: typeof a.createdAt === 'number' ? a.createdAt : (a.createdAt ? new Date(a.createdAt).getTime() : 0) || (typeof a.timestamp === 'number' ? a.timestamp : 0) || (a.created_at ? new Date(a.created_at).getTime() : 0) || (typeof a.id === 'number' && a.id > 1000000000000 ? a.id : 0),
+      projectId: a.projectId || (activeProjectId === 'all' ? 'default' : activeProjectId)
     }));
 
-    const seenUrls = new Set(baseItems.map(i => i.url));
+    const seenUrls = new Set(baseItems.map(i => getNormalizedPath(i.url) || i.url).filter(Boolean));
+    const seenIds = new Set(baseItems.map(i => String(i.id)));
     const merged = [...baseItems];
     boxItems.forEach(b => {
-      if (b.url && !seenUrls.has(b.url)) {
+      const normB = getNormalizedPath(b.url) || b.url;
+      if (b.url && !seenUrls.has(normB) && !seenIds.has(String(b.id))) {
         merged.push(b);
-        seenUrls.add(b.url);
+        if (normB) seenUrls.add(normB);
+        seenIds.add(String(b.id));
       }
     });
 
-    return merged.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    return merged.sort((a, b) => {
+      // Loading items always float to the absolute front (top-left corner)
+      if (a.loading && !b.loading) return -1;
+      if (!a.loading && b.loading) return 1;
+      const tsA = typeof a.ts === 'number' ? a.ts : (a.ts ? new Date(a.ts).getTime() : 0) || 0;
+      const tsB = typeof b.ts === 'number' ? b.ts : (b.ts ? new Date(b.ts).getTime() : 0) || 0;
+      return tsB - tsA;
+    });
   }, [gallery, activeProjectId, projectAssets]);
 
   // Fetch previously generated assets from server on mount
@@ -874,7 +1212,13 @@ export default function CinematicStudio() {
     const fetchAssets = async () => {
       if (!userId || userId === 'anon') return;
       try {
-        const resp = await fetch(getApiUrl(`/api/ugc/assets/${userId}`));
+        // Trigger global unified gallery refresh in store
+        useAppStore.getState().fetchUnifiedGallery(userId);
+
+        let resp = await fetch(getApiUrl(`/api/list-assets?userId=${userId}`));
+        if (!resp.ok) {
+          resp = await fetch(getApiUrl(`/api/ugc/assets/${userId}`));
+        }
         if (!resp.ok) return;
         const data = await resp.json();
         if (data.assets && Array.isArray(data.assets) && active) {
@@ -888,9 +1232,9 @@ export default function CinematicStudio() {
               return !isRefFolder;
             })
             .map(asset => {
-              let aspectVal = asset.aspect || '16:9';
+              let aspectVal = asset.aspect || asset.aspectRatio || '16:9';
               let isGridVal = false;
-              let projIdVal = 'default';
+              let projIdVal = asset.projectId || 'default';
               if (asset.metadata) {
                 try {
                   const meta = typeof asset.metadata === 'string' ? JSON.parse(asset.metadata) : asset.metadata;
@@ -901,8 +1245,9 @@ export default function CinematicStudio() {
                   }
                 } catch (_) { /* ignore malformed metadata JSON */ }
               }
-              const cleanPrompt = asset.prompt || '';
-              const cleanEngine = asset.engine || (asset.type === 'video' ? 'Veo 3.1' : 'Nano Banana 2');
+              const cleanPrompt = asset.prompt || asset.name || '';
+              const isVid = asset.type === 'video' || (typeof asset.url === 'string' && (asset.url.includes('.mp4') || asset.url.includes('.webm')));
+              const cleanEngine = asset.engine || (isVid ? 'Veo 3.1' : 'Nano Banana 2');
               const finalIsGrid = isGridVal || 
                                   cleanPrompt.toLowerCase().includes('grid') || 
                                   cleanPrompt.toLowerCase().includes('contact sheet') || 
@@ -911,12 +1256,12 @@ export default function CinematicStudio() {
                                   cleanEngine.toLowerCase().includes('grid');
               return {
                 id: asset.id,
-                type: asset.type === 'video' ? 'video' : 'image',
+                type: isVid ? 'video' : 'image',
                 url: asset.url,
                 prompt: cleanPrompt,
                 engine: cleanEngine,
                 aspect: aspectVal,
-                ts: asset.created_at ? new Date(asset.created_at).getTime() : Date.now(),
+                ts: asset.created_at || asset.date ? new Date(asset.created_at || asset.date).getTime() : (typeof asset.id === 'number' && asset.id > 1000000000000 ? asset.id : 0),
                 isGrid: finalIsGrid,
                 projectId: projIdVal
               };
@@ -924,26 +1269,19 @@ export default function CinematicStudio() {
           
           if (loadedAssets.length > 0) {
             setGallery(prev => {
-              // Filter out local-only temp items (still generating) that aren't on the server yet
-              const defaultsFilter = (item) => String(item.id).startsWith('default_') || (typeof item.id === 'number' && item.id < 10);
-              const localTempItems = prev.filter(item => 
-                !defaultsFilter(item) && (
-                  item.url?.startsWith('blob:') ||
-                  item.url?.startsWith('data:') ||
-                  item.loading
-                )
-              );
+              // Server sync is ADDITIVE and NON-DESTRUCTIVE:
+              // Never discard current/recent items in prev (including active generation placeholders or completed items).
+              const existingUrls = new Set(prev.map(item => getNormalizedPath(item.url)).filter(Boolean));
+              const existingIds = new Set(prev.map(item => String(item.id)));
               
-              // Server is the source of truth — start from server data, then add any local temp items not yet on server
-              const serverPaths = new Set(loadedAssets.map(a => getNormalizedPath(a.url)));
-              const unsynced = localTempItems.filter(item => !serverPaths.has(getNormalizedPath(item.url)));
+              const newFromServer = loadedAssets.filter(asset => {
+                const normPath = getNormalizedPath(asset.url);
+                return !existingIds.has(String(asset.id)) && (!normPath || !existingUrls.has(normPath));
+              });
               
-              const combined = deduplicateGallery([...loadedAssets, ...unsynced]);
+              const combined = deduplicateGallery([...prev, ...newFromServer]);
               return combined.length > 0 ? combined : prev;
             });
-          } else {
-            // Server returned no assets — clear the gallery (don't keep stale localStorage data)
-            setGallery(prev => prev.filter(item => item.loading || item.url?.startsWith('blob:') || item.url?.startsWith('data:')));
           }
         }
       } catch (err) {
@@ -1027,6 +1365,7 @@ export default function CinematicStudio() {
 
         // Insert new generating card at top of gallery immediately
         setGallery(prev => [placeholderItem, ...prev]);
+        galleryContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
 
         if (showToast) showToast(`Compiling 1080p HD video in gallery (${durationSec}s · ${creditCost} Shorts)...`, "info");
 
@@ -1174,6 +1513,7 @@ DO NOT add new objects or change the scene. Enhance only.
       projectId: activeProjectId
     };
     setGallery(prev => [tempItem, ...prev]);
+    galleryContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
 
     try {
       const spendResult = await spendShorts(userId, 5, 'image_grid_multishot');
@@ -1292,17 +1632,29 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     }
   };
 
-  const handleDeleteItem = (itemId, e) => {
+  const handleDeleteItem = useCallback((itemId, e) => {
     if (e) e.stopPropagation();
     if (window.confirm("Are you sure you want to delete this generation?")) {
       setGallery(prev => prev.filter(item => item.id !== itemId));
-      if (lightboxItem && lightboxItem.id === itemId) {
-        setLightboxItem(null);
-      }
+      setLightboxItem(curr => (curr && curr.id === itemId ? null : curr));
       const showToast = useAppStore.getState().showToast;
       if (showToast) showToast("Item deleted from gallery.", "info");
     }
-  };
+  }, []);
+
+  const handleSetFirstFrame = useCallback((url) => {
+    setFirstFrameImage(url);
+    setFirstFramePreview(url);
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) showToast("Set as Reference Style Guided Image!", "success");
+  }, [setFirstFrameImage, setFirstFramePreview]);
+
+  const handleSetLastFrame = useCallback((url) => {
+    setLastFrameImage(url);
+    setLastFramePreview(url);
+    const showToast = useAppStore.getState().showToast;
+    if (showToast) showToast("Set as Last Frame (LF)!", "success");
+  }, [setLastFrameImage, setLastFramePreview]);
 
   // ── REFERENCE BOARD STATE & PERSISTENCE ────────────────────────────────────
   const defaultRefBoard = { characters: [], locations: [], wardrobes: [], props: [], moods: [], ref_images: [], ref_videos: [], ref_audios: [] };
@@ -1843,66 +2195,22 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
-  const getRequiredCredits = (engineId) => {
-    if (activeTab === 'image') {
-      return IMAGE_ENGINES.find(e => e.id === engineId)?.cost || 1;
-    }
-    if (engineId.startsWith('veo-3.1') || engineId === 'veo3') {
-      let costPerSec = 5;
-      const modelId = engineId === 'veo3' ? 'veo-3.1-generate-preview' : engineId;
-      if (modelId === 'veo-3.1-generate-preview') {
-        if (resolution === '4k') {
-          costPerSec = generateAudio ? 40 : 27; // halved from 80 : 54
-        } else {
-          costPerSec = generateAudio ? 27 : 15; // halved from 54 : 30
-        }
-      } else if (modelId === 'veo-3.1-fast-generate-preview') {
-        if (resolution === '4k') {
-          costPerSec = generateAudio ? 19 : 15; // halved from 38 : 31
-        } else if (resolution === '1080p') {
-          costPerSec = generateAudio ? 8 : 6; // halved from 15 : 12
-        } else { // 720p
-          costPerSec = generateAudio ? 6 : 5; // halved from 12 : 10
-        }
-      } else if (modelId === 'veo-3.1-lite-generate-preview') {
-        if (resolution === '4k' || resolution === '1080p') {
-          costPerSec = generateAudio ? 5 : 3; // halved from 10 : 6
-        } else { // 720p
-          costPerSec = generateAudio ? 3 : 2; // halved from 6 : 4
-        }
-      }
-      return costPerSec * duration;
-    }
-    if (engineId === 'seedance-fast') {
-      return (resolution === '480p' ? 7 : 12) * duration; // halved from 15 : 25
-    }
-    if (engineId === 'seedance-2.5') {
-      const costPerSec = resolution === '1080p' ? 70 : resolution === '720p' ? 30 : 15;
-      return costPerSec * duration;
-    }
-    if (engineId === 'seedace') {
-      const costPerSec = resolution === '1080p' ? 35 : 15;
-      return costPerSec * duration;
-    }
-    if (engineId === 'seedance-mini') {
-      return (resolution === '480p' ? 5 : 7) * duration; // halved from 10 : 15
-    }
-    if (engineId === 'omni-flash') {
-      let costPerSec = 6;
-      if (resolution === '4k') {
-        costPerSec = generateAudio ? 19 : 15; // halved from 38 : 31
-      } else if (resolution === '1080p') {
-        costPerSec = generateAudio ? 8 : 6; // halved from 15 : 12
-      } else { // 720p
-        costPerSec = generateAudio ? 6 : 5; // halved from 12 : 10
-      }
-      return Math.ceil(costPerSec * 1.1 * duration);
-    }
-    if (engineId === 'kling/v3-turbo-image-to-video') {
-      const costPerSec = (resolution === '1080p') ? (0.1125 * 1.30 * 84) : (0.09 * 1.30 * 84); // 12.285 or 9.828 credits/sec
-      return Math.round(costPerSec * duration);
-    }
-    return (ENGINES.find(e => e.id === engineId)?.cost || 2) * duration;
+  const getRequiredCredits = (engineId, opts = {}) => {
+    return calculateEngineCredits(engineId, {
+      duration: opts.duration !== undefined ? opts.duration : duration,
+      resolution: opts.resolution || resolution,
+      generateAudio: opts.generateAudio !== undefined ? opts.generateAudio : generateAudio,
+      activeTab,
+      panelTab,
+      transitionSubTab,
+      remixEngine,
+      motionMode,
+      motionRefVideoDuration,
+      extensionSourceVideo,
+      extensionDuration,
+      seedanceSubModel,
+      ...opts
+    });
   };
 
   const activeJobsCount = useMemo(() => gallery.filter(i => i && (i.status === 'generating' || i.status === 'loading')).length, [gallery]);
@@ -2125,21 +2433,26 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
       try {
         const res = await fetch(getApiUrl(`/api/seedance/status/${taskId}?userId=${userId}&aspectRatio=${activeRatio}&engine=${engine}&projectId=${activeProjectId}`));
+        if (!res.ok) {
+          console.warn(`[Seedance Poll HTTP ${res.status}] retrying...`);
+          continue;
+        }
         const json = await res.json();
         const st = json.status;
 
         if (st === 'completed') {
           const url = json.url || json.videoUrl || json.video_url || json.resultUrl || json.data?.url;
           if (url) {
+            const targetProj = (activeProjectId === 'all' || !activeProjectId) ? 'default' : activeProjectId;
             const finishedItem = {
-              id: Date.now(),
+              id: tempId || Date.now(),
               type: 'video',
               url: url,
               prompt: activePrompt,
               engine: engineLabel,
               aspect: activeRatio,
               ts: Date.now(),
-              projectId: activeProjectId
+              projectId: targetProj
             };
 
             setGallery(prev => {
@@ -2148,6 +2461,22 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               }
               return [finishedItem, ...prev];
             });
+
+            try {
+              useAppStore.getState().addProjectAsset({
+                id: finishedItem.id,
+                type: 'video',
+                category: 'generation',
+                url: url,
+                prompt: activePrompt,
+                name: activePrompt?.slice(0, 30) || 'Cinema Video',
+                engine: engineLabel,
+                aspect: activeRatio,
+                projectId: targetProj
+              }, targetProj);
+            } catch (_) {
+              /* ignore */
+            }
 
             setStatus('idle');
             setPollMsg('');
@@ -2196,7 +2525,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
   const pollKlingTask = async (taskId, activePrompt, activeRatio, engine, tempId = null) => {
     setStatus('polling');
-    const engineLabel = 'Kling V3 Turbo';
+    const engineLabel = engine === 'kling-motion' ? 'Kling Motion Control' : 'Kling V3 Turbo';
 
     for (let i = 0; i < 120; i++) {
       await new Promise(r => setTimeout(r, 6000));
@@ -2205,21 +2534,26 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
       try {
         const res = await fetch(getApiUrl(`/api/kling/status/${taskId}?userId=${userId}&aspectRatio=${activeRatio}`));
+        if (!res.ok) {
+          console.warn(`[Kling Poll HTTP ${res.status}] retrying...`);
+          continue;
+        }
         const json = await res.json();
         const st = json.status;
 
         if (st === 'completed') {
           const url = json.url || json.videoUrl;
           if (url) {
+            const targetProj = (activeProjectId === 'all' || !activeProjectId) ? 'default' : activeProjectId;
             const finishedItem = {
-              id: Date.now(),
+              id: tempId || Date.now(),
               type: 'video',
               url: url,
               prompt: activePrompt,
               engine: engineLabel,
               aspect: activeRatio,
               ts: Date.now(),
-              projectId: activeProjectId
+              projectId: targetProj
             };
 
             setGallery(prev => {
@@ -2228,6 +2562,22 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               }
               return [finishedItem, ...prev];
             });
+
+            try {
+              useAppStore.getState().addProjectAsset({
+                id: finishedItem.id,
+                type: 'video',
+                category: 'generation',
+                url: url,
+                prompt: activePrompt,
+                name: activePrompt?.slice(0, 30) || 'Cinema Video',
+                engine: engineLabel,
+                aspect: activeRatio,
+                projectId: targetProj
+              }, targetProj);
+            } catch (_) {
+              /* ignore */
+            }
 
             setStatus('idle');
             setPollMsg('');
@@ -2655,6 +3005,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     const identity_gcs_uris = taggedItems.map(item => ({ name: item.name, uri: item.imageUrl }));
 
     // Instant optimistic gallery placeholder update (0ms latency, eliminates loading card delay/flash!)
+    const targetProj = (activeProjectId === 'all' || !activeProjectId) ? 'default' : activeProjectId;
     const activeVarCount = (activeTab === 'image' || resolvedEngine.startsWith('veo-3.1') || resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview') ? variationCount : 1;
     const tempItems = Array.from({ length: activeVarCount }).map((_, idx) => ({
       id: `temp-${activeTab}-${Date.now()}-${idx}`,
@@ -2663,14 +3014,15 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       prompt: compiledPrompt || basePrompt,
       aspect: activeRatio,
       ts: Date.now() + (activeVarCount - idx),
-      projectId: activeProjectId
+      projectId: targetProj
     }));
     setGallery(prev => [...tempItems, ...prev]);
+    galleryContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
 
     try {
       // Deduct credits for each variation separately to prevent double-charging and match backend verification
       try {
-        const singleCost = getRequiredCredits(resolvedEngine);
+        const singleCost = overrideOptions?.creditCost || getRequiredCredits(resolvedEngine, overrideOptions);
         const spendPromises = Array.from({ length: activeVarCount }).map(() =>
           spendShorts(userId, singleCost, activeTab === 'image' ? 'cinematic_image_generation' : 'cinematic_video_generation')
         );
@@ -2764,18 +3116,19 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
               // Replace placeholder in gallery immediately
               const finishedItem = {
-                id: Date.now() + idx + Math.random(),
+                id: tempId,
                 type: 'image',
                 url: data.url,
                 prompt: finalPrompt,
                 engine: engineLabel,
                 aspect: activeRatio,
                 ts: Date.now(),
-                projectId: activeProjectId
+                projectId: targetProj
               };
               setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
               try {
                 useAppStore.getState().addProjectAsset({
+                  id: finishedItem.id,
                   type: 'image',
                   category: 'generation',
                   url: data.url,
@@ -2783,8 +3136,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   name: finalPrompt?.slice(0, 30) || 'Cinema Image',
                   engine: engineLabel,
                   aspect: activeRatio,
-                  projectId: activeProjectId
-                });
+                  projectId: targetProj
+                }, targetProj);
               } catch (_) {
                 /* ignore */
               }
@@ -2814,7 +3167,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         return;
       }
 
-      if (resolvedEngine !== 'seedace' && resolvedEngine !== 'seedance-fast' && resolvedEngine !== 'seedance-mini' && resolvedEngine !== 'seedance-2.5' && resolvedEngine !== 'kling/v3-turbo-image-to-video' && resolvedEngine !== 'kling-motion' && resolvedEngine !== 'remix-motion-transfer') {
+      if (resolvedEngine !== 'seedace' && resolvedEngine !== 'seedance-fast' && resolvedEngine !== 'seedance-mini' && resolvedEngine !== 'seedance-2.5' && resolvedEngine !== 'kling/v3-turbo-image-to-video' && resolvedEngine !== 'kling-motion' && resolvedEngine !== 'omni-motion' && resolvedEngine !== 'motion-easy' && resolvedEngine !== 'remix-motion-transfer') {
         const isOmniEngine = resolvedEngine === 'omni' || resolvedEngine === 'omni-flash' || resolvedEngine === 'omni-flash-1.1' || resolvedEngine === 'gemini-omni-1.1-flash-preview';
         try {
           let targetModel = resolvedEngine;
@@ -2917,6 +3270,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   userId,
                   projectId: activeProjectId,
                   generateAudio,
+                  creditCost: singleCost,
                   creditReason: 'cinematic_video_generation'
                 })
               });
@@ -2938,18 +3292,19 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
               // Replace placeholder in gallery immediately
               const finishedItem = {
-                id: Date.now() + idx + Math.random(),
+                id: tempId,
                 type: 'video',
                 url: data.videoUrl,
                 prompt: compiledPrompt,
                 engine: isOmniEngine ? 'Omni' : engineLabel,
                 aspect: currentRatio,
                 ts: Date.now(),
-                projectId: activeProjectId
+                projectId: targetProj
               };
               setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
               try {
                 useAppStore.getState().addProjectAsset({
+                  id: finishedItem.id,
                   type: 'video',
                   category: 'generation',
                   url: data.videoUrl,
@@ -2957,8 +3312,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   name: compiledPrompt?.slice(0, 30) || 'Cinema Video',
                   engine: isOmniEngine ? 'Omni' : engineLabel,
                   aspect: currentRatio,
-                  projectId: activeProjectId
-                });
+                  projectId: targetProj
+                }, targetProj);
               } catch (_) {
                 /* ignore */
               }
@@ -3085,6 +3440,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               projectId: activeProjectId,
               generateAudio,
               provider: localStorage.getItem('cs_seedance_provider') || 'auto',
+              creditCost: singleCost,
               creditReason: 'cinematic_video_generation'
             })
           });
@@ -3095,18 +3451,36 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           // If backend completed synchronously (e.g. Higgsfield withPolling: true)
           if (json.status === 'completed' && (json.videoUrl || json.url)) {
             const finalUrl = json.videoUrl || json.url;
+            const finishedSeedance = {
+              id: json.requestId || `gen_${Date.now()}`,
+              type: 'video',
+              url: finalUrl,
+              prompt: basePrompt,
+              engine: json.engine || activeEngine,
+              aspectRatio: activeRatio,
+              aspect: activeRatio,
+              ts: Date.now(),
+              timestamp: Date.now(),
+              projectId: targetProj
+            };
             setGallery(prev => [
-              {
-                id: json.requestId || `gen_${Date.now()}`,
-                type: 'video',
-                url: finalUrl,
-                prompt: basePrompt,
-                engine: json.engine || activeEngine,
-                aspectRatio: activeRatio,
-                timestamp: Date.now()
-              },
+              finishedSeedance,
               ...prev.filter(item => item.id !== tempId)
             ]);
+            try {
+              useAppStore.getState().addProjectAsset({
+                type: 'video',
+                category: 'generation',
+                url: finalUrl,
+                prompt: basePrompt,
+                name: basePrompt?.slice(0, 30) || 'Cinema Video',
+                engine: json.engine || activeEngine,
+                aspect: activeRatio,
+                projectId: targetProj
+              }, targetProj);
+            } catch (_) {
+              /* ignore */
+            }
             setStatus('idle');
             const showToast = useAppStore.getState().showToast;
             if (showToast) showToast("Seedance 2.5 video generated successfully!", "success");
@@ -3131,11 +3505,11 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           setStatus(prev => (prev === 'generating' || prev === 'polling' ? 'idle' : prev));
           setPollMsg('');
         }
-      } else if (resolvedEngine === 'kling-motion') {
+      } else if (resolvedEngine === 'omni-motion' || resolvedEngine === 'motion-easy') {
         const tempId = tempItems[0].id;
         try {
-          const rawInputUrl = overrideOptions?.input_url || motionSubjectImage || motionSubjectPreview || firstFrameImage;
-          const rawVideoUrl = overrideOptions?.video_url || motionRefVideo || motionRefVideoPreview || omniRefVideoPreview;
+          const rawInputUrl = overrideOptions?.image || overrideOptions?.input_url || motionSubjectImage || motionSubjectPreview || firstFrameImage;
+          const rawVideoUrl = overrideOptions?.refVideo || overrideOptions?.video_url || motionRefVideo || motionRefVideoPreview || omniRefVideoPreview;
 
           const [resolvedInputUrl, resolvedVideoUrl] = await Promise.all([
             rawInputUrl ? resolveBlobToBase64(rawInputUrl) : null,
@@ -3143,38 +3517,152 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           ]);
 
           if (!resolvedInputUrl || !resolvedVideoUrl) {
-            throw new Error("Kling Motion Control requires both a Subject Reference Image and a Motion Reference Video.");
+            throw new Error("Motion Control Easy requires both a Subject Reference Image and a 10s Motion Reference Video.");
           }
 
-          const reqDuration = overrideOptions?.duration !== undefined ? overrideOptions.duration : (motionRefVideoDuration || duration || 5);
-          const reqMode = overrideOptions?.mode || motionMode || '720p';
-          const reqOrientation = overrideOptions?.character_orientation || characterOrientation || 'video';
+          const reqDuration = 10; // Fixed 10s for Motion Control Easy
+          const reqMode = overrideOptions?.resolution || overrideOptions?.mode || motionMode || '720p';
+          const validRes = (reqMode === 'pro' || reqMode === '1080p') ? '1080p' : '720p';
           const reqAspectRatio = overrideOptions?.aspectRatio !== undefined ? overrideOptions.aspectRatio : activeRatio;
 
-          const resp = await fetch(getApiUrl('/api/kling/motion-control'), {
+          setPollMsg("Synthesizing Motion Control Easy (10s Transfer)...");
+
+          const baseMotionFaceDirective = "Motion control: Retarget the exact motion and choreography from the driving video. The subject's exact face, facial structure, features, eyes, and identity must strictly match the attached subject image with 100% facial preservation and character consistency.";
+          const finalMotionPrompt = compiledPrompt?.trim()
+            ? (compiledPrompt.includes("facial structure") || compiledPrompt.includes("exact face") 
+                ? compiledPrompt 
+                : `${baseMotionFaceDirective} ${compiledPrompt}`)
+            : baseMotionFaceDirective;
+
+          const resp = await fetch(getApiUrl('/api/omni-i2v'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              prompt: compiledPrompt,
-              input_url: resolvedInputUrl,
-              video_url: resolvedVideoUrl,
-              mode: reqMode,
-              character_orientation: reqOrientation,
+              image: resolvedInputUrl,
+              firstFrame: resolvedInputUrl,
+              refVideo: resolvedVideoUrl,
+              ref_videos: [resolvedVideoUrl],
+              task: 'motion_control',
+              prompt: finalMotionPrompt,
+              motionPrompt: finalMotionPrompt,
               duration: reqDuration,
+              resolution: validRes,
               aspectRatio: reqAspectRatio,
+              generateAudio: !!generateAudio,
+              model: 'gemini-omni-1.1-flash-preview',
               userId,
               projectId: activeProjectId,
+              creditCost: singleCost,
               creditReason: 'cinematic_motion_control'
             })
           });
 
-          const json = await resp.json();
-          if (!resp.ok) throw new Error(json.error || 'Kling Motion Control initialization failed.');
+          if (!resp.ok) {
+            const errText = await resp.text();
+            let parsedError = `Motion Control failed (${resp.status})`;
+            try {
+              const parsed = JSON.parse(errText);
+              if (parsed.error) parsedError = parsed.error;
+            } catch (_) {}
+            throw new Error(parsedError);
+          }
 
-          const taskId = json.requestId || json.taskId;
-          if (!taskId) throw new Error('No task ID returned from backend.');
+          const data = await resp.json();
+          const finalUrl = data.videoUrl || data.url;
+          if (!finalUrl) throw new Error('Motion Control returned no video URL.');
 
-          await pollKlingTask(taskId, compiledPrompt || 'Motion Control Video', reqAspectRatio, 'kling-motion', tempId);
+          const finishedMotionItem = {
+            id: tempId,
+            type: 'video',
+            url: finalUrl,
+            prompt: finalMotionPrompt,
+            engine: 'Motion Control Easy',
+            aspectRatio: reqAspectRatio,
+            aspect: reqAspectRatio,
+            duration: 10,
+            ts: Date.now(),
+            timestamp: Date.now(),
+            projectId: activeProjectId
+          };
+
+          setGallery(prev => prev.map(item => item.id === tempId ? finishedMotionItem : item));
+          try {
+            useAppStore.getState().addProjectAsset({
+              id: finishedMotionItem.id,
+              type: 'video',
+              category: 'generation',
+              url: finalUrl,
+              prompt: finishedMotionItem.prompt,
+              name: 'Motion Control Easy (10s)',
+              engine: 'Motion Control Easy',
+              aspect: reqAspectRatio,
+              projectId: activeProjectId
+            }, activeProjectId);
+          } catch (_) {}
+
+          setStatus('idle');
+          const showToast = useAppStore.getState().showToast;
+          if (showToast) showToast("Motion Control Easy video generated successfully!", "success");
+          return;
+        } catch (err) {
+          setGallery(prev => prev.filter(item => item.id !== tempId));
+          setStatus('error');
+          const cleanErr = cleanErrorMessage(err.message || 'Motion Control Easy failed.');
+          setErrorMsg(cleanErr);
+          const showToast = useAppStore.getState().showToast;
+          if (showToast) showToast(cleanErr, "error");
+          await triggerRefund('cinematic_video_generation');
+        } finally {
+          setStatus(prev => (prev === 'generating' || prev === 'polling' ? 'idle' : prev));
+          setPollMsg('');
+        }
+      } else if (resolvedEngine === 'kling-motion') {
+        const tempId = tempItems[0].id;
+        try {
+          const rawInputUrl = overrideOptions?.image || overrideOptions?.input_url || motionSubjectImage || motionSubjectPreview || firstFrameImage;
+          const rawVideoUrl = overrideOptions?.refVideo || overrideOptions?.video_url || motionRefVideo || motionRefVideoPreview || omniRefVideoPreview;
+
+          const [resolvedInputUrl, resolvedVideoUrl] = await Promise.all([
+            rawInputUrl ? resolveBlobToBase64(rawInputUrl) : null,
+            rawVideoUrl ? resolveBlobToBase64(rawVideoUrl) : null
+          ]);
+
+          if (!resolvedInputUrl || !resolvedVideoUrl) {
+            throw new Error("Kling Motion Control requires both a Subject Image and a Motion Reference Video.");
+          }
+
+          const klingMode = (motionMode === 'pro' || motionMode === '1080p' || resolution === '1080p') ? '1080p' : '720p';
+          const klingDuration = Math.max(3, Math.min(30, Math.round(Number(motionRefVideoDuration) || duration || 5)));
+
+          setPollMsg("Creating Kling Motion Control Task...");
+
+          const resp = await fetch(getApiUrl('/api/video/kling-motion'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              input_url: resolvedInputUrl,
+              video_url: resolvedVideoUrl,
+              prompt: compiledPrompt || "No distortion, the character's movements are consistent with the video.",
+              mode: klingMode,
+              character_orientation: characterOrientation || 'video',
+              duration: klingDuration,
+              aspectRatio: activeRatio,
+              userId,
+              creditCost: singleCost,
+              creditReason: `kling_motion_${klingMode}`
+            })
+          });
+
+          if (!resp.ok) {
+            const errJson = await resp.json().catch(() => ({}));
+            throw new Error(errJson.error || 'Failed to submit Kling Motion Control task.');
+          }
+
+          const data = await resp.json();
+          const taskId = data.requestId;
+          if (!taskId) throw new Error('No task ID returned for Kling Motion Control.');
+
+          await pollKlingTask(taskId, compiledPrompt || 'Kling Motion Control', activeRatio, 'kling-motion', tempId);
         } catch (err) {
           setGallery(prev => prev.filter(item => item.id !== tempId));
           setStatus('error');
@@ -3213,7 +3701,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               video_url: resolvedVid,
               image_urls: resolvedImgs.filter(Boolean),
               resolution: overrideOptions?.resolution || resolution || '720p',
-              userId
+              userId,
+              creditCost: singleCost
             })
           });
 
@@ -3270,6 +3759,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               duration,
               resolution,
               userId,
+              creditCost: singleCost,
               creditReason: 'cinematic_video_generation'
             })
           });
@@ -3304,21 +3794,21 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     if (window.confirm('Clear entire cinema gallery?')) setGallery([]);
   };
 
-  // Distribute gallery items into 5 columns for responsive masonry Grid flow
-  const columnsData = useMemo(() => {
-    const renderItems = [];
-    const hasLoadingItems = filteredGallery.some(item => item.loading);
-    if (isBusy && !hasLoadingItems) {
-      renderItems.push({ isLoader: true });
-    }
-    renderItems.push(...filteredGallery);
+  // Flat list of gallery items with newest and loading items guaranteed at index 0 (top-left corner)
+  const displayGalleryItems = useMemo(() => {
+    const renderItems = [...filteredGallery];
 
-    const cols = [[], [], [], [], []];
-    renderItems.forEach((item, index) => {
-      cols[index % 5].push(item);
+    // Guaranteed top-left ordering: loaders first, then newest timestamp first
+    renderItems.sort((a, b) => {
+      if ((a.loading || a.isLoader) && !(b.loading || b.isLoader)) return -1;
+      if (!(a.loading || a.isLoader) && (b.loading || b.isLoader)) return 1;
+      const tsA = typeof a.ts === 'number' ? a.ts : (a.ts ? new Date(a.ts).getTime() : 0) || 0;
+      const tsB = typeof b.ts === 'number' ? b.ts : (b.ts ? new Date(b.ts).getTime() : 0) || 0;
+      return tsB - tsA;
     });
-    return cols;
-  }, [filteredGallery, isBusy]);
+
+    return renderItems;
+  }, [filteredGallery]);
 
   // Extend an existing video clip with Omni 1.1 Flash
   const handleExtendVideo = useCallback((item) => {
@@ -3386,6 +3876,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       projectId: activeProjectId
     };
     setGallery(prev => [tempItem, ...prev]);
+    galleryContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
 
     try {
       const spendResult = await spendShorts(userId, requiredCredits, 'omni_video_extension');
@@ -3439,7 +3930,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       if (!data.videoUrl) throw new Error('Omni Extension returned no videoUrl.');
 
       const finishedItem = {
-        id: Date.now() + Math.random(),
+        id: tempId,
         type: 'video',
         url: data.videoUrl,
         prompt: finalPrompt ? `Extended (+${durSec}s): ${finalPrompt}` : `Extended Scene (+${durSec}s)`,
@@ -3452,6 +3943,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
       try {
         useAppStore.getState().addProjectAsset({
+          id: finishedItem.id,
           type: 'video',
           category: 'generation',
           url: data.videoUrl,
@@ -3563,6 +4055,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     };
 
     setGallery(prev => [tempItem, ...prev]);
+    galleryContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
 
     try {
       const spendResult = await spendShorts(userId, requiredCredits, 'omni_video_edit');
@@ -3726,8 +4219,8 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             onClick={() => setShowProjectDropdown(prev => !prev)}
             className="flex items-center gap-1.5 bg-[#0f0f15]/95 border border-white/10 rounded-xl px-3 py-1.5 shadow-lg shadow-black/40 hover:bg-white/[0.03] active:scale-95 transition-all text-white text-[8px] font-black uppercase tracking-wider cursor-pointer select-none"
           >
-            <Clapperboard size={10} className="text-fuchsia-400" />
-            <span>{projects.find(p => p.id === activeProjectId)?.name || 'Default Project'}</span>
+            <FolderOpen size={10} className="text-[#c8f135]" />
+            <span>{activeProjectId === 'all' ? 'All Folders' : (projects.find(p => p.id === activeProjectId)?.name || 'Default Project')}</span>
             <ChevronDown size={10} className={cn("text-gray-400 transition-transform duration-200", showProjectDropdown && "rotate-180")} />
           </button>
 
@@ -3735,8 +4228,24 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             <>
               {/* Overlay blocker to close dropdown when clicking outside */}
               <div className="fixed inset-0 z-40" onClick={() => setShowProjectDropdown(false)} />
-              <div className="absolute left-0 mt-1.5 w-48 bg-[#0b0b0e] border border-white/10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.85)] py-1 z-50 overflow-hidden">
+              <div className="absolute left-0 mt-1.5 w-52 bg-[#0b0b0e] border border-white/10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.85)] py-1 z-50 overflow-hidden">
                 <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveProjectId('all');
+                      setShowProjectDropdown(false);
+                    }}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-[8.5px] font-black uppercase tracking-wider transition-colors flex items-center justify-between",
+                      activeProjectId === 'all'
+                        ? "text-[#c8f135] bg-[#c8f135]/5 font-black"
+                        : "text-white/60 hover:text-white hover:bg-white/[0.02]"
+                    )}
+                  >
+                    <span>📁 All Folders / Projects</span>
+                    {activeProjectId === 'all' && <span className="text-[#c8f135] text-[10px]">✓</span>}
+                  </button>
                   {projects.map(p => (
                     <button
                       key={p.id}
@@ -3746,13 +4255,14 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                         setShowProjectDropdown(false);
                       }}
                       className={cn(
-                        "w-full text-left px-3 py-2 text-[8.5px] font-black uppercase tracking-wider transition-colors",
+                        "w-full text-left px-3 py-2 text-[8.5px] font-black uppercase tracking-wider transition-colors flex items-center justify-between",
                         p.id === activeProjectId
-                          ? "text-[#c8f135] bg-[#c8f135]/5"
+                          ? "text-[#c8f135] bg-[#c8f135]/5 font-black"
                           : "text-white/60 hover:text-white hover:bg-white/[0.02]"
                       )}
                     >
-                      {p.name}
+                      <span className="truncate">{p.name}</span>
+                      {p.id === activeProjectId && <span className="text-[#c8f135] text-[10px]">✓</span>}
                     </button>
                   ))}
                 </div>
@@ -3847,7 +4357,13 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
 
         {/* GALLERY BACKGROUND — occupies the full viewport behind everything */}
-        <div className="absolute inset-0 overflow-y-auto custom-scrollbar p-4 pb-52">
+        <div
+          ref={galleryContainerRef}
+          className={cn(
+            "absolute inset-0 overflow-y-auto custom-scrollbar pb-52 transition-all duration-300 ease-in-out",
+            showSidePanel ? "p-4 lg:pl-[390px]" : "p-4"
+          )}
+        >
           {filteredGallery.length === 0 && !isBusy ? (
             /* ── EMPTY STATE — Gorgeous Premium Glassmorphism Box ── */
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4 space-y-6 w-full col-span-full py-12">
@@ -3877,293 +4393,23 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               </div>
             </div>
           ) : (
-            /* ── VIDEO GALLERY GRID ── */
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 items-start">
-              {columnsData.map((colItems, colIdx) => (
-                <div key={colIdx} className="flex flex-col gap-3">
-                  {colItems.map((item, itemIdx) => {
-                    if (item.isLoader || item.loading || item.status === 'generating') {
-                      const isUpscaleLoader = item.engine === '1080p HD Upscaler' || item.prompt?.includes('1080p HD Upscal');
-                      const isImageLoader = !isUpscaleLoader && (item.type === 'image' || (item.isLoader && activeTab === 'image'));
-                      return (
-                        <div key={item.id || "loader"} className="rounded-2xl border border-fuchsia-500/25 bg-black/70 backdrop-blur-lg overflow-hidden shadow-[0_0_25px_rgba(217,70,239,0.15)] relative">
-                          <div
-                            className="absolute inset-0 bg-gradient-to-r from-transparent via-fuchsia-500/10 to-transparent pointer-events-none"
-                            style={{ animation: 'shimmer 1.8s infinite', transform: 'translateX(-100%)' }}
-                          />
-                          <div className={cn(
-                            "flex flex-col items-center justify-center p-6 space-y-4 relative z-10",
-                            item.aspect === '9:16' ? 'aspect-[9/16]' : item.aspect === '1:1' ? 'aspect-square' : 'aspect-video'
-                          )}>
-                            <div className="relative w-14 h-14">
-                              <div className="absolute inset-0 rounded-full border-2 border-fuchsia-500/20 animate-ping" />
-                              <div className="absolute inset-0 rounded-full border-2 border-t-fuchsia-400 border-r-transparent border-b-transparent border-l-transparent animate-spin" />
-                              {isUpscaleLoader ? (
-                                <Zap className="absolute inset-0 m-auto w-5 h-5 text-fuchsia-400 fill-fuchsia-400" />
-                              ) : isImageLoader ? (
-                                <ImageIcon className="absolute inset-0 m-auto w-5 h-5 text-fuchsia-400" />
-                              ) : (
-                                <Film className="absolute inset-0 m-auto w-5 h-5 text-fuchsia-400" />
-                              )}
-                            </div>
-                            <div className="text-center space-y-1.5 max-w-[200px]">
-                              <span className="text-[8px] font-black uppercase text-fuchsia-400 tracking-[0.2em] block">
-                                {isUpscaleLoader ? '✨ 1080p HD Upscaler' : item.loading ? (item.type === 'image' ? 'Developing canvas' : 'Compiling frames') : (pollMsg || (activeTab === 'image' ? 'Developing canvas' : 'Compiling frames'))}
-                              </span>
-                              {isUpscaleLoader ? (
-                                <p className="text-white/80 text-[10px] font-black uppercase tracking-wider text-center animate-pulse">
-                                  Refining to 1080p HD...
-                                </p>
-                              ) : isImageLoader ? (
-                                <p className="text-white/60 text-xs font-black uppercase tracking-widest text-center max-w-xs animate-pulse">
-                                  🎨 Sketching fine details...
-                                </p>
-                              ) : (
-                                <CyclingLoadingText />
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div
-                        key={item.id}
-                        className="rounded-2xl border border-white/5 bg-white/[0.02] overflow-hidden group cursor-pointer hover:border-fuchsia-500/20 transition-all gallery-item-appear"
-                        onClick={() => setLightboxItem(item)}
-                      >
-                        {/* Media Content */}
-                        <div className={cn(
-                          "relative overflow-hidden bg-black",
-                          item.aspect === '9:16' ? 'aspect-[9/16]' : item.aspect === '1:1' ? 'aspect-square' : 'aspect-video'
-                        )}>
-                          {item.type === 'image' ? (
-                            <>
-                              <img
-                                src={resolveUrl(item.url)}
-                                alt={item.prompt}
-                                loading="lazy"
-                                decoding="async"
-                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                              />
-                              {upscalingItems[item.id] && (
-                                <div className="absolute inset-0 bg-black/75 backdrop-blur-sm z-30 flex flex-col items-center justify-center space-y-2">
-                                  <Loader2 size={16} className="text-fuchsia-400 animate-spin" />
-                                  <span className="text-[7px] font-black uppercase tracking-[0.2em] text-fuchsia-400">Refining 2K...</span>
-                                </div>
-                              )}
-                            </>
-                          ) : (
-                            <LazyVideo src={item.url} aspect={item.aspect} />
-                          )}
-                          {/* Play or view overlay */}
-                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20">
-                              {item.type === 'image' ? (
-                                <Maximize2 size={16} className="text-white" />
-                              ) : (
-                                <Play size={16} className="text-white ml-0.5" fill="white" />
-                              )}
-                            </div>
-                          </div>
-                          {/* Top Left Badges Group */}
-                          <div className="absolute top-2 left-2 flex items-center gap-1.5 z-20 pointer-events-none">
-                            {(item.resolution === '1080p' || item.quality?.includes('1080p') || item.prompt?.includes('1080p') || item.engine?.includes('1080p')) && (
-                              <div className="px-1.5 py-0.5 rounded-md text-[7.5px] font-black tracking-wider uppercase bg-fuchsia-500/90 text-white border border-fuchsia-400 shadow-[0_0_10px_rgba(217,70,239,0.5)] flex items-center gap-1 backdrop-blur-md">
-                                <Zap size={8} className="fill-white text-white" /> 1080p HD
-                              </div>
-                            )}
-                          </div>
-                          {/* Top Right Controls Group */}
-                          <div className="absolute top-2 right-2 flex items-center gap-1.5 z-20">
-                            <div className="px-1.5 py-0.5 rounded-md text-[7px] font-mono bg-black/70 backdrop-blur-md border border-white/10 text-white/50">
-                              {item.aspect}
-                            </div>
-                            <button
-                              onClick={(e) => handleDeleteItem(item.id, e)}
-                              className="w-5 h-5 rounded-md bg-red-500/80 hover:bg-red-600 border border-red-500/20 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-105 active:scale-95 shadow-md"
-                              title="Delete generation"
-                            >
-                              <Trash2 size={8} className="text-white" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Meta */}
-                        <div className="p-3 space-y-1.5">
-                          <p className="text-[9px] text-white/50 leading-relaxed line-clamp-1 font-medium" title={item.prompt}>
-                            {item.prompt}
-                          </p>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[7px] font-mono text-gray-600">
-                                {new Date(item.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                              {item.type === 'image' && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setFirstFrameImage(item.url);
-                                    setFirstFramePreview(item.url);
-                                    const showToast = useAppStore.getState().showToast;
-                                    if (showToast) showToast("Set as Reference Style Guided Image!", "success");
-                                  }}
-                                  className="flex items-center gap-0.5 px-1 py-0.5 rounded bg-fuchsia-500/15 border border-fuchsia-500/25 text-[8px] font-black uppercase tracking-wider text-fuchsia-400 hover:bg-fuchsia-500/25 transition-all active:scale-95 shrink-0"
-                                  title="Set as Style Reference guided image"
-                                >
-                                  <ImageIcon size={8} className="text-fuchsia-400" /> Ref
-                                </button>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {item.type === 'image' && (() => {
-                                const isAlreadyUpscaled = Boolean(
-                                  item.resolution === '2K' ||
-                                  item.resolution === '4K' ||
-                                  item.quality === '2K QHD' ||
-                                  item.quality === '4K UHD' ||
-                                  item.engine === 'HD Upscaler' ||
-                                  item.isUpscaled === true ||
-                                  item.prompt?.includes('(2K Upscaled)') ||
-                                  item.prompt?.includes('(Upscaled)')
-                                );
-
-                                return (
-                                  <>
-                                    {!isAlreadyUpscaled ? (
-                                      <button
-                                        onClick={(e) => handleUpscale(item, e)}
-                                        disabled={upscalingItems[item.id]}
-                                        className={cn(
-                                          "flex items-center gap-0.5 text-[7px] font-black uppercase tracking-wider transition-colors",
-                                          upscalingItems[item.id]
-                                            ? "text-fuchsia-400 animate-pulse"
-                                            : "text-gray-500 hover:text-fuchsia-400"
-                                        )}
-                                        title="Upscale image to 2K (2 Credits)"
-                                      >
-                                        {upscalingItems[item.id] ? (
-                                          <>
-                                            <Loader2 size={7} className="animate-spin text-fuchsia-400" />
-                                            <span>2K...</span>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Zap size={7} className="text-current" />
-                                            <span>2K</span>
-                                          </>
-                                        )}
-                                      </button>
-                                    ) : (
-                                      <span className="flex items-center gap-0.5 text-[7px] font-black uppercase tracking-wider text-emerald-400/90" title="2K QHD Master">
-                                        ✨ 2K
-                                      </span>
-                                    )}
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setFirstFrameImage(item.url);
-                                        setFirstFramePreview(item.url);
-                                        const showToast = useAppStore.getState().showToast;
-                                        if (showToast) showToast("Set as First Frame (FF)!", "success");
-                                      }}
-                                      className="flex items-center gap-0.5 text-[7px] font-black uppercase tracking-wider text-gray-500 hover:text-[#c8f135] transition-colors"
-                                      title="Set as First Frame (FF) of video"
-                                    >
-                                      <Video size={7} className="text-current" /> FF
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setLastFrameImage(item.url);
-                                        setLastFramePreview(item.url);
-                                        const showToast = useAppStore.getState().showToast;
-                                        if (showToast) showToast("Set as Last Frame (LF)!", "success");
-                                      }}
-                                      className="flex items-center gap-0.5 text-[7px] font-black uppercase tracking-wider text-gray-500 hover:text-fuchsia-400 transition-colors"
-                                      title="Set as Last Frame (LF) of video"
-                                    >
-                                      <Video size={7} className="text-current" /> LF
-                                    </button>
-                                  </>
-                                );
-                              })()}
-                              {item.type === 'video' && (() => {
-                                const isAlreadyUpscaled = Boolean(
-                                  item.resolution === '1080p' ||
-                                  item.resolution === '2K' ||
-                                  item.resolution === '4K' ||
-                                  item.quality === '1080p Full HD' ||
-                                  item.quality === '2K QHD' ||
-                                  item.quality === '4K UHD' ||
-                                  item.engine === '1080p HD Upscaler' ||
-                                  item.engine === 'HD Upscaler' ||
-                                  item.isUpscaled === true ||
-                                  item.prompt?.includes('[1080p HD') ||
-                                  item.prompt?.includes('(1080p HD')
-                                );
-
-                                return (
-                                  <>
-                                    {!isAlreadyUpscaled ? (
-                                      <button
-                                        onClick={(e) => handleUpscale(item, e)}
-                                        disabled={upscalingItems[item.id]}
-                                        className={cn(
-                                          "flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-fuchsia-500/10 border border-fuchsia-500/30 text-[7px] font-black uppercase tracking-wider transition-all active:scale-95 shrink-0 cursor-pointer",
-                                          upscalingItems[item.id]
-                                            ? "text-fuchsia-400 animate-pulse bg-fuchsia-500/20"
-                                            : "text-fuchsia-400 hover:bg-fuchsia-500/25 hover:border-fuchsia-500/50"
-                                        )}
-                                        title={`Upscale video to 1080p HD (${Math.max(1, Math.round(Number(item.duration) || 5)) * 5} Shorts)`}
-                                      >
-                                        {upscalingItems[item.id] ? (
-                                          <>
-                                            <Loader2 size={7} className="animate-spin text-fuchsia-400" />
-                                            <span>1080p...</span>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Zap size={7} className="text-fuchsia-400" />
-                                            <span>1080p</span>
-                                          </>
-                                        )}
-                                      </button>
-                                    ) : (
-                                      <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-[7px] font-black uppercase tracking-wider text-emerald-400 shrink-0 select-none" title="1080p Full HD Master">
-                                        ✨ 1080p
-                                      </span>
-                                    )}
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleExtendVideo(item);
-                                      }}
-                                      className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#c8f135]/10 border border-[#c8f135]/30 text-[7px] font-black uppercase tracking-wider text-[#c8f135] hover:bg-[#c8f135]/25 hover:border-[#c8f135]/50 transition-all active:scale-95 shrink-0"
-                                      title="Extend video length with Omni 1.1 Flash (+4s / +8s)"
-                                    >
-                                      <Zap size={7} className="fill-current text-[#c8f135]" /> Extend
-                                    </button>
-                                  </>
-                                );
-                              })()}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDownload(item.url, item.type, item.id);
-                                }}
-                                className="flex items-center gap-1 text-[7px] font-black uppercase tracking-widest text-gray-600 hover:text-[#c8f135] transition-colors"
-                              >
-                                <Download size={8} /> Save
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 items-start">
+              {/* ── VIDEO GALLERY GRID ── */}
+              {displayGalleryItems.map((item) => (
+                <GalleryItemCard
+                  key={item.id}
+                  item={item}
+                  activeTab={activeTab}
+                  pollMsg={pollMsg}
+                  isUpscaling={!!upscalingItems[item.id]}
+                  onOpenLightbox={setLightboxItem}
+                  onDeleteItem={handleDeleteItem}
+                  onUpscale={handleUpscale}
+                  onSetFirstFrame={handleSetFirstFrame}
+                  onSetLastFrame={handleSetLastFrame}
+                  onExtendVideo={handleExtendVideo}
+                  onDownload={handleDownload}
+                />
               ))}
             </div>
           )}

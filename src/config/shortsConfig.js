@@ -39,14 +39,162 @@ export const SHORTS_COST = {
     // AI Refinement
     refine_prompt: 1,
 
-    // Remix Studio (Higgsfield Genjutsu Motion Transfer)
-    remix_motion_transfer_480p: 5,
-    remix_motion_transfer_720p: 8,
-    remix_motion_transfer_1080p: 12,
+    // Remix Studio (Higgsfield Genjutsu Motion Transfer - 15% margin over wholesale)
+    remix_motion_transfer_480p: 18,
+    remix_motion_transfer_720p: 44,
+    remix_motion_transfer_1080p: 89,
 
-    // Object Swap Studio (Higgsfield Genjutsu Object Swap)
-    object_swap_480p: 5,
-    object_swap_720p: 8,
-    object_swap_1080p: 12,
+    // Object Swap Studio (Higgsfield Genjutsu Object Swap - 15% margin over wholesale)
+    object_swap_480p: 18,
+    object_swap_720p: 44,
+    object_swap_1080p: 89,
 };
+
+/**
+ * Calculates the exact credit cost for any studio engine based on user parameters
+ * (duration, resolution, audio toggle, mode).
+ * Guaranteed to keep SidePanel and generation execution in 100% parity.
+ */
+export function calculateEngineCredits(engineId, options = {}) {
+    const {
+        duration = 5,
+        resolution = '720p',
+        generateAudio = true,
+        activeTab = 'video',
+        panelTab,
+        transitionSubTab,
+        remixEngine,
+        motionEngine,
+        motionMode = '720p',
+        motionRefVideoDuration,
+        extensionSourceVideo,
+        extensionDuration,
+        seedanceSubModel
+    } = options;
+
+    if (activeTab === 'image') {
+        const imgMap = {
+            'nano-banana': 1,
+            'nano-banana-2': 2,
+            'nano-banana-pro': 3,
+            'gpt-image-standard': 2,
+            'gpt-image-hd': 4,
+            'gpt-image': 2,
+            'sunburst': 2,
+            'flare': 2
+        };
+        return imgMap[engineId] || 1;
+    }
+
+    const dur = Number(duration) || 5;
+    const resLower = (resolution || '720p').toLowerCase();
+    const engLower = (engineId || '').toLowerCase();
+
+    // 1. Motion Control: Dual Sub-Engines (Motion Easy vs Kling Motion)
+    if (panelTab === 'motion' || engLower.includes('motion')) {
+        const isKling = motionEngine === 'kling' || engLower.includes('kling');
+        if (isKling) {
+            const klingDur = Math.max(3, Math.min(30, Math.round(Number(motionRefVideoDuration) || dur || 5)));
+            const rate = (resLower === '1080p' || motionMode === 'pro' || motionMode === '1080p') ? 18 : 14;
+            return rate * klingDur;
+        }
+        // Motion Control Easy (Omni Flash 1.1 - 10s fixed)
+        const motionDur = 10;
+        let costPerSec = 5;
+        if (resLower === '1080p' || motionMode === 'pro' || motionMode === '1080p') {
+            costPerSec = generateAudio ? 8 : 6;
+        } else {
+            costPerSec = generateAudio ? 6 : 5; // 720p HD
+        }
+        return Math.ceil(costPerSec * 1.1 * motionDur);
+    }
+
+    // 2. Video Extension (Gemini Omni 1.1 Flash)
+    if ((panelTab === 'omni-multi' && extensionSourceVideo) || engLower === 'omni_video_extension') {
+        return (Number(extensionDuration) || 4) * 5;
+    }
+
+    // 3. Video Transition
+    if (panelTab === 'transition') {
+        const isOmniKeyframe = transitionSubTab === 'omni-keyframe' || engLower.includes('omni');
+        if (isOmniKeyframe) {
+            let costPerSec = 5;
+            if (resLower === '4k') costPerSec = generateAudio ? 19 : 15;
+            else if (resLower === '1080p') costPerSec = generateAudio ? 8 : 6;
+            else if (resLower === '360p') costPerSec = generateAudio ? 5 : 4;
+            else costPerSec = generateAudio ? 6 : 5;
+            return Math.ceil(costPerSec * 1.1 * dur);
+        }
+        const isMini = engLower.includes('mini') || seedanceSubModel === 'seedance-mini';
+        const costPerSec = isMini
+            ? (resLower === '480p' ? 10 : 15)
+            : (resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30));
+        return Math.ceil(costPerSec * dur);
+    }
+
+    // 4. Remix Studio (Higgsfield Genjutsu Motion Transfer / Object Swap)
+    if (panelTab === 'remix' || engLower.includes('remix')) {
+        if (remixEngine === 'omni') {
+            const remixDur = Math.max(4, Math.min(10, Math.round(Number(motionRefVideoDuration) || 5)));
+            return remixDur * 5;
+        }
+        const remixDur = Math.max(1, Math.round(Number(motionRefVideoDuration) || dur || 5));
+        const costPerSec = resLower === '1080p' ? 89 : (resLower === '480p' ? 18 : 44);
+        return costPerSec * remixDur;
+    }
+
+    // 5. Gemini Omni Flash (omni-flash, gemini-omni-1.1-flash-preview, omni)
+    if (panelTab === 'omni' || panelTab === 'omni-multi' || engLower.includes('omni')) {
+        let costPerSec = 5;
+        if (resLower === '4k') costPerSec = generateAudio ? 19 : 15;
+        else if (resLower === '1080p') costPerSec = generateAudio ? 8 : 6;
+        else if (resLower === '360p') costPerSec = generateAudio ? 5 : 4;
+        else costPerSec = generateAudio ? 6 : 5; // 720p
+        return Math.ceil(costPerSec * 1.1 * dur);
+    }
+
+    // 6. Veo 3.1 (veo-3.1-generate-preview, veo-3.1-fast-generate-preview, veo-3.1-lite-generate-preview, veo3)
+    if (panelTab === 'veo' || engLower.startsWith('veo')) {
+        let costPerSec = 5;
+        if (engLower.includes('fast')) {
+            if (resLower === '4k') costPerSec = generateAudio ? 19 : 15;
+            else if (resLower === '1080p') costPerSec = generateAudio ? 8 : 6;
+            else costPerSec = generateAudio ? 6 : 5; // 720p
+        } else if (engLower.includes('lite')) {
+            if (resLower === '4k' || resLower === '1080p') costPerSec = generateAudio ? 5 : 3;
+            else costPerSec = generateAudio ? 3 : 2; // 720p
+        } else {
+            // standard / full
+            if (resLower === '4k') costPerSec = generateAudio ? 40 : 27;
+            else costPerSec = generateAudio ? 27 : 15; // 1080p, 720p
+        }
+        return Math.ceil(costPerSec * dur);
+    }
+
+    // 7. Seedance (2.0 / Fast / Mini)
+    if (panelTab === 'seedance' || panelTab === 'seedance-2.5' || engLower.includes('seedan') || engLower.includes('seedac')) {
+        const isMini = engLower.includes('mini') || seedanceSubModel === 'seedance-mini';
+        const is25 = engLower.includes('2.5') || panelTab === 'seedance-2.5';
+        const isSeedace = engLower.includes('seedace') || seedanceSubModel === 'seedace';
+
+        if (isMini) {
+            const costPerSec = resLower === '480p' ? 10 : 15;
+            return Math.ceil(costPerSec * dur);
+        }
+        if (isSeedace) {
+            const costPerSec = resLower === '4k' ? 140 : (resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30));
+            return Math.ceil(costPerSec * dur);
+        }
+        if (is25) {
+            const costPerSec = resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30);
+            return Math.ceil(costPerSec * dur);
+        }
+        // seedance-fast / default seedance
+        const costPerSec = resLower === '480p' ? 15 : 25;
+        return Math.ceil(costPerSec * dur);
+    }
+
+    return Math.round(dur * 2.5 * (generateAudio ? 1.5 : 1));
+}
+
 

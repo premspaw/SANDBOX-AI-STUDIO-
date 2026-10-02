@@ -11,6 +11,7 @@ import { getApiUrl, resolveUrl } from '../../config/apiConfig';
 import { useAppStore } from '../../store';
 import { resolveBlobToBase64 } from './SeedanceEngine';
 import VideoExtensionPanel from './VideoExtensionPanel';
+import { calculateEngineCredits } from '../../config/shortsConfig';
 
 // Modern Higgsfield-style Segmented Chip Selector
 const SegmentedControl = React.memo(({ options, value, onChange, label, icon: Icon, badge }) => (
@@ -236,6 +237,8 @@ export const SidePanel = React.memo(({
   const motionVideoInputRef = useRef(null);
   const [isUploadingMotionImage, setIsUploadingMotionImage] = useState(false);
   const [isUploadingMotionVideo, setIsUploadingMotionVideo] = useState(false);
+  const [motionEngine, setMotionEngine] = useState('easy'); // 'easy' (Motion Easy - Omni Flash) or 'kling' (Kling 3.0 via Kie.ai)
+  const DEFAULT_MOTION_PROMPT = "Motion control: Retarget the exact motion and choreography from the driving video. The subject's exact face, facial structure, features, eyes, and identity must strictly match the attached subject image with 100% facial preservation and character consistency.";
 
   const [internalMotionSubjectImage, setInternalMotionSubjectImage] = useState('');
   const [internalMotionSubjectPreview, setInternalMotionSubjectPreview] = useState('');
@@ -368,6 +371,8 @@ export const SidePanel = React.memo(({
     setSeedanceFirstFrame(item.url);
     if (setFirstFramePreview) setFirstFramePreview(item.url);
     if (setFirstFrameImage) setFirstFrameImage(item.url);
+    if (setOmniFirstFramePreview) setOmniFirstFramePreview(item.url);
+    if (setOmniFirstFrameImage) setOmniFirstFrameImage(item.url);
     autoTagIfMissing('@first_frame');
     setGalleryPickerSlot(null);
     const showToast = useAppStore.getState().showToast;
@@ -378,6 +383,8 @@ export const SidePanel = React.memo(({
     setSeedanceLastFrame(item.url);
     if (setLastFramePreview) setLastFramePreview(item.url);
     if (setLastFrameImage) setLastFrameImage(item.url);
+    if (setOmniLastFramePreview) setOmniLastFramePreview(item.url);
+    if (setOmniLastFrameImage) setOmniLastFrameImage(item.url);
     autoTagIfMissing('@last_frame');
     setGalleryPickerSlot(null);
     const showToast = useAppStore.getState().showToast;
@@ -413,6 +420,7 @@ export const SidePanel = React.memo(({
   };
 
   const handlePickFirstFrame = (item) => {
+    setSeedanceFirstFrame(item.url);
     if (setOmniFirstFramePreview) setOmniFirstFramePreview(item.url);
     if (setOmniFirstFrameImage) setOmniFirstFrameImage(item.url);
     if (setFirstFramePreview) setFirstFramePreview(item.url);
@@ -425,6 +433,7 @@ export const SidePanel = React.memo(({
   };
 
   const handlePickLastFrame = (item) => {
+    setSeedanceLastFrame(item.url);
     if (setOmniLastFramePreview) setOmniLastFramePreview(item.url);
     if (setOmniLastFrameImage) setOmniLastFrameImage(item.url);
     if (setLastFramePreview) setLastFramePreview(item.url);
@@ -1467,76 +1476,22 @@ export const SidePanel = React.memo(({
 
   // Dynamic Credits calculation aligned with Vertex AI / Omni backend, Seedance 2.0, and Kling Motion Control
   const calculatedCredits = useMemo(() => {
-    if (panelTab === 'motion' || activeEngine.includes('motion')) {
-      const rate = (motionMode === 'pro' || motionMode === '1080p') ? 9 : 7;
-      const dur = motionRefVideoDuration > 0 ? Math.ceil(motionRefVideoDuration) : (duration || 5);
-      return rate * dur;
-    }
-    if (panelTab === 'transition') {
-      const isOmniKeyframe = transitionSubTab === 'omni-keyframe';
-      if (isOmniKeyframe) {
-        let costPerSec = 5;
-        const resLower = (resolution || '720p').toLowerCase();
-        if (resLower === '1080p') costPerSec = generateAudio ? 8 : 6;
-        else costPerSec = generateAudio ? 6 : 5;
-        return Math.ceil(costPerSec * 1.1 * duration);
-      }
-      const resLower = (resolution || '720p').toLowerCase();
-      const isMini = activeEngine === 'seedance-mini';
-      const costPerSec = isMini
-        ? (resLower === '480p' ? 10 : 15)
-        : (resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30));
-      return Math.ceil(costPerSec * (Number(duration) || 5));
-    }
-
-    if (panelTab === 'remix' || activeEngine === 'remix-motion-transfer') {
-      if (remixEngine === 'omni') {
-        const dur = Math.max(4, Math.min(10, Math.round(Number(motionRefVideoDuration) || 5)));
-        return dur * 5;
-      }
-      const resLower = (resolution || '720p').toLowerCase();
-      if (resLower === '1080p') return 12;
-      if (resLower === '480p') return 5;
-      return 8;
-    }
-    if (panelTab === 'seedance-2.5' || activeEngine === 'seedance-2.5') {
-      const resLower = (resolution || '720p').toLowerCase();
-      const costPerSec = resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30);
-      return Math.ceil(costPerSec * (Number(duration) || 5));
-    }
-    if (panelTab === 'seedance' || isSeedanceEngine) {
-      const resLower = (resolution || '720p').toLowerCase();
-      const currentModel = (activeEngine === 'seedace' || seedanceSubModel === 'seedace')
-        ? 'seedace'
-        : (activeEngine === 'seedance-mini' || seedanceSubModel === 'seedance-mini')
-        ? 'seedance-mini'
-        : 'seedance-fast';
-
-      let costPerSec = 25;
-      if (currentModel === 'seedance-mini') {
-        costPerSec = resLower === '480p' ? 10 : 15;
-      } else if (currentModel === 'seedace') {
-        costPerSec = resLower === '4k' ? 140 : (resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30));
-      } else {
-        // seedance-fast
-        costPerSec = resLower === '480p' ? 15 : 25;
-      }
-      return Math.ceil(costPerSec * (Number(duration) || 5));
-    }
-    if (panelTab === 'omni' || panelTab === 'omni-multi' || isOmniEngine) {
-      if (panelTab === 'omni-multi' && extensionSourceVideo) {
-        return (Number(extensionDuration) || 4) * 5;
-      }
-      let costPerSec = 5;
-      const resLower = (resolution || '720p').toLowerCase();
-      if (resLower === '4k') costPerSec = generateAudio ? 19 : 15;
-      else if (resLower === '1080p') costPerSec = generateAudio ? 8 : 6;
-      else if (resLower === '360p') costPerSec = generateAudio ? 5 : 4;
-      else costPerSec = generateAudio ? 6 : 5; // 720p
-      return Math.ceil(costPerSec * 1.1 * duration);
-    }
-    return Math.round(duration * 2.5 * (generateAudio ? 1.5 : 1));
-  }, [panelTab, transitionSubTab, remixEngine, activeEngine, seedanceSubModel, motionMode, motionRefVideoDuration, isOmniEngine, isSeedanceEngine, resolution, generateAudio, duration, extensionSourceVideo, extensionDuration]);
+    return calculateEngineCredits(activeEngine, {
+      duration,
+      resolution,
+      generateAudio,
+      activeTab,
+      panelTab,
+      transitionSubTab,
+      remixEngine,
+      motionEngine,
+      motionMode,
+      motionRefVideoDuration,
+      extensionSourceVideo,
+      extensionDuration,
+      seedanceSubModel
+    });
+  }, [activeEngine, duration, resolution, generateAudio, activeTab, panelTab, transitionSubTab, remixEngine, motionEngine, motionMode, motionRefVideoDuration, extensionSourceVideo, extensionDuration, seedanceSubModel]);
 
   const triggerGenerateVeo = async () => {
     if (isCooldown || isBusy) return;
@@ -1564,7 +1519,8 @@ export const SidePanel = React.memo(({
       duration,
       resolution,
       aspectRatio,
-      generateAudio
+      generateAudio,
+      creditCost: calculatedCredits
     });
   };
 
@@ -1572,7 +1528,10 @@ export const SidePanel = React.memo(({
     if (isCooldown || isBusy) return;
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
 
-    const activeExtSource = extensionSourceVideo || useAppStore.getState().extensionSourceVideo;
+    // Only allow extension source video if explicitly in omni-multi extension drawer, NEVER in transition tab
+    const activeExtSource = (panelTab !== 'transition' && panelTab === 'omni-multi')
+      ? (extensionSourceVideo || useAppStore.getState().extensionSourceVideo)
+      : null;
     if (activeExtSource) {
       if (handleExtensionGenerate) {
         startCooldown(8);
@@ -1595,8 +1554,8 @@ export const SidePanel = React.memo(({
     if (!isOmniEngine) setActiveEngine(engineToUse);
 
     const [resolvedStart, resolvedEnd] = await Promise.all([
-      resolveBlobToBase64(omniFirstFrameImage || firstFrameImage),
-      resolveBlobToBase64(omniLastFrameImage || lastFrameImage)
+      resolveBlobToBase64(omniFirstFrameImage || firstFrameImage || seedanceFirstFrame),
+      resolveBlobToBase64(omniLastFrameImage || lastFrameImage || seedanceLastFrame)
     ]);
 
     const resolvedOmniRefs = (await Promise.all(
@@ -1634,7 +1593,8 @@ export const SidePanel = React.memo(({
       duration,
       resolution,
       aspectRatio,
-      generateAudio
+      generateAudio,
+      creditCost: calculatedCredits
     });
   };
 
@@ -1753,7 +1713,8 @@ export const SidePanel = React.memo(({
       generateAudio,
       output_format: 'mp4',
       web_search: false,
-      nsfw_checker: true
+      nsfw_checker: true,
+      creditCost: calculatedCredits
     });
   };
 
@@ -1763,13 +1724,13 @@ export const SidePanel = React.memo(({
     const showToast = useAppStore.getState().showToast;
 
     if (!motionSubjectPreview && !motionSubjectImage) {
-      const msg = "Please upload a subject reference image for Motion Control.";
+      const msg = "Please upload a subject reference image for Motion Control Easy.";
       if (showToast) showToast(msg, "error");
       else alert(msg);
       return;
     }
     if (!motionRefVideoPreview && !motionRefVideo) {
-      const msg = "Please upload a motion reference video for Motion Control.";
+      const msg = "Please upload a motion reference video for Motion Control Easy.";
       if (showToast) showToast(msg, "error");
       else alert(msg);
       return;
@@ -1784,19 +1745,24 @@ export const SidePanel = React.memo(({
     ]);
 
     startCooldown(8);
-    const dur = motionRefVideoDuration > 0 ? Math.ceil(motionRefVideoDuration) : (duration || 5);
-    const engineToUse = 'kling-motion';
+    const dur = 10;
+    const engineToUse = 'omni-motion';
+    const resToUse = (motionMode === '1080p' || motionMode === 'pro' || resolution === '1080p') ? '1080p' : '720p';
     setPromptText(localPrompt);
     setActiveTab('video');
     setActiveEngine(engineToUse);
     handleGenerate(localPrompt, engineToUse, {
       input_url: resolvedSub,
       video_url: resolvedVid,
-      mode: motionMode,
-      character_orientation: characterOrientation,
-      background_source: backgroundSource,
+      image: resolvedSub,
+      refVideo: resolvedVid,
+      task: 'motion_control',
+      mode: resToUse,
+      resolution: resToUse,
       duration: dur,
-      aspectRatio
+      aspectRatio,
+      generateAudio,
+      creditCost: calculatedCredits
     });
   };
 
@@ -1900,7 +1866,8 @@ export const SidePanel = React.memo(({
       image_urls: (resolvedImgs || []).filter(Boolean),
       resolution: (resolution === '4k') ? '1080p' : (resolution || '720p'),
       duration: duration || 5,
-      aspectRatio
+      aspectRatio,
+      creditCost: calculatedCredits
     });
   };
 
@@ -1913,6 +1880,7 @@ export const SidePanel = React.memo(({
     // Instant UI preview in both Omni and regular state
     if (setOmniFirstFramePreview) setOmniFirstFramePreview(blobUrl);
     if (setFirstFramePreview) setFirstFramePreview(blobUrl);
+    setSeedanceFirstFrame(blobUrl);
     if (setOmniRefPreviews) {
       setOmniRefPreviews(prev => { const n = [...prev]; n[0] = blobUrl; return n; });
     }
@@ -1922,6 +1890,7 @@ export const SidePanel = React.memo(({
       const dataUrl = ev.target.result;
       if (setOmniFirstFrameImage) setOmniFirstFrameImage(dataUrl);
       if (setFirstFrameImage) setFirstFrameImage(dataUrl);
+      setSeedanceFirstFrame(dataUrl);
       if (setOmniRefImages) {
         setOmniRefImages(prev => { const n = [...prev]; n[0] = dataUrl; return n; });
       }
@@ -1942,6 +1911,7 @@ export const SidePanel = React.memo(({
           const publicUrl = data.url || data.path || dataUrl;
           if (setOmniFirstFrameImage) setOmniFirstFrameImage(publicUrl);
           if (setFirstFrameImage) setFirstFrameImage(publicUrl);
+          setSeedanceFirstFrame(publicUrl);
           if (setOmniRefImages) {
             setOmniRefImages(prev => { const n = [...prev]; n[0] = publicUrl; return n; });
           }
@@ -1962,6 +1932,7 @@ export const SidePanel = React.memo(({
     // Instant UI preview in both Omni and regular state
     if (setOmniLastFramePreview) setOmniLastFramePreview(blobUrl);
     if (setLastFramePreview) setLastFramePreview(blobUrl);
+    setSeedanceLastFrame(blobUrl);
     if (setOmniRefPreviews) {
       setOmniRefPreviews(prev => { const n = [...prev]; n[1] = blobUrl; return n; });
     }
@@ -1971,6 +1942,7 @@ export const SidePanel = React.memo(({
       const dataUrl = ev.target.result;
       if (setOmniLastFrameImage) setOmniLastFrameImage(dataUrl);
       if (setLastFrameImage) setLastFrameImage(dataUrl);
+      setSeedanceLastFrame(dataUrl);
       if (setOmniRefImages) {
         setOmniRefImages(prev => { const n = [...prev]; n[1] = dataUrl; return n; });
       }
@@ -1991,6 +1963,7 @@ export const SidePanel = React.memo(({
           const publicUrl = data.url || data.path || dataUrl;
           if (setOmniLastFrameImage) setOmniLastFrameImage(publicUrl);
           if (setLastFrameImage) setLastFrameImage(publicUrl);
+          setSeedanceLastFrame(publicUrl);
           if (setOmniRefImages) {
             setOmniRefImages(prev => { const n = [...prev]; n[1] = publicUrl; return n; });
           }
@@ -2007,9 +1980,11 @@ export const SidePanel = React.memo(({
     if (setOmniFirstFramePreview) setOmniFirstFramePreview('');
     if (setFirstFrameImage) setFirstFrameImage('');
     if (setFirstFramePreview) setFirstFramePreview('');
+    setSeedanceFirstFrame('');
     if (setOmniRefImages) setOmniRefImages(prev => { const n = [...prev]; n[0] = ''; return n; });
     if (setOmniRefPreviews) setOmniRefPreviews(prev => { const n = [...prev]; n[0] = ''; return n; });
     if (startFrameInputRef.current) startFrameInputRef.current.value = '';
+    if (seedanceFirstFrameInputRef.current) seedanceFirstFrameInputRef.current.value = '';
   };
 
   const handleClearEndFrame = () => {
@@ -2017,9 +1992,11 @@ export const SidePanel = React.memo(({
     if (setOmniLastFramePreview) setOmniLastFramePreview('');
     if (setLastFrameImage) setLastFrameImage('');
     if (setLastFramePreview) setLastFramePreview('');
+    setSeedanceLastFrame('');
     if (setOmniRefImages) setOmniRefImages(prev => { const n = [...prev]; n[1] = ''; return n; });
     if (setOmniRefPreviews) setOmniRefPreviews(prev => { const n = [...prev]; n[1] = ''; return n; });
     if (endFrameInputRef.current) endFrameInputRef.current.value = '';
+    if (seedanceLastFrameInputRef.current) seedanceLastFrameInputRef.current.value = '';
   };
 
   const handleVideoSelect = async (e) => {
@@ -2190,14 +2167,16 @@ export const SidePanel = React.memo(({
     if (panelTab === 'transition') {
       const transitionSlots = [
         ...(firstPreview ? [
+          { name: '<START_FRAME>', category: 'Start Frame', imageUrl: firstPreview, isKeyframe: true },
+          { name: '<FIRST_FRAME>', category: 'Start Frame', imageUrl: firstPreview, isKeyframe: true },
           { name: 'Image1', category: 'Start Frame', imageUrl: firstPreview, isKeyframe: true },
-          { name: 'first_frame', category: 'Start Frame', imageUrl: firstPreview, isKeyframe: true },
-          { name: '<FIRST_FRAME>', category: 'Start Frame', imageUrl: firstPreview, isKeyframe: true }
+          { name: 'first_frame', category: 'Start Frame', imageUrl: firstPreview, isKeyframe: true }
         ] : []),
         ...(lastPreview ? [
+          { name: '<END_FRAME>', category: 'End Frame', imageUrl: lastPreview, isKeyframe: true },
+          { name: '<LAST_FRAME>', category: 'End Frame', imageUrl: lastPreview, isKeyframe: true },
           { name: 'Image2', category: 'End Frame', imageUrl: lastPreview, isKeyframe: true },
-          { name: 'last_frame', category: 'End Frame', imageUrl: lastPreview, isKeyframe: true },
-          { name: '<LAST_FRAME>', category: 'End Frame', imageUrl: lastPreview, isKeyframe: true }
+          { name: 'last_frame', category: 'End Frame', imageUrl: lastPreview, isKeyframe: true }
         ] : [])
       ];
       return [...transitionSlots, ...(allRefItems || []), ...galleryHistoryItems];
@@ -2357,6 +2336,14 @@ export const SidePanel = React.memo(({
   }, [seedanceProvider]);
 
   const resolutionOptions = useMemo(() => {
+    if ((panelTab === 'transition' && transitionSubTab === 'omni-keyframe') || panelTab === 'omni' || panelTab === 'omni-multi' || (activeEngine && (activeEngine.includes('omni') || activeEngine.includes('flash')))) {
+      return [
+        { value: '360p', label: '360p SD', desc: 'Fast preview' },
+        { value: '720p', label: '720p HD', desc: 'Crisp render' },
+        { value: '1080p', label: '1080p FHD', desc: 'High-def master' },
+        { value: '4k', label: '4K UHD', desc: 'Cinema quality' }
+      ];
+    }
     if (panelTab === 'transition') {
       if (activeEngine === 'seedance-mini') {
         return [
@@ -2423,7 +2410,7 @@ export const SidePanel = React.memo(({
       { value: '720p', label: '720p HD', desc: 'Crisp render' },
       { value: '1080p', label: '1080p FHD', desc: 'High-def master' }
     ];
-  }, [panelTab, activeEngine, seedanceSubModel]);
+  }, [panelTab, transitionSubTab, activeEngine, seedanceSubModel]);
 
   const renderPromptStudio = (placeholderText) => {
     const promptStr = localPrompt || '';
@@ -3061,16 +3048,21 @@ export const SidePanel = React.memo(({
             onClick={() => {
               setPanelTab('motion');
               setActiveTab('video');
-              setActiveEngine('kling-motion');
+              if (motionEngine === 'kling') {
+                setActiveEngine('kling-motion');
+              } else {
+                setActiveEngine('omni-motion');
+                setDuration(10);
+              }
             }}
             className={cn(
-              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0",
+              "flex-1 min-w-fit py-1.5 px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all text-center select-none cursor-pointer whitespace-nowrap shrink-0 flex items-center justify-center gap-1",
               panelTab === 'motion'
                 ? "bg-gradient-to-r from-[#c8f135]/20 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/40 shadow-[0_0_15px_rgba(200,241,53,0.15)] font-black"
                 : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
             )}
           >
-            Motion
+            <span>Motion Control</span>
           </button>
         </div>
       </div>
@@ -4219,16 +4211,53 @@ export const SidePanel = React.memo(({
                     )}
                   </div>
                 ) : panelTab === 'motion' ? (
-                  /* ── MOTION CONTROL FLOW ── */
+                  /* ── MOTION CONTROL FLOW (DUAL ENGINE: MOTION EASY VS KLING MOTION) ── */
                   <div className="space-y-3">
-                    {/* Side-by-side Subject Image & Motion Pattern Video */}
+                    {/* 0. Top Dual Engine Switcher */}
+                    <div className="p-1 bg-black/60 rounded-2xl border border-white/[0.08] flex items-center gap-1 shadow-inner">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMotionEngine('easy');
+                          setActiveEngine('omni-motion');
+                          setDuration(10);
+                        }}
+                        className={cn(
+                          "flex-1 py-1.5 px-2.5 rounded-xl text-[10.5px] sm:text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer",
+                          motionEngine === 'easy'
+                            ? "bg-gradient-to-r from-[#c8f135]/25 via-[#c8f135]/15 to-transparent text-[#c8f135] border border-[#c8f135]/50 shadow-[0_0_12px_rgba(200,241,53,0.25)] font-black"
+                            : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+                        )}
+                      >
+                        <Zap size={11} className={motionEngine === 'easy' ? "text-[#c8f135] fill-current" : "text-zinc-500"} />
+                        <span>Motion Easy (10s)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMotionEngine('kling');
+                          setActiveEngine('kling-motion');
+                        }}
+                        className={cn(
+                          "flex-1 py-1.5 px-2.5 rounded-xl text-[10.5px] sm:text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer",
+                          motionEngine === 'kling'
+                            ? "bg-gradient-to-r from-cyan-400/25 via-blue-500/20 to-transparent text-cyan-300 border border-cyan-400/50 shadow-[0_0_12px_rgba(34,211,238,0.25)] font-black"
+                            : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+                        )}
+                      >
+                        <Sparkles size={11} className={motionEngine === 'kling' ? "text-cyan-400 fill-current" : "text-zinc-500"} />
+                        <span>Kling Motion</span>
+                      </button>
+                    </div>
+
+                    {/* Side-by-side Subject Image & Motion Driver Video */}
                     <div className="grid grid-cols-2 gap-2">
                       {/* Left: Subject Reference Image */}
                       <div className="space-y-1 flex flex-col min-w-0">
                         <div className="flex items-center justify-between h-4">
                           <label className="text-[9px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1 truncate">
                             <ImageIcon className="w-2.5 h-2.5 text-[#c8f135] shrink-0" />
-                            <span className="truncate">Subject</span>
+                            <span className="truncate">Subject Img</span>
                           </label>
                           <div className="flex items-center gap-1 shrink-0">
                             {gallery.some(i => i.type === 'image' || (!i.type && !i.url?.includes('.mp4'))) && (
@@ -4295,12 +4324,12 @@ export const SidePanel = React.memo(({
                         )}
                       </div>
 
-                      {/* Right: Motion Pattern Video (Driver) */}
+                      {/* Right: Motion Driver Video */}
                       <div className="space-y-1 flex flex-col min-w-0">
                         <div className="flex items-center justify-between h-4">
                           <label className="text-[9px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1 truncate">
                             <Film className="w-2.5 h-2.5 text-[#c8f135] shrink-0" />
-                            <span className="truncate">Driver Vid</span>
+                            <span className="truncate">{motionEngine === 'easy' ? 'Driver Vid (10s)' : 'Driver Vid (3-30s)'}</span>
                           </label>
                           <div className="flex items-center gap-1 shrink-0">
                             {gallery.some(i => i.type === 'video' || i.url?.includes('.mp4')) && (
@@ -4366,117 +4395,222 @@ export const SidePanel = React.memo(({
                               <Upload size={14} className="text-zinc-400 group-hover:text-[#c8f135] transition-colors" />
                             )}
                             <span className="text-[9px] font-black uppercase tracking-wider text-zinc-300 group-hover:text-white">Driver Vid</span>
-                            <span className="text-[7px] text-zinc-500 font-mono">3–30s MP4</span>
+                            <span className="text-[7px] text-zinc-500 font-mono">
+                              {motionEngine === 'easy' ? '10s MP4' : '3–30s MP4'}
+                            </span>
                           </button>
                         )}
                       </div>
                     </div>
 
-                    {/* API File Requirements Spec */}
-                    <div className="flex items-center justify-between px-2 py-1 rounded-xl bg-white/[0.02] border border-white/[0.06] text-[8px] text-zinc-400 font-medium select-none">
-                      <div className="flex items-center gap-1 truncate">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#c8f135] shrink-0" />
-                        <span className="truncate">Clear head & torso · Ratio 2:5 to 5:2</span>
+                    {/* Engine Info Spec Badge */}
+                    <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-white/[0.02] border border-white/[0.06] text-[8px] text-zinc-400 font-medium select-none">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", motionEngine === 'easy' ? "bg-[#c8f135]" : "bg-cyan-400")} />
+                        <span className="truncate">
+                          {motionEngine === 'easy'
+                            ? 'Motion Control Easy · 10s Performance Transfer (Fixed 10s Clip)'
+                            : 'Kling 3.0 Motion Control · High-Dynamic Motion Retargeting (Kie.ai)'}
+                        </span>
                       </div>
-                      <span className="text-zinc-500 font-mono shrink-0 pl-1 text-[7.5px]">1 Img + 1 Vid</span>
+                      <span className={cn("font-mono shrink-0 pl-1 text-[7.5px] font-bold", motionEngine === 'easy' ? "text-[#c8f135]" : "text-cyan-400")}>
+                        {motionEngine === 'easy' ? '1 Img + 1 Vid (10s)' : '1 Img + 1 Vid (3-30s)'}
+                      </span>
                     </div>
 
-                    {/* Creative Text Prompt Guidance */}
-                    <div className="space-y-1">
-                      <label className="text-[9.5px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                        <Sparkles className="w-3 h-3 text-[#c8f135]" />
-                        <span>Prompt Guidance (Optional)</span>
-                      </label>
+                    {/* Preload Notice if Driver Video exceeds 10s in Motion Easy */}
+                    {motionEngine === 'easy' && motionRefVideoDuration > 10 && (
+                      <div className="px-2.5 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[8px] text-amber-300 flex items-center justify-between">
+                        <span>Notice: Video is {motionRefVideoDuration}s. First 10 seconds will be used for transfer.</span>
+                        <span className="font-mono font-bold">10s Max</span>
+                      </div>
+                    )}
+
+                    {/* Creative Text Prompt Guidance (Exact Face & Motion Preload is applied automatically behind the scenes) */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[9.5px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+                          <Sparkles className="w-3 h-3 text-[#c8f135]" />
+                          <span>Additional Direction / Scene Notes (Optional)</span>
+                        </label>
+                        <span className="text-[8px] text-[#c8f135] font-mono">Face & Identity Locked</span>
+                      </div>
+
                       <textarea
                         value={localPrompt}
                         onChange={handlePromptChange}
-                        placeholder="No distortion, the character's movements are consistent with the video."
+                        placeholder="Optional: Add extra direction, style notes, lighting, or scene changes..."
                         rows={2}
                         className="w-full bg-black/50 border border-white/15 focus:border-[#c8f135]/60 rounded-xl p-2.5 text-xs text-white placeholder-zinc-500 outline-none resize-none custom-scrollbar leading-relaxed font-medium backdrop-blur-2xl transition-all"
                       />
-                    </div>
 
-                    {/* Motion Parameters */}
-                    <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.08] space-y-2.5">
-                      <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
-                        <span className="text-[9.5px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
-                          <Sliders className="w-3 h-3 text-[#c8f135]" />
-                          <span>Motion Parameters</span>
-                        </span>
-                      </div>
-
-                      {/* Quality Mode */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[8.5px] font-bold uppercase tracking-wider text-zinc-400">Quality Mode</label>
-                          <span className="text-[8px] font-mono text-zinc-500">
-                            {(motionMode === 'pro' || motionMode === '1080p') ? '1080p · 9 cr/s' : '720p · 7 cr/s'}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-1.5">
+                      {/* Quick Idea Directives */}
+                      <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                        <span className="text-[8px] font-black uppercase tracking-wider text-zinc-500">Quick suggestions:</span>
+                        {[
+                          { label: "Sunny daylight", text: "Sunny bright outdoor daylight lighting" },
+                          { label: "Cinematic night", text: "Cinematic nighttime ambiance with dramatic rim lighting" },
+                          { label: "Gentle smile", text: "Character has a subtle, natural confident smile throughout" },
+                          { label: "Studio lighting", text: "High-end commercial photography studio key lighting" }
+                        ].map((chip) => (
                           <button
+                            key={chip.label}
                             type="button"
-                            onClick={() => setMotionMode('720p')}
-                            className={cn(
-                              "py-1.5 px-2 rounded-xl text-[9.5px] font-black uppercase tracking-wider border transition-all cursor-pointer flex items-center justify-center gap-1",
-                              (motionMode === 'std' || motionMode === '720p')
-                                ? "bg-[#c8f135]/15 text-[#c8f135] border-[#c8f135]/50 shadow-[0_0_12px_rgba(200,241,53,0.15)] font-extrabold"
-                                : "border-white/10 text-zinc-400 hover:text-white hover:bg-white/5"
-                            )}
+                            onClick={() => {
+                              const newText = localPrompt.trim() ? `${localPrompt.trim()}, ${chip.text}` : chip.text;
+                              setLocalPrompt(newText);
+                              if (setPromptText) setPromptText(newText);
+                            }}
+                            className="px-2 py-0.5 rounded-lg text-[8px] font-medium bg-white/[0.03] hover:bg-[#c8f135]/15 text-zinc-400 hover:text-[#c8f135] border border-white/10 hover:border-[#c8f135]/30 transition-all cursor-pointer truncate"
                           >
-                            Standard (720p)
+                            + {chip.label}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setMotionMode('1080p')}
-                            className={cn(
-                              "py-1.5 px-2 rounded-xl text-[9.5px] font-black uppercase tracking-wider border transition-all cursor-pointer flex items-center justify-center gap-1",
-                              (motionMode === 'pro' || motionMode === '1080p')
-                                ? "bg-[#c8f135]/15 text-[#c8f135] border-[#c8f135]/50 shadow-[0_0_12px_rgba(200,241,53,0.15)] font-extrabold"
-                                : "border-white/10 text-zinc-400 hover:text-white hover:bg-white/5"
-                            )}
-                          >
-                            Pro (1080p)
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Character Orientation */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[8.5px] font-bold uppercase tracking-wider text-zinc-400">Orientation</label>
-                          <span className="text-[8px] font-mono text-zinc-500">
-                            {characterOrientation === 'video' ? 'Driver Match' : 'Image Pose'}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setCharacterOrientation('video')}
-                            className={cn(
-                              "py-1.5 px-2 rounded-xl text-[9.5px] font-black uppercase tracking-wider border transition-all cursor-pointer flex items-center justify-center gap-1",
-                              characterOrientation === 'video'
-                                ? "bg-[#c8f135]/15 text-[#c8f135] border-[#c8f135]/50 shadow-[0_0_12px_rgba(200,241,53,0.15)] font-extrabold"
-                                : "border-white/10 text-zinc-400 hover:text-white hover:bg-white/5"
-                            )}
-                          >
-                            Video Match (30s)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setCharacterOrientation('image')}
-                            className={cn(
-                              "py-1.5 px-2 rounded-xl text-[9.5px] font-black uppercase tracking-wider border transition-all cursor-pointer flex items-center justify-center gap-1",
-                              characterOrientation === 'image'
-                                ? "bg-[#c8f135]/15 text-[#c8f135] border-[#c8f135]/50 shadow-[0_0_12px_rgba(200,241,53,0.15)] font-extrabold"
-                                : "border-white/10 text-zinc-400 hover:text-white hover:bg-white/5"
-                            )}
-                          >
-                            Image Pose (10s)
-                          </button>
-                        </div>
+                        ))}
                       </div>
                     </div>
+
+                    {/* Parameters Card */}
+                    {motionEngine === 'easy' ? (
+                      /* Motion Control Easy Parameters */
+                      <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.08] space-y-2.5">
+                        <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+                          <span className="text-[9.5px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+                            <Sliders className="w-3 h-3 text-[#c8f135]" />
+                            <span>Motion Control Easy Parameters</span>
+                          </span>
+                          <span className="text-[8px] font-mono font-bold text-[#c8f135] bg-[#c8f135]/10 px-1.5 py-0.2 rounded border border-[#c8f135]/20">
+                            10s Transfer
+                          </span>
+                        </div>
+
+                        {/* Quality Mode & Aspect Ratio Dropdowns */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <GlassSelect
+                            label="Quality Mode"
+                            value={resolution === '1080p' || motionMode === '1080p' || motionMode === 'pro' ? '1080p' : '720p'}
+                            onChange={(val) => {
+                              setResolution(val);
+                              setMotionMode(val);
+                            }}
+                            options={[
+                              { value: '720p', label: '720p Standard HD', desc: '55⚡ (muted) / 66⚡ (SFX)' },
+                              { value: '1080p', label: '1080p Pro Full HD', desc: '66⚡ (muted) / 88⚡ (SFX)' }
+                            ]}
+                            align="up"
+                          />
+
+                          <GlassSelect
+                            label="Aspect Ratio"
+                            value={aspectRatio || '16:9'}
+                            onChange={setAspectRatio}
+                            options={[
+                              { value: '16:9', label: '16:9 Landscape', desc: '1920×1080 Widescreen' },
+                              { value: '9:16', label: '9:16 Vertical', desc: '1080×1920 Reels/Shorts' },
+                              { value: '1:1', label: '1:1 Square', desc: '1080×1080 Feed Post' }
+                            ]}
+                            align="up"
+                          />
+                        </div>
+
+                        {/* Duration & Sound Effects */}
+                        <div className="grid grid-cols-2 gap-2 pt-0.5">
+                          <div className="flex flex-col justify-center px-2.5 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+                            <span className="text-[8.5px] font-black uppercase tracking-wider text-zinc-400">Duration</span>
+                            <span className="text-[9.5px] font-mono text-[#c8f135] font-bold mt-0.5">
+                              10 Seconds (Fixed)
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setGenerateAudio(!generateAudio)}
+                            className={cn(
+                              "h-[38px] px-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all cursor-pointer select-none",
+                              generateAudio
+                                ? "bg-[#c8f135]/15 border-[#c8f135]/50 text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.15)] font-extrabold"
+                                : "bg-black/40 border-white/[0.08] text-zinc-400 hover:text-white hover:border-white/20"
+                            )}
+                            title={generateAudio ? "Sound Effects ON (Realistic audio generated with motion transfer)" : "Audio Muted"}
+                          >
+                            <div className="flex items-center gap-1.5 truncate">
+                              {generateAudio ? (
+                                <Volume2 size={13} className="text-[#c8f135] shrink-0" />
+                              ) : (
+                                <VolumeX size={13} className="text-zinc-500 shrink-0" />
+                              )}
+                              <span className="text-[10px] font-bold truncate">{generateAudio ? 'SFX ON' : 'Muted'}</span>
+                            </div>
+                            <span className={cn(
+                              "text-[8px] font-mono font-bold px-1 py-0.2 rounded border shrink-0",
+                              generateAudio
+                                ? "bg-[#c8f135]/20 text-[#c8f135] border-[#c8f135]/30"
+                                : "bg-white/[0.04] text-zinc-500 border-white/[0.06]"
+                            )}>
+                              {generateAudio ? 'SFX' : 'OFF'}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Kling 3.0 Motion Parameters */
+                      <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.08] space-y-2.5">
+                        <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+                          <span className="text-[9.5px] font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+                            <Sliders className="w-3 h-3 text-cyan-400" />
+                            <span>Kling 3.0 Motion Parameters</span>
+                          </span>
+                          <span className="text-[8px] font-mono font-bold text-cyan-300 bg-cyan-500/10 px-1.5 py-0.2 rounded border border-cyan-500/20">
+                            Kie.ai Engine
+                          </span>
+                        </div>
+
+                        {/* Mode & Character Orientation */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <GlassSelect
+                            label="Quality Mode"
+                            value={motionMode === 'pro' || motionMode === '1080p' || resolution === '1080p' ? '1080p' : '720p'}
+                            onChange={(val) => {
+                              setMotionMode(val);
+                              setResolution(val);
+                            }}
+                            options={[
+                              { value: '720p', label: 'Standard (720p)', desc: '14⚡ / second' },
+                              { value: '1080p', label: 'Professional (1080p)', desc: '18⚡ / second' }
+                            ]}
+                            align="up"
+                          />
+
+                          <GlassSelect
+                            label="Character Orientation"
+                            value={characterOrientation || 'video'}
+                            onChange={setCharacterOrientation}
+                            options={[
+                              { value: 'video', label: 'Video Orientation', desc: 'Match video orientation (Default)' },
+                              { value: 'image', label: 'Image Orientation', desc: 'Match subject image orientation' }
+                            ]}
+                            align="up"
+                          />
+                        </div>
+
+                        {/* Aspect Ratio & Calculated Duration */}
+                        <div className="grid grid-cols-2 gap-2 pt-0.5">
+                          <GlassSelect
+                            label="Aspect Ratio"
+                            value={aspectRatio || '16:9'}
+                            onChange={setAspectRatio}
+                            options={aspectOptions}
+                            align="up"
+                          />
+
+                          <div className="flex flex-col justify-center px-2.5 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+                            <span className="text-[8.5px] font-black uppercase tracking-wider text-zinc-400">Duration</span>
+                            <span className="text-[9.5px] font-mono text-cyan-300 font-bold mt-0.5 truncate">
+                              {motionRefVideoDuration ? `${motionRefVideoDuration}s (Matched)` : '5s (Standard)'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   /* DIRECTING FLOW: Keyframe Conditioning + Prompt Studio + Driving Video Reference */
@@ -4487,7 +4621,7 @@ export const SidePanel = React.memo(({
                         <div className="flex items-center justify-between">
                           <label className="text-[9.5px] font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
                             <ImageIcon className="w-3 h-3 text-[#c8f135]" />
-                            <span>{panelTab === 'transition' && transitionSubTab === 'omni-keyframe' ? 'Omni Keyframe Conditioning' : panelTab === 'transition' ? 'Seedance 2.5 Transition Keyframes' : 'Keyframe Conditioning'}</span>
+                            <span>{panelTab === 'transition' && transitionSubTab === 'omni-keyframe' ? 'Omni Flash 1.1 Keyframe Conditioning' : panelTab === 'transition' ? 'Seedance 2.5 Transition Keyframes' : 'Keyframe Conditioning'}</span>
                           </label>
                           <span className="text-[8.5px] font-mono text-[#c8f135]/90 bg-[#c8f135]/10 px-1.5 py-0.2 rounded border border-[#c8f135]/20 font-bold">
                             Start (0s) → End ({duration}s)
@@ -4542,11 +4676,11 @@ export const SidePanel = React.memo(({
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => insertTagAtCursor(panelTab === 'transition' ? '@Image1' : '<FIRST_FRAME>')}
+                                    onClick={() => insertTagAtCursor((panelTab === 'transition' && transitionSubTab === 'sequence') ? '@Image1' : '<START_FRAME>')}
                                     className="px-1.5 py-0.5 bg-[#c8f135]/20 hover:bg-[#c8f135]/30 text-[#c8f135] rounded text-[8.5px] font-mono font-bold cursor-pointer"
-                                    title={panelTab === 'transition' ? "Insert @Image1 into prompt" : "Insert <FIRST_FRAME> into prompt"}
+                                    title={(panelTab === 'transition' && transitionSubTab === 'sequence') ? "Insert @Image1 into prompt" : "Insert <START_FRAME> into prompt"}
                                   >
-                                    {panelTab === 'transition' ? '@Image1' : 'Tag'}
+                                    {(panelTab === 'transition' && transitionSubTab === 'sequence') ? '@Image1' : '<START_FRAME>'}
                                   </button>
                                 </div>
                               </div>
@@ -4609,11 +4743,11 @@ export const SidePanel = React.memo(({
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => insertTagAtCursor(panelTab === 'transition' ? '@Image2' : '<LAST_FRAME>')}
+                                    onClick={() => insertTagAtCursor((panelTab === 'transition' && transitionSubTab === 'sequence') ? '@Image2' : '<END_FRAME>')}
                                     className="px-1.5 py-0.5 bg-[#c8f135]/20 hover:bg-[#c8f135]/30 text-[#c8f135] rounded text-[8.5px] font-mono font-bold cursor-pointer"
-                                    title={panelTab === 'transition' ? "Insert @Image2 into prompt" : "Insert <LAST_FRAME> into prompt"}
+                                    title={(panelTab === 'transition' && transitionSubTab === 'sequence') ? "Insert @Image2 into prompt" : "Insert <END_FRAME> into prompt"}
                                   >
-                                    {panelTab === 'transition' ? '@Image2' : 'Tag'}
+                                    {(panelTab === 'transition' && transitionSubTab === 'sequence') ? '@Image2' : '<END_FRAME>'}
                                   </button>
                                 </div>
                               </div>
@@ -4636,7 +4770,9 @@ export const SidePanel = React.memo(({
                     {renderPromptStudio(
                       panelTab === 'transition' && transitionSubTab === 'sequence'
                         ? "Reference @Image1 for start frame, @Image2 for end frame. Describe character action, martial arts, camera transitions..."
-                        : (panelTab === 'transition' && transitionSubTab === 'omni-keyframe') || panelTab === 'omni'
+                        : (panelTab === 'transition' && transitionSubTab === 'omni-keyframe')
+                        ? "Omni Flash 1.1: Describe scene action transitioning from <START_FRAME> to <END_FRAME>, camera movement, and lighting..."
+                        : panelTab === 'omni'
                         ? "Describe scene composition, dynamic movement, camera transitions, and lighting..."
                         : panelTab === 'veo'
                         ? "Describe cinematic scene, character actions, camera motion, and atmosphere for Veo 3.1..."
@@ -4719,56 +4855,65 @@ export const SidePanel = React.memo(({
               {/* SECTION B: ZERO-LENS CINEMA PARAMETER CONTROLS */}
               <div className="space-y-3 pt-2.5 border-t border-white/[0.08]">
                 {panelTab === 'transition' && transitionSubTab === 'omni-keyframe' ? (
-                  /* Omni Keyframe Parameters (Duration, Resolution, Audio) */
+                  /* Omni Keyframe Parameters (Aspect Ratio, Duration, Resolution, Audio) */
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-2">
                       <GlassSelect
-                        label="Resolution"
-                        value={resolution === '4k' ? '1080p' : (resolution || '720p')}
-                        onChange={setResolution}
-                        options={resolutionOptions}
+                        label="Aspect Ratio"
+                        value={aspectRatio || '16:9'}
+                        onChange={setAspectRatio}
+                        options={aspectOptions}
                         align="up"
                       />
                       <GlassSelect
-                        label="Duration"
+                        label="Clip Duration"
                         value={duration}
                         onChange={(val) => setDuration(Number(val))}
                         options={[
-                          { value: 4, label: '4s' },
-                          { value: 5, label: '5s' },
-                          { value: 6, label: '6s' },
-                          { value: 8, label: '8s' },
-                          { value: 10, label: '10s' }
+                          { value: 4, label: '4 Seconds', desc: 'Fast preview (4s)' },
+                          { value: 5, label: '5 Seconds', desc: 'Quick burst (5s)' },
+                          { value: 6, label: '6 Seconds', desc: 'Standard shot (6s)' },
+                          { value: 8, label: '8 Seconds', desc: 'Extended clip (8s)' },
+                          { value: 10, label: '10 Seconds', desc: 'Long sequence (10s)' }
                         ]}
                         align="up"
                       />
                     </div>
-                    <div className="space-y-1.5 w-full">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[9.5px] font-black uppercase tracking-[0.16em] text-zinc-400 flex items-center gap-1">
-                          <Volume2 className="w-3 h-3 text-zinc-400" />
-                          <span>Sound Effects (SFX)</span>
-                        </label>
-                        <span className="text-[8.5px] font-mono text-zinc-500">Native Audio</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setGenerateAudio(!generateAudio)}
-                        className={cn(
-                          "w-full h-[38px] px-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all cursor-pointer select-none",
-                          generateAudio
-                            ? "bg-[#c8f135]/15 border-[#c8f135]/50 text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.15)] font-extrabold"
-                            : "bg-black/40 border-white/[0.08] text-zinc-400 hover:text-white hover:border-white/20"
-                        )}
-                      >
-                        <div className="flex items-center gap-1.5 truncate">
-                          {generateAudio ? <Volume2 size={13} className="text-[#c8f135] shrink-0" /> : <VolumeX size={13} className="text-zinc-500 shrink-0" />}
-                          <span className="text-[10.5px] font-bold truncate">{generateAudio ? 'SFX ON' : 'Muted'}</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <GlassSelect
+                        label="Resolution"
+                        value={resolution || '720p'}
+                        onChange={setResolution}
+                        options={resolutionOptions}
+                        align="up"
+                      />
+                      <div className="space-y-1.5 w-full">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[9.5px] font-black uppercase tracking-[0.16em] text-zinc-400 flex items-center gap-1">
+                            <Volume2 className="w-3 h-3 text-zinc-400" />
+                            <span>Sound Effects (SFX)</span>
+                          </label>
+                          <span className="text-[8.5px] font-mono text-zinc-500">Native Audio</span>
                         </div>
-                        <span className={cn("text-[8.5px] font-mono font-bold px-1 py-0.2 rounded border shrink-0", generateAudio ? "bg-[#c8f135]/20 text-[#c8f135] border-[#c8f135]/30" : "bg-white/[0.04] text-zinc-500 border-white/[0.06]")}>
-                          {generateAudio ? 'SFX ON' : 'OFF'}
-                        </span>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => setGenerateAudio(!generateAudio)}
+                          className={cn(
+                            "w-full h-[38px] px-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all cursor-pointer select-none",
+                            generateAudio
+                              ? "bg-[#c8f135]/15 border-[#c8f135]/50 text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.15)] font-extrabold"
+                              : "bg-black/40 border-white/[0.08] text-zinc-400 hover:text-white hover:border-white/20"
+                          )}
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            {generateAudio ? <Volume2 size={13} className="text-[#c8f135] shrink-0" /> : <VolumeX size={13} className="text-zinc-500 shrink-0" />}
+                            <span className="text-[10.5px] font-bold truncate">{generateAudio ? 'SFX ON' : 'Muted'}</span>
+                          </div>
+                          <span className={cn("text-[8.5px] font-mono font-bold px-1 py-0.2 rounded border shrink-0", generateAudio ? "bg-[#c8f135]/20 text-[#c8f135] border-[#c8f135]/30" : "bg-white/[0.04] text-zinc-500 border-white/[0.06]")}>
+                            {generateAudio ? 'SFX ON' : 'OFF'}
+                          </span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : panelTab === 'transition' ? (
@@ -5079,15 +5224,73 @@ export const SidePanel = React.memo(({
                     )}
                   </div>
                 ) : panelTab === 'motion' ? (
-                  /* ONLY Aspect Ratio for Motion Tab (duration from driving video, resolution from Quality Mode, audio not applicable) */
-                  <div className="space-y-1">
-                    <GlassSelect
-                      label="Aspect Ratio"
-                      value={aspectRatio}
-                      onChange={setAspectRatio}
-                      options={aspectOptions}
-                      align="up"
-                    />
+                  /* Motion Control Easy Parameters: Quality Mode, Aspect Ratio, Fixed 10s Duration, SFX */
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <GlassSelect
+                        label="Quality Mode"
+                        value={resolution === '1080p' || motionMode === '1080p' || motionMode === 'pro' ? '1080p' : '720p'}
+                        onChange={(val) => {
+                          setResolution(val);
+                          setMotionMode(val);
+                        }}
+                        options={[
+                          { value: '720p', label: '720p Standard HD', desc: 'Crisp High-Definition (720p)' },
+                          { value: '1080p', label: '1080p Pro Full HD', desc: 'High-def cinematic master (1080p)' }
+                        ]}
+                        align="up"
+                      />
+
+                      <GlassSelect
+                        label="Aspect Ratio"
+                        value={aspectRatio || '16:9'}
+                        onChange={setAspectRatio}
+                        options={[
+                          { value: '16:9', label: '16:9 Landscape', desc: '1920×1080 Widescreen' },
+                          { value: '9:16', label: '9:16 Vertical', desc: '1080×1920 Reels/Shorts' },
+                          { value: '1:1', label: '1:1 Square', desc: '1080×1080 Feed Post' }
+                        ]}
+                        align="up"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col justify-center px-2.5 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+                        <span className="text-[8.5px] font-black uppercase tracking-wider text-zinc-400">Duration</span>
+                        <span className="text-[9.5px] font-mono text-[#c8f135] font-bold mt-0.5">
+                          10 Seconds (Fixed)
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setGenerateAudio(!generateAudio)}
+                        className={cn(
+                          "h-[38px] px-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all cursor-pointer select-none",
+                          generateAudio
+                            ? "bg-[#c8f135]/15 border-[#c8f135]/50 text-[#c8f135] shadow-[0_0_15px_rgba(200,241,53,0.15)] font-extrabold"
+                            : "bg-black/40 border-white/[0.08] text-zinc-400 hover:text-white hover:border-white/20"
+                        )}
+                        title={generateAudio ? "Sound Effects ON (Realistic audio generated with motion transfer)" : "Audio Muted"}
+                      >
+                        <div className="flex items-center gap-1.5 truncate">
+                          {generateAudio ? (
+                            <Volume2 size={13} className="text-[#c8f135] shrink-0" />
+                          ) : (
+                            <VolumeX size={13} className="text-zinc-500 shrink-0" />
+                          )}
+                          <span className="text-[10px] font-bold truncate">{generateAudio ? 'SFX ON' : 'Muted'}</span>
+                        </div>
+                        <span className={cn(
+                          "text-[8px] font-mono font-bold px-1 py-0.2 rounded border shrink-0",
+                          generateAudio
+                            ? "bg-[#c8f135]/20 text-[#c8f135] border-[#c8f135]/30"
+                            : "bg-white/[0.04] text-zinc-500 border-white/[0.06]"
+                        )}>
+                          {generateAudio ? 'SFX' : 'OFF'}
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   /* Standard 4 Controls for Veo / Omni */
@@ -5187,7 +5390,7 @@ export const SidePanel = React.memo(({
                       ? 'Multi-Ref Ready'
                       : panelTab === 'veo'
                       ? 'Veo 3.1 Ready'
-                      : 'Motion Ready'}
+                      : 'Motion Control Easy Ready'}
                   </span>
                 </div>
                 <span className="text-[10.5px] sm:text-[11.5px] font-black text-[#c8f135] flex items-center gap-1 mt-0.5 truncate">
@@ -5200,7 +5403,7 @@ export const SidePanel = React.memo(({
                 onClick={
                   isCooldown || isBusy
                     ? undefined
-                    : (extensionSourceVideo || useAppStore.getState().extensionSourceVideo)
+                    : (panelTab === 'omni-multi' && (extensionSourceVideo || useAppStore.getState().extensionSourceVideo))
                     ? triggerGenerateOmni
                     : panelTab === 'remix'
                     ? triggerGenerateRemix
@@ -5262,6 +5465,8 @@ export const SidePanel = React.memo(({
                         ? `Extend Video (+${extensionDuration || 4}s)`
                         : panelTab === 'remix' && remixEngine === 'omni'
                         ? '⚡ Edit Video (Omni 1.1)'
+                        : panelTab === 'motion'
+                        ? 'Transfer Motion (10s)'
                         : 'Generate Video'}
                     </span>
                   </>

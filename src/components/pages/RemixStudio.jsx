@@ -88,7 +88,7 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
   const userProfile = useAppStore(state => state.userProfile);
 
   const isSwapMode = activeMode === 'object-swap';
-  const ratePerSec = resolution === '480p' ? 5 : resolution === '1080p' ? 12 : 8;
+  const ratePerSec = resolution === '480p' ? 18 : resolution === '1080p' ? 89 : 44;
   const effectiveDuration = Math.max(1, Math.round(videoDuration || 5));
   const costAmount = ratePerSec * effectiveDuration;
   const costKey = isSwapMode ? `object_swap_${resolution}` : `remix_motion_transfer_${resolution}`;
@@ -777,9 +777,9 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                   onChange={(e) => setResolution(e.target.value)}
                   className="w-full appearance-none bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-medium focus:outline-none focus:border-[#D4FF00]/80 cursor-pointer transition-colors"
                 >
-                  <option value="480p" className="bg-zinc-900 text-white">480p SD · Fast (5 Shorts/s · {5 * effectiveDuration} total)</option>
-                  <option value="720p" className="bg-zinc-900 text-white">720p HD · Standard (8 Shorts/s · {8 * effectiveDuration} total)</option>
-                  <option value="1080p" className="bg-zinc-900 text-white">1080p Full HD · Master (12 Shorts/s · {12 * effectiveDuration} total)</option>
+                  <option value="480p" className="bg-zinc-900 text-white">480p SD · Fast (18 Shorts/s · {18 * effectiveDuration} total)</option>
+                  <option value="720p" className="bg-zinc-900 text-white">720p HD · Standard (44 Shorts/s · {44 * effectiveDuration} total)</option>
+                  <option value="1080p" className="bg-zinc-900 text-white">1080p Full HD · Master (89 Shorts/s · {89 * effectiveDuration} total)</option>
                 </select>
                 <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
                   <CaretDown size={14} weight="bold" />

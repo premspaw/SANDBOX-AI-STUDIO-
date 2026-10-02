@@ -85,7 +85,8 @@ export const useAppStore = create((set, get) => ({
     }),
     addProjectAsset: (asset, targetProjectId = null) => set((state) => {
         if (!asset || !asset.url) return state;
-        const pid = targetProjectId || state.activeProjectId || 'default';
+        const rawPid = targetProjectId || state.activeProjectId || 'default';
+        const pid = (rawPid === 'all') ? 'default' : rawPid;
         const existing = state.projectAssets[pid] || [];
         // Prevent duplicate URLs within the same project
         if (existing.some(item => item.url === asset.url)) {
@@ -101,7 +102,8 @@ export const useAppStore = create((set, get) => ({
             name: asset.name || (asset.category ? `${asset.category.toUpperCase()} Asset` : 'Project Asset'),
             prompt: asset.prompt || '',
             metadata: asset.metadata || {},
-            createdAt: asset.createdAt || Date.now()
+            createdAt: asset.createdAt || asset.timestamp || Date.now(),
+            timestamp: asset.timestamp || asset.createdAt || Date.now()
         };
         const updated = {
             ...state.projectAssets,
@@ -115,7 +117,8 @@ export const useAppStore = create((set, get) => ({
         return { projectAssets: updated };
     }),
     removeProjectAsset: (assetId, targetProjectId = null) => set((state) => {
-        const pid = targetProjectId || state.activeProjectId || 'default';
+        const rawPid = targetProjectId || state.activeProjectId || 'default';
+        const pid = (rawPid === 'all') ? 'default' : rawPid;
         const existing = state.projectAssets[pid] || [];
         const updated = {
             ...state.projectAssets,
@@ -129,7 +132,8 @@ export const useAppStore = create((set, get) => ({
         return { projectAssets: updated };
     }),
     updateProjectAssetCategory: (assetId, newCategory, targetProjectId = null) => set((state) => {
-        const pid = targetProjectId || state.activeProjectId || 'default';
+        const rawPid = targetProjectId || state.activeProjectId || 'default';
+        const pid = (rawPid === 'all') ? 'default' : rawPid;
         const existing = state.projectAssets[pid] || [];
         const updated = {
             ...state.projectAssets,
@@ -142,6 +146,206 @@ export const useAppStore = create((set, get) => ({
         }
         return { projectAssets: updated };
     }),
+
+    // Universal Unified Gallery across all Studios, Pages, and Folders
+    unifiedGallery: (() => {
+        try {
+            const studioG = JSON.parse(localStorage.getItem('cs_studio_gallery') || '[]');
+            const csG = JSON.parse(localStorage.getItem('cs_gallery') || '[]');
+            const ugcG = JSON.parse(localStorage.getItem('ugc_video_gallery') || '[]');
+            const marketingG = JSON.parse(localStorage.getItem('marketing_gallery') || '[]');
+            const vaultAssetsObj = JSON.parse(localStorage.getItem('project_vault_assets') || '{}');
+            const vaultList = Array.isArray(vaultAssetsObj) ? vaultAssetsObj : Object.values(vaultAssetsObj).flat();
+
+            const all = [...studioG, ...csG, ...ugcG, ...marketingG, ...vaultList];
+            const map = new Map();
+            all.forEach(item => {
+                if (!item || !item.url) return;
+                const key = item.url;
+                if (!map.has(key)) {
+                    map.set(key, {
+                        id: item.id || `asset_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+                        type: item.type || (item.url.includes('.mp4') ? 'video' : 'image'),
+                        url: item.url,
+                        thumbUrl: item.thumbUrl || item.url,
+                        prompt: item.prompt || item.name || '',
+                        name: item.name || (item.url.includes('.mp4') ? 'Studio Video' : 'Studio Image'),
+                        engine: item.engine || (item.url.includes('.mp4') ? 'Video Generator' : 'Image Generator'),
+                        aspectRatio: item.aspectRatio || item.aspect || '16:9',
+                        aspect: item.aspect || item.aspectRatio || '16:9',
+                        resolution: item.resolution || '720p',
+                        duration: item.duration || 4,
+                        timestamp: item.timestamp || item.createdAt || Date.now(),
+                        folder: item.folder || (item.url.includes('/marketing/') ? 'marketing' : item.url.includes('/ugc/') ? 'ugc' : 'studio'),
+                        category: item.category || 'generation',
+                        projectId: item.projectId || 'default',
+                        status: item.status || 'completed'
+                    });
+                }
+            });
+            return Array.from(map.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        } catch {
+            return [];
+        }
+    })(),
+    isGalleryLoading: false,
+    fetchUnifiedGallery: async (targetUserId = null, force = false) => {
+        let uid = targetUserId || get().userProfile?.id;
+        if (!uid) {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                uid = user?.id;
+            } catch (_) {
+                void 0;
+            }
+        }
+        if (!uid) uid = 'cec79985-ce59-4d23-82a2-3ae6f69994ed';
+
+        set({ isGalleryLoading: true });
+        try {
+            const resp = await fetch(getApiUrl(`/api/list-assets?userId=${uid}`));
+            if (resp.ok) {
+                const data = await resp.json();
+                const serverAssets = data.assets || [];
+
+                const map = new Map();
+
+                // 1. Add server assets (primary source of truth)
+                serverAssets.forEach(a => {
+                    if (!a || !a.url) return;
+                    const isVid = a.type === 'video' || (typeof a.url === 'string' && (a.url.includes('.mp4') || a.url.includes('.webm')));
+                    let folder = a.folder || 'studio';
+                    if (!folder || folder === 'default' || folder === 'generated') {
+                        if (a.url.includes('/marketing/')) folder = 'marketing';
+                        else if (a.url.includes('/ugc/')) folder = 'ugc';
+                        else if (a.url.includes('/avatar/') || a.type === 'character') folder = 'avatar';
+                        else folder = 'studio';
+                    }
+                    const ts = a.date ? new Date(a.date).getTime() : Date.now();
+                    map.set(a.url, {
+                        id: a.id || `srv_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+                        type: isVid ? 'video' : 'image',
+                        url: a.url,
+                        thumbUrl: a.url,
+                        prompt: a.prompt || a.name || '',
+                        name: a.name || (isVid ? 'Studio Video' : 'Studio Image'),
+                        engine: a.engine || (isVid ? 'Video Generator' : 'Image Generator'),
+                        aspectRatio: a.aspect || a.aspectRatio || '16:9',
+                        aspect: a.aspect || a.aspectRatio || '16:9',
+                        resolution: a.resolution || '720p',
+                        duration: a.duration || 4,
+                        timestamp: ts,
+                        createdAt: ts,
+                        folder: folder,
+                        category: a.category || folder,
+                        projectId: a.projectId || 'default',
+                        status: 'completed'
+                    });
+                });
+
+                // Pin recently-added local items (added within last 30s) to the top
+                // even after server re-fetch, preventing them from disappearing during
+                // the server round-trip window.
+                const now = Date.now();
+                const currentLocal = get().unifiedGallery || [];
+                const recentLocal = currentLocal.filter(item => {
+                    if (!item || !item.url) return false;
+                    const age = now - (item.timestamp || item.createdAt || 0);
+                    return age < 30000; // within 30 seconds
+                });
+
+                // Merge: server items first (for dedup), then fill in any local-only items
+                recentLocal.forEach(item => {
+                    if (!item || !item.url) return;
+                    if (!map.has(item.url)) {
+                        map.set(item.url, item);
+                    }
+                });
+
+                const merged = Array.from(map.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                set({ unifiedGallery: merged, isGalleryLoading: false });
+
+                // Sync to cs_studio_gallery for instant offline recovery
+                try {
+                    localStorage.setItem('cs_studio_gallery', JSON.stringify(merged.slice(0, 100)));
+                } catch (_) {
+                    void 0;
+                }
+                return merged;
+            }
+        } catch (err) {
+            console.warn('[UnifiedGallery] Fetch failed:', err);
+        } finally {
+            set({ isGalleryLoading: false });
+        }
+        return get().unifiedGallery;
+    },
+
+    addUnifiedAsset: (asset) => {
+        if (!asset || !asset.url) return;
+        const isVid = asset.type === 'video' || (typeof asset.url === 'string' && (asset.url.includes('.mp4') || asset.url.includes('.webm')));
+        const normalized = {
+            id: asset.id || `asset_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+            type: isVid ? 'video' : 'image',
+            url: asset.url,
+            thumbUrl: asset.thumbUrl || asset.url,
+            prompt: asset.prompt || asset.name || '',
+            name: asset.name || (isVid ? 'Studio Video' : 'Studio Image'),
+            engine: asset.engine || (isVid ? 'Video Generator' : 'Image Generator'),
+            aspectRatio: asset.aspectRatio || asset.aspect || '16:9',
+            aspect: asset.aspect || asset.aspectRatio || '16:9',
+            resolution: asset.resolution || '720p',
+            duration: asset.duration || 4,
+            timestamp: asset.timestamp || Date.now(),
+            createdAt: asset.timestamp || Date.now(),
+            folder: asset.folder || (asset.url.includes('/marketing/') ? 'marketing' : asset.url.includes('/ugc/') ? 'ugc' : 'studio'),
+            category: asset.category || 'generation',
+            projectId: asset.projectId || get().activeProjectId || 'default',
+            status: asset.status || 'completed'
+        };
+
+        set(state => {
+            const current = state.unifiedGallery.filter(i => i.url !== normalized.url);
+            const next = [normalized, ...current];
+            try {
+                localStorage.setItem('cs_studio_gallery', JSON.stringify(next.slice(0, 100)));
+            } catch (_) {
+                void 0;
+            }
+            return { unifiedGallery: next };
+        });
+
+        // Also add to Project Box / Vault
+        get().addProjectAsset({
+            id: normalized.id,
+            url: normalized.url,
+            type: normalized.type,
+            name: normalized.name,
+            category: normalized.category || 'generation',
+            prompt: normalized.prompt,
+            projectId: normalized.projectId
+        }, normalized.projectId);
+
+        if (typeof window !== 'undefined') {
+            // Use skipRefetch: true so same-tab studio listeners don't immediately
+            // re-fetch from server (the item is already in the store locally).
+            // Cross-tab listeners will still receive this event and refetch.
+            window.dispatchEvent(new CustomEvent('zerolens_gallery_updated', { detail: { ...normalized, skipRefetch: true } }));
+        }
+    },
+
+    removeUnifiedAsset: (assetId) => {
+        set(state => {
+            const next = state.unifiedGallery.filter(i => i.id !== assetId);
+            try {
+                localStorage.setItem('cs_studio_gallery', JSON.stringify(next.slice(0, 100)));
+            } catch (_) {
+                void 0;
+            }
+            return { unifiedGallery: next };
+        });
+        get().removeProjectAsset(assetId);
+    },
 
     cachedAssets: null,
     cachedAssetsUserId: null,
@@ -735,9 +939,6 @@ export const useAppStore = create((set, get) => ({
             if (_profileCache[userId] && (now - (_profileCacheAt[userId] || 0)) < PROFILE_CACHE_TTL) {
                 const cached = _profileCache[userId];
                 let totalShorts = (cached.shorts_balance ?? 50) + (cached.brand_voice?.fractional_shorts ?? 0);
-                if (cached.role === 'admin' || cached.email === 'premspaw@gmail.com' || get().isAdmin) {
-                    totalShorts = Math.max(totalShorts, 15000);
-                }
                 set({ userProfile: cached, userShorts: totalShorts });
                 return;
             }
@@ -786,9 +987,6 @@ export const useAppStore = create((set, get) => ({
                 _profileCache[userId] = data;
                 _profileCacheAt[userId] = Date.now();
                 let totalShorts = (data.shorts_balance ?? 50) + (data.brand_voice?.fractional_shorts ?? 0);
-                if (data.role === 'admin' || data.email === 'premspaw@gmail.com' || get().isAdmin) {
-                    totalShorts = Math.max(totalShorts, 15000);
-                }
                 set({ userProfile: data, userShorts: totalShorts });
 
                 if (data.role === 'admin' || data.email === 'premspaw@gmail.com') {
@@ -823,15 +1021,6 @@ export const useAppStore = create((set, get) => ({
             if (!user) return;
             userId = user.id;
         }
-        const cached = _profileCache[userId];
-        if (cached) {
-            let totalShorts = (cached.shorts_balance ?? 50) + (cached.brand_voice?.fractional_shorts ?? 0);
-            if (get().userProfile?.role === 'admin' || get().userProfile?.email === 'premspaw@gmail.com' || get().isAdmin) {
-                totalShorts = Math.max(totalShorts, 15000);
-            }
-            set({ userShorts: totalShorts });
-            return;
-        }
         try {
             const { data } = await supabase
                 .from('profiles')
@@ -840,8 +1029,9 @@ export const useAppStore = create((set, get) => ({
                 .single();
             if (data) {
                 let totalShorts = (data.shorts_balance ?? 50) + (data.brand_voice?.fractional_shorts ?? 0);
-                if (get().userProfile?.role === 'admin' || get().userProfile?.email === 'premspaw@gmail.com' || get().isAdmin) {
-                    totalShorts = Math.max(totalShorts, 15000);
+                if (_profileCache[userId]) {
+                    _profileCache[userId].shorts_balance = data.shorts_balance;
+                    _profileCache[userId].brand_voice = data.brand_voice;
                 }
                 set({ userShorts: totalShorts });
             }
@@ -850,25 +1040,30 @@ export const useAppStore = create((set, get) => ({
         }
     },
 
-    // ✅ S3 FIX: Credits are now mutated SERVER-SIDE only via /api/credits/* endpoints.
-    // The server verifies the JWT, checks balance, deducts/refunds, and writes the audit log.
-    // The frontend store ONLY does an optimistic UI update and reverts on failure.
+    // ✅ S3 FIX: Credits are mutated SERVER-SIDE via /api/credits/* endpoints.
+    // The server verifies the JWT/session, checks balance, deducts/refunds, and writes the audit log.
+    // The frontend store does an optimistic UI update and syncs with server-confirmed balance.
     spendShorts: async (userId, amount, reason) => {
         const current = get().userShorts;
+        const newOptimistic = Math.max(0, current - amount);
 
-        // Optimistic UI update — revert if server call fails
-        set({ userShorts: current - amount });
+        // Optimistic UI update
+        set({ userShorts: newOptimistic });
+        if (userId && _profileCache[userId]) {
+            _profileCache[userId].shorts_balance = newOptimistic;
+        }
 
         try {
-            // Get the current session token to authenticate the server request
+            // Get session token, with dev-mode fallback for local testing
             const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.access_token) throw new Error('No active session');
+            const token = session?.access_token || (import.meta.env.DEV ? 'dev_mode_token' : null);
+            if (!token) throw new Error('No active session');
 
             const response = await fetch(getApiUrl('/api/credits/spend'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ amount, reason })
             });
@@ -882,31 +1077,48 @@ export const useAppStore = create((set, get) => ({
             // Sync store with server-confirmed balance
             if (typeof data.newBalance === 'number') {
                 set({ userShorts: data.newBalance });
+                if (userId && _profileCache[userId]) {
+                    _profileCache[userId].shorts_balance = data.newBalance;
+                }
             }
 
             return { success: true };
         } catch (err) {
-            // Revert optimistic update on failure
             console.error('Store: Spend failed', err);
+            // In dev mode or for admin testing, preserve local optimistic deduction so credit decrement is clearly visible
+            const isDevOrAdmin = import.meta.env.DEV || get().isAdmin || get().userProfile?.role === 'admin';
+            if (isDevOrAdmin) {
+                console.warn('[Store:spendShorts] Server deduction failed, preserving local optimistic deduction for dev/admin:', err.message);
+                return { success: true };
+            }
+            // Revert optimistic update on failure for non-admin production users
             set({ userShorts: current });
+            if (userId && _profileCache[userId]) {
+                _profileCache[userId].shorts_balance = current;
+            }
             return { success: false, reason: err.message || 'transaction_failed' };
         }
     },
 
     refundShorts: async (userId, amount, reason) => {
         const current = get().userShorts;
+        const newOptimistic = current + amount;
         // Optimistic UI update
-        set({ userShorts: current + amount });
+        set({ userShorts: newOptimistic });
+        if (userId && _profileCache[userId]) {
+            _profileCache[userId].shorts_balance = newOptimistic;
+        }
 
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.access_token) throw new Error('No active session');
+            const token = session?.access_token || (import.meta.env.DEV ? 'dev_mode_token' : null);
+            if (!token) throw new Error('No active session');
 
             const response = await fetch(getApiUrl('/api/credits/refund'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ amount, reason })
             });
@@ -920,10 +1132,19 @@ export const useAppStore = create((set, get) => ({
             // Sync store with server-confirmed balance
             if (typeof data.newBalance === 'number') {
                 set({ userShorts: data.newBalance });
+                if (userId && _profileCache[userId]) {
+                    _profileCache[userId].shorts_balance = data.newBalance;
+                }
             }
         } catch (err) {
             console.error('Store: Refund failed', err);
-            set({ userShorts: current }); // Revert on failure
+            const isDevOrAdmin = import.meta.env.DEV || get().isAdmin || get().userProfile?.role === 'admin';
+            if (!isDevOrAdmin) {
+                set({ userShorts: current }); // Revert on failure for prod users
+                if (userId && _profileCache[userId]) {
+                    _profileCache[userId].shorts_balance = current;
+                }
+            }
         }
     },
 

@@ -449,9 +449,11 @@ export default function MarketingStudio() {
                 if (st === 'completed') {
                     const url = json.url;
                     if (url) {
+                        const newAsset = { url, ts: Date.now(), size: imageSize, aspect: activeRatio, type: 'video', folder: 'marketing', prompt: activePrompt };
+                        useAppStore.getState().addUnifiedAsset(newAsset);
                         setGenerationHistory(prev => {
-                            const next = [{ url, ts: Date.now(), size: imageSize, type: 'video' }, ...prev].slice(0, 50);
-                                                        try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
+                            const next = [newAsset, ...prev.filter(x => x.url !== url)].slice(0, 50);
+                            try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
                             return next;
                         });
                         refreshShorts();
@@ -728,17 +730,23 @@ Any written text, characters, letters, numbers, and labels inside the image must
             if (!resp.ok) throw new Error(data.error || data.message || 'Upscale request failed.');
 
             if (data.url) {
+                const finalAspect = aspect || getGeminiAspectRatio(item.size);
                 const newItem = {
                     url: data.url,
                     ts: Date.now(),
-                    size: targetRes === '4K' ? '3840x2160' : '2048x1152', // high res sizes
+                    size: targetRes === '4K' ? '3840x2160' : '2048x1152',
+                    aspect: finalAspect,
+                    type: 'image',
+                    folder: 'marketing',
+                    prompt: prompt,
                     engine: `Gemini (${targetRes})`
                 };
+                useAppStore.getState().addUnifiedAsset(newItem);
 
                 // Add the new upscaled image to the top of the history
                 setGenerationHistory(prev => {
-                    const next = [newItem, ...prev].slice(0, 50);
-                                                try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
+                    const next = [newItem, ...prev.filter(x => x.url !== data.url)].slice(0, 50);
+                    try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
                     return next;
                 });
                 
@@ -1195,11 +1203,12 @@ Any written text, characters, letters, numbers, and labels inside the image must
                     });
 
                     const data = await resp.json();
-                    if (!resp.ok) throw new Error(data.error || 'Omni generation failed.');
-                    if (!data.videoUrl) throw new Error('Omni returned no videoUrl.');
+                    const aspect = aspectMap[imageSize] || '9:16';
+                    const newAsset = { url: data.videoUrl, ts: Date.now(), size: imageSize, aspect, type: 'video', folder: 'marketing', prompt: promptText };
+                    useAppStore.getState().addUnifiedAsset(newAsset);
 
                     setGenerationHistory(prev => {
-                        const next = [{ url: data.videoUrl, ts: Date.now(), size: imageSize, type: 'video' }, ...prev].slice(0, 50);
+                        const next = [newAsset, ...prev.filter(x => x.url !== data.videoUrl)].slice(0, 50);
                         try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
                         return next;
                     });
@@ -1322,9 +1331,13 @@ Any written text, characters, letters, numbers, and labels inside the image must
                     // Play direct Google GenAI streaming URL instantly
                     const directUrl = `${downloadLink}${downloadLink.includes('?') ? '&' : '?'}key=${apiKey}`;
 
+                    const aspect = aspectMap[imageSize] || '9:16';
+                    const veoAsset = { url: directUrl, ts: Date.now(), size: imageSize, aspect, type: 'video', folder: 'marketing', prompt: promptText };
+                    useAppStore.getState().addUnifiedAsset(veoAsset);
+
                     setGenerationHistory(prev => {
-                        const next = [{ url: directUrl, ts: Date.now(), size: imageSize, type: 'video' }, ...prev].slice(0, 50);
-                                                    try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
+                        const next = [veoAsset, ...prev.filter(x => x.url !== directUrl)].slice(0, 50);
+                        try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
                         return next;
                     });
 
@@ -1346,14 +1359,6 @@ Any written text, characters, letters, numbers, and labels inside the image must
                             });
 
                             // Upload to universal upload-asset
-                            const aspectMap = {
-                                '1536x1024': '16:9',
-                                '1024x1536': '9:16',
-                                '1024x1024': '9:16',
-                                '1024x1792': '9:16',
-                                '1792x1024': '16:9'
-                            };
-                            const aspect = aspectMap[imageSize] || '9:16';
                             const uploadResp = await fetch(getApiUrl('/api/upload-asset'), {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -1369,9 +1374,11 @@ Any written text, characters, letters, numbers, and labels inside the image must
                             const { url: publicUrl } = await uploadResp.json();
                             if (publicUrl) {
                                 console.log('[Marketing] Background archiving complete:', publicUrl);
+                                const archivedAsset = { url: publicUrl, ts: Date.now(), size: imageSize, aspect, type: 'video', folder: 'marketing', prompt: promptText };
+                                useAppStore.getState().addUnifiedAsset(archivedAsset);
                                 setGenerationHistory(prev => {
                                     const next = prev.map(item => item.url === directUrl ? { ...item, url: publicUrl } : item);
-                                                                try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
+                                    try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
                                     return next;
                                 });
                             }
@@ -1597,9 +1604,19 @@ Any written text, characters, letters, numbers, and labels inside the image must
             if (!newUrl) throw new Error('No image URL in response: ' + JSON.stringify(data));
             
             setGeneratedImage(newUrl);
+            const imgAsset = {
+                url: newUrl,
+                ts: Date.now(),
+                size: imageSize,
+                aspect: getGeminiAspectRatio(imageSize),
+                type: 'image',
+                folder: 'marketing',
+                prompt: textPrompt
+            };
+            useAppStore.getState().addUnifiedAsset(imgAsset);
             setGenerationHistory(prev => {
-                const next = [{ url: newUrl, ts: Date.now(), size: imageSize }, ...prev].slice(0, 50);
-                                            try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
+                const next = [imgAsset, ...prev.filter(x => x.url !== newUrl)].slice(0, 50);
+                try { if (mktLSKey) localStorage.setItem(mktLSKey, JSON.stringify(next)); } catch (_) { /* ignore */ }
                 return next;
             });
             

@@ -277,6 +277,21 @@ export function useUGCGallery(currentUserId: string) {
       const deduped = dedup(next).slice(0, 100);
       persistToLS(deduped, currentUserId);
       saveGalleryToIDB(deduped);
+
+      if (item.url && !item.loading && !item.url.startsWith('blob:') && !item.url.startsWith('data:')) {
+        try {
+          useAppStore.getState().addUnifiedAsset({
+            id: item.id,
+            url: item.url,
+            type: item.type || 'video',
+            prompt: item.prompt || 'UGC Asset',
+            folder: 'ugc',
+            category: 'ugc',
+            projectId: item.projectId || activeProjectId || 'default'
+          });
+        } catch (_) {}
+      }
+
       return deduped;
     });
   }, [currentUserId, activeProjectId]);
@@ -289,12 +304,28 @@ export function useUGCGallery(currentUserId: string) {
       const deduped = dedup(next);
       persistToLS(deduped, currentUserId);
       saveGalleryToIDB(deduped);
+
+      const target = deduped.find(i => i.id === id);
+      if (target?.url && !target.loading && !target.url.startsWith('blob:') && !target.url.startsWith('data:')) {
+        try {
+          useAppStore.getState().addUnifiedAsset({
+            id: target.id,
+            url: target.url,
+            type: target.type || 'video',
+            prompt: target.prompt || 'UGC Asset',
+            folder: 'ugc',
+            category: 'ugc',
+            projectId: target.projectId || activeProjectId || 'default'
+          });
+        } catch (_) {}
+      }
+
       return deduped;
     });
-  }, [currentUserId]);
+  }, [currentUserId, activeProjectId]);
 
   const visibleGallery = useMemo(() => {
-    if (!activeProjectId || activeProjectId === 'default') {
+    if (!activeProjectId || activeProjectId === 'default' || activeProjectId === 'all') {
       return gallery;
     }
     return gallery.filter(item => {

@@ -4,7 +4,7 @@ import {
   Sparkles, Film, Image as ImageIcon, Video, Layers, BookOpen, Clapperboard,
   Upload, Trash2, Check, Zap, Cpu, Code, HelpCircle, RefreshCw, Sliders, Play, Loader2,
   ChevronDown, ChevronLeft, ChevronRight, Users, Tag, Eye, Download, Maximize2, Wand2, Shield, AlertCircle, Camera,
-  Volume2, VolumeX, Copy, CheckCheck, FolderOpen
+  Volume2, VolumeX, Copy, CheckCheck, FolderOpen, X, Plus
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { getApiUrl, resolveUrl } from '../../config/apiConfig';
@@ -282,6 +282,7 @@ function StudioGalleryCard({
                 muted
                 loop
                 playsInline
+                preload="none"
               />
             ) : (
               <img
@@ -301,7 +302,7 @@ function StudioGalleryCard({
                 playsInline
                 muted={isAudioMuted}
                 loop
-                preload="auto"
+                preload="metadata"
                 onTimeUpdate={handleTimeUpdate}
               />
             ) : (
@@ -323,7 +324,7 @@ function StudioGalleryCard({
             playsInline
             muted={isAudioMuted}
             loop
-            preload="auto"
+            preload="metadata"
             onTimeUpdate={handleTimeUpdate}
           />
         </div>
@@ -579,47 +580,89 @@ export default function StudioPage() {
   const refUploadInputRef = useRef(null);
   const [seedanceRefs, setSeedanceRefs] = useState([]);
 
-  // Projects State
-  const [projects, setProjects] = useState([{ id: 'proj_default', name: 'Default Project' }]);
-  const [activeProjectId, setActiveProjectId] = useState('proj_default');
+  // Projects / Folders State from useAppStore
+  const projects = useAppStore(state => state.projects || [{ id: 'default', name: 'Default Project' }]);
+  const setProjects = useAppStore(state => state.setProjects);
+  const activeProjectId = useAppStore(state => state.activeProjectId || 'default');
+  const setActiveProjectId = useAppStore(state => state.setActiveProjectId);
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
 
-  // Common Unified Gallery Loader across UGC, Marketing, Cinema Studio, and Studio
-  const loadMergedGallery = useCallback(() => {
-    try {
-      const userKey = userId && userId !== 'anon' ? `cinematic_studio_gallery_${userId}` : null;
-      const userG = userKey ? JSON.parse(localStorage.getItem(userKey) || '[]') : [];
-      const studioG = JSON.parse(localStorage.getItem('cs_studio_gallery') || '[]');
-      const csG = JSON.parse(localStorage.getItem('cs_gallery') || '[]');
-      const ugcG = JSON.parse(localStorage.getItem('ugc_video_gallery') || '[]');
-      const marketingG = JSON.parse(localStorage.getItem('marketing_gallery') || '[]');
-      const vaultAssets = JSON.parse(localStorage.getItem('project_vault_assets') || '[]');
-      const formattedVault = vaultAssets.map(a => ({
-        id: a.id,
-        url: a.url,
-        prompt: a.prompt || a.name || 'Project Asset',
-        type: a.type || 'image',
-        engine: a.engine || (a.boardType ? `${a.boardType} Sheet` : 'Project Asset'),
-        timestamp: a.timestamp || Date.now(),
-        projectId: a.projectId
-      }));
+  // Common Unified Gallery from useAppStore with real-time server syncing
+  const rawUnifiedGallery = useAppStore(state => state.unifiedGallery);
+  const unifiedGallery = useMemo(() => rawUnifiedGallery || [], [rawUnifiedGallery]);
+  const isGalleryLoading = useAppStore(state => state.isGalleryLoading);
+  const fetchUnifiedGallery = useAppStore(state => state.fetchUnifiedGallery);
+  const addUnifiedAsset = useAppStore(state => state.addUnifiedAsset);
+  const removeUnifiedAsset = useAppStore(state => state.removeUnifiedAsset);
 
-      const map = new Map();
-      [...userG, ...studioG, ...csG, ...ugcG, ...marketingG, ...formattedVault].forEach(item => {
-        if (!item) return;
-        const key = item.id || item.url || item.timestamp;
-        if (key && !map.has(key)) {
-          map.set(key, item);
-        }
-      });
+  // Local in-flight pending generations
+  const [localPendingJobs, setLocalPendingJobs] = useState([]);
 
-      return Array.from(map.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-    } catch {
-      return [];
+  // Fetch unified gallery from server on mount and when userId changes
+  useEffect(() => {
+    fetchUnifiedGallery(userId);
+  }, [userId, fetchUnifiedGallery]);
+
+  // Listen to cross-studio real-time gallery updates (debounced to prevent
+  // flickering when our own addUnifiedAsset fires the event — the new item is
+  // already in the store locally; the server fetch is only needed for cross-tab sync)
+  useEffect(() => {
+    let debounceTimer = null;
+    const handleGalleryUpdate = (e) => {
+      // Skip refetch if this event was fired by our own studio (same-tab add)
+      // The item is already in the store via addUnifiedAsset; refetching immediately
+      // would replace the store with the server list before the server has the item.
+      if (e?.detail?.skipRefetch) return;
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchUnifiedGallery(userId);
+      }, 3000); // 3s debounce — gives server time to persist before refetch
+    };
+    window.addEventListener('zerolens_gallery_updated', handleGalleryUpdate);
+    return () => {
+      window.removeEventListener('zerolens_gallery_updated', handleGalleryUpdate);
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [userId, fetchUnifiedGallery]);
+
+  const gallery = useMemo(() => {
+    const pendingIds = new Set(localPendingJobs.map(p => p.id));
+    const merged = [
+      ...localPendingJobs,
+      ...unifiedGallery.filter(item => item && !pendingIds.has(item.id))
+    ];
+    return merged;
+  }, [localPendingJobs, unifiedGallery]);
+
+  const setGallery = useCallback((updater) => {
+    if (typeof updater === 'function') {
+      const currentList = gallery;
+      const nextList = updater(currentList);
+      if (Array.isArray(nextList)) {
+        // Keep ALL items that are still pending (generating/failed/loading)
+        // PLUS any completed items that haven't yet been confirmed in unifiedGallery
+        // This prevents the 1-2 frame flicker where an item vanishes between
+        // being removed from localPendingJobs and appearing in unifiedGallery.
+        const unifiedIds = new Set((unifiedGallery || []).map(i => i?.id).filter(Boolean));
+        const pending = nextList.filter(i => {
+          if (!i) return false;
+          if (i.status === 'generating' || i.status === 'failed' || i.loading) return true;
+          // Completed but not yet in unified store → keep locally to avoid flicker
+          if (i.status === 'completed' && i.url && !unifiedIds.has(i.id)) return true;
+          return false;
+        });
+        setLocalPendingJobs(pending);
+        nextList.forEach(item => {
+          if (item && item.url && item.status === 'completed' && !item.url.startsWith('blob:')) {
+            addUnifiedAsset(item);
+          }
+        });
+      }
     }
-  }, [userId]);
+  }, [gallery, unifiedGallery, addUnifiedAsset]);
 
-  const [gallery, setGallery] = useState(loadMergedGallery);
   const activeJobs = useMemo(() => gallery.filter(i => i && i.status === 'generating'), [gallery]);
   const activeJobsCount = activeJobs.length;
 
@@ -643,10 +686,27 @@ export default function StudioPage() {
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   const [windowWidth, setWindowWidth] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1200);
   const [mobileTab, setMobileTab] = useState('controls'); // 'controls' | 'gallery'
-  const [galleryFilter, setGalleryFilter] = useState('all');
+  const [galleryFilter, setGalleryFilter] = useState('all'); // 'all' | 'video' | 'image'
+  const [folderFilter, setFolderFilter] = useState('all'); // 'all' | 'studio' | 'ugc' | 'marketing' | 'avatar' | 'project_vault'
   const [aspectFilter, setAspectFilter] = useState('all'); // 'all' (All Ratio default)
   const [galleryLayout, setGalleryLayout] = useState('masonry'); // 'masonry' (Masonry default)
   const [galleryDensity, setGalleryDensity] = useState('compact'); // 'compact' (Compact default)
+
+  const galleryCounts = useMemo(() => {
+    let all = 0;
+    let video = 0;
+    let image = 0;
+
+    gallery.forEach(item => {
+      if (!item) return;
+      all++;
+      const isVid = item.type === 'video' || item.url?.includes('.mp4');
+      if (isVid) video++;
+      else image++;
+    });
+
+    return { all, video, image };
+  }, [gallery]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -673,6 +733,8 @@ export default function StudioPage() {
   const filteredGallery = useMemo(() => {
     return gallery.filter(item => {
       if (!item) return false;
+
+      // 1. Media Type Filter (All / Video / Image)
       if (galleryFilter === 'video') {
         const isVid = item.type === 'video' || item.url?.includes('.mp4');
         if (!isVid) return false;
@@ -681,6 +743,18 @@ export default function StudioPage() {
         if (isVid) return false;
       }
 
+      // 2. Folder / Project Filter
+      if (activeProjectId && activeProjectId !== 'all') {
+        const itemProj = item.projectId || item.folder || 'default';
+        if (activeProjectId === 'default') {
+          // In Default Project view, show all default/unassigned or general assets
+          if (item.projectId && item.projectId !== 'default' && item.projectId !== 'proj_default') return false;
+        } else {
+          if (item.projectId !== activeProjectId && item.folder !== activeProjectId) return false;
+        }
+      }
+
+      // 3. Aspect Ratio Filter
       if (aspectFilter !== 'all') {
         const raw = (item.aspectRatio || item.aspect || '16:9').trim();
         if (aspectFilter === '16:9') {
@@ -694,7 +768,7 @@ export default function StudioPage() {
 
       return true;
     });
-  }, [gallery, galleryFilter, aspectFilter]);
+  }, [gallery, galleryFilter, activeProjectId, aspectFilter]);
 
   // Dynamic Tight-Gap Shortest-Column Masonry Balancer (2 cols on mobile, 3-5 cols on desktop)
   const masonryColumns = useMemo(() => {
@@ -707,17 +781,26 @@ export default function StudioPage() {
     const cols = Array.from({ length: count }, () => []);
     const heights = Array.from({ length: count }, () => 0);
 
-    filteredGallery.forEach((item) => {
-      let minCol = 0;
-      for (let c = 1; c < count; c++) {
-        if (heights[c] < heights[minCol]) {
-          minCol = c;
+    filteredGallery.forEach((item, idx) => {
+      // Top items and currently generating items must ALWAYS be placed at column 0 (top-left corner)
+      let targetCol;
+      if (item.loading || item.status === 'generating' || idx === 0) {
+        targetCol = 0;
+      } else if (idx < count) {
+        targetCol = idx;
+      } else {
+        let minCol = 0;
+        for (let c = 1; c < count; c++) {
+          if (heights[c] < heights[minCol]) {
+            minCol = c;
+          }
         }
+        targetCol = minCol;
       }
-      cols[minCol].push(item);
+      cols[targetCol].push(item);
       const raw = (item.aspectRatio || item.aspect || '16:9').trim();
       const mult = (raw === '9:16') ? 1.7778 : (raw === '1:1' ? 1.0 : (raw === '4:3' ? 0.75 : 0.5625));
-      heights[minCol] += mult;
+      heights[targetCol] += mult;
     });
 
     return cols;
@@ -902,6 +985,15 @@ export default function StudioPage() {
       return Math.round(dur * rate);
     }
     if (panelTab === 'transition') {
+      if (activeEngine.includes('omni') || activeEngine.includes('flash')) {
+        let costPerSec = 5;
+        const resLower = (resolution || '720p').toLowerCase();
+        if (resLower === '4k') costPerSec = generateAudio ? 19 : 15;
+        else if (resLower === '1080p') costPerSec = generateAudio ? 8 : 6;
+        else if (resLower === '360p') costPerSec = generateAudio ? 5 : 4;
+        else costPerSec = generateAudio ? 6 : 5;
+        return Math.ceil(costPerSec * 1.1 * duration);
+      }
       const resLower = (resolution || '720p').toLowerCase();
       const isMini = activeEngine === 'seedance-mini';
       const costPerSec = isMini
@@ -1128,6 +1220,7 @@ export default function StudioPage() {
     resolution,
     generateAudio,
     setExtensionSourceVideo,
+    setGallery,
     refreshShorts
   ]);
 
@@ -1292,7 +1385,8 @@ export default function StudioPage() {
     refreshShorts,
     resolveBlobToBase64,
     resolution,
-    generateAudio
+    generateAudio,
+    setGallery
   ]);
 
   // Handle Generation
@@ -1331,8 +1425,19 @@ export default function StudioPage() {
     const engineToUse = customEngine || activeEngine;
     const isRemix = panelTab === 'remix' || engineToUse.includes('remix') || engineToUse.includes('genjutsu') || engineToUse.includes('motion-transfer');
     const isMotion = !isRemix && (panelTab === 'motion' || engineToUse.includes('motion') || engineToUse.includes('kling'));
-    const isSeedance = !isRemix && !isMotion && (panelTab === 'transition' || panelTab === 'seedance' || panelTab === 'seedance-2.5' || engineToUse.startsWith('seedan') || engineToUse === 'seedace');
-    const isOmni = !isRemix && !isMotion && !isSeedance && (panelTab === 'omni' || panelTab === 'omni-multi' || engineToUse.includes('omni') || engineToUse.includes('flash'));
+    const isOmni = !isRemix && !isMotion && (
+      engineToUse.includes('omni') || 
+      engineToUse.includes('flash') || 
+      panelTab === 'omni' || 
+      panelTab === 'omni-multi'
+    );
+    const isSeedance = !isRemix && !isMotion && !isOmni && (
+      panelTab === 'transition' || 
+      panelTab === 'seedance' || 
+      panelTab === 'seedance-2.5' || 
+      engineToUse.startsWith('seedan') || 
+      engineToUse === 'seedace'
+    );
     const promptToUse = customPrompt || (isRemix ? (promptText || '') : isMotion ? (promptText || '') : (isOmni ? omniPromptText : promptText));
     const activeDuration = customOptions?.duration !== undefined ? customOptions.duration : duration;
     const activeRatio = customOptions?.aspectRatio !== undefined ? customOptions.aspectRatio : aspectRatio;
@@ -1392,31 +1497,31 @@ export default function StudioPage() {
     }
 
     checkAuthAndRun(async () => {
-      if (typeof window !== 'undefined' && window.innerWidth < 768) {
-        setMobileTab('gallery');
-      }
+      const targetProj = (activeProjectId === 'all' || !activeProjectId) ? 'default' : activeProjectId;
       const tempId = 'gen_' + Date.now();
+      const isKlingMotion = isMotion && (engineToUse === 'kling-motion' || customOptions?.motionEngine === 'kling');
       const engineDisplayLabel = isRemix
         ? 'Genjutsu Motion Transfer'
         : isMotion 
-        ? `Kling 3.0 (${motionMode === 'pro' ? 'Pro 1080p' : 'Std 720p'})`
+        ? (isKlingMotion ? `Kling 3.0 (${motionMode === 'pro' ? 'Pro 1080p' : 'Std 720p'})` : 'Motion Control Easy (10s)')
+        : isOmni 
+        ? 'Omni Flash 1.1'
         : isSeedance 
         ? (engineToUse.includes('fast') ? 'Seedance Fast' : engineToUse.includes('mini') ? 'Seedance Mini' : engineToUse.includes('2.5') ? 'Seedance 2.5 Pro' : 'Seedance 2.0')
-        : isOmni 
-        ? 'Omni' 
         : engineToUse;
 
       const newClip = {
         id: tempId,
         type: 'video',
-        prompt: promptToUse || (isRemix ? 'Genjutsu Motion Transfer' : isMotion ? 'Kling 3.0 Motion Control' : isSeedance ? 'Seedance Video' : 'Cinematic Video'),
+        prompt: promptToUse || (isRemix ? 'Genjutsu Motion Transfer' : isMotion ? (isKlingMotion ? 'Kling 3.0 Motion Control' : 'Motion Control Performance Transfer') : isSeedance ? 'Seedance Video' : 'Cinematic Video'),
         engine: engineDisplayLabel,
-        duration: isMotion ? Math.ceil(motionRefVideoDuration || 5) : activeDuration,
+        duration: isMotion ? (isKlingMotion ? Math.ceil(motionRefVideoDuration || 5) : 10) : activeDuration,
         aspectRatio: activeRatio,
         resolution: isMotion ? (motionMode === 'pro' ? '1080p' : '720p') : activeResolution,
         timestamp: Date.now(),
         status: 'generating',
-        url: null
+        url: null,
+        projectId: targetProj
       };
 
       setGallery(prev => [newClip, ...prev]);
@@ -1464,89 +1569,163 @@ export default function StudioPage() {
         }
 
         if (isMotion) {
-          const subjectUrl = customOptions?.input_url || motionSubjectImage || motionSubjectPreview;
-          const videoUrl = customOptions?.video_url || motionRefVideo || motionRefVideoPreview;
-          const motionDur = Math.ceil(motionRefVideoDuration || 5);
+          const isKlingMotion = engineToUse === 'kling-motion' || customOptions?.motionEngine === 'kling';
 
-          const resolvedSubject = await resolveBlobToBase64(subjectUrl);
-          const resolvedVideo = await resolveBlobToBase64(videoUrl);
+          if (isKlingMotion) {
+            const subjectUrl = customOptions?.input_url || motionSubjectImage || motionSubjectPreview;
+            const videoUrl = customOptions?.video_url || motionRefVideo || motionRefVideoPreview;
+            const motionDur = Math.ceil(motionRefVideoDuration || 5);
 
-          const motionPayload = {
-            prompt: promptToUse || '',
-            input_url: resolvedSubject || subjectUrl,
-            video_url: resolvedVideo || videoUrl,
-            mode: (motionMode === 'pro' || motionMode === '1080p') ? '1080p' : '720p',
-            character_orientation: (characterOrientation === 'image') ? 'image' : 'video',
-            duration: motionDur,
-            aspectRatio: activeRatio,
-            userId
-          };
+            const resolvedSubject = await resolveBlobToBase64(subjectUrl);
+            const resolvedVideo = await resolveBlobToBase64(videoUrl);
 
-          const resp = await fetch(getApiUrl('/api/kling/motion-control'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(motionPayload)
-          });
+            const motionPayload = {
+              prompt: promptToUse || '',
+              input_url: resolvedSubject || subjectUrl,
+              video_url: resolvedVideo || videoUrl,
+              mode: (motionMode === 'pro' || motionMode === '1080p') ? '1080p' : '720p',
+              character_orientation: (characterOrientation === 'image') ? 'image' : 'video',
+              duration: motionDur,
+              aspectRatio: activeRatio,
+              userId
+            };
 
-          if (!resp.ok) {
-            const errText = await resp.text();
-            let parsedError = `Motion Control failed (${resp.status})`;
-            try {
-              const parsed = JSON.parse(errText);
-              if (parsed.error) parsedError = parsed.error;
-            } catch (_) {
-              if (errText && errText.length < 200 && !errText.startsWith('<')) parsedError = errText;
+            const resp = await fetch(getApiUrl('/api/kling/motion-control'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(motionPayload)
+            });
+
+            if (!resp.ok) {
+              const errText = await resp.text();
+              let parsedError = `Motion Control failed (${resp.status})`;
+              try {
+                const parsed = JSON.parse(errText);
+                if (parsed.error) parsedError = parsed.error;
+              } catch (_) {
+                if (errText && errText.length < 200 && !errText.startsWith('<')) parsedError = errText;
+              }
+              throw new Error(parsedError);
             }
-            throw new Error(parsedError);
-          }
 
-          const data = await resp.json();
-          const taskId = data.requestId;
-          if (!taskId) throw new Error(data.error || "No task ID returned from Kling Motion Control API");
+            const data = await resp.json();
+            const taskId = data.requestId;
+            if (!taskId) throw new Error(data.error || "No task ID returned from Kling Motion Control API");
 
-          // Poll Kling task status
-          const maxPolls = 120;
-          let pollCount = 0;
-          let completedUrl = null;
+            // Poll Kling task status
+            const maxPolls = 120;
+            let pollCount = 0;
+            let completedUrl = null;
 
-          while (pollCount < maxPolls) {
-            await new Promise(r => setTimeout(r, 4500));
-            pollCount++;
+            while (pollCount < maxPolls) {
+              await new Promise(r => setTimeout(r, 4500));
+              pollCount++;
 
-            try {
-              const pollResp = await fetch(getApiUrl(`/api/kling/status/${taskId}?userId=${userId || ''}&aspectRatio=${encodeURIComponent(activeRatio)}`));
-              if (pollResp.ok) {
-                const pollData = await pollResp.json();
-                if (pollData.status === 'completed' && pollData.url) {
-                  completedUrl = pollData.url;
-                  break;
-                } else if (pollData.status === 'failed' || pollData.status === 'error') {
-                  throw new Error(pollData.error || 'Kling motion control processing failed');
+              try {
+                const pollResp = await fetch(getApiUrl(`/api/kling/status/${taskId}?userId=${userId || ''}&aspectRatio=${encodeURIComponent(activeRatio)}`));
+                if (pollResp.ok) {
+                  const pollData = await pollResp.json();
+                  if (pollData.status === 'completed' && pollData.url) {
+                    completedUrl = pollData.url;
+                    break;
+                  } else if (pollData.status === 'failed' || pollData.status === 'error') {
+                    throw new Error(pollData.error || 'Kling motion control processing failed');
+                  }
+                }
+              } catch (pollErr) {
+                if (pollErr.message && !pollErr.message.includes('fetch')) {
+                  throw pollErr;
                 }
               }
-            } catch (pollErr) {
-              if (pollErr.message && !pollErr.message.includes('fetch')) {
-                throw pollErr;
-              }
             }
-          }
 
-          if (!completedUrl) {
-            throw new Error('Kling motion control timed out after 9 minutes. The task may complete in background.');
-          }
+            if (!completedUrl) {
+              throw new Error('Kling motion control timed out after 9 minutes. The task may complete in background.');
+            }
 
-          setGallery(prev => prev.map(item => item.id === tempId ? {
-            ...item,
-            status: 'completed',
-            url: completedUrl
-          } : item));
+            setGallery(prev => prev.map(item => item.id === tempId ? {
+              ...item,
+              status: 'completed',
+              url: completedUrl
+            } : item));
 
-          const spentCredits = (motionMode === 'pro' ? 9 : 7) * motionDur;
-          if (typeof updateShortsBalance === 'function') {
-            updateShortsBalance(Math.max(0, userCredits - spentCredits));
+            const spentCredits = (motionMode === 'pro' ? 9 : 7) * motionDur;
+            if (typeof updateShortsBalance === 'function') {
+              updateShortsBalance(Math.max(0, userCredits - spentCredits));
+            }
+            if (showToast) showToast('Kling 3.0 Motion Control video rendered!', 'success');
+            return;
+          } else {
+            // Motion Control Easy -> Gemini Omni Flash 1.1 (/api/omni-i2v)
+            const subjectUrl = customOptions?.input_url || customOptions?.image || motionSubjectImage || motionSubjectPreview || firstFrameImage;
+            const videoUrl = customOptions?.video_url || customOptions?.refVideo || motionRefVideo || motionRefVideoPreview;
+
+            const [resolvedSubject, resolvedVideo] = await Promise.all([
+              subjectUrl ? resolveBlobToBase64(subjectUrl) : null,
+              videoUrl ? resolveBlobToBase64(videoUrl) : null
+            ]);
+
+            if (!resolvedSubject || !resolvedVideo) {
+              throw new Error("Motion Control Easy requires both a Subject Image and a 10s Motion Reference Video.");
+            }
+
+            const baseMotionDirective = "Motion control: Retarget the exact motion and kinematics from the driving video. The subject's exact face, facial structure, features, eyes, and identity must strictly match the attached subject image with 100% facial preservation and character consistency.";
+            const userExtraPrompt = promptToUse?.trim() || '';
+            const combinedMotionPrompt = userExtraPrompt
+              ? `${baseMotionDirective} Additional user direction: ${userExtraPrompt}`
+              : baseMotionDirective;
+
+            const validRes = (motionMode === 'pro' || motionMode === '1080p' || activeResolution === '1080p') ? '1080p' : '720p';
+
+            const resp = await fetch(getApiUrl('/api/omni-i2v'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                image: resolvedSubject,
+                firstFrame: resolvedSubject,
+                refVideo: resolvedVideo,
+                ref_videos: [resolvedVideo],
+                task: 'motion_control',
+                prompt: combinedMotionPrompt,
+                motionPrompt: combinedMotionPrompt,
+                duration: 10,
+                resolution: validRes,
+                aspectRatio: activeRatio,
+                generateAudio: !!activeAudio,
+                model: 'gemini-omni-1.1-flash-preview',
+                userId,
+                projectId: targetProj
+              })
+            });
+
+            if (!resp.ok) {
+              const errText = await resp.text();
+              let parsedError = `Motion Control failed (${resp.status})`;
+              try {
+                const parsed = JSON.parse(errText);
+                if (parsed.error) parsedError = parsed.error;
+              } catch (_) {
+                if (errText && errText.length < 200 && !errText.startsWith('<')) parsedError = errText;
+              }
+              throw new Error(parsedError);
+            }
+
+            const data = await resp.json();
+            const finalUrl = data.videoUrl || data.url;
+            if (!finalUrl) throw new Error("Motion Control returned no video URL.");
+
+            setGallery(prev => prev.map(item => item.id === tempId ? {
+              ...item,
+              status: 'completed',
+              url: finalUrl,
+              engine: 'Motion Control Easy',
+              prompt: userExtraPrompt || 'Motion Control Performance Transfer',
+              duration: 10
+            } : item));
+
+            if (showToast) showToast("Motion Control Easy video rendered successfully!", "success");
+            return;
           }
-          if (showToast) showToast('Kling 3.0 Motion Control video rendered!', 'success');
-          return;
         }
 
         if (isSeedance) {
@@ -1663,10 +1842,25 @@ export default function StudioPage() {
                 prompt: promptToUse,
                 engine: data.engine || engineToUse,
                 aspectRatio: activeRatio,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                projectId: targetProj
               },
               ...prev.filter(item => item.id !== tempId)
             ]);
+            try {
+              useAppStore.getState().addProjectAsset({
+                type: 'video',
+                category: 'generation',
+                url: finalUrl,
+                prompt: promptToUse,
+                name: promptToUse?.slice(0, 30) || 'Studio Video',
+                engine: data.engine || engineToUse,
+                aspect: activeRatio,
+                projectId: targetProj
+              }, targetProj);
+            } catch (_) {
+              void 0;
+            }
             const showToast = useAppStore.getState().showToast;
             if (showToast) showToast("Seedance 2.5 video generated successfully!", "success");
             return;
@@ -1845,8 +2039,8 @@ export default function StudioPage() {
             name: promptToUse?.slice(0, 30) || 'Studio Video',
             engine: engineToUse,
             aspect: activeRatio,
-            projectId: activeProjectId
-          });
+            projectId: targetProj
+          }, targetProj);
         } catch (_) {
           void 0;
         }
@@ -2039,7 +2233,9 @@ export default function StudioPage() {
         }
         const csStudioG = JSON.parse(localStorage.getItem('cs_studio_gallery') || '[]');
         localStorage.setItem('cs_studio_gallery', JSON.stringify([newImageItem, ...csStudioG]));
-      } catch (_) {}
+      } catch (storageErr) {
+        console.debug('[StudioPage] localStorage sync fallback:', storageErr);
+      }
 
       if (showToast) showToast("Screenshot added to gallery!", "success");
 
@@ -2072,7 +2268,9 @@ export default function StudioPage() {
               const existing = JSON.parse(localStorage.getItem(csUserKey) || '[]');
               localStorage.setItem(csUserKey, JSON.stringify(existing.map(i => i.id === newId ? { ...i, url: savedUrl } : i)));
             }
-          } catch (_) {}
+          } catch (csErr) {
+            console.debug('[StudioPage] csUserKey update fallback:', csErr);
+          }
         }
       }).catch(err => console.debug("[StudioPage] Save asset fallback:", err));
     } catch (err) {
@@ -2592,52 +2790,188 @@ export default function StudioPage() {
         "min-w-0 flex flex-col h-full overflow-hidden bg-[#07070a] relative",
         isMobile ? (mobileTab === 'gallery' ? "flex flex-1 w-full h-full min-h-0" : "hidden") : "flex-1"
       )}>
-        {/* Gallery Top Navigation / Minimal Header */}
-        <div className="px-3 sm:px-5 py-2.5 sm:py-3 border-b border-white/[0.08] bg-[#09090e]/95 backdrop-blur-xl flex items-center justify-between z-20 shrink-0 gap-2.5">
-          {/* Left: Studio Gallery Title & Total Count */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[#c8f135]/10 border border-[#c8f135]/30 flex items-center justify-center text-[#c8f135] shadow-[0_0_12px_rgba(200,241,53,0.15)]">
-              <Film className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <h2 className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-white">Studio Gallery</h2>
-                <span className="text-[8px] sm:text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[#c8f135]">
-                  {gallery.length}
-                </span>
+        {/* Gallery Top Navigation / Header */}
+        <div className="px-3 sm:px-5 py-2 sm:py-2.5 border-b border-white/[0.08] bg-[#09090e]/95 backdrop-blur-xl flex flex-col gap-2 z-20 shrink-0">
+          <div className="flex items-center justify-between gap-2.5">
+            {/* Left: Studio Gallery Title, Total Count & Refresh */}
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[#c8f135]/10 border border-[#c8f135]/30 flex items-center justify-center text-[#c8f135] shadow-[0_0_12px_rgba(200,241,53,0.15)]">
+                <Film className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
-              <p className="text-[9px] text-zinc-400 font-mono hidden sm:block">ZeroLens Studio Generations</p>
+              <div>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <h2 className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-white">Universal Gallery</h2>
+                  <span className="text-[8px] sm:text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[#c8f135]">
+                    {gallery.length}
+                  </span>
+                  <button
+                    onClick={() => fetchUnifiedGallery(userId, true)}
+                    disabled={isGalleryLoading}
+                    className="p-1 hover:bg-white/10 rounded-md text-zinc-400 hover:text-white transition-all cursor-pointer"
+                    title="Refresh Gallery from Cloud"
+                  >
+                    <RefreshCw className={cn("w-3 h-3", isGalleryLoading && "animate-spin text-[#c8f135]")} />
+                  </button>
+                </div>
+                <p className="text-[9px] text-zinc-400 font-mono hidden sm:block">Studio, UGC, Marketing & Project Box Media</p>
+              </div>
+            </div>
+
+            {/* Right: Folder / Project Dropdown, Project Box, Credits & Clear */}
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+              {/* Folder / Project Selector Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowProjectDropdown(prev => !prev)}
+                  className="flex items-center gap-1.5 bg-[#0f0f15]/95 border border-white/10 rounded-xl px-2.5 sm:px-3 py-1 sm:py-1.5 shadow-lg shadow-black/40 hover:bg-white/[0.03] active:scale-95 transition-all text-white text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider cursor-pointer select-none"
+                  title="Filter Gallery by Folder / Project"
+                >
+                  <FolderOpen size={11} className="text-[#c8f135]" />
+                  <span className="max-w-[110px] sm:max-w-[160px] truncate">
+                    {activeProjectId === 'all' ? 'All Folders' : (projects.find(p => p.id === activeProjectId)?.name || 'Default Project')}
+                  </span>
+                  <ChevronDown size={10} className={cn("text-gray-400 transition-transform duration-200", showProjectDropdown && "rotate-180")} />
+                </button>
+
+                {showProjectDropdown && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowProjectDropdown(false)} />
+                    <div className="absolute right-0 sm:left-0 mt-1.5 w-52 bg-[#0b0b0e] border border-white/10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.85)] py-1 z-50 overflow-hidden">
+                      <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveProjectId('all');
+                            setShowProjectDropdown(false);
+                          }}
+                          className={cn(
+                            "w-full text-left px-3 py-2 text-[8.5px] font-black uppercase tracking-wider transition-colors flex items-center justify-between",
+                            activeProjectId === 'all'
+                              ? "text-[#c8f135] bg-[#c8f135]/5 font-black"
+                              : "text-white/60 hover:text-white hover:bg-white/[0.02]"
+                          )}
+                        >
+                          <span>📁 All Folders / Projects</span>
+                          {activeProjectId === 'all' && <span className="text-[#c8f135] text-[10px]">✓</span>}
+                        </button>
+                        {projects.map(p => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              setActiveProjectId(p.id);
+                              setShowProjectDropdown(false);
+                            }}
+                            className={cn(
+                              "w-full text-left px-3 py-2 text-[8.5px] font-black uppercase tracking-wider transition-colors flex items-center justify-between",
+                              p.id === activeProjectId
+                                ? "text-[#c8f135] bg-[#c8f135]/5 font-black"
+                                : "text-white/60 hover:text-white hover:bg-white/[0.02]"
+                            )}
+                          >
+                            <span className="truncate">{p.name}</span>
+                            {p.id === activeProjectId && <span className="text-[#c8f135] text-[10px]">✓</span>}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="border-t border-white/5 mt-1 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowProjectDropdown(false);
+                            setNewProjectName('');
+                            setShowNewProjectModal(true);
+                          }}
+                          className="w-full text-left px-3 py-2 text-[8.5px] font-black uppercase tracking-wider text-[#c8f135] hover:bg-[#c8f135]/10 transition-colors flex items-center gap-1.5"
+                        >
+                          <Plus size={11} />
+                          <span>+ New Folder / Project...</span>
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => useAppStore.getState().openProjectVault('character')}
+                className="flex items-center gap-1.5 bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/30 text-cyan-300 rounded-xl px-2.5 sm:px-3 py-1 sm:py-1.5 shadow-[0_0_15px_rgba(6,182,212,0.15)] active:scale-95 transition-all text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider cursor-pointer select-none"
+                title="Open Universal Project Box (Characters, Props, Locations, Wardrobe)"
+              >
+                <FolderOpen className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-400" />
+                <span>Project Box</span>
+              </button>
+
+              <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 bg-[#c8f135]/10 border border-[#c8f135]/30 rounded-xl">
+                <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#c8f135]" />
+                <span className="text-[11px] sm:text-xs font-black text-[#c8f135]">{userCredits}</span>
+                <span className="text-[8px] sm:text-[9px] font-mono text-zinc-400 uppercase hidden sm:inline">Shorts</span>
+              </div>
+
+              {gallery.length > 0 && (
+                <button
+                  onClick={handleClearGallery}
+                  className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-zinc-400 hover:text-red-400 hover:bg-red-500/10 border border-white/10 hover:border-red-500/30 transition-all cursor-pointer"
+                  title="Clear Local Gallery Cache"
+                >
+                  <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  <span className="hidden sm:inline">Clear</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Right: Project Box, Credits & Clear */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => useAppStore.getState().openProjectVault('character')}
-              className="flex items-center gap-1.5 bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/30 text-cyan-300 rounded-xl px-2.5 sm:px-3 py-1 sm:py-1.5 shadow-[0_0_15px_rgba(6,182,212,0.15)] active:scale-95 transition-all text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider cursor-pointer select-none"
-              title="Open Universal Project Box (Characters, Props, Locations, Wardrobe)"
-            >
-              <FolderOpen className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-400" />
-              <span>Project Box</span>
-            </button>
-
-            <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 bg-[#c8f135]/10 border border-[#c8f135]/30 rounded-xl">
-              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#c8f135]" />
-              <span className="text-[11px] sm:text-xs font-black text-[#c8f135]">{userCredits}</span>
-              <span className="text-[8px] sm:text-[9px] font-mono text-zinc-400 uppercase hidden sm:inline">Shorts</span>
+          {/* Bottom Row: Media Filter Pills & Aspect Controls */}
+          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/[0.04] overflow-x-auto custom-scrollbar">
+            {/* Media Type (All / Video / Image) */}
+            <div className="flex items-center bg-black/40 p-0.5 rounded-lg border border-white/[0.08]">
+              <button
+                type="button"
+                onClick={() => setGalleryFilter('all')}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer",
+                  galleryFilter === 'all' ? "bg-white/20 text-white font-black" : "text-zinc-400 hover:text-zinc-200"
+                )}
+              >
+                All ({galleryCounts.all})
+              </button>
+              <button
+                type="button"
+                onClick={() => setGalleryFilter('video')}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1",
+                  galleryFilter === 'video' ? "bg-white/20 text-white font-black" : "text-zinc-400 hover:text-zinc-200"
+                )}
+              >
+                <Video size={10} /> Videos ({galleryCounts.video})
+              </button>
+              <button
+                type="button"
+                onClick={() => setGalleryFilter('image')}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1",
+                  galleryFilter === 'image' ? "bg-white/20 text-white font-black" : "text-zinc-400 hover:text-zinc-200"
+                )}
+              >
+                <ImageIcon size={10} /> Images ({galleryCounts.image})
+              </button>
             </div>
 
-            {gallery.length > 0 && (
-              <button
-                onClick={handleClearGallery}
-                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-zinc-400 hover:text-red-400 hover:bg-red-500/10 border border-white/10 hover:border-red-500/30 transition-all cursor-pointer"
-                title="Clear Gallery"
+            {/* Right: Aspect Ratio Filter */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <select
+                value={aspectFilter}
+                onChange={(e) => setAspectFilter(e.target.value)}
+                className="bg-black/40 text-zinc-300 border border-white/[0.08] rounded-lg text-[8.5px] font-mono font-bold px-2 py-1 outline-none cursor-pointer hover:border-white/20"
               >
-                <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                <span className="hidden sm:inline">Clear</span>
-              </button>
-            )}
+                <option value="all">All Ratios</option>
+                <option value="16:9">16:9 Wide</option>
+                <option value="9:16">9:16 Reel</option>
+                <option value="1:1">1:1 Square</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -2811,6 +3145,76 @@ export default function StudioPage() {
           setGallery={setGallery}
           setLightboxItem={setLightboxItem}
         />
+      )}
+
+      {/* New Project Modal */}
+      {showNewProjectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="bg-[#0b0b0e] border border-white/10 rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <h3 className="text-xs font-black uppercase tracking-widest text-white flex items-center gap-2">
+                <FolderOpen size={14} className="text-[#c8f135]" />
+                Create New Folder / Project
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowNewProjectModal(false)}
+                className="text-white/40 hover:text-white transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Folder / Project Name</label>
+                <input
+                  type="text"
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  placeholder="e.g. Summer Campaign, Neon Tokyo..."
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-white text-[11px] font-bold outline-none focus:border-[#c8f135] focus:bg-white/[0.05] transition-all mt-1"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newProjectName.trim()) {
+                      const name = newProjectName.trim();
+                      const newProj = { id: 'proj_' + Date.now(), name };
+                      setProjects(prev => Array.isArray(prev) ? [...prev, newProj] : [newProj]);
+                      setActiveProjectId(newProj.id);
+                      setShowNewProjectModal(false);
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewProjectModal(false)}
+                  className="px-4 py-2 rounded-xl border border-white/10 text-white/60 hover:text-white hover:bg-white/5 text-[9px] font-black uppercase tracking-widest transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!newProjectName.trim()}
+                  onClick={() => {
+                    if (newProjectName.trim()) {
+                      const name = newProjectName.trim();
+                      const newProj = { id: 'proj_' + Date.now(), name };
+                      setProjects(prev => Array.isArray(prev) ? [...prev, newProj] : [newProj]);
+                      setActiveProjectId(newProj.id);
+                      setShowNewProjectModal(false);
+                    }
+                  }}
+                  className="px-5 py-2 rounded-xl bg-[#c8f135] disabled:bg-zinc-800 disabled:text-white/20 text-black font-black text-[9px] uppercase tracking-widest hover:bg-[#bce628] hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#c8f135]/20 flex items-center gap-1 cursor-pointer"
+                >
+                  Create Folder
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

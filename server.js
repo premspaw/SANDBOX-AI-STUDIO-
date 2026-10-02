@@ -841,7 +841,8 @@ async function consumeCredits(userId, cost, reason = 'generation') {
 }
 
 async function claimOrCreateSpend(userId, cost, reason = 'generation') {
-    if (!supabase) {
+    const client = supabaseAdmin || supabase;
+    if (!client) {
         if (process.env.NODE_ENV === 'production') {
             const err = new Error('Credit system is unavailable');
             err.status = 503;
@@ -859,31 +860,47 @@ async function claimOrCreateSpend(userId, cost, reason = 'generation') {
         throw err;
     }
 
-    // 1. Look for a recent unclaimed spend transaction from the client
-    const thirtySecondsAgo = new Date(Date.now() - 30 * 1000).toISOString();
+    // 1. Look for a recent unclaimed spend transaction from the client within 60s
+    const sixtySecondsAgo = new Date(Date.now() - 60 * 1000).toISOString();
     try {
-        const { data: txs, error: fetchErr } = await supabase
+        let { data: txs, error: fetchErr } = await client
             .from('shorts_transactions')
-            .select('id')
+            .select('id, amount')
             .eq('user_id', userId)
             .eq('amount', -cost)
             .eq('action_type', reason)
             .is('reason', null) // null means unclaimed/unused
-            .gte('created_at', thirtySecondsAgo)
-            .order('created_at', { ascending: true })
+            .gte('created_at', sixtySecondsAgo)
+            .order('created_at', { ascending: false })
             .limit(1);
 
-        if (!fetchErr && txs && txs.length > 0) {
+        // Fallback: look for any recent unclaimed negative spend for this user and action_type
+        if ((!txs || txs.length === 0) && !fetchErr) {
+            const fallbackCheck = await client
+                .from('shorts_transactions')
+                .select('id, amount')
+                .eq('user_id', userId)
+                .eq('action_type', reason)
+                .lt('amount', 0)
+                .is('reason', null)
+                .gte('created_at', sixtySecondsAgo)
+                .order('created_at', { ascending: false })
+                .limit(1);
+            if (fallbackCheck.data && fallbackCheck.data.length > 0) {
+                txs = fallbackCheck.data;
+            }
+        }
+
+        if (txs && txs.length > 0) {
             const txId = txs[0].id;
-            // Try to claim it
-            const { error: claimErr } = await supabase
+            const { error: claimErr } = await client
                 .from('shorts_transactions')
                 .update({ reason: 'claimed' })
                 .eq('id', txId)
                 .is('reason', null);
 
             if (!claimErr) {
-                console.log(`[Credits] ✅ Claimed recent client-side transaction ${txId} for user ${userId} (${reason}). No extra charge.`);
+                console.log(`[Credits] ✅ Claimed recent client-side transaction ${txId} (${Math.abs(txs[0].amount)} credits) for user ${userId} (${reason}). No extra charge.`);
                 return true;
             }
         }
@@ -1610,8 +1627,7 @@ async function handleGoogle(req, res) {
                             responseModalities: ["TEXT", "IMAGE"],
                             imageConfig: {
                                 aspectRatio: mappedRatio,
-                                imageSize: finalImageSize,
-                                outputMimeType: outputMimeType
+                                imageSize: finalImageSize
                             },
                             thinkingConfig: {
                                 thinkingLevel: "MINIMAL"
@@ -1662,8 +1678,7 @@ async function handleGoogle(req, res) {
                             responseModalities: ["IMAGE", "TEXT"],
                             imageConfig: {
                                 aspectRatio: mappedRatio,
-                                imageSize: finalImageSize,
-                                outputMimeType: outputMimeType
+                                imageSize: finalImageSize
                             }
                         }
                     };

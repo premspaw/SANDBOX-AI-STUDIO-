@@ -240,8 +240,7 @@ export default function createRouter(deps) {
                         responseModalities: ["IMAGE", "TEXT"],
                         imageConfig: {
                             aspectRatio: aspectRatio === '1:1' ? '1:1' : aspectRatio === '16:9' ? '16:9' : aspectRatio === '9:16' ? '9:16' : '1:1',
-                            imageSize: isBananaPro ? '2K' : '1K',
-                            outputMimeType: 'image/png'
+                            imageSize: isBananaPro ? '2K' : '1K'
                         },
                         thinkingConfig: {
                             thinkingLevel: "MINIMAL"

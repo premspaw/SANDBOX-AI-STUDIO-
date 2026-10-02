@@ -220,6 +220,17 @@ export function useAvatarStudio(userId = 'anon') {
                             boardMeta: targetMeta
                         }
                     });
+
+                    // Sync to Unified Gallery
+                    useAppStore.getState().addUnifiedAsset({
+                        url: result.outputUrl,
+                        ts: Date.now(),
+                        aspect: targetAspect,
+                        type: 'image',
+                        folder: 'avatar',
+                        prompt: result.prompt,
+                        name: sheetName
+                    });
                 } catch (syncErr) {
                     console.debug('[Avatar Studio] Project Box auto-save fallback:', syncErr);
                 }
@@ -227,6 +238,7 @@ export function useAvatarStudio(userId = 'anon') {
                 // Refresh credits balance in UI and sync gallery
                 refreshShorts();
                 fetchGallery();
+                useAppStore.getState().fetchUnifiedGallery(userId);
             }
         } catch (err) {
             console.error('[Avatar generate-board failed]:', err);

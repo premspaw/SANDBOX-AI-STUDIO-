@@ -96,10 +96,12 @@ export default function createRouter(deps) {
             const token = await getVertexToken();
             if (!token && !apiKey) throw new Error('Failed to acquire service account token or API key');
 
-            // Deduct credits: veo_fast costs 10 credits, veo_full/standard costs 40 credits (halved)
-            let requiredCredits = 10; // Default
+            // Deduct credits: prefer client-sent creditCost if provided
+            let requiredCredits = typeof req.body.creditCost === 'number' && req.body.creditCost > 0
+                ? req.body.creditCost
+                : 10;
             const modelLower = (model || '').toLowerCase();
-            if (modelLower.includes('full') || modelLower.includes('high') || duration > 6) {
+            if (!req.body.creditCost && (modelLower.includes('full') || modelLower.includes('high') || duration > 6)) {
                 requiredCredits = 40;
             }
 
@@ -537,8 +539,10 @@ export default function createRouter(deps) {
             if (!apiKey) throw new Error("Kling API Key not configured. Please add KLING_API_KEY to your environment.");
 
             const targetUserId = user ? user.id : userId;
-            let requiredCredits = 7;
-            if (model === 'kling/v3-turbo-image-to-video') {
+            let requiredCredits = typeof req.body.creditCost === 'number' && req.body.creditCost > 0
+                ? req.body.creditCost
+                : 7;
+            if (!req.body.creditCost && model === 'kling/v3-turbo-image-to-video') {
                 const durationSec = Number(duration) || 5;
                 const costPerSec = (req.body.resolution === '1080p') ? (0.1125 * 1.30 * 84) : (0.09 * 1.30 * 84); // 12.285 or 9.828 credits/sec
                 requiredCredits = Math.round(costPerSec * durationSec);
@@ -707,7 +711,9 @@ export default function createRouter(deps) {
             const duration = req.body.duration || 5;
             const resolvedMode = (mode === 'pro' || mode === '1080p') ? '1080p' : '720p';
             const rate = resolvedMode === '1080p' ? 9 : 7;
-            const requiredCredits = Math.ceil(rate * duration);
+            const requiredCredits = typeof req.body.creditCost === 'number' && req.body.creditCost > 0
+                ? req.body.creditCost
+                : Math.ceil(rate * duration);
 
             if (targetUserId) {
                 const creditReason = req.body.creditReason || `kling_motion_control_${resolvedMode}`;

@@ -219,36 +219,95 @@ export function getImageResultHtml(data = {}) {
 </div>
 
 <script type="module">
-  // MCP Apps bridge & window.openai data loader
-  function render(data) {
+  // Robust MCP Apps bridge & window.openai data loader for ChatGPT
+  function extractData(source) {
+    if (!source) return null;
+    if (typeof source === 'string') {
+      try { source = JSON.parse(source); } catch (_) { return null; }
+    }
+    if (source.structuredContent && typeof source.structuredContent === 'object') return extractData(source.structuredContent);
+    if (source.toolOutput && typeof source.toolOutput === 'object') return extractData(source.toolOutput);
+    if (source.toolResponse && typeof source.toolResponse === 'object') return extractData(source.toolResponse);
+    if (source.toolResult && typeof source.toolResult === 'object') return extractData(source.toolResult);
+    if (source.data && typeof source.data === 'object') return extractData(source.data);
+    if (source.result && typeof source.result === 'object') return extractData(source.result);
+    if (source.payload && typeof source.payload === 'object') return extractData(source.payload);
+    if (source.state && typeof source.state === 'object') return extractData(source.state);
+    if (source.params && typeof source.params === 'object') return extractData(source.params);
+    return source;
+  }
+
+  function render(raw) {
+    const data = extractData(raw);
     if (!data) return;
     const img = document.getElementById('generated-image');
     const promptEl = document.getElementById('prompt-display');
     const modelBadge = document.getElementById('model-badge');
     const aspectTag = document.getElementById('aspect-tag');
     const downloadBtn = document.getElementById('btn-download');
+    const studioBtn = document.getElementById('btn-open-studio');
+    const creditsTag = document.getElementById('credits-tag');
 
-    const url = data.imageUrl || data.url || data.image_url || data.raw_cdn_url;
+    const url = data.imageUrl || data.url || data.image_url || data.raw_cdn_url || data.resultUrl || data.result_url || (Array.isArray(data.urls) && data.urls[0]);
     if (url && img) {
       img.src = url;
-      if (downloadBtn) downloadBtn.href = url;
+      img.style.display = 'block';
+      if (downloadBtn) {
+        downloadBtn.href = url;
+        downloadBtn.style.pointerEvents = 'auto';
+      }
     }
-    if (data.prompt && promptEl) promptEl.textContent = data.prompt;
+    if (data.prompt && promptEl) promptEl.textContent = '"' + data.prompt + '"';
     if (data.model && modelBadge) modelBadge.textContent = data.model;
     if ((data.aspectRatio || data.aspect_ratio) && aspectTag) aspectTag.textContent = data.aspectRatio || data.aspect_ratio;
-  }
-
-  // 1. Check window.openai tool output
-  if (window.openai?.toolOutput) {
-    render(window.openai.toolOutput);
-  }
-
-  // 2. Listen for MCP App bridge postMessage events
-  window.addEventListener('message', (event) => {
-    if (event.data?.toolOutput || event.data?.structuredContent) {
-      render(event.data.toolOutput || event.data.structuredContent);
+    if (data.credits_used !== undefined && creditsTag) creditsTag.textContent = 'Shorts Deducted: ' + data.credits_used;
+    if (data.generation_id && studioBtn) {
+      studioBtn.href = '${appBaseUrl}/studio?assetId=' + encodeURIComponent(data.generation_id) + '&type=image';
     }
+  }
+
+  // 1. URL search params fallback
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const paramUrl = params.get('url') || params.get('imageUrl') || params.get('resultUrl');
+    if (paramUrl) {
+      render({
+        url: paramUrl,
+        prompt: params.get('prompt'),
+        model: params.get('model'),
+        aspectRatio: params.get('aspectRatio') || params.get('aspect_ratio'),
+        generation_id: params.get('id') || params.get('generation_id')
+      });
+    }
+  } catch (_) {}
+
+  // 2. Check window.openai context
+  function checkOpenAi() {
+    if (window.openai) {
+      const d = window.openai.toolOutput || window.openai.toolResponse || window.openai.toolResult || window.openai.structuredContent || window.openai.data || window.openai.context || window.openai;
+      render(d);
+    }
+    if (window.__OPENAI_DATA__) render(window.__OPENAI_DATA__);
+    if (window.__INITIAL_STATE__) render(window.__INITIAL_STATE__);
+  }
+  checkOpenAi();
+
+  // 3. Listen for postMessage events from ChatGPT host
+  window.addEventListener('message', (event) => {
+    if (!event.data) return;
+    render(event.data);
   });
+
+  // 4. Polling check for late-injected host data
+  let checks = 0;
+  const timer = setInterval(() => {
+    checks++;
+    checkOpenAi();
+    const currentSrc = document.getElementById('generated-image')?.getAttribute('src');
+    if (checks > 20 || (currentSrc && currentSrc.length > 5)) {
+      clearInterval(timer);
+    }
+  }, 250);
 </script>
 
 </body>

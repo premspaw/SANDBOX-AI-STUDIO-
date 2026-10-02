@@ -330,7 +330,7 @@ export default function createRouter(deps) {
             const { image, motionPrompt, prompt, duration = 8, aspectRatio = '16:9', nodeId, userId, generateAudio, resolution = '720p', model } = req.body;
             const rawTask = req.body.task && req.body.task !== 'auto' ? req.body.task : null;
             const requestedTask = (rawTask === 'extension' || rawTask === 'extend') ? 'extend' : rawTask;
-            if (!motionPrompt && !prompt && requestedTask !== 'extend') throw new Error('No motion prompt provided');
+            if (!motionPrompt && !prompt && requestedTask !== 'extend' && requestedTask !== 'motion_control') throw new Error('No motion prompt provided');
 
             const targetUserId = user ? user.id : userId;
 
@@ -359,6 +359,10 @@ export default function createRouter(deps) {
                 requiredCredits = Math.ceil(costPerSec * 1.1 * validDuration);
             } else if (modelLower.includes('omni')) {
                 requiredCredits = 3 * validDuration;
+            }
+
+            if (typeof req.body.creditCost === 'number' && req.body.creditCost > 0) {
+                requiredCredits = req.body.creditCost;
             }
 
             if (targetUserId) {
@@ -639,6 +643,11 @@ export default function createRouter(deps) {
                     ? ` Incorporate, align, or replace target elements using the attached visual reference images (<IMAGE_REF_0>${rawRefImages.length > 1 ? ` through <IMAGE_REF_${rawRefImages.length - 1}>` : ''}).`
                     : '';
                 middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] VIDEO EDIT & REPLACEMENT DIRECTIVE: Precisely edit the source video <VIDEO_REF_0>. Maintain identical composition, perspective, camera motion, and unedited elements of the original clip. Apply the requested edits seamlessly across all frames without flickering or artifacts.${refLockingDirective} ${editActionPart}${sfxDirective} Generate the edited video.\n`;
+            } else if (requestedTask === 'motion_control') {
+                const actionPart = compiledPrompt?.trim()
+                    ? `Additional performance and environment instructions: ${compiledPrompt}.`
+                    : '';
+                middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] MOTION CONTROL & EXACT FACE PRESERVATION DIRECTIVE: Precisely transfer the full-body motion, choreography, gestures, body movement pacing, and physical action from <VIDEO_REF_0> onto the subject in <START_FRAME>. CRITICAL FACE PRESERVATION: The subject's exact face, facial structure, facial features, eyes, expressions, skin tone, hair, and individual likeness must strictly and identically match the attached reference image <START_FRAME> without any distortion, morphing, or facial drift. Ensure seamless realistic performance transfer with natural kinematics and fluid movement while retaining 100% facial and character fidelity from <START_FRAME>.${actionPart ? ' ' + actionPart : ''}${sfxDirective} Generate a single continuous ${validDuration}-second motion-controlled video, single continuous shot, no scene cuts.\n`;
             } else if (primaryImageResolved && endImageResolved) {
                 middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] The video MUST begin at timestamp 00:00 directly with the exact subject, composition, and initial pose shown in <START_FRAME>. Scene motion and action: ${compiledPrompt}${sfxDirective}. The video MUST transition smoothly and continuously throughout the ${validDuration} seconds so the action finishes seamlessly into <END_FRAME> at 00:${secFormatted}. Generate a single continuous shot with no scene cuts.\n`;
             } else if (primaryImageResolved) {
@@ -814,6 +823,12 @@ export default function createRouter(deps) {
             let finalTaskType = req.body.task && req.body.task !== 'auto' ? req.body.task : taskType;
             if (finalTaskType === 'extension') {
                 finalTaskType = 'extend';
+            }
+            // 'motion_control' is an internal label (used for prompt builder), NOT a valid Vertex AI task type.
+            // When image + video are provided for motion control, the correct API task is 'reference_to_video'.
+            if (finalTaskType === 'motion_control') {
+                finalTaskType = finalVideoCount > 0 ? 'reference_to_video' : (finalImageCount > 0 ? 'image_to_video' : 'text_to_video');
+                console.log(`[OMNI-I2V] motion_control task remapped to '${finalTaskType}' (images:${finalImageCount}, videos:${finalVideoCount})`);
             }
 
             // When multiple images are provided (e.g. Start Frame + End Frame, or multi-reference images),

@@ -229,6 +229,10 @@ export default function createRouter(deps) {
                 requiredCredits = costPerSec * durationNum;
             }
 
+            if (typeof req.body.creditCost === 'number' && req.body.creditCost > 0) {
+                requiredCredits = req.body.creditCost;
+            }
+
             if (targetUserId) {
                 const creditReason = req.body.creditReason || 'cinematic_video_generation';
                 console.log(`[SEEDANCE-GEN] Consuming/Claiming ${requiredCredits} credits for user: ${targetUserId} (duration: ${durationNum}s, res: ${resLower}, reason: ${creditReason})`);
