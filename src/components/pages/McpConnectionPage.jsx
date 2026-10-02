@@ -158,6 +158,11 @@ console.log('Video Generation Task:', data);`;
           name: 'marketing_create_full_campaign',
           desc: 'Generate a comprehensive product launch campaign kit with ad copy & prompts.',
           params: { productLaunchDetails: 'Launching ZeroLens AI Studio 2.0 with Seedance 2.0 video engine integration' }
+        },
+        {
+          name: 'marketing_create_handwritten_menu',
+          desc: 'Generate aesthetic handwritten restaurant menu posters, recipe journals, and food photo annotations.',
+          params: { dish_names_or_items: 'Truffle Tagliolini - ₹550, Burrata Caprese - ₹450, Limoncello Tiramisu - ₹300', handwritten_style: 'casual-diary', aspect_ratio: '4:5' }
         }
       ]
     }

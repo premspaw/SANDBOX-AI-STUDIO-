@@ -36,7 +36,11 @@ export function getImageToolDefinitions() {
           },
           reference_image_url: {
             type: 'string',
-            description: 'Optional URL of an image to use as reference or visual anchor.'
+            description: 'Optional public URL of an image to use as reference or visual anchor.'
+          },
+          visual_context: {
+            type: 'string',
+            description: 'Visual description or transcription of an image uploaded by the user into ChatGPT. Use this when the user uploads an image to the chat and wants to iterate, edit, or transform it.'
           },
           image_count: {
             type: 'number',
@@ -69,6 +73,7 @@ export async function executeGenerateImage(args, user, deps) {
 
   const {
     prompt,
+    visual_context,
     aspect_ratio = '1:1',
     style,
     model = 'nano-banana-2',
@@ -127,7 +132,13 @@ export async function executeGenerateImage(args, user, deps) {
 
   const generatedUrls = [];
   const generationId = `gen_img_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-  const compiledPrompt = style ? `${prompt}, styled in ${style} aesthetic` : prompt;
+  let compiledPrompt = prompt;
+  if (visual_context && visual_context.trim()) {
+    compiledPrompt += `. Visual reference details: ${visual_context.trim()}`;
+  }
+  if (style) {
+    compiledPrompt = `${compiledPrompt}, styled in ${style} aesthetic`;
+  }
 
   try {
     for (let i = 0; i < count; i++) {
