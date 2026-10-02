@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../store';
 import { useAvatarStudio } from '../../hooks/useAvatarStudio';
 import { useShorts } from '../../hooks/useShorts';
@@ -320,6 +320,63 @@ export default function AvatarStudio() {
     }
     setSelectedEngine(engine);
   };
+
+  // Drop-up menu state & outside-click listener
+  const [isEngineMenuOpen, setIsEngineMenuOpen] = useState(false);
+  const engineMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (engineMenuRef.current && !engineMenuRef.current.contains(e.target)) {
+        setIsEngineMenuOpen(false);
+      }
+    };
+    if (isEngineMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isEngineMenuOpen]);
+
+  const ENGINES = [
+    {
+      id: 'banana2',
+      name: 'Nano Banana 2',
+      shortName: 'Nano Banana 2',
+      badge: isFreeEligible ? 'FREE' : '2 cr',
+      badgeColor: isFreeEligible
+        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+        : 'bg-white/10 text-emerald-400 border-emerald-500/30',
+      desc: isFreeEligible
+        ? `Free Trial Active (${freeImagesRemaining}/3 left) • 2 cr after`
+        : 'Standard photorealistic generation • 2 cr',
+      icon: Zap,
+      iconColor: 'text-emerald-400'
+    },
+    {
+      id: 'banana',
+      name: 'Nano Banana 2 Pro',
+      shortName: 'NB2 Pro',
+      badge: '5 cr',
+      badgeColor: 'bg-[#C8F135]/20 text-[#C8F135] border-[#C8F135]/40',
+      desc: '2K Master Quality • Ultra-high fidelity & micro-details',
+      icon: Cpu,
+      iconColor: 'text-[#C8F135]'
+    },
+    {
+      id: 'gpt2',
+      name: 'ChatGPT Image 2.5',
+      shortName: 'ChatGPT 2.5',
+      badge: !isAdmin ? 'PRO' : '3 cr',
+      badgeColor: !isAdmin
+        ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+        : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40',
+      desc: !isAdmin ? 'Pro feature • Click to unlock upgrade' : 'OpenAI cinematic image synthesis',
+      icon: !isAdmin ? Lock : Sparkles,
+      iconColor: !isAdmin ? 'text-amber-400' : 'text-cyan-400'
+    }
+  ];
+
+  const activeEngineObj = ENGINES.find(e => e.id === selectedEngine) || ENGINES[0];
 
   // Handle Location Reference Upload
   const handleLocationRefUpload = (e) => {
@@ -1218,77 +1275,113 @@ STRICT NEGATIVE/EXCLUSIONS: Absolutely NO text, NO labels, NO logos, NO watermar
               </div>
             )}
 
-            {/* Compact 3-Engine Selector */}
-            <div className="flex items-center justify-between bg-zinc-950 border border-white/10 rounded-xl p-1 gap-1">
-              <button
-                type="button"
-                onClick={() => handleSelectEngine('banana')}
-                className={`flex-1 flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-lg text-[9.5px] transition-all cursor-pointer ${
-                  selectedEngine === 'banana'
-                    ? 'bg-[#C8F135] text-black shadow-sm font-black'
-                    : 'text-white/60 hover:text-white hover:bg-white/5 font-semibold'
-                }`}
-                title="Nano Banana 2 Pro (2K Master Quality)"
-              >
-                <Cpu className="w-3 h-3 shrink-0" />
-                <span className="truncate">NB2 Pro</span>
-                <span className={`text-[8px] font-mono px-1 py-0.2 rounded font-black ${
-                  selectedEngine === 'banana' ? 'bg-black/20 text-black' : 'bg-white/10 text-[#C8F135]'
-                }`}>
-                  5 cr
-                </span>
-              </button>
+            {/* Drop-up Image Engine Selector */}
+            <div className="relative" ref={engineMenuRef}>
+              {/* Drop-up Floating Menu */}
+              <AnimatePresence>
+                {isEngineMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.97 }}
+                    transition={{ duration: 0.15, ease: 'easeOut' }}
+                    className="absolute bottom-full left-0 right-0 mb-2 p-1.5 rounded-2xl bg-zinc-950/95 border border-white/15 backdrop-blur-2xl shadow-[0_-12px_36px_rgba(0,0,0,0.85)] z-50 space-y-1"
+                  >
+                    <div className="px-2.5 py-1.5 flex items-center justify-between border-b border-white/10">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-white/50 flex items-center gap-1.5">
+                        <SlidersHorizontal className="w-3 h-3 text-[#C8F135]" />
+                        <span>Select Image Engine</span>
+                      </span>
+                      <span className="text-[9px] font-mono text-[#C8F135] font-bold">
+                        {userCredits} Shorts Avail
+                      </span>
+                    </div>
 
-              <button
-                type="button"
-                onClick={() => handleSelectEngine('banana2')}
-                className={`flex-1 flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-lg text-[9.5px] transition-all cursor-pointer ${
-                  selectedEngine === 'banana2'
-                    ? 'bg-[#C8F135] text-black shadow-sm font-black'
-                    : 'text-white/60 hover:text-white hover:bg-white/5 font-semibold'
-                }`}
-                title={isFreeEligible ? "Nano Banana 2 (Free Trial Active)" : "Nano Banana 2 (Standard)"}
-              >
-                <Zap className="w-3 h-3 shrink-0" />
-                <span className="truncate">Nano Banana 2</span>
-                <span className={`text-[8px] font-mono px-1 py-0.2 rounded font-black ${
-                  selectedEngine === 'banana2'
-                    ? 'bg-black/20 text-black'
-                    : isFreeEligible
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                    : 'bg-white/10 text-emerald-400'
-                }`}>
-                  {isFreeEligible ? 'FREE' : '2 cr'}
-                </span>
-              </button>
+                    <div className="space-y-1">
+                      {ENGINES.map((eng) => {
+                        const isSelected = selectedEngine === eng.id;
+                        const IconComp = eng.icon;
+                        return (
+                          <button
+                            key={eng.id}
+                            type="button"
+                            onClick={() => {
+                              handleSelectEngine(eng.id);
+                              if (isAdmin || eng.id !== 'gpt2') {
+                                setIsEngineMenuOpen(false);
+                              }
+                            }}
+                            className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-white/10 border border-[#C8F135]/50 shadow-sm'
+                                : 'hover:bg-white/5 border border-transparent text-white/70 hover:text-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={`p-2 rounded-lg bg-black/60 border border-white/10 shrink-0 ${eng.iconColor}`}>
+                                <IconComp className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0 pr-2">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-bold text-white truncate">{eng.name}</span>
+                                  {isSelected && (
+                                    <span className="flex items-center gap-0.5 text-[10px] font-bold text-[#C8F135]">
+                                      <Check className="w-3 h-3" />
+                                      <span className="text-[9px] uppercase font-mono tracking-wider">Active</span>
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[9.5px] text-white/50 truncate leading-tight mt-0.5">
+                                  {eng.desc}
+                                </p>
+                              </div>
+                            </div>
 
-              <button
-                type="button"
-                onClick={() => handleSelectEngine('gpt2')}
-                className={`flex-1 flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-lg text-[9.5px] transition-all cursor-pointer ${
-                  selectedEngine === 'gpt2'
-                    ? 'bg-[#C8F135] text-black shadow-sm font-black'
-                    : !isAdmin
-                    ? 'text-amber-400/80 hover:text-amber-300 hover:bg-amber-400/10 font-semibold'
-                    : 'text-white/60 hover:text-white hover:bg-white/5 font-semibold'
-                }`}
-                title={!isAdmin ? "ChatGPT 2.5 (Pro Plan — Click to upgrade)" : "ChatGPT 2.5"}
-              >
-                {!isAdmin ? (
-                  <Lock className="w-3 h-3 shrink-0 text-amber-400" />
-                ) : (
-                  <Sparkles className="w-3 h-3 shrink-0" />
+                            <span className={`text-[10px] font-mono font-black px-2 py-0.5 rounded-md border shrink-0 ${eng.badgeColor}`}>
+                              {eng.badge}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
                 )}
-                <span className="truncate">ChatGPT 2.5</span>
-                <span className={`text-[8px] font-mono px-1 py-0.2 rounded font-black ${
-                  selectedEngine === 'gpt2'
-                    ? 'bg-black/20 text-black'
-                    : !isAdmin
-                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                    : 'bg-white/10 text-cyan-400'
-                }`}>
-                  {!isAdmin ? 'PRO' : '3 cr'}
-                </span>
+              </AnimatePresence>
+
+              {/* Drop-up Trigger Button */}
+              <button
+                type="button"
+                onClick={() => setIsEngineMenuOpen(prev => !prev)}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border transition-all cursor-pointer shadow-sm ${
+                  isEngineMenuOpen
+                    ? 'bg-zinc-900 border-[#C8F135]/60 text-white shadow-[0_0_15px_rgba(200,241,53,0.15)]'
+                    : 'bg-zinc-950/90 border-white/10 hover:border-white/25 hover:bg-zinc-900/90 text-white/90'
+                }`}
+                title="Click to select AI Image Engine (Drop-up menu)"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`p-1.5 rounded-lg bg-white/5 border border-white/10 shrink-0 ${activeEngineObj.iconColor}`}>
+                    <activeEngineObj.icon className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="text-left min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] text-white/40 font-mono uppercase tracking-wider">Engine:</span>
+                      <span className="text-xs font-bold text-white truncate">{activeEngineObj.name}</span>
+                    </div>
+                    <p className="text-[9px] text-white/40 truncate leading-none mt-0.5">
+                      {activeEngineObj.desc}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  <span className={`text-[9.5px] font-mono font-black px-2 py-0.5 rounded-md border ${activeEngineObj.badgeColor}`}>
+                    {activeEngineObj.badge}
+                  </span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-white/50 transition-transform duration-200 ${
+                    isEngineMenuOpen ? 'rotate-180 text-[#C8F135]' : ''
+                  }`} />
+                </div>
               </button>
             </div>
 
