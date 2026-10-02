@@ -82,7 +82,6 @@ import SceneTemplatesAside from './components/SceneTemplatesAside';
 import Toast from './components/Toast';
 import Header from './components/Header';
 import GalleryGrid from './components/GalleryGrid';
-import MarketingPromoBanner from '../../components/common/MarketingPromoBanner';
 import {
   hasFreeVideoAvailable,
   consumeFreeVideo,
@@ -4509,10 +4508,6 @@ SKIN REALISM: Enforce ultra-realistic human skin with visible pores, natural ski
         <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden relative">
           <Header />
 
-          {/* Promotional Marketing Banner */}
-          <div className="px-3 sm:px-4 pt-2 pb-1 shrink-0">
-            <MarketingPromoBanner />
-          </div>
 
           {activeTab === 'edit' ? (
             <div className="flex-1 min-h-0 p-4 bg-[#050506] flex flex-col">
