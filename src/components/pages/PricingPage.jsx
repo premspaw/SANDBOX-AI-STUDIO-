@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Check, Shield, Zap, Sparkles, Coins, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Check, Shield, Zap, Sparkles, Coins, ArrowRight, ChevronDown, ChevronUp, Tag } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAppStore } from '../../store';
 import MarketingPromoBanner from '../common/MarketingPromoBanner';
@@ -8,6 +8,16 @@ import MarketingPromoBanner from '../common/MarketingPromoBanner';
 const PricingPage = () => {
     const [isYearly] = useState(false);
     const { userProfile } = useAppStore();
+    const [expandedPlans, setExpandedPlans] = useState({});
+    const [expandedPacks, setExpandedPacks] = useState({});
+
+    const togglePlan = (name) => {
+        setExpandedPlans(prev => ({ ...prev, [name]: !prev[name] }));
+    };
+
+    const togglePack = (id) => {
+        setExpandedPacks(prev => ({ ...prev, [id]: !prev[id] }));
+    };
 
     const plans = [
         {
@@ -22,15 +32,17 @@ const PricingPage = () => {
             description: "An affordable kickstart with a 6-Month setup value layout!",
             image: "https://jdepbrbujambxvtdiwla.supabase.co/storage/v1/object/public/templates/2a3c4c1e-fd65-4909-bfee-36190c085d94.png",
             outputSummary: [
-                { label: "UGC Video Ads (10s)", count: "~7 Ads", icon: "📱", color: "text-amber-400 bg-amber-500/10 border-amber-500/25" },
+                { label: "10s UGC Video Ads", count: "~13 Ads", icon: "📱", color: "text-amber-400 bg-amber-500/10 border-amber-500/25" },
                 { label: "Commercial Video Ads", count: "~8 HD Ads", icon: "🎬", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/25" },
                 { label: "AI Master Photos", count: "~400 Photos", icon: "📸", color: "text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/25" }
             ],
             features: [
                 "400 High-Speed Renders (Credits)",
-                "Up to 200 Standard Images",
+                "Up to 13 UGC Video Ads (10s)",
                 "Up to 400 Nano Banana Images",
-                "Up to 8 8s Video Renders",
+                "Highest Quality Editing Images (GPT 2.5)",
+                "Remix Studio (Remix any video or style)",
+                "Object Swap Studio (AI Object replacement)",
                 "Standard Text-to-Speech (TTS)",
                 "Seedance Video Mode Access",
                 "Standard Motion Control (Presets)",
@@ -64,15 +76,17 @@ const PricingPage = () => {
             description: "The choice for professional creators and growing visual brands.",
             image: "/pricing/influencer.png",
             outputSummary: [
-                { label: "UGC Video Ads (10s)", count: "~45 Ads", icon: "📱", color: "text-amber-400 bg-amber-500/10 border-amber-500/25" },
+                { label: "10s UGC Video Ads", count: "~86 Ads", icon: "📱", color: "text-amber-400 bg-amber-500/10 border-amber-500/25" },
                 { label: "Commercial Video Ads", count: "~52 HD Ads", icon: "🎬", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/25" },
                 { label: "AI Master Photos", count: "~2,600 Photos", icon: "📸", color: "text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/25" }
             ],
             features: [
                 "2,600 High-Speed Renders (Credits)",
-                "Up to 1,300 Standard Images",
+                "Up to 86 UGC Video Ads (10s)",
                 "Up to 2,600 Nano Banana Images",
-                "Up to 52 8s Video Renders",
+                "Highest Quality Editing Images (GPT 2.5)",
+                "Remix Studio (Remix any video or scene)",
+                "Object Swap Studio (AI Object replacement)",
                 "Premium TTS Voice Output",
                 "Standard Motion Control & Presets",
                 "Influencer Seedance Video Mode",
@@ -108,15 +122,17 @@ const PricingPage = () => {
             description: "Advanced horsepower for Agencies and Power Users.",
             image: "/pricing/director.png",
             outputSummary: [
-                { label: "UGC Video Ads (10s)", count: "~100 Ads", icon: "📱", color: "text-amber-400 bg-amber-500/10 border-amber-500/25" },
+                { label: "10s UGC Video Ads", count: "~183 Ads", icon: "📱", color: "text-amber-400 bg-amber-500/10 border-amber-500/25" },
                 { label: "Commercial Video Ads", count: "~114 HD Ads", icon: "🎬", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/25" },
                 { label: "AI Master Photos", count: "~5,500 Photos", icon: "📸", color: "text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/25" }
             ],
             features: [
                 "5,500 High-Speed Renders (Credits)",
-                "Up to 2,750 Standard Images",
-                "Up to 5,500 Nano Banana Images",
-                "Up to 114 8s Video Renders",
+                "Unlimited Nano Banana Lite Images for 7 Days",
+                "Up to 183 UGC Video Ads (10s)",
+                "Highest Quality Editing Images (GPT 2.5)",
+                "Remix Studio (Remix any video or style)",
+                "Object Swap Studio (AI Object replacement)",
                 "Voice Cloning & Custom TTS Profiles",
                 "Advanced Motion Control & Emotions",
                 "Director Seedance & Cinematic Modes",
@@ -131,7 +147,6 @@ const PricingPage = () => {
                 "AI Agent Autopilot Mode (1 Agent)",
                 "10 Consistent Characters",
                 "8 Concurrent Jobs",
-                "Unlimited Nano Banana Images (All) for 7 Days",
                 "24/7 Dedicated Support"
             ],
             icon: Sparkles,
@@ -154,15 +169,17 @@ const PricingPage = () => {
             description: "Maximum cinematic Enterprise Tier for Commercial workflows and large volumes.",
             image: "/pricing/enterprise.png",
             outputSummary: [
-                { label: "UGC Video Ads (10s)", count: "~200 Ads", icon: "📱", color: "text-amber-400 bg-amber-500/10 border-amber-500/25" },
+                { label: "10s UGC Video Ads", count: "~366 Ads", icon: "📱", color: "text-amber-400 bg-amber-500/10 border-amber-500/25" },
                 { label: "Commercial Video Ads", count: "~229 HD Ads", icon: "🎬", color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/25" },
                 { label: "AI Master Photos", count: "~11,000 Photos", icon: "📸", color: "text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/25" }
             ],
             features: [
                 "11,000 High-Speed Renders (Credits)",
-                "Up to 5,500 Standard Images",
-                "Up to 11,000 Nano Banana Images",
-                "Up to 229 8s Video Renders",
+                "Unlimited Nano Banana Lite Images for 7 Days",
+                "Up to 366 UGC Video Ads (10s)",
+                "Highest Quality Editing Images (GPT 2.5)",
+                "Remix Studio (Full Remix Engine)",
+                "Object Swap Studio (AI Object replacement)",
                 "Unlimited Custom TTS & Voice Cloning",
                 "Full Motion Control & Emotion Syncing",
                 "Seedance & Cinematic 4K Video Production",
@@ -189,24 +206,140 @@ const PricingPage = () => {
         }
     ];
 
+    const topupPacks = [
+        {
+            id: 'pack_starter',
+            name: 'Starter Fuel',
+            price: '₹299',
+            originalPrice: '₹399',
+            discount: '25% OFF',
+            credits: 250,
+            originalCredits: null,
+            desc: 'Quick Boost · 250 Shorts',
+            link: 'https://rzp.io/rzp/WhaNtMa',
+            popular: false,
+            badge: 'Quick Boost',
+            deliverables: [
+                { icon: '📱', label: '10s UGC Video Ads', value: '~8 Ads' },
+                { icon: '📸', label: 'AI Master Images', value: '~250 - 500 Photos' },
+                { icon: '✨', label: 'Remix Studio', value: 'Remix Any Video or Style' },
+                { icon: '🔄', label: 'Object Swap Studio', value: 'Instant Object Replacement' },
+                { icon: '🎨', label: 'Highest Quality Editing', value: 'GPT 2.5 Available' },
+                { icon: '⚡', label: 'Credits Validity', value: 'Never Expires' }
+            ]
+        },
+        {
+            id: 'pack_creator',
+            name: 'Creator Pro',
+            price: '₹999',
+            originalPrice: '₹1,499',
+            discount: '33% OFF',
+            credits: 1000,
+            originalCredits: null,
+            desc: '1:1 Standard · 1,000 Shorts',
+            link: 'https://rzp.io/rzp/4U0cJGRV',
+            popular: true,
+            badge: 'MOST POPULAR',
+            deliverables: [
+                { icon: '📱', label: '10s UGC Video Ads', value: '~33 Ads' },
+                { icon: '📸', label: 'AI Master Images', value: '~1,000 - 2,000 Photos' },
+                { icon: '✨', label: 'Remix Studio', value: 'Remix Any Video or Style' },
+                { icon: '🔄', label: 'Object Swap Studio', value: 'Instant Object Replacement' },
+                { icon: '🎨', label: 'Highest Quality Editing', value: 'GPT 2.5 Available' },
+                { icon: '⚡', label: 'Credits Validity', value: 'Never Expires' }
+            ]
+        },
+        {
+            id: 'pack_studio',
+            name: 'Studio Master',
+            price: '₹2,499',
+            originalPrice: '₹3,499',
+            discount: '29% OFF',
+            credits: 2600,
+            originalCredits: 2500,
+            desc: '+100 Bonus Shorts (2,600 Total)',
+            bonus: '+100 BONUS',
+            link: 'https://rzp.io/rzp/nM3CK28p',
+            popular: false,
+            badge: 'PRO STUDIO · 2,600 SHORTS',
+            deliverables: [
+                { icon: '📱', label: '10s UGC Video Ads', value: '~86 Ads' },
+                { icon: '🎁', label: 'Nano Banana Lite', value: 'UNLIMITED 7 Days', highlight: true },
+                { icon: '📸', label: 'AI Master Images', value: '~2,600 - 5,200 Photos' },
+                { icon: '✨', label: 'Remix Studio', value: 'Remix Any Video or Scene' },
+                { icon: '🔄', label: 'Object Swap Studio', value: 'AI Object Replacement' },
+                { icon: '🎨', label: 'Highest Quality Editing', value: 'GPT 2.5 Available' },
+                { icon: '⚡', label: 'Bonus Shorts', value: '+100 Extra Included' }
+            ]
+        },
+        {
+            id: 'pack_enterprise',
+            name: 'Enterprise Bulk',
+            price: '₹4,999',
+            originalPrice: '₹6,999',
+            discount: '29% OFF',
+            credits: 5500,
+            originalCredits: 5000,
+            desc: '+500 Bonus Shorts (5,500 Total)',
+            bonus: '+500 BONUS',
+            link: 'https://rzp.io/rzp/bcCR05bt',
+            popular: false,
+            badge: 'BEST VALUE · +500 BONUS',
+            deliverables: [
+                { icon: '📱', label: '10s UGC Video Ads', value: '~183 Ads' },
+                { icon: '🎁', label: 'Nano Banana Lite', value: 'UNLIMITED 7 Days', highlight: true },
+                { icon: '📸', label: 'AI Master Images', value: '~5,500 - 11,000 Photos' },
+                { icon: '✨', label: 'Remix Studio', value: 'Full Remix Engine' },
+                { icon: '🔄', label: 'Object Swap Studio', value: 'Full Object Replacement' },
+                { icon: '🎨', label: 'Highest Quality Editing', value: 'GPT 2.5 Available' },
+                { icon: '⚡', label: 'Bonus Shorts', value: '+500 Extra Included' }
+            ]
+        },
+        {
+            id: 'pack_agency',
+            name: 'Agency Max',
+            price: '₹9,999',
+            originalPrice: '₹14,999',
+            discount: '33% OFF',
+            credits: 11000,
+            originalCredits: 10000,
+            desc: '+1,000 Bonus Shorts (11k Total)',
+            bonus: '+1,000 BONUS',
+            link: 'https://rzp.io/rzp/fLdtNkEx',
+            popular: false,
+            badge: 'MAX VOLUME · +1,000 BONUS',
+            deliverables: [
+                { icon: '📱', label: '10s UGC Video Ads', value: '~366 Ads' },
+                { icon: '🎁', label: 'Nano Banana Lite', value: 'UNLIMITED 7 Days', highlight: true },
+                { icon: '📸', label: 'AI Master Images', value: '~11,000 - 22,000 Photos' },
+                { icon: '✨', label: 'Remix Studio', value: 'Agency Remix Engine' },
+                { icon: '🔄', label: 'Object Swap Studio', value: 'Agency Object Swap' },
+                { icon: '🎨', label: 'Highest Quality Editing', value: 'GPT 2.5 Available' },
+                { icon: '⚡', label: 'Bonus Shorts', value: '+1,000 Extra Included' }
+            ]
+        }
+    ];
+
     return (
         <div className="h-full w-full max-w-full bg-[#030303] text-white p-3 sm:p-4 md:p-6 flex flex-col relative overflow-y-auto overflow-x-hidden font-sans pb-24 md:pb-12 custom-scrollbar overscroll-x-none touch-pan-y box-border">
-            {/* Ambient Background Glows (Contained to prevent horizontal bleed) */}
+            {/* Ambient Background Glows */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
                 <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[320px] md:w-[600px] h-[300px] bg-gradient-to-b from-[#D4FF00]/15 to-transparent blur-[80px] md:blur-[120px] opacity-70" />
                 <div className="absolute bottom-[-20%] left-[-10%] w-[250px] md:w-[400px] h-[250px] md:h-[400px] bg-purple-500/10 rounded-full blur-[80px] md:blur-[100px]" />
                 <div className="absolute bottom-[-20%] right-[-10%] w-[250px] md:w-[400px] h-[250px] md:h-[400px] bg-blue-500/10 rounded-full blur-[80px] md:blur-[100px]" />
             </div>
 
-            {/* Premium Header Bar */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-0 bg-white/[0.02] border border-white/5 backdrop-blur-md p-3.5 sm:p-4 md:p-3 rounded-xl mb-4 shrink-0 shadow-2xl relative overflow-hidden w-full max-w-full box-border">
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.01] to-transparent animate-shimmer pointer-events-none" />
-                <div className="flex items-center gap-2.5 sm:gap-4 flex-wrap">
-                    <div className="px-2.5 py-1 bg-gradient-to-r from-[#D4FF00]/10 to-transparent border border-[#D4FF00]/20 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-[0.15em] text-[#D4FF00] flex items-center gap-1.5 shadow-[0_0_20px_rgba(212,255,0,0.1)] shrink-0">
-                        <Zap size={12} strokeWidth={2.5} className="animate-pulse" /> Production Fuel
+            {/* Header Title Section */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 mb-4 shrink-0">
+                <div>
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="px-2 py-0.5 rounded-full bg-[#D4FF00]/10 border border-[#D4FF00]/30 text-[#D4FF00] font-mono text-[9px] font-black uppercase tracking-wider">
+                            ⚡ ZeroLens Studio Packs
+                        </span>
+                        <span className="text-[10px] text-zinc-400 font-mono">1 Short ≈ ₹1</span>
                     </div>
-                    <h1 className="text-xl sm:text-2xl font-black italic uppercase tracking-tight text-white/90">
-                        Elevate <span className="text-[#D4FF00]">Production</span>
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tight text-white flex items-center gap-2">
+                        Studio Production Plans
                     </h1>
                 </div>
 
@@ -221,10 +354,12 @@ const PricingPage = () => {
                 onCtaClick={() => document.getElementById('top-up')?.scrollIntoView({ behavior: 'smooth' })}
             />
 
-            {/* Main Content Layout Grid - Stagger Layouts */}
+            {/* Main Content Layout Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pb-6 shrink-0 w-full max-w-full box-border">
                 {plans.map((plan, idx) => {
                     const currentPrice = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
+                    const isPlanExpanded = !!expandedPlans[plan.name];
+
                     return (
                         <motion.div
                             key={plan.name}
@@ -334,7 +469,21 @@ const PricingPage = () => {
                                 </div>
                             )}
 
-                            <div className="flex-1 pr-1 space-y-2">
+                            {/* Mobile Toggle Button for Features List */}
+                            <button
+                                type="button"
+                                onClick={() => togglePlan(plan.name)}
+                                className="sm:hidden w-full py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-[11px] flex items-center justify-between mb-3 transition-colors cursor-pointer"
+                            >
+                                <span className="flex items-center gap-1.5 text-[#D4FF00]">
+                                    <Sparkles size={12} />
+                                    <span>{isPlanExpanded ? "Hide Plan Features" : `What You Get (${plan.features.length} Features)`}</span>
+                                </span>
+                                {isPlanExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            </button>
+
+                            {/* Feature List (Always visible on Desktop; toggled or default on Mobile) */}
+                            <div className={cn("flex-1 pr-1 space-y-2", !isPlanExpanded && "hidden sm:block")}>
                                 {plan.features.map((feature, fIdx) => (
                                     <div key={fIdx} className="flex items-start gap-2.5 group/feat min-w-0">
                                         <div className={cn("p-1 rounded-full mt-0.5 border shrink-0 transition-colors", plan.popular ? "text-[#D4FF00] border-[#D4FF00]/20 bg-[#D4FF00]/5" : "text-white/40 border-white/10 bg-white/[0.02]")}>
@@ -363,8 +512,8 @@ const PricingPage = () => {
                                                                         {credits}
                                                                     </strong>
                                                                     <span>
-                                                                        {rest.split(/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles|Nano Banana Images|Nano Banana)/gi).map((part, idx) => {
-                                                                            if (/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles|Nano Banana Images|Nano Banana)/i.test(part)) {
+                                                                        {rest.split(/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles|Nano Banana Images|Nano Banana|Remix Studio|Object Swap|GPT 2.5)/gi).map((part, idx) => {
+                                                                            if (/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles|Nano Banana Images|Nano Banana|Remix Studio|Object Swap|GPT 2.5)/i.test(part)) {
                                                                                 return (
                                                                                     <strong key={idx} className="text-[#D4FF00] font-black bg-gradient-to-r from-[#D4FF00]/10 to-emerald-500/10 border border-[#D4FF00]/30 px-1.5 py-0.5 rounded text-[8.5px] sm:text-[9px] mx-0.5 inline-block shadow-[0_0_10px_rgba(212,255,0,0.15)] uppercase tracking-wider">
                                                                                         {part}
@@ -382,8 +531,8 @@ const PricingPage = () => {
                                                 </>
                                             ) : (
                                                 <>
-                                                     {feature.split(/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles|Nano Banana Images|Nano Banana)/gi).map((part, idx) => {
-                                                         if (/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles|Nano Banana Images|Nano Banana)/i.test(part)) {
+                                                     {feature.split(/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles|Nano Banana Images|Nano Banana|Remix Studio|Object Swap|GPT 2.5)/gi).map((part, idx) => {
+                                                         if (/(Seedance|Motion Control|Cinematic|Realistic UGC|UGC|No Prompting|Preloaded Templates|Commercial Ads|Reference Board|Soul Images & Video|Soul Images|Soul Video|AI Agent|Consistent Character|Consistent Characters|Storyboard in a click|Storyboard|Angles in a click|Camera Angles|Angles|Nano Banana Images|Nano Banana|Remix Studio|Object Swap|GPT 2.5)/i.test(part)) {
                                                              return (
                                                                 <strong key={idx} className="text-[#D4FF00] font-black bg-gradient-to-r from-[#D4FF00]/10 to-emerald-500/10 border border-[#D4FF00]/30 px-1.5 py-0.5 rounded text-[8.5px] sm:text-[9px] mx-0.5 inline-block shadow-[0_0_10px_rgba(212,255,0,0.15)] uppercase tracking-wider">
                                                                     {part}
@@ -433,84 +582,131 @@ const PricingPage = () => {
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 w-full max-w-full py-1 box-border">
-                    {[
-                        { id: 'pack_starter', name: 'Starter Fuel', price: '₹299', originalPrice: '₹399', discount: '25% OFF', credits: 250, originalCredits: null, desc: 'Quick Boost · 250 Shorts', link: 'https://rzp.io/rzp/WhaNtMa', popular: false, badge: 'Quick Boost' },
-                        { id: 'pack_creator', name: 'Creator Pro', price: '₹999', originalPrice: '₹1,499', discount: '33% OFF', credits: 1000, originalCredits: null, desc: '1:1 Standard · 1,000 Shorts', link: 'https://rzp.io/rzp/4U0cJGRV', popular: true, badge: 'MOST POPULAR' },
-                        { id: 'pack_studio', name: 'Studio Master', price: '₹2,499', originalPrice: '₹3,499', discount: '29% OFF', credits: 2600, originalCredits: 2500, desc: '+100 Bonus Shorts (2,600 Total)', bonus: '+100 BONUS', link: 'https://rzp.io/rzp/nM3CK28p', popular: false, badge: 'PRO STUDIO · 2,600 SHORTS' },
-                        { id: 'pack_enterprise', name: 'Enterprise Bulk', price: '₹4,999', originalPrice: '₹6,999', discount: '29% OFF', credits: 5500, originalCredits: 5000, desc: '+500 Bonus Shorts (5,500 Total)', bonus: '+500 BONUS', link: 'https://rzp.io/rzp/bcCR05bt', popular: false, badge: 'BEST VALUE · +500 BONUS' },
-                        { id: 'pack_agency', name: 'Agency Max', price: '₹9,999', originalPrice: '₹14,999', discount: '33% OFF', credits: 11000, originalCredits: 10000, desc: '+1,000 Bonus Shorts (11k Total)', bonus: '+1,000 BONUS', link: 'https://rzp.io/rzp/fLdtNkEx', popular: false, badge: 'MAX VOLUME · +1,000 BONUS' }
-                    ].map((topup) => (
-                        <div key={topup.id} className={cn(
-                            "w-full max-w-full p-3.5 sm:p-4 rounded-xl border flex flex-col justify-between transition-all duration-300 box-border gap-3 group hover:scale-[1.02]",
-                            topup.popular ? "bg-[#D4FF00]/[0.06] border-[#D4FF00]/50 shadow-[0_0_25px_rgba(212,255,0,0.08)]" : "bg-white/[0.02] border-white/10 hover:border-white/20"
-                        )}>
-                            <div className="space-y-2.5">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{topup.name}</span>
-                                    <span className={cn(
-                                        "text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full",
-                                        topup.popular ? "bg-[#D4FF00] text-black" : "bg-white/10 text-zinc-300"
-                                    )}>
-                                        {topup.badge}
-                                    </span>
-                                </div>
+                    {topupPacks.map((topup) => {
+                        const isExpanded = !!expandedPacks[topup.id];
 
-                                <div className="space-y-1.5">
-                                    {/* AMOUNT - BIGGER SIZE */}
-                                    <div className="flex items-baseline gap-2 flex-wrap">
-                                        <span className="text-2xl sm:text-3xl font-black italic tracking-tight text-white">{topup.price}</span>
-                                        {topup.originalPrice && (
-                                            <span className="text-xs sm:text-sm text-zinc-500 line-through font-mono font-medium">
-                                                {topup.originalPrice}
-                                            </span>
-                                        )}
-                                        {topup.discount && (
-                                            <span className="text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.15)]">
-                                                {topup.discount}
-                                            </span>
-                                        )}
+                        return (
+                            <div key={topup.id} className={cn(
+                                "w-full max-w-full p-3.5 sm:p-4 rounded-xl border flex flex-col justify-between transition-all duration-300 box-border gap-3 group hover:scale-[1.02]",
+                                topup.popular ? "bg-[#D4FF00]/[0.06] border-[#D4FF00]/50 shadow-[0_0_25px_rgba(212,255,0,0.08)]" : "bg-white/[0.02] border-white/10 hover:border-white/20"
+                            )}>
+                                <div className="space-y-2.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{topup.name}</span>
+                                        <span className={cn(
+                                            "text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full",
+                                            topup.popular ? "bg-[#D4FF00] text-black" : "bg-white/10 text-zinc-300"
+                                        )}>
+                                            {topup.badge}
+                                        </span>
                                     </div>
 
-                                    {/* SHORTS - SMALLER SIZE */}
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#D4FF00]/10 border border-[#D4FF00]/25 text-[#D4FF00] font-black text-xs sm:text-sm">
-                                            <Zap size={11} className="fill-current" />
-                                            <span>{topup.credits.toLocaleString()} Shorts</span>
+                                    <div className="space-y-1.5">
+                                        {/* AMOUNT - BIGGER SIZE */}
+                                        <div className="flex items-baseline gap-2 flex-wrap">
+                                            <span className="text-2xl sm:text-3xl font-black italic tracking-tight text-white">{topup.price}</span>
+                                            {topup.originalPrice && (
+                                                <span className="text-xs sm:text-sm text-zinc-500 line-through font-mono font-medium">
+                                                    {topup.originalPrice}
+                                                </span>
+                                            )}
+                                            {topup.discount && (
+                                                <span className="text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.15)]">
+                                                    {topup.discount}
+                                                </span>
+                                            )}
                                         </div>
-                                        {topup.bonus && (
-                                            <span className="text-[8.5px] font-mono font-black text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded">
-                                                {topup.bonus}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
 
-                                <p className="text-[10px] text-zinc-400 font-medium">
-                                    {topup.desc}
-                                </p>
+                                        {/* SHORTS - SMALLER SIZE */}
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#D4FF00]/10 border border-[#D4FF00]/25 text-[#D4FF00] font-black text-xs sm:text-sm">
+                                                <Zap size={11} className="fill-current" />
+                                                <span>{topup.credits.toLocaleString()} Shorts</span>
+                                            </div>
+                                            {topup.bonus && (
+                                                <span className="text-[8.5px] font-mono font-black text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                                                    {topup.bonus}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <p className="text-[10px] text-zinc-400 font-medium">
+                                        {topup.desc}
+                                    </p>
+
+                                    {/* Dropdown Toggle: What You Get */}
+                                    <button
+                                        type="button"
+                                        onClick={() => togglePack(topup.id)}
+                                        className="w-full py-1.5 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[10px] font-bold flex items-center justify-between transition-colors cursor-pointer group/btn"
+                                    >
+                                        <span className="flex items-center gap-1.5 text-[#D4FF00]">
+                                            <Sparkles size={11} />
+                                            <span>{isExpanded ? "Hide What's Included" : "What You Get (Deliverables)"}</span>
+                                        </span>
+                                        {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                    </button>
+
+                                    {/* Expandable Deliverables List */}
+                                    <AnimatePresence>
+                                        {isExpanded && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                transition={{ duration: 0.25, ease: 'easeInOut' }}
+                                                className="overflow-hidden space-y-1.5 pt-1 border-t border-white/5"
+                                            >
+                                                {topup.deliverables.map((item, dIdx) => (
+                                                    <div
+                                                        key={dIdx}
+                                                        className={cn(
+                                                            "flex items-center justify-between p-1.5 rounded-md text-[9.5px] border gap-1.5",
+                                                            item.highlight
+                                                                ? "bg-[#D4FF00]/10 border-[#D4FF00]/30 text-white"
+                                                                : "bg-black/40 border-white/5 text-zinc-300"
+                                                        )}
+                                                    >
+                                                        <span className="flex items-center gap-1 min-w-0 font-medium truncate">
+                                                            <span>{item.icon}</span>
+                                                            <span className="truncate">{item.label}</span>
+                                                        </span>
+                                                        <span className={cn(
+                                                            "font-bold shrink-0 text-[9px] uppercase",
+                                                            item.highlight ? "text-[#D4FF00] font-black" : "text-white"
+                                                        )}>
+                                                            {item.value}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                                
+                                <button 
+                                    onClick={() => {
+                                        if (topup.link) {
+                                            const userIdLink = userProfile?.id ? `?client_id=${userProfile.id}` : "";
+                                            window.open(`${topup.link}${userIdLink}`, "_blank");
+                                        } else {
+                                            alert("Purchasing: " + topup.name);
+                                        }
+                                    }}
+                                    className={cn(
+                                        "w-full text-[10px] font-black uppercase tracking-widest py-2 rounded-lg transition-all shrink-0 cursor-pointer flex items-center justify-center gap-1 active:scale-95",
+                                        topup.popular 
+                                            ? "bg-[#D4FF00] text-black hover:bg-[#e6ff00] shadow-[0_0_15px_rgba(212,255,0,0.3)]" 
+                                            : "bg-white/10 text-white hover:bg-white/20 border border-white/10"
+                                    )}
+                                >
+                                    <Zap size={11} className="fill-current" />
+                                    <span>Get {topup.credits.toLocaleString()}⚡</span>
+                                </button>
                             </div>
-                            
-                            <button 
-                                onClick={() => {
-                                    if (topup.link) {
-                                        const userIdLink = userProfile?.id ? `?client_id=${userProfile.id}` : "";
-                                        window.open(`${topup.link}${userIdLink}`, "_blank");
-                                    } else {
-                                        alert("Purchasing: " + topup.name);
-                                    }
-                                }}
-                                className={cn(
-                                    "w-full text-[10px] font-black uppercase tracking-widest py-2 rounded-lg transition-all shrink-0 cursor-pointer flex items-center justify-center gap-1 active:scale-95",
-                                    topup.popular 
-                                        ? "bg-[#D4FF00] text-black hover:bg-[#e6ff00] shadow-[0_0_15px_rgba(212,255,0,0.3)]" 
-                                        : "bg-white/10 text-white hover:bg-white/20 border border-white/10"
-                                )}
-                            >
-                                <Zap size={11} className="fill-current" />
-                                <span>Get {topup.credits.toLocaleString()}⚡</span>
-                            </button>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         </div>
