@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../../store';
 import { useAvatarStudio } from '../../hooks/useAvatarStudio';
 import { useShorts } from '../../hooks/useShorts';
