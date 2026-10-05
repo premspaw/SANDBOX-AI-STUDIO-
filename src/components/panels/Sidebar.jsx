@@ -170,8 +170,8 @@ export function Sidebar({ activeTab, setActiveTab, isCollapsed, toggleCollapse }
             >
                 {navItems.filter(item => {
                     if (isAdmin) return true;
-                    // Regular users see ONLY UGC Engine and Avatar Studio
-                    const allowedForRegular = new Set(['ugc', 'avatar']);
+                    // Regular users see UGC Engine, Avatar Studio, and Studio Generator
+                    const allowedForRegular = new Set(['ugc', 'avatar', 'studio']);
                     return allowedForRegular.has(item.id);
                 }).map((item) => (
                     <SidebarNavItem

@@ -243,26 +243,17 @@ export const useAppStore = create((set, get) => ({
                     });
                 });
 
-                // Pin recently-added local items (added within last 30s) to the top
-                // even after server re-fetch, preventing them from disappearing during
-                // the server round-trip window.
-                const now = Date.now();
+                // Retain all locally added items (in unifiedGallery) that aren't yet in the server map
+                // so newly generated videos never vanish during server fetch round-trips.
                 const currentLocal = get().unifiedGallery || [];
-                const recentLocal = currentLocal.filter(item => {
-                    if (!item || !item.url) return false;
-                    const age = now - (item.timestamp || item.createdAt || 0);
-                    return age < 30000; // within 30 seconds
-                });
-
-                // Merge: server items first (for dedup), then fill in any local-only items
-                recentLocal.forEach(item => {
+                currentLocal.forEach(item => {
                     if (!item || !item.url) return;
                     if (!map.has(item.url)) {
                         map.set(item.url, item);
                     }
                 });
 
-                const merged = Array.from(map.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                const merged = Array.from(map.values()).sort((a, b) => (b.timestamp || b.createdAt || 0) - (a.timestamp || a.createdAt || 0));
                 set({ unifiedGallery: merged, isGalleryLoading: false });
 
                 // Sync to cs_studio_gallery for instant offline recovery
@@ -284,8 +275,9 @@ export const useAppStore = create((set, get) => ({
     addUnifiedAsset: (asset) => {
         if (!asset || !asset.url) return;
         const isVid = asset.type === 'video' || (typeof asset.url === 'string' && (asset.url.includes('.mp4') || asset.url.includes('.webm')));
+        const now = Date.now();
         const normalized = {
-            id: asset.id || `asset_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+            id: asset.id || `asset_${now}_${Math.random().toString(36).substr(2, 6)}`,
             type: isVid ? 'video' : 'image',
             url: asset.url,
             thumbUrl: asset.thumbUrl || asset.url,
@@ -296,8 +288,8 @@ export const useAppStore = create((set, get) => ({
             aspect: asset.aspect || asset.aspectRatio || '16:9',
             resolution: asset.resolution || '720p',
             duration: asset.duration || 4,
-            timestamp: asset.timestamp || Date.now(),
-            createdAt: asset.timestamp || Date.now(),
+            timestamp: now,
+            createdAt: now,
             folder: asset.folder || (asset.url.includes('/marketing/') ? 'marketing' : asset.url.includes('/ugc/') ? 'ugc' : 'studio'),
             category: asset.category || 'generation',
             projectId: asset.projectId || get().activeProjectId || 'default',

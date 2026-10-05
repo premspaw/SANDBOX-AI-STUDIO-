@@ -300,7 +300,16 @@ export function useUGCGallery(currentUserId: string) {
   // After updating (e.g. blob→https URL swap), re-dedup to remove any URL twin.
   const updateGalleryItem = useCallback((id: string, updates: Partial<GalleryItem>) => {
     setGallery(prev => {
-      const next = prev.map(item => item.id === id ? { ...item, ...updates } : item);
+      const next = prev.map(item => {
+        if (item.id === id) {
+          return {
+            ...item,
+            ...updates,
+            createdAt: updates.createdAt || (updates.url && !updates.loading ? Date.now() : item.createdAt || Date.now())
+          };
+        }
+        return item;
+      });
       const deduped = dedup(next);
       persistToLS(deduped, currentUserId);
       saveGalleryToIDB(deduped);

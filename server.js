@@ -2229,8 +2229,21 @@ app.post('/api/webhook/razorpay',
         if (payload.event === 'payment.captured' || payload.event === 'order.paid') {
             const payment = payload.payload.payment.entity;
             const amount_in_rs = payment.amount / 100;
-            const userId = payment.notes?.client_id;
+            let userId = payment.notes?.client_id || payment.notes?.user_id;
+            const customerEmail = payment.email;
             const transaction_id = payment.id || payment.order_id || 'N/A';
+
+            if (!userId && customerEmail && supabaseAdmin) {
+                const { data: profileByEmail } = await supabaseAdmin
+                    .from('profiles')
+                    .select('id')
+                    .eq('email', customerEmail)
+                    .maybeSingle();
+                if (profileByEmail) {
+                    userId = profileByEmail.id;
+                    console.log(`[RAZORPAY_WEBHOOK] Resolved userId ${userId} via customer email ${customerEmail}`);
+                }
+            }
 
             if (userId) {
                 let creditsToAdd = 0;
@@ -2279,6 +2292,8 @@ app.post('/api/webhook/razorpay',
                     await supabaseAdmin.from('billing_history').insert({ user_id: userId, plan_name: planName, amount: amount_in_rs, status: 'SUCCESS', transaction_id });
                     await supabaseAdmin.from('shorts_transactions').insert({ user_id: userId, amount: creditsToAdd, action_type: 'razorpay_payment', reason: `Purchase: ${planName}` });
                 }
+            } else {
+                console.warn(`[RAZORPAY_WEBHOOK] Payment received (${transaction_id}) but could not match any user_id or email (${customerEmail})`);
             }
         }
         res.status(200).json({ success: true });
