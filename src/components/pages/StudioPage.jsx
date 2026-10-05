@@ -1034,11 +1034,12 @@ export default function StudioPage() {
   // Poll Seedance generation task until completed
   const pollSeedanceTask = async (taskId, activePrompt, activeRatio, engine, tempId) => {
     const engineLabel = engine.includes('fast') ? 'Seedance Fast' : engine.includes('mini') ? 'Seedance Mini' : engine.includes('2.5') ? 'Seedance 2.5 Pro' : 'Seedance 2.0 Pro';
+    const targetProj = (activeProjectId === 'all' || !activeProjectId) ? 'default' : activeProjectId;
 
     for (let i = 0; i < 120; i++) {
       await new Promise(r => setTimeout(r, 5000));
       try {
-        const res = await fetch(getApiUrl(`/api/seedance/status/${taskId}?userId=${userId || ''}&aspectRatio=${activeRatio}&engine=${engine}&projectId=${activeProjectId}`));
+        const res = await fetch(getApiUrl(`/api/seedance/status/${taskId}?userId=${userId || ''}&aspectRatio=${encodeURIComponent(activeRatio)}&engine=${encodeURIComponent(engine)}&projectId=${encodeURIComponent(targetProj)}&prompt=${encodeURIComponent(activePrompt || '')}`));
         if (!res.ok) continue;
         const json = await res.json();
         const st = json.status;
@@ -1046,11 +1047,35 @@ export default function StudioPage() {
         if (st === 'completed') {
           const url = json.url || json.videoUrl || json.video_url || json.resultUrl || json.data?.url;
           if (url) {
-            setGallery(prev => prev.map(item => item.id === tempId ? {
-              ...item,
+            const completedAsset = {
+              id: tempId || `asset_${Date.now()}`,
+              type: 'video',
+              url: url,
+              prompt: activePrompt || 'Seedance Video',
+              name: activePrompt?.slice(0, 30) || `${engineLabel} Video`,
+              engine: engineLabel,
+              aspectRatio: activeRatio,
+              aspect: activeRatio,
+              timestamp: Date.now(),
+              createdAt: Date.now(),
               status: 'completed',
-              url
-            } : item));
+              folder: 'studio',
+              category: 'generation',
+              projectId: targetProj
+            };
+
+            // 1. Add to Universal Unified Gallery (persists across all studios, offline storage & sync)
+            useAppStore.getState().addUnifiedAsset(completedAsset);
+
+            // 2. Add to Project Box / Vault
+            try {
+              useAppStore.getState().addProjectAsset(completedAsset, targetProj);
+            } catch (_) {}
+
+            // 3. Clear from pending jobs & update local gallery
+            setLocalPendingJobs(prev => prev.filter(p => p.id !== tempId));
+            setGallery(prev => prev.map(item => item.id === tempId ? completedAsset : item));
+
             const showToast = useAppStore.getState().showToast;
             if (showToast) showToast(`${engineLabel} video rendered!`, 'success');
             return;
@@ -1834,33 +1859,31 @@ export default function StudioPage() {
           // If backend completed synchronously (e.g. Higgsfield withPolling: true)
           if (data.status === 'completed' && (data.videoUrl || data.url)) {
             const finalUrl = data.videoUrl || data.url;
-            setGallery(prev => [
-              {
-                id: data.requestId || `gen_${Date.now()}`,
-                type: 'video',
-                url: finalUrl,
-                prompt: promptToUse,
-                engine: data.engine || engineToUse,
-                aspectRatio: activeRatio,
-                timestamp: Date.now(),
-                projectId: targetProj
-              },
-              ...prev.filter(item => item.id !== tempId)
-            ]);
+            const completedAsset = {
+              id: data.requestId || tempId || `gen_${Date.now()}`,
+              type: 'video',
+              url: finalUrl,
+              prompt: promptToUse,
+              name: promptToUse?.slice(0, 30) || 'Studio Video',
+              engine: data.engine || engineToUse,
+              aspectRatio: activeRatio,
+              aspect: activeRatio,
+              timestamp: Date.now(),
+              createdAt: Date.now(),
+              status: 'completed',
+              folder: 'studio',
+              category: 'generation',
+              projectId: targetProj
+            };
+
+            useAppStore.getState().addUnifiedAsset(completedAsset);
             try {
-              useAppStore.getState().addProjectAsset({
-                type: 'video',
-                category: 'generation',
-                url: finalUrl,
-                prompt: promptToUse,
-                name: promptToUse?.slice(0, 30) || 'Studio Video',
-                engine: data.engine || engineToUse,
-                aspect: activeRatio,
-                projectId: targetProj
-              }, targetProj);
-            } catch (_) {
-              void 0;
-            }
+              useAppStore.getState().addProjectAsset(completedAsset, targetProj);
+            } catch (_) {}
+
+            setLocalPendingJobs(prev => prev.filter(item => item.id !== tempId));
+            setGallery(prev => [completedAsset, ...prev.filter(item => item.id !== tempId)]);
+
             const showToast = useAppStore.getState().showToast;
             if (showToast) showToast("Seedance 2.5 video generated successfully!", "success");
             return;

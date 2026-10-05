@@ -5,6 +5,7 @@ import ffmpegStatic from 'ffmpeg-static';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { isValidUuid } from '../utils/validateUuid.js';
 
 ffmpeg.setFfmpegPath(ffmpegStatic);
 
@@ -101,7 +102,7 @@ const getHfClient = (credentials) => {
 
 export default function createRouter(deps) {
     const router = express.Router();
-    const { uploadVideoToSupabase, resolveToPublicUrl, requireAuth, consumeCredits, claimOrCreateSpend, supabase, supabaseAdmin } = deps;
+    const { uploadVideoToSupabase, resolveToPublicUrl, requireAuth, consumeCredits, claimOrCreateSpend, supabase, supabaseAdmin, saveLocalAsset } = deps;
 
     // Configure Higgsfield credentials
     const hfCredentials = process.env.HF_CREDENTIALS || process.env.HF_KEY;
@@ -932,15 +933,31 @@ export default function createRouter(deps) {
                                 if (ab && ab.byteLength > 0) {
                                     console.log(`[SEEDANCE-STATUS-ARK] Downloaded ${(ab.byteLength / 1024 / 1024).toFixed(1)}MB, uploading to Supabase...`);
                                     const extraMeta = projectId ? { projectId } : {};
-                                    supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, folder, undefined, undefined, extraMeta);
+                                    supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, folder || 'generated', undefined, 'Seedance', extraMeta);
                                 }
                             }
                         } catch (dlErr) {
                             console.warn(`[SEEDANCE-STATUS-ARK] Download/upload failed (${dlErr.message}), returning Ark URL directly`);
                             supabaseUrl = finalUrl;
+                            if (typeof saveLocalAsset === 'function' && userId) {
+                                try {
+                                    saveLocalAsset({
+                                        name: `seedance_ark_${userId}_${Date.now()}.mp4`,
+                                        type: 'video',
+                                        url: supabaseUrl,
+                                        user_id: userId,
+                                        project_id: projectId || 'default',
+                                        aspect: aspectRatio || '16:9',
+                                        metadata: { folder: folder || 'generated', projectId, prompt: req.query.prompt || '', engine: engine || 'Seedance' },
+                                        prompt: req.query.prompt || '',
+                                        engine: engine || 'Seedance'
+                                    });
+                                } catch (saveErr) { /* ignore */ }
+                            }
                         }
                     }
 
+                    console.log(`[SEEDANCE-STATUS-ARK] ✅ Completed | URL: ${supabaseUrl.substring(0, 80)}...`);
                     return res.json({ status: 'completed', url: supabaseUrl });
                 } else if (state === 'failed') {
                     return res.json({ status: 'failed', error: pollData.error?.message || 'Generation failed' });
@@ -1025,15 +1042,35 @@ export default function createRouter(deps) {
                             if (ab && ab.byteLength > 0) {
                                 console.log(`[SEEDANCE-STATUS-KIE] Downloaded ${(ab.byteLength / 1024 / 1024).toFixed(1)}MB, uploading to Supabase...`);
                                 const extraMeta = projectId ? { projectId } : {};
-                                supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, folder, undefined, undefined, extraMeta);
+                                supabaseUrl = await uploadVideoToSupabase(Buffer.from(ab), userId, aspectRatio, folder || 'generated', undefined, 'Seedance', extraMeta);
                             }
                         }
                     } catch (dlErr) {
                         console.warn(`[SEEDANCE-STATUS-KIE] Download/upload failed (${dlErr.message}), returning Kie URL directly`);
                         supabaseUrl = finalUrl;
+                        // Fallback: Save Kie CDN URL directly to local DB so it shows in gallery on reload
+                        if (typeof saveLocalAsset === 'function' && userId) {
+                            try {
+                                saveLocalAsset({
+                                    name: `seedance_${userId}_${Date.now()}.mp4`,
+                                    type: 'video',
+                                    url: supabaseUrl,
+                                    user_id: userId,
+                                    project_id: projectId || 'default',
+                                    aspect: aspectRatio || '16:9',
+                                    metadata: { folder: folder || 'generated', projectId, prompt: req.query.prompt || '', engine: engine || 'Seedance' },
+                                    prompt: req.query.prompt || '',
+                                    engine: engine || 'Seedance'
+                                });
+                                console.log(`[SEEDANCE-STATUS-KIE] Saved Kie CDN URL to local fallback DB for user ${userId}`);
+                            } catch (saveErr) {
+                                console.warn(`[SEEDANCE-STATUS-KIE] Local fallback DB save failed: ${saveErr.message}`);
+                            }
+                        }
                     }
                 }
 
+                console.log(`[SEEDANCE-STATUS-KIE] ✅ Completed | URL: ${supabaseUrl.substring(0, 80)}...`);
                 return res.json({ status: 'completed', url: supabaseUrl });
             } else if (state === 'fail' || state === 'failed' || state === 'error') {
                 return res.json({ status: 'failed', error: pollData.data?.failMsg || pollData.data?.failCode || 'Kie.ai generation failed' });

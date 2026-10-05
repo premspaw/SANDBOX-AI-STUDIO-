@@ -2446,15 +2446,24 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           if (url) {
             const targetProj = (activeProjectId === 'all' || !activeProjectId) ? 'default' : activeProjectId;
             const finishedItem = {
-              id: tempId || Date.now(),
+              id: tempId || `cin_${Date.now()}`,
               type: 'video',
               url: url,
               prompt: activePrompt,
+              name: activePrompt?.slice(0, 30) || `${engineLabel} Video`,
               engine: engineLabel,
               aspect: activeRatio,
+              aspectRatio: activeRatio,
               ts: Date.now(),
+              timestamp: Date.now(),
+              createdAt: Date.now(),
+              status: 'completed',
+              folder: 'studio',
+              category: 'generation',
               projectId: targetProj
             };
+
+            useAppStore.getState().addUnifiedAsset(finishedItem);
 
             setGallery(prev => {
               if (tempId && prev.some(item => item.id === tempId)) {
@@ -2470,7 +2479,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                 category: 'generation',
                 url: url,
                 prompt: activePrompt,
-                name: activePrompt?.slice(0, 30) || 'Cinema Video',
+                name: activePrompt?.slice(0, 30) || `${engineLabel} Video`,
                 engine: engineLabel,
                 aspect: activeRatio,
                 projectId: targetProj
