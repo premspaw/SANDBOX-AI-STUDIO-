@@ -53,8 +53,15 @@ To prevent user generation buttons from disabling due to high credit cost thresh
 - `kling`: 15 → **7**
 - `kling_motion_std`: 14 → **7**
 - `kling_motion_pro`: 18 → **9**
-- `seedance_fast` (per second): 12 → **6**
-- `seedace` (per second): 16 → **8**
+- `seedance_fast` (720p, no video): **14 / sec**
+- `seedance_fast_video` (720p, with video input): **8.5 / sec**
+- `seedance_fast_480p` (480p, no video): **7 / sec**
+- `seedance_fast_480p_video` (480p, with video input): **4 / sec**
+- `seedance_mini` (720p, no video): **4.6 / sec**
+- `seedance_mini_video` (720p, with video input): **2.8 / sec**
+- `seedance_mini_480p` (480p, no video): **2.1 / sec**
+- `seedance_mini_480p_video` (480p, with video input): **1.35 / sec**
+- `seedace` (per second): **8**
 - `identity_kit`: 15 → **7**
 - `movie_matrix`: 10 → **5**
 
@@ -69,9 +76,9 @@ To prevent user generation buttons from disabling due to high credit cost thresh
 - `veo` fast: 20 → **10**
 - `kling` standard: 15 → **7**
 - `kling` motion control: pro: 18 → **9**, std: 14 → **7**
-- `seedance` fast: 480p: 6 (or 9) → **3 (or 4)**, 720p+: 12 (or 20) → **6 (or 10)**
+- `seedance` fast (720p / 480p): **14 / 8.5 / 7 / 4** (per second based on video ref input)
+- `seedance` mini (720p / 480p): **4.6 / 2.8 / 2.1 / 1.35** (per second based on video ref input)
 - `seedance` pro: 4K: 124 → **62**, 1080p: 61 → **30**, 480p: 11 → **5**, default: 24 → **12**
-- `seedance` mini: 480p: 6 → **3**, other: 12 → **6**
 - `openai`: 5 → **2**
 - `gpt-image-2`: high: 5 → **3**, medium: 3 → **2**, low: 2 → **1**
 

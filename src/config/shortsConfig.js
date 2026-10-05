@@ -25,8 +25,15 @@ export const SHORTS_COST = {
     kling_motion_pro: 9,
     video_upscale_per_second: 5,
 
-    // Seedance (Base Cost Per Second)
-    seedance_fast: 6,
+    // Seedance (Base Cost Per Second with 30% margin)
+    seedance_fast: 14,
+    seedance_fast_video: 8.5,
+    seedance_fast_480p: 7,
+    seedance_fast_480p_video: 4,
+    seedance_mini: 4.6,
+    seedance_mini_video: 2.8,
+    seedance_mini_480p: 2.1,
+    seedance_mini_480p_video: 1.35,
     seedace: 8,
 
     // Storyboard
@@ -69,7 +76,12 @@ export function calculateEngineCredits(engineId, options = {}) {
         motionRefVideoDuration,
         extensionSourceVideo,
         extensionDuration,
-        seedanceSubModel
+        seedanceSubModel,
+        hasVideoInput,
+        hasVideoRef,
+        sourceVideo,
+        refVideo,
+        refVideos
     } = options;
 
     if (activeTab === 'image') {
@@ -127,8 +139,8 @@ export function calculateEngineCredits(engineId, options = {}) {
         }
         const isMini = engLower.includes('mini') || seedanceSubModel === 'seedance-mini';
         const costPerSec = isMini
-            ? (resLower === '480p' ? 10 : 15)
-            : (resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30));
+            ? (resLower === '480p' ? 2.1 : 4.6)
+            : (resLower === '1080p' ? 70 : (resLower === '480p' ? 7 : 14));
         return Math.ceil(costPerSec * dur);
     }
 
@@ -171,14 +183,17 @@ export function calculateEngineCredits(engineId, options = {}) {
         return Math.ceil(costPerSec * dur);
     }
 
-    // 7. Seedance (2.0 / Fast / Mini)
+    // 7. Seedance (2.0 Fast / Mini / 2.5) — 30% margin over Kie.ai raw wholesale costs
     if (panelTab === 'seedance' || panelTab === 'seedance-2.5' || engLower.includes('seedan') || engLower.includes('seedac')) {
         const isMini = engLower.includes('mini') || seedanceSubModel === 'seedance-mini';
         const is25 = engLower.includes('2.5') || panelTab === 'seedance-2.5';
         const isSeedace = engLower.includes('seedace') || seedanceSubModel === 'seedace';
+        const hasVideo = Boolean(hasVideoInput || hasVideoRef || sourceVideo || refVideo || (Array.isArray(refVideos) && refVideos.length > 0) || (Array.isArray(options.reference_video_urls) && options.reference_video_urls.length > 0));
 
         if (isMini) {
-            const costPerSec = resLower === '480p' ? 10 : 15;
+            const costPerSec = hasVideo
+                ? (resLower === '480p' ? 1.35 : 2.8)
+                : (resLower === '480p' ? 2.1 : 4.6);
             return Math.ceil(costPerSec * dur);
         }
         if (isSeedace) {
@@ -189,8 +204,10 @@ export function calculateEngineCredits(engineId, options = {}) {
             const costPerSec = resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30);
             return Math.ceil(costPerSec * dur);
         }
-        // seedance-fast / default seedance
-        const costPerSec = resLower === '480p' ? 15 : 25;
+        // Seedance 2.0 Fast (no video: 720p=14/s, 480p=7/s | with video: 720p=8.5/s, 480p=4/s)
+        const costPerSec = hasVideo
+            ? (resLower === '480p' ? 4 : 8.5)
+            : (resLower === '480p' ? 7 : 14);
         return Math.ceil(costPerSec * dur);
     }
 

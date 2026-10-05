@@ -214,19 +214,29 @@ export default function createRouter(deps) {
             requiredCredits = 20; // fallback default
             const durationNum = Number(duration) || 5;
             const resLower = (resolution || '720p').toLowerCase();
+            const hasVideo = Boolean(
+                (reference_video_urls && reference_video_urls.length > 0) ||
+                (ref_videos && ref_videos.length > 0) ||
+                req.body.sourceVideo ||
+                req.body.refVideo
+            );
 
-            if (engine === 'seedance-fast') {
-                const costPerSec = resLower === '480p' ? 15 : 25;
-                requiredCredits = costPerSec * durationNum;
+            if (engine === 'seedance-fast' || engine === 'bytedance/seedance-2-fast') {
+                const costPerSec = hasVideo
+                    ? (resLower === '480p' ? 4 : 8.5)
+                    : (resLower === '480p' ? 7 : 14);
+                requiredCredits = Math.ceil(costPerSec * durationNum);
             } else if (engine === 'seedace') {
                 const costPerSec = resLower === '4k' ? 140 : (resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30));
-                requiredCredits = costPerSec * durationNum;
-            } else if (engine === 'seedance-mini') {
-                const costPerSec = resLower === '480p' ? 10 : 15;
-                requiredCredits = costPerSec * durationNum;
+                requiredCredits = Math.ceil(costPerSec * durationNum);
+            } else if (engine === 'seedance-mini' || engine === 'bytedance/seedance-2-mini') {
+                const costPerSec = hasVideo
+                    ? (resLower === '480p' ? 1.35 : 2.8)
+                    : (resLower === '480p' ? 2.1 : 4.6);
+                requiredCredits = Math.ceil(costPerSec * durationNum);
             } else if (engine === 'seedance-2.5' || engine === 'seedance-2-5' || engine === 'bytedance/seedance-2-5') {
                 const costPerSec = resLower === '1080p' ? 70 : (resLower === '480p' ? 15 : 30);
-                requiredCredits = costPerSec * durationNum;
+                requiredCredits = Math.ceil(costPerSec * durationNum);
             }
 
             if (typeof req.body.creditCost === 'number' && req.body.creditCost > 0) {
