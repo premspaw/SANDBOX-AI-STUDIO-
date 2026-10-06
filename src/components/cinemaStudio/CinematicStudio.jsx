@@ -4454,7 +4454,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 items-start">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-1.5 sm:gap-2 items-start">
               {/* ── VIDEO GALLERY GRID ── */}
               {displayGalleryItems.map((item) => (
                 <GalleryItemCard

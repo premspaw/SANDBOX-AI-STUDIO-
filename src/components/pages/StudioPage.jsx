@@ -3398,7 +3398,7 @@ export default function StudioPage() {
         </div>
 
         {/* Gallery Grid Area — Dynamic Tight-Gap Masonry Flow */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-1.5 sm:p-2.5 bg-[#07070a]" style={{ minHeight: 0 }}>
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-1 sm:p-2 bg-[#07070a]" style={{ minHeight: 0 }}>
           {gallery.length === 0 && !isBusy ? (
             <div className="h-full min-h-[220px] sm:min-h-[280px] flex flex-col items-center justify-center text-center p-4 sm:p-6 border-2 border-dashed border-white/[0.08] rounded-2xl sm:rounded-3xl bg-white/[0.01]">
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-[#c8f135]/20 via-violet-500/10 to-transparent border border-[#c8f135]/30 flex items-center justify-center mb-3 text-[#c8f135] shadow-[0_0_20px_rgba(200,241,53,0.15)]">
@@ -3420,9 +3420,9 @@ export default function StudioPage() {
               )}
             </div>
           ) : (
-            <div className="flex gap-2 sm:gap-2.5 items-start w-full">
+            <div className="flex gap-1.5 sm:gap-2 items-start w-full">
               {masonryColumns.map((col, colIdx) => (
-                <div key={colIdx} className="flex-1 flex flex-col gap-2 sm:gap-2.5 min-w-0">
+                <div key={colIdx} className="flex-1 flex flex-col gap-1.5 sm:gap-2 min-w-0">
                   {col.map((item) => (
                     <StudioGalleryCard
                       key={item.id}
