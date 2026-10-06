@@ -1,10 +1,20 @@
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
+import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const adminLoginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: { error: 'Too many admin verification attempts. Please try again after 15 minutes.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
 
 export default function createRouter(deps) {
     const router = express.Router();
@@ -65,14 +75,18 @@ export default function createRouter(deps) {
     });
 
     // Verify admin login password (prevents shipping password in client bundle)
-    router.post('/admin/verify-login', (req, res) => {
+    // Verify admin login password (secured with strict rate limiting & timing-safe check)
+    router.post('/admin/verify-login', adminLoginLimiter, (req, res) => {
         const { password } = req.body;
         const configuredPassword = process.env.ADMIN_PASSWORD;
         if (process.env.NODE_ENV === 'production' && !configuredPassword) {
             return res.status(503).json({ error: 'Admin password is not configured' });
         }
         const correctPassword = configuredPassword || 'admin123';
-        if (password === correctPassword) {
+        const inputBuf = Buffer.from(String(password || ''));
+        const correctBuf = Buffer.from(String(correctPassword));
+        const isMatch = inputBuf.length === correctBuf.length && crypto.timingSafeEqual(inputBuf, correctBuf);
+        if (isMatch) {
             return res.json({ success: true });
         }
         return res.status(401).json({ error: 'Invalid password' });

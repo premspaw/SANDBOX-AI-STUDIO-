@@ -54,10 +54,21 @@ const getAllowedCorsOrigins = () => {
 };
 
 const isOriginAllowed = (origin) => {
-    // Allow all origins for flexible custom domain & Railway deployment
-    // In a public studio setting, it's safer to not block the frontend domains 
-    // dynamically assigned by Railway or custom domains users map.
-    return true; 
+    if (!origin) return true;
+    const allowed = getAllowedCorsOrigins();
+    try {
+        const parsed = new URL(origin);
+        if (allowed.some(a => {
+            try { return new URL(a).origin === parsed.origin; } catch (_) { return false; }
+        })) return true;
+        // Allow Railway deployment domains
+        if (parsed.hostname.endsWith('.railway.app') || parsed.hostname.endsWith('.up.railway.app')) return true;
+        // Allow ZeroLens domains
+        if (parsed.hostname === 'zerolens.in' || parsed.hostname.endsWith('.zerolens.in')) return true;
+        // Allow localhost in non-production
+        if (process.env.NODE_ENV !== 'production' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')) return true;
+    } catch (_) {}
+    return false;
 };
 
 // -------------------------------------------------------------
@@ -620,6 +631,19 @@ if (await isRedisAvailable()) {
 
 const app = express();
 app.set('trust proxy', 1);
+app.disable('x-powered-by');
+
+// Enhanced HTTP Security Headers
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    if (process.env.NODE_ENV === 'production') {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+    next();
+});
 
 const httpServer = http.createServer(app);
 const port = process.env.PORT || 3002;
@@ -2221,7 +2245,9 @@ app.post('/api/webhook/razorpay',
         const rawBody = req.body;
         const expectedSignature = crypto.createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
 
-        if (!crypto.timingSafeEqual(Buffer.from(expectedSignature, 'hex'), Buffer.from(razorpaySignature, 'hex'))) {
+        const sigBuf = Buffer.from(razorpaySignature, 'hex');
+        const expBuf = Buffer.from(expectedSignature, 'hex');
+        if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
             return res.status(401).json({ error: 'Invalid signature.' });
         }
 

@@ -19,6 +19,9 @@ export default function createRouter(deps) {
 
     router.get('/test-key-image', async (req, res) => {
         try {
+            if (process.env.NODE_ENV === 'production') {
+                return res.status(404).json({ error: 'Endpoint not found' });
+            }
             const apiKey = resolveGoogleApiKey(req) || process.env.ADMIN_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
             
             // Test 1: Generate small text to see if API key is active
@@ -414,6 +417,13 @@ export default function createRouter(deps) {
     // OpenAI Canvas: Copy Generation
     router.post('/canvas/copy', async (req, res) => {
         try {
+            try {
+                await requireAuth(req);
+            } catch (authErr) {
+                if (process.env.NODE_ENV === 'production') {
+                    return res.status(401).json({ error: 'Authentication required' });
+                }
+            }
             const { intent, tone, projectType } = req.body;
             const systemPrompt = `You are a professional marketing copywriter. Create short, bold poster copy for a ${projectType}. Tone: ${tone}. Rules: Headline max 6 words, Subtext max 10 words, CTA max 3 words. Return JSON only with keys: headline, subtext, cta.`;
             const content = await openaiChat([
@@ -431,6 +441,13 @@ export default function createRouter(deps) {
     // OpenAI Canvas: Image Generation (DALL-E 3)
     router.post('/canvas/image', async (req, res) => {
         try {
+            try {
+                await requireAuth(req);
+            } catch (authErr) {
+                if (process.env.NODE_ENV === 'production') {
+                    return res.status(401).json({ error: 'Authentication required' });
+                }
+            }
             const { prompt, width, height } = req.body;
             let size = "1024x1024";
             if (width > height) size = "1536x1024";
@@ -456,6 +473,13 @@ export default function createRouter(deps) {
     // OpenAI Canvas: AI Director Analysis
     router.post('/canvas/analyze', async (req, res) => {
         try {
+            try {
+                await requireAuth(req);
+            } catch (authErr) {
+                if (process.env.NODE_ENV === 'production') {
+                    return res.status(401).json({ error: 'Authentication required' });
+                }
+            }
             const { context, url, brandName, projectType } = req.body;
             const systemPrompt = `You are an expert Creative Director. Analyze the request for a "${projectType}".
             Input Context: "${context}"
@@ -477,6 +501,13 @@ export default function createRouter(deps) {
     // Marketing Studio: GPT-4o Prompt Generation
     router.post('/marketing/generate-prompt', async (req, res) => {
         try {
+            try {
+                await requireAuth(req);
+            } catch (authErr) {
+                if (process.env.NODE_ENV === 'production') {
+                    return res.status(401).json({ error: 'Authentication required' });
+                }
+            }
             const { category, recipeData, medicalData, specialIngredients, brandColors, selectedStyle, referenceImage } = req.body;
             const isMedical = category === 'medical';
 

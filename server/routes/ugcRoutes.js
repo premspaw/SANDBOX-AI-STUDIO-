@@ -39,10 +39,27 @@ export default function createRouter(deps) {
     // --- UGC / VIDEO ENDPOINTS ---
     router.post('/video', async (req, res) => {
         try {
+            let user;
+            try {
+                user = await requireAuth(req);
+            } catch (authErr) {
+                if (process.env.NODE_ENV === 'production') {
+                    return res.status(401).json({ error: 'Authentication required to generate video.' });
+                }
+            }
+
             const { image, script, bible, userId, duration, resolution, model, aspect_ratio } = req.body;
+            const targetUserId = user ? user.id : userId;
+
+            // Deduct credits: UGC Veo video costs 10 credits
+            if (targetUserId) {
+                const creditReason = req.body.creditReason || 'ugc_video_generation';
+                await claimOrCreateSpend(targetUserId, 10, creditReason);
+            }
+
             // Get credentials
             const vertexToken = await getVertexToken();
-            const apiKey = await resolveGoogleApiKey(req, userId, true);
+            const apiKey = await resolveGoogleApiKey(req, targetUserId, true);
             if (!vertexToken && !apiKey) {
                 throw new Error('Failed to acquire service account token or API key for Veo');
             }
@@ -305,9 +322,9 @@ export default function createRouter(deps) {
             let videoUrl = `data:video/mp4;base64,${videoBuffer.toString('base64')}`;
 
             if (uploadVideoToSupabase) {
-                console.log(`[Video API] Uploading generated video to GCS/Supabase for user: ${userId || 'anon'}`);
+                console.log(`[Video API] Uploading generated video to GCS/Supabase for user: ${targetUserId || 'anon'}`);
                 try {
-                    videoUrl = await uploadVideoToSupabase(videoBuffer, userId, validAspectRatio);
+                    videoUrl = await uploadVideoToSupabase(videoBuffer, targetUserId, validAspectRatio);
                 } catch (uploadErr) {
                     console.warn('[Video API] Failed to upload generated video to GCS/Supabase, falling back to data URL:', uploadErr.message);
                 }
@@ -793,12 +810,31 @@ Return ONLY valid JSON.`
         }
     });
 
-    // UGC assets fetch
+    // UGC assets fetch (secured: users can only fetch their own assets)
     router.get('/assets/:userId', async (req, res) => {
         try {
+            let user;
+            try {
+                user = await requireAuth(req);
+            } catch (authErr) {
+                if (process.env.NODE_ENV === 'production') {
+                    return res.status(401).json({ error: 'Authentication required to view assets.' });
+                }
+            }
+
             let { userId } = req.params;
             if (!userId || userId === 'null' || userId === 'undefined' || userId === '') {
-                userId = 'local_user';
+                userId = user ? user.id : 'local_user';
+            }
+
+            if (user && user.id !== userId) {
+                const adminClient = deps.supabaseAdmin || supabase;
+                if (adminClient) {
+                    const { data: profile } = await adminClient.from('profiles').select('role').eq('id', user.id).maybeSingle();
+                    if (profile?.role !== 'admin') {
+                        return res.status(403).json({ error: 'Forbidden: You can only view your own assets.' });
+                    }
+                }
             }
 
             let dbData = [];
