@@ -140,9 +140,9 @@ function StudioGalleryCard({
                        item.engine === 'ZeroLens Frame Extract' ||
                        (typeof item.id === 'string' && item.id.startsWith('frame_')) ||
                        (item.prompt && item.prompt.toLowerCase().startsWith('screenshot'));
-  const isSequence = item.engine?.toLowerCase().includes('sequence') ||
-                     (item.prompt && item.prompt.toLowerCase().includes('sequence')) ||
-                     item.type === 'sequence';
+  const isSequence = item.type === 'sequence' ||
+                     item.engine === 'Sequence' ||
+                     item.engine === 'Video Sequence';
 
   const cleanPromptText = (item.prompt || 'Cinematic Asset')
     .replace(/^Screenshot:\s*/i, '')

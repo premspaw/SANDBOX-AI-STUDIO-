@@ -1135,96 +1135,9 @@ export default function createRouter(deps) {
                 lastOmniError.includes('harmful content')
             );
 
-            // --- Option A.2: Vertex AI Veo Fast Fallback (Keeps video rendering 100% on Vertex AI) ---
-            // Only allow Veo Fast fallback when NO reference videos were provided.
-            // Veo Fast cannot process video references; falling back would discard the user's driving video.
-            const hasReferenceVideos = videoSlotsToProcess.length > 0 || hasAnyVideo;
-            // Veo Fast only accepts start/end frames. If MultiRef images (@image1..4) were supplied,
-            // falling back would silently generate a video that ignores every tagged reference.
-            const hasDroppableRefImages = rawRefImages.length > 0 && (isMultiReference || !primaryImageResolved);
-            if (hasDroppableRefImages && !success) {
-                console.warn(`[OMNI-I2V] Skipping Veo Fast fallback: ${rawRefImages.length} reference image(s) would be discarded.`);
-            }
-            if (!success && !isVertexPolicyViolation && token && !hasReferenceVideos && !hasDroppableRefImages) {
-                try {
-                    console.log(`[OMNI-I2V] Attempting Vertex AI Veo Fast fallback on model veo-3.1-fast-generate-001 (location: ${VERTEX_LOCATION || 'us-central1'})...`);
-                    const veoModel = 'veo-3.1-fast-generate-001';
-                    const veoEndpoint = `https://${VERTEX_LOCATION || 'us-central1'}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION || 'us-central1'}/publishers/google/models/${veoModel}:predictLongRunning`;
-                    
-                    const veoInstance = { prompt: rawTextPrompt || compiledPrompt };
-                    if (primaryImageResolved) {
-                        veoInstance.image = {
-                            bytesBase64Encoded: primaryImageResolved.data,
-                            mimeType: primaryImageResolved.mimeType || 'image/png'
-                        };
-                    }
-                    if (endImageResolved) {
-                        veoInstance.lastImage = {
-                            bytesBase64Encoded: endImageResolved.data,
-                            mimeType: endImageResolved.mimeType || 'image/png'
-                        };
-                    }
-
-                    const veoResp = await fetch(veoEndpoint, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            instances: [veoInstance],
-                            parameters: {
-                                sampleCount: 1,
-                                aspectRatio: validAspectRatio,
-                                durationSeconds: Math.min(validDuration, 8),
-                                resolution: validResolution
-                            }
-                        })
-                    });
-
-                    if (veoResp.ok) {
-                        const initData = await veoResp.json();
-                        const opName = initData.name;
-                        if (opName) {
-                            console.log(`[OMNI-I2V] [Vertex AI Veo Fallback] Operation started: ${opName}`);
-                            broadcastProgress(taskId, 2, 3, 'Rendering video sequence (Vertex AI)...');
-                            const fetchOpUrl = `https://${VERTEX_LOCATION || 'us-central1'}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION || 'us-central1'}/publishers/google/models/${veoModel}:fetchPredictOperation`;
-                            let done = false;
-                            let pollCount = 0;
-                            while (!done && pollCount < 36) {
-                                await new Promise(r => setTimeout(r, 8000));
-                                pollCount++;
-                                const pollResp = await fetch(fetchOpUrl, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                                    body: JSON.stringify({ operationName: opName })
-                                });
-                                if (pollResp.ok) {
-                                    const pollData = await pollResp.json();
-                                    if (pollData.done) {
-                                        done = true;
-                                        const b64 = pollData.response?.videos?.[0]?.bytesBase64Encoded ||
-                                                    pollData.response?.predictions?.[0]?.bytesBase64Encoded ||
-                                                    pollData.response?.generatedVideos?.[0]?.video?.bytesBase64Encoded;
-                                        if (b64) {
-                                            videoBuffer = Buffer.from(b64, 'base64');
-                                            success = true;
-                                            console.log(`[OMNI-I2V] [Vertex AI Veo Fallback] ✅ Video generated successfully (${videoBuffer.length} bytes)`);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        const errTxt = await veoResp.text().catch(() => '');
-                        console.warn(`[OMNI-I2V] [Vertex AI Veo Fallback] Failed (${veoResp.status}): ${errTxt.substring(0, 200)}`);
-                    }
-                } catch (vFallbackErr) {
-                    console.warn(`[OMNI-I2V] [Vertex AI Veo Fallback] Error: ${vFallbackErr.message}`);
-                }
-            }
-
-            // --- Option B: Multi-Key Google AI Studio Fallback (Only if not a policy block) ---
+            // Veo Fast fallback has been completely removed per architecture requirements.
+            // When Omni Flash encounters a policy violation or fails, do not silently fall back to Veo or generate text-only videos.
+            // Option B: Multi-Key Google AI Studio Fallback (Only if not a policy block)
             if (!success && !isVertexPolicyViolation) {
                 const candidateKeys = [
                     (apiKey && apiKey !== 'VERTEX_AI_CLIENT') ? apiKey : null,
