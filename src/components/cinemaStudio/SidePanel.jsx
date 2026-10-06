@@ -280,7 +280,16 @@ export const SidePanel = React.memo(({
   };
 
   useEffect(() => {
+    const handleResetCooldown = () => {
+      if (cooldownTimerRef.current) {
+        clearTimeout(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
+      }
+      setIsCooldown(false);
+    };
+    window.addEventListener('zerolens_reset_cooldown', handleResetCooldown);
     return () => {
+      window.removeEventListener('zerolens_reset_cooldown', handleResetCooldown);
       if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
     };
   }, []);
@@ -1590,12 +1599,18 @@ export const SidePanel = React.memo(({
 
     const activeRefVideoUrls = resolvedMultiVids.filter(Boolean).map(v => v.url);
     const resolvedRefVid = omniRefVideoPreview ? await resolveBlobToBase64(omniRefVideoPreview) : (activeRefVideoUrls[0] || null);
+    if (resolvedRefVid && !activeRefVideoUrls.includes(resolvedRefVid)) {
+      activeRefVideoUrls.unshift(resolvedRefVid);
+    }
 
     handleGenerate(localPrompt, engineToUse, {
       firstFrame: resolvedStart,
       lastFrame: resolvedEnd,
       reference_image_urls: [...resolvedOmniRefs, ...resolvedMultiImgs],
       reference_video_urls: activeRefVideoUrls,
+      refVideos: activeRefVideoUrls,
+      ref_videos: activeRefVideoUrls,
+      refVideo: resolvedRefVid,
       omniRefImages: resolvedOmniRefs,
       omniMultiImages: resolvedMultiImgs,
       multiImageSlots,
@@ -1637,8 +1652,12 @@ export const SidePanel = React.memo(({
       seedanceImages.filter(Boolean).map(img => resolveBlobToBase64(img))
     )).filter(Boolean);
 
+    const allCandidateVideos = [
+      ...seedanceVideos,
+      ...((omniMultiVideos || []).map(v => typeof v === 'string' ? v : (v?.url || v?.imageUrl || v?.data)))
+    ].filter(Boolean);
     const resolvedVideos = (await Promise.all(
-      seedanceVideos.filter(Boolean).map(vid => resolveBlobToBase64(vid))
+      allCandidateVideos.map(vid => resolveBlobToBase64(vid))
     )).filter(Boolean);
 
     const resolvedAudios = (await Promise.all(

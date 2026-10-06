@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   X, Loader2, Zap, Grid, Video, Image as ImageIcon, Pencil, Download, Trash2,
-  Palette, Sparkles, Film, ChevronRight, Camera, Copy, Play, Maximize2, Layers,
+  Palette, Sparkles, Film, ChevronRight, Camera, Copy, Play, Pause, Maximize2, Layers,
   FolderOpen
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -63,13 +63,38 @@ export function CinematicLightbox({
   const bufferTimeoutRef = useRef(null);
   const [isVideoBuffering, setIsVideoBuffering] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [showPlayPauseIndicator, setShowPlayPauseIndicator] = useState(null); // 'play' | 'pause' | null
+  const indicatorTimerRef = useRef(null);
+
+  // Toggle video play / pause with animated center feedback
+  const togglePlayPause = useCallback(() => {
+    const v = videoElRef.current;
+    if (!v) return;
+    if (indicatorTimerRef.current) clearTimeout(indicatorTimerRef.current);
+    if (v.paused) {
+      v.play().catch(() => {});
+      setIsPlaying(true);
+      setShowPlayPauseIndicator('play');
+    } else {
+      v.pause();
+      setIsPlaying(false);
+      setShowPlayPauseIndicator('pause');
+    }
+    indicatorTimerRef.current = setTimeout(() => {
+      setShowPlayPauseIndicator(null);
+    }, 650);
+  }, []);
 
   // When lightboxItem opens, immediately pause background gallery videos to free GPU decoders and network bandwidth
   useEffect(() => {
     if (lightboxItem) {
       setIsVideoBuffering(false);
       setIsImageLoading(true);
+      setIsPlaying(true);
+      setShowPlayPauseIndicator(null);
       if (bufferTimeoutRef.current) clearTimeout(bufferTimeoutRef.current);
+      if (indicatorTimerRef.current) clearTimeout(indicatorTimerRef.current);
       try {
         document.querySelectorAll('video').forEach(v => {
           if (v !== videoElRef.current && !v.paused) {
@@ -395,16 +420,26 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
     }
   };
 
-  // Keyboard listener for Escape key to quickly close lightbox
+  // Keyboard listener for Escape key to quickly close lightbox and Space key to toggle play/pause
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setLightboxItem(null);
+        return;
+      }
+      if (e.code === 'Space' || e.key === ' ') {
+        const activeTag = document.activeElement?.tagName;
+        const isInput = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || document.activeElement?.isContentEditable;
+        if (!isInput && lightboxItem?.type === 'video') {
+          e.preventDefault();
+          e.stopPropagation();
+          togglePlayPause();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setLightboxItem]);
+  }, [setLightboxItem, togglePlayPause, lightboxItem?.type]);
 
   // Frame Capture Helper from Video element (direct or CORS proxy)
   const captureFrameFromVideo = async (atTime) => {
@@ -801,7 +836,40 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
               )}
             </div>
           ) : (
-            <div className="relative w-full h-full flex items-center justify-center p-4">
+            <div 
+              className="relative w-full h-full flex items-center justify-center p-4 cursor-pointer select-none"
+              onClick={(e) => {
+                // If user clicked a button or interactive element, ignore
+                if (e.target.closest('button') || e.target.closest('a')) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const clickYFromBottom = rect.bottom - e.clientY;
+                // If click is in bottom ~50px, let native controls handle it
+                if (clickYFromBottom > 50) {
+                  togglePlayPause();
+                }
+              }}
+            >
+              {/* Prominent Play / Pause quick toggle button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePlayPause();
+                }}
+                className="absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/70 hover:bg-black/90 backdrop-blur-md border border-white/10 hover:border-[#c8f135]/50 text-white hover:text-[#c8f135] text-xs font-semibold shadow-xl transition-all duration-200 group"
+                title={isPlaying ? "Pause video (Space)" : "Play video (Space)"}
+              >
+                {isPlaying ? (
+                  <Pause size={14} className="fill-current text-[#c8f135]" />
+                ) : (
+                  <Play size={14} className="fill-current text-[#c8f135]" />
+                )}
+                <span className="font-bold tracking-wide">{isPlaying ? 'Pause' : 'Play'}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/70 font-mono tracking-wider group-hover:text-white border border-white/5">
+                  Space
+                </span>
+              </button>
+
               <video
                 key={lightboxItem.id || lightboxItem.url}
                 ref={videoElRef}
@@ -811,6 +879,8 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                 loop
                 playsInline
                 preload="auto"
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
                 onWaiting={() => {
                   if (bufferTimeoutRef.current) clearTimeout(bufferTimeoutRef.current);
                   bufferTimeoutRef.current = setTimeout(() => {
@@ -847,6 +917,20 @@ STRICT RULE: Keep the exact same subject identity, scene structure, lighting, an
                   lightboxItem.aspect === '9:16' ? 'aspect-[9/16] h-full' : lightboxItem.aspect === '1:1' ? 'aspect-square h-full' : 'aspect-video w-full'
                 )}
               />
+
+              {/* Center Play/Pause Animated Indicator */}
+              {showPlayPauseIndicator && (
+                <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center animate-in fade-in zoom-in-75 duration-200">
+                  <div className="w-18 h-18 p-5 rounded-full bg-black/80 backdrop-blur-md border border-[#c8f135]/50 flex items-center justify-center text-[#c8f135] shadow-[0_0_30px_rgba(200,241,53,0.3)] transition-all">
+                    {showPlayPauseIndicator === 'pause' ? (
+                      <Pause size={32} className="fill-current" />
+                    ) : (
+                      <Play size={32} className="fill-current ml-1" />
+                    )}
+                  </div>
+                </div>
+              )}
+
               {isVideoBuffering && !isExtractingFrame && (
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] z-20 flex flex-col items-center justify-center space-y-2 pointer-events-none transition-opacity duration-200">
                   <div className="w-12 h-12 rounded-full bg-black/70 backdrop-blur-md border border-[#c8f135]/30 flex items-center justify-center shadow-lg">

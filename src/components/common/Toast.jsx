@@ -66,23 +66,38 @@ export function Toast() {
                         {toast.message}
                     </div>
 
-                    {/* Action Button Row */}
-                    {toast.action && (
-                        <div className="flex justify-end pt-1 relative z-10">
+                    {/* Action & Dismiss Button Row */}
+                    <div className="flex items-center justify-end gap-2 pt-1 relative z-10">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                hideToast();
+                                try {
+                                    window.dispatchEvent(new CustomEvent('zerolens_reset_cooldown'));
+                                } catch (_) {}
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer font-sans border border-white/10"
+                        >
+                            Dismiss
+                        </button>
+                        {toast.action && (
                             <button
                                 type="button"
                                 onClick={() => {
                                     hideToast();
+                                    try {
+                                        window.dispatchEvent(new CustomEvent('zerolens_reset_cooldown'));
+                                    } catch (_) {}
                                     if (typeof toast.action.onClick === 'function') {
                                         toast.action.onClick();
                                     }
                                 }}
                                 className="px-3.5 py-1.5 rounded-xl bg-[#c8f135] text-black text-[9px] font-black uppercase tracking-wider hover:bg-white transition-all shadow-lg shadow-[#c8f135]/20 active:scale-95 cursor-pointer font-sans"
                             >
-                                {toast.action.label || 'Top Up / Upgrade'}
+                                {toast.action.label || 'Action'}
                             </button>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </motion.div>
             )}
         </AnimatePresence>

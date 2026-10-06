@@ -3029,10 +3029,11 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     setGallery(prev => [...tempItems, ...prev]);
     galleryContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
 
+    const singleCost = overrideOptions?.creditCost || getRequiredCredits(resolvedEngine, overrideOptions);
+
     try {
       // Deduct credits for each variation separately to prevent double-charging and match backend verification
       try {
-        const singleCost = overrideOptions?.creditCost || getRequiredCredits(resolvedEngine, overrideOptions);
         const spendPromises = Array.from({ length: activeVarCount }).map(() =>
           spendShorts(userId, singleCost, activeTab === 'image' ? 'cinematic_image_generation' : 'cinematic_video_generation')
         );
@@ -3371,6 +3372,11 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               showToast(cleanErr, "error");
             }
           }
+          try {
+            window.dispatchEvent(new CustomEvent('zerolens_reset_cooldown'));
+          } catch (_err) {
+            /* ignore */
+          }
           await triggerRefund('cinematic_video_generation');
         }
       } else if (resolvedEngine === 'seedance-fast' || resolvedEngine === 'seedace' || resolvedEngine === 'seedance-mini' || resolvedEngine === 'seedance-2.5') {
@@ -3573,7 +3579,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
             try {
               const parsed = JSON.parse(errText);
               if (parsed.error) parsedError = parsed.error;
-            } catch (_) {}
+            } catch (_err) {
+              /* ignore parse error */
+            }
             throw new Error(parsedError);
           }
 
@@ -3608,7 +3616,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
               aspect: reqAspectRatio,
               projectId: activeProjectId
             }, activeProjectId);
-          } catch (_) {}
+          } catch (_err) {
+            /* ignore */
+          }
 
           setStatus('idle');
           const showToast = useAppStore.getState().showToast;

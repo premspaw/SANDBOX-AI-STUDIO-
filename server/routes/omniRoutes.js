@@ -259,7 +259,7 @@ export default function createRouter(deps) {
             }
         }
         const storageClient = storage || new Storage(authOptions);
-        const bucketName = process.env.GCS_BUCKET_NAME || BUCKET_NAME || 'zerolensbucket-cdn';
+        const bucketName = process.env.GCS_BUCKET_NAME || BUCKET_NAME || 'zerolens-omni-new-ref-bucket';
         const bucket = storageClient.bucket(bucketName);
         const filename = `motion-ref-videos/${Date.now()}-${Math.random().toString(36).substring(7)}.mp4`;
         const file = bucket.file(filename);
@@ -338,7 +338,17 @@ export default function createRouter(deps) {
             const rawRes = (resolution || '720p').toLowerCase();
             const validResolution = ['360p', '720p', '1080p', '4k'].includes(rawRes) ? rawRes : '720p';
             console.log(`[OMNI-I2V] Resolution: ${validResolution} (requested: ${resolution}) | Duration: ${validDuration}s | Audio: ${!!generateAudio}`);
-            console.log(`[OMNI-I2V] Task: ${requestedTask || 'auto'} | CreditReason: ${req.body.creditReason || 'default'} | HasVideo: ${!!(req.body.video || req.body.sourceVideo || req.body.refVideo)} | RefImages: ${(req.body.ref_images || []).length}`);
+            const hasAnyVideo = !!(
+                req.body.video ||
+                req.body.sourceVideo ||
+                req.body.refVideo ||
+                (Array.isArray(req.body.ref_videos) && req.body.ref_videos.length > 0) ||
+                (Array.isArray(req.body.refVideos) && req.body.refVideos.length > 0) ||
+                (Array.isArray(req.body.reference_video_urls) && req.body.reference_video_urls.length > 0) ||
+                (Array.isArray(req.body.multiVideoSlots) && req.body.multiVideoSlots.some(v => v && (typeof v === 'string' ? v : (v.url || v.data)))) ||
+                (Array.isArray(req.body.omniMultiVideos) && req.body.omniMultiVideos.some(v => v && (typeof v === 'string' ? v : (v.url || v.data))))
+            );
+            console.log(`[OMNI-I2V] Task: ${requestedTask || 'auto'} | CreditReason: ${req.body.creditReason || 'default'} | HasVideo: ${hasAnyVideo} | RefImages: ${(req.body.ref_images || req.body.refImages || []).length}`);
 
             // Deduct credits: omni/omni-flash are cost-per-second
             let requiredCredits = 10; // Default
@@ -471,11 +481,11 @@ export default function createRouter(deps) {
                     }
                 }
 
-                // Priority 2: Google File API via API key (for Google AI Studio)
-                if (!uri && apiKey) {
+                // Priority 2: Google File API via API key or Vertex token (for Google AI Studio)
+                if (!uri && (apiKey || token)) {
                     try {
                         console.log(`[OMNI-I2V] Uploading reference video (${buffer.length} bytes) to Google File API...`);
-                        const fileApiUri = await uploadToGoogleFileApi(trimmedBase64, mimeType || 'video/mp4', apiKey, null);
+                        const fileApiUri = await uploadToGoogleFileApi(trimmedBase64, mimeType || 'video/mp4', apiKey, token);
                         if (fileApiUri) {
                             console.log(`[OMNI-I2V] ✅ Reference video uploaded to Google File API: ${fileApiUri}`);
                             uri = fileApiUri;
@@ -546,6 +556,37 @@ export default function createRouter(deps) {
                 : (req.body.ref_images || req.body.refImages || req.body.omniMultiImages || []);
             const rawSlotVideos = req.body.multiVideoSlots || req.body.omniMultiVideos;
             const rawRefVideos = req.body.ref_videos || req.body.refVideos || req.body.reference_video_urls || (req.body.refVideo ? [{ url: req.body.refVideo }] : []);
+
+            let videoSlotsToProcess = [];
+            const seenVideoUrls = new Set();
+            if (Array.isArray(rawSlotVideos) && rawSlotVideos.some(v => v)) {
+                for (let s = 0; s < 3; s++) {
+                    const item = rawSlotVideos.find(v => v && typeof v === 'object' && v.slot === s) || rawSlotVideos[s];
+                    if (item) {
+                        const url = typeof item === 'string' ? item : (item.url || item.imageUrl || item.data);
+                        if (url && !seenVideoUrls.has(url)) {
+                            seenVideoUrls.add(url);
+                            videoSlotsToProcess.push({ slot: s, url });
+                        }
+                    }
+                }
+            }
+            if (Array.isArray(rawRefVideos) && rawRefVideos.length > 0) {
+                for (let s = 0; s < rawRefVideos.length; s++) {
+                    const item = rawRefVideos[s];
+                    const url = typeof item === 'string' ? item : (item.url || item.imageUrl || item.data);
+                    if (url && !seenVideoUrls.has(url)) {
+                        seenVideoUrls.add(url);
+                        const targetSlot = videoSlotsToProcess.length < 3 ? videoSlotsToProcess.length : 0;
+                        videoSlotsToProcess.push({ slot: targetSlot, url });
+                    }
+                }
+            }
+            if (videoSlotsToProcess.length === 0 && (req.body.video || req.body.sourceVideo || req.body.refVideo)) {
+                const singleVid = req.body.video || req.body.sourceVideo || req.body.refVideo;
+                videoSlotsToProcess.push({ slot: 0, url: singleVid });
+            }
+            console.log(`[OMNI-I2V] Processable reference video slots count: ${videoSlotsToProcess.length}`);
 
             // If primary image was not explicitly provided but ref_images exist, use first reference image as primary (only if image)
             if (!isMultiReference && !primaryImageResolved && rawRefImages.length > 0 && requestedTask !== 'text_to_video') {
@@ -675,6 +716,15 @@ export default function createRouter(deps) {
                 middlePromptText = `\n<PROMPT>\n[0-${validDuration}s] ${compiledPrompt}${sfxDirective}. Generate exactly a ${validDuration}-second continuous video shot, single continuous shot, no scene cuts.\n`;
             }
 
+            // If driving reference videos are present, reinforce motion retargeting in middlePromptText
+            const unreferencedVideoSlots = videoSlotsToProcess.filter(v => !compiledPrompt.includes(`<VIDEO_REF_${v.slot}>`));
+            if (unreferencedVideoSlots.length > 0) {
+                const videoDirectives = unreferencedVideoSlots.map(v => 
+                    `Strictly retarget and align camera movement, action pacing, and physical dynamics matching driving motion reference video <VIDEO_REF_${v.slot}>.`
+                ).join(' ');
+                middlePromptText += ` [Driving Motion Guidance: ${videoDirectives}]`;
+            }
+
             inputParts.push({
                 type: 'text',
                 text: middlePromptText
@@ -747,27 +797,6 @@ export default function createRouter(deps) {
             }
 
             // 5. Reference Videos (Slots 1, 2, 3: @video1, @video2, @video3)
-            let videoSlotsToProcess = [];
-            if (Array.isArray(rawSlotVideos) && rawSlotVideos.some(v => v)) {
-                for (let s = 0; s < 3; s++) {
-                    const item = rawSlotVideos.find(v => v && v.slot === s) || rawSlotVideos[s];
-                    if (item) {
-                        const url = typeof item === 'string' ? item : (item.url || item.imageUrl || item.data);
-                        if (url) {
-                            videoSlotsToProcess.push({ slot: s, url });
-                        }
-                    }
-                }
-            } else if (Array.isArray(rawRefVideos) && rawRefVideos.length > 0) {
-                for (let s = 0; s < rawRefVideos.length; s++) {
-                    const item = rawRefVideos[s];
-                    const url = typeof item === 'string' ? item : (item.url || item.imageUrl || item.data);
-                    if (url) {
-                        videoSlotsToProcess.push({ slot: s, url });
-                    }
-                }
-            }
-
             for (const { slot, url } of videoSlotsToProcess) {
                 if (!url) continue;
                 if (isExtendOrEdit && (url === inputImage || (primaryImageResolved && url === primaryImageResolved.data))) {
@@ -1086,7 +1115,10 @@ export default function createRouter(deps) {
             );
 
             // --- Option A.2: Vertex AI Veo Fast Fallback (Keeps video rendering 100% on Vertex AI) ---
-            if (!success && !isVertexPolicyViolation && token) {
+            // Only allow Veo Fast fallback when NO reference videos were provided.
+            // Veo Fast cannot process video references; falling back would discard the user's driving video.
+            const hasReferenceVideos = videoSlotsToProcess.length > 0 || hasAnyVideo;
+            if (!success && !isVertexPolicyViolation && token && !hasReferenceVideos) {
                 try {
                     console.log(`[OMNI-I2V] Attempting Vertex AI Veo Fast fallback on model veo-3.1-fast-generate-001 (location: ${VERTEX_LOCATION || 'us-central1'})...`);
                     const veoModel = 'veo-3.1-fast-generate-001';

@@ -272,7 +272,13 @@ function StudioGalleryCard({
               </button>
               <div className="flex gap-1.5 w-full">
                 <button
-                  onClick={(e) => { e.stopPropagation(); onDeleteItem(item.id, e); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteItem(item.id, e);
+                    try {
+                      window.dispatchEvent(new CustomEvent('zerolens_reset_cooldown'));
+                    } catch (_) {}
+                  }}
                   className="flex-1 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-[8.5px] font-black uppercase tracking-widest transition-all cursor-pointer"
                 >
                   Dismiss
@@ -705,7 +711,7 @@ export default function StudioPage() {
     return () => window.removeEventListener('zerolens_gallery_updated', handleGalleryUpdate);
   }, []);
 
-  const activeJobs = useMemo(() => gallery.filter(i => i && (i.status === 'generating' || i.loading)), [gallery]);
+  const activeJobs = useMemo(() => gallery.filter(i => i && (i.status === 'generating' || i.status === 'polling') && i.status !== 'failed' && i.status !== 'error' && i.status !== 'completed'), [gallery]);
   const activeJobsCount = activeJobs.length;
 
   const maxConcurrent = useMemo(() => {
@@ -716,8 +722,9 @@ export default function StudioPage() {
     return 2;
   }, [userProfile?.tier]);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const isMaxConcurrentReached = activeJobsCount >= maxConcurrent;
-  const isBusy = activeJobsCount > 0 || isMaxConcurrentReached;
+  const isBusy = isSubmitting || isMaxConcurrentReached;
   const [lightboxItem, setLightboxItem] = useState(null);
   const [showInpaint, setShowInpaint] = useState(false);
   const [showStoryboard, setShowStoryboard] = useState(false);
@@ -1618,6 +1625,7 @@ export default function StudioPage() {
     }
 
     checkAuthAndRun(async () => {
+      setIsSubmitting(true);
       const targetProj = (activeProjectId === 'all' || !activeProjectId) ? 'default' : activeProjectId;
       const tempId = 'gen_' + Date.now();
       const isKlingMotion = isMotion && (engineToUse === 'kling-motion' || customOptions?.motionEngine === 'kling');
@@ -2150,7 +2158,7 @@ export default function StudioPage() {
           const resolvedMultiVideoSlots = await Promise.all([0, 1, 2].map(async (slotIdx) => {
             let item = null;
             if (Array.isArray(multiVidSlotSource)) {
-              item = multiVidSlotSource.find(v => v && v.slot === slotIdx) || multiVidSlotSource[slotIdx];
+              item = multiVidSlotSource.find(v => v && typeof v === 'object' && v.slot === slotIdx) || multiVidSlotSource[slotIdx];
             }
             if (!item) return null;
             const url = typeof item === 'string' ? item : (item.url || item.imageUrl || item.data);
@@ -2162,7 +2170,9 @@ export default function StudioPage() {
           const activeRefVideoItems = resolvedMultiVideoSlots.filter(Boolean);
           const rawMultiVideos = [
             ...activeRefVideoItems.map(v => v.url),
-            ...(customOptions?.reference_video_urls || [])
+            ...(customOptions?.reference_video_urls || []),
+            ...(customOptions?.refVideos || []),
+            ...(customOptions?.ref_videos || [])
           ].filter(Boolean);
           const resolvedMultiVideos = Array.from(new Set(rawMultiVideos));
           
@@ -2180,7 +2190,7 @@ export default function StudioPage() {
             ...(customOptions?.omniRefImages || omniRefImages || []),
             ...resolvedMultiImages
           ].filter(Boolean).map(img => resolveBlobToBase64(img)))).filter(Boolean)));
-          const refVidRaw = customOptions?.omniRefVideoPreview || omniRefVideoPreview || resolvedMultiVideos[0] || null;
+          const refVidRaw = customOptions?.omniRefVideoPreview || omniRefVideoPreview || customOptions?.refVideo || resolvedMultiVideos[0] || null;
           const resolvedOmniRefVideo = refVidRaw ? await resolveBlobToBase64(refVidRaw) : null;
 
           let directedPrompt = promptToUse;
@@ -2197,6 +2207,14 @@ export default function StudioPage() {
 
           const finalRefImages = resolvedMultiImages.length > 0 ? resolvedMultiImages : resolvedOmniRefImages;
           const finalRefVideos = resolvedMultiVideos.length > 0 ? resolvedMultiVideos : (resolvedOmniRefVideo ? [resolvedOmniRefVideo] : []);
+
+          console.log('[StudioPage] Omni payload packaged:', {
+            hasMultiRefs,
+            taskToUse,
+            refVideosCount: finalRefVideos.length,
+            refImagesCount: finalRefImages.length,
+            activeRefVideoItemsCount: activeRefVideoItems.length
+          });
 
           payload = {
             prompt: directedPrompt,
@@ -2219,9 +2237,12 @@ export default function StudioPage() {
             multiReferenceMode: isMultiReference,
             refVideos: finalRefVideos,
             ref_videos: finalRefVideos,
+            reference_video_urls: finalRefVideos,
             multiVideoSlots: resolvedMultiVideoSlots,
             omniMultiVideos: resolvedMultiVideoSlots,
             refVideo: finalRefVideos[0] || undefined,
+            video: finalRefVideos[0] || undefined,
+            sourceVideo: finalRefVideos[0] || undefined,
             userId
           };
         } else {
@@ -2355,8 +2376,14 @@ export default function StudioPage() {
         setGallery(prev => prev.map(item => item.id === tempId ? {
           ...item,
           status: 'failed',
+          loading: false,
           error: errMsg
         } : item));
+
+        // Immediately reset any active cooldown in SidePanel
+        try {
+          window.dispatchEvent(new CustomEvent('zerolens_reset_cooldown'));
+        } catch (_) {}
 
         const showToast = useAppStore.getState().showToast;
         if (showToast) {
@@ -2376,6 +2403,8 @@ export default function StudioPage() {
             showToast(errMsg, "error");
           }
         }
+      } finally {
+        setIsSubmitting(false);
       }
     });
   };
@@ -2474,7 +2503,7 @@ export default function StudioPage() {
         next[0] = item.url;
         return next;
       });
-      setPanelTab('omni');
+      setPanelTab('omni-multi');
       if (showToast) showToast("Image loaded as Omni Reference!", "success");
       return;
     }
@@ -2486,7 +2515,7 @@ export default function StudioPage() {
       next[0] = item.url;
       return next;
     });
-    setPanelTab('omni');
+    setPanelTab('omni-multi');
     if (showToast) showToast("Video loaded into Omni Reference Driving Video payload!", "success");
   };
 
