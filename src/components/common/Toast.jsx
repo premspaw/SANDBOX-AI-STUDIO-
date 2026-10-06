@@ -74,7 +74,9 @@ export function Toast() {
                                 hideToast();
                                 try {
                                     window.dispatchEvent(new CustomEvent('zerolens_reset_cooldown'));
-                                } catch (_) {}
+                                } catch (err) {
+                                    console.debug(err);
+                                }
                             }}
                             className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer font-sans border border-white/10"
                         >
@@ -87,7 +89,9 @@ export function Toast() {
                                     hideToast();
                                     try {
                                         window.dispatchEvent(new CustomEvent('zerolens_reset_cooldown'));
-                                    } catch (_) {}
+                                    } catch (err) {
+                                        console.debug(err);
+                                    }
                                     if (typeof toast.action.onClick === 'function') {
                                         toast.action.onClick();
                                     }

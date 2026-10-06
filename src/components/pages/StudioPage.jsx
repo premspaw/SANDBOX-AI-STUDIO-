@@ -245,7 +245,9 @@ function StudioGalleryCard({
             onDeleteItem(item.id, e);
             try {
               window.dispatchEvent(new CustomEvent('zerolens_reset_cooldown'));
-            } catch (_) {}
+            } catch (err) {
+              console.debug(err);
+            }
           }}
           className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 hover:bg-red-500 text-white/70 hover:text-white transition-all cursor-pointer z-20 flex items-center justify-center border border-white/10 shadow-md"
           title="Delete / Dismiss Card"
@@ -292,7 +294,9 @@ function StudioGalleryCard({
                     onDeleteItem(item.id, e);
                     try {
                       window.dispatchEvent(new CustomEvent('zerolens_reset_cooldown'));
-                    } catch (_) {}
+                    } catch (err) {
+                      console.debug(err);
+                    }
                   }}
                   className="flex-1 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/35 text-red-300 hover:text-red-100 border border-red-500/30 text-[8.5px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 shadow-sm active:scale-95"
                   title="Delete card immediately"
@@ -306,7 +310,9 @@ function StudioGalleryCard({
                     onDeleteItem(item.id, e);
                     try {
                       window.dispatchEvent(new CustomEvent('zerolens_reset_cooldown'));
-                    } catch (_) {}
+                    } catch (err) {
+                      console.debug(err);
+                    }
                   }}
                   className="flex-1 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-[8.5px] font-black uppercase tracking-widest transition-all cursor-pointer"
                   title="Dismiss card"
@@ -2456,7 +2462,9 @@ export default function StudioPage() {
         // Immediately reset any active cooldown in SidePanel
         try {
           window.dispatchEvent(new CustomEvent('zerolens_reset_cooldown'));
-        } catch (_) {}
+        } catch (err) {
+          console.debug(err);
+        }
 
         const showToast = useAppStore.getState().showToast;
         if (showToast) {
@@ -2495,7 +2503,9 @@ export default function StudioPage() {
     try {
       dismissedIdsRef.current.add(idStr);
       localStorage.setItem('zl_studio_dismissed_ids', JSON.stringify([...dismissedIdsRef.current].slice(-500)));
-    } catch (_) {}
+    } catch (err) {
+      console.debug(err);
+    }
     setGallery(prev => {
       const next = prev.filter(item => String(item?.id) !== idStr);
       try {
@@ -2515,9 +2525,13 @@ export default function StudioPage() {
     // Purge from backend database if it was a saved asset
     try {
       if (id && !idStr.startsWith('temp_') && !idStr.startsWith('failed_') && !idStr.startsWith('placeholder_') && !idStr.startsWith('mock_')) {
-        fetch(getApiUrl(`/api/delete-asset/${id}`), { method: 'DELETE' }).catch(() => {});
+        fetch(getApiUrl(`/api/delete-asset/${id}`), { method: 'DELETE' }).catch((fetchErr) => {
+          console.debug(fetchErr);
+        });
       }
-    } catch (_) {}
+    } catch (err) {
+      console.debug(err);
+    }
     const showToast = useAppStore.getState().showToast;
     if (showToast) showToast("Card removed from gallery.", "info");
   };

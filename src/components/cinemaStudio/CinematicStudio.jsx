@@ -2936,7 +2936,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   const handleGenerate = async (overridePrompt, overrideEngine, overrideOptions = {}) => {
     if (isSubmittingRef.current) return;
     if (isMaxConcurrentReached) {
-      if (showToast) showToast(`Maximum concurrent generation limit reached (${maxConcurrent} jobs). Please wait for an active job to complete.`, 'warning');
+      useAppStore.getState().showToast?.(`Maximum concurrent generation limit reached (${maxConcurrent} jobs). Please wait for an active job to complete.`, 'warning');
       return;
     }
 
