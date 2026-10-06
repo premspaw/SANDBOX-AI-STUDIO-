@@ -232,13 +232,28 @@ function StudioGalleryCard({
                               item.error?.includes('violates Google');
     return (
       <div className={cn(
-        "w-full rounded-2xl flex flex-col items-center justify-between p-3.5 relative overflow-hidden shadow-xl",
+        "w-full rounded-2xl flex flex-col items-center justify-between p-3 sm:p-3.5 relative overflow-hidden shadow-xl group",
         getAspectClass(),
         isPolicyViolation 
           ? "border-2 border-amber-500/50 bg-gradient-to-b from-[#1c1408] to-[#0f0b04]" 
           : "border border-red-500/30 bg-[#160b0c]"
       )}>
-        <div className="flex flex-col items-center justify-center flex-1 gap-1.5 text-center w-full my-auto">
+        {/* Top-Right Direct Delete / Dismiss Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDeleteItem(item.id, e);
+            try {
+              window.dispatchEvent(new CustomEvent('zerolens_reset_cooldown'));
+            } catch (_) {}
+          }}
+          className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 hover:bg-red-500 text-white/70 hover:text-white transition-all cursor-pointer z-20 flex items-center justify-center border border-white/10 shadow-md"
+          title="Delete / Dismiss Card"
+        >
+          <Trash2 size={11} />
+        </button>
+
+        <div className="flex flex-col items-center justify-center flex-1 gap-1.5 text-center w-full my-auto px-1">
           <div className={cn(
             "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
             isPolicyViolation ? "bg-amber-500/20 text-amber-400" : "bg-red-500/10 text-red-400"
@@ -260,7 +275,7 @@ function StudioGalleryCard({
             </span>
           )}
         </div>
-        <div className="w-full flex flex-col gap-1 pt-1.5 border-t border-white/5 shrink-0">
+        <div className="w-full flex flex-col gap-1 pt-1.5 border-t border-white/5 shrink-0 z-10">
           {isPolicyViolation ? (
             <>
               <button
@@ -279,13 +294,28 @@ function StudioGalleryCard({
                       window.dispatchEvent(new CustomEvent('zerolens_reset_cooldown'));
                     } catch (_) {}
                   }}
+                  className="flex-1 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/35 text-red-300 hover:text-red-100 border border-red-500/30 text-[8.5px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 shadow-sm active:scale-95"
+                  title="Delete card immediately"
+                >
+                  <Trash2 size={9} />
+                  <span>Delete</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteItem(item.id, e);
+                    try {
+                      window.dispatchEvent(new CustomEvent('zerolens_reset_cooldown'));
+                    } catch (_) {}
+                  }}
                   className="flex-1 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-[8.5px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                  title="Dismiss card"
                 >
                   Dismiss
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); onRetry && onRetry(item, 'edit'); }}
-                  className="flex-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white text-[8.5px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                  className="flex-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white text-[8.5px] font-black uppercase tracking-wider transition-all cursor-pointer"
                 >
                   Change Media
                 </button>
@@ -293,6 +323,14 @@ function StudioGalleryCard({
             </>
           ) : (
             <div className="flex gap-1.5 w-full">
+              <button
+                onClick={(e) => { e.stopPropagation(); onDeleteItem(item.id, e); }}
+                className="flex-1 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/35 text-red-300 hover:text-red-100 border border-red-500/30 text-[8.5px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 shadow-sm active:scale-95"
+                title="Delete card immediately"
+              >
+                <Trash2 size={9} />
+                <span>Delete</span>
+              </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onDeleteItem(item.id, e); }}
                 className="flex-1 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-[8.5px] font-black uppercase tracking-widest transition-all cursor-pointer"
@@ -577,6 +615,7 @@ export default function StudioPage() {
       const parsed = cached ? JSON.parse(cached) : [];
       const filtered = (Array.isArray(parsed) ? parsed : []).filter(item => {
         if (!item || !item.url) return false;
+        if (item.status === 'failed' || item.status === 'error') return false;
         const itemId = String(item.id || '');
         const itemUrl = String(item.url || '');
         if (item.type === 'reference_upload') return false;
@@ -607,10 +646,11 @@ export default function StudioPage() {
     if (!galleryLSKey) return;
     const timer = setTimeout(() => {
       try {
-        const persistable = gallery.filter(item => item && !item.loading && item.status !== 'generating' && item.url && !item.url.startsWith('blob:'));
+        const persistable = gallery.filter(item => item && !item.loading && item.status !== 'generating' && item.status !== 'failed' && item.status !== 'error' && item.url && !item.url.startsWith('blob:'));
         const json = JSON.stringify(persistable.slice(0, 100));
         localStorage.setItem(galleryLSKey, json);
         localStorage.setItem('cs_studio_gallery', json);
+        localStorage.setItem('cs_gallery', json);
       } catch (_) {
         /* ignore */
       }
@@ -780,9 +820,11 @@ export default function StudioPage() {
 
   // Items belonging to current project (before media type or aspect ratio filters)
   const currentProjectItems = useMemo(() => {
+    const dismissed = dismissedIdsRef.current;
     const assets = projectAssets || {};
     const baseItems = gallery.filter(item => {
       if (!item) return false;
+      if (dismissed && dismissed.has(String(item.id))) return false;
 
       // Always show generating items
       if (item.status === 'generating' || item.loading) return true;
@@ -828,6 +870,7 @@ export default function StudioPage() {
     const seenIds = new Set(baseItems.map(i => String(i.id)));
     const merged = [...baseItems];
     boxItems.forEach(b => {
+      if (dismissed && dismissed.has(String(b.id))) return;
       const normB = getNormalizedPath(b.url) || b.url;
       if (b.url && !seenUrls.has(normB) && !seenIds.has(String(b.id))) {
         merged.push(b);
@@ -2448,24 +2491,35 @@ export default function StudioPage() {
 
   const handleDeleteItem = (id, e) => {
     if (e && e.stopPropagation) e.stopPropagation();
+    const idStr = String(id);
     try {
-      dismissedIdsRef.current.add(String(id));
-      localStorage.setItem('zl_studio_dismissed_ids', JSON.stringify([...dismissedIdsRef.current].slice(-300)));
+      dismissedIdsRef.current.add(idStr);
+      localStorage.setItem('zl_studio_dismissed_ids', JSON.stringify([...dismissedIdsRef.current].slice(-500)));
     } catch (_) {}
     setGallery(prev => {
-      const next = prev.filter(item => String(item?.id) !== String(id));
+      const next = prev.filter(item => String(item?.id) !== idStr);
       try {
-        localStorage.setItem('cs_studio_gallery', JSON.stringify(next));
+        const cleanForStorage = next.filter(item => item && !item.loading && item.status !== 'generating' && item.status !== 'failed' && item.status !== 'error' && item.url && !item.url.startsWith('blob:')).slice(0, 100);
+        const json = JSON.stringify(cleanForStorage);
+        localStorage.setItem('cs_studio_gallery', json);
+        if (galleryLSKey) localStorage.setItem(galleryLSKey, json);
+        localStorage.setItem('cs_gallery', json);
       } catch (err) {
         console.debug('[StudioPage] localStorage sync failed:', err);
       }
       return next;
     });
-    if (lightboxItem && lightboxItem.id === id) {
+    if (lightboxItem && String(lightboxItem.id) === idStr) {
       setLightboxItem(null);
     }
+    // Purge from backend database if it was a saved asset
+    try {
+      if (id && !idStr.startsWith('temp_') && !idStr.startsWith('failed_') && !idStr.startsWith('placeholder_') && !idStr.startsWith('mock_')) {
+        fetch(getApiUrl(`/api/delete-asset/${id}`), { method: 'DELETE' }).catch(() => {});
+      }
+    } catch (_) {}
     const showToast = useAppStore.getState().showToast;
-    if (showToast) showToast("Asset removed from gallery.", "info");
+    if (showToast) showToast("Card removed from gallery.", "info");
   };
 
   const handleDownload = async (url, nameOrType, maybeId) => {
@@ -3352,9 +3406,9 @@ export default function StudioPage() {
               )}
             </div>
           ) : (
-            <div className="flex gap-3 sm:gap-4 items-start w-full">
+            <div className="flex gap-2 sm:gap-2.5 items-start w-full">
               {masonryColumns.map((col, colIdx) => (
-                <div key={colIdx} className="flex-1 flex flex-col gap-3 sm:gap-4 min-w-0">
+                <div key={colIdx} className="flex-1 flex flex-col gap-2 sm:gap-2.5 min-w-0">
                   {col.map((item) => (
                     <StudioGalleryCard
                       key={item.id}
