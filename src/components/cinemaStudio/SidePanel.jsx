@@ -1553,18 +1553,29 @@ export const SidePanel = React.memo(({
     setActiveTab('video');
     if (!isOmniEngine) setActiveEngine(engineToUse);
 
-    const [resolvedStart, resolvedEnd] = await Promise.all([
-      resolveBlobToBase64(omniFirstFrameImage || firstFrameImage || seedanceFirstFrame),
-      resolveBlobToBase64(omniLastFrameImage || lastFrameImage || seedanceLastFrame)
-    ]);
+    // MultiRef is reference-to-video, not a keyframe workflow. Carrying stale
+    // keyframes from the regular Omni tab made Image 1 unexpectedly become a
+    // start frame and Image 2 appear as an end-frame reference.
+    const isMultiReference = panelTab === 'omni-multi';
+    const [resolvedStart, resolvedEnd] = isMultiReference
+      ? [null, null]
+      : await Promise.all([
+          resolveBlobToBase64(omniFirstFrameImage || firstFrameImage || seedanceFirstFrame),
+          resolveBlobToBase64(omniLastFrameImage || lastFrameImage || seedanceLastFrame)
+        ]);
 
     const resolvedOmniRefs = (await Promise.all(
       (omniRefImages || []).filter(Boolean).map(img => resolveBlobToBase64(img))
     )).filter(Boolean);
 
-    const resolvedMultiImgs = (await Promise.all(
-      (omniMultiImages || []).filter(Boolean).map(img => resolveBlobToBase64(img))
-    )).filter(Boolean);
+    // Do not filter before passing images on: position is the contract between
+    // @image1…@image4 and the matching visual reference.
+    const resolvedMultiImgs = await Promise.all(
+      (omniMultiImages || []).map(img => img ? resolveBlobToBase64(img) : null)
+    );
+    const multiImageSlots = resolvedMultiImgs
+      .map((url, slot) => url ? { slot, tag: `@image${slot + 1}`, url } : null)
+      .filter(Boolean);
 
     const resolvedMultiVids = await Promise.all(
       [0, 1, 2].map(async (slotIdx) => {
@@ -1587,6 +1598,8 @@ export const SidePanel = React.memo(({
       reference_video_urls: activeRefVideoUrls,
       omniRefImages: resolvedOmniRefs,
       omniMultiImages: resolvedMultiImgs,
+      multiImageSlots,
+      multiReferenceMode: isMultiReference,
       omniMultiVideos: resolvedMultiVids,
       multiVideoSlots: resolvedMultiVids,
       omniRefVideoPreview: resolvedRefVid,

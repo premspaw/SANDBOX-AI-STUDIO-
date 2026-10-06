@@ -537,12 +537,18 @@ export default function createRouter(deps) {
             }
 
             // Reference media arrays from payload
-            const rawRefImages = req.body.ref_images || req.body.refImages || req.body.omniMultiImages || [];
+            // Preserve explicit MultiRef slots. Filtering empty entries on the
+            // client must never shift @image2 into @image1.
+            const rawImageSlots = Array.isArray(req.body.multiImageSlots) ? req.body.multiImageSlots : [];
+            const isMultiReference = req.body.multiReferenceMode === true || rawImageSlots.length > 0;
+            const rawRefImages = rawImageSlots.length > 0
+                ? rawImageSlots
+                : (req.body.ref_images || req.body.refImages || req.body.omniMultiImages || []);
             const rawSlotVideos = req.body.multiVideoSlots || req.body.omniMultiVideos;
             const rawRefVideos = req.body.ref_videos || req.body.refVideos || req.body.reference_video_urls || (req.body.refVideo ? [{ url: req.body.refVideo }] : []);
 
             // If primary image was not explicitly provided but ref_images exist, use first reference image as primary (only if image)
-            if (!primaryImageResolved && rawRefImages.length > 0 && requestedTask !== 'text_to_video') {
+            if (!isMultiReference && !primaryImageResolved && rawRefImages.length > 0 && requestedTask !== 'text_to_video') {
                 const firstRef = typeof rawRefImages[0] === 'string' ? rawRefImages[0] : (rawRefImages[0].url || rawRefImages[0].imageUrl);
                 if (firstRef) {
                     const candidate = await resolveMediaToBase64(firstRef);
@@ -562,6 +568,17 @@ export default function createRouter(deps) {
                     .replace(/@image3\b/gi, '<IMAGE_REF_2>')
                     .replace(/@image4\b/gi, '<IMAGE_REF_3>')
                     .replace(/@video1\b/gi, '<VIDEO_REF_0>')
+                    .replace(/@ref_video\b/gi, '<VIDEO_REF_0>')
+                    .replace(/@video\b(?![\d])/gi, '<VIDEO_REF_0>');
+            } else if (isMultiReference) {
+                compiledPrompt = compiledPrompt
+                    .replace(/@image1\b/gi, '<IMAGE_REF_0>')
+                    .replace(/@image2\b/gi, '<IMAGE_REF_1>')
+                    .replace(/@image3\b/gi, '<IMAGE_REF_2>')
+                    .replace(/@image4\b/gi, '<IMAGE_REF_3>')
+                    .replace(/@video1\b/gi, '<VIDEO_REF_0>')
+                    .replace(/@video2\b/gi, '<VIDEO_REF_1>')
+                    .replace(/@video3\b/gi, '<VIDEO_REF_2>')
                     .replace(/@ref_video\b/gi, '<VIDEO_REF_0>')
                     .replace(/@video\b(?![\d])/gi, '<VIDEO_REF_0>');
             } else {
@@ -683,6 +700,9 @@ export default function createRouter(deps) {
                 const refImg = rawRefImages[i];
                 const imgUrl = typeof refImg === 'string' ? refImg : (refImg.url || refImg.imageUrl);
                 if (!imgUrl) continue;
+                const slot = isMultiReference && Number.isInteger(refImg?.slot)
+                    ? refImg.slot
+                    : refImageCounter;
 
                 // Skip if this image is identical to the primary Start Frame already added
                 if (primaryImageResolved && imgUrl === inputImage) continue;
@@ -713,15 +733,15 @@ export default function createRouter(deps) {
 
                         inputParts.push({
                             type: 'text',
-                            text: `\n<IMAGE_REF_${refImageCounter}>:\n[Visual Reference Image ${refImageCounter + 1}]:\n`
+                            text: `\n<IMAGE_REF_${slot}>:\n[Visual Reference Image ${slot + 1}]:\n`
                         });
                         inputParts.push({
                             type: 'image',
                             data: resolved.data,
                             mime_type: sanitizeMime(resolved.mimeType, 'image/png')
                         });
-                        console.log(`[OMNI-I2V] ✅ Added <IMAGE_REF_${refImageCounter}> from ref_images[${i}] (${resolved.data.length} chars, ${resolved.mimeType})`);
-                        refImageCounter++;
+                        console.log(`[OMNI-I2V] ✅ Added <IMAGE_REF_${slot}> from ref_images[${i}] (${resolved.data.length} chars, ${resolved.mimeType})`);
+                        refImageCounter = Math.max(refImageCounter, slot + 1);
                     }
                 }
             }

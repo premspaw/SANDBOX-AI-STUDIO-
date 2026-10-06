@@ -636,11 +636,24 @@ export default function StudioPage() {
     return merged;
   }, [localPendingJobs, unifiedGallery]);
 
+  // `setGallery` below is used by long-running generation callbacks. Keep a
+  // synchronous copy of the latest composed gallery so a completion callback
+  // never applies its update to the render in which the job was *started*.
+  // Without this, Omni completions could not find their temporary card and
+  // would silently disappear from Studio Generator.
+  const galleryRef = useRef(gallery);
+  useEffect(() => {
+    galleryRef.current = gallery;
+  }, [gallery]);
+
   const setGallery = useCallback((updater) => {
     if (typeof updater === 'function') {
-      const currentList = gallery;
+      const currentList = galleryRef.current;
       const nextList = updater(currentList);
       if (Array.isArray(nextList)) {
+        // Update the ref immediately. React state updates can be batched, but
+        // multiple generation jobs may finish before the next render.
+        galleryRef.current = nextList;
         // Keep ALL items that are still pending (generating/failed/loading)
         // PLUS any completed items that haven't yet been confirmed in unifiedGallery
         // This prevents the 1-2 frame flicker where an item vanishes between
@@ -661,7 +674,7 @@ export default function StudioPage() {
         });
       }
     }
-  }, [gallery, unifiedGallery, addUnifiedAsset]);
+  }, [unifiedGallery, addUnifiedAsset]);
 
   const activeJobs = useMemo(() => gallery.filter(i => i && i.status === 'generating'), [gallery]);
   const activeJobsCount = activeJobs.length;
@@ -769,6 +782,20 @@ export default function StudioPage() {
       return true;
     });
   }, [gallery, galleryFilter, activeProjectId, aspectFilter]);
+
+  // Cinema Studio always renders a stable newest-first sequence. Studio
+  // Generator previously passed its unsorted list directly into a masonry
+  // balancer, making mixed aspect ratios appear randomly shuffled.
+  const displayGalleryItems = useMemo(() => {
+    return [...filteredGallery].sort((a, b) => {
+      const aLoading = a.loading || a.status === 'generating';
+      const bLoading = b.loading || b.status === 'generating';
+      if (aLoading !== bLoading) return aLoading ? -1 : 1;
+      const aTime = Number(a.timestamp || a.createdAt || 0);
+      const bTime = Number(b.timestamp || b.createdAt || 0);
+      return bTime - aTime;
+    });
+  }, [filteredGallery]);
 
   // Dynamic Tight-Gap Shortest-Column Masonry Balancer (2 cols on mobile, 3-5 cols on desktop)
   const masonryColumns = useMemo(() => {
@@ -1064,17 +1091,15 @@ export default function StudioPage() {
               projectId: targetProj
             };
 
-            // 1. Add to Universal Unified Gallery (persists across all studios, offline storage & sync)
+            // Add to Universal Gallery (Zustand store + localStorage + project vault + event dispatch)
+            // Do NOT call setGallery here — it captures a stale closure of `gallery` from the render
+            // at generation start, causing the item to be lost. The gallery useMemo recomputes
+            // automatically from `localPendingJobs + unifiedGallery` once these two calls fire.
             useAppStore.getState().addUnifiedAsset(completedAsset);
 
-            // 2. Add to Project Box / Vault
-            try {
-              useAppStore.getState().addProjectAsset(completedAsset, targetProj);
-            } catch (_) {}
-
-            // 3. Clear from pending jobs & update local gallery
+            // Remove the generating placeholder from localPendingJobs
+            // setLocalPendingJobs is a stable React state setter (same ref across renders) — safe to call
             setLocalPendingJobs(prev => prev.filter(p => p.id !== tempId));
-            setGallery(prev => prev.map(item => item.id === tempId ? completedAsset : item));
 
             const showToast = useAppStore.getState().showToast;
             if (showToast) showToast(`${engineLabel} video rendered!`, 'success');
@@ -1217,6 +1242,21 @@ export default function StudioPage() {
       };
 
       setGallery(prev => prev.map(item => item.id === tempId ? finishedItem : item));
+      // Extensions are returned as a public file by Omni but are not recorded
+      // by the Omni route, so save a gallery asset for reload/cloud sync.
+      fetch(getApiUrl('/api/save-asset'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: finishedItem.url,
+          type: 'video',
+          prompt: finishedItem.prompt,
+          engine: finishedItem.engine,
+          aspect: finishedItem.aspectRatio,
+          projectId: activeProjectId,
+          userId
+        })
+      }).catch(err => console.debug('[StudioPage] Extension gallery persistence fallback:', err));
       setExtensionSourceVideo(finishedItem);
       if (refreshShorts) refreshShorts();
       const showToast = useAppStore.getState().showToast;
@@ -1876,13 +1916,10 @@ export default function StudioPage() {
               projectId: targetProj
             };
 
+            // addUnifiedAsset handles store + localStorage + project vault internally
             useAppStore.getState().addUnifiedAsset(completedAsset);
-            try {
-              useAppStore.getState().addProjectAsset(completedAsset, targetProj);
-            } catch (_) {}
-
+            // Remove generating placeholder — stable setter, no stale-closure risk
             setLocalPendingJobs(prev => prev.filter(item => item.id !== tempId));
-            setGallery(prev => [completedAsset, ...prev.filter(item => item.id !== tempId)]);
 
             const showToast = useAppStore.getState().showToast;
             if (showToast) showToast("Seedance 2.5 video generated successfully!", "success");
@@ -1901,6 +1938,10 @@ export default function StudioPage() {
 
         if (isOmni) {
           endpoint = getApiUrl('/api/omni-i2v');
+          const isMultiReference = customOptions?.multiReferenceMode === true || panelTab === 'omni-multi';
+          const multiImageSlots = (customOptions?.multiImageSlots || (customOptions?.omniMultiImages || omniMultiImages || [])
+            .map((url, slot) => url ? { slot, tag: `@image${slot + 1}`, url } : null)
+            .filter(Boolean));
           const rawMultiImages = [
             ...(customOptions?.omniMultiImages || []),
             ...(customOptions?.reference_image_urls || []),
@@ -1928,10 +1969,12 @@ export default function StudioPage() {
           ].filter(Boolean);
           const resolvedMultiVideos = Array.from(new Set(rawMultiVideos));
           
-          const rawPrimary = panelTab === 'omni-multi' 
-            ? (resolvedMultiImages[0] || null)
+          // MultiRef images are all visual references. Do not silently promote
+          // Image 1 to a start frame; only the regular Omni tab uses keyframes.
+          const rawPrimary = isMultiReference
+            ? null
             : (customOptions?.firstFrame || firstFrameImage || omniFirstFrameImage || resolvedMultiImages[0] || null);
-          const rawSecondary = panelTab === 'omni-multi'
+          const rawSecondary = isMultiReference
             ? null
             : (customOptions?.lastFrame || lastFrameImage || omniLastFrameImage || null);
           const primaryImg = await resolveBlobToBase64(rawPrimary);
@@ -1952,7 +1995,7 @@ export default function StudioPage() {
             directedPrompt = `[End Frame: final ending image at ${activeDuration}s]. The video MUST animate through: ${promptToUse}, and conclude seamlessly matching this last frame at ${activeDuration}s.`;
           }
 
-          const hasMultiRefs = resolvedMultiImages.length > 1 || resolvedMultiVideos.length > 0 || resolvedOmniRefImages.length > 0 || !!resolvedOmniRefVideo;
+          const hasMultiRefs = multiImageSlots.length > 0 || resolvedMultiVideos.length > 0 || resolvedOmniRefImages.length > 0 || !!resolvedOmniRefVideo;
           const taskToUse = (primaryImg && secondaryImg) ? 'reference_to_video' : (hasMultiRefs ? 'reference_to_video' : (omniTask || 'image_to_video'));
 
           const finalRefImages = resolvedMultiImages.length > 0 ? resolvedMultiImages : resolvedOmniRefImages;
@@ -1975,6 +2018,8 @@ export default function StudioPage() {
             imageEnd: secondaryImg,
             refImages: finalRefImages,
             ref_images: finalRefImages,
+            multiImageSlots,
+            multiReferenceMode: isMultiReference,
             refVideos: finalRefVideos,
             ref_videos: finalRefVideos,
             multiVideoSlots: resolvedMultiVideoSlots,
@@ -2052,6 +2097,25 @@ export default function StudioPage() {
           status: 'completed',
           url: videoUrl
         } : item));
+
+        // Omni uploads the binary but does not create an assets-table record.
+        // Persist the completed result so a refresh/cloud gallery sync cannot
+        // remove it from Studio Generator.
+        if (isOmni && videoUrl) {
+          fetch(getApiUrl('/api/save-asset'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url: videoUrl,
+              type: 'video',
+              prompt: promptToUse,
+              engine: engineToUse,
+              aspect: activeRatio,
+              projectId: targetProj,
+              userId
+            })
+          }).catch(err => console.debug('[StudioPage] Omni gallery persistence fallback:', err));
+        }
 
         try {
           useAppStore.getState().addProjectAsset({
@@ -3021,45 +3085,41 @@ export default function StudioPage() {
               )}
             </div>
           ) : (
-            <div className="flex gap-1.5 sm:gap-2 items-start w-full">
-              {masonryColumns.map((colItems, colIdx) => (
-                <div key={colIdx} className="flex-1 flex flex-col gap-1.5 sm:gap-2 min-w-0">
-                  {colItems.map((item) => (
-                    <StudioGalleryCard
-                      key={item.id}
-                      item={item}
-                      layout="masonry"
-                      onOpenLightbox={setLightboxItem}
-                      onDownload={handleDownload}
-                      onDeleteItem={handleDeleteItem}
-                      onUseAsOmniRef={handleUseAsOmniRef}
-                      onExtendVideo={handleExtendVideo}
-                      onRetry={(failedItem, targetAction) => {
-                        handleDeleteItem(failedItem.id);
-                        if (targetAction === 'seedance') {
-                          setPanelTab('seedance');
-                          setActiveEngine('seedance-fast');
-                          if (failedItem.prompt) setPromptText(failedItem.prompt);
-                          if (isMobile) setMobileTab('controls');
-                          else setIsSidebarOpen(true);
-                        } else if (targetAction === 'edit') {
-                          if (failedItem.prompt) {
-                            if (panelTab === 'omni' || panelTab === 'omni-multi') setOmniPromptText(failedItem.prompt);
-                            else setPromptText(failedItem.prompt);
-                          }
-                          if (isMobile) setMobileTab('controls');
-                          else setIsSidebarOpen(true);
-                        } else {
-                          if (failedItem.prompt) {
-                            if (panelTab === 'omni' || panelTab === 'omni-multi') setOmniPromptText(failedItem.prompt);
-                            else setPromptText(failedItem.prompt);
-                            handleGenerate();
-                          }
-                        }
-                      }}
-                    />
-                  ))}
-                </div>
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3 items-start w-full">
+              {displayGalleryItems.map((item) => (
+                <StudioGalleryCard
+                  key={item.id}
+                  item={item}
+                  layout="uniform"
+                  onOpenLightbox={setLightboxItem}
+                  onDownload={handleDownload}
+                  onDeleteItem={handleDeleteItem}
+                  onUseAsOmniRef={handleUseAsOmniRef}
+                  onExtendVideo={handleExtendVideo}
+                  onRetry={(failedItem, targetAction) => {
+                    handleDeleteItem(failedItem.id);
+                    if (targetAction === 'seedance') {
+                      setPanelTab('seedance');
+                      setActiveEngine('seedance-fast');
+                      if (failedItem.prompt) setPromptText(failedItem.prompt);
+                      if (isMobile) setMobileTab('controls');
+                      else setIsSidebarOpen(true);
+                    } else if (targetAction === 'edit') {
+                      if (failedItem.prompt) {
+                        if (panelTab === 'omni' || panelTab === 'omni-multi') setOmniPromptText(failedItem.prompt);
+                        else setPromptText(failedItem.prompt);
+                      }
+                      if (isMobile) setMobileTab('controls');
+                      else setIsSidebarOpen(true);
+                    } else {
+                      if (failedItem.prompt) {
+                        if (panelTab === 'omni' || panelTab === 'omni-multi') setOmniPromptText(failedItem.prompt);
+                        else setPromptText(failedItem.prompt);
+                        handleGenerate();
+                      }
+                    }
+                  }}
+                />
               ))}
             </div>
           )}
