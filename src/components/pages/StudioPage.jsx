@@ -219,7 +219,7 @@ function StudioGalleryCard({
     );
   }
 
-  if (item.status === 'failed') {
+  if (item.status === 'failed' || item.status === 'error') {
     const isPolicyViolation = item.error?.includes('Responsible AI') || 
                               item.error?.includes('celebrities') || 
                               item.error?.includes('policy') ||
@@ -588,6 +588,19 @@ export default function StudioPage() {
       return [];
     }
   });
+
+  // Dismissed/deleted item IDs — prevents failed/policy cards from being re-added by
+  // background polling or zerolens_gallery_updated re-syncs after the user dismisses them.
+  const dismissedIdsRef = useRef((() => {
+    try { return new Set(JSON.parse(localStorage.getItem('zl_studio_dismissed_ids') || '[]').map(String)); }
+    catch { return new Set(); }
+  })());
+  useEffect(() => {
+    const dismissed = dismissedIdsRef.current;
+    if (dismissed.size && gallery.some(i => i && dismissed.has(String(i.id)))) {
+      setGallery(prev => prev.filter(i => !i || !dismissed.has(String(i.id))));
+    }
+  }, [gallery]);
 
   // Debounced gallery persistence to localStorage — guarantees generated videos NEVER disappear
   useEffect(() => {
@@ -1658,6 +1671,11 @@ export default function StudioPage() {
 
       setGallery(prev => [newClip, ...prev]);
 
+      // Release the submit lock after a short cooldown so a 2nd concurrent job can be queued
+      // while this one keeps polling in the background. Concurrency is still capped by
+      // activeJobsCount >= maxConcurrent (placeholder above has status 'generating').
+      const submitLockTimer = setTimeout(() => setIsSubmitting(false), 8000);
+
       try {
         if (isRemix) {
           const videoUrl = customOptions?.video_url || motionRefVideo || motionRefVideoPreview;
@@ -2404,6 +2422,7 @@ export default function StudioPage() {
           }
         }
       } finally {
+        clearTimeout(submitLockTimer);
         setIsSubmitting(false);
       }
     });
@@ -2417,8 +2436,12 @@ export default function StudioPage() {
 
   const handleDeleteItem = (id, e) => {
     if (e && e.stopPropagation) e.stopPropagation();
+    try {
+      dismissedIdsRef.current.add(String(id));
+      localStorage.setItem('zl_studio_dismissed_ids', JSON.stringify([...dismissedIdsRef.current].slice(-300)));
+    } catch (_) {}
     setGallery(prev => {
-      const next = prev.filter(item => item.id !== id);
+      const next = prev.filter(item => String(item?.id) !== String(id));
       try {
         localStorage.setItem('cs_studio_gallery', JSON.stringify(next));
       } catch (err) {

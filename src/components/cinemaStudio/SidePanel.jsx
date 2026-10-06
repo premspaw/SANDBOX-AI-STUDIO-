@@ -5479,15 +5479,20 @@ export const SidePanel = React.memo(({
                     : "bg-white/5 text-zinc-500 border-white/5 cursor-not-allowed shadow-none"
                 )}
               >
-                {isBusy ? (
+                {isBusy && activeJobsCount >= maxConcurrent ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
                     <span>Queue Full ({activeJobsCount}/{maxConcurrent})</span>
                   </>
+                ) : isBusy ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
+                    <span>Submitting…</span>
+                  </>
                 ) : activeJobsCount > 0 ? (
                   <>
                     <Sparkles className="w-3.5 h-3.5 fill-current text-black" />
-                    <span>+ Generate ({activeJobsCount} Active)</span>
+                    <span>+ Generate ({activeJobsCount}/{maxConcurrent} Active)</span>
                   </>
                 ) : (
                   <>

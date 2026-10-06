@@ -2214,7 +2214,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
     });
   };
 
-  const activeJobsCount = useMemo(() => gallery.filter(i => i && (i.status === 'generating' || i.status === 'loading')).length, [gallery]);
+  const activeJobsCount = useMemo(() => gallery.filter(i => i && i.status !== 'failed' && i.status !== 'error' && i.status !== 'completed' && (i.status === 'generating' || i.status === 'loading' || i.status === 'polling' || i.loading === true)).length, [gallery]);
   const maxConcurrent = useMemo(() => {
     const tier = (userProfile?.tier || 'CREATOR').toUpperCase();
     if (tier === 'ENTERPRISE') return 16;
@@ -2931,6 +2931,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
   /* ─── GENERATE ───────────────────────────────────────────── */
   const handleGenerate = async (overridePrompt, overrideEngine, overrideOptions = {}) => {
     if (isSubmittingRef.current) return;
+    if (isMaxConcurrentReached) {
+      if (showToast) showToast(`Maximum concurrent generation limit reached (${maxConcurrent} jobs). Please wait for an active job to complete.`, 'warning');
+      return;
+    }
 
     if (overrideOptions?.task === 'edit' || (panelTab === 'remix' && overrideOptions?.engine === 'omni')) {
       console.log('[CinematicStudio] Video edit task detected — delegating generation to handleOmniEditGenerate');
@@ -2994,6 +2998,12 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
     isSubmittingRef.current = true;
     setIsSubmitting(true);
+    // Release the submit lock after 8s so a 2nd concurrent job can be queued while this one
+    // keeps polling. Concurrency stays capped by activeJobsCount >= maxConcurrent.
+    const submitLockTimer = setTimeout(() => {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
+    }, 8000);
     setStatus('generating');
     setErrorMsg('');
     setPollMsg('');
@@ -3805,6 +3815,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         }
       }
     } finally {
+      clearTimeout(submitLockTimer);
       isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
@@ -3881,6 +3892,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
 
     setIsSubmitting(true);
     isSubmittingRef.current = true;
+    const extLockTimer = setTimeout(() => {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
+    }, 8000);
     setStatus('generating');
     setPollMsg(`Extending video by +${durSec}s with Omni Flash...`);
 
@@ -3998,6 +4013,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         console.warn('[CinematicStudio] Refund error:', refErr);
       }
     } finally {
+      clearTimeout(extLockTimer);
       setIsSubmitting(false);
       isSubmittingRef.current = false;
     }
