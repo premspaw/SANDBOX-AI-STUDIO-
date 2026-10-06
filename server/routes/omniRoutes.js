@@ -509,7 +509,10 @@ export default function createRouter(deps) {
                     }
                 }
 
-                return { uri, data: trimmedBase64 };
+                if (uri && (uri.startsWith('gs://') || uri.startsWith('https://generativelanguage.googleapis.com'))) {
+                    return { uri };
+                }
+                return { data: trimmedBase64 };
             }
 
             broadcastProgress(taskId, 1, 3, 'Preparing video scene...');
@@ -666,13 +669,17 @@ export default function createRouter(deps) {
                     } else {
                         inputParts.push({ type: 'text', text: '<START_FRAME>\n[Video reference at 00:00]:\n' });
                     }
-                    inputParts.push({
+                    const primaryVidPart = {
                         type: 'video',
-                        uri: finalVideoUri,
-                        data: finalVideoData,
                         mime_type: sanitizeMime(primaryImageResolved.mimeType, 'video/mp4')
-                    });
-                    console.log(`[OMNI-I2V] ✅ Added reference video to inputParts (${requestedTask || 'reference'}, uri=${finalVideoUri || 'inline-base64'})`);
+                    };
+                    if (finalVideoUri && (finalVideoUri.startsWith('gs://') || finalVideoUri.startsWith('https://generativelanguage.googleapis.com'))) {
+                        primaryVidPart.uri = finalVideoUri;
+                    } else {
+                        primaryVidPart.data = finalVideoData;
+                    }
+                    inputParts.push(primaryVidPart);
+                    console.log(`[OMNI-I2V] ✅ Added reference video to inputParts (${requestedTask || 'reference'}, uri=${primaryVidPart.uri || 'inline-base64'})`);
                 } else {
                     inputParts.push({
                         type: 'text',
@@ -775,13 +782,17 @@ export default function createRouter(deps) {
                                 sanitizeMime(resolved.mimeType, 'video/mp4')
                             );
                             inputParts.push({ type: 'text', text: `\n<VIDEO_REF_${refImageCounter}>:\n[Driving Video Reference]:\n` });
-                            inputParts.push({
+                            const refVidPart = {
                                 type: 'video',
-                                uri: videoRef?.uri || undefined,
-                                data: videoRef?.data || resolved.data,
                                 mime_type: sanitizeMime(resolved.mimeType, 'video/mp4')
-                            });
-                            console.log(`[OMNI-I2V] ✅ Uploaded video ref from ref_images[${i}] (${videoRef?.uri || 'inline-base64'})`);
+                            };
+                            if (videoRef?.uri && (videoRef.uri.startsWith('gs://') || videoRef.uri.startsWith('https://generativelanguage.googleapis.com'))) {
+                                refVidPart.uri = videoRef.uri;
+                            } else {
+                                refVidPart.data = videoRef?.data || resolved.data;
+                            }
+                            inputParts.push(refVidPart);
+                            console.log(`[OMNI-I2V] ✅ Uploaded video ref from ref_images[${i}] (${refVidPart.uri || 'inline-base64'})`);
                         } catch (fileApiErr) {
                             console.warn(`[OMNI-I2V] Upload failed for ref_images[${i}]: ${fileApiErr.message}`);
                         }
@@ -822,13 +833,17 @@ export default function createRouter(deps) {
                             type: 'text',
                             text: `\n<VIDEO_REF_${slot}>:\n[Driving Motion Video Reference ${slot + 1}]:\n`
                         });
-                        inputParts.push({
+                        const slotVidPart = {
                             type: 'video',
-                            uri: videoRef?.uri || undefined,
-                            data: videoRef?.data || resolved.data,
                             mime_type: sanitizeMime(resolved.mimeType, 'video/mp4')
-                        });
-                        console.log(`[OMNI-I2V] ✅ Added <VIDEO_REF_${slot}> for slot ${slot + 1} (${videoRef?.uri || 'inline-base64'})`);
+                        };
+                        if (videoRef?.uri && (videoRef.uri.startsWith('gs://') || videoRef.uri.startsWith('https://generativelanguage.googleapis.com'))) {
+                            slotVidPart.uri = videoRef.uri;
+                        } else {
+                            slotVidPart.data = videoRef?.data || resolved.data;
+                        }
+                        inputParts.push(slotVidPart);
+                        console.log(`[OMNI-I2V] ✅ Added <VIDEO_REF_${slot}> for slot ${slot + 1} (${slotVidPart.uri || 'inline-base64'})`);
                     }
                 } catch (fileApiErr) {
                     console.warn(`[OMNI-I2V] Upload failed for reference video slot ${slot + 1}: ${fileApiErr.message}`);
@@ -929,8 +944,24 @@ export default function createRouter(deps) {
             if (finalTaskType !== 'edit' && finalTaskType !== 'extend') {
                 responseFormat.aspect_ratio = validAspectRatio;
             }
-            if (validResolution) {
-                responseFormat.resolution = validResolution;
+            // Strict sanitization: ensure no part in finalInput has BOTH 'data' and 'uri' set
+            if (Array.isArray(finalInput)) {
+                finalInput = finalInput.map(part => {
+                    if (!part || typeof part !== 'object') return part;
+                    if (part.type === 'video' || part.type === 'image') {
+                        if (part.uri && (part.uri.startsWith('gs://') || part.uri.startsWith('https://generativelanguage.googleapis.com'))) {
+                            return { type: part.type, uri: part.uri };
+                        }
+                        if (part.data) {
+                            return {
+                                type: part.type,
+                                data: part.data,
+                                mime_type: part.mime_type || (part.type === 'video' ? 'video/mp4' : 'image/png')
+                            };
+                        }
+                    }
+                    return part;
+                });
             }
 
             const reqBody = {
@@ -1002,10 +1033,10 @@ export default function createRouter(deps) {
                     const interactionRestUrl = `https://aiplatform.googleapis.com/v1beta1/projects/${VERTEX_PROJECT_ID}/locations/global/interactions`;
                     
                     const standardSafetySettings = [
-                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
-                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
-                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
-                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
+                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "block_only_high" },
+                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "block_only_high" },
+                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "block_only_high" },
+                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "block_only_high" }
                     ];
 
                     const interactionReqBody = {

@@ -2524,7 +2524,7 @@ export default function StudioPage() {
     }
     // Purge from backend database if it was a saved asset
     try {
-      if (id && !idStr.startsWith('temp_') && !idStr.startsWith('failed_') && !idStr.startsWith('placeholder_') && !idStr.startsWith('mock_')) {
+      if (id && /^\d+$/.test(idStr)) {
         fetch(getApiUrl(`/api/delete-asset/${id}`), { method: 'DELETE' }).catch((fetchErr) => {
           console.debug(fetchErr);
         });
