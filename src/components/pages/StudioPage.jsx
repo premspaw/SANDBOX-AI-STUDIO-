@@ -16,11 +16,105 @@ import { ReferencePanel } from '../cinemaStudio/ReferencePanel';
 import { CinematicLightbox } from '../cinemaStudio/CinematicLightbox';
 import { InpaintEditor } from '../common/InpaintEditor';
 import { StoryboardEditor } from '../cinemaStudio/StoryboardEditor';
+import { LazyVideo } from '../cinemaStudio/LazyVideo';
+
+/* ─── URL NORMALIZATION & DEDUPLICATION HELPERS ─────────────────── */
+const getNormalizedPath = (url) => {
+  if (!url || typeof url !== 'string') return '';
+  let target = url;
+  if (target.includes('/api/proxy-image')) {
+    try {
+      const u = new URL(target.startsWith('http') ? target : `http://localhost${target}`);
+      const decoded = u.searchParams.get('url');
+      if (decoded) {
+        target = decoded;
+      }
+    } catch (_) {
+      /* ignore */
+    }
+  }
+  try {
+    if (target.startsWith('http://') || target.startsWith('https://')) {
+      return new URL(target).pathname;
+    }
+  } catch (_) {
+    /* ignore */
+  }
+  if (target.startsWith('/')) {
+    return target;
+  }
+  if (!target.includes(':') && !target.startsWith('data:') && !target.startsWith('blob:')) {
+    return '/' + target;
+  }
+  return target;
+};
+
+const deduplicateGallery = (items) => {
+  if (!Array.isArray(items)) return [];
+  const seenPaths = new Set();
+  const seenIds = new Set();
+  const result = [];
+  for (const item of items) {
+    if (!item) continue;
+    // Always preserve generating or loading items
+    if (item.status === 'generating' || item.loading) {
+      result.push(item);
+      continue;
+    }
+    if (!item.url) continue;
+    const path = getNormalizedPath(item.url);
+    const idStr = String(item.id || '');
+    if (idStr && seenIds.has(idStr)) continue;
+    if (path && seenPaths.has(path)) {
+      const existingIdx = result.findIndex(r => getNormalizedPath(r.url) === path);
+      if (existingIdx !== -1) {
+        result[existingIdx] = { ...result[existingIdx], ...item };
+      }
+      continue;
+    }
+    if (path) seenPaths.add(path);
+    if (idStr) seenIds.add(idStr);
+    result.push(item);
+  }
+  return result;
+};
+
+const extractItemTimestamp = (asset) => {
+  if (!asset) return 0;
+  if (asset.loading || asset.status === 'generating' || asset.isLoader) return Date.now() + 10000000;
+  if (asset.created_at) {
+    const t = new Date(asset.created_at).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  if (asset.createdAt) {
+    const t = typeof asset.createdAt === 'number' ? asset.createdAt : new Date(asset.createdAt).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  const idMatch = String(asset.id || '').match(/(\d{13})/);
+  if (idMatch) {
+    const t = Number(idMatch[1]);
+    if (!isNaN(t) && t > 1000000000000) return t;
+  }
+  const strMatch = String(asset.url || asset.name || '').match(/(\d{13})/);
+  if (strMatch) {
+    const t = Number(strMatch[1]);
+    if (!isNaN(t) && t > 1000000000000) return t;
+  }
+  if (asset.date && asset.date !== 'Recently') {
+    const t = new Date(asset.date).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  if (typeof asset.timestamp === 'number' && asset.timestamp > 0) return asset.timestamp;
+  if (typeof asset.ts === 'number' && asset.ts > 0) return asset.ts;
+  return 0;
+};
 
 function formatRelativeTime(timestamp) {
   if (!timestamp) return '';
   const now = Date.now();
-  const diffSec = Math.floor((now - Number(timestamp)) / 1000);
+  const tsNum = Number(timestamp);
+  if (tsNum > now + 60000) return 'Generating...';
+  const diffSec = Math.max(0, Math.floor((now - tsNum) / 1000));
   if (diffSec < 60) return 'Just now';
   const diffMin = Math.floor(diffSec / 60);
   if (diffMin < 60) return `${diffMin}m ago`;
@@ -38,13 +132,9 @@ function StudioGalleryCard({
   onDeleteItem,
   onUseAsOmniRef,
   onExtendVideo,
-  onRetry
+  onRetry,
+  onUpscale
 }) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isAudioMuted, setIsAudioMuted] = useState(true);
-  const [progress, setProgress] = useState(0);
-  const videoRef = useRef(null);
-
   const isVideo = item.type === 'video' || item.url?.includes('.mp4');
   const isScreenshot = item.engine === 'Screenshot' ||
                        item.engine === 'ZeroLens Frame Extract' ||
@@ -60,66 +150,22 @@ function StudioGalleryCard({
     .replace(/ZeroLens extracted frame/i, '')
     .trim();
 
-  const handleMouseEnter = () => {
-    if (videoRef.current && isVideo) {
-      const playPromise = videoRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise.then(() => setIsPlaying(true)).catch(() => {});
-      }
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (videoRef.current && isVideo) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
-      setIsPlaying(false);
-      setProgress(0);
-    }
-  };
-
-  const handleTimeUpdate = () => {
-    if (videoRef.current) {
-      const current = videoRef.current.currentTime;
-      const total = videoRef.current.duration;
-      if (total > 0) {
-        setProgress((current / total) * 100);
-      }
-    }
-  };
-
-  const toggleAudio = (e) => {
-    e.stopPropagation();
-    if (videoRef.current) {
-      videoRef.current.muted = !videoRef.current.muted;
-      setIsAudioMuted(videoRef.current.muted);
-    }
-  };
-
   const rawAspect = (item.aspectRatio || item.aspect || '16:9').trim();
-  const isPortrait = rawAspect === '9:16';
-  const isSquare = rawAspect === '1:1';
-  const isLandscape = rawAspect === '16:9' || rawAspect === '21:9' || rawAspect === '4:3';
 
-  // Aspect ratio styling
+  // Natural aspect ratio styling matching Cinema Studio — never force pillarbox!
   const getAspectClass = () => {
-    if (layout === 'cinematic' || layout === 'uniform') {
-      return 'aspect-[16/9]';
-    }
     if (rawAspect === '9:16') return 'aspect-[9/16]';
     if (rawAspect === '1:1') return 'aspect-square';
     if (rawAspect === '4:3') return 'aspect-[4/3]';
     if (rawAspect === '21:9') return 'aspect-[21/9]';
-    return 'aspect-[16/9]';
+    return 'aspect-video';
   };
-
-  const isCinematicPillarbox = (layout === 'cinematic' || layout === 'uniform') && isPortrait;
 
   if (item.status === 'generating') {
     return (
       <div
         className={cn(
-          "w-full rounded-2xl border border-[#c8f135]/40 bg-[#0c0c14] relative overflow-hidden shadow-[0_0_30px_rgba(200,241,53,0.2)] flex flex-col justify-between p-4.5 text-center group min-h-[220px]",
+          "w-full rounded-2xl border border-[#c8f135]/40 bg-[#0c0c14] relative overflow-hidden shadow-[0_0_30px_rgba(200,241,53,0.2)] flex flex-col justify-between p-3 sm:p-3.5 text-center group",
           getAspectClass()
         )}
       >
@@ -129,41 +175,41 @@ function StudioGalleryCard({
         />
         
         {/* Top Badges */}
-        <div className="w-full flex items-center justify-between z-10">
+        <div className="w-full flex items-center justify-between z-10 shrink-0">
           <span className="px-2 py-0.5 rounded-full bg-[#c8f135]/15 text-[#c8f135] border border-[#c8f135]/30 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
             <span className="w-1.5 h-1.5 rounded-full bg-[#c8f135] animate-ping" />
-            <span>{item.engine || 'Rendering Video'}</span>
+            <span className="truncate max-w-[130px] sm:max-w-[160px]">{item.engine || 'Rendering Video'}</span>
           </span>
-          <span className="text-[9px] font-mono text-zinc-400 font-bold px-1.5 py-0.5 rounded bg-white/5 border border-white/10">
+          <span className="text-[9px] font-mono text-zinc-400 font-bold px-1.5 py-0.5 rounded bg-white/5 border border-white/10 shrink-0">
             {rawAspect} · {item.duration || 5}s
           </span>
         </div>
 
         {/* Center Spinner */}
-        <div className="relative z-10 flex flex-col items-center gap-2.5 my-auto py-2">
-          <div className="relative w-12 h-12">
+        <div className="relative z-10 flex flex-col items-center justify-center gap-1 sm:gap-1.5 my-auto py-0.5">
+          <div className="relative w-8 h-8 sm:w-9 sm:h-9 shrink-0">
             <div className="absolute inset-0 rounded-full border-2 border-[#c8f135]/20 animate-ping" />
             <div className="absolute inset-0 rounded-full border-2 border-t-[#c8f135] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
-            <Film className="absolute inset-0 m-auto w-5 h-5 text-[#c8f135]" />
+            <Film className="absolute inset-0 m-auto w-4 h-4 text-[#c8f135]" />
           </div>
-          <div className="space-y-1 max-w-xs px-2">
-            <p className="text-xs font-bold text-white tracking-wide">
+          <div className="space-y-0.5 max-w-[90%] px-1">
+            <p className="text-[11px] sm:text-xs font-bold text-white tracking-wide truncate">
               Rendering Video Clip...
             </p>
-            <p className="text-[10px] text-zinc-400 font-mono line-clamp-2">
+            <p className="text-[9px] sm:text-[9.5px] text-zinc-400 font-mono line-clamp-1">
               "{cleanPromptText}"
             </p>
           </div>
         </div>
 
         {/* Bottom Status & Cancel */}
-        <div className="w-full flex items-center justify-between pt-2 border-t border-white/5 z-10">
-          <span className="text-[9px] font-mono text-[#c8f135]/80 animate-pulse">
+        <div className="w-full flex items-center justify-between pt-1 border-t border-white/5 z-10 shrink-0">
+          <span className="text-[9px] font-mono text-[#c8f135]/80 animate-pulse truncate max-w-[75%] text-left">
             Processing job in background...
           </span>
           <button
             onClick={(e) => { e.stopPropagation(); onDeleteItem(item.id, e); }}
-            className="text-[9px] text-zinc-500 hover:text-white transition-colors cursor-pointer px-1.5 py-0.5 rounded hover:bg-white/10"
+            className="text-[9px] text-zinc-500 hover:text-white transition-colors cursor-pointer px-1.5 py-0.5 rounded hover:bg-white/10 shrink-0"
             title="Cancel / Dismiss"
           >
             Cancel
@@ -186,17 +232,18 @@ function StudioGalleryCard({
                               item.error?.includes('violates Google');
     return (
       <div className={cn(
-        "w-full rounded-2xl flex flex-col items-center justify-between p-4 relative overflow-hidden shadow-xl min-h-[220px]",
+        "w-full rounded-2xl flex flex-col items-center justify-between p-3.5 relative overflow-hidden shadow-xl",
+        getAspectClass(),
         isPolicyViolation 
           ? "border-2 border-amber-500/50 bg-gradient-to-b from-[#1c1408] to-[#0f0b04]" 
           : "border border-red-500/30 bg-[#160b0c]"
       )}>
-        <div className="flex flex-col items-center justify-center flex-1 gap-2 text-center w-full">
+        <div className="flex flex-col items-center justify-center flex-1 gap-1.5 text-center w-full my-auto">
           <div className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+            "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
             isPolicyViolation ? "bg-amber-500/20 text-amber-400" : "bg-red-500/10 text-red-400"
           )}>
-            <AlertCircle size={20} />
+            <AlertCircle size={18} />
           </div>
           <span className={cn(
             "text-[10px] font-black uppercase tracking-wider",
@@ -204,51 +251,51 @@ function StudioGalleryCard({
           )}>
             {isPolicyViolation ? "Google Policy Restriction" : "Generation Failed"}
           </span>
-          <p className="text-[10px] text-white/80 leading-relaxed font-sans max-h-24 overflow-y-auto px-1 custom-scrollbar">
+          <p className="text-[9.5px] text-white/80 leading-relaxed font-sans max-h-16 overflow-y-auto px-1 custom-scrollbar">
             {item.error || 'Server error or quota depleted'}
           </p>
           {isPolicyViolation && (
-            <span className="text-[8px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full mt-1">
+            <span className="text-[8px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
               ✓ Shorts credits refunded automatically
             </span>
           )}
         </div>
-        <div className="w-full flex flex-col gap-1.5 pt-2 border-t border-white/5 mt-2">
+        <div className="w-full flex flex-col gap-1 pt-1.5 border-t border-white/5 shrink-0">
           {isPolicyViolation ? (
             <>
               <button
                 onClick={(e) => { e.stopPropagation(); onRetry && onRetry(item, 'seedance'); }}
-                className="w-full py-1.5 rounded-lg bg-gradient-to-r from-amber-400 to-[#c8f135] text-black text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-md hover:brightness-110 flex items-center justify-center gap-1 active:scale-95"
+                className="w-full py-1 rounded-lg bg-gradient-to-r from-amber-400 to-[#c8f135] text-black text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-md hover:brightness-110 flex items-center justify-center gap-1 active:scale-95"
               >
-                <Sparkles size={11} className="fill-black text-black" />
+                <Sparkles size={10} className="fill-black text-black" />
                 <span>Try with Seedance 2.0</span>
               </button>
               <div className="flex gap-1.5 w-full">
                 <button
                   onClick={(e) => { e.stopPropagation(); onDeleteItem(item.id, e); }}
-                  className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                  className="flex-1 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-[8.5px] font-black uppercase tracking-widest transition-all cursor-pointer"
                 >
                   Dismiss
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); onRetry && onRetry(item, 'edit'); }}
-                  className="flex-1 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                  className="flex-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white text-[8.5px] font-black uppercase tracking-widest transition-all cursor-pointer"
                 >
                   Change Media
                 </button>
               </div>
             </>
           ) : (
-            <div className="flex gap-2 w-full">
+            <div className="flex gap-1.5 w-full">
               <button
                 onClick={(e) => { e.stopPropagation(); onDeleteItem(item.id, e); }}
-                className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                className="flex-1 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-[8.5px] font-black uppercase tracking-widest transition-all cursor-pointer"
               >
                 Dismiss
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onRetry && onRetry(item); }}
-                className="flex-1 py-1.5 rounded-lg bg-[#c8f135]/20 hover:bg-[#c8f135]/30 text-[#c8f135] text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                className="flex-1 py-1 rounded-lg bg-[#c8f135]/20 hover:bg-[#c8f135]/30 text-[#c8f135] text-[8.5px] font-black uppercase tracking-widest transition-all cursor-pointer"
               >
                 Retry
               </button>
@@ -266,95 +313,21 @@ function StudioGalleryCard({
         getAspectClass()
       )}
       onClick={() => onOpenLightbox(item)}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     >
       {/* Media Layer */}
-      {isCinematicPillarbox ? (
-        // Cinematic Theater Pillarbox for Portrait items in 16:9 widescreen frame
-        <div className="w-full h-full relative overflow-hidden bg-black flex items-center justify-center">
-          {/* Ambient blurred backdrop */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {isVideo ? (
-              <video
-                src={item.url}
-                className="w-full h-full object-cover blur-2xl opacity-30 scale-125"
-                muted
-                loop
-                playsInline
-                preload="none"
-              />
-            ) : (
-              <img
-                src={item.url}
-                className="w-full h-full object-cover blur-2xl opacity-30 scale-125"
-                alt=""
-              />
-            )}
-          </div>
-          {/* Centered crisp portrait frame */}
-          <div className="h-full aspect-[9/16] relative z-10 mx-auto shadow-2xl overflow-hidden bg-black">
-            {isVideo ? (
-              <video
-                ref={videoRef}
-                src={item.url}
-                className="w-full h-full object-cover"
-                playsInline
-                muted={isAudioMuted}
-                loop
-                preload="metadata"
-                onTimeUpdate={handleTimeUpdate}
-              />
-            ) : (
-              <img
-                src={item.url}
-                alt={cleanPromptText}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                loading="lazy"
-              />
-            )}
-          </div>
-        </div>
-      ) : isVideo ? (
-        <div className="w-full h-full relative bg-black flex items-center justify-center">
-          <video
-            ref={videoRef}
-            src={item.url}
-            className="w-full h-full object-cover"
-            playsInline
-            muted={isAudioMuted}
-            loop
-            preload="metadata"
-            onTimeUpdate={handleTimeUpdate}
+      <div className="w-full h-full relative bg-black overflow-hidden flex items-center justify-center">
+        {isVideo ? (
+          <LazyVideo src={item.url} aspect={rawAspect} onOpenLightbox={() => onOpenLightbox(item)} />
+        ) : (
+          <img
+            src={resolveUrl(item.url)}
+            alt={cleanPromptText}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+            decoding="async"
           />
-        </div>
-      ) : (
-        <img
-          src={item.url}
-          alt={cleanPromptText}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          loading="lazy"
-        />
-      )}
-
-      {/* Center Play Button Overlay when paused */}
-      {isVideo && !isPlaying && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:scale-110 transition-transform duration-200 z-10">
-          <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-2xl">
-            <Play size={18} className="text-white fill-white ml-0.5" />
-          </div>
-        </div>
-      )}
-
-      {/* Video Progress Scrubber Bar on Hover */}
-      {isVideo && (
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10 z-20 overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity">
-          <div
-            className="h-full bg-[#c8f135] shadow-[0_0_8px_#c8f135] transition-[width] duration-100 ease-linear"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Badges Top-Left */}
       <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-20 pointer-events-none">
@@ -389,7 +362,7 @@ function StudioGalleryCard({
             <Film size={10} />
             Sequence
           </span>
-        ) : item.duration ? (
+        ) : (isVideo && item.duration) ? (
           <span className="px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-md border border-white/20 text-white/90 text-[9px] font-mono font-medium shadow-md">
             {item.duration}s
           </span>
@@ -401,21 +374,6 @@ function StudioGalleryCard({
         className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex items-center gap-1 sm:gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 z-20"
         onClick={e => e.stopPropagation()}
       >
-        {/* Audio Toggle (Video Only) */}
-        {isVideo && (
-          <button
-            onClick={toggleAudio}
-            className={cn(
-              "p-1 sm:p-2 rounded-lg sm:rounded-xl border backdrop-blur-md transition-all shadow-lg cursor-pointer",
-              !isAudioMuted
-                ? "bg-[#c8f135] text-black border-[#c8f135] shadow-[0_0_10px_rgba(200,241,53,0.4)]"
-                : "bg-black/80 hover:bg-white/20 text-white border-white/20"
-            )}
-            title={isAudioMuted ? "Unmute Preview Audio" : "Mute Preview Audio"}
-          >
-            {isAudioMuted ? <VolumeX size={11} className="sm:w-[13px] sm:h-[13px]" /> : <Volume2 size={11} className="sm:w-[13px] sm:h-[13px]" />}
-          </button>
-        )}
 
         {/* Use as Omni Reference (Desktop Hover or Lightbox on Mobile) */}
         <button
@@ -434,6 +392,17 @@ function StudioGalleryCard({
             title="Extend Video (+4s with Omni Flash)"
           >
             <Sparkles size={11} className="sm:w-[13px] sm:h-[13px]" />
+          </button>
+        )}
+
+        {/* Upscale (1080p HD / 2K) */}
+        {onUpscale && !item.loading && item.status !== 'generating' && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onUpscale(item, e); }}
+            className="hidden sm:flex p-1 sm:p-2 rounded-lg sm:rounded-xl bg-black/80 hover:bg-fuchsia-500 text-fuchsia-400 hover:text-white border border-fuchsia-500/30 backdrop-blur-md transition-all shadow-lg cursor-pointer items-center justify-center"
+            title={isVideo ? "Upscale Video to 1080p HD" : "Upscale Image to 2K"}
+          >
+            <Zap size={11} className="sm:w-[13px] sm:h-[13px]" />
           </button>
         )}
 
@@ -495,7 +464,7 @@ function StudioGalleryCard({
 }
 
 export default function StudioPage() {
-  const { userProfile, updateShortsBalance } = useAppStore();
+  const { userProfile, updateShortsBalance, fetchUnifiedGallery } = useAppStore();
   const setShowingAuthModal = useAppStore(state => state.setShowingAuthModal);
   const userId = userProfile?.id || null;
   const userCredits = useAppStore(state => state.userShorts) ?? 100;
@@ -589,94 +558,154 @@ export default function StudioPage() {
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
 
-  // Common Unified Gallery from useAppStore with real-time server syncing
-  const rawUnifiedGallery = useAppStore(state => state.unifiedGallery);
-  const unifiedGallery = useMemo(() => rawUnifiedGallery || [], [rawUnifiedGallery]);
-  const isGalleryLoading = useAppStore(state => state.isGalleryLoading);
-  const fetchUnifiedGallery = useAppStore(state => state.fetchUnifiedGallery);
-  const addUnifiedAsset = useAppStore(state => state.addUnifiedAsset);
-  const removeUnifiedAsset = useAppStore(state => state.removeUnifiedAsset);
+  // ─── GALLERY STATE (IDENTICAL TO CINEMA STUDIO) ───────────────────
+  const galleryLSKey = userId && userId !== 'anon'
+    ? `cinematic_studio_gallery_${userId}`
+    : 'cs_studio_gallery';
 
-  // Local in-flight pending generations
-  const [localPendingJobs, setLocalPendingJobs] = useState([]);
+  const [gallery, setGallery] = useState(() => {
+    try {
+      const cached = (galleryLSKey && localStorage.getItem(galleryLSKey)) ||
+                     localStorage.getItem('cs_studio_gallery') ||
+                     localStorage.getItem('cs_gallery');
+      const parsed = cached ? JSON.parse(cached) : [];
+      const filtered = (Array.isArray(parsed) ? parsed : []).filter(item => {
+        if (!item || !item.url) return false;
+        const itemId = String(item.id || '');
+        const itemUrl = String(item.url || '');
+        if (item.type === 'reference_upload') return false;
+        const isRefFolder = itemUrl.includes('/uploads/') || itemUrl.includes('/reference/');
+        return !itemId.startsWith('default_') && !itemUrl.includes('landing-assets') && !isRefFolder;
+      });
+      return deduplicateGallery(filtered);
+    } catch {
+      return [];
+    }
+  });
 
-  // Fetch unified gallery from server on mount and when userId changes
+  // Debounced gallery persistence to localStorage — guarantees generated videos NEVER disappear
   useEffect(() => {
-    fetchUnifiedGallery(userId);
+    if (!galleryLSKey) return;
+    const timer = setTimeout(() => {
+      try {
+        const persistable = gallery.filter(item => item && !item.loading && item.status !== 'generating' && item.url && !item.url.startsWith('blob:'));
+        const json = JSON.stringify(persistable.slice(0, 100));
+        localStorage.setItem(galleryLSKey, json);
+        localStorage.setItem('cs_studio_gallery', json);
+      } catch (_) {
+        /* ignore */
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [gallery, galleryLSKey]);
+
+  // Instant local cache hydration when userId is resolved
+  useEffect(() => {
+    if (!galleryLSKey) return;
+    try {
+      const cached = localStorage.getItem(galleryLSKey) || localStorage.getItem('cs_studio_gallery');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const deduped = deduplicateGallery(parsed);
+          setGallery(prev => {
+            if (prev.length === 0) return deduped;
+            const existingUrls = new Set(prev.map(i => getNormalizedPath(i.url)).filter(Boolean));
+            const existingIds = new Set(prev.map(i => String(i.id)));
+            const extra = deduped.filter(i => !existingIds.has(String(i.id)) && (!i.url || !existingUrls.has(getNormalizedPath(i.url))));
+            return deduplicateGallery([...prev, ...extra]);
+          });
+        }
+      }
+    } catch (_) {
+      /* ignore */
+    }
+  }, [galleryLSKey]);
+
+  // Fetch previously generated assets from server on mount & userId change
+  const [isGalleryLoading, setIsGalleryLoading] = useState(false);
+  const fetchAssets = useCallback(async () => {
+    if (!userId || userId === 'anon') return;
+    setIsGalleryLoading(true);
+    try {
+      if (typeof fetchUnifiedGallery === 'function') {
+        fetchUnifiedGallery(userId, true);
+      }
+      let resp = await fetch(getApiUrl(`/api/list-assets?userId=${userId}`));
+      if (!resp.ok) {
+        resp = await fetch(getApiUrl(`/api/ugc/assets/${userId}`));
+      }
+      if (!resp.ok) return;
+      const data = await resp.json();
+      if (data.assets && Array.isArray(data.assets)) {
+        const loadedAssets = data.assets
+          .filter(asset => {
+            if (asset.type === 'reference_upload') return false;
+            const url = asset.url || '';
+            return !url.includes('/uploads/') && !url.includes('/reference/');
+          })
+          .map(asset => {
+            const isVid = asset.type === 'video' || (typeof asset.url === 'string' && (asset.url.includes('.mp4') || asset.url.includes('.webm') || asset.url.includes('.mov')));
+            return {
+              id: asset.id,
+              type: isVid ? 'video' : 'image',
+              url: asset.url,
+              prompt: asset.prompt || asset.name || '',
+              engine: asset.engine || (isVid ? 'Veo 3.1' : 'Nano Banana 2'),
+              aspect: asset.aspect || asset.aspectRatio || '16:9',
+              aspectRatio: asset.aspect || asset.aspectRatio || '16:9',
+              timestamp: extractItemTimestamp(asset),
+              ts: extractItemTimestamp(asset),
+              projectId: asset.projectId || 'default',
+              status: 'completed'
+            };
+          });
+
+        if (loadedAssets.length > 0) {
+          setGallery(prev => {
+            const existingUrls = new Set(prev.map(item => getNormalizedPath(item.url)).filter(Boolean));
+            const existingIds = new Set(prev.map(item => String(item.id)));
+            const newFromServer = loadedAssets.filter(asset => {
+              const normPath = getNormalizedPath(asset.url);
+              return !existingIds.has(String(asset.id)) && (!normPath || !existingUrls.has(normPath));
+            });
+            return deduplicateGallery([...prev, ...newFromServer]);
+          });
+        }
+      }
+    } catch (err) {
+      console.error("[StudioPage] Failed to fetch assets for gallery:", err);
+    } finally {
+      setIsGalleryLoading(false);
+    }
   }, [userId, fetchUnifiedGallery]);
 
-  // Listen to cross-studio real-time gallery updates (debounced to prevent
-  // flickering when our own addUnifiedAsset fires the event — the new item is
-  // already in the store locally; the server fetch is only needed for cross-tab sync)
   useEffect(() => {
-    let debounceTimer = null;
+    fetchAssets();
+  }, [fetchAssets]);
+
+  // Listen to cross-studio real-time gallery updates
+  useEffect(() => {
     const handleGalleryUpdate = (e) => {
-      // Skip refetch if this event was fired by our own studio (same-tab add)
-      // The item is already in the store via addUnifiedAsset; refetching immediately
-      // would replace the store with the server list before the server has the item.
-      if (e?.detail?.skipRefetch) return;
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        fetchUnifiedGallery(userId);
-      }, 3000); // 3s debounce — gives server time to persist before refetch
+      if (e?.detail) {
+        const item = e.detail;
+        if (item && item.url) {
+          setGallery(prev => {
+            const normPath = getNormalizedPath(item.url);
+            const exists = prev.some(p => String(p.id) === String(item.id) || (normPath && getNormalizedPath(p.url) === normPath));
+            if (!exists) {
+              return deduplicateGallery([item, ...prev]);
+            }
+            return prev;
+          });
+        }
+      }
     };
     window.addEventListener('zerolens_gallery_updated', handleGalleryUpdate);
-    return () => {
-      window.removeEventListener('zerolens_gallery_updated', handleGalleryUpdate);
-      if (debounceTimer) clearTimeout(debounceTimer);
-    };
-  }, [userId, fetchUnifiedGallery]);
+    return () => window.removeEventListener('zerolens_gallery_updated', handleGalleryUpdate);
+  }, []);
 
-  const gallery = useMemo(() => {
-    const pendingIds = new Set(localPendingJobs.map(p => p.id));
-    const merged = [
-      ...localPendingJobs,
-      ...unifiedGallery.filter(item => item && !pendingIds.has(item.id))
-    ];
-    return merged;
-  }, [localPendingJobs, unifiedGallery]);
-
-  // `setGallery` below is used by long-running generation callbacks. Keep a
-  // synchronous copy of the latest composed gallery so a completion callback
-  // never applies its update to the render in which the job was *started*.
-  // Without this, Omni completions could not find their temporary card and
-  // would silently disappear from Studio Generator.
-  const galleryRef = useRef(gallery);
-  useEffect(() => {
-    galleryRef.current = gallery;
-  }, [gallery]);
-
-  const setGallery = useCallback((updater) => {
-    if (typeof updater === 'function') {
-      const currentList = galleryRef.current;
-      const nextList = updater(currentList);
-      if (Array.isArray(nextList)) {
-        // Update the ref immediately. React state updates can be batched, but
-        // multiple generation jobs may finish before the next render.
-        galleryRef.current = nextList;
-        // Keep ALL items that are still pending (generating/failed/loading)
-        // PLUS any completed items that haven't yet been confirmed in unifiedGallery
-        // This prevents the 1-2 frame flicker where an item vanishes between
-        // being removed from localPendingJobs and appearing in unifiedGallery.
-        const unifiedIds = new Set((unifiedGallery || []).map(i => i?.id).filter(Boolean));
-        const pending = nextList.filter(i => {
-          if (!i) return false;
-          if (i.status === 'generating' || i.status === 'failed' || i.loading) return true;
-          // Completed but not yet in unified store → keep locally to avoid flicker
-          if (i.status === 'completed' && i.url && !unifiedIds.has(i.id)) return true;
-          return false;
-        });
-        setLocalPendingJobs(pending);
-        nextList.forEach(item => {
-          if (item && item.url && item.status === 'completed' && !item.url.startsWith('blob:')) {
-            addUnifiedAsset(item);
-          }
-        });
-      }
-    }
-  }, [unifiedGallery, addUnifiedAsset]);
-
-  const activeJobs = useMemo(() => gallery.filter(i => i && i.status === 'generating'), [gallery]);
+  const activeJobs = useMemo(() => gallery.filter(i => i && (i.status === 'generating' || i.loading)), [gallery]);
   const activeJobsCount = activeJobs.length;
 
   const maxConcurrent = useMemo(() => {
@@ -688,7 +717,7 @@ export default function StudioPage() {
   }, [userProfile?.tier]);
 
   const isMaxConcurrentReached = activeJobsCount >= maxConcurrent;
-  const isBusy = isMaxConcurrentReached;
+  const isBusy = activeJobsCount > 0 || isMaxConcurrentReached;
   const [lightboxItem, setLightboxItem] = useState(null);
   const [showInpaint, setShowInpaint] = useState(false);
   const [showStoryboard, setShowStoryboard] = useState(false);
@@ -704,22 +733,6 @@ export default function StudioPage() {
   const [aspectFilter, setAspectFilter] = useState('all'); // 'all' (All Ratio default)
   const [galleryLayout, setGalleryLayout] = useState('masonry'); // 'masonry' (Masonry default)
   const [galleryDensity, setGalleryDensity] = useState('compact'); // 'compact' (Compact default)
-
-  const galleryCounts = useMemo(() => {
-    let all = 0;
-    let video = 0;
-    let image = 0;
-
-    gallery.forEach(item => {
-      if (!item) return;
-      all++;
-      const isVid = item.type === 'video' || item.url?.includes('.mp4');
-      if (isVid) video++;
-      else image++;
-    });
-
-    return { all, video, image };
-  }, [gallery]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -743,31 +756,101 @@ export default function StudioPage() {
     return 'aspect-[16/9]';
   }, []);
 
-  const filteredGallery = useMemo(() => {
-    return gallery.filter(item => {
+  const projectAssets = useAppStore(state => state.projectAssets);
+
+  // Items belonging to current project (before media type or aspect ratio filters)
+  const currentProjectItems = useMemo(() => {
+    const assets = projectAssets || {};
+    const baseItems = gallery.filter(item => {
       if (!item) return false;
 
-      // 1. Media Type Filter (All / Video / Image)
-      if (galleryFilter === 'video') {
-        const isVid = item.type === 'video' || item.url?.includes('.mp4');
-        if (!isVid) return false;
-      } else if (galleryFilter === 'image') {
-        const isVid = item.type === 'video' || item.url?.includes('.mp4');
-        if (isVid) return false;
-      }
+      // Always show generating items
+      if (item.status === 'generating' || item.loading) return true;
 
-      // 2. Folder / Project Filter
+      // Project / Folder Filter
       if (activeProjectId && activeProjectId !== 'all') {
         const itemProj = item.projectId || item.folder || 'default';
         if (activeProjectId === 'default') {
-          // In Default Project view, show all default/unassigned or general assets
           if (item.projectId && item.projectId !== 'default' && item.projectId !== 'proj_default') return false;
         } else {
-          if (item.projectId !== activeProjectId && item.folder !== activeProjectId) return false;
+          if (itemProj !== activeProjectId && item.projectId !== activeProjectId) return false;
         }
       }
 
-      // 3. Aspect Ratio Filter
+      return true;
+    });
+
+    // Also pull assets from the active project in Project Box
+    const activeProjectAssetList = activeProjectId === 'all'
+      ? (Array.isArray(assets) ? assets : Object.values(assets).flat())
+      : (Array.isArray(assets)
+          ? assets.filter(a => (a.projectId || 'default') === activeProjectId)
+          : (Array.isArray(assets[activeProjectId]) ? assets[activeProjectId] : []));
+
+    const boxItems = activeProjectAssetList.map(a => {
+      const aTs = extractItemTimestamp(a);
+      return {
+        id: a.id,
+        type: a.type || 'video',
+        url: a.url,
+        prompt: a.prompt || a.name || 'Project Asset',
+        engine: a.engine || (a.boardType ? `${a.boardType} Sheet` : 'Project Asset'),
+        aspectRatio: a.aspect || a.aspectRatio || '16:9',
+        aspect: a.aspect || a.aspectRatio || '16:9',
+        timestamp: aTs,
+        ts: aTs,
+        status: 'completed',
+        projectId: a.projectId || (activeProjectId === 'all' ? 'default' : activeProjectId)
+      };
+    });
+
+    const seenUrls = new Set(baseItems.map(i => getNormalizedPath(i.url) || i.url).filter(Boolean));
+    const seenIds = new Set(baseItems.map(i => String(i.id)));
+    const merged = [...baseItems];
+    boxItems.forEach(b => {
+      const normB = getNormalizedPath(b.url) || b.url;
+      if (b.url && !seenUrls.has(normB) && !seenIds.has(String(b.id))) {
+        merged.push(b);
+        if (normB) seenUrls.add(normB);
+        seenIds.add(String(b.id));
+      }
+    });
+
+    return merged;
+  }, [gallery, activeProjectId, projectAssets]);
+
+  const galleryCounts = useMemo(() => {
+    let all = 0;
+    let video = 0;
+    let image = 0;
+
+    currentProjectItems.forEach(item => {
+      if (!item) return;
+      all++;
+      const isVid = item.type === 'video' || (typeof item.url === 'string' && (item.url.includes('.mp4') || item.url.includes('.webm') || item.url.includes('.mov') || item.url.includes('/video/')));
+      if (isVid) video++;
+      else image++;
+    });
+
+    return { all, video, image };
+  }, [currentProjectItems]);
+
+  const filteredGallery = useMemo(() => {
+    return currentProjectItems.filter(item => {
+      if (!item) return false;
+
+      // Always show generating items
+      if (item.status === 'generating' || item.loading) return true;
+
+      // 1. Media Type Filter (All / Video / Image)
+      const isVid = item.type === 'video' || (typeof item.url === 'string' && (item.url.includes('.mp4') || item.url.includes('.webm') || item.url.includes('.mov') || item.url.includes('/video/')));
+      if (galleryFilter === 'video') {
+        if (!isVid) return false;
+      } else if (galleryFilter === 'image') {
+        if (isVid) return false;
+      }
+
+      // 2. Aspect Ratio Filter
       if (aspectFilter !== 'all') {
         const raw = (item.aspectRatio || item.aspect || '16:9').trim();
         if (aspectFilter === '16:9') {
@@ -781,37 +864,35 @@ export default function StudioPage() {
 
       return true;
     });
-  }, [gallery, galleryFilter, activeProjectId, aspectFilter]);
+  }, [currentProjectItems, galleryFilter, aspectFilter]);
 
-  // Cinema Studio always renders a stable newest-first sequence. Studio
-  // Generator previously passed its unsorted list directly into a masonry
-  // balancer, making mixed aspect ratios appear randomly shuffled.
+  // Stable newest-first sequence: loading/generating items strictly float to the top
   const displayGalleryItems = useMemo(() => {
     return [...filteredGallery].sort((a, b) => {
-      const aLoading = a.loading || a.status === 'generating';
-      const bLoading = b.loading || b.status === 'generating';
+      const aLoading = a.loading || a.status === 'generating' || a.isLoader;
+      const bLoading = b.loading || b.status === 'generating' || b.isLoader;
       if (aLoading !== bLoading) return aLoading ? -1 : 1;
-      const aTime = Number(a.timestamp || a.createdAt || 0);
-      const bTime = Number(b.timestamp || b.createdAt || 0);
-      return bTime - aTime;
+      return extractItemTimestamp(b) - extractItemTimestamp(a);
     });
   }, [filteredGallery]);
 
-  // Dynamic Tight-Gap Shortest-Column Masonry Balancer (2 cols on mobile, 3-5 cols on desktop)
+  // Dynamic Tight-Gap Shortest-Column Masonry Balancer (prevents vertical row gaps between 16:9 and 9:16)
   const masonryColumns = useMemo(() => {
-    const isCompact = galleryDensity === 'compact';
-    const count = isMobile
-      ? 2
-      : (isCompact
-          ? (windowWidth >= 1600 ? 5 : windowWidth >= 1200 ? 4 : 3)
-          : (windowWidth >= 1200 ? 3 : 2));
+    let count;
+    if (isMobile) {
+      count = windowWidth < 480 ? 1 : 2;
+    } else if (galleryDensity === 'compact') {
+      count = windowWidth >= 1600 ? 4 : (windowWidth >= 1024 ? 3 : 2);
+    } else {
+      count = windowWidth >= 1400 ? 3 : 2;
+    }
+
     const cols = Array.from({ length: count }, () => []);
     const heights = Array.from({ length: count }, () => 0);
 
-    filteredGallery.forEach((item, idx) => {
-      // Top items and currently generating items must ALWAYS be placed at column 0 (top-left corner)
+    displayGalleryItems.forEach((item, idx) => {
       let targetCol;
-      if (item.loading || item.status === 'generating' || idx === 0) {
+      if (item.loading || item.status === 'generating' || item.isLoader) {
         targetCol = 0;
       } else if (idx < count) {
         targetCol = idx;
@@ -831,79 +912,7 @@ export default function StudioPage() {
     });
 
     return cols;
-  }, [filteredGallery, isMobile, windowWidth, galleryDensity]);
-
-  // Safe gallery persistence with payload sanitization and quota protection
-  useEffect(() => {
-    if (!Array.isArray(gallery) || gallery.length === 0) return;
-
-    const sanitizeItem = (item) => {
-      if (!item) return null;
-      const rawUrl = item.url || '';
-      // Strip oversized base64 data URLs to protect localStorage 5MB quota
-      const safeUrl = (typeof rawUrl === 'string' && rawUrl.length > 5000 && rawUrl.startsWith('data:'))
-        ? null
-        : rawUrl;
-
-      return {
-        id: item.id,
-        type: item.type || 'video',
-        url: safeUrl,
-        prompt: (item.prompt || '').slice(0, 300),
-        engine: item.engine,
-        duration: item.duration,
-        aspectRatio: item.aspectRatio,
-        resolution: item.resolution,
-        timestamp: item.timestamp,
-        status: item.status,
-        projectId: item.projectId
-      };
-    };
-
-    const tryPersist = (items) => {
-      try {
-        const sanitized = items.map(sanitizeItem).filter(i => i && i.url);
-        const data = JSON.stringify(sanitized);
-
-        const userKey = userId && userId !== 'anon' ? `cinematic_studio_gallery_${userId}` : null;
-        if (userKey) {
-          try {
-            localStorage.setItem(userKey, data);
-          } catch (_) {
-            void 0;
-          }
-        }
-        try {
-          localStorage.setItem('cs_studio_gallery', data);
-        } catch (_) {
-          void 0;
-        }
-
-        // Clean up duplicate heavy legacy keys to free origin quota
-        try {
-          localStorage.removeItem('cs_gallery');
-          localStorage.removeItem('zerolens_unified_gallery');
-        } catch (_) {
-          void 0;
-        }
-      } catch (_) {
-        void 0;
-      }
-    };
-
-    try {
-      tryPersist(gallery.slice(0, 30));
-    } catch (_) {
-      try {
-        localStorage.removeItem('cs_gallery');
-        localStorage.removeItem('zerolens_unified_gallery');
-        localStorage.removeItem('ugc_video_gallery');
-        tryPersist(gallery.slice(0, 10));
-      } catch (_) {
-        void 0;
-      }
-    }
-  }, [gallery, userId]);
+  }, [displayGalleryItems, isMobile, windowWidth, galleryDensity]);
 
   // Helper to ensure media URLs (blob, relative, or cloud) are resolved to Base64 before sending to backend
   // Remote URLs (http/https/CDN) and data URLs do not need browser fetch; the backend handles remote fetching without CORS
@@ -1091,15 +1100,39 @@ export default function StudioPage() {
               projectId: targetProj
             };
 
-            // Add to Universal Gallery (Zustand store + localStorage + project vault + event dispatch)
-            // Do NOT call setGallery here — it captures a stale closure of `gallery` from the render
-            // at generation start, causing the item to be lost. The gallery useMemo recomputes
-            // automatically from `localPendingJobs + unifiedGallery` once these two calls fire.
-            useAppStore.getState().addUnifiedAsset(completedAsset);
+            // Update in React gallery state
+            setGallery(prev => prev.map(item => item.id === tempId ? completedAsset : item));
 
-            // Remove the generating placeholder from localPendingJobs
-            // setLocalPendingJobs is a stable React state setter (same ref across renders) — safe to call
-            setLocalPendingJobs(prev => prev.filter(p => p.id !== tempId));
+            // Save to database assets table so it persists across reloads/sessions
+            try {
+              fetch(getApiUrl('/api/save-asset'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  url: completedAsset.url,
+                  type: 'video',
+                  prompt: completedAsset.prompt,
+                  engine: completedAsset.engine,
+                  aspect: completedAsset.aspectRatio,
+                  projectId: targetProj,
+                  userId
+                })
+              }).catch(e => console.debug('[StudioPage] Save asset fallback:', e));
+            } catch (saveErr) {
+              console.warn('[StudioPage] Save asset error:', saveErr);
+            }
+
+            // Sync with global Project Assets & Universal Gallery store
+            try {
+              useAppStore.getState().addProjectAsset(completedAsset, targetProj);
+            } catch (_) {
+              /* ignore */
+            }
+            try {
+              useAppStore.getState().addUnifiedAsset(completedAsset);
+            } catch (_) {
+              /* ignore */
+            }
 
             const showToast = useAppStore.getState().showToast;
             if (showToast) showToast(`${engineLabel} video rendered!`, 'success');
@@ -1257,6 +1290,18 @@ export default function StudioPage() {
           userId
         })
       }).catch(err => console.debug('[StudioPage] Extension gallery persistence fallback:', err));
+
+      try {
+        useAppStore.getState().addProjectAsset(finishedItem, activeProjectId);
+      } catch (_) {
+        /* ignore */
+      }
+      try {
+        useAppStore.getState().addUnifiedAsset(finishedItem);
+      } catch (_) {
+        /* ignore */
+      }
+
       setExtensionSourceVideo(finishedItem);
       if (refreshShorts) refreshShorts();
       const showToast = useAppStore.getState().showToast;
@@ -1428,6 +1473,17 @@ export default function StudioPage() {
         console.warn('[StudioPage] Save asset error:', saveErr);
       }
 
+      try {
+        useAppStore.getState().addProjectAsset(finishedItem, activeProjectId);
+      } catch (_) {
+        /* ignore */
+      }
+      try {
+        useAppStore.getState().addUnifiedAsset(finishedItem);
+      } catch (_) {
+        /* ignore */
+      }
+
       if (refreshShorts) refreshShorts();
       const showToast = useAppStore.getState().showToast;
       if (showToast) showToast("Omni 1.1 Video Edit finished successfully!", "success");
@@ -1582,9 +1638,12 @@ export default function StudioPage() {
         engine: engineDisplayLabel,
         duration: isMotion ? (isKlingMotion ? Math.ceil(motionRefVideoDuration || 5) : 10) : activeDuration,
         aspectRatio: activeRatio,
+        aspect: activeRatio,
         resolution: isMotion ? (motionMode === 'pro' ? '1080p' : '720p') : activeResolution,
-        timestamp: Date.now(),
+        timestamp: Date.now() + 10000000,
+        ts: Date.now() + 10000000,
         status: 'generating',
+        loading: true,
         url: null,
         projectId: targetProj
       };
@@ -1623,11 +1682,49 @@ export default function StudioPage() {
           const finalUrl = data.videoUrl || data.originalUrl;
           if (!finalUrl) throw new Error(data.error || "No video URL returned from Remix Engine");
 
-          setGallery(prev => prev.map(item => item.id === tempId ? {
-            ...item,
+          const finishedRemixItem = {
+            id: tempId,
+            type: 'video',
             status: 'completed',
-            url: finalUrl
-          } : item));
+            url: finalUrl,
+            prompt: promptToUse || 'Genjutsu Motion Transfer',
+            engine: 'Genjutsu Motion Transfer',
+            aspectRatio: activeRatio,
+            aspect: activeRatio,
+            timestamp: Date.now(),
+            projectId: targetProj
+          };
+
+          setGallery(prev => prev.map(item => item.id === tempId ? finishedRemixItem : item));
+
+          try {
+            fetch(getApiUrl('/api/save-asset'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                url: finalUrl,
+                type: 'video',
+                prompt: finishedRemixItem.prompt,
+                engine: finishedRemixItem.engine,
+                aspect: finishedRemixItem.aspectRatio,
+                projectId: targetProj,
+                userId
+              })
+            }).catch(e => console.debug('[StudioPage] Save asset fallback:', e));
+          } catch (saveErr) {
+            console.warn('[StudioPage] Save asset error:', saveErr);
+          }
+
+          try {
+            useAppStore.getState().addProjectAsset(finishedRemixItem, targetProj);
+          } catch (_) {
+            /* ignore */
+          }
+          try {
+            useAppStore.getState().addUnifiedAsset(finishedRemixItem);
+          } catch (_) {
+            /* ignore */
+          }
 
           if (showToast) showToast("Genjutsu Motion Transfer video rendered!", "success");
           return;
@@ -1708,11 +1805,49 @@ export default function StudioPage() {
               throw new Error('Kling motion control timed out after 9 minutes. The task may complete in background.');
             }
 
-            setGallery(prev => prev.map(item => item.id === tempId ? {
-              ...item,
+            const finishedKlingItem = {
+              id: tempId,
+              type: 'video',
               status: 'completed',
-              url: completedUrl
-            } : item));
+              url: completedUrl,
+              prompt: promptToUse || 'Kling 3.0 Motion Control',
+              engine: `Kling 3.0 (${motionMode === 'pro' ? 'Pro 1080p' : 'Std 720p'})`,
+              aspectRatio: activeRatio,
+              aspect: activeRatio,
+              timestamp: Date.now(),
+              projectId: targetProj
+            };
+
+            setGallery(prev => prev.map(item => item.id === tempId ? finishedKlingItem : item));
+
+            try {
+              fetch(getApiUrl('/api/save-asset'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  url: completedUrl,
+                  type: 'video',
+                  prompt: finishedKlingItem.prompt,
+                  engine: finishedKlingItem.engine,
+                  aspect: finishedKlingItem.aspectRatio,
+                  projectId: targetProj,
+                  userId
+                })
+              }).catch(e => console.debug('[StudioPage] Save asset fallback:', e));
+            } catch (saveErr) {
+              console.warn('[StudioPage] Save asset error:', saveErr);
+            }
+
+            try {
+              useAppStore.getState().addProjectAsset(finishedKlingItem, targetProj);
+            } catch (_) {
+              /* ignore */
+            }
+            try {
+              useAppStore.getState().addUnifiedAsset(finishedKlingItem);
+            } catch (_) {
+              /* ignore */
+            }
 
             const spentCredits = (motionMode === 'pro' ? 9 : 7) * motionDur;
             if (typeof updateShortsBalance === 'function') {
@@ -1779,14 +1914,50 @@ export default function StudioPage() {
             const finalUrl = data.videoUrl || data.url;
             if (!finalUrl) throw new Error("Motion Control returned no video URL.");
 
-            setGallery(prev => prev.map(item => item.id === tempId ? {
-              ...item,
+            const finishedEasyItem = {
+              id: tempId,
+              type: 'video',
               status: 'completed',
               url: finalUrl,
               engine: 'Motion Control Easy',
               prompt: userExtraPrompt || 'Motion Control Performance Transfer',
-              duration: 10
-            } : item));
+              aspectRatio: activeRatio,
+              aspect: activeRatio,
+              duration: 10,
+              timestamp: Date.now(),
+              projectId: targetProj
+            };
+
+            setGallery(prev => prev.map(item => item.id === tempId ? finishedEasyItem : item));
+
+            try {
+              fetch(getApiUrl('/api/save-asset'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  url: finalUrl,
+                  type: 'video',
+                  prompt: finishedEasyItem.prompt,
+                  engine: finishedEasyItem.engine,
+                  aspect: finishedEasyItem.aspectRatio,
+                  projectId: targetProj,
+                  userId
+                })
+              }).catch(e => console.debug('[StudioPage] Save asset fallback:', e));
+            } catch (saveErr) {
+              console.warn('[StudioPage] Save asset error:', saveErr);
+            }
+
+            try {
+              useAppStore.getState().addProjectAsset(finishedEasyItem, targetProj);
+            } catch (_) {
+              /* ignore */
+            }
+            try {
+              useAppStore.getState().addUnifiedAsset(finishedEasyItem);
+            } catch (_) {
+              /* ignore */
+            }
 
             if (showToast) showToast("Motion Control Easy video rendered successfully!", "success");
             return;
@@ -1916,10 +2087,36 @@ export default function StudioPage() {
               projectId: targetProj
             };
 
-            // addUnifiedAsset handles store + localStorage + project vault internally
-            useAppStore.getState().addUnifiedAsset(completedAsset);
-            // Remove generating placeholder — stable setter, no stale-closure risk
-            setLocalPendingJobs(prev => prev.filter(item => item.id !== tempId));
+            setGallery(prev => prev.map(item => item.id === tempId ? completedAsset : item));
+
+            try {
+              fetch(getApiUrl('/api/save-asset'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  url: completedAsset.url,
+                  type: 'video',
+                  prompt: completedAsset.prompt,
+                  engine: completedAsset.engine,
+                  aspect: completedAsset.aspectRatio,
+                  projectId: targetProj,
+                  userId
+                })
+              }).catch(e => console.debug('[StudioPage] Save asset fallback:', e));
+            } catch (saveErr) {
+              console.warn('[StudioPage] Save asset error:', saveErr);
+            }
+
+            try {
+              useAppStore.getState().addProjectAsset(completedAsset, targetProj);
+            } catch (_) {
+              /* ignore */
+            }
+            try {
+              useAppStore.getState().addUnifiedAsset(completedAsset);
+            } catch (_) {
+              /* ignore */
+            }
 
             const showToast = useAppStore.getState().showToast;
             if (showToast) showToast("Seedance 2.5 video generated successfully!", "success");
@@ -2092,44 +2289,50 @@ export default function StudioPage() {
 
         const videoUrl = data.videoUrl || data.url || data.result;
 
-        setGallery(prev => prev.map(item => item.id === tempId ? {
-          ...item,
+        const finishedMainItem = {
+          id: tempId,
+          type: 'video',
           status: 'completed',
-          url: videoUrl
-        } : item));
+          url: videoUrl,
+          prompt: promptToUse || 'Cinematic Video',
+          engine: engineDisplayLabel,
+          aspectRatio: activeRatio,
+          aspect: activeRatio,
+          timestamp: Date.now(),
+          projectId: targetProj
+        };
 
-        // Omni uploads the binary but does not create an assets-table record.
-        // Persist the completed result so a refresh/cloud gallery sync cannot
-        // remove it from Studio Generator.
-        if (isOmni && videoUrl) {
-          fetch(getApiUrl('/api/save-asset'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              url: videoUrl,
-              type: 'video',
-              prompt: promptToUse,
-              engine: engineToUse,
-              aspect: activeRatio,
-              projectId: targetProj,
-              userId
-            })
-          }).catch(err => console.debug('[StudioPage] Omni gallery persistence fallback:', err));
+        setGallery(prev => prev.map(item => item.id === tempId ? finishedMainItem : item));
+
+        if (videoUrl) {
+          try {
+            fetch(getApiUrl('/api/save-asset'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                url: videoUrl,
+                type: 'video',
+                prompt: promptToUse,
+                engine: engineToUse,
+                aspect: activeRatio,
+                projectId: targetProj,
+                userId
+              })
+            }).catch(err => console.debug('[StudioPage] Gallery persistence fallback:', err));
+          } catch (saveErr) {
+            console.warn('[StudioPage] Save asset error:', saveErr);
+          }
         }
 
         try {
-          useAppStore.getState().addProjectAsset({
-            type: 'video',
-            category: 'generation',
-            url: videoUrl,
-            prompt: promptToUse,
-            name: promptToUse?.slice(0, 30) || 'Studio Video',
-            engine: engineToUse,
-            aspect: activeRatio,
-            projectId: targetProj
-          }, targetProj);
+          useAppStore.getState().addProjectAsset(finishedMainItem, targetProj);
         } catch (_) {
-          void 0;
+          /* ignore */
+        }
+        try {
+          useAppStore.getState().addUnifiedAsset(finishedMainItem);
+        } catch (_) {
+          /* ignore */
         }
 
         if (data.newCredits !== undefined && typeof updateShortsBalance === 'function') {
@@ -2878,8 +3081,8 @@ export default function StudioPage() {
         isMobile ? (mobileTab === 'gallery' ? "flex flex-1 w-full h-full min-h-0" : "hidden") : "flex-1"
       )}>
         {/* Gallery Top Navigation / Header */}
-        <div className="px-3 sm:px-5 py-2 sm:py-2.5 border-b border-white/[0.08] bg-[#09090e]/95 backdrop-blur-xl flex flex-col gap-2 z-20 shrink-0">
-          <div className="flex items-center justify-between gap-2.5">
+        <div className="px-3 sm:px-5 py-2 sm:py-2.5 border-b border-white/[0.08] bg-[#09090e]/95 backdrop-blur-xl flex flex-col gap-2 z-30 shrink-0 relative">
+          <div className="flex items-center justify-between gap-2.5 relative z-40">
             {/* Left: Studio Gallery Title, Total Count & Refresh */}
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[#c8f135]/10 border border-[#c8f135]/30 flex items-center justify-center text-[#c8f135] shadow-[0_0_12px_rgba(200,241,53,0.15)]">
@@ -2892,7 +3095,7 @@ export default function StudioPage() {
                     {gallery.length}
                   </span>
                   <button
-                    onClick={() => fetchUnifiedGallery(userId, true)}
+                    onClick={() => fetchAssets()}
                     disabled={isGalleryLoading}
                     className="p-1 hover:bg-white/10 rounded-md text-zinc-400 hover:text-white transition-all cursor-pointer"
                     title="Refresh Gallery from Cloud"
@@ -2905,7 +3108,7 @@ export default function StudioPage() {
             </div>
 
             {/* Right: Folder / Project Dropdown, Project Box, Credits & Clear */}
-            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 relative z-50">
               {/* Folder / Project Selector Dropdown */}
               <div className="relative">
                 <button
@@ -2923,8 +3126,8 @@ export default function StudioPage() {
 
                 {showProjectDropdown && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowProjectDropdown(false)} />
-                    <div className="absolute right-0 sm:left-0 mt-1.5 w-52 bg-[#0b0b0e] border border-white/10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.85)] py-1 z-50 overflow-hidden">
+                    <div className="fixed inset-0 z-[99]" onClick={() => setShowProjectDropdown(false)} />
+                    <div className="absolute right-0 mt-1.5 w-56 bg-[#0c0c12] border border-white/15 rounded-xl shadow-[0_15px_40px_rgba(0,0,0,0.95)] py-1 z-[100] overflow-hidden backdrop-blur-2xl">
                       <div className="max-h-48 overflow-y-auto custom-scrollbar">
                         <button
                           type="button"
@@ -3011,7 +3214,7 @@ export default function StudioPage() {
           </div>
 
           {/* Bottom Row: Media Filter Pills & Aspect Controls */}
-          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/[0.04] overflow-x-auto custom-scrollbar">
+          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/[0.04] overflow-x-auto custom-scrollbar relative z-10">
             {/* Media Type (All / Video / Image) */}
             <div className="flex items-center bg-black/40 p-0.5 rounded-lg border border-white/[0.08]">
               <button
@@ -3085,41 +3288,46 @@ export default function StudioPage() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3 items-start w-full">
-              {displayGalleryItems.map((item) => (
-                <StudioGalleryCard
-                  key={item.id}
-                  item={item}
-                  layout="uniform"
-                  onOpenLightbox={setLightboxItem}
-                  onDownload={handleDownload}
-                  onDeleteItem={handleDeleteItem}
-                  onUseAsOmniRef={handleUseAsOmniRef}
-                  onExtendVideo={handleExtendVideo}
-                  onRetry={(failedItem, targetAction) => {
-                    handleDeleteItem(failedItem.id);
-                    if (targetAction === 'seedance') {
-                      setPanelTab('seedance');
-                      setActiveEngine('seedance-fast');
-                      if (failedItem.prompt) setPromptText(failedItem.prompt);
-                      if (isMobile) setMobileTab('controls');
-                      else setIsSidebarOpen(true);
-                    } else if (targetAction === 'edit') {
-                      if (failedItem.prompt) {
-                        if (panelTab === 'omni' || panelTab === 'omni-multi') setOmniPromptText(failedItem.prompt);
-                        else setPromptText(failedItem.prompt);
-                      }
-                      if (isMobile) setMobileTab('controls');
-                      else setIsSidebarOpen(true);
-                    } else {
-                      if (failedItem.prompt) {
-                        if (panelTab === 'omni' || panelTab === 'omni-multi') setOmniPromptText(failedItem.prompt);
-                        else setPromptText(failedItem.prompt);
-                        handleGenerate();
-                      }
-                    }
-                  }}
-                />
+            <div className="flex gap-3 sm:gap-4 items-start w-full">
+              {masonryColumns.map((col, colIdx) => (
+                <div key={colIdx} className="flex-1 flex flex-col gap-3 sm:gap-4 min-w-0">
+                  {col.map((item) => (
+                    <StudioGalleryCard
+                      key={item.id}
+                      item={item}
+                      layout="masonry"
+                      onOpenLightbox={setLightboxItem}
+                      onDownload={handleDownload}
+                      onDeleteItem={handleDeleteItem}
+                      onUseAsOmniRef={handleUseAsOmniRef}
+                      onExtendVideo={handleExtendVideo}
+                      onUpscale={handleUpscale}
+                      onRetry={(failedItem, targetAction) => {
+                        handleDeleteItem(failedItem.id);
+                        if (targetAction === 'seedance') {
+                          setPanelTab('seedance');
+                          setActiveEngine('seedance-fast');
+                          if (failedItem.prompt) setPromptText(failedItem.prompt);
+                          if (isMobile) setMobileTab('controls');
+                          else setIsSidebarOpen(true);
+                        } else if (targetAction === 'edit') {
+                          if (failedItem.prompt) {
+                            if (panelTab === 'omni' || panelTab === 'omni-multi') setOmniPromptText(failedItem.prompt);
+                            else setPromptText(failedItem.prompt);
+                          }
+                          if (isMobile) setMobileTab('controls');
+                          else setIsSidebarOpen(true);
+                        } else {
+                          if (failedItem.prompt) {
+                            if (panelTab === 'omni' || panelTab === 'omni-multi') setOmniPromptText(failedItem.prompt);
+                            else setPromptText(failedItem.prompt);
+                            handleGenerate();
+                          }
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
               ))}
             </div>
           )}

@@ -174,7 +174,7 @@ export function ProjectVaultModal() {
                   </div>
 
                   {/* Project Dropdown Selector */}
-                  <div className="relative">
+                  <div className="relative z-40">
                     <button
                       onClick={() => setShowProjectDropdown(prev => !prev)}
                       className="flex items-center gap-1.5 text-xs sm:text-sm font-black text-white hover:text-purple-300 transition-colors group cursor-pointer"

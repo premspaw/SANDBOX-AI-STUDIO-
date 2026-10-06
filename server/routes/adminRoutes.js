@@ -250,12 +250,31 @@ export default function createRouter(deps) {
                 return true;
             });
 
-            // Sort unique assets by created_at descending (newest first)
-            uniqueAssets.sort((x, y) => {
-                const tx = x.created_at ? new Date(x.created_at).getTime() : 0;
-                const ty = y.created_at ? new Date(y.created_at).getTime() : 0;
-                return ty - tx;
-            });
+            const getAssetTs = (a) => {
+                if (!a) return 0;
+                if (a.created_at) {
+                    const t = new Date(a.created_at).getTime();
+                    if (!isNaN(t) && t > 0) return t;
+                }
+                const idMatch = String(a.id || '').match(/(\d{13})/);
+                if (idMatch) {
+                    const t = Number(idMatch[1]);
+                    if (!isNaN(t) && t > 1000000000000) return t;
+                }
+                const strMatch = String(a.url || a.name || '').match(/(\d{13})/);
+                if (strMatch) {
+                    const t = Number(strMatch[1]);
+                    if (!isNaN(t) && t > 1000000000000) return t;
+                }
+                if (a.date && a.date !== 'Recently') {
+                    const t = new Date(a.date).getTime();
+                    if (!isNaN(t) && t > 0) return t;
+                }
+                return 0;
+            };
+
+            // Sort unique assets by true millisecond timestamp descending (newest first)
+            uniqueAssets.sort((x, y) => getAssetTs(y) - getAssetTs(x));
 
             const formattedAssets = uniqueAssets.slice(0, 100).map(a => {
                 let name = a.name || 'Generated Asset';
@@ -286,14 +305,19 @@ export default function createRouter(deps) {
                     aspect = a.aspect || a.aspect_ratio;
                 }
 
+                const ts = getAssetTs(a);
+                const createdAtIso = a.created_at || (ts > 0 ? new Date(ts).toISOString() : new Date().toISOString());
+
                 return {
                     id: a.id,
                     name,
                     type: a.type || 'image',
                     url: a.url,
-                    date: a.created_at ? new Date(a.created_at).toISOString().split('T')[0] : 'Recently',
+                    created_at: createdAtIso,
+                    date: createdAtIso.split('T')[0],
                     aspect,
                     prompt: a.prompt || '',
+                    engine: a.engine || (a.metadata && typeof a.metadata === 'object' ? a.metadata.engine : undefined),
                     isTemplate,
                     folder
                 };

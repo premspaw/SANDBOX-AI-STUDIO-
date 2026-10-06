@@ -403,7 +403,6 @@ export default function MarketingStudio() {
         } catch { return []; }
     });
     const [gallerySearch, setGallerySearch] = useState('');
-    const [brokenGalleryUrls, setBrokenGalleryUrls] = useState(new Set());
     const [activeTag, setActiveTag] = useState(null);
     const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
 
@@ -1956,7 +1955,7 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                         <CyclingLoadingText messages={activeCategory === 'realestate' ? LOADING_MESSAGES_REALESTATE : LOADING_MESSAGES_DEFAULT} />
                                     </div>
                                 ) : generationHistory.length > 0 ? (
-                                    <div className="p-2 grid gap-2" style={{gridTemplateColumns:'repeat(auto-fill, minmax(120px, 1fr))'}}>
+                                    <div className="p-4 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 items-start">
                                         {/* Generating spinner tile */}
                                         {isGenerating && (
                                             <div className="w-full rounded-lg border border-[#c8f135]/20 bg-[#0d0d0d] flex flex-col items-center justify-center gap-2 relative overflow-hidden" 
@@ -1970,73 +1969,19 @@ Any written text, characters, letters, numbers, and labels inside the image must
                                                 <span className="text-[7px] text-[#c8f135] font-bold uppercase tracking-widest animate-pulse">Generating…</span>
                                             </div>
                                         )}
-                                        {generationHistory.filter(item => !brokenGalleryUrls.has(item.url)).map((item, idx) => (
+                                        {generationHistory.map((item, idx) => (
                                             <motion.div key={item.ts}
                                                 initial={{ opacity: 0, scale: 0.95 }}
                                                 animate={{ opacity: 1, scale: 1 }}
                                                 transition={{ duration: 0.3 }}
-                                                className="relative group rounded-lg overflow-hidden cursor-pointer w-full"
+                                                className="relative rounded-lg overflow-hidden w-full bg-black/60 flex items-center justify-center border border-white/10"
                                                 style={{ aspectRatio: getAspectRatio(item.size) }}
                                                 onClick={() => openZoom(item.url)}
                                             >
                                                 {item.type === 'video'
-                                                    ? <div className="w-full h-full relative bg-black/60 flex items-center justify-center">
-                                                        <video src={item.url} className="w-full h-full object-cover" preload="metadata" playsInline muted />
-                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity duration-200">
-                                                            <div className="w-10 h-10 rounded-full bg-black/70 border border-white/30 flex items-center justify-center shadow-lg">
-                                                                <Play className="w-4 h-4 text-white fill-white ml-0.5" />
-                                                            </div>
-                                                        </div>
-                                                        <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1 bg-black/70 px-1.5 py-0.5 rounded-md pointer-events-none">
-                                                            <Video className="w-2.5 h-2.5 text-[#c8f135]" />
-                                                            <span className="text-[7px] text-[#c8f135] font-black uppercase">Video</span>
-                                                        </div>
-                                                      </div>
-                                                    : <div className="w-full h-full relative bg-black/60 overflow-hidden">
-                                                        <img src={item.url} alt={`gen-${idx}`} className="w-full h-full object-cover"
-                                                          onError={() => setBrokenGalleryUrls(prev => { const next = new Set(prev); next.add(item.url); return next; })}
-                                                        />
-                                                      </div>
+                                                    ? <video src={item.url} className="w-full h-full object-cover" autoPlay loop playsInline muted />
+                                                    : <img src={item.url} alt={`gen-${idx}`} className="w-full h-full object-cover" />
                                                 }
-                                                {/* NEW badge */}
-                                                {idx === 0 && (
-                                                    <span className="absolute top-1.5 left-1.5 text-[7px] bg-[#c8f135] text-black font-black px-1 py-0.5 rounded uppercase tracking-wider z-10">New</span>
-                                                )}
-                                                {/* Hover overlay */}
-                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 z-10">
-                                                    <div className="flex gap-1.5">
-                                                        {item.type === 'video' && (
-                                                            <button title="Play" onClick={e => { e.stopPropagation(); openZoom(item.url); }}
-                                                                className="w-9 h-9 flex items-center justify-center bg-[#c8f135] hover:bg-[#b0d62a] text-black rounded-xl transition-all shadow-lg hover:scale-105 active:scale-95">
-                                                                <Play className="w-3.5 h-3.5 fill-black" />
-                                                            </button>
-                                                        )}
-                                                        <button title="Zoom" onClick={e => { e.stopPropagation(); openZoom(item.url); }}
-                                                            className="w-9 h-9 flex items-center justify-center bg-black/80 hover:bg-white/25 rounded-xl text-white border border-white/20 transition-all shadow-lg">
-                                                            <ZoomIn className="w-4 h-4" />
-                                                        </button>
-                                                        <button title="Download" onClick={e => { e.stopPropagation(); downloadAsset(item.url, item.type || 'image'); }}
-                                                            className="w-9 h-9 flex items-center justify-center bg-black/80 hover:bg-white/25 rounded-xl text-white border border-white/20 transition-all shadow-lg">
-                                                            <span className="text-sm font-black">↓</span>
-                                                        </button>
-                                                    </div>
-                                                    {item.type !== 'video' && (
-                                                        <div className="flex gap-1.5">
-                                                            <button title="Edit" onClick={e => { e.stopPropagation(); setGeneratedImage(item.url); setInpaintOpen(true); }}
-                                                                className="w-9 h-9 flex items-center justify-center bg-purple-600/90 hover:bg-purple-500 rounded-xl text-white border border-purple-400/40 transition-all shadow-lg">
-                                                                <Pencil className="w-4 h-4" />
-                                                            </button>
-                                                            <button title="Set as First Frame" onClick={e => { e.stopPropagation(); setFirstFrame(item.url); }}
-                                                                className="w-9 h-9 flex items-center justify-center bg-blue-600/80 hover:bg-blue-500 rounded-xl text-white text-[9px] font-black border border-blue-400/40 transition-all shadow-lg">
-                                                                FF
-                                                            </button>
-                                                            <button title="Set as Last Frame" onClick={e => { e.stopPropagation(); setLastFrame(item.url); }}
-                                                                className="w-9 h-9 flex items-center justify-center bg-indigo-600/80 hover:bg-indigo-500 rounded-xl text-white text-[9px] font-black border border-indigo-400/40 transition-all shadow-lg">
-                                                                LF
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
                                             </motion.div>
                                         ))}
                                     </div>
