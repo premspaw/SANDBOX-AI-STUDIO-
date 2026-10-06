@@ -551,9 +551,17 @@ export default function createRouter(deps) {
             // client must never shift @image2 into @image1.
             const rawImageSlots = Array.isArray(req.body.multiImageSlots) ? req.body.multiImageSlots : [];
             const isMultiReference = req.body.multiReferenceMode === true || rawImageSlots.length > 0;
-            const rawRefImages = rawImageSlots.length > 0
+            let rawRefImages = rawImageSlots.length > 0
                 ? rawImageSlots
                 : (req.body.ref_images || req.body.refImages || req.body.omniMultiImages || []);
+            if (isMultiReference && rawImageSlots.length === 0 && Array.isArray(rawRefImages)) {
+                rawRefImages = rawRefImages.map((img, idx) => {
+                    if (typeof img === 'object' && img !== null) {
+                        return { slot: img.slot !== undefined ? img.slot : idx, tag: img.tag || `@image${idx + 1}`, ...img };
+                    }
+                    return { slot: idx, tag: `@image${idx + 1}`, url: img };
+                });
+            }
             const rawSlotVideos = req.body.multiVideoSlots || req.body.omniMultiVideos;
             const rawRefVideos = req.body.ref_videos || req.body.refVideos || req.body.reference_video_urls || (req.body.refVideo ? [{ url: req.body.refVideo }] : []);
 
@@ -993,11 +1001,22 @@ export default function createRouter(deps) {
                     console.log(`[OMNI-I2V] [Vertex AI REST PRIMARY] Calling global interactions API on project ${VERTEX_PROJECT_ID}`);
                     const interactionRestUrl = `https://aiplatform.googleapis.com/v1beta1/projects/${VERTEX_PROJECT_ID}/locations/global/interactions`;
                     
+                    const standardSafetySettings = [
+                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
+                    ];
+
                     const interactionReqBody = {
                         model: reqBody.model,
                         input: sdkInput,
                         response_format: responseFormat,
-                        generation_config: generationConfig
+                        generation_config: {
+                            ...(generationConfig || {}),
+                            safety_settings: standardSafetySettings
+                        },
+                        safety_settings: standardSafetySettings
                     };
 
                     const restResp = await fetch(interactionRestUrl, {
@@ -1111,14 +1130,22 @@ export default function createRouter(deps) {
                 lastOmniError.includes('prominent individuals') ||
                 lastOmniError.includes('photorealistic individuals') ||
                 lastOmniError.includes('reputational harms') ||
-                lastOmniError.includes('violates Google')
+                lastOmniError.includes('violates Google') ||
+                lastOmniError.includes('safety violations') ||
+                lastOmniError.includes('harmful content')
             );
 
             // --- Option A.2: Vertex AI Veo Fast Fallback (Keeps video rendering 100% on Vertex AI) ---
             // Only allow Veo Fast fallback when NO reference videos were provided.
             // Veo Fast cannot process video references; falling back would discard the user's driving video.
             const hasReferenceVideos = videoSlotsToProcess.length > 0 || hasAnyVideo;
-            if (!success && !isVertexPolicyViolation && token && !hasReferenceVideos) {
+            // Veo Fast only accepts start/end frames. If MultiRef images (@image1..4) were supplied,
+            // falling back would silently generate a video that ignores every tagged reference.
+            const hasDroppableRefImages = rawRefImages.length > 0 && (isMultiReference || !primaryImageResolved);
+            if (hasDroppableRefImages && !success) {
+                console.warn(`[OMNI-I2V] Skipping Veo Fast fallback: ${rawRefImages.length} reference image(s) would be discarded.`);
+            }
+            if (!success && !isVertexPolicyViolation && token && !hasReferenceVideos && !hasDroppableRefImages) {
                 try {
                     console.log(`[OMNI-I2V] Attempting Vertex AI Veo Fast fallback on model veo-3.1-fast-generate-001 (location: ${VERTEX_LOCATION || 'us-central1'})...`);
                     const veoModel = 'veo-3.1-fast-generate-001';
@@ -1238,7 +1265,7 @@ export default function createRouter(deps) {
                                 continue;
                             }
                             lastOmniError = errMessage;
-                            if (errMessage.includes('content_blocked') || errMessage.includes('policy') || errMessage.includes('Responsible AI') || errMessage.includes('prohibited') || errMessage.includes('prominent individuals')) {
+                            if (errMessage.includes('content_blocked') || errMessage.includes('policy') || errMessage.includes('Responsible AI') || errMessage.includes('prohibited') || errMessage.includes('prominent individuals') || errMessage.includes('safety violations') || errMessage.includes('harmful content')) {
                                 lastOmniError = errMessage;
                                 break;
                             }

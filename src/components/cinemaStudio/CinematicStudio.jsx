@@ -884,6 +884,8 @@ export default function CinematicStudio() {
   // Core Inputs for Omni Flash (Up to 5 Reference Image Slots)
   const [omniRefImages, setOmniRefImages] = useState(['', '', '', '', '']);
   const [omniRefPreviews, setOmniRefPreviews] = useState(['', '', '', '', '']);
+  const [omniMultiImages, setOmniMultiImages] = useState(['', '', '', '']);
+  const [omniMultiVideos, setOmniMultiVideos] = useState(['', '', '']);
   const [omniPromptText, setOmniPromptText] = useState('');
   const [omniFirstFrameImage, setOmniFirstFrameImage] = useState('');
   const [omniFirstFramePreview, setOmniFirstFramePreview] = useState('');
@@ -1749,7 +1751,9 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       ...(firstFramePreview ? [{ id: 'slot_first_frame', name: 'first_frame', category: 'Start Frame', imageUrl: firstFramePreview, isKeyframe: true }] : []),
       ...(lastFramePreview ? [{ id: 'slot_last_frame', name: 'last_frame', category: 'End Frame', imageUrl: lastFramePreview, isKeyframe: true }] : []),
       ...(seedanceRefs.ref_images || []).map((img, idx) => img ? { id: `slot_img_${idx}`, name: `image${idx + 1}`, category: `Image ${idx + 1}`, imageUrl: img } : null).filter(Boolean),
+      ...(omniMultiImages || []).map((img, idx) => img ? { id: `slot_omni_multi_img_${idx}`, name: `image${idx + 1}`, category: `Image ${idx + 1}`, imageUrl: img } : null).filter(Boolean),
       ...(seedanceRefs.ref_videos || []).map((vid, idx) => vid ? { id: `slot_vid_${idx}`, name: `video${idx + 1}`, category: `Video ${idx + 1}`, isVideo: true, imageUrl: vid } : null).filter(Boolean),
+      ...(omniMultiVideos || []).map((vid, idx) => vid ? { id: `slot_omni_multi_vid_${idx}`, name: `video${idx + 1}`, category: `Video ${idx + 1}`, isVideo: true, imageUrl: vid } : null).filter(Boolean),
       ...(seedanceRefs.ref_audios || []).map((aud, idx) => aud ? { id: `slot_aud_${idx}`, name: `audio${idx + 1}`, category: `Audio ${idx + 1}`, isAudio: true, imageUrl: aud } : null).filter(Boolean),
     ];
 
@@ -1764,7 +1768,7 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
       ...(mergedBoard.ref_videos || []).map((i, idx) => ({ ...i, name: i.name || `vid${idx + 1}`, category: 'ref_videos', prefix: 'vid' })),
       ...(mergedBoard.ref_audios || []).map((i, idx) => ({ ...i, name: i.name || `aud${idx + 1}`, category: 'ref_audios', prefix: 'aud' }))
     ];
-  }, [refBoard, stagedRefBoard, firstFramePreview, lastFramePreview, seedanceRefs]);
+  }, [refBoard, stagedRefBoard, firstFramePreview, lastFramePreview, seedanceRefs, omniMultiImages, omniMultiVideos]);
 
   const addRefItem = (item) => {
     const categoryKey = item.category.endsWith('s') ? item.category : item.category + 's'
@@ -3209,13 +3213,29 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
           const activeResolution = overrideOptions?.resolution !== undefined ? overrideOptions.resolution : resolution;
           const currentRatio = overrideOptions?.aspectRatio !== undefined ? overrideOptions.aspectRatio : activeRatio;
 
-          const rawPrimary = overrideOptions?.firstFrame || (isOmniEngine ? (omniFirstFrameImage || firstFrameImage) : (firstFrameImage || omniFirstFrameImage));
-          const rawSecondary = overrideOptions?.lastFrame || (isOmniEngine ? (omniLastFrameImage || lastFrameImage) : (lastFrameImage || omniLastFrameImage));
+          const isMultiReference = overrideOptions?.multiReferenceMode === true || panelTab === 'omni-multi';
+          const rawPrimary = isMultiReference ? null : (overrideOptions?.firstFrame || (isOmniEngine ? (omniFirstFrameImage || firstFrameImage) : (firstFrameImage || omniFirstFrameImage)));
+          const rawSecondary = isMultiReference ? null : (overrideOptions?.lastFrame || (isOmniEngine ? (omniLastFrameImage || lastFrameImage) : (lastFrameImage || omniLastFrameImage)));
           const primaryImg = await resolveBlobToBase64(rawPrimary);
           const secondaryImg = await resolveBlobToBase64(rawSecondary);
 
           // Resolve all Omni multi-reference images & videos from Refboard, SidePanel slots & Multi-asset drawers
+          const rawMultiSlotSource = overrideOptions?.multiImageSlots || (overrideOptions?.omniMultiImages || omniMultiImages || [])
+            .map((url, slot) => url ? { slot, tag: `@image${slot + 1}`, url } : null)
+            .filter(Boolean);
+          const resolvedMultiImageSlots = await Promise.all(
+            rawMultiSlotSource.map(async (slotItem) => {
+              if (!slotItem) return null;
+              const slotIdx = (typeof slotItem === 'object' && Number.isInteger(slotItem.slot)) ? slotItem.slot : 0;
+              const rawUrl = typeof slotItem === 'string' ? slotItem : (slotItem.url || slotItem.imageUrl || slotItem.data);
+              if (!rawUrl) return null;
+              const resolvedUrl = await resolveBlobToBase64(rawUrl);
+              return resolvedUrl ? { slot: slotIdx, tag: slotItem.tag || `@image${slotIdx + 1}`, url: resolvedUrl } : null;
+            })
+          ).then(arr => arr.filter(Boolean));
+
           const rawOmniImgs = [
+            ...resolvedMultiImageSlots.map(s => s.url),
             ...(overrideOptions?.reference_image_urls || []),
             ...(overrideOptions?.omniRefImages || omniRefImages || []).filter(Boolean),
             ...(overrideOptions?.omniMultiImages || []).filter(Boolean),
@@ -3266,13 +3286,14 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                 method: 'POST',
                 headers: _veoHeaders,
                 body: JSON.stringify({
+                  prompt: tweakedPrompt,
+                  motionPrompt: tweakedPrompt,
                   image: primaryImg || undefined,
                   firstFrame: primaryImg || undefined,
                   firstFrameImage: primaryImg || undefined,
                   lastFrame: secondaryImg || undefined,
                   lastFrameImage: secondaryImg || undefined,
                   imageEnd: secondaryImg || undefined,
-                  motionPrompt: tweakedPrompt,
                   duration: activeDuration,
                   aspectRatio: currentRatio,
                   resolution: activeResolution,
@@ -3280,14 +3301,18 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
                   identity_images: resolvedOmniImgs,
                   identity_gcs_uris,
                   referenceImages: resolvedOmniImgs,
-                  ref_images: resolvedOmniImgs.map(url => ({ url })),
+                  ref_images: resolvedMultiImageSlots.length > 0 ? resolvedMultiImageSlots : resolvedOmniImgs.map(url => ({ url })),
+                  refImages: resolvedOmniImgs,
+                  multiImageSlots: resolvedMultiImageSlots,
+                  multiReferenceMode: isMultiReference,
+                  omniMultiImages: resolvedMultiImageSlots.map(s => s.url),
                   ref_videos: resolvedOmniVids,
                   refVideos: resolvedOmniVids,
                   multiVideoSlots: overrideOptions?.multiVideoSlots || overrideOptions?.omniMultiVideos,
                   omniMultiVideos: overrideOptions?.multiVideoSlots || overrideOptions?.omniMultiVideos,
                   refVideo: resolvedOmniVids[0]?.url || undefined,
                   ref_audios: resolvedOmniAuds,
-                  task: (primaryImg && secondaryImg) ? 'reference_to_video' : (resolvedOmniImgs.length > 0 ? 'multi_reference' : omniTask),
+                  task: (primaryImg && secondaryImg) ? 'reference_to_video' : ((resolvedMultiImageSlots.length > 0 || resolvedOmniImgs.length > 0) ? 'reference_to_video' : (omniTask || 'image_to_video')),
                   userId,
                   projectId: activeProjectId,
                   generateAudio,
@@ -5758,6 +5783,10 @@ STRICTLY NO labels, text, banners, subtitles, grids, borders, lines, or watermar
         omniRefPreviews={omniRefPreviews}
         setOmniRefImages={setOmniRefImages}
         setOmniRefPreviews={setOmniRefPreviews}
+        omniMultiImages={omniMultiImages}
+        setOmniMultiImages={setOmniMultiImages}
+        omniMultiVideos={omniMultiVideos}
+        setOmniMultiVideos={setOmniMultiVideos}
         setOmniFirstFrameImage={setOmniFirstFrameImage}
         setOmniFirstFramePreview={setOmniFirstFramePreview}
         setOmniLastFrameImage={setOmniLastFrameImage}

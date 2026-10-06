@@ -2162,10 +2162,22 @@ export default function StudioPage() {
         if (isOmni) {
           endpoint = getApiUrl('/api/omni-i2v');
           const isMultiReference = customOptions?.multiReferenceMode === true || panelTab === 'omni-multi';
-          const multiImageSlots = (customOptions?.multiImageSlots || (customOptions?.omniMultiImages || omniMultiImages || [])
+          const rawMultiSlotSource = customOptions?.multiImageSlots || (customOptions?.omniMultiImages || omniMultiImages || [])
             .map((url, slot) => url ? { slot, tag: `@image${slot + 1}`, url } : null)
-            .filter(Boolean));
+            .filter(Boolean);
+          const multiImageSlots = await Promise.all(
+            rawMultiSlotSource.map(async (slotItem) => {
+              if (!slotItem) return null;
+              const slotIdx = (typeof slotItem === 'object' && Number.isInteger(slotItem.slot)) ? slotItem.slot : 0;
+              const rawUrl = typeof slotItem === 'string' ? slotItem : (slotItem.url || slotItem.imageUrl || slotItem.data);
+              if (!rawUrl) return null;
+              const resolvedUrl = await resolveBlobToBase64(rawUrl);
+              return resolvedUrl ? { slot: slotIdx, tag: slotItem.tag || `@image${slotIdx + 1}`, url: resolvedUrl } : null;
+            })
+          ).then(arr => arr.filter(Boolean));
+
           const rawMultiImages = [
+            ...multiImageSlots.map(s => s.url),
             ...(customOptions?.omniMultiImages || []),
             ...(customOptions?.reference_image_urls || []),
             ...(omniMultiImages || [])
