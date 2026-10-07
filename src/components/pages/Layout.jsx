@@ -31,6 +31,9 @@ const FULL_BLEED_TABS = new Set([
     'storyboard',
     'remix',
     'object-swap',
+    'ai-influencer',
+    'creator-influencer',
+    'remixnfluencer',
 ]);
 
 export function Layout({ children, activeTab, setActiveTab }) {

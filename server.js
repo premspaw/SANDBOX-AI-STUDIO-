@@ -2349,6 +2349,12 @@ app.use('/api/', apiLimiter);
 
 
 
+// OpenAI Domain Verification for MCP Apps
+app.get('/.well-known/openai-apps-challenge', (req, res) => {
+    res.setHeader('Content-Type', 'text/plain');
+    res.send('ft2QfXJHHo2eTq7c4RbGnsTyHNZpEkQ3vCTpU_IEr1A');
+});
+
 // Niche SEO Static Pages Handlers
 app.get('/real-estate', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'real-estate', 'index.html')));
 app.get('/fashion', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'fashion', 'index.html')));

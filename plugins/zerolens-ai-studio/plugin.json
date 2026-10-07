@@ -1,0 +1,56 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "zerolens-ai-studio",
+  "version": "1.0.0",
+  "description": "ZeroLens AI Studio provides creative media production tools for generating video advertisements, cinematic video scenes, multi-slide social carousels, and studio images with transparent credit budgeting.",
+  "author": {
+    "name": "ZeroLens AI Studio",
+    "url": "https://zerolens.in"
+  },
+  "homepage": "https://zerolens.in",
+  "repository": "https://github.com/premspaw/SANDBOX-AI-STUDIO-",
+  "license": "MIT",
+  "keywords": [
+    "ai-video",
+    "ugc-studio",
+    "marketing-carousels",
+    "cinema-studio",
+    "video-generation",
+    "image-generation",
+    "creative-media",
+    "video-ads",
+    "social-media"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "ZeroLens AI Studio",
+        "subtitle": "AI Video & Media Studio",
+        "shortDescription": "AI Video & Media Studio",
+        "longDescription": "ZeroLens AI Studio provides an all-in-one suite for creative media production. Generate engaging UGC-style video advertisements, multi-panel carousel graphics, cinematic video sequences, and high-fidelity studio portraits with customizable camera motion, aspect ratios, and credit budgeting.",
+        "developerName": "ZeroLens Team",
+        "category": "Creativity",
+        "capabilities": [
+          "Video Generation",
+          "UGC Ads Studio",
+          "Marketing Carousels",
+          "Cinema Studio",
+          "Image Generation",
+          "Shorts Credit Budgeting"
+        ],
+        "websiteURL": "https://zerolens.in",
+        "supportURL": "https://rddqazvuvvwmxgendcbt.supabase.co/storage/v1/object/public/assets/support.html",
+        "privacyPolicyURL": "https://rddqazvuvvwmxgendcbt.supabase.co/storage/v1/object/public/assets/privacy-policy.html",
+        "termsOfServiceURL": "https://rddqazvuvvwmxgendcbt.supabase.co/storage/v1/object/public/assets/terms.html",
+        "defaultPrompt": [
+          "Create a 15-second UGC-style video ad for a skincare brand in 9:16 vertical format.",
+          "Generate a cinematic film scene with dynamic camera zoom and volumetric lighting.",
+          "Design a 5-slide educational marketing carousel for social media."
+        ],
+        "brandColor": "#0A0A0A",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/logo.png"
+      }
+    }
+  }
+}

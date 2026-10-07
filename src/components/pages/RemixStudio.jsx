@@ -861,19 +861,40 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold text-white tracking-wide">Remix Studio</span>
-            <span className="text-xs text-[#D4FF00] font-semibold px-2 py-0.5 rounded-full bg-[#D4FF00]/10 border border-[#D4FF00]/30">
-              Higgsfield 2.0 Engine
-            </span>
           </div>
         </div>
 
-        {/* Credit Pill */}
-        <div className="flex items-center gap-4">
+        {/* Header Actions */}
+        <div className="flex items-center gap-3">
+          {/* Credit Pill */}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-zinc-300">
             <Coins size={15} className="text-[#D4FF00]" />
             <span>Shorts Balance:</span>
             <span className="font-bold text-white">{shorts ?? 0}</span>
           </div>
+
+          {/* Quick Header Generate Button */}
+          <button
+            onClick={handleStartGeneration}
+            disabled={isGenerating}
+            className={`px-4 py-2 rounded-xl font-black uppercase tracking-wider text-xs flex items-center gap-2 transition-all ${
+              isGenerating
+                ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed border border-white/10'
+                : 'bg-[#D4FF00] hover:bg-[#bce400] text-black shadow-[0_0_20px_rgba(212,255,0,0.3)] active:scale-95'
+            }`}
+          >
+            {isGenerating ? (
+              <>
+                <ArrowsClockwise size={15} className="animate-spin text-black" />
+                <span>Processing ({generationProgress}%)</span>
+              </>
+            ) : (
+              <>
+                <Lightning size={15} weight="fill" />
+                <span>Generate • {isInfluencerMode ? '6 Shorts' : `${costAmount} Shorts`}</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
@@ -1527,10 +1548,37 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
                 <span>{errorMessage}</span>
               </div>
             )}
+
+            {/* In-form Generate Button */}
+            <div className="pt-1">
+              <button
+                onClick={handleStartGeneration}
+                disabled={isGenerating}
+                className={`w-full py-3.5 rounded-2xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
+                  isGenerating
+                    ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed border border-white/10'
+                    : 'bg-[#D4FF00] hover:bg-[#bce400] text-black shadow-[0_0_25px_rgba(212,255,0,0.3)] active:scale-[0.98]'
+                }`}
+              >
+                {isGenerating ? (
+                  <>
+                    <ArrowsClockwise size={18} className="animate-spin text-black" />
+                    <span>Processing ({generationProgress}%)</span>
+                  </>
+                ) : (
+                  <>
+                    <Lightning size={16} weight="fill" />
+                    <span>
+                      Generate • {isInfluencerMode ? '6 Shorts (₹6 · 2K Sheet)' : `${costAmount} Shorts (${effectiveDuration}s)`}
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
-          {/* Fixed Bottom Generate Action (Pinned, non-scrollable) */}
-          <div className="p-3 border-t border-white/10 bg-[#0d0f14] shrink-0">
+          {/* Fixed Bottom Generate Action (Pinned, always visible) */}
+          <div className="p-3 border-t border-white/10 bg-[#0d0f14] shrink-0 sticky bottom-0 z-20 shadow-2xl">
             <button
               onClick={handleStartGeneration}
               disabled={isGenerating}
@@ -1542,11 +1590,12 @@ export default function RemixStudio({ initialMode = 'motion-transfer' }) {
             >
               {isGenerating ? (
                 <>
-                  <ArrowsClockwise size={18} className="animate-spin text-[#D4FF00]" />
+                  <ArrowsClockwise size={18} className="animate-spin text-black" />
                   <span>Processing ({generationProgress}%)</span>
                 </>
               ) : (
                 <>
+                  <Lightning size={16} weight="fill" />
                   <span>
                     Generate • {isInfluencerMode ? '6 Shorts (₹6 · 2K Sheet)' : `${costAmount} Shorts (${effectiveDuration}s)`}
                   </span>
